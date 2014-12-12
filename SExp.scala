@@ -35,6 +35,9 @@ case class SExpBoolean(value: Boolean) extends SExp {
       case false => "#f"
     }
 }
+case class SExpCharacter(value: Character) extends SExp {
+  override def toString() = s"#\\$value" // not entirely correct (eg. newline, ...)
+}
 case class SExpQuoted(content: SExp) extends SExp {
   override def toString() = s"'$content"
 }
