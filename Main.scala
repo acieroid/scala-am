@@ -1,7 +1,7 @@
 object Main {
   def main(args: Array[String]) {
     val parser = new SExpParser
-    val exp = parser.parse("(1 2 (3 4))")
+    val exp = parser.parse("(define foo 'bar)")
     /*
     val exp = new SExpPair(new SExpIdentifier("define"),
       new SExpPair(new SExpIdentifier("x"),
