@@ -73,7 +73,7 @@ class SExpLexer extends Lexical with SExpTokens {
      * which is a non-terminated string. */
     '\"' ~> stringContent <~ '\"' ^^ (s => TString(s))
   def identifier: Parser[Token] =
-    rep1(chrExcept('#', '\'', '\"', '(', ')')) ^^ (s => TIdentifier(s.mkString))
+    rep1(chrExcept('#', '\'', '\"', '(', ')', ' ')) ^^ (s => TIdentifier(s.mkString))
   def quote: Parser[Token] = chr('\'') ^^ { _ => TQuote() }
   def leftParen: Parser[Token] = chr('(') ^^ { _ => TLeftParen() }
   def rightParen: Parser[Token] = chr(')') ^^ { _ => TRightParen() }
@@ -90,18 +90,23 @@ class SExpParser extends TokenParsers {
   override val lexical = new SExpLexer
   import lexical._
 
-  def bool: Parser[SExp] = elem("boolean", _.isInstanceOf[TBoolean]) ^^ {
-    case TBoolean(b) => SExpBoolean(b)
+  def bool: Parser[Value] = elem("boolean", _.isInstanceOf[TBoolean]) ^^ {
+    case TBoolean(b) => ValueBoolean(b)
   }
-  def integer: Parser[SExp] = elem("integer", _.isInstanceOf[TInteger]) ^^ {
-    case TInteger(n) => SExpInteger(n)
+  def integer: Parser[Value] = elem("integer", _.isInstanceOf[TInteger]) ^^ {
+    case TInteger(n) => ValueInteger(n)
   }
-  def character: Parser[SExp] = elem("character", _.isInstanceOf[TCharacter]) ^^ {
-    case TCharacter(c) => SExpCharacter(c)
+  def character: Parser[Value] = elem("character", _.isInstanceOf[TCharacter]) ^^ {
+    case TCharacter(c) => ValueCharacter(c)
   }
-  def string: Parser[SExp] = elem("string", _.isInstanceOf[TString]) ^^ {
-    case TString(s) => SExpString(s)
+  def string: Parser[Value] = elem("string", _.isInstanceOf[TString]) ^^ {
+    case TString(s) => ValueString(s)
   }
+  def nil: Parser[Value] = leftParen ~ rightParen ^^ (_ => ValueNil())
+
+  def value: Parser[SExp] =
+    (bool | integer | character | string | nil) ^^ (v => SExpValue(v))
+
   def identifier: Parser[SExp] = elem("identifier", _.isInstanceOf[TIdentifier]) ^^ {
     case TIdentifier(s) => SExpIdentifier(s)
   }
@@ -109,15 +114,11 @@ class SExpParser extends TokenParsers {
   def leftParen = elem("left parenthesis", _.isInstanceOf[TLeftParen])
   def rightParen = elem("right parenthesis", _.isInstanceOf[TRightParen])
   def quote = elem("quote", _.isInstanceOf[TQuote])
-  def nil: Parser[SExp] = leftParen ~ rightParen ^^ (_ => SExpNil())
   def list: Parser[SExp] =
     leftParen ~> rep1(exp) <~ rightParen ^^ (e => SExpPair(e))
   def quoted: Parser[SExp] = quote ~> exp ^^ (e => SExpQuoted(e))
 
-  def exp: Parser[SExp] = {
-    bool | integer | character | string |
-    identifier | list | nil | quoted
-  }
+  def exp: Parser[SExp] = value | identifier | list | quoted
 
   def parse(s: String): SExp = exp(new lexical.Scanner(s)) match {
     case Success(res, _) => res

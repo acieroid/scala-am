@@ -1,7 +1,30 @@
-sealed class SExp
-case class SExpNil() extends SExp {
+/**
+  * S-expressions and related values
+  */
+sealed class Value
+case class ValueString(value: String) extends Value {
+  override def toString() = "\"" + value + "\"" // https://issues.scala-lang.org/browse/SI-6476
+}
+case class ValueInteger(value: Integer) extends Value {
+  override def toString() = value.toString
+}
+case class ValueFloat(value: Float) extends Value {
+  override def toString() = value.toString
+}
+case class ValueBoolean(value: Boolean) extends Value {
+  override def toString() = value match {
+    case true => "#t"
+    case false => "#f"
+  }
+}
+case class ValueCharacter(value: Character) extends Value {
+  override def toString() = s"#\\$value" // not entirely correct (eg. newline, ...)
+}
+case class ValueNil() extends Value {
   override def toString() = "()"
 }
+
+sealed class SExp
 case class SExpPair(car: SExp, cdr: SExp) extends SExp {
   override def toString() = {
     val content = toStringRest
@@ -12,7 +35,7 @@ case class SExpPair(car: SExp, cdr: SExp) extends SExp {
       case pair: SExpPair =>
         val rest = pair.toStringRest
         s"$car $rest"
-      case SExpNil() => s"$car"
+      case SExpValue(ValueNil()) => s"$car"
       case _ => s"$car . $cdr"
     }
 }
@@ -22,32 +45,17 @@ object SExpPair {
   def apply(content: List[SExp]) = fromList(content)
 
   def fromList(content: List[SExp]): SExp = content match {
-    case Nil => new SExpNil
-    case head :: tail => new SExpPair(head, SExpPair(tail))
+    case Nil => SExpValue(ValueNil())
+    case head :: tail => SExpPair(head, SExpPair(tail))
   }
 }
 case class SExpIdentifier(name: String) extends SExp {
   override def toString() = name
 }
-case class SExpString(value: String) extends SExp {
-  override def toString() = "\"" + value + "\"" // https://issues.scala-lang.org/browse/SI-6476
+case class SExpValue(value: Value) extends SExp {
+  override def toString = value.toString
 }
-case class SExpInteger(value: Integer) extends SExp {
-  override def toString() = value.toString
-}
-case class SExpFloat(value: Float) extends SExp {
-  override def toString() = value.toString
-}
-case class SExpBoolean(value: Boolean) extends SExp {
-  override def toString() =
-    value match {
-      case true => "#t"
-      case false => "#f"
-    }
-}
-case class SExpCharacter(value: Character) extends SExp {
-  override def toString() = s"#\\$value" // not entirely correct (eg. newline, ...)
-}
+
 case class SExpQuoted(content: SExp) extends SExp {
   override def toString() = s"'$content"
 }
