@@ -16,6 +16,16 @@ case class SExpPair(car: SExp, cdr: SExp) extends SExp {
       case _ => s"$car . $cdr"
     }
 }
+object SExpPair {
+  /* Alternative constructor to automatically construct a bunch of pair from a
+   * list of expressions */
+  def apply(content: List[SExp]) = fromList(content)
+
+  def fromList(content: List[SExp]): SExp = content match {
+    case Nil => new SExpNil
+    case head :: tail => new SExpPair(head, SExpPair(tail))
+  }
+}
 case class SExpIdentifier(name: String) extends SExp {
   override def toString() = name
 }
