@@ -1,7 +1,7 @@
 object Main {
   def main(args: Array[String]) {
     val parser = new SExpParser
-    val exp = parser.parse("(define (foo x) (+ x 1) (* x 2))")
+    val exp = parser.parse("(let ((x 1)) (let ((x 2)) (lambda (x) x) x) x)")
     /*
     val exp = new SExpPair(new SExpIdentifier("define"),
       new SExpPair(new SExpIdentifier("x"),
@@ -11,5 +11,6 @@ object Main {
      */
     println(exp)
     println(Scheme.compile(exp))
+    println(Scheme.rename(Scheme.compile(exp)))
   }
 }
