@@ -95,14 +95,14 @@ case class SchemeDefineFunction(name: String, args: List[String], body: List[Sch
 case class SchemeIdentifier(name: String) extends SchemeExp {
   override def toString() = name
 }
-case class SchemeQuoted(quoted: SchemeExp) extends SchemeExp {
+case class SchemeQuoted(quoted: SExp) extends SchemeExp {
   override def toString() = s"'$quoted"
 }
 case class SchemeValue(value: Value) extends SchemeExp {
   override def toString() = value.toString
 }
 
-object Compiler {
+object SchemeCompiler {
   /**
     * Reserved keywords
     */
@@ -168,7 +168,7 @@ object Compiler {
       SchemeIdentifier(name)
     }
     case SExpValue(value) => SchemeValue(value)
-    case SExpQuoted(quoted) => SchemeQuoted(compile(quoted))
+    case SExpQuoted(quoted) => SchemeQuoted(quoted)
     case _ => throw new Exception(s"Invalid Scheme expression: $exp")
   }
 
@@ -203,7 +203,7 @@ object Compiler {
   }
 }
 
-object Renamer {
+object SchemeRenamer {
   /** Maps each variables to their alpha-renamed version (eg. x -> _x0) */
   type NameMap = Map[String, String]
   /** Map each variables to the number of times it is bound */
@@ -365,12 +365,12 @@ object Scheme {
   /**
     * Compiles a s-expression into a scheme expression
     */
-  def compile(exp: SExp): SchemeExp = Compiler.compile(exp)
+  def compile(exp: SExp): SchemeExp = SchemeCompiler.compile(exp)
 
 
   /**
     * Performs alpha-renaming to ensure that every variable has a unique name
     */
-  def rename(exp: SchemeExp): SchemeExp = Renamer.rename(exp)
+  def rename(exp: SchemeExp): SchemeExp = SchemeRenamer.rename(exp)
 
 }
