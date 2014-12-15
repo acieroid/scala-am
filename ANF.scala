@@ -69,7 +69,7 @@ object ANFCompiler {
        * using set! to support them */
       bindings.reverse.foldLeft(compileBody(body, a => a))(
         (e: ANFExp, binding: (String, SchemeExp)) =>
-        ANFLet(binding._1, compile(binding._2), e))
+        ANFLetrec(binding._1, compile(binding._2), e))
     case SchemeSet(variable, value) =>
       compile(value, false, a => ret(ANFSet(variable, a), tail, k))
     case SchemeBegin(body) =>

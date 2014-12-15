@@ -73,19 +73,19 @@ class SExpLexer extends Lexical with SExpTokens {
      * which is a non-terminated string. */
     '\"' ~> stringContent <~ '\"' ^^ (s => TString(s))
   def identifier: Parser[Token] =
-    rep1(chrExcept('#', '\'', '\"', '(', ')', ' ')) ^^ (s => TIdentifier(s.mkString))
+    rep1(chrExcept('#', '\'', '\"', '(', ')', ' ', ';')) ^^ (s => TIdentifier(s.mkString))
   def quote: Parser[Token] = chr('\'') ^^ { _ => TQuote() }
   def leftParen: Parser[Token] = chr('(') ^^ { _ => TLeftParen() }
   def rightParen: Parser[Token] = chr(')') ^^ { _ => TRightParen() }
   /* TODO: float */
   def token: Parser[Token] =
-    whitespace ~> {
+    (whitespace | comment) ~> {
       bool | integer | character | string | identifier |
       quote | leftParen | rightParen
-    } <~ whitespace
+    } <~ (whitespace | comment)
 }
 
-class SExpParser extends TokenParsers {
+object SExpParser extends TokenParsers {
   type Tokens = SExpTokens
   override val lexical = new SExpLexer
   import lexical._

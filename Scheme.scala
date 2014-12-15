@@ -255,7 +255,7 @@ object SchemeRenamer {
         /* Use new names for expressions of bindings */
         case (variables, names1, count1) => renameList(bindings.map(_._2), names1, count1) match {
           case (exps, count2) => renameList(body, names1, count2) match {
-            case (body1, count3) => (SchemeLet(variables.zip(exps), body1), count3)
+            case (body1, count3) => (SchemeLetrec(variables.zip(exps), body1), count3)
           }
         }
       }
