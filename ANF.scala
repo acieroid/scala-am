@@ -48,8 +48,6 @@ object ANFCompiler {
 
   def compile(exp: SchemeExp): ANFExp = compile(exp, true, e => e)
 
-  /* TODO: add tail-call information to know whether we can avoid introducing
-   * non-needed lets? */
   def compile(exp: SchemeExp, tail: Boolean, k: ANFAtomicExp => ANFExp): ANFExp = exp match {
     case SchemeLambda(args, body) =>
       k(ANFLambda(args, compileBody(body, a => a)))
@@ -57,10 +55,41 @@ object ANFCompiler {
       compile(f, false, a => compileList(args, as => ret(ANFFuncall(a, as), tail, k)))
     case SchemeIf(cond, cons, alt) =>
       compile(cond, false, a => ret(ANFIf(a, compile(cons), compile(alt)), tail, k))
+    case SchemeLet(bindings, body) =>
+      bindings.reverse.foldLeft(compileBody(body, a => a))(
+        (e: ANFExp, binding: (String, SchemeExp)) =>
+        ANFLet(binding._1, compile(binding._2), e))
+    case SchemeLetStar(bindings, body) =>
+      bindings.reverse.foldLeft(compileBody(body, a => a))(
+        (e: ANFExp, binding: (String, SchemeExp)) =>
+        ANFLet(binding._1, compile(binding._2), e))
+    case SchemeLetrec(bindings, body) =>
+      /* TODO: we should at least warn when desugaring mutually-recursive functions,
+       * as they are not supported. The best solution would be to desugar them
+       * using set! to support them */
+      bindings.reverse.foldLeft(compileBody(body, a => a))(
+        (e: ANFExp, binding: (String, SchemeExp)) =>
+        ANFLet(binding._1, compile(binding._2), e))
     case SchemeSet(variable, value) =>
       compile(value, false, a => ret(ANFSet(variable, a), tail, k))
     case SchemeBegin(body) =>
       compileBody(body, a => k(a))
+    case SchemeDefineFunction(name, args, body) =>
+      compile(SchemeDefineVariable(name, SchemeLambda(args, body)), tail, k)
+    case SchemeDefineVariable(name, value) =>
+      throw new Exception("define not supported")
+    case SchemeAnd(List()) =>
+      k(ANFValue(ValueBoolean(true)))
+    case SchemeAnd(List(e)) =>
+      compile(e, tail, k)
+    case SchemeAnd(e :: es) =>
+      compile(e, false, a => ret(ANFIf(a, compile(SchemeAnd(es)), ANFValue(ValueBoolean(false))), tail, k))
+    case SchemeOr(List()) =>
+      k(ANFValue(ValueBoolean(false)))
+    case SchemeOr(List(e)) =>
+      compile(e, tail, k)
+    case SchemeOr(e :: es) =>
+      compile(e, false, a => ret(ANFIf(a, ANFValue(ValueBoolean(true)), compile(SchemeOr(es))), tail, k))
     case SchemeIdentifier(name) =>
       k(ANFIdentifier(name))
     case SchemeQuoted(quoted) =>
@@ -96,7 +125,6 @@ object ANFCompiler {
     case exp :: rest => compile(exp, false, e => compileListHelper(rest, k, e :: acc))
   }
 }
-
 
 object ANF {
   /**
