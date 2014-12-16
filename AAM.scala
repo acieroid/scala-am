@@ -1,7 +1,3 @@
-import scalax.collection.Graph
-import scalax.collection.GraphPredef._, scalax.collection.GraphEdge._
-import scalax.collection.io.dot._
-
 /**
   * Implementation of a CESK machine for ANF following the AAM approach
   */
@@ -243,23 +239,48 @@ case class State(control: Control, σ: Store, a: KontAddress) {
     vs.foldLeft(Set[State]())((s, v) => s + State(ControlKont(v), σ, κ))
 }
 
+/** TODO: parameterize */
+case class Graph(ids: Map[State, Int], next: Int, nodes: Set[State], edges: Map[State, Set[State]]) {
+  def this() = this(Map[State, Int](), 0, Set[State](), Map[State, Set[State]]())
+  def this(state: State) = this(Map[State, Int]() + (state -> 0), 1, Set[State](state), Map[State, Set[State]]())
+  def addNode(node: State): Graph =
+    if (nodes.contains(node)) { this } else {
+      Graph(ids + (node -> next), next + 1, nodes + node, edges)
+    }
+  def addEdge(node1: State, node2: State): Graph = addNode(node1).addNode(node2).addEdgeNoCheck(node1, node2)
+  def addEdges(edges: Traversable[(State, State)]): Graph =
+    edges.foldLeft(this)({ case (g, (n1, n2)) => addEdge(n1, n2) })
+  def addEdgeNoCheck(node1: State, node2: State): Graph =
+    if (edges.contains(node1) && edges(node1).contains(node2)) { this } else {
+      val existing: Set[State] = edges.getOrElse(node1, Set[State]())
+      Graph(ids, next, nodes, edges + (node1 -> (existing ++ Set(node2))))
+    }
+  def toDot(): String = {
+      val sb = new StringBuilder("digraph G {\n")
+      nodes.foreach((n) => {
+        val color = n.control match {
+          case ControlEval(_, _) => "#DDFFDD"
+          case ControlKont(_) => "#FFDDDD"
+        }
+        sb.append("node_" + ids(n) + "[label=\"" + n.toString.replaceAll("\"", "\\\\\"") + "\", fillcolor=\"" + color + "\" style=\"filled\"];\n")
+      })
+      edges.foreach({ case (n1, ns) => ns.foreach((n2) => sb.append(s"node_${ids(n1)} -> node_${ids(n2)}\n")) })
+      sb.append("}")
+      return sb.toString
+    }
+}
+
+
 object AAM {
-  def outputDot(graph: Graph[State, DiEdge]) = {
-    val dot = graph.toDot(root, edgeTransformer)
+  def outputDot(graph: Graph) = {
+    val dot = graph.toDot()
     val f = new java.io.File("foo.dot")
     val bw = new java.io.BufferedWriter(new java.io.FileWriter(f))
     bw.write(dot)
     bw.close()
   }
 
-  val root = DotRootGraph(directed = true, id = None)
-  def edgeTransformer(innerEdge: Graph[State, DiEdge]#EdgeT): Option[(DotGraph, DotEdgeStmt)] = {
-    import scala.language.existentials
-    val edge = innerEdge.edge
-    Some((root, DotEdgeStmt(edge.from.toString, edge.to.toString, Nil)))
-  }
-
-  def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State, DiEdge]): (Set[State], Graph[State, DiEdge]) = todo.headOption match {
+  def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph): (Set[State], Graph) = todo.headOption match {
     case Some(s) =>
       if (visited.contains(s)) {
         loop(todo.tail, visited, halted, graph)
@@ -267,11 +288,9 @@ object AAM {
         loop(todo.tail, visited + s, halted + s, graph)
       } else {
         if (visited.size < 50) {
-          val succs: Set[State] = s.step
-          val succEdges: Set[DiEdge[State]] = succs.map(s2 => DiEdge(s, s2))
-          val newGraph = graph ++ Graph.from(succs + s, succEdges)
+          val succs = s.step
           outputDot(graph)
-          loop(todo.tail ++ succs, visited + s, halted, newGraph)
+          loop(todo.tail ++ succs, visited + s, halted, graph.addEdges(succs.map(s2 => (s, s2))))
         } else {
           (halted, graph)
         }
@@ -281,8 +300,8 @@ object AAM {
 
   def eval(exp: ANFExp) = {
     val state = new State(exp)
-    loop(Set(state), Set(), Set(), Graph(state)) match {
-      case (halted, graph) => {
+    loop(Set(state), Set(), Set(), new Graph(state)) match {
+      case (halted, graph: Graph) => {
         outputDot(graph)
         halted
       }
