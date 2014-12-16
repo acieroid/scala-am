@@ -2,8 +2,8 @@
   * Abstract syntax of ANF programs
   */
 
-sealed class ANFExp
-sealed class ANFAtomicExp extends ANFExp
+sealed abstract class ANFExp
+sealed abstract class ANFAtomicExp extends ANFExp
 case class ANFLambda(args: List[String], body: ANFExp) extends ANFAtomicExp {
   override def toString() = {
     val a = args.mkString(" ")

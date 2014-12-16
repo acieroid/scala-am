@@ -34,7 +34,7 @@ object Primitives {
   val opNumEqual = binCmp((x, y) => x == y)
 }
 
-sealed class Address
+sealed abstract class Address
 case class VariableAddress(name: String) extends Address
 case class PrimitiveAddress(name: String) extends Address
 case class KontAddress(exp: ANFExp) extends Address
@@ -42,6 +42,7 @@ case class KontAddress(exp: ANFExp) extends Address
 case class Env(content: Map[String, Address]) {
   def this() = this(Map[String, Address]())
   def lookup(name: String): Option[Address] = content.get(name)
+  def apply(name: String): Option[Address] = lookup(name)
   def extend(name: String, addr: Address): Env = Env(content + (name -> addr))
   def +(v: (String, Address)): Env = extend(v._1, v._2)
   def ++(l: List[(String, Address)]): Env = l.foldLeft(this)((ρ, v) => ρ + v)
@@ -53,19 +54,19 @@ object Env {
   }
 }
 
-sealed class Kont
+sealed abstract class Kont
 case class KontLet(v: String, body: ANFExp, env: Env, addr: KontAddress) extends Kont
 case class KontLetrec(v: String, body: ANFExp, env: Env, addr: KontAddress) extends Kont
 case class KontHalt extends Kont
 
-sealed class AbstractValue
+sealed abstract class AbstractValue
 case class AbstractSimpleValue(value: Value) extends AbstractValue
 case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue
 case class AbstractPrimitive(name: String, f: List[AbstractValue] => AbstractValue) extends AbstractValue
 case class AbstractPair(car: AbstractValue, cdr: AbstractValue) extends AbstractValue
 case class AbstractKont(κ: Kont) extends AbstractValue
 
-sealed class Control
+sealed abstract class Control
 case class ControlEval(exp: ANFExp, env: Env) extends Control
 case class ControlKont(v: AbstractValue) extends Control
 
@@ -84,20 +85,28 @@ object Store {
 
 case class State(control: Control, σ: Store, κ: Kont) {
   def this(exp: ANFExp) = this(ControlEval(exp, Env.initial), Store.initial, KontHalt())
-  def step: State = control match {
+  def step: Set[State] = control match {
     case ControlEval(e, ρ) => stepEval(e, ρ, σ, κ)
     case ControlKont(v) => stepKont(v, σ, κ)
   }
 
-  def stepEval(e: ANFExp, ρ: Env, σ: Store, κ: Kont): State = e match {
-    case λ: ANFLambda => reachedValue(AbstractClosure(λ, ρ))
+  def atomicEval(e: ANFAtomicExp, ρ: Env, σ: Store): Set[AbstractValue] = e match {
+    case λ: ANFLambda => Set(AbstractClosure(λ, ρ))
+    case ANFIdentifier(name) => ρ(name) match {
+      case Some(a) => σ(a)
+      case None => throw new Exception(s"Unbound variable: $name")
+    }
+    case ANFValue(value) => Set(AbstractSimpleValue(value))
   }
 
-  def stepKont(v: AbstractValue, σ: Store, κ: Kont): State = κ match {
-    case KontHalt() => this
+  def stepEval(e: ANFExp, ρ: Env, σ: Store, κ: Kont): Set[State] = e match {
+    case ae: ANFAtomicExp => reachedValue(atomicEval(ae, ρ, σ), σ, κ)
   }
 
-  def reachedValue(v: AbstractValue) = {
-    State(ControlKont(v), this.σ, this.κ)
+  def stepKont(v: AbstractValue, σ: Store, κ: Kont): Set[State] = κ match {
+    case KontHalt() => Set(this)
   }
+
+  def reachedValue(vs: Set[AbstractValue], σ: Store, κ: Kont): Set[State] =
+    vs.foldLeft(Set[State]())((s, v) => s + State(ControlKont(v), σ, κ))
 }

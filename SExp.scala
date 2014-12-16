@@ -1,7 +1,7 @@
 /**
   * S-expressions and related values
   */
-sealed class Value
+sealed abstract class Value
 case class ValueString(value: String) extends Value {
   override def toString() = "\"" + value + "\"" // https://issues.scala-lang.org/browse/SI-6476
 }
@@ -24,7 +24,7 @@ case class ValueNil() extends Value {
   override def toString() = "()"
 }
 
-sealed class SExp
+sealed abstract class SExp
 case class SExpPair(car: SExp, cdr: SExp) extends SExp {
   override def toString() = {
     val content = toStringRest

@@ -2,7 +2,7 @@
   * Abstract syntax of Scheme programs (probably far from complete)
   */
 
-sealed class SchemeExp
+sealed abstract class SchemeExp
 case class SchemeLambda(args: List[String], body: List[SchemeExp]) extends SchemeExp {
   override def toString() = {
     val a = args.mkString(" ")
@@ -169,7 +169,6 @@ object SchemeCompiler {
     }
     case SExpValue(value) => SchemeValue(value)
     case SExpQuoted(quoted) => SchemeQuoted(quoted)
-    case _ => throw new Exception(s"Invalid Scheme expression: $exp")
   }
 
   def compileArgs(args: SExp): List[String] = args match {
