@@ -11,12 +11,12 @@ object Main {
     if (args.length != 1) {
       println("Scheme file expected as argument")
     } else {
-      /* val exp = SExpParser.parse(fileContent(args(0)))
+      val exp = SExpParser.parse(fileContent(args(0)))
       println(exp)
       println(Scheme.compile(exp))
       println(Scheme.rename(Scheme.compile(exp)))
-      println(ANF.compile(Scheme.rename(Scheme.compile(exp)))) */
-      println(AAM.eval(ANF.compile(Scheme.rename(Scheme.compile(SExpParser.parse("(= 2 (+ 1 (+ 3 (- 2 4))))"))))))
+      println(ANF.compile(Scheme.rename(Scheme.compile(exp))))
+      println(AAM.eval(ANF.compile(Scheme.rename(Scheme.compile(exp)))))
     }
   }
 }
