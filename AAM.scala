@@ -59,12 +59,29 @@ case class KontLet(v: String, body: ANFExp, env: Env, addr: KontAddress) extends
 case class KontLetrec(v: String, body: ANFExp, env: Env, addr: KontAddress) extends Kont
 case class KontHalt extends Kont
 
-sealed abstract class AbstractValue
-case class AbstractSimpleValue(value: Value) extends AbstractValue
-case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue
-case class AbstractPrimitive(name: String, f: List[AbstractValue] => AbstractValue) extends AbstractValue
-case class AbstractPair(car: AbstractValue, cdr: AbstractValue) extends AbstractValue
-case class AbstractKont(κ: Kont) extends AbstractValue
+sealed abstract class AbstractValue {
+  def isTrue: Boolean
+  def isFalse: Boolean = !isTrue
+}
+case class AbstractSimpleValue(value: Value) extends AbstractValue {
+  def isTrue = value match {
+    case ValueBoolean(false) => false
+    case _ => true
+  }
+}
+case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue {
+  def isTrue = true
+}
+case class AbstractPrimitive(name: String, f: List[AbstractValue] => AbstractValue) extends AbstractValue {
+  def isTrue = true
+}
+case class AbstractPair(car: AbstractValue, cdr: AbstractValue) extends AbstractValue {
+  def isTrue = true
+}
+case class AbstractKont(κ: Kont) extends AbstractValue {
+  def isTrue = false
+  override def isFalse = false
+}
 
 sealed abstract class Control
 case class ControlEval(exp: ANFExp, env: Env) extends Control
@@ -90,6 +107,14 @@ case class State(control: Control, σ: Store, κ: Kont) {
     case ControlKont(v) => stepKont(v, σ, κ)
   }
 
+  def halted: Boolean = control match {
+    case ControlEval(_, _) => false
+    case ControlKont(v) => κ match {
+      case KontHalt() => true
+      case _ => false
+    }
+  }
+
   def atomicEval(e: ANFAtomicExp, ρ: Env, σ: Store): Set[AbstractValue] = e match {
     case λ: ANFLambda => Set(AbstractClosure(λ, ρ))
     case ANFIdentifier(name) => ρ(name) match {
@@ -101,6 +126,20 @@ case class State(control: Control, σ: Store, κ: Kont) {
 
   def stepEval(e: ANFExp, ρ: Env, σ: Store, κ: Kont): Set[State] = e match {
     case ae: ANFAtomicExp => reachedValue(atomicEval(ae, ρ, σ), σ, κ)
+    case ANFIf(cond, cons, alt) =>
+      atomicEval(cond, ρ, σ).foldLeft(Set[State]())((s: Set[State], v: AbstractValue) => {
+        val t = State(ControlEval(cons, ρ), σ, κ)
+        val f = State(ControlEval(alt, ρ), σ, κ)
+        if (v.isTrue && v.isFalse) {
+          s + t + f
+        } else if (v.isTrue) {
+          s + t
+        } else if (v.isFalse) {
+          s + f
+        } else {
+          s
+        }
+      })
   }
 
   def stepKont(v: AbstractValue, σ: Store, κ: Kont): Set[State] = κ match {
@@ -109,4 +148,20 @@ case class State(control: Control, σ: Store, κ: Kont) {
 
   def reachedValue(vs: Set[AbstractValue], σ: Store, κ: Kont): Set[State] =
     vs.foldLeft(Set[State]())((s, v) => s + State(ControlKont(v), σ, κ))
+}
+
+object AAM {
+  def loop(todo: Set[State], visited: Set[State], halted: Set[State]): Set[State] = todo.headOption match {
+    case Some(s) =>
+      if (visited.contains(s)) {
+        loop(todo.tail, visited, halted)
+      } else if (s.halted) {
+        loop(todo.tail, visited + s, halted + s)
+      } else {
+        loop(todo.tail ++ s.step, visited + s, halted)
+      }
+    case None => halted
+  }
+
+  def eval(exp: ANFExp) = loop(Set(new State(exp)), Set(), Set())
 }
