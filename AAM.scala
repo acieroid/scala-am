@@ -97,12 +97,13 @@ case class ControlKont(v: AbstractValue) extends Control {
   override def toString(): String = s"ko(${v.toString})"
 }
 
-/** TODO: use a more generic lattice? */
+/** TODO: use a more generic lattice */
 case class Store(content: Map[Address, Set[AbstractValue]]) {
   def this() = this(Map[Address, Set[AbstractValue]]())
   def lookup(addr: Address): Set[AbstractValue] = content.getOrElse(addr, Set[AbstractValue]())
   def apply(addr: Address): Set[AbstractValue] = lookup(addr)
   def extend(addr: Address, v: AbstractValue): Store = Store(content + (addr -> (lookup(addr) + v)))
+  def defineBottom(addr: Address): Store = Store(content + (addr -> Set()))
   def ⊔(v: (Address, AbstractValue)): Store = extend(v._1, v._2)
   def ++(l: List[(Address, AbstractValue)]): Store = l.foldLeft(this)((σ, v) => σ ⊔ v)
 }
@@ -133,15 +134,9 @@ case class State(control: Control, σ: Store, a: KontAddress) {
 
   def atomicEval(e: ANFAtomicExp, ρ: Env, σ: Store): Set[AbstractValue] = e match {
     case λ: ANFLambda => Set(AbstractClosure(λ, ρ))
-    case ANFIdentifier(name) => {
-      println(s"Evaluating identifier $name")
-      ρ(name) match {
-      case Some(a) => {
-        println(s"Addr: $a")
-        σ(a)
-      }
+    case ANFIdentifier(name) => ρ(name) match {
+      case Some(a) => σ(a)
       case None => throw new Exception(s"Unbound variable: $name")
-      }
     }
     case ANFValue(value) => Set(AbstractSimpleValue(value))
   }
@@ -164,15 +159,20 @@ case class State(control: Control, σ: Store, a: KontAddress) {
       })
     case ANFLet(variable, value, body) =>
       push(value, KontLet(variable, body, ρ, κ), ρ, σ)
+    case ANFLetrec(variable, value, body) => {
+      val a = allocVariable(variable)
+      push(value, KontLetrec(variable, a, body, ρ + (variable -> a), κ), ρ + (variable -> a), σ defineBottom a)
+    }
   }
 
   def stepKont(v: AbstractValue, σ: Store, κ: Kont): Set[State] = κ match {
     case KontHalt() => Set(this)
-    case KontLet(variable, body, ρ, addr) => {
-      println(s"Allocating $v")
-      val a = allocVariable(variable)
-      Set(State(ControlEval(body, ρ + (variable -> a)), σ ⊔ (a -> v), addr))
+    case KontLet(variable, body, ρ, next) => {
+      val addr = allocVariable(variable)
+      Set(State(ControlEval(body, ρ + (variable -> addr)), σ ⊔ (addr -> v), next))
     }
+    case KontLetrec(variable, addr, body, ρ, next) =>
+      Set(State(ControlEval(body, ρ), σ ⊔ (addr -> v), next))
   }
 
   def push(e: ANFExp, κ: Kont,  ρ: Env, σ: Store): Set[State] = {
