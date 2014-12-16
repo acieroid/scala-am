@@ -61,7 +61,7 @@ case class KontLet(v: String, body: ANFExp, env: Env, next: KontAddress) extends
 case class KontLetrec(v: String, a: Address, body: ANFExp, env: Env, next: KontAddress) extends Kont {
   override def toString(): String = s"KontLetrec(${v.toString})"
 }
-case class KontHalt extends Kont {
+case class KontHalt() extends Kont {
   override def toString(): String = s"KontHalt()"
 }
 
@@ -157,12 +157,19 @@ case class State(control: Control, σ: Store, a: KontAddress) {
           s
         }
       })
-    case ANFLet(variable, value, body) =>
-      push(value, KontLet(variable, body, ρ, κ), ρ, σ)
-    case ANFLetrec(variable, value, body) => {
+    case ANFLet(variable, exp, body) =>
+      push(exp, KontLet(variable, body, ρ, κ), ρ, σ)
+    case ANFLetrec(variable, exp, body) => {
       val a = allocVariable(variable)
-      push(value, KontLetrec(variable, a, body, ρ + (variable -> a), κ), ρ + (variable -> a), σ defineBottom a)
+      push(exp, KontLetrec(variable, a, body, ρ + (variable -> a), κ), ρ + (variable -> a), σ defineBottom a)
     }
+    case ANFSet(variable, value) => ρ(variable) match {
+      case Some(addr) => atomicEval(value, ρ, σ).foldLeft(Set[State]())((s: Set[State], v: AbstractValue) => {
+        s ++ reachedValue(Set(v), σ ⊔ (addr -> v), κ)
+      })
+      case None => throw new Exception(s"Undbound variable: $variable")
+    }
+    case ANFQuoted(sexp) => throw new Exception("TODO: Quoted values not yet handled")
   }
 
   def stepKont(v: AbstractValue, σ: Store, κ: Kont): Set[State] = κ match {
