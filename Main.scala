@@ -11,7 +11,8 @@ object Main {
     if (args.length != 1) {
       println("Scheme file expected as argument")
     } else {
-      val exp = SExpParser.parse(fileContent(args(0)))
+      // val exp = SExpParser.parse(fileContent(args(0)))
+      val exp = SExpParser.parse("(letrec ((count (lambda (n) (if (= n 0) 123 (count (- n 1)))))) (count 8))")
       println(exp)
       println(Scheme.compile(exp))
       println(Scheme.rename(Scheme.compile(exp)))

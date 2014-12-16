@@ -24,12 +24,22 @@ object Primitives {
 
   val opPlus = binNumOp((x, y) => x+y)
   val opMinus = binNumOp((x, y) => x-y)
+  val opTimes = binNumOp((x, y) => x*y)
   val opNumEqual = binCmp((x, y) => x == y)
+  val opNumLt = binCmp((x, y) => x < y)
+  val opNumLe = binCmp((x, y) => x <= y)
+  val opNumGt = binCmp((x, y) => x > y)
+  val opNumGe = binCmp((x, y) => x >= y)
 
   val all: List[(String, Primitive)] = List(
     ("+" -> opPlus),
     ("-" -> opMinus),
-    ("=" -> opNumEqual)
+    ("*" -> opTimes),
+    ("=" -> opNumEqual),
+    ("<" -> opNumLt),
+    ("<=" -> opNumLe),
+    (">" -> opNumGt),
+    (">=" -> opNumGe)
   )
 
   val forEnv: List[(String, Address)] =
@@ -82,6 +92,7 @@ case class AbstractSimpleValue(value: Value) extends AbstractValue {
 }
 case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue {
   def isTrue = true
+  override def toString(): String = λ.toString
 }
 case class AbstractPrimitive(name: String, f: List[AbstractValue] => AbstractValue) extends AbstractValue {
   def isTrue = true
@@ -233,6 +244,21 @@ case class State(control: Control, σ: Store, a: KontAddress) {
 }
 
 object AAM {
+  def outputDot(graph: Graph[State, DiEdge]) = {
+    val dot = graph.toDot(root, edgeTransformer)
+    val f = new java.io.File("foo.dot")
+    val bw = new java.io.BufferedWriter(new java.io.FileWriter(f))
+    bw.write(dot)
+    bw.close()
+  }
+
+  val root = DotRootGraph(directed = true, id = None)
+  def edgeTransformer(innerEdge: Graph[State, DiEdge]#EdgeT): Option[(DotGraph, DotEdgeStmt)] = {
+    import scala.language.existentials
+    val edge = innerEdge.edge
+    Some((root, DotEdgeStmt(edge.from.toString, edge.to.toString, Nil)))
+  }
+
   def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State, DiEdge]): (Set[State], Graph[State, DiEdge]) = todo.headOption match {
     case Some(s) =>
       if (visited.contains(s)) {
@@ -240,29 +266,24 @@ object AAM {
       } else if (s.halted) {
         loop(todo.tail, visited + s, halted + s, graph)
       } else {
-        val succs: Set[State] = s.step
-        val succEdges: Set[DiEdge[State]] = succs.map(s2 => DiEdge(s, s2))
-        val newGraph = graph ++ Graph.from(succs + s, succEdges)
-        loop(todo.tail ++ succs, visited + s, halted, newGraph)
+        if (visited.size < 50) {
+          val succs: Set[State] = s.step
+          val succEdges: Set[DiEdge[State]] = succs.map(s2 => DiEdge(s, s2))
+          val newGraph = graph ++ Graph.from(succs + s, succEdges)
+          outputDot(graph)
+          loop(todo.tail ++ succs, visited + s, halted, newGraph)
+        } else {
+          (halted, graph)
+        }
       }
     case None => (halted, graph)
-  }
-
-  val root = DotRootGraph(directed = true, id = None)
-  def edgeTransformer(innerEdge: Graph[State, DiEdge]#EdgeT): Option[(DotGraph, DotEdgeStmt)] = {
-    val edge = innerEdge.edge
-    Some((root, DotEdgeStmt(edge.from.toString, edge.to.toString, Nil)))
   }
 
   def eval(exp: ANFExp) = {
     val state = new State(exp)
     loop(Set(state), Set(), Set(), Graph(state)) match {
       case (halted, graph) => {
-        val dot = graph.toDot(root, edgeTransformer)
-        val f = new java.io.File("foo.dot")
-        val bw = new java.io.BufferedWriter(new java.io.FileWriter(f))
-        bw.write(dot)
-        bw.close()
+        outputDot(graph)
         halted
       }
     }
