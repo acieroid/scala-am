@@ -1,3 +1,7 @@
+import scalax.collection.Graph
+import scalax.collection.GraphPredef._, scalax.collection.GraphEdge._
+import scalax.collection.io.dot._
+
 /**
   * Implementation of a CESK machine for ANF following the AAM approach
   */
@@ -229,18 +233,38 @@ case class State(control: Control, σ: Store, a: KontAddress) {
 }
 
 object AAM {
-  def loop(todo: Set[State], visited: Set[State], halted: Set[State]): Set[State] = todo.headOption match {
+  def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State, DiEdge]): (Set[State], Graph[State, DiEdge]) = todo.headOption match {
     case Some(s) =>
       if (visited.contains(s)) {
-        loop(todo.tail, visited, halted)
+        loop(todo.tail, visited, halted, graph)
       } else if (s.halted) {
-        loop(todo.tail, visited + s, halted + s)
+        loop(todo.tail, visited + s, halted + s, graph)
       } else {
-        println("Stepping " + s)
-        loop(todo.tail ++ s.step, visited + s, halted)
+        val succs: Set[State] = s.step
+        val succEdges: Set[DiEdge[State]] = succs.map(s2 => DiEdge(s, s2))
+        val newGraph = graph ++ Graph.from(succs + s, succEdges)
+        loop(todo.tail ++ succs, visited + s, halted, newGraph)
       }
-    case None => halted
+    case None => (halted, graph)
   }
 
-  def eval(exp: ANFExp) = loop(Set(new State(exp)), Set(), Set())
+  val root = DotRootGraph(directed = true, id = None)
+  def edgeTransformer(innerEdge: Graph[State, DiEdge]#EdgeT): Option[(DotGraph, DotEdgeStmt)] = {
+    val edge = innerEdge.edge
+    Some((root, DotEdgeStmt(edge.from.toString, edge.to.toString, Nil)))
+  }
+
+  def eval(exp: ANFExp) = {
+    val state = new State(exp)
+    loop(Set(state), Set(), Set(), Graph(state)) match {
+      case (halted, graph) => {
+        val dot = graph.toDot(root, edgeTransformer)
+        val f = new java.io.File("foo.dot")
+        val bw = new java.io.BufferedWriter(new java.io.FileWriter(f))
+        bw.write(dot)
+        bw.close()
+        halted
+      }
+    }
+  }
 }
