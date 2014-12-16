@@ -4,17 +4,6 @@
 object Primitives {
   type Primitive = List[AbstractValue] => AbstractValue
 
-  val all: List[(String, Primitive)] = List(
-    ("+" -> opPlus),
-    ("-" -> opMinus),
-    ("=" -> opNumEqual)
-  )
-
-  val forEnv: List[(String, Address)] =
-    all.map({ case (name, _) => (name, PrimitiveAddress(name)) })
-  val forStore: List[(Address, AbstractValue)] =
-      all.map({ case (name, f) => (PrimitiveAddress(name), AbstractPrimitive(name, f)) })
-
   def binNumOp(f: (Integer, Integer) => Integer): Primitive = {
     case AbstractSimpleValue(ValueInteger(x)) :: AbstractSimpleValue(ValueInteger(y)) :: Nil =>
       AbstractSimpleValue(ValueInteger(f(x, y)))
@@ -30,8 +19,20 @@ object Primitives {
   }
 
   val opPlus = binNumOp((x, y) => x+y)
-  val opMinus = binNumOp((x, y) => x+y)
+  val opMinus = binNumOp((x, y) => x-y)
   val opNumEqual = binCmp((x, y) => x == y)
+
+  val all: List[(String, Primitive)] = List(
+    ("+" -> opPlus),
+    ("-" -> opMinus),
+    ("=" -> opNumEqual)
+  )
+
+  val forEnv: List[(String, Address)] =
+    all.map({ case (name, _) => (name, PrimitiveAddress(name)) })
+  val forStore: List[(Address, AbstractValue)] =
+    all.map({ case (name, f) => (PrimitiveAddress(name), AbstractPrimitive(name, f)) })
+
 }
 
 sealed abstract class Address
@@ -132,6 +133,8 @@ case class State(control: Control, σ: Store, a: KontAddress) {
     case ControlKont(v) => this.a == Store.haltAddress
   }
 
+  /** Atomic evaluator that returns the set of possible value of an atomic
+      expression, without modifying the env or store */
   def atomicEval(e: ANFAtomicExp, ρ: Env, σ: Store): Set[AbstractValue] = e match {
     case λ: ANFLambda => Set(AbstractClosure(λ, ρ))
     case ANFIdentifier(name) => ρ(name) match {
@@ -141,8 +144,39 @@ case class State(control: Control, σ: Store, a: KontAddress) {
     case ANFValue(value) => Set(AbstractSimpleValue(value))
   }
 
+  /** Atomic evaluator for a list of values. Return every possible combination
+      of the values */
+  def atomicEvalList(l: List[ANFAtomicExp], ρ: Env, σ: Store): Set[List[AbstractValue]] = l match {
+    case Nil => Set(List())
+    case e :: rest => {
+      val restv = atomicEvalList(rest, ρ, σ)
+      atomicEval(e, ρ, σ).foldLeft(Set[List[AbstractValue]]())((s, v) =>
+        s ++ restv.map(vs => v :: vs))
+    }
+  }
+
+  /** Bind arguments into the environment and store */
+  def bindArgs(l: List[(String, AbstractValue)], ρ: Env, σ: Store): (Env, Store) =
+    l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, value)) => {
+      val a = allocVariable(name)
+      (ρ + (name -> a), σ ⊔ (a -> value))
+    }})
+
   def stepEval(e: ANFExp, ρ: Env, σ: Store, κ: KontAddress): Set[State] = e match {
     case ae: ANFAtomicExp => reachedValue(atomicEval(ae, ρ, σ), σ, κ)
+    case ANFFuncall(f, args) =>
+      atomicEvalList(f :: args, ρ, σ).foldLeft(Set[State]())((s: Set[State], l: List[AbstractValue]) => {
+        l match {
+        case AbstractClosure(ANFLambda(args, body), ρ) :: argsv => if (args.length == argsv.length) {
+          bindArgs(args.zip(argsv), ρ, σ) match {
+              case (ρ, σ) => s + State(ControlEval(body, ρ), σ, κ)
+          }
+        } else {
+            throw new Exception(s"Arity error (${args.length} arguments expected, got ${argsv.length}")
+        }
+        case AbstractPrimitive(name, f) :: argsv => s ++ reachedValue(Set(f(argsv)), σ, κ)
+        case _ => throw new Exception(s"Incorrect application $l")
+      }})
     case ANFIf(cond, cons, alt) =>
       atomicEval(cond, ρ, σ).foldLeft(Set[State]())((s: Set[State], v: AbstractValue) => {
         val t = State(ControlEval(cons, ρ), σ, κ)

@@ -16,7 +16,7 @@ object Main {
       println(Scheme.compile(exp))
       println(Scheme.rename(Scheme.compile(exp)))
       println(ANF.compile(Scheme.rename(Scheme.compile(exp)))) */
-      println(AAM.eval(ANF.compile(Scheme.rename(Scheme.compile(SExpParser.parse("(letrec ((x 1)) x)"))))))
+      println(AAM.eval(ANF.compile(Scheme.rename(Scheme.compile(SExpParser.parse("(= 2 (+ 1 (+ 3 (- 2 4))))"))))))
     }
   }
 }
