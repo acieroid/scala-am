@@ -35,7 +35,9 @@ object Primitives {
 sealed abstract class Address
 case class VariableAddress(name: String, id: Integer) extends Address
 case class PrimitiveAddress(name: String) extends Address
-case class KontAddress(exp: ANFExp, id: Integer) extends Address
+abstract class KontAddress extends Address
+case class NormalKontAddress(exp: ANFExp, id: Integer) extends KontAddress
+object HaltKontAddress extends KontAddress
 
 case class Env(content: Map[String, Address]) {
   def this() = this(Map[String, Address]())
@@ -66,45 +68,61 @@ case class KontHalt() extends Kont {
 sealed abstract class AbstractValue {
   def isTrue: Boolean
   def isFalse: Boolean = !isTrue
-  def +(x: AbstractValue): AbstractValue = AbstractBottom()
-  def -(x: AbstractValue): AbstractValue = AbstractBottom()
-  def *(x: AbstractValue): AbstractValue = AbstractBottom()
-  def <(x: AbstractValue): AbstractValue = AbstractBottom()
-  def <=(x: AbstractValue): AbstractValue = AbstractBottom()
-  def >(x: AbstractValue): AbstractValue = AbstractBottom()
-  def >=(x: AbstractValue): AbstractValue = AbstractBottom()
-  def ==(x: AbstractValue): AbstractValue = AbstractBottom()
-  def unary_!(): AbstractValue = AbstractBottom()
+  /** Fold a function over the values contained in this abstract value. This
+      should be redefined only for container-like abstract values. */
+  def foldValues[A](f: AbstractValue => Set[A]): Set[A] = f(this)
+  def ⊔(x: AbstractValue): AbstractValue = if (this.equals(x)) { this } else { x match {
+    case v: AbstractValueSet => v ⊔ x /* TODO: is there a better solution than hardcoding this here? */
+    case _ => AbstractValueSet(Set(this, x))
+  }}
+  def ⊓(x: AbstractValue): AbstractValue = if (this.equals(x)) { this } else { AbstractBottom }
+
+  /* Primitive operations */
+  def +(x: AbstractValue): AbstractValue = AbstractBottom
+  def -(x: AbstractValue): AbstractValue = AbstractBottom
+  def *(x: AbstractValue): AbstractValue = AbstractBottom
+  def <(x: AbstractValue): AbstractValue = AbstractBottom
+  def <=(x: AbstractValue): AbstractValue = AbstractBottom
+  def >(x: AbstractValue): AbstractValue = AbstractBottom
+  def >=(x: AbstractValue): AbstractValue = AbstractBottom
+  def ==(x: AbstractValue): AbstractValue = AbstractBottom
+  def unary_!(): AbstractValue = AbstractBottom
 }
-case class AbstractBottom() extends AbstractValue {
+object AbstractBottom extends AbstractValue {
+  override def toString = "⊥"
   def isTrue = false
   override def isFalse = false
+  override def ⊔(x: AbstractValue): AbstractValue = x
 }
 case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue {
+  override def toString: String = s"#<clo>"
   def isTrue = true
-  override def toString(): String = λ.toString
 }
 case class AbstractPrimitive(name: String, f: List[AbstractValue] => AbstractValue) extends AbstractValue {
+  override def toString: String = s"#<prim $name>"
   def isTrue = true
 }
 case class AbstractKont(κ: Kont) extends AbstractValue {
+  override def toString: String = s"#<kont $κ>"
   def isTrue = false
   override def isFalse = false
 }
 case class AbstractSimpleValue(value: Value) extends AbstractValue {
+  override def toString: String = value.toString
   def isTrue = value match {
     case ValueBoolean(false) => false
     case _ => true
   }
 
+  /* TODO: deal with sets of values */
   def numOp(f: (Integer, Integer) => Integer): (AbstractValue, AbstractValue) => AbstractValue = {
     case (AbstractSimpleValue(ValueInteger(a)), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueInteger(f(a,b)))
-    case _ => AbstractBottom()
+    case _ => AbstractBottom
   }
 
   def cmpOp(f: (Integer, Integer) => Boolean): (AbstractValue, AbstractValue) => AbstractValue = {
     case (AbstractSimpleValue(ValueInteger(a)), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueBoolean(f(a,b)))
-    case _ => AbstractBottom()
+    case _ => AbstractBottom
   }
 
   override def +(x: AbstractValue) = numOp((a, b) => a + b)(this, x)
@@ -120,9 +138,19 @@ case class AbstractSimpleValue(value: Value) extends AbstractValue {
     case _ => AbstractSimpleValue(ValueBoolean(false))
   }
 }
-case class AbstractPair(car: AbstractValue, cdr: AbstractValue) extends AbstractValue {
-  def isTrue = true
+case class AbstractValueSet(values: Set[AbstractValue]) extends AbstractValue {
+  override def toString(): String = "{" + values.mkString(", ") + "}"
+  def isTrue = values.exists(_.isTrue)
+  override def isFalse = values.exists(_.isFalse)
+  override def foldValues[A](f: AbstractValue => Set[A]): Set[A] =
+    values.foldLeft(Set[A]())((s: Set[A], v: AbstractValue) => s ++ v.foldValues(f))
+  override def ⊔(x: AbstractValue): AbstractValue = x match {
+    case AbstractValueSet(set) => AbstractValueSet(values ++ set)
+    case _ => AbstractValueSet(values + x)
+  }
+  /* TODO: define meet */
 }
+/* TODO: abstract pairs */
 
 sealed abstract class Control
 case class ControlEval(exp: ANFExp, env: Env) extends Control {
@@ -132,61 +160,48 @@ case class ControlKont(v: AbstractValue) extends Control {
   override def toString(): String = s"ko(${v.toString})"
 }
 
-/** TODO: use a more generic lattice */
-case class Store(content: Map[Address, Set[AbstractValue]]) {
-  def this() = this(Map[Address, Set[AbstractValue]]())
-  def lookup(addr: Address): Set[AbstractValue] = content.getOrElse(addr, Set[AbstractValue]())
-  def apply(addr: Address): Set[AbstractValue] = lookup(addr)
-  def extend(addr: Address, v: AbstractValue): Store = Store(content + (addr -> (lookup(addr) + v)))
-  def defineBottom(addr: Address): Store = Store(content + (addr -> Set()))
+case class Store(content: Map[Address, AbstractValue]) {
+  def this() = this(Map[Address, AbstractValue]())
+  def lookup(addr: Address): AbstractValue = content.getOrElse(addr, AbstractBottom)
+  def apply(addr: Address): AbstractValue = lookup(addr)
+  def extend(addr: Address, v: AbstractValue): Store = Store(content + (addr -> (lookup(addr) ⊔ v)))
   def ⊔(v: (Address, AbstractValue)): Store = extend(v._1, v._2)
   def ++(l: List[(Address, AbstractValue)]): Store = l.foldLeft(this)((σ, v) => σ ⊔ v)
 }
 object Store {
-  val haltAddress = KontAddress(ANFQuoted(SExpIdentifier("halt")), 0)
-  val initial = new Store() ++ List(haltAddress -> AbstractKont(KontHalt())) ++ Primitives.forStore
+  val initial = new Store() ++ List(HaltKontAddress -> AbstractKont(KontHalt())) ++ Primitives.forStore
 }
 
 case class State(control: Control, σ: Store, a: KontAddress) {
   /** Inject an expression into a state */
-  def this(exp: ANFExp) = this(ControlEval(exp, Env.initial), Store.initial, Store.haltAddress)
+  def this(exp: ANFExp) = this(ControlEval(exp, Env.initial), Store.initial, HaltKontAddress)
 
   override def toString(): String = control.toString
 
+  /** Performs a step */
   def step: Set[State] = control match {
     case ControlEval(e, ρ) => stepEval(e, ρ, σ, a)
-    case ControlKont(v) => σ(a).foldLeft(Set[State]())((s, kont) => kont match {
-      case AbstractKont(κ) => s ++ stepKont(v, σ, κ)
-      case _ => s
+    case ControlKont(v) => σ(a).foldValues({
+      case AbstractKont(κ) => stepKont(v, σ, κ)
+      case _ => Set()
     })
   }
 
   /** Check whether this state is in a final configuration */
   def halted: Boolean = control match {
     case ControlEval(_, _) => false
-    case ControlKont(v) => this.a == Store.haltAddress
+    case ControlKont(v) => this.a == HaltKontAddress
   }
 
-  /** Atomic evaluator that returns the set of possible value of an atomic
-      expression, without modifying the env or store */
-  def atomicEval(e: ANFAtomicExp, ρ: Env, σ: Store): Set[AbstractValue] = e match {
-    case λ: ANFLambda => Set(AbstractClosure(λ, ρ))
+  /** Atomic evaluator that returns the value of an atomic expression, without
+      modifying the env or store */
+  def atomicEval(e: ANFAtomicExp, ρ: Env, σ: Store): AbstractValue = e match {
+    case λ: ANFLambda => AbstractClosure(λ, ρ)
     case ANFIdentifier(name) => ρ(name) match {
       case Some(a) => σ(a)
       case None => throw new Exception(s"Unbound variable: $name")
     }
-    case ANFValue(value) => Set(AbstractSimpleValue(value))
-  }
-
-  /** Atomic evaluator for a list of values. Return every possible combination
-      of the values */
-  def atomicEvalList(l: List[ANFAtomicExp], ρ: Env, σ: Store): Set[List[AbstractValue]] = l match {
-    case Nil => Set(List())
-    case e :: rest => {
-      val restv = atomicEvalList(rest, ρ, σ)
-      atomicEval(e, ρ, σ).foldLeft(Set[List[AbstractValue]]())((s, v) =>
-        s ++ restv.map(vs => v :: vs))
-    }
+    case ANFValue(value) => AbstractSimpleValue(value)
   }
 
   /** Bind arguments into the environment and store */
@@ -196,50 +211,53 @@ case class State(control: Control, σ: Store, a: KontAddress) {
       (ρ + (name -> a), σ ⊔ (a -> value))
     }})
 
+  /** Performs an evaluation step */
   def stepEval(e: ANFExp, ρ: Env, σ: Store, κ: KontAddress): Set[State] = e match {
-    case ae: ANFAtomicExp => reachedValue(atomicEval(ae, ρ, σ), σ, κ)
+          case ae: ANFAtomicExp => reachedValue(atomicEval(ae, ρ, σ), σ, κ)
     case ANFFuncall(f, args) =>
-      atomicEvalList(f :: args, ρ, σ).foldLeft(Set[State]())((s: Set[State], l: List[AbstractValue]) => {
-        l match {
-        case AbstractClosure(ANFLambda(args, body), ρ) :: argsv => if (args.length == argsv.length) {
+      val argsv = args.map(a => atomicEval(a, ρ, σ))
+      val fv = atomicEval(f, ρ, σ)
+      fv.foldValues({
+        case AbstractClosure(ANFLambda(args, body), ρ) => if (args.length == argsv.length) {
           bindArgs(args.zip(argsv), ρ, σ) match {
-              case (ρ, σ) => s + State(ControlEval(body, ρ), σ, κ)
+            case (ρ, σ) => Set(State(ControlEval(body, ρ), σ, κ))
           }
         } else {
             throw new Exception(s"Arity error (${args.length} arguments expected, got ${argsv.length}")
         }
-        case AbstractPrimitive(name, f) :: argsv => s ++ reachedValue(Set(f(argsv)), σ, κ)
-        case _ => throw new Exception(s"Incorrect application $l")
-      }})
-    case ANFIf(cond, cons, alt) =>
-      atomicEval(cond, ρ, σ).foldLeft(Set[State]())((s: Set[State], v: AbstractValue) => {
-        val t = State(ControlEval(cons, ρ), σ, κ)
-        val f = State(ControlEval(alt, ρ), σ, κ)
-        if (v.isTrue && v.isFalse) {
-          s + t + f
-        } else if (v.isTrue) {
-          s + t
-        } else if (v.isFalse) {
-          s + f
-        } else {
-          s
-        }
+        case AbstractPrimitive(name, f) => reachedValue(f(argsv), σ, κ)
+        case _ => Set()
       })
+    case ANFIf(cond, cons, alt) =>
+      val v = atomicEval(cond, ρ, σ)
+      val t = State(ControlEval(cons, ρ), σ, κ)
+      val f = State(ControlEval(alt, ρ), σ, κ)
+      if (v.isTrue && v.isFalse) {
+        Set(t, f)
+      } else if (v.isTrue) {
+        Set(t)
+      } else if (v.isFalse) {
+        Set(f)
+      } else {
+        Set()
+      }
     case ANFLet(variable, exp, body) =>
       push(exp, KontLet(variable, body, ρ, κ), ρ, σ)
     case ANFLetrec(variable, exp, body) => {
       val a = allocVariable(variable, σ)
-      push(exp, KontLetrec(variable, a, body, ρ + (variable -> a), κ), ρ + (variable -> a), σ defineBottom a)
+      push(exp, KontLetrec(variable, a, body, ρ + (variable -> a), κ), ρ + (variable -> a), σ ⊔ (a -> AbstractBottom))
     }
     case ANFSet(variable, value) => ρ(variable) match {
-      case Some(addr) => atomicEval(value, ρ, σ).foldLeft(Set[State]())((s: Set[State], v: AbstractValue) => {
-        s ++ reachedValue(Set(v), σ ⊔ (addr -> v), κ)
-      })
+      case Some(addr) => {
+        val v = atomicEval(value, ρ, σ)
+        reachedValue(v, σ ⊔ (addr -> v), κ)
+      }
       case None => throw new Exception(s"Undbound variable: $variable")
     }
     case ANFQuoted(sexp) => throw new Exception("TODO: Quoted values not yet handled")
   }
 
+  /** Performs a continuation step */
   def stepKont(v: AbstractValue, σ: Store, κ: Kont): Set[State] = κ match {
     case KontHalt() => Set(this)
     case KontLet(variable, body, ρ, next) => {
@@ -250,16 +268,18 @@ case class State(control: Control, σ: Store, a: KontAddress) {
       Set(State(ControlEval(body, ρ), σ ⊔ (addr -> v), next))
   }
 
+  /** Push a continuation and evaluate the given expression */
   def push(e: ANFExp, κ: Kont,  ρ: Env, σ: Store): Set[State] = {
     val a = allocKont(e, κ, σ)
     Set(State(ControlEval(e, ρ), σ ⊔ (a -> AbstractKont(κ)), a))
   }
 
-  def allocKont(e: ANFExp, κ: Kont, σ: Store): KontAddress = KontAddress(e, σ.hashCode())
-  def allocVariable(variable: String, σ: Store): VariableAddress = VariableAddress(variable, σ.hashCode())
+  def reachedValue(v: AbstractValue, σ: Store, κ: KontAddress): Set[State] =
+    Set(State(ControlKont(v), σ, κ))
 
-  def reachedValue(vs: Set[AbstractValue], σ: Store, κ: KontAddress): Set[State] =
-    vs.foldLeft(Set[State]())((s, v) => s + State(ControlKont(v), σ, κ))
+
+  def allocKont(e: ANFExp, κ: Kont, σ: Store): KontAddress = NormalKontAddress(e, σ.hashCode())
+  def allocVariable(variable: String, σ: Store): VariableAddress = VariableAddress(variable, σ.hashCode())
 }
 
 /** TODO: parameterize */
@@ -287,7 +307,7 @@ case class Graph(ids: Map[State, Int], next: Int, nodes: Set[State], edges: Map[
           case ControlEval(_, _) => "#DDFFDD"
           case ControlKont(_) => "#FFDDDD"
         }
-        sb.append("node_" + ids(n) + "[label=\"" + n.toString.replaceAll("\"", "\\\\\"") + "\", fillcolor=\"" + color + "\" style=\"filled\"];\n")
+        sb.append("node_" + ids(n) + "[label=\"" + n.toString.take(40).replaceAll("\"", "\\\\\"") + "\", fillcolor=\"" + color + "\" style=\"filled\"];\n")
       })
       edges.foreach({ case (n1, ns) => ns.foreach((n2) => sb.append(s"node_${ids(n1)} -> node_${ids(n2)}\n")) })
       sb.append("}")
@@ -314,7 +334,7 @@ object AAM {
         if (visited.size % 100 == 0) {
           println(visited.size)
         }
-        if (true || visited.size < 5000) {
+        if (visited.size < 5000) {
           val succs = s.step
           val newGraph = graph.addEdges(succs.map(s2 => (s, s2)))
           loop(todo.tail ++ succs, visited + s, halted, newGraph)
