@@ -4,47 +4,26 @@
 object Primitives {
   type Primitive = List[AbstractValue] => AbstractValue
 
-  def binNumOp(f: (Integer, Integer) => Integer): Primitive = {
-    case AbstractSimpleValue(ValueInteger(x)) :: AbstractSimpleValue(ValueInteger(y)) :: Nil =>
-      AbstractSimpleValue(ValueInteger(f(x, y)))
-    case _ =>
-      throw new Exception("TODO: binary numeric operators implementation not complete yet")
-  }
+  def unOp(name: String, f: AbstractValue => AbstractValue): (String, Primitive) = (name, {
+    case x :: Nil => f(x)
+    case _ => throw new Exception(s"Arity error in unary operator $name")
+  })
 
-  def binCmp(f: (Integer, Integer) => Boolean): Primitive = {
-    case AbstractSimpleValue(ValueInteger(x)) :: AbstractSimpleValue(ValueInteger(y)) :: Nil =>
-      AbstractSimpleValue(ValueBoolean(f(x, y)))
-    case _ =>
-      throw new Exception("TODO: binary comparison implementation not complete yet")
-  }
-
-  def unBoolOp(f: Boolean => Boolean): Primitive = {
-    case AbstractSimpleValue(ValueBoolean(x)) :: Nil =>
-      AbstractSimpleValue(ValueBoolean(f(x)))
-    case _ =>
-      throw new Exception("Unexpected number of argument for unary operation")
-  }
-
-  val opPlus = binNumOp((x, y) => x+y)
-  val opMinus = binNumOp((x, y) => x-y)
-  val opTimes = binNumOp((x, y) => x*y)
-  val opNumEqual = binCmp((x, y) => x == y)
-  val opNumLt = binCmp((x, y) => x < y)
-  val opNumLe = binCmp((x, y) => x <= y)
-  val opNumGt = binCmp((x, y) => x > y)
-  val opNumGe = binCmp((x, y) => x >= y)
-  val opNot = unBoolOp(x => !x)
+  def binOp(name: String, f: (AbstractValue, AbstractValue) => AbstractValue): (String, Primitive) = (name, {
+    case x :: y :: Nil => f(x, y)
+    case _ => throw new Exception(s"Arity error in binary operator $name")
+  })
 
   val all: List[(String, Primitive)] = List(
-    ("+" -> opPlus),
-    ("-" -> opMinus),
-    ("*" -> opTimes),
-    ("=" -> opNumEqual),
-    ("<" -> opNumLt),
-    ("<=" -> opNumLe),
-    (">" -> opNumGt),
-    (">=" -> opNumGe),
-    ("not" -> opNot)
+    binOp("+", (x, y) => x + y),
+    binOp("-", (x, y) => x - y),
+    binOp("*", (x, y) => x * y),
+    binOp("=", (x, y) => x == y),
+    binOp("<", (x, y) => x < y),
+    binOp("<=", (x, y) => x <= y),
+    binOp(">", (x, y) => x > y),
+    binOp(">=", (x, y) => x >= y),
+    unOp("not", x => !x)
   )
 
   val forEnv: List[(String, Address)] =
@@ -87,12 +66,19 @@ case class KontHalt() extends Kont {
 sealed abstract class AbstractValue {
   def isTrue: Boolean
   def isFalse: Boolean = !isTrue
+  def +(x: AbstractValue): AbstractValue = AbstractBottom()
+  def -(x: AbstractValue): AbstractValue = AbstractBottom()
+  def *(x: AbstractValue): AbstractValue = AbstractBottom()
+  def <(x: AbstractValue): AbstractValue = AbstractBottom()
+  def <=(x: AbstractValue): AbstractValue = AbstractBottom()
+  def >(x: AbstractValue): AbstractValue = AbstractBottom()
+  def >=(x: AbstractValue): AbstractValue = AbstractBottom()
+  def ==(x: AbstractValue): AbstractValue = AbstractBottom()
+  def unary_!(): AbstractValue = AbstractBottom()
 }
-case class AbstractSimpleValue(value: Value) extends AbstractValue {
-  def isTrue = value match {
-    case ValueBoolean(false) => false
-    case _ => true
-  }
+case class AbstractBottom() extends AbstractValue {
+  def isTrue = false
+  override def isFalse = false
 }
 case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue {
   def isTrue = true
@@ -101,12 +87,41 @@ case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue {
 case class AbstractPrimitive(name: String, f: List[AbstractValue] => AbstractValue) extends AbstractValue {
   def isTrue = true
 }
-case class AbstractPair(car: AbstractValue, cdr: AbstractValue) extends AbstractValue {
-  def isTrue = true
-}
 case class AbstractKont(κ: Kont) extends AbstractValue {
   def isTrue = false
   override def isFalse = false
+}
+case class AbstractSimpleValue(value: Value) extends AbstractValue {
+  def isTrue = value match {
+    case ValueBoolean(false) => false
+    case _ => true
+  }
+
+  def numOp(f: (Integer, Integer) => Integer): (AbstractValue, AbstractValue) => AbstractValue = {
+    case (AbstractSimpleValue(ValueInteger(a)), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueInteger(f(a,b)))
+    case _ => AbstractBottom()
+  }
+
+  def cmpOp(f: (Integer, Integer) => Boolean): (AbstractValue, AbstractValue) => AbstractValue = {
+    case (AbstractSimpleValue(ValueInteger(a)), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueBoolean(f(a,b)))
+    case _ => AbstractBottom()
+  }
+
+  override def +(x: AbstractValue) = numOp((a, b) => a + b)(this, x)
+  override def -(x: AbstractValue) = numOp((a, b) => a - b)(this, x)
+  override def *(x: AbstractValue) = numOp((a, b) => a * b)(this, x)
+  override def <(x: AbstractValue) = cmpOp((a, b) => a < b)(this, x)
+  override def <=(x: AbstractValue) = cmpOp((a, b) => a <= b)(this, x)
+  override def >(x: AbstractValue) = cmpOp((a, b) => a > b)(this, x)
+  override def >=(x: AbstractValue) = cmpOp((a, b) => a >= b)(this, x)
+  override def ==(x: AbstractValue) = cmpOp((a, b) => a == b)(this, x)
+  override def unary_!() = value match {
+    case ValueBoolean(false) => AbstractSimpleValue(ValueBoolean(true))
+    case _ => AbstractSimpleValue(ValueBoolean(false))
+  }
+}
+case class AbstractPair(car: AbstractValue, cdr: AbstractValue) extends AbstractValue {
+  def isTrue = true
 }
 
 sealed abstract class Control
@@ -264,6 +279,7 @@ case class Graph(ids: Map[State, Int], next: Int, nodes: Set[State], edges: Map[
       val existing: Set[State] = edges.getOrElse(node1, Set[State]())
       Graph(ids, next, nodes, edges + (node1 -> (existing ++ Set(node2))))
     }
+  def size(): Integer = nodes.size
   def toDot(): String = {
       val sb = new StringBuilder("digraph G {\n")
       nodes.foreach((n) => {
@@ -298,9 +314,9 @@ object AAM {
         if (visited.size % 100 == 0) {
           println(visited.size)
         }
-        if (true || visited.size < 10000) {
+        if (true || visited.size < 5000) {
           val succs = s.step
-          val newGraph = graph //.addEdges(succs.map(s2 => (s, s2)))
+          val newGraph = graph.addEdges(succs.map(s2 => (s, s2)))
           loop(todo.tail ++ succs, visited + s, halted, newGraph)
         } else {
           (halted, graph)
@@ -313,6 +329,7 @@ object AAM {
     val state = new State(exp)
     loop(Set(state), Set(), Set(), new Graph(state)) match {
       case (halted, graph: Graph) => {
+        println(s"${graph.size} states")
         outputDot(graph, "foo.dot")
         halted
       }
