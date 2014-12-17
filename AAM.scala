@@ -18,6 +18,13 @@ object Primitives {
       throw new Exception("TODO: binary comparison implementation not complete yet")
   }
 
+  def unBoolOp(f: Boolean => Boolean): Primitive = {
+    case AbstractSimpleValue(ValueBoolean(x)) :: Nil =>
+      AbstractSimpleValue(ValueBoolean(f(x)))
+    case _ =>
+      throw new Exception("Unexpected number of argument for unary operation")
+  }
+
   val opPlus = binNumOp((x, y) => x+y)
   val opMinus = binNumOp((x, y) => x-y)
   val opTimes = binNumOp((x, y) => x*y)
@@ -26,6 +33,7 @@ object Primitives {
   val opNumLe = binCmp((x, y) => x <= y)
   val opNumGt = binCmp((x, y) => x > y)
   val opNumGe = binCmp((x, y) => x >= y)
+  val opNot = unBoolOp(x => !x)
 
   val all: List[(String, Primitive)] = List(
     ("+" -> opPlus),
@@ -35,20 +43,20 @@ object Primitives {
     ("<" -> opNumLt),
     ("<=" -> opNumLe),
     (">" -> opNumGt),
-    (">=" -> opNumGe)
+    (">=" -> opNumGe),
+    ("not" -> opNot)
   )
 
   val forEnv: List[(String, Address)] =
     all.map({ case (name, _) => (name, PrimitiveAddress(name)) })
   val forStore: List[(Address, AbstractValue)] =
     all.map({ case (name, f) => (PrimitiveAddress(name), AbstractPrimitive(name, f)) })
-
 }
 
 sealed abstract class Address
-case class VariableAddress(name: String, σ: Store) extends Address
+case class VariableAddress(name: String, id: Integer) extends Address
 case class PrimitiveAddress(name: String) extends Address
-case class KontAddress(exp: ANFExp, σ: Store) extends Address
+case class KontAddress(exp: ANFExp, id: Integer) extends Address
 
 case class Env(content: Map[String, Address]) {
   def this() = this(Map[String, Address]())
@@ -120,7 +128,7 @@ case class Store(content: Map[Address, Set[AbstractValue]]) {
   def ++(l: List[(Address, AbstractValue)]): Store = l.foldLeft(this)((σ, v) => σ ⊔ v)
 }
 object Store {
-  val haltAddress = KontAddress(ANFQuoted(SExpIdentifier("halt")), new Store())
+  val haltAddress = KontAddress(ANFQuoted(SExpIdentifier("halt")), 0)
   val initial = new Store() ++ List(haltAddress -> AbstractKont(KontHalt())) ++ Primitives.forStore
 }
 
@@ -232,8 +240,8 @@ case class State(control: Control, σ: Store, a: KontAddress) {
     Set(State(ControlEval(e, ρ), σ ⊔ (a -> AbstractKont(κ)), a))
   }
 
-  def allocKont(e: ANFExp, κ: Kont, σ: Store): KontAddress = KontAddress(e, σ)
-  def allocVariable(variable: String, σ: Store): VariableAddress = VariableAddress(variable, σ)
+  def allocKont(e: ANFExp, κ: Kont, σ: Store): KontAddress = KontAddress(e, σ.hashCode())
+  def allocVariable(variable: String, σ: Store): VariableAddress = VariableAddress(variable, σ.hashCode())
 
   def reachedValue(vs: Set[AbstractValue], σ: Store, κ: KontAddress): Set[State] =
     vs.foldLeft(Set[State]())((s, v) => s + State(ControlKont(v), σ, κ))
@@ -247,9 +255,10 @@ case class Graph(ids: Map[State, Int], next: Int, nodes: Set[State], edges: Map[
     if (nodes.contains(node)) { this } else {
       Graph(ids + (node -> next), next + 1, nodes + node, edges)
     }
-  def addEdge(node1: State, node2: State): Graph = addNode(node1).addNode(node2).addEdgeNoCheck(node1, node2)
-  def addEdges(edges: Traversable[(State, State)]): Graph =
-    edges.foldLeft(this)({ case (g, (n1, n2)) => g.addEdge(n1, n2) })
+  def addEdge(node1: State, node2: State): Graph =
+      addNode(node1).addNode(node2).addEdgeNoCheck(node1, node2)
+  def addEdges(l: Traversable[(State, State)]): Graph =
+    l.foldLeft(this)({ case (g, (n1, n2)) => g.addEdge(n1, n2) })
   def addEdgeNoCheck(node1: State, node2: State): Graph =
     if (edges.contains(node1) && edges(node1).contains(node2)) { this } else {
       val existing: Set[State] = edges.getOrElse(node1, Set[State]())
@@ -286,9 +295,13 @@ object AAM {
       } else if (s.halted) {
         loop(todo.tail, visited + s, halted + s, graph)
       } else {
-        if (visited.size < 50) {
+        if (visited.size % 100 == 0) {
+          println(visited.size)
+        }
+        if (true || visited.size < 10000) {
           val succs = s.step
-          loop(todo.tail ++ succs, visited + s, halted, graph.addEdges(succs.map(s2 => (s, s2))))
+          val newGraph = graph //.addEdges(succs.map(s2 => (s, s2)))
+          loop(todo.tail ++ succs, visited + s, halted, newGraph)
         } else {
           (halted, graph)
         }
