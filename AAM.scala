@@ -114,42 +114,53 @@ case class AbstractSimpleValue(value: Value) extends AbstractValue {
     case _ => true
   }
 
-  /* TODO: deal with sets of values */
-  def numOp(f: (Integer, Integer) => Integer): (AbstractValue, AbstractValue) => AbstractValue = {
-    case (AbstractSimpleValue(ValueInteger(a)), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueInteger(f(a,b)))
+  def numOp(f: (Integer, Integer) => Integer): (Value, AbstractValue) => AbstractValue = {
+    case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueInteger(f(a,b)))
+    case (x, AbstractValueSet(s)) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ numOp(f)(x,y))
     case _ => AbstractBottom
   }
 
-  def cmpOp(f: (Integer, Integer) => Boolean): (AbstractValue, AbstractValue) => AbstractValue = {
-    case (AbstractSimpleValue(ValueInteger(a)), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueBoolean(f(a,b)))
+  def cmpOp(f: (Integer, Integer) => Boolean): (Value, AbstractValue) => AbstractValue = {
+    case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueBoolean(f(a,b)))
+    case (x, AbstractValueSet(s)) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ cmpOp(f)(x,y))
     case _ => AbstractBottom
   }
 
-  override def +(x: AbstractValue) = numOp((a, b) => a + b)(this, x)
-  override def -(x: AbstractValue) = numOp((a, b) => a - b)(this, x)
-  override def *(x: AbstractValue) = numOp((a, b) => a * b)(this, x)
-  override def <(x: AbstractValue) = cmpOp((a, b) => a < b)(this, x)
-  override def <=(x: AbstractValue) = cmpOp((a, b) => a <= b)(this, x)
-  override def >(x: AbstractValue) = cmpOp((a, b) => a > b)(this, x)
-  override def >=(x: AbstractValue) = cmpOp((a, b) => a >= b)(this, x)
-  override def ==(x: AbstractValue) = cmpOp((a, b) => a == b)(this, x)
+  override def +(x: AbstractValue) = numOp((a, b) => a + b)(value, x)
+  override def -(x: AbstractValue) = numOp((a, b) => a - b)(value, x)
+  override def *(x: AbstractValue) = numOp((a, b) => a * b)(value, x)
+  override def <(x: AbstractValue) = cmpOp((a, b) => a < b)(value, x)
+  override def <=(x: AbstractValue) = cmpOp((a, b) => a <= b)(value, x)
+  override def >(x: AbstractValue) = cmpOp((a, b) => a > b)(value, x)
+  override def >=(x: AbstractValue) = cmpOp((a, b) => a >= b)(value, x)
+  override def ==(x: AbstractValue) = cmpOp((a, b) => a == b)(value, x)
   override def unary_!() = value match {
     case ValueBoolean(false) => AbstractSimpleValue(ValueBoolean(true))
     case _ => AbstractSimpleValue(ValueBoolean(false))
   }
 }
+
 case class AbstractValueSet(values: Set[AbstractValue]) extends AbstractValue {
   override def toString(): String = "{" + values.mkString(", ") + "}"
   def isTrue = values.exists(_.isTrue)
   override def isFalse = values.exists(_.isFalse)
   override def foldValues[A](f: AbstractValue => Set[A]): Set[A] =
     values.foldLeft(Set[A]())((s: Set[A], v: AbstractValue) => s ++ v.foldValues(f))
-  override def ⊔(x: AbstractValue): AbstractValue = x match {
+  /** The join result will remain a set of values */
+  override def ⊔(x: AbstractValue): AbstractValueSet = x match {
     case AbstractValueSet(set) => AbstractValueSet(values ++ set)
     case _ => AbstractValueSet(values + x)
   }
-  /* TODO: define meet */
+  override def ⊓(x: AbstractValue): AbstractValue = x match {
+    case AbstractValueSet(s) => AbstractValueSet(s.intersect(values))
+    case _ => if (values.contains(x)) { x } else { AbstractBottom }
+  }
+  /* TODO: define operators */
 }
+object AbstractValueSet {
+  def apply(): AbstractValueSet = AbstractValueSet(Set[AbstractValue]())
+}
+
 /* TODO: abstract pairs */
 
 sealed abstract class Control
