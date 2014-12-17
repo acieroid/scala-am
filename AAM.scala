@@ -46,9 +46,9 @@ object Primitives {
 }
 
 sealed abstract class Address
-case class VariableAddress(name: String) extends Address
+case class VariableAddress(name: String, σ: Store) extends Address
 case class PrimitiveAddress(name: String) extends Address
-case class KontAddress(exp: ANFExp) extends Address
+case class KontAddress(exp: ANFExp, σ: Store) extends Address
 
 case class Env(content: Map[String, Address]) {
   def this() = this(Map[String, Address]())
@@ -120,7 +120,7 @@ case class Store(content: Map[Address, Set[AbstractValue]]) {
   def ++(l: List[(Address, AbstractValue)]): Store = l.foldLeft(this)((σ, v) => σ ⊔ v)
 }
 object Store {
-  val haltAddress = KontAddress(ANFQuoted(SExpIdentifier("halt")))
+  val haltAddress = KontAddress(ANFQuoted(SExpIdentifier("halt")), new Store())
   val initial = new Store() ++ List(haltAddress -> AbstractKont(KontHalt())) ++ Primitives.forStore
 }
 
@@ -169,7 +169,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
   /** Bind arguments into the environment and store */
   def bindArgs(l: List[(String, AbstractValue)], ρ: Env, σ: Store): (Env, Store) =
     l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, value)) => {
-      val a = allocVariable(name)
+      val a = allocVariable(name, σ)
       (ρ + (name -> a), σ ⊔ (a -> value))
     }})
 
@@ -205,7 +205,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
     case ANFLet(variable, exp, body) =>
       push(exp, KontLet(variable, body, ρ, κ), ρ, σ)
     case ANFLetrec(variable, exp, body) => {
-      val a = allocVariable(variable)
+      val a = allocVariable(variable, σ)
       push(exp, KontLetrec(variable, a, body, ρ + (variable -> a), κ), ρ + (variable -> a), σ defineBottom a)
     }
     case ANFSet(variable, value) => ρ(variable) match {
@@ -220,7 +220,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
   def stepKont(v: AbstractValue, σ: Store, κ: Kont): Set[State] = κ match {
     case KontHalt() => Set(this)
     case KontLet(variable, body, ρ, next) => {
-      val addr = allocVariable(variable)
+      val addr = allocVariable(variable, σ)
       Set(State(ControlEval(body, ρ + (variable -> addr)), σ ⊔ (addr -> v), next))
     }
     case KontLetrec(variable, addr, body, ρ, next) =>
@@ -228,12 +228,12 @@ case class State(control: Control, σ: Store, a: KontAddress) {
   }
 
   def push(e: ANFExp, κ: Kont,  ρ: Env, σ: Store): Set[State] = {
-    val a = allocKont(e, κ)
+    val a = allocKont(e, κ, σ)
     Set(State(ControlEval(e, ρ), σ ⊔ (a -> AbstractKont(κ)), a))
   }
 
-  def allocKont(e: ANFExp, κ: Kont): KontAddress = KontAddress(e)
-  def allocVariable(variable: String): VariableAddress = VariableAddress(variable)
+  def allocKont(e: ANFExp, κ: Kont, σ: Store): KontAddress = KontAddress(e, σ)
+  def allocVariable(variable: String, σ: Store): VariableAddress = VariableAddress(variable, σ)
 
   def reachedValue(vs: Set[AbstractValue], σ: Store, κ: KontAddress): Set[State] =
     vs.foldLeft(Set[State]())((s, v) => s + State(ControlKont(v), σ, κ))
@@ -249,7 +249,7 @@ case class Graph(ids: Map[State, Int], next: Int, nodes: Set[State], edges: Map[
     }
   def addEdge(node1: State, node2: State): Graph = addNode(node1).addNode(node2).addEdgeNoCheck(node1, node2)
   def addEdges(edges: Traversable[(State, State)]): Graph =
-    edges.foldLeft(this)({ case (g, (n1, n2)) => addEdge(n1, n2) })
+    edges.foldLeft(this)({ case (g, (n1, n2)) => g.addEdge(n1, n2) })
   def addEdgeNoCheck(node1: State, node2: State): Graph =
     if (edges.contains(node1) && edges(node1).contains(node2)) { this } else {
       val existing: Set[State] = edges.getOrElse(node1, Set[State]())
@@ -270,11 +270,10 @@ case class Graph(ids: Map[State, Int], next: Int, nodes: Set[State], edges: Map[
     }
 }
 
-
 object AAM {
-  def outputDot(graph: Graph) = {
+  def outputDot(graph: Graph, path: String) = {
     val dot = graph.toDot()
-    val f = new java.io.File("foo.dot")
+    val f = new java.io.File(path)
     val bw = new java.io.BufferedWriter(new java.io.FileWriter(f))
     bw.write(dot)
     bw.close()
@@ -289,7 +288,6 @@ object AAM {
       } else {
         if (visited.size < 50) {
           val succs = s.step
-          outputDot(graph)
           loop(todo.tail ++ succs, visited + s, halted, graph.addEdges(succs.map(s2 => (s, s2))))
         } else {
           (halted, graph)
@@ -302,7 +300,7 @@ object AAM {
     val state = new State(exp)
     loop(Set(state), Set(), Set(), new Graph(state)) match {
       case (halted, graph: Graph) => {
-        outputDot(graph)
+        outputDot(graph, "foo.dot")
         halted
       }
     }
