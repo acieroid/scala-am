@@ -75,24 +75,21 @@ sealed abstract class AbstractValue {
     case v: AbstractValueSet => v ⊔ x /* TODO: is there a better solution than hardcoding this here? */
     case _ => AbstractValueSet(Set(this, x))
   }}
-  def ⊓(x: AbstractValue): AbstractValue = if (this.equals(x)) { this } else { AbstractBottom }
+  def ⊓(x: AbstractValue): AbstractValue = if (this.equals(x)) { this } else { AbstractBottom() }
 
   /* Primitive operations */
-  def +(x: AbstractValue): AbstractValue = AbstractBottom
-  def -(x: AbstractValue): AbstractValue = AbstractBottom
-  def *(x: AbstractValue): AbstractValue = AbstractBottom
-  def <(x: AbstractValue): AbstractValue = AbstractBottom
-  def <=(x: AbstractValue): AbstractValue = AbstractBottom
-  def >(x: AbstractValue): AbstractValue = AbstractBottom
-  def >=(x: AbstractValue): AbstractValue = AbstractBottom
-  def ==(x: AbstractValue): AbstractValue = AbstractBottom
-  def unary_!(): AbstractValue = AbstractBottom
+  def +(x: AbstractValue): AbstractValue = AbstractBottom()
+  def -(x: AbstractValue): AbstractValue = AbstractBottom()
+  def *(x: AbstractValue): AbstractValue = AbstractBottom()
+  def <(x: AbstractValue): AbstractValue = AbstractBottom()
+  def <=(x: AbstractValue): AbstractValue = AbstractBottom()
+  def >(x: AbstractValue): AbstractValue = AbstractBottom()
+  def >=(x: AbstractValue): AbstractValue = AbstractBottom()
+  def ==(x: AbstractValue): AbstractValue = AbstractBottom()
+  def unary_!(): AbstractValue = AbstractBottom()
 }
-object AbstractBottom extends AbstractValue {
-  override def toString = "⊥"
-  def isTrue = false
-  override def isFalse = false
-  override def ⊔(x: AbstractValue): AbstractValue = x
+object AbstractBottom {
+  def apply() = AbstractValueSet(Set())
 }
 case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue {
   override def toString: String = s"#<clo>"
@@ -117,13 +114,13 @@ case class AbstractSimpleValue(value: Value) extends AbstractValue {
   def numOp(f: (Integer, Integer) => Integer): (Value, AbstractValue) => AbstractValue = {
     case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueInteger(f(a,b)))
     case (x, AbstractValueSet(s)) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ numOp(f)(x,y))
-    case _ => AbstractBottom
+    case _ => AbstractBottom()
   }
 
   def cmpOp(f: (Integer, Integer) => Boolean): (Value, AbstractValue) => AbstractValue = {
     case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueBoolean(f(a,b)))
     case (x, AbstractValueSet(s)) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ cmpOp(f)(x,y))
-    case _ => AbstractBottom
+    case _ => AbstractBottom()
   }
 
   override def +(x: AbstractValue) = numOp((a, b) => a + b)(value, x)
@@ -153,9 +150,20 @@ case class AbstractValueSet(values: Set[AbstractValue]) extends AbstractValue {
   }
   override def ⊓(x: AbstractValue): AbstractValue = x match {
     case AbstractValueSet(s) => AbstractValueSet(s.intersect(values))
-    case _ => if (values.contains(x)) { x } else { AbstractBottom }
+    case _ => if (values.contains(x)) { x } else { AbstractBottom() }
   }
-  /* TODO: define operators */
+  def op(f: (AbstractValue, AbstractValue) => AbstractValue): (Set[AbstractValue], AbstractValue) => AbstractValue = {
+    case (s, x) => s.foldLeft(AbstractValueSet())((acc, v) => acc ⊔ (f(v, x)))
+  }
+  override def +(x: AbstractValue) = op((a, b) => a + b)(values, x)
+  override def -(x: AbstractValue) = op((a, b) => a - b)(values, x)
+  override def *(x: AbstractValue) = op((a, b) => a * b)(values, x)
+  override def <(x: AbstractValue) = op((a, b) => a < b)(values, x)
+  override def <=(x: AbstractValue) = op((a, b) => a <= b)(values, x)
+  override def >(x: AbstractValue) = op((a, b) => a > b)(values, x)
+  override def >=(x: AbstractValue) = op((a, b) => a >= b)(values, x)
+  override def ==(x: AbstractValue) = op((a, b) => a == b)(values, x)
+  override def unary_!() = values.foldLeft(AbstractValueSet())((acc, v) => acc ⊔ !v)
 }
 object AbstractValueSet {
   def apply(): AbstractValueSet = AbstractValueSet(Set[AbstractValue]())
@@ -173,7 +181,7 @@ case class ControlKont(v: AbstractValue) extends Control {
 
 case class Store(content: Map[Address, AbstractValue]) {
   def this() = this(Map[Address, AbstractValue]())
-  def lookup(addr: Address): AbstractValue = content.getOrElse(addr, AbstractBottom)
+  def lookup(addr: Address): AbstractValue = content.getOrElse(addr, AbstractBottom())
   def apply(addr: Address): AbstractValue = lookup(addr)
   def extend(addr: Address, v: AbstractValue): Store = Store(content + (addr -> (lookup(addr) ⊔ v)))
   def ⊔(v: (Address, AbstractValue)): Store = extend(v._1, v._2)
@@ -256,7 +264,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
       push(exp, KontLet(variable, body, ρ, κ), ρ, σ)
     case ANFLetrec(variable, exp, body) => {
       val a = allocVariable(variable, σ)
-      push(exp, KontLetrec(variable, a, body, ρ + (variable -> a), κ), ρ + (variable -> a), σ ⊔ (a -> AbstractBottom))
+      push(exp, KontLetrec(variable, a, body, ρ + (variable -> a), κ), ρ + (variable -> a), σ ⊔ (a -> AbstractBottom()))
     }
     case ANFSet(variable, value) => ρ(variable) match {
       case Some(addr) => {
