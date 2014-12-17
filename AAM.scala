@@ -18,7 +18,7 @@ object Primitives {
     binOp("+", (x, y) => x + y),
     binOp("-", (x, y) => x - y),
     binOp("*", (x, y) => x * y),
-    binOp("=", (x, y) => x == y),
+    binOp("=", (x, y) => x absEq y),
     binOp("<", (x, y) => x < y),
     binOp("<=", (x, y) => x <= y),
     binOp(">", (x, y) => x > y),
@@ -85,7 +85,7 @@ sealed abstract class AbstractValue {
   def <=(x: AbstractValue): AbstractValue = AbstractBottom()
   def >(x: AbstractValue): AbstractValue = AbstractBottom()
   def >=(x: AbstractValue): AbstractValue = AbstractBottom()
-  def ==(x: AbstractValue): AbstractValue = AbstractBottom()
+  def absEq(x: AbstractValue): AbstractValue = AbstractBottom()
   def unary_!(): AbstractValue = AbstractBottom()
 }
 object AbstractBottom {
@@ -111,6 +111,13 @@ case class AbstractSimpleValue(value: Value) extends AbstractValue {
     case _ => true
   }
 
+  /*
+  override def ⊔(x: AbstractValue): AbstractValue = (value, x) match {
+    case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) if a != b => AbstractInt
+    case _ => super.⊔(x)
+  }
+  */
+
   def numOp(f: (Integer, Integer) => Integer): (Value, AbstractValue) => AbstractValue = {
     case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueInteger(f(a,b)))
     case (x, AbstractValueSet(s)) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ numOp(f)(x,y))
@@ -130,13 +137,48 @@ case class AbstractSimpleValue(value: Value) extends AbstractValue {
   override def <=(x: AbstractValue) = cmpOp((a, b) => a <= b)(value, x)
   override def >(x: AbstractValue) = cmpOp((a, b) => a > b)(value, x)
   override def >=(x: AbstractValue) = cmpOp((a, b) => a >= b)(value, x)
-  override def ==(x: AbstractValue) = cmpOp((a, b) => a == b)(value, x)
+  override def absEq(x: AbstractValue) = cmpOp((a, b) => a == b)(value, x)
   override def unary_!() = value match {
     case ValueBoolean(false) => AbstractSimpleValue(ValueBoolean(true))
     case _ => AbstractSimpleValue(ValueBoolean(false))
   }
 }
+object AbstractInt extends AbstractValue {
+  override def toString: String = "Int"
+  def isTrue = true
+  override def ⊔(x: AbstractValue): AbstractValue = x match {
+    case AbstractSimpleValue(ValueInteger(_)) => AbstractInt
+    case _ => super.⊔(x)
+  }
 
+  def numOp(x: AbstractValue): AbstractValue = x match {
+    case AbstractInt => AbstractInt
+    case AbstractSimpleValue(ValueInteger(_)) => AbstractInt
+    case AbstractValueSet(s) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ numOp(y))
+    case _ => AbstractBottom()
+  }
+
+  def cmpOp(x: AbstractValue): AbstractValue = x match {
+    case AbstractInt => AbstractBool()
+    case AbstractSimpleValue(ValueInteger(_)) => AbstractBool()
+    case AbstractValueSet(s) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ cmpOp(y))
+    case _ => AbstractBottom()
+  }
+
+  override def +(x: AbstractValue) = numOp(x)
+  override def -(x: AbstractValue) = numOp(x)
+  override def *(x: AbstractValue) = numOp(x)
+  override def <(x: AbstractValue) = cmpOp(x)
+  override def <=(x: AbstractValue) = cmpOp(x)
+  override def >(x: AbstractValue) = cmpOp(x)
+  override def >=(x: AbstractValue) = cmpOp(x)
+  override def absEq(x: AbstractValue) = cmpOp(x)
+  override def unary_!() = AbstractSimpleValue(ValueBoolean(false))
+}
+object AbstractBool {
+  def apply(): AbstractValue = AbstractValueSet(Set(AbstractSimpleValue(ValueBoolean(true)),
+                                                    AbstractSimpleValue(ValueBoolean(false))))
+}
 case class AbstractValueSet(values: Set[AbstractValue]) extends AbstractValue {
   override def toString(): String = "{" + values.mkString(", ") + "}"
   def isTrue = values.exists(_.isTrue)
@@ -162,7 +204,7 @@ case class AbstractValueSet(values: Set[AbstractValue]) extends AbstractValue {
   override def <=(x: AbstractValue) = op((a, b) => a <= b)(values, x)
   override def >(x: AbstractValue) = op((a, b) => a > b)(values, x)
   override def >=(x: AbstractValue) = op((a, b) => a >= b)(values, x)
-  override def ==(x: AbstractValue) = op((a, b) => a == b)(values, x)
+  override def absEq(x: AbstractValue) = op((a, b) => a absEq b)(values, x)
   override def unary_!() = values.foldLeft(AbstractValueSet())((acc, v) => acc ⊔ !v)
 }
 object AbstractValueSet {
@@ -220,6 +262,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
       case Some(a) => σ(a)
       case None => throw new Exception(s"Unbound variable: $name")
     }
+    case ANFValue(ValueInteger(_)) => AbstractInt
     case ANFValue(value) => AbstractSimpleValue(value)
   }
 
@@ -297,8 +340,8 @@ case class State(control: Control, σ: Store, a: KontAddress) {
     Set(State(ControlKont(v), σ, κ))
 
 
-  def allocKont(e: ANFExp, κ: Kont, σ: Store): KontAddress = NormalKontAddress(e, σ.hashCode())
-  def allocVariable(variable: String, σ: Store): VariableAddress = VariableAddress(variable, σ.hashCode())
+  def allocKont(e: ANFExp, κ: Kont, σ: Store): KontAddress = NormalKontAddress(e, 0)
+  def allocVariable(variable: String, σ: Store): VariableAddress = VariableAddress(variable, 0)
 }
 
 /** TODO: parameterize */
@@ -353,8 +396,9 @@ object AAM {
         if (visited.size % 100 == 0) {
           println(visited.size)
         }
-        if (visited.size < 5000) {
+        if (visited.size < 500) {
           val succs = s.step
+          println(s"Visiting $s leads to ${succs.size} successors")
           val newGraph = graph.addEdges(succs.map(s2 => (s, s2)))
           loop(todo.tail ++ succs, visited + s, halted, newGraph)
         } else {
