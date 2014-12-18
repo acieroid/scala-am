@@ -61,8 +61,8 @@ case class KontLet(v: String, body: ANFExp, env: Env, next: KontAddress) extends
 case class KontLetrec(v: String, a: Address, body: ANFExp, env: Env, next: KontAddress) extends Kont {
   override def toString(): String = s"KontLetrec(${v.toString})"
 }
-case class KontHalt() extends Kont {
-  override def toString(): String = s"KontHalt()"
+object KontHalt extends Kont {
+  override def toString(): String = s"KontHalt"
 }
 
 sealed abstract class AbstractValue {
@@ -111,22 +111,23 @@ case class AbstractSimpleValue(value: Value) extends AbstractValue {
     case _ => true
   }
 
-  /*
   override def ⊔(x: AbstractValue): AbstractValue = (value, x) match {
     case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) if a != b => AbstractInt
+    case (ValueInteger(_), AbstractInt) => AbstractInt
     case _ => super.⊔(x)
   }
-  */
 
   def numOp(f: (Integer, Integer) => Integer): (Value, AbstractValue) => AbstractValue = {
     case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueInteger(f(a,b)))
     case (x, AbstractValueSet(s)) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ numOp(f)(x,y))
+    case (x, AbstractInt) => AbstractInt
     case _ => AbstractBottom()
   }
 
   def cmpOp(f: (Integer, Integer) => Boolean): (Value, AbstractValue) => AbstractValue = {
     case (ValueInteger(a), AbstractSimpleValue(ValueInteger(b))) => AbstractSimpleValue(ValueBoolean(f(a,b)))
     case (x, AbstractValueSet(s)) => s.foldLeft(AbstractValueSet())((acc, y) => acc ⊔ cmpOp(f)(x,y))
+    case (x, AbstractInt) => AbstractBool()
     case _ => AbstractBottom()
   }
 
@@ -187,8 +188,23 @@ case class AbstractValueSet(values: Set[AbstractValue]) extends AbstractValue {
     values.foldLeft(Set[A]())((s: Set[A], v: AbstractValue) => s ++ v.foldValues(f))
   /** The join result will remain a set of values */
   override def ⊔(x: AbstractValue): AbstractValueSet = x match {
-    case AbstractValueSet(set) => AbstractValueSet(values ++ set)
-    case _ => AbstractValueSet(values + x)
+    case AbstractValueSet(set) =>
+      if (set.size == 0) { this } else if (values.size == 0) { AbstractValueSet(set) } else {
+        AbstractValueSet(values.foldLeft(Set[AbstractValue]())((acc, v) => {
+          /* Tries to join v with an item of set such that the resulting element is not another set */
+          set.foldLeft((Set[AbstractValue](), false))({
+            case ((acc2, true), v2) => (acc2 + v2, true)
+            case ((acc2, false), v2) => v ⊔ v2 match {
+              case AbstractValueSet(_) => (acc2 + v2, false)
+              case joined => (acc2 + joined, true)
+            }
+          }) match {
+            case (s, true) => acc ++ s
+            case (s, false) => acc ++ s + v /* if it did not succeed, just add v to the set as is */
+          }
+        }))
+      }
+    case _ => this ⊔ AbstractValueSet(Set(x))
   }
   override def ⊓(x: AbstractValue): AbstractValue = x match {
     case AbstractValueSet(s) => AbstractValueSet(s.intersect(values))
@@ -230,7 +246,7 @@ case class Store(content: Map[Address, AbstractValue]) {
   def ++(l: List[(Address, AbstractValue)]): Store = l.foldLeft(this)((σ, v) => σ ⊔ v)
 }
 object Store {
-  val initial = new Store() ++ List(HaltKontAddress -> AbstractKont(KontHalt())) ++ Primitives.forStore
+  val initial = new Store() ++ List(HaltKontAddress -> AbstractKont(KontHalt)) ++ Primitives.forStore
 }
 
 case class State(control: Control, σ: Store, a: KontAddress) {
@@ -262,7 +278,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
       case Some(a) => σ(a)
       case None => throw new Exception(s"Unbound variable: $name")
     }
-    case ANFValue(ValueInteger(_)) => AbstractInt
+    /* case ANFValue(ValueInteger(_)) => AbstractInt */
     case ANFValue(value) => AbstractSimpleValue(value)
   }
 
@@ -321,7 +337,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
 
   /** Performs a continuation step */
   def stepKont(v: AbstractValue, σ: Store, κ: Kont): Set[State] = κ match {
-    case KontHalt() => Set(this)
+    case KontHalt => Set(this)
     case KontLet(variable, body, ρ, next) => {
       val addr = allocVariable(variable, σ)
       Set(State(ControlEval(body, ρ + (variable -> addr)), σ ⊔ (addr -> v), next))
@@ -396,9 +412,8 @@ object AAM {
         if (visited.size % 100 == 0) {
           println(visited.size)
         }
-        if (visited.size < 500) {
+        if (visited.size < 10000) {
           val succs = s.step
-          println(s"Visiting $s leads to ${succs.size} successors")
           val newGraph = graph.addEdges(succs.map(s2 => (s, s2)))
           loop(todo.tail ++ succs, visited + s, halted, newGraph)
         } else {

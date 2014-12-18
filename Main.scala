@@ -1,3 +1,5 @@
+import AAM._
+
 object Main {
   def fileContent(path: String): String = {
     val f = scala.io.Source.fromFile(path)
