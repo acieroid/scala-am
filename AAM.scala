@@ -1,6 +1,10 @@
 /**
   * Implementation of a CESK machine for ANF following the AAM approach
   */
+
+object Options {
+  var debug = false
+}
 object Primitives {
   type Primitive = List[AbstractValue] => AbstractValue
 
@@ -76,6 +80,7 @@ sealed abstract class AbstractValue {
     case _ => AbstractValueSet(Set(this, x))
   }}
   def ⊓(x: AbstractValue): AbstractValue = if (this.equals(x)) { this } else { AbstractBottom() }
+  def ⊒(x: AbstractValue): Boolean
 
   /* Primitive operations */
   def +(x: AbstractValue): AbstractValue = AbstractBottom()
@@ -90,25 +95,49 @@ sealed abstract class AbstractValue {
 }
 object AbstractBottom {
   def apply() = AbstractValueSet(Set())
+  def unapply(x: AbstractValue) = x match {
+    case AbstractValueSet(set) => set.size == 0
+    case _ => false
+  }
+  def ⊒(x: AbstractValue) = false
 }
 case class AbstractClosure(λ: ANFLambda, ρ: Env) extends AbstractValue {
   override def toString: String = s"#<clo>"
   def isTrue = true
+  def ⊒(x: AbstractValue) = x match {
+    case AbstractClosure(_, _) => x == this
+    case AbstractBottom() => true
+    case _ => false
+  }
 }
 case class AbstractPrimitive(name: String, f: List[AbstractValue] => AbstractValue) extends AbstractValue {
   override def toString: String = s"#<prim $name>"
   def isTrue = true
+  def ⊒(x: AbstractValue) = x match {
+    case AbstractPrimitive(n, _) => name == n
+    case _ => false
+  }
 }
 case class AbstractKont(κ: Kont) extends AbstractValue {
   override def toString: String = s"#<kont $κ>"
   def isTrue = false
   override def isFalse = false
+  def ⊒(x: AbstractValue) = x match {
+    case AbstractKont(κ2) => κ == κ2
+    case AbstractBottom() => true
+    case _ => false
+  }
 }
 case class AbstractSimpleValue(value: Value) extends AbstractValue {
   override def toString: String = value.toString
   def isTrue = value match {
     case ValueBoolean(false) => false
     case _ => true
+  }
+  def ⊒(x: AbstractValue) = x match {
+    case AbstractSimpleValue(v) => value == v
+    case AbstractBottom() => true
+    case _ => false
   }
 
   override def ⊔(x: AbstractValue): AbstractValue = (value, x) match {
@@ -147,6 +176,14 @@ case class AbstractSimpleValue(value: Value) extends AbstractValue {
 object AbstractInt extends AbstractValue {
   override def toString: String = "Int"
   def isTrue = true
+  def ⊒(x: AbstractValue) = x match {
+    case AbstractBottom() => true
+    case AbstractInt => true
+    case AbstractSimpleValue(ValueInteger(_)) => true
+    case AbstractValueSet(set) => set.foldLeft(true)((acc, v) => acc && this ⊒ v)
+    case _ => false
+  }
+
   override def ⊔(x: AbstractValue): AbstractValue = x match {
     case AbstractSimpleValue(ValueInteger(_)) => AbstractInt
     case _ => super.⊔(x)
@@ -184,6 +221,11 @@ case class AbstractValueSet(values: Set[AbstractValue]) extends AbstractValue {
   override def toString(): String = "{" + values.mkString(", ") + "}"
   def isTrue = values.exists(_.isTrue)
   override def isFalse = values.exists(_.isFalse)
+  def ⊒(x: AbstractValue) = x match {
+    case AbstractValueSet(set) => set.foldLeft(true)((acc, v) => this ⊒ v)
+    case _ => values.exists(v => v ⊒ x)
+  }
+
   override def foldValues[A](f: AbstractValue => Set[A]): Set[A] =
     values.foldLeft(Set[A]())((s: Set[A], v: AbstractValue) => s ++ v.foldValues(f))
   /** The join result will remain a set of values */
@@ -229,12 +271,19 @@ object AbstractValueSet {
 
 /* TODO: abstract pairs */
 
-sealed abstract class Control
+sealed abstract class Control {
+  def ⊒(x: Control): Boolean
+}
 case class ControlEval(exp: ANFExp, env: Env) extends Control {
   override def toString(): String = s"ev(${exp.toString})"
+  def ⊒(x: Control): Boolean = this == x
 }
 case class ControlKont(v: AbstractValue) extends Control {
   override def toString(): String = s"ko(${v.toString})"
+  def ⊒(x: Control): Boolean = x match {
+    case ControlEval(_, _) => false
+    case ControlKont(v2) => v ⊒ v2
+  }
 }
 
 case class Store(content: Map[Address, AbstractValue]) {
@@ -244,6 +293,34 @@ case class Store(content: Map[Address, AbstractValue]) {
   def extend(addr: Address, v: AbstractValue): Store = Store(content + (addr -> (lookup(addr) ⊔ v)))
   def ⊔(v: (Address, AbstractValue)): Store = extend(v._1, v._2)
   def ++(l: List[(Address, AbstractValue)]): Store = l.foldLeft(this)((σ, v) => σ ⊔ v)
+  def ⊒(σ: Store): Boolean = {
+    val k1 = content.keySet
+    val k2 = σ.content.keySet
+    /* k1 should contain k2, and for every element in k2, the corresponding
+       element in k1 should subsume it */
+    val res = k1.intersect(k2) == k2 && k2.foldLeft(true)((acc, k) => acc && this(k) ⊒ σ(k))
+    /*
+    if (res && Options.debug) {
+      println("Store is subsumed")
+      println(k2.foreach(k => if (this(k) != σ(k) && this(k) ⊒ σ(k)) { println(s"${this(k)} ⊒ ${σ(k)}") }))
+    }
+    */
+    res
+  }
+  def diff(σ: Store): Unit = {
+    val a = content.keySet
+    val b = σ.content.keySet
+    val aNotB = a.diff(a.intersect(b))
+    val bNotA = b.diff(a.intersect(b))
+    if (aNotB.size != 0 || bNotA.size != 0) {
+      println(s"Different keys: $aNotB, and $bNotA")
+    }
+    content.foreach({ case (k, v) => {
+      val v2 = σ(k)
+      if (v != v2) {
+        println(s"$k: $v != $v2")
+      }}})
+  }
 }
 object Store {
   val initial = new Store() ++ List(HaltKontAddress -> AbstractKont(KontHalt)) ++ Primitives.forStore
@@ -254,6 +331,21 @@ case class State(control: Control, σ: Store, a: KontAddress) {
   def this(exp: ANFExp) = this(ControlEval(exp, Env.initial), Store.initial, HaltKontAddress)
 
   override def toString(): String = control.toString
+
+  def ⊒(x: State): Boolean = control ⊒ x.control && σ ⊒ x.σ && a == x.a
+
+  def diff(x: State): Unit = {
+    println("=====")
+    if (control != x.control) {
+      println("Controls are different")
+    }
+    if (a != x.a) {
+      println("Continuation addresses are different")
+    }
+    println(s"Store difference:")
+    σ.diff(x.σ)
+    println("====")
+  }
 
   /** Performs a step */
   def step: Set[State] = control match {
@@ -404,7 +496,18 @@ object AAM {
 
   def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph): (Set[State], Graph) = todo.headOption match {
     case Some(s) =>
-      if (visited.contains(s)) {
+      if (visited.contains(s) || visited.exists(s2 => s2 ⊒ s)) {
+        /*
+        visited.find(s2 => s2 ⊒ s) match {
+          case Some(s2) => {
+            Options.debug = true
+            println(s"$s is subsumed by $s2: ${s2 ⊒ s}")
+            s.diff(s2)
+            Unit
+          }
+          case None => Unit
+        }
+        */
         loop(todo.tail, visited, halted, graph)
       } else if (s.halted) {
         loop(todo.tail, visited + s, halted + s, graph)
