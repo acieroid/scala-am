@@ -7,19 +7,23 @@ import AbstractValue._
 object Options {
   var debug = false
 }
+
 object Primitives {
   type Primitive = List[AbstractValue] => AbstractValue
 
+  /** Unary operation over an abstract value */
   def unOp(name: String, f: AbstractValue => AbstractValue): (String, Primitive) = (name, {
     case x :: Nil => f(x)
     case _ => throw new Exception(s"Arity error in unary operator $name")
   })
 
+  /** Binary operation over two abstract values */
   def binOp(name: String, f: (AbstractValue, AbstractValue) => AbstractValue): (String, Primitive) = (name, {
     case x :: y :: Nil => f(x, y)
     case _ => throw new Exception(s"Arity error in binary operator $name")
   })
 
+  /** Supported primitives */
   val all: List[(String, Primitive)] = List(
     binOp("+", (x, y) => x + y),
     binOp("-", (x, y) => x - y),
@@ -38,6 +42,10 @@ object Primitives {
     all.map({ case (name, f) => (PrimitiveAddress(name), AbstractPrimitive(name, f)) })
 }
 
+/** Different kinds of addresses: variable (created with let bindings),
+    primitives (corresponding to supported primitives such as +), and
+    continuation addresses. The halt continuation is unique and is therefore its
+    address is defined as an object */
 sealed abstract class Address
 case class VariableAddress(name: String, id: Integer) extends Address
 case class PrimitiveAddress(name: String) extends Address
@@ -45,6 +53,8 @@ abstract class KontAddress extends Address
 case class NormalKontAddress(exp: ANFExp, id: Integer) extends KontAddress
 object HaltKontAddress extends KontAddress
 
+/** An environment is just a mapping from string to addresses with different
+    names for operations */
 case class Env(content: Map[String, Address]) {
   def this() = this(Map[String, Address]())
   def lookup(name: String): Option[Address] = content.get(name)
@@ -60,6 +70,8 @@ object Env {
   }
 }
 
+/** Different kind of continuations. Each continuation class contains the
+    elements needed to continue the evaluation, but defines no logic */
 sealed abstract class Kont
 case class KontLet(v: String, body: ANFExp, env: Env, next: KontAddress) extends Kont {
   override def toString(): String = s"KontLet(${v.toString})"
@@ -71,6 +83,7 @@ object KontHalt extends Kont {
   override def toString(): String = s"KontHalt"
 }
 
+/** Two kinds of control components: eval and continuation */
 sealed abstract class Control {
   def ⊒(x: Control): Boolean
 }
@@ -86,6 +99,8 @@ case class ControlKont(v: AbstractValue) extends Control {
   }
 }
 
+/** The store is a mapping from addresses to abstract values, and supports
+    subsumption checking */
 case class Store(content: Map[Address, AbstractValue]) {
   def this() = this(Map[Address, AbstractValue]())
   def lookup(addr: Address): AbstractValue = content.getOrElse(addr, AbstractBottom())
@@ -93,19 +108,13 @@ case class Store(content: Map[Address, AbstractValue]) {
   def extend(addr: Address, v: AbstractValue): Store = Store(content + (addr -> (lookup(addr) ⊔ v)))
   def ⊔(v: (Address, AbstractValue)): Store = extend(v._1, v._2)
   def ++(l: List[(Address, AbstractValue)]): Store = l.foldLeft(this)((σ, v) => σ ⊔ v)
+  /** Checks if this store subsumes another store */
   def ⊒(σ: Store): Boolean = {
     val k1 = content.keySet
     val k2 = σ.content.keySet
     /* k1 should contain k2, and for every element in k2, the corresponding
        element in k1 should subsume it */
-    val res = k1.intersect(k2) == k2 && k2.foldLeft(true)((acc, k) => acc && this(k) ⊒ σ(k))
-    /*
-    if (res && Options.debug) {
-      println("Store is subsumed")
-      println(k2.foreach(k => if (this(k) != σ(k) && this(k) ⊒ σ(k)) { println(s"${this(k)} ⊒ ${σ(k)}") }))
-    }
-    */
-    res
+    k1.intersect(k2) == k2 && k2.foldLeft(true)((acc, k) => acc && this(k) ⊒ σ(k))
   }
   def diff(σ: Store): Unit = {
     val a = content.keySet
@@ -126,6 +135,9 @@ object Store {
   val initial = new Store() ++ List(HaltKontAddress -> AbstractKont(KontHalt)) ++ Primitives.forStore
 }
 
+/** A state has a control component (that can contain the expression and
+    environment, or just the continuation), a store and a continuation. This
+    class defines the semantics of the analyzed language */
 case class State(control: Control, σ: Store, a: KontAddress) {
   /** Inject an expression into a state */
   def this(exp: ANFExp) = this(ControlEval(exp, Env.initial), Store.initial, HaltKontAddress)
@@ -181,7 +193,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
       (ρ + (name -> a), σ ⊔ (a -> value))
     }})
 
-  /** Performs an evaluation step */
+  /** Performs an evaluation step. This is where the semantics of the analyzed language are defined */
   def stepEval(e: ANFExp, ρ: Env, σ: Store, κ: KontAddress): Set[State] = e match {
           case ae: ANFAtomicExp => reachedValue(atomicEval(ae, ρ, σ), σ, κ)
     case ANFFuncall(f, args) =>
@@ -229,7 +241,7 @@ case class State(control: Control, σ: Store, a: KontAddress) {
 
   /** Performs a continuation step */
   def stepKont(v: AbstractValue, σ: Store, κ: Kont): Set[State] = κ match {
-    case KontHalt => Set(this)
+    case KontHalt => Set()
     case KontLet(variable, body, ρ, next) => {
       val addr = allocVariable(variable, σ)
       Set(State(ControlEval(body, ρ + (variable -> addr)), σ ⊔ (addr -> v), next))
@@ -244,9 +256,9 @@ case class State(control: Control, σ: Store, a: KontAddress) {
     Set(State(ControlEval(e, ρ), σ ⊔ (a -> AbstractKont(κ)), a))
   }
 
+  /** Called when a value is reached, and returns the corresponding states */
   def reachedValue(v: AbstractValue, σ: Store, κ: KontAddress): Set[State] =
     Set(State(ControlKont(v), σ, κ))
-
 
   def allocKont(e: ANFExp, κ: Kont, σ: Store): KontAddress = NormalKontAddress(e, 0)
   def allocVariable(variable: String, σ: Store): VariableAddress = VariableAddress(variable, 0)
@@ -266,17 +278,6 @@ object AAM {
   def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) = todo.headOption match {
     case Some(s) =>
       if (visited.contains(s) || visited.exists(s2 => s2 ⊒ s)) {
-        /*
-        visited.find(s2 => s2 ⊒ s) match {
-          case Some(s2) => {
-            Options.debug = true
-            println(s"$s is subsumed by $s2: ${s2 ⊒ s}")
-            s.diff(s2)
-            Unit
-          }
-          case None => Unit
-        }
-        */
         loop(todo.tail, visited, halted, graph)
       } else if (s.halted) {
         loop(todo.tail, visited + s, halted + s, graph)
@@ -295,6 +296,7 @@ object AAM {
     case None => (halted, graph)
   }
 
+  /** Performs the evaluation of an expression and output the resulting state graph in foo.dot */
   def eval(exp: ANFExp) = {
     val state = new State(exp)
     loop(Set(state), Set(), Set(), new Graph[State](state)) match {
