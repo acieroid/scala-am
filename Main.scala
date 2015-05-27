@@ -1,4 +1,4 @@
-import AAM._
+import AbstractValue._
 
 object Main {
   def fileContent(path: String): String = {
@@ -9,16 +9,13 @@ object Main {
     content
   }
 
+  import AbstractType._
+  def test[A]()(implicit spec: AbstractValue[A], i: AbstractInjection[A]) = {
+    val v1 = i.inject(1)
+    val v2 = i.inject("foo")
+  }
+
   def main(args: Array[String]) {
-    if (args.length != 1) {
-      println("Scheme file expected as argument")
-    } else {
-      val exp = SExpParser.parse(fileContent(args(0)))
-      println(exp)
-      println(Scheme.compile(exp))
-      println(Scheme.rename(Scheme.compile(exp)))
-      println(ANF.compile(Scheme.rename(Scheme.compile(exp))))
-      println(AAM.eval(ANF.compile(Scheme.rename(Scheme.compile(exp)))))
-    }
+    test()
   }
 }
