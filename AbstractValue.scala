@@ -12,6 +12,10 @@ trait AbstractValue[A] {
   def meet(x: A, y: A): A
   def subsumes(x: A, y: A): Boolean
   def plus(x: A, y: A): A
+
+  def getKont(x: A): Option[Kontinuation]
+  def getClosure[Exp <: Expression, Addr : Address](x: A): Option[(Exp, Environment[Addr])]
+  def getPrimitive(x: A): Option[(String, List[A] => Option[A])]
 }
 
 /** Concrete values have to be injected to become abstract */
@@ -29,7 +33,7 @@ trait AbstractInjection[A] {
   /** Injection of a continuation */
   def inject[Kont <: Kontinuation](x: Kont): A
   /** Injection of a closure */
-  def inject[Addr : Address, Exp <: Expression](x: (Exp, Environment[Addr])): A
+  def inject[Exp <: Expression, Addr : Address](x: (Exp, Environment[Addr])): A
 }
 
 class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {

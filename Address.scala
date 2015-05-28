@@ -22,7 +22,7 @@ object Address {
   implicit object ClassicalAddressAddress extends Address[ClassicalAddress] {
     override def subsumes(x: ClassicalAddress, y: ClassicalAddress) = x.subsumes(y)
   }
-  implicit object AddressInjection extends AddressInjection[ClassicalAddress] {
+  implicit object ClassicalAddressInjection extends AddressInjection[ClassicalAddress] {
     def halt = HaltKontAddress()
     def primitive(name: String) = PrimitiveAddress(name)
     def variable(name: String) = VariableAddress(name)

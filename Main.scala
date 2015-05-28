@@ -1,4 +1,5 @@
 import AbstractValue._
+import Address._
 
 object Main {
   def fileContent(path: String): String = {
@@ -9,13 +10,12 @@ object Main {
     content
   }
 
-  import AbstractType._
-  def test[A]()(implicit spec: AbstractValue[A], i: AbstractInjection[A]) = {
-    val v1 = i.inject(1)
-    val v2 = i.inject("foo")
+  def runANF[Abs, Addr]()(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
+    var aam = new AAM[Abs, Addr, ANFExp](new ANFSemantics[Abs, Addr])
+    println(aam.eval(ANFFuncall(ANFIdentifier("+"), List(ANFValue(ValueInteger(1)), ANFValue(ValueInteger(2)))), Some("foo.dot")))
   }
 
   def main(args: Array[String]) {
-    test()
+    runANF[AbstractType, ClassicalAddress]()
   }
 }
