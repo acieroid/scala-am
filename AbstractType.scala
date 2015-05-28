@@ -5,39 +5,39 @@ trait AbstractType {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def foldValues[A](f: AbstractType => Set[A]): Set[A] = f(this)
-  def join(that: AbstractType): AbstractType = if (this.equals(that)) { this } else { AbstractTop() }
-  def meet(that: AbstractType): AbstractType = if (this.equals(that)) { this } else { AbstractBottom() }
+  def join(that: AbstractType): AbstractType = if (this.equals(that)) { this } else { AbstractTop }
+  def meet(that: AbstractType): AbstractType = if (this.equals(that)) { this } else { AbstractBottom }
   def subsumes(that: AbstractType): Boolean = this.equals(that)
-  def plus(that: AbstractType): AbstractType = AbstractBottom()
+  def plus(that: AbstractType): AbstractType = AbstractBottom
 }
-case class AbstractTop() extends AbstractType {
+object AbstractTop extends AbstractType {
   override def toString = "⊤"
   override def isTrue = true
   override def isFalse = true
   override def plus(that: AbstractType) = this
 }
-case class AbstractInt() extends AbstractType {
+object AbstractInt extends AbstractType {
   override def toString = "Int"
   override def plus(that: AbstractType) = that match {
-    case AbstractTop() => AbstractTop()
-    case AbstractInt() => AbstractInt()
-    case _ => AbstractBottom()
+    case AbstractTop => AbstractTop
+    case AbstractInt => AbstractInt
+    case _ => AbstractBottom
   }
 }
-case class AbstractString() extends AbstractType {
+object AbstractString extends AbstractType {
   override def toString = "String"
   override def plus(that: AbstractType) = that match {
-    case AbstractTop() => AbstractTop()
-    case AbstractString() => AbstractString()
-    case _ => AbstractBottom()
+    case AbstractTop => AbstractTop
+    case AbstractString => AbstractString
+    case _ => AbstractBottom
   }
 }
-case class AbstractBool() extends AbstractType {
+object AbstractBool extends AbstractType {
   override def toString = "Bool"
   override def isTrue = true
   override def isFalse = true
 }
-case class AbstractBottom() extends AbstractType {
+object AbstractBottom extends AbstractType {
   override def toString = "⊥"
   override def isTrue = false
   override def isFalse = false
@@ -65,10 +65,10 @@ object AbstractType {
   }
 
   implicit object AbstractTypeInjection extends AbstractInjection[AbstractType] {
-    def bottom = AbstractBottom()
-    def inject(x: Int) = AbstractInt()
-    def inject(x: String) = AbstractString()
-    def inject(x: Boolean) = AbstractBool()
+    def bottom = AbstractBottom
+    def inject(x: Int) = AbstractInt
+    def inject(x: String) = AbstractString
+    def inject(x: Boolean) = AbstractBool
     def inject(x: (String, List[AbstractType] => Option[AbstractType])) = AbstractPrimitive(x._1, x._2)
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Addr : Address, Exp <: Expression](x: (Exp, Environment[Addr])) = AbstractClosure[Addr, Exp](x._1, x._2)
