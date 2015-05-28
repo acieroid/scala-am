@@ -60,27 +60,36 @@ class SExpLexer extends Lexical with SExpTokens {
     '#' ~> ('t' ^^ (_ => TBoolean(true)) | 'f' ^^ (_ => TBoolean(false)))
   def integer: Parser[Token] =
     sign ~ rep1(digit) ^^ { case s ~ n =>
-      s match {
-        case Some('+') => TInteger(n.mkString.toInt)
-        case Some('-') => TInteger(- n.mkString.toInt)
-        case _ => TInteger(n.mkString.toInt)
-      }
-    }
+                            s match {
+                              case Some('+') => TInteger(n.mkString.toInt)
+                              case Some('-') => TInteger(- n.mkString.toInt)
+                              case _ => TInteger(n.mkString.toInt)
+                            }
+                          }
   def character: Parser[Token] =
     '#' ~> '\\' ~> any ^^ (c => TCharacter(c))
-  def string: Parser[Token] =
-    /* TODO: This one does not seem completely right. It lexes too much, eg. "foo\"
-     * which is a non-terminated string. */
-    '\"' ~> stringContent <~ '\"' ^^ (s => TString(s))
+  def stringEnding: Parser[String] = chrExcept('\\', '\n') ^^ (_.toString)
+  def string: Parser[Token] = {
+    ('\"' ~> stringContent ~ chrExcept('\\', '\n') <~ '\"' ^^ { case s ~ ending => TString(s + ending) }) |
+    ('\"' ~> stringContent <~ '\"' ^^ (s => TString(s)))
+  }
   def identifier: Parser[Token] =
     rep1(chrExcept('#', '\'', '\"', '(', ')', ' ', ';', '\n', '\t')) ^^ (s => TIdentifier(s.mkString))
   def quote: Parser[Token] = chr('\'') ^^ { _ => TQuote() }
   def leftParen: Parser[Token] = chr('(') ^^ { _ => TLeftParen() }
   def rightParen: Parser[Token] = chr(')') ^^ { _ => TRightParen() }
-  /* TODO: float */
+  def float: Parser[Token] =
+    sign ~ rep(digit) ~ '.' ~ rep(digit) ^^ { case s ~ pre ~ _ ~ post =>
+                                              val n = (pre.mkString + "." + post.mkString).toFloat
+                                              s match {
+                                                case Some('+') => TFloat(n)
+                                                case Some('-') => TFloat(-n)
+                                                case _ => TFloat(n)
+                                              }
+                                            }
   def token: Parser[Token] =
     (whitespace | comment) ~> {
-      bool | integer | character | string | identifier |
+      bool | float | integer | character | string | identifier |
       quote | leftParen | rightParen
     } <~ (whitespace | comment)
 }
@@ -96,6 +105,9 @@ object SExpParser extends TokenParsers {
   def integer: Parser[Value] = elem("integer", _.isInstanceOf[TInteger]) ^^ {
     case TInteger(n) => ValueInteger(n)
   }
+  def float: Parser[Value] = elem("float", _.isInstanceOf[TFloat]) ^^ {
+    case TFloat(n) => ValueFloat(n)
+  }
   def character: Parser[Value] = elem("character", _.isInstanceOf[TCharacter]) ^^ {
     case TCharacter(c) => ValueCharacter(c)
   }
@@ -105,7 +117,7 @@ object SExpParser extends TokenParsers {
   def nil: Parser[Value] = leftParen ~ rightParen ^^ (_ => ValueNil())
 
   def value: Parser[SExp] =
-    (bool | integer | character | string | nil) ^^ (v => SExpValue(v))
+    (bool | float | integer | character | string | nil) ^^ (v => SExpValue(v))
 
   def identifier: Parser[SExp] = elem("identifier", _.isInstanceOf[TIdentifier]) ^^ {
     case TIdentifier(s) => SExpIdentifier(s)
@@ -125,4 +137,6 @@ object SExpParser extends TokenParsers {
     case Failure(msg, _) => throw new Exception("cannot parse expression: " + msg)
     case Error(msg, _) => throw new Exception("cannot parse expression: " + msg)
   }
+
+  def test(s: String) = float(new lexical.Scanner(s))
 }
