@@ -43,7 +43,7 @@ object AbstractBottom extends AbstractType {
   override def isFalse = false
   override def join(that: AbstractType) = that
 }
-case class AbstractPrimitive(name: String, f: List[AbstractType] => Option[AbstractType]) extends AbstractType {
+case class AbstractPrimitive(name: String, f: List[AbstractType] => Either[String, AbstractType]) extends AbstractType {
   override def toString = s"#<prim $name>"
 }
 case class AbstractKontinuation[Kont <: Kontinuation](kont: Kont) extends AbstractType {
@@ -81,7 +81,7 @@ object AbstractType {
     def inject(x: Int) = AbstractInt
     def inject(x: String) = AbstractString
     def inject(x: Boolean) = AbstractBool
-    def inject(x: (String, List[AbstractType] => Option[AbstractType])) = AbstractPrimitive(x._1, x._2)
+    def inject(x: (String, List[AbstractType] => Either[String, AbstractType])) = AbstractPrimitive(x._1, x._2)
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Exp <: Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
   }

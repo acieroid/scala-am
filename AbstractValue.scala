@@ -15,7 +15,7 @@ trait AbstractValue[A] {
 
   def getKont(x: A): Option[Kontinuation]
   def getClosure[Exp <: Expression, Addr : Address](x: A): Option[(Exp, Environment[Addr])]
-  def getPrimitive(x: A): Option[(String, List[A] => Option[A])]
+  def getPrimitive(x: A): Option[(String, List[A] => Either[String, A])]
 }
 
 /** Concrete values have to be injected to become abstract */
@@ -29,7 +29,7 @@ trait AbstractInjection[A] {
   /** Injection of a boolean */
   def inject(x: Boolean): A
   /** Injection of a primitive function */
-  def inject(x: (String, List[A] => Option[A])): A
+  def inject(x: (String, List[A] => Either[String, A])): A
   /** Injection of a continuation */
   def inject[Kont <: Kontinuation](x: Kont): A
   /** Injection of a closure */
@@ -37,15 +37,15 @@ trait AbstractInjection[A] {
 }
 
 class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {
-  type Primitive = List[Abs] => Option[Abs]
+  type Primitive = List[Abs] => Either[String, Abs]
 
   private def unOp(name: String, f: Abs => Abs): (String, Primitive) = (name, {
-    case x :: Nil => Some(f(x))
-    case _ => None
+    case x :: Nil => Right(f(x))
+    case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
   })
   private def binOp(name: String, f: (Abs, Abs) => Abs): (String, Primitive) = (name, {
-    case x :: y :: Nil => Some(f(x, y))
-    case _ => None
+    case x :: y :: Nil => Right(f(x, y))
+    case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
   })
 
   val all: List[(String, Primitive)] = List(
