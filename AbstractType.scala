@@ -49,7 +49,7 @@ case class AbstractPrimitive(name: String, f: List[AbstractType] => Either[Strin
 case class AbstractKontinuation[Kont <: Kontinuation](kont: Kont) extends AbstractType {
   override def toString = s"#<kont $kont>"
 }
-case class AbstractClosure[Exp <: Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractType {
+case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractType {
   override def toString = "#<clo>"
 }
 
@@ -66,7 +66,7 @@ object AbstractType {
       case AbstractKontinuation(κ) => Some(κ)
       case _ => None
     }
-    def getClosure[Exp <: Expression, Addr : Address](x: AbstractType) = x match {
+    def getClosure[Exp : Expression, Addr : Address](x: AbstractType) = x match {
       case AbstractClosure(λ : Exp, ρ : Environment[Addr]) => Some((λ, ρ))
       case _ => None
     }
@@ -83,6 +83,6 @@ object AbstractType {
     def inject(x: Boolean) = AbstractBool
     def inject(x: (String, List[AbstractType] => Either[String, AbstractType])) = AbstractPrimitive(x._1, x._2)
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
-    def inject[Exp <: Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
+    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
   }
 }

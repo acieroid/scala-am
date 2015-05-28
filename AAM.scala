@@ -3,8 +3,8 @@ import AbstractValue._
 /**
   * Implementation of a CESK machine for ANF following the AAM approach
   */
-case class AAM[Abs, Addr, Exp <: Expression](sem: Semantics[Exp, Abs, Addr])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-                                                                             addr: Address[Addr], addri: AddressInjection[Addr]) {
+case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+                                                                            addr: Address[Addr], addri: AddressInjection[Addr]) {
   /** The control component represents what needs to be evaluated; it can either be an expression or a continuation */
   sealed abstract class Control {
     def subsumes(that: Control): Boolean
