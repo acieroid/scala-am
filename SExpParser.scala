@@ -137,6 +137,4 @@ object SExpParser extends TokenParsers {
     case Failure(msg, _) => throw new Exception("cannot parse expression: " + msg)
     case Error(msg, _) => throw new Exception("cannot parse expression: " + msg)
   }
-
-  def test(s: String) = float(new lexical.Scanner(s))
 }
