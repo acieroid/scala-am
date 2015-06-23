@@ -1,7 +1,7 @@
 import AbstractValue._
 
 /**
-  * Implementation of a CESK machine for ANF following the AAM approach
+  * Implementation of a CESK machine following the AAM approach
   */
 case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
                                                                             addr: Address[Addr], addri: AddressInjection[Addr]) {
@@ -28,6 +28,14 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     def subsumes(that: Control) = that.equals(this)
   }
 
+  case class AAMKont(frame: Frame, next: Addr) extends Kontinuation {
+    def subsumes(that: Kontinuation) = that match {
+      case AAMKont(frame2, next2) => frame.subsumes(frame2) && addr.subsumes(next, next2)
+      case _ => false
+    }
+    def getFrame = frame
+  }
+
   val primitives = new Primitives[Abs, Addr]()
   case class State(control: Control, σ: Store[Addr, Abs], a: Addr) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
@@ -35,20 +43,27 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     override def toString() = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && addr.subsumes(a, that.a)
     private def integrate(actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
-      actions.map({
-        case ActionReachedValue(v, σ, a) => State(ControlKont(v), σ, a)
-        case ActionPush(e, κ, ρ, σ) => {
-          val a = addri.kont(e)
-          State(ControlEval(e, ρ), σ.extend(a, absi.inject(κ)), a)
+      actions.flatMap({
+        case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, a))
+        case ActionPush(e, frame, ρ, σ) => {
+          val next = addri.kont(e)
+          Set(State(ControlEval(e, ρ), σ.extend(next, absi.inject(AAMKont(frame, a))), next))
         }
-        case ActionEval(e, ρ, σ, a) => State(ControlEval(e, ρ), σ, a)
-        case ActionError(err) => State(ControlError(err), σ, a)
+        case ActionPop(e, ρ, σ) => abs.foldValues(σ.lookup(a),
+                                                  (v) => abs.getKont(v) match {
+                                                      case Some(κ) => κ match {
+                                                        case AAMKont(_, next) => Set(State(ControlEval(e, ρ), σ, next))
+                                                      }
+                                                    case None => Set[State]()
+                                                  })
+        case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, a))
+        case ActionError(err) => Set(State(ControlError(err), σ, a))
       })
     def step: Set[State] = integrate(control match {
-      case ControlEval(e, ρ) => sem.stepEval(e, ρ, σ, a)
+      case ControlEval(e, ρ) => sem.stepEval(e, ρ, σ)
       case ControlKont(v) => abs.foldValues(σ.lookup(a),
                                             (v2) => abs.getKont(v2) match {
-                                              case Some(κ) => sem.stepKont(v, σ, κ)
+                                              case Some(κ) => sem.stepKont(v, σ, κ.getFrame)
                                               case None => Set()
                                             })
       case ControlError(_) => Set()
