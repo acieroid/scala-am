@@ -13,6 +13,7 @@ case class ActionReachedValue[Exp : Expression, Abs : AbstractValue, Addr : Addr
 case class ActionPush[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, frame: Frame, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 case class ActionPop[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 case class ActionEval[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
+case class ActionStepIn[Exp : Expression, Abs : AbstractValue, Addr : Address](clo: (Exp, Environment[Addr]), e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 case class ActionError[Exp : Expression, Abs : AbstractValue, Addr : Address](reason: String) extends Action[Exp, Abs, Addr]
 
 class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
@@ -77,7 +78,7 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
               abs.foldValues(fv, (v) => abs.getClosure[ANFExp, Addr](v) match {
                 case Some((ANFLambda(args, body), ρ)) => if (args.length == argsv.length) {
                   bindArgs(args.zip(argsv), ρ, σ) match {
-                    case (ρ, σ) => Set(ActionEval(body, ρ, σ))
+                    case (ρ2, σ) => Set(ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ))
                   }
                 } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
                 case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))

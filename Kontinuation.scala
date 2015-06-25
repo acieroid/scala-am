@@ -1,5 +1,6 @@
 trait Frame {
   def subsumes(that: Frame): Boolean
+  def isCallFrame: Boolean
 }
 
 trait Kontinuation {

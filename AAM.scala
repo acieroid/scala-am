@@ -57,6 +57,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
                                                     case None => Set[State]()
                                                   })
         case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, a))
+        case ActionStepIn(_, e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, a))
         case ActionError(err) => Set(State(ControlError(err), σ, a))
       })
     def step: Set[State] = integrate(control match {
