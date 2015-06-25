@@ -1,4 +1,5 @@
 import AbstractValue._
+import scalaz.Scalaz._
 
 /**
  * Implementation of Johnson's CESIK*Ξ machine with a global continuation store
@@ -55,19 +56,23 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     def isEmpty = frames.isEmpty
     def deconstruct = frames match {
       case List() => None
-      case h :: t => Some((h, new LocalKont(t)))
+      case h :: t => Some((h, LocalKont(t)))
     }
     def push(frame: Frame): LocalKont = new LocalKont(frame :: frames)
   }
 
   case class KontStore(content: Map[Context, Set[(LocalKont, Kont)]]) {
+    def this() = this(Map())
     def lookup(τ: Context): Set[(LocalKont, Kont)] = content.getOrElse(τ, Set())
     def extend(τ: Context, v: (LocalKont, Kont)): KontStore = KontStore(content + (τ -> (lookup(τ) + v)))
+    def join(that: KontStore): KontStore =
+      KontStore(content |+| that.content)
   }
+
 
   case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-                              Store.empty[Addr, Abs]().extend(primitives.forStore), new LocalKont(), KontEmpty)
+                               Store.empty[Addr, Abs]().extend(primitives.forStore), new LocalKont(), KontEmpty)
     override def toString() = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ)
 
@@ -134,7 +139,42 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     }
   }
 
-  def eval(exp: Exp): Set[State] = {
-    Set(new State(exp)) /* TODO */
+  /* frontier-based state exploration */
+  def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State], Ξ: KontStore): (Set[State], Graph[State]) = {
+    if (todo.isEmpty) {
+      (halted, graph)
+    } else {
+      val (edges, xi2) = todo.foldLeft((Set[(State, State)](), Ξ))({ (acc, ς) =>
+        ς.step(Ξ) match {
+          case (next, xi2) => (acc._1 ++ next.map((ς2) => (ς, ς2)), acc._2.join(xi2))
+        }
+      })
+      loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
+           visited ++ todo,
+           halted ++ todo.filter((ς) => ς.halted),
+           graph.addEdges(edges),
+           xi2)
+    }
+  }
+
+  def outputDot(graph: Graph[State], path: String) =
+    graph.toDotFile(path, _.toString.take(40), _.control match {
+      case ControlEval(_, _) => "#DDFFDD"
+      case ControlKont(_) => "#FFDDDD"
+      case ControlError(_) => "#FF0000"
+    })
+
+
+  def eval(exp: Exp, dotfile: Option[String]): Set[State] = {
+    loop(Set(new State(exp)), Set(), Set(), new Graph[State](), new KontStore()) match {
+      case (halted, graph: Graph[State]) => {
+        println(s"${graph.size} states")
+        dotfile match {
+          case Some(file) => outputDot(graph, file)
+          case None => ()
+        }
+        halted
+      }
+    }
   }
 }
