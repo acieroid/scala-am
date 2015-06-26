@@ -114,6 +114,7 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
       }
       case None => Set(ActionError(s"Unbound variable: ${variable}"))
     }
+    case ANFQuoted(SExpIdentifier(sym)) => Set(ActionReachedValue(absi.injectSymbol(sym), σ))
     case ANFQuoted(sexp) => Set(ActionError("TODO: quoted values not yet handled"))
   }
 

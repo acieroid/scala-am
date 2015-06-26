@@ -34,6 +34,8 @@ trait AbstractInjection[A] {
   def inject[Kont <: Kontinuation](x: Kont): A
   /** Injection of a closure */
   def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): A
+  /** Injection of a symbol */
+  def injectSymbol(x: String): A
 }
 
 class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {

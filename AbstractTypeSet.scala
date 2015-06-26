@@ -24,6 +24,9 @@ object AbstractTypeSet {
   object AbstractString extends AbstractTypeSet {
     override def toString = "String"
   }
+  object AbstractSymbol extends AbstractTypeSet {
+    override def toString = "Symbol"
+  }
   object AbstractTrue extends AbstractTypeSet {
     override def toString = "#t"
   }
@@ -109,5 +112,6 @@ object AbstractTypeSet {
     def inject(x: (String, List[A] => Either[String, A])) = AbstractPrimitive(x._1, x._2)
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
+    def injectSymbol(x: String) = AbstractSymbol
   }
 }

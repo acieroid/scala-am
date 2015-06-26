@@ -29,6 +29,9 @@ object AbstractType {
   object AbstractString extends AbstractType {
     override def toString = "String"
   }
+  object AbstractSymbol extends AbstractType {
+    override def toString = "Symbol"
+  }
   object AbstractBool extends AbstractType {
     override def toString = "Bool"
     override def isTrue = true
@@ -80,5 +83,6 @@ object AbstractType {
     def inject(x: (String, List[AbstractType] => Either[String, AbstractType])) = AbstractPrimitive(x._1, x._2)
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
+    def injectSymbol(x: String) = AbstractSymbol
   }
 }
