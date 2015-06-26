@@ -5,6 +5,9 @@ sealed abstract class Value
 case class ValueString(value: String) extends Value {
   override def toString() = "\"" + value + "\"" // https://issues.scala-lang.org/browse/SI-6476
 }
+case class ValueSymbol(sym: String) extends Value {
+  override def toString() = sym
+}
 case class ValueInteger(value: Integer) extends Value {
   override def toString() = value.toString
 }

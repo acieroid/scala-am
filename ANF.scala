@@ -97,6 +97,8 @@ object ANFCompiler {
       ret(ANFQuoted(quoted), tail, k)
     case SchemeValue(value) =>
       k(ANFValue(value))
+    case _ =>
+      throw new Exception(s"Unhandled expression in ANF compiler: $exp")
   }
 
   /** Return a non-atomic value to a continuation, storing the result in a

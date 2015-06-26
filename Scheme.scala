@@ -58,18 +58,22 @@ case class SchemeCond(clauses: List[(SchemeExp, List[SchemeExp])]) extends Schem
     s"(cond $c)"
   }
 }
-/*
-case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[SchemeExp])]) extends SchemeExp {
+
+case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[SchemeExp])], default: List[SchemeExp]) extends SchemeExp {
   override def toString() = {
     val c = clauses.map({ case (datums, cons) => {
       val d = datums.mkString(" ")
       val b = cons.mkString(" ")
       s"(($d) $b)"
     }}).mkString(" ")
-    s"(case $key $c)"
+    if (default.isEmpty) {
+      s"(case $key $c)"
+    } else {
+      s"(case $key $c (else ${default.mkString(" ")}))"
+    }
   }
 }
-*/
+
 case class SchemeAnd(exps: List[SchemeExp]) extends SchemeExp {
   override def toString() = {
     val e = exps.mkString(" ")
@@ -147,8 +151,10 @@ object SchemeCompiler {
       SchemeBegin(compileBody(body))
     case SExpPair(SExpIdentifier("cond"), clauses) =>
       SchemeCond(compileCondClauses(clauses))
-    case SExpPair(SExpIdentifier("case"), _) =>
-      throw new Exception(s"TODO: case not yet handled")
+    case SExpPair(SExpIdentifier("case"), SExpPair(exp, clauses)) => {
+      val (c, d) = compileCaseClauses(clauses)
+      SchemeCase(compile(exp), c, d)
+    }
     case SExpPair(SExpIdentifier("and"), args) =>
       SchemeAnd(compileBody(args))
     case SExpPair(SExpIdentifier("or"), args) =>
@@ -193,12 +199,33 @@ object SchemeCompiler {
 
   def compileCondClauses(clauses: SExp): List[(SchemeExp, List[SchemeExp])] = clauses match {
     case SExpPair(SExpPair(SExpIdentifier("else"), SExpPair(first, rest)),
-      SExpValue(ValueNil())) =>
+                  SExpValue(ValueNil())) =>
       List((SchemeValue(ValueBoolean(true)), compile(first) :: compileBody(rest)))
     case SExpPair(SExpPair(cond, SExpPair(first, rest)), restClauses) =>
       (compile(cond), compile(first) :: compileBody(rest)) :: compileCondClauses(restClauses)
     case SExpValue(ValueNil()) => Nil
     case _ => throw new Exception(s"Invalid Scheme cond clauses: $clauses")
+  }
+
+  def compileCaseClauses(clauses: SExp): (List[(List[SchemeValue], List[SchemeExp])], List[SchemeExp]) = clauses match {
+    case SExpPair(SExpPair(SExpIdentifier("else"), SExpPair(first, rest)),
+                  SExpValue(ValueNil())) =>
+      (List(), compile(first) :: compileBody(rest))
+    case SExpPair(SExpPair(objects, body), restClauses) =>
+      val (compiled, default) = compileCaseClauses(restClauses)
+      ((compileCaseObjects(objects), compileBody(body)) :: compiled, default)
+    case SExpValue(ValueNil()) => (Nil, Nil)
+    case _ => throw new Exception(s"Invalid Scheme case clauses: $clauses")
+  }
+
+  def compileCaseObjects(objects: SExp): List[SchemeValue] = objects match {
+    case SExpPair(SExpValue(v), rest) =>
+      SchemeValue(v) :: compileCaseObjects(rest)
+    case SExpPair(SExpIdentifier(id), rest) =>
+      /* identifiers in case expressions are treated as symbols */
+      SchemeValue(ValueSymbol(id)) :: compileCaseObjects(rest)
+    case SExpValue(ValueNil()) => Nil
+    case _ => throw new Exception(s"Invalid Scheme case objects: $objects")
   }
 }
 
@@ -272,7 +299,7 @@ object SchemeRenamer {
     case SchemeCond(clauses) =>
       clauses.foldLeft((List[(SchemeExp, List[SchemeExp])](), count))(
         (st: (List[(SchemeExp, List[SchemeExp])], CountMap),
-          cl: (SchemeExp, List[SchemeExp])) =>
+         cl: (SchemeExp, List[SchemeExp])) =>
         (st, cl) match {
           case ((l, cs), (e, body)) => rename(e, names, cs) match {
             case (e1, count1) => renameList(body, names, count1) match {
@@ -282,6 +309,21 @@ object SchemeRenamer {
           }
         }) match {
         case (l, count1) => (SchemeCond(l.reverse), count1)
+      }
+    case SchemeCase(exp, clauses, default) =>
+      rename(exp, names, count) match {
+          case (exp1, count1) => clauses.foldLeft((List[(List[SchemeValue], List[SchemeExp])](), count))(
+              (st: (List[(List[SchemeValue], List[SchemeExp])], CountMap),
+               cl: (List[SchemeValue], List[SchemeExp])) =>
+            (st, cl) match {
+                case ((l, cs), (objs, body)) => renameList(body, names, cs) match {
+                    case (body1, count1) => ((objs, body1) :: l, count1)
+                }
+            }) match {
+              case (l, count1) => renameList(default, names, count1) match {
+                  case (default1, count2) => (SchemeCase(exp1, l.reverse, default1), count2)
+              }
+          }
       }
     case SchemeAnd(exps) =>
       renameList(exps, names, count) match {
@@ -311,7 +353,7 @@ object SchemeRenamer {
     }
     case SchemeValue(v) =>
       (SchemeValue(v), count)
-    case _ => throw new Exception("Unhandled expression in renamer: $exp")
+    case _ => throw new Exception(s"Unhandled expression in renamer: $exp")
   }
 
   /** Renames a list of expressions executed sequentially (eg. within a begin) */
