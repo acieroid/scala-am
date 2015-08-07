@@ -11,7 +11,6 @@ trait Semantics[Exp, Abs, Addr] {
 abstract class Action[Exp : Expression, Abs : AbstractValue, Addr : Address]
 case class ActionReachedValue[Exp : Expression, Abs : AbstractValue, Addr : Address](v: Abs, σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 case class ActionPush[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, frame: Frame, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
-case class ActionPop[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 case class ActionEval[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 case class ActionStepIn[Exp : Expression, Abs : AbstractValue, Addr : Address](clo: (Exp, Environment[Addr]), e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 case class ActionError[Exp : Expression, Abs : AbstractValue, Addr : Address](reason: String) extends Action[Exp, Abs, Addr]
@@ -124,10 +123,10 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
     case FrameHalt => Set()
     case FrameLet(variable, body, ρ) => {
       val vara = addri.variable(variable)
-      Set(ActionPop(body, ρ.extend(variable, vara), σ.extend(vara, v)))
+      Set(ActionEval(body, ρ.extend(variable, vara), σ.extend(vara, v)))
     }
     case FrameLetrec(variable, vara, body, ρ) =>
-      Set(ActionPop(body, ρ, σ.extend(vara, v)))
+      Set(ActionEval(body, ρ, σ.extend(vara, v)))
   }
 }
 

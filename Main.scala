@@ -11,10 +11,10 @@ object Main {
   }
 
   def runScheme[Abs, Addr](file: String, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
-    /* val anf = ANF.compile(Scheme.rename(Scheme.compile(SExpParser.parse(fileContent(file)))))
-    var aam = new AAM[Abs, Addr, ANFExp](new ANFSemantics[Abs, Addr]) */
-    val p = Scheme.compile(SExpParser.parse(fileContent(file)))
-    var aac = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+    val p = ANF.compile(Scheme.rename(Scheme.compile(SExpParser.parse(fileContent(file)))))
+    var aac = new AAC[Abs, Addr, ANFExp](new ANFSemantics[Abs, Addr])
+    /* val p = Scheme.compile(SExpParser.parse(fileContent(file)))
+    var aac = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr]) */
     println(aac.eval(p, output))
   }
 

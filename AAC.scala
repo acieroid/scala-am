@@ -102,16 +102,13 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     private def pop(ι: LocalKont, κ: Kont, Ξ: KontStore): Set[(Frame, LocalKont, Kont)] =
       pop(ι, κ, Ξ, Set())
 
-    private def integrate(Ξ: KontStore, v: Abs, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
+    private def integrate(ι: LocalKont, κ: Kont, Ξ: KontStore, v: Abs, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
       actions.foldLeft((Set[State](), Ξ))({ (acc, act) =>
         val states = acc._1
         val Ξ = acc._2
         act match {
           case ActionReachedValue(v, σ) => (states + State(ControlKont(v), σ, ι, κ), Ξ)
           case ActionPush(e, frame, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ), Ξ)
-          case ActionPop(e, ρ, σ) =>
-            pop(ι, κ, Ξ).foldLeft(acc)((acc, popped) =>
-              (acc._1 + State(ControlEval(e, ρ), σ, popped._2, popped._3), acc._2))
           case ActionEval(e, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι, κ), Ξ)
           case ActionStepIn(clo, e, ρ, σ) => {
             val τ = Context(clo, v, σ)
@@ -121,17 +118,16 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
           case ActionError(err) => (states + State(ControlError(err), σ, ι, κ), Ξ)
         }})
 
-    def step(Ξ: KontStore): (Set[State], KontStore) = integrate(Ξ, control match {
-      case ControlKont(v) => v
-      case _ => absi.bottom
-    }, control match {
-      case ControlEval(e, ρ) => sem.stepEval(e, ρ, σ)
-      case ControlKont(v) => {
-        pop(ι, κ, Ξ).foldLeft(Set[Action[Exp, Abs, Addr]]())((acc, popped) =>
-          acc ++ sem.stepKont(v, σ, popped._1))
-      }
-      case ControlError(_) => Set()
-    })
+    def step(Ξ: KontStore): (Set[State], KontStore) = control match {
+      case ControlEval(e, ρ) => integrate(ι, κ, Ξ, absi.bottom, sem.stepEval(e, ρ, σ))
+      case ControlKont(v) =>
+        pop(ι, κ, Ξ).foldLeft((Set[State](), Ξ))((acc, popped) => {
+          val (states, Ξ) = integrate(popped._2, popped._3, acc._2, v, sem.stepKont(v, σ, popped._1))
+          (acc._1 ++ states, Ξ)
+        })
+      case ControlError(_) => (Set(), Ξ)
+    }
+
     def halted = control match {
       case ControlEval(_, _) => false
       case ControlKont(_) => ι.isEmpty && κ.equals(KontEmpty)

@@ -42,33 +42,28 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
                               Store.empty[Addr, Abs]().extend(primitives.forStore), addri.halt)
     override def toString() = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && addr.subsumes(a, that.a)
-    private def integrate(actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
+    private def integrate(a: Addr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.flatMap({
         case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, a))
         case ActionPush(e, frame, ρ, σ) => {
           val next = addri.kont(e)
           Set(State(ControlEval(e, ρ), σ.extend(next, absi.inject(AAMKont(frame, a))), next))
         }
-        case ActionPop(e, ρ, σ) => abs.foldValues(σ.lookup(a),
-                                                  (v) => abs.getKont(v) match {
-                                                      case Some(κ) => κ match {
-                                                        case AAMKont(_, next) => Set(State(ControlEval(e, ρ), σ, next))
-                                                      }
-                                                    case None => Set[State]()
-                                                  })
         case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, a))
         case ActionStepIn(_, e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, a))
         case ActionError(err) => Set(State(ControlError(err), σ, a))
       })
-    def step: Set[State] = integrate(control match {
-      case ControlEval(e, ρ) => sem.stepEval(e, ρ, σ)
+    def step: Set[State] = control match {
+      case ControlEval(e, ρ) => integrate(a, sem.stepEval(e, ρ, σ))
       case ControlKont(v) => abs.foldValues(σ.lookup(a),
-                                            (v2) => abs.getKont(v2) match {
-                                              case Some(κ) => sem.stepKont(v, σ, κ.getFrame)
+                                            (v2) => { abs.getKont(v2) match {
+                                              case Some(κ) => κ match {
+                                                case AAMKont(frame, next) => integrate(next, sem.stepKont(v, σ, frame))
+                                              }
                                               case None => Set()
-                                            })
+                                            }} : Set[State])
       case ControlError(_) => Set()
-    })
+    }
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
       case ControlKont(_) => a.equals(addri.halt)
