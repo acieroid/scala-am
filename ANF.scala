@@ -94,6 +94,7 @@ object ANFCompiler {
     case SchemeIdentifier(name) =>
       k(ANFIdentifier(name))
     case SchemeQuoted(quoted) =>
+      /* a quoted value is not atomic, as it may require an allocation to be evaluated */
       ret(ANFQuoted(quoted), tail, k)
     case SchemeValue(value) =>
       k(ANFValue(value))

@@ -414,4 +414,8 @@ object Scheme {
     */
   def rename(exp: SchemeExp): SchemeExp = SchemeRenamer.rename(exp)
 
+  /**
+    * Replace defines in a program (a list of expressions) by a big letrec as a single expression
+    */
+  def undefine(exp: List[SchemeExp]): SchemeExp = throw new Exception("TODO: Scheme undefiner not implemented yet")
 }
