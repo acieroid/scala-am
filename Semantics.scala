@@ -163,6 +163,12 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
       (ρ.extend(name, a), σ.extend(a, value))
     }})
 
+  def evalBody(body: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Action[SchemeExp, Abs, Addr] = body match {
+    case Nil => ActionReachedValue(absi.bottom /* TODO: undefined */, σ)
+    case List(exp) => ActionEval(exp, ρ, σ)
+    case exp :: rest => ActionPush(exp, FrameBegin(rest, ρ), ρ, σ)
+  }
+
   def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
     case λ: SchemeLambda => Set(ActionReachedValue(absi.inject[SchemeExp, Addr]((λ, ρ)), σ))
     case SchemeFuncall(f, args) => Set(ActionPush(f, FrameFuncallOperator(args, ρ), ρ, σ))
@@ -176,10 +182,13 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
       Set(ActionPush(exp, FrameLetRec(addresses, bindings, body, ρ1), ρ1, σ1))
     }
     case SchemeSet(variable, exp) => Set(ActionPush(exp, FrameSet(variable, ρ), ρ, σ))
-    case SchemeBegin(exp :: exps) => Set(ActionPush(exp, FrameBegin(exps, ρ), ρ, σ))
+    case SchemeBegin(body) => Set(evalBody(body, ρ, σ))
+    case SchemeCond(Nil) => Set(ActionError(s"cond without clauses"))
     case SchemeCond((cond, cons) :: clauses) => Set(ActionPush(cond, FrameCond(cons, clauses, ρ), ρ, σ))
     case SchemeCase(key, clauses, default) => Set(ActionPush(key, FrameCase(clauses, default, ρ), ρ, σ))
+    case SchemeAnd(Nil) => Set(ActionReachedValue(absi.inject(true), σ))
     case SchemeAnd(exp :: exps) => Set(ActionPush(exp, FrameAnd(exps, ρ), ρ, σ))
+    case SchemeOr(Nil) => Set(ActionReachedValue(absi.inject(false), σ))
     case SchemeOr(exp :: exps) => Set(ActionPush(exp, FrameOr(exps, ρ), ρ, σ))
     case SchemeDefineVariable(name, exp) => Set(ActionPush(exp, FrameDefine(name, ρ), ρ, σ))
     case SchemeDefineFunction(name, args, body) => {
@@ -206,11 +215,79 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
         case Some(v) => Set(ActionReachedValue(v, σ))
         case None => Set(ActionError(s"Unhandled value: $v"))
       }
+    }
   }
-  }
+
+  def conditional(v: Abs, t: Action[SchemeExp, Abs, Addr], f: Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
+    (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
+
+  def evalCall(function: Abs, argsv: List[Abs], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
+    abs.foldValues(function, (v) =>
+                   abs.getClosure[SchemeExp, Addr](v) match {
+                     case Some((SchemeLambda(args, body), ρ1)) =>
+                       if (args.length == argsv.length) {
+                         bindArgs(args.zip(argsv), ρ1, σ) match {
+                           case (ρ2, σ) => Set(ActionStepIn((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ))
+                         }
+                       } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
+                     case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))
+                     case None => abs.getPrimitive(v) match {
+                       case Some((name, f)) => f(argsv) match {
+                         case Right(res) => Set(ActionReachedValue(res, σ))
+                         case Left(err) => Set(ActionError(err))
+                       }
+                       case None => Set(ActionError(s"Called value is not a function: $v"))
+                     }
+                   })
 
   def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {
     case FrameHalt => Set()
-    case _ => throw new Exception(s"Unhandled frame: $frame")
+    case FrameFuncallOperator(Nil, ρ) => evalCall(v, Nil, ρ, σ)
+    case FrameFuncallOperator(arg :: args, ρ) => Set(ActionPush(arg, FrameFuncallOperands(v, List(), args, ρ), ρ, σ))
+    case FrameFuncallOperands(f, args, Nil, ρ) => evalCall(f, (v :: args).reverse, ρ, σ)
+    case FrameFuncallOperands(f, args, e :: toeval, ρ) => Set(ActionPush(e, FrameFuncallOperands(f, v :: args, toeval, ρ), ρ, σ))
+    case FrameIf(cons, alt, ρ) =>
+      conditional(v, ActionEval(cons, ρ, σ), ActionEval(alt, ρ, σ))
+    case FrameLet(name, bindings, Nil, body, ρ) => {
+      val variables = name :: bindings.reverse.map(_._1)
+      val addresses = variables.map(addri.variable)
+      val (ρ1, σ1) = ((name, v) :: bindings).zip(addresses).foldLeft((ρ, σ))({
+        case ((ρ, σ), ((variable, value), addr)) => (ρ.extend(variable, addr), σ.extend(addr, value))
+      })
+      Set(evalBody(body, ρ1, σ1))
+    }
+    case FrameLet(name, bindings, (variable, e) :: toeval, body, ρ) =>
+      Set(ActionPush(e, FrameLet(variable, (name, v) :: bindings, toeval, body, ρ), ρ, σ))
+    case FrameLetStar(name, bindings, body, ρ) => {
+      val addr = addri.variable(name)
+      val ρ1 = ρ.extend(name, addr)
+      val σ1 = σ.extend(addr, v)
+      bindings match {
+        case Nil => Set(evalBody(body, ρ1, σ1))
+        case (variable, exp) :: rest => Set(ActionPush(exp, FrameLetStar(variable, rest, body, ρ), ρ1, σ1))
+      }
+    }
+    case FrameSet(name, ρ) => ρ.lookup(name) match {
+      case Some(a) => Set(ActionReachedValue(absi.bottom /* TODO: undefined */, σ.extend(a, v)))
+      case None => Set(ActionError(s"Unbound variable: $name"))
+    }
+    case FrameBegin(body, ρ) => Set(evalBody(body, ρ, σ))
+    case FrameCond(cons, Nil, ρ) =>
+      conditional(v, evalBody(cons, ρ, σ), ActionReachedValue(absi.bottom, σ))
+    case FrameCond(cons, (exp, cons2) :: rest, ρ) =>
+      conditional(v, evalBody(cons, ρ, σ), ActionPush(exp, FrameCond(cons2, rest, ρ), ρ, σ))
+    case FrameCase(clauses, default, ρ) => throw new Exception(s"TODO: case not handled (yet)")
+      /* TODO: find every clause that can be true, generate one successor per
+         clause in order, until a clause that can't be false is reached. If none
+         is reached, generate a successor for the default */
+    case FrameAnd(Nil, ρ) =>
+      conditional(v, ActionReachedValue(v, σ), ActionReachedValue(absi.inject(false), σ))
+    case FrameAnd(e :: rest, ρ) =>
+      conditional(v, ActionPush(e, FrameAnd(rest, ρ), ρ, σ), ActionReachedValue(absi.inject(false), σ))
+    case FrameOr(Nil, ρ) =>
+      conditional(v, ActionReachedValue(v, σ), ActionReachedValue(absi.inject(false), σ))
+    case FrameOr(e :: rest, ρ) =>
+      conditional(v, ActionReachedValue(v, σ), ActionPush(e, FrameOr(rest, ρ), ρ, σ))
+    case FrameDefine(name, ρ) => throw new Exception(s"TODO: define not handled (no global environment)")
   }
 }
