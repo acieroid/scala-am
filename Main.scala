@@ -20,9 +20,9 @@ object Main {
 
   def main(args: Array[String]) {
     if (args.length == 1) {
-      runScheme[AbstractConcrete, ClassicalAddress](args(0), None)
+      runScheme[AbstractTypeSet, ClassicalAddress](args(0), None)
     } else if (args.length == 2) {
-      runScheme[AbstractConcrete, ClassicalAddress](args(0), Some(args(1)))
+      runScheme[AbstractTypeSet, ClassicalAddress](args(0), Some(args(1)))
     } else {
       println("Scheme file expected as argument")
     }

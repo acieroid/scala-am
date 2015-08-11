@@ -4,26 +4,73 @@ import AbstractValue._
 trait AbstractType {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
+  def isError: Boolean = false
   def foldValues[A](f: AbstractType => Set[A]): Set[A] = f(this)
   def join(that: AbstractType): AbstractType = if (this.equals(that)) { this } else { AbstractType.AbstractTop }
   def meet(that: AbstractType): AbstractType = if (this.equals(that)) { this } else { AbstractType.AbstractBottom }
   def subsumes(that: AbstractType): Boolean = this.equals(that)
-  def plus(that: AbstractType): AbstractType = AbstractType.AbstractBottom
+  def plus(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def minus(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def times(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def div(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def lt(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def numEq(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def not: AbstractType = AbstractType.AbstractError
+  def and(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def or(that: AbstractType): AbstractType = AbstractType.AbstractError
 }
 
+/** Lattice: Top > Error || String || Int || Boolean || Symbol > Bottom */
 object AbstractType {
   object AbstractTop extends AbstractType {
     override def toString = "⊤"
     override def isTrue = true
     override def isFalse = true
-    override def plus(that: AbstractType) = this
+    override def plus(that: AbstractType) = AbstractTop
+    override def minus(that: AbstractType) = AbstractTop
+    override def times(that: AbstractType) = AbstractTop
+    override def div(that: AbstractType) = AbstractTop
+    override def lt(that: AbstractType) = AbstractTop
+    override def numEq(that: AbstractType) = AbstractTop
+    override def not = AbstractTop
+    override def and(that: AbstractType) = AbstractTop
+    override def or(that: AbstractType) = AbstractTop
+  }
+  object AbstractError extends AbstractType {
+    override def toString = "error"
+    override def isError = true
   }
   object AbstractInt extends AbstractType {
     override def toString = "Int"
     override def plus(that: AbstractType) = that match {
       case AbstractTop => AbstractTop
       case AbstractInt => AbstractInt
-      case _ => AbstractBottom
+      case _ => super.plus(that)
+    }
+    override def minus(that: AbstractType) = that match {
+      case AbstractTop => AbstractTop
+      case AbstractInt => AbstractInt
+      case _ => super.minus(that)
+    }
+    override def times(that: AbstractType) = that match {
+      case AbstractTop => AbstractTop
+      case AbstractInt => AbstractInt
+      case _ => super.times(that)
+    }
+    override def div(that: AbstractType) = that match {
+      case AbstractTop => AbstractTop
+      case AbstractInt => AbstractInt
+      case _ => super.div(that)
+    }
+    override def lt(that: AbstractType) = that match {
+      case AbstractTop => AbstractTop
+      case AbstractInt => AbstractBool
+      case _ => super.lt(that)
+    }
+    override def numEq(that: AbstractType) = that match {
+      case AbstractTop => AbstractTop
+      case AbstractInt => AbstractBool
+      case _ => super.numEq(that)
     }
   }
   object AbstractString extends AbstractType {
@@ -36,6 +83,17 @@ object AbstractType {
     override def toString = "Bool"
     override def isTrue = true
     override def isFalse = true
+    override def not = AbstractBool
+    override def and(that: AbstractType) = that match {
+      case AbstractTop => AbstractTop
+      case AbstractBool => AbstractBool
+      case _ => super.and(that)
+    }
+    override def or(that: AbstractType) = that match {
+      case AbstractTop => AbstractTop
+      case AbstractBool => AbstractBool
+      case _ => super.or(that)
+    }
   }
   object AbstractBottom extends AbstractType {
     override def toString = "⊥"
@@ -56,11 +114,23 @@ object AbstractType {
   implicit object AbstractTypeAbstractValue extends AbstractValue[AbstractType] {
     def isTrue(x: AbstractType) = x.isTrue
     def isFalse(x: AbstractType) = x.isFalse
+    def isError(x: AbstractType) = x.isError
     def foldValues[B](x: AbstractType, f: AbstractType => Set[B]) = x.foldValues(f)
     def join(x: AbstractType, y: AbstractType) = x.join(y)
     def meet(x: AbstractType, y: AbstractType) = x.meet(y)
     def subsumes(x: AbstractType, y: AbstractType) = x.subsumes(y)
     def plus(x: AbstractType, y: AbstractType) = x.plus(y)
+    def minus(x: AbstractType, y: AbstractType) = x.minus(y)
+    def times(x: AbstractType, y: AbstractType) = x.times(y)
+    def div(x: AbstractType, y: AbstractType) = x.div(y)
+    def lt(x: AbstractType, y: AbstractType) = x.lt(y)
+    def numEq(x: AbstractType, y: AbstractType) = x.numEq(y)
+    def not(x: AbstractType) = x.not
+    def and(x: AbstractType, y: AbstractType) = x.and(y)
+    def or(x: AbstractType, y: AbstractType) = x.or(y)
+
+    def random = AbstractInt
+
     def getKont(x: AbstractType) = x match {
       case AbstractKontinuation(κ) => Some(κ)
       case _ => None
