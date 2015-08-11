@@ -173,8 +173,11 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
     case λ: SchemeLambda => Set(ActionReachedValue(absi.inject[SchemeExp, Addr]((λ, ρ)), σ))
     case SchemeFuncall(f, args) => Set(ActionPush(f, FrameFuncallOperator(args, ρ), ρ, σ))
     case SchemeIf(cond, cons, alt) => Set(ActionPush(cond, FrameIf(cons, alt, ρ), ρ, σ))
+    case SchemeLet(Nil, body) => Set(evalBody(body, ρ, σ))
     case SchemeLet((v, exp) :: bindings, body) => Set(ActionPush(exp, FrameLet(v, List(), bindings, body, ρ), ρ, σ))
+    case SchemeLetStar(Nil, body) => Set(evalBody(body, ρ, σ))
     case SchemeLetStar((v, exp) :: bindings, body) => Set(ActionPush(exp, FrameLetStar(v, bindings, body, ρ), ρ, σ))
+    case SchemeLetrec(Nil, body) => Set(evalBody(body, ρ, σ))
     case SchemeLetrec((v, exp) :: bindings, body) => {
       val variables = v :: bindings.map(_._1)
       val addresses = variables.map(addri.variable)
