@@ -145,7 +145,7 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
   case class FrameIf(cons: SchemeExp, alt: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameLet(variable: String, bindings: List[(String, Abs)], toeval: List[(String, SchemeExp)], body: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
   case class FrameLetStar(variable: String, bindings: List[(String, SchemeExp)], body: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
-  case class FrameLetRec(addrs: List[Addr], bindings: List[(String, SchemeExp)], body: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameLetrec(addr: Addr, bindings: List[(Addr, SchemeExp)], body: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
   case class FrameSet(variable: String, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameBegin(rest: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCond(cons: List[SchemeExp], clauses: List[(SchemeExp, List[SchemeExp])], ρ: Environment[Addr]) extends SchemeFrame
@@ -182,7 +182,7 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
       val variables = v :: bindings.map(_._1)
       val addresses = variables.map(addri.variable)
       val (ρ1, σ1) = variables.zip(addresses).foldLeft((ρ, σ))({ case ((ρ, σ), (v, a)) => (ρ.extend(v, a), σ.extend(a, absi.bottom)) })
-      Set(ActionPush(exp, FrameLetRec(addresses, bindings, body, ρ1), ρ1, σ1))
+      Set(ActionPush(exp, FrameLetrec(addresses.head, addresses.tail.zip(bindings.map(_._2)), body, ρ1), ρ1, σ1))
     }
     case SchemeSet(variable, exp) => Set(ActionPush(exp, FrameSet(variable, ρ), ρ, σ))
     case SchemeBegin(body) => Set(evalBody(body, ρ, σ))
@@ -270,6 +270,9 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
         case (variable, exp) :: rest => Set(ActionPush(exp, FrameLetStar(variable, rest, body, ρ), ρ1, σ1))
       }
     }
+    case FrameLetrec(addr, Nil, body, ρ) => Set(evalBody(body, ρ, σ.extend(addr, v)))
+    case FrameLetrec(addr, (addr1, exp) :: rest, body, ρ) =>
+      Set(ActionPush(exp, FrameLetrec(addr1, rest, body, ρ), ρ, σ.extend(addr, v)))
     case FrameSet(name, ρ) => ρ.lookup(name) match {
       case Some(a) => Set(ActionReachedValue(absi.bottom /* TODO: undefined */, σ.extend(a, v)))
       case None => Set(ActionError(s"Unbound variable: $name"))
