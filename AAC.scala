@@ -120,11 +120,10 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
     def step(Ξ: KontStore): (Set[State], KontStore) = control match {
       case ControlEval(e, ρ) => integrate(ι, κ, Ξ, absi.bottom, sem.stepEval(e, ρ, σ))
-      case ControlKont(v) =>
-        pop(ι, κ, Ξ).foldLeft((Set[State](), Ξ))((acc, popped) => {
-          val (states, Ξ) = integrate(popped._2, popped._3, acc._2, v, sem.stepKont(v, σ, popped._1))
-          (acc._1 ++ states, Ξ)
-        })
+      case ControlKont(v) => pop(ι, κ, Ξ).foldLeft((Set[State](), Ξ))((acc, popped) => {
+        val (states, ksi1) = integrate(popped._2, popped._3, acc._2, v, sem.stepKont(v, σ, popped._1))
+        (acc._1 ++ states, ksi1)
+      })
       case ControlError(_) => (Set(), Ξ)
     }
 
