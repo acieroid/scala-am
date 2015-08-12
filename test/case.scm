@@ -1,0 +1,5 @@
+(case (* 2 3)
+  ((1 2 3) "foo")
+  ((4 5 6) "bar")
+  ((x y z) "foo")
+  (else "baz"))

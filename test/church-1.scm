@@ -1,0 +1,8 @@
+(letrec ((zero (lambda (f x) x))
+         (inc (lambda (n)
+                (lambda (f x)
+                  (f (n f x)))))
+         (plus (lambda (m n)
+                 (lambda (f x)
+                   (m f (n f x))))))
+  (inc zero))
