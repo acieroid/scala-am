@@ -1,6 +1,5 @@
 import org.scalatest._
 import org.scalatest.prop._
-import Address._
 
 abstract class AACFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
                                       addr: Address[Addr], addri: AddressInjection[Addr])
@@ -17,7 +16,7 @@ abstract class AACFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
 
   "fib.scm" should "eval to 3" in {
     val result = aacScheme.eval(loadScheme("test/fib.scm"), None)
-    println(result)
+    result.exists((st: aacScheme.State) => st.control match { case aacScheme.ControlKont(v) => abs.subsumes(v, absi.inject(3)) })
   }
 }
 
@@ -36,15 +35,14 @@ abstract class AAMFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
 
   "fib.scm" should "eval to 3" in {
     val result = aamScheme.eval(loadScheme("test/fib.scm"), None)
-    println(result)
+    result.exists((st: aamScheme.State) => st.control match { case aamScheme.ControlKont(v) => abs.subsumes(v, absi.inject(3)) })
   }
 }
 
-class AACConcreteTest extends AACFlatSpec[AbstractConcrete, ClassicalAddress]
-//class AACTypeTest extends AACFlatSpec[AbstractType, ClassicalAddress]
-//class AACTypeSetTest extends AACFlatSpec[AbstractTypeSet, ClassicalAddress]
+class AACConcreteTest extends AACFlatSpec[AbstractConcrete, ConcreteAddress]
+class AACTypeTest extends AACFlatSpec[AbstractType, ClassicalAddress]
+class AACTypeSetTest extends AACFlatSpec[AbstractTypeSet, ClassicalAddress]
 
-
-//class AAMConcreteTest extends AAMFlatSpec[AbstractConcrete, ClassicalAddress]
-//class AAMTypeTest extends AAMFlatSpec[AbstractType, ClassicalAddress]
-//class AAMTypeSetTest extends AAMFlatSpec[AbstractTypeSet, ClassicalAddress]
+class AAMConcreteTest extends AAMFlatSpec[AbstractConcrete, ConcreteAddress]
+class AAMTypeTest extends AAMFlatSpec[AbstractType, ClassicalAddress]
+class AAMTypeSetTest extends AAMFlatSpec[AbstractTypeSet, ClassicalAddress]
