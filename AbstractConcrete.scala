@@ -58,6 +58,8 @@ object AbstractConcrete {
   }
   case class AbstractBool(v: Boolean) extends AbstractConcrete {
     override def toString = if (v) "#t" else "#f"
+    override def isTrue = v
+    override def isFalse = !v
     override def not = if (v) AbstractBool(false) else AbstractBool(true)
     override def and(that: AbstractConcrete) = that match {
       case AbstractBool(v2) => AbstractBool(v && v2)
