@@ -1,8 +1,7 @@
-import AbstractConcrete._
 import org.scalatest._
-import prop._
+import org.scalatest.prop._
 
-class LatticeFlatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+class LatticeFlatSpec extends FlatSpec with Matchers {
   "AbstractTypeSet" should "not accept sets" in {
     val v = AbstractTypeSet.AbstractSet(Set())
     intercept[java.lang.IllegalArgumentException] {
@@ -11,41 +10,46 @@ class LatticeFlatSpec extends FlatSpec with Matchers with GeneratorDrivenPropert
   }
 }
 
-class LatticePropSpec extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
+abstract class LatticePropSpec[Abs](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs])
+         extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
   property("lattice should preserve boolean value and correctly implement not") {
     forAll { (b: Boolean) =>
-      val v = AbstractConcreteInjection.inject(b)
-      if (b) assert(v.isTrue) else assert(v.isFalse)
-      if (b) assert(v.not.isFalse) else assert(v.not.isTrue)
+      val v = absi.inject(b)
+      if (b) assert(abs.isTrue(v)) else assert(abs.isFalse(v))
+      if (b) assert(abs.isFalse(abs.not(v))) else assert(abs.isTrue(abs.not(v)))
     }
   }
   property("lattice should correctly implement boolean operations") {
     forAll { (b1: Boolean, b2: Boolean) =>
-      val v1 = AbstractConcreteInjection.inject(b1)
-      val v2 = AbstractConcreteInjection.inject(b2)
-      v1.and(v2).isTrue should be (b1 && b2)
-      v1.or(v2).isTrue should be (b1 || b2)
+      val v1 = absi.inject(b1)
+      val v2 = absi.inject(b2)
+      if (b1 && b2) assert(abs.isTrue(abs.and(v1, v2))) else assert(abs.isFalse(abs.and(v1, v2)))
+      if (b1 || b2) assert(abs.isTrue(abs.or(v1, v2))) else assert(abs.isFalse(abs.and(v1, v2)))
     }
   }
   property("lattice should correctly implement numerical comparisons") {
     forAll { (n1: Int, n2: Int) =>
-      val v1 = AbstractConcreteInjection.inject(n1)
-      val v2 = AbstractConcreteInjection.inject(n2)
-      if (n1 < n2) assert(v1.lt(v2).isTrue) else assert(v1.lt(v2).isFalse)
-      if (n1 == n2) assert(v1.numEq(v2).isTrue) else assert(v1.numEq(v2).isFalse)
+      val v1 = absi.inject(n1)
+      val v2 = absi.inject(n2)
+      if (n1 < n2) assert(abs.isTrue(abs.lt(v1, v2))) else assert(abs.isFalse(abs.lt(v1, v2)))
+      if (n1 == n2) assert(abs.isTrue(abs.numEq(v1, v2))) else assert(abs.isFalse(abs.numEq(v1, v2)))
     }
   }
   property("lattice should report errors on invalid operations") {
-    val v1 = AbstractConcreteInjection.inject(1)
-    val v2 = AbstractConcreteInjection.inject(true)
-    assert(v1.plus(v2).isError); assert(v2.plus(v1).isError)
-    assert(v1.minus(v2).isError); assert(v2.minus(v1).isError)
-    assert(v1.times(v2).isError); assert(v2.times(v1).isError)
-    assert(v1.div(v2).isError); assert(v2.div(v1).isError)
-    assert(v1.lt(v2).isError); assert(v2.lt(v1).isError)
-    assert(v1.numEq(v2).isError); assert(v2.numEq(v1).isError)
-    assert(v1.not.isError)
-    assert(v1.and(v2).isError); assert(v2.and(v1).isError)
-    assert(v1.or(v2).isError); assert(v2.or(v1).isError)
+    val v1 = absi.inject(1)
+    val v2 = absi.inject(true)
+    assert(abs.isError(abs.plus(v1, v2))); assert(abs.isError(abs.plus(v2, v1)))
+    assert(abs.isError(abs.minus(v1, v2))); assert(abs.isError(abs.minus(v2, v1)))
+    assert(abs.isError(abs.times(v1, v2))); assert(abs.isError(abs.times(v2, v1)))
+    assert(abs.isError(abs.div(v1, v2))); assert(abs.isError(abs.div(v2, v1)))
+    assert(abs.isError(abs.lt(v1, v2))); assert(abs.isError(abs.lt(v2, v1)))
+    assert(abs.isError(abs.numEq(v1, v2))); assert(abs.isError(abs.numEq(v2, v1)))
+    assert(abs.isError(abs.not(v1)))
+    assert(abs.isError(abs.and(v1, v2))); assert(abs.isError(abs.and(v2, v1)))
+    assert(abs.isError(abs.or(v1, v2))); assert(abs.isError(abs.or(v2, v1)))
   }
 }
+
+class AbstractConcreteTest extends LatticePropSpec[AbstractConcrete]
+class AbstractTypeTest extends LatticePropSpec[AbstractType]
+class AbstractTypeSetTest extends LatticePropSpec[AbstractTypeSet]
