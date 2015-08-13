@@ -76,55 +76,55 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     override def toString() = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ)
 
-    private def pop(ι: LocalKont, κ: Kont, Ξ: KontStore, G: Set[Kont]): Set[(Frame, LocalKont, Kont)] =
+    private def pop(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Set[(Frame, LocalKont, Kont)] =
       ι.deconstruct match {
         case None => κ match {
           case KontEmpty => Set()
           case KontCtx(τ) => {
-            val G2: Set[Kont] = Ξ.lookup(τ).flatMap({
+            val G2: Set[Kont] = kstore.lookup(τ).flatMap({
               case (ι, κ) => ι.deconstruct match {
                 case None => Set(κ)
                 case Some(_) => Set[Kont]()
               }
             }).diff(G)
             val GuG2 = G.union(G2)
-            Ξ.lookup(τ).flatMap({
+            kstore.lookup(τ).flatMap({
               case (ι, κ) => ι.deconstruct match {
                 case None => Set[(Frame, LocalKont, Kont)]()
                 case Some((top, rest)) => Set((top, rest, κ))
               }
-            }).union(G2.flatMap((κ) => pop(new LocalKont(), κ, Ξ, GuG2)))
+            }).union(G2.flatMap((κ) => pop(new LocalKont(), κ, kstore, GuG2)))
           }
         }
         case Some((top, rest)) => Set((top, rest, κ))
       }
 
-    private def pop(ι: LocalKont, κ: Kont, Ξ: KontStore): Set[(Frame, LocalKont, Kont)] =
-      pop(ι, κ, Ξ, Set())
+    private def pop(ι: LocalKont, κ: Kont, kstore: KontStore): Set[(Frame, LocalKont, Kont)] =
+      pop(ι, κ, kstore, Set())
 
-    private def integrate(ι: LocalKont, κ: Kont, Ξ: KontStore, v: Abs, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
-      actions.foldLeft((Set[State](), Ξ))({ (acc, act) =>
+    private def integrate(ι: LocalKont, κ: Kont, kstore: KontStore, v: Abs, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
+      actions.foldLeft((Set[State](), kstore))({ (acc, act) =>
         val states = acc._1
-        val Ξ = acc._2
+        val kstore = acc._2
         act match {
-          case ActionReachedValue(v, σ) => (states + State(ControlKont(v), σ, ι, κ), Ξ)
-          case ActionPush(e, frame, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ), Ξ)
-          case ActionEval(e, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι, κ), Ξ)
+          case ActionReachedValue(v, σ) => (states + State(ControlKont(v), σ, ι, κ), kstore)
+          case ActionPush(e, frame, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ), kstore)
+          case ActionEval(e, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι, κ), kstore)
           case ActionStepIn(clo, e, ρ, σ) => {
             val τ = Context(clo, v, σ)
             (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ)),
-             Ξ.extend(τ, (ι, κ)))
+             kstore.extend(τ, (ι, κ)))
           }
-          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ), Ξ)
+          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ), kstore)
         }})
 
-    def step(Ξ: KontStore): (Set[State], KontStore) = control match {
-      case ControlEval(e, ρ) => integrate(ι, κ, Ξ, absi.bottom, sem.stepEval(e, ρ, σ))
-      case ControlKont(v) => pop(ι, κ, Ξ).foldLeft((Set[State](), Ξ))((acc, popped) => {
-        val (states, ksi1) = integrate(popped._2, popped._3, acc._2, v, sem.stepKont(v, σ, popped._1))
-        (acc._1 ++ states, ksi1)
+    def step(kstore: KontStore): (Set[State], KontStore) = control match {
+      case ControlEval(e, ρ) => integrate(ι, κ, kstore, absi.bottom, sem.stepEval(e, ρ, σ))
+      case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore))((acc, popped) => {
+        val (states, kstore1) = integrate(popped._2, popped._3, acc._2, v, sem.stepKont(v, σ, popped._1))
+        (acc._1 ++ states, kstore1)
       })
-      case ControlError(_) => (Set(), Ξ)
+      case ControlError(_) => (Set(), kstore)
     }
 
     def halted = control match {
@@ -135,12 +135,12 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   }
 
   /* frontier-based state exploration */
-  def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State], Ξ: KontStore): (Set[State], Graph[State]) = {
+  def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State], kstore: KontStore): (Set[State], Graph[State]) = {
     if (todo.isEmpty) {
       (halted, graph)
     } else {
-      val (edges, xi2) = todo.foldLeft((Set[(State, State)](), Ξ))({ (acc, ς) =>
-        ς.step(Ξ) match {
+      val (edges, xi2) = todo.foldLeft((Set[(State, State)](), kstore))({ (acc, ς) =>
+        ς.step(kstore) match {
           case (next, xi2) => (acc._1 ++ next.map((ς2) => (ς, ς2)), acc._2.join(xi2))
         }
       })
