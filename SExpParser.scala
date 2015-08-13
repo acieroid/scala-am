@@ -79,7 +79,7 @@ class SExpLexer extends Lexical with SExpTokens {
   def eol: Parser[Any] = acceptIf(n => n == '\n')(n => "")
   def notEol: Parser[Char] = acceptIf(n => n != '\n')(n => "")
   def comment: Parser[String] = ';' ~> rep(notEol) <~ eol ^^ (_.mkString)
-  def nonRelevant: Parser[Unit] = whitespace ^^ (_ => ()) | comment ^^ (_ => ())
+  def nonRelevant: Parser[Unit] = (comment ~ nonRelevant | whitespace) ^^ (_ => ())
 
   def any: Parser[Char] = chrExcept()
   def chr(c: Char): Parser[Char] = elem(s"character $c", _ == c)
@@ -121,10 +121,10 @@ class SExpLexer extends Lexical with SExpTokens {
                                               }
                                             }
   def token: Parser[Token] =
-    (comment | whitespace) ~> {
+    nonRelevant ~> {
       bool | float | integer | character | string | identifier |
       quote | leftParen | rightParen
-    } <~ (comment | whitespace)
+    } <~ nonRelevant
 }
 
 object SExpParser extends TokenParsers {
