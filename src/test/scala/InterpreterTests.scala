@@ -19,15 +19,22 @@ abstract class AACFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
     assert(result.exists((st: aacScheme.State) => st.control match { case aacScheme.ControlKont(v) => abs.subsumes(v, expected) }))
   }
 
-  "blur.scm" should "eval to #t" in {
-    checkResult("blur.scm", absi.inject(true))
-  }
-  "count.scm" should "eval to \"done\"" in {
-    checkResult("count.scm", absi.inject("done"))
-  }
-  "fib.scm" should "eval to 3" in {
-    checkResult("fib.scm", absi.inject(3))
-  }
+  "blur.scm" should "eval to #t" in { checkResult("blur.scm", absi.inject(true)) }
+  "count.scm" should "eval to \"done\"" in { checkResult("count.scm", absi.inject("done")) }
+  "cpstak.scm" should "eval to 6" in { checkResult("cpstak.scm", absi.inject(6)) }
+  "fib.scm" should "eval to 3" in { checkResult("fib.scm", absi.inject(3)) }
+  "eta.scm" should "eval to #f" in { checkResult("eta.scm", absi.inject(false)) }
+  "fact.scm" should "eval to 120" in { checkResult("fact.scm", absi.inject(120)) }
+  "gcipd.scm" should "eval to 36" in { checkResult("gcipd.scm", absi.inject(36)) }
+  "inc.scm" should "eval to 2" in { checkResult("inc.scm", absi.inject(2)) }
+  "kcfa2.scm" should "eval to #f" in { checkResult("kcfa2.scm", absi.inject(false)) }
+  "kcfa3.scm" should "eval to #f" in { checkResult("kcfa3.scm", absi.inject(false)) }
+  "loop2.scm" should "eval to 550" in { checkResult("loop2.scm", absi.inject(550)) }
+  "mj09.scm" should "eval to 2" in { checkResult("mj09.scm", absi.inject(2)) }
+  "mut-rec.scm" should "eval to #t" in { checkResult("mut-rec.scm", absi.inject(true)) }
+  "rotate.scm" should "eval to \"hallo\"" in { checkResult("rotate.scm", absi.inject("hallo")) }
+  "sq.scm" should "eval to 9" in { checkResult("sq.scm", absi.inject(9)) }
+  "sym.scm" should "eval to 'foo" in { checkResult("sym.scm", absi.injectSymbol("foo")) }
 }
 
 abstract class AAMFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
@@ -43,10 +50,27 @@ abstract class AAMFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
     return Scheme.compile(SExpParser.parse(content))
   }
 
-  "fib.scm" should "eval to 3" in {
-    val result = aamScheme.eval(loadScheme("test/fib.scm"), None)
-    assert(result.exists((st: aamScheme.State) => st.control match { case aamScheme.ControlKont(v) => abs.subsumes(v, absi.inject(3)) }))
+  def checkResult(file: String, expected: Abs) = {
+    val result = aamScheme.eval(loadScheme(s"test/$file"), None)
+    assert(result.exists((st: aamScheme.State) => st.control match { case aamScheme.ControlKont(v) => abs.subsumes(v, expected) }))
   }
+
+  "blur.scm" should "eval to #t" in { checkResult("blur.scm", absi.inject(true)) }
+  "count.scm" should "eval to \"done\"" in { checkResult("count.scm", absi.inject("done")) }
+  "cpstak.scm" should "eval to 6" in { checkResult("cpstak.scm", absi.inject(6)) }
+  "fib.scm" should "eval to 3" in { checkResult("fib.scm", absi.inject(3)) }
+  "eta.scm" should "eval to #f" in { checkResult("eta.scm", absi.inject(false)) }
+  "fact.scm" should "eval to 120" in { checkResult("fact.scm", absi.inject(120)) }
+  "gcipd.scm" should "eval to 36" in { checkResult("gcipd.scm", absi.inject(36)) }
+  "inc.scm" should "eval to 2" in { checkResult("inc.scm", absi.inject(2)) }
+  "kcfa2.scm" should "eval to #f" in { checkResult("kcfa2.scm", absi.inject(false)) }
+  "kcfa3.scm" should "eval to #f" in { checkResult("kcfa3.scm", absi.inject(false)) }
+  "loop2.scm" should "eval to 550" in { checkResult("loop2.scm", absi.inject(550)) }
+  "mj09.scm" should "eval to 2" in { checkResult("mj09.scm", absi.inject(2)) }
+  "mut-rec.scm" should "eval to #t" in { checkResult("mut-rec.scm", absi.inject(true)) }
+  "rotate.scm" should "eval to \"hallo\"" in { checkResult("rotate.scm", absi.inject("hallo")) }
+  "sq.scm" should "eval to 9" in { checkResult("sq.scm", absi.inject(9)) }
+  "sym.scm" should "eval to 'foo" in { checkResult("sym.scm", absi.injectSymbol("foo")) }
 }
 
 class AACConcreteTest extends AACFlatSpec[AbstractConcrete, ConcreteAddress]
