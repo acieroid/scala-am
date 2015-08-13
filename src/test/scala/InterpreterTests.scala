@@ -14,9 +14,19 @@ abstract class AACFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
     return Scheme.compile(SExpParser.parse(content))
   }
 
+  def checkResult(file: String, expected: Abs) = {
+    val result = aacScheme.eval(loadScheme(s"test/$file"), None)
+    assert(result.exists((st: aacScheme.State) => st.control match { case aacScheme.ControlKont(v) => abs.subsumes(v, expected) }))
+  }
+
+  "blur.scm" should "eval to #t" in {
+    checkResult("blur.scm", absi.inject(true))
+  }
+  "count.scm" should "eval to \"done\"" in {
+    checkResult("count.scm", absi.inject("done"))
+  }
   "fib.scm" should "eval to 3" in {
-    val result = aacScheme.eval(loadScheme("test/fib.scm"), None)
-    assert(result.exists((st: aacScheme.State) => st.control match { case aacScheme.ControlKont(v) => abs.subsumes(v, absi.inject(3)) }))
+    checkResult("fib.scm", absi.inject(3))
   }
 }
 
