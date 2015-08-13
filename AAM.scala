@@ -71,7 +71,8 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     }
   }
 
-  def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) =
+  @scala.annotation.tailrec
+  private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) =
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {

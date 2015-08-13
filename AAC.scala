@@ -142,20 +142,21 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   }
 
   /* frontier-based state exploration */
-  def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State], kstore: KontStore): (Set[State], Graph[State]) = {
+  @scala.annotation.tailrec
+  private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State], kstore: KontStore): (Set[State], Graph[State]) = {
     if (todo.isEmpty) {
       (halted, graph)
     } else {
-      val (edges, xi2) = todo.foldLeft((Set[(State, State)](), kstore))({ (acc, ς) =>
+      val (edges, kstore2) = todo.foldLeft((Set[(State, State)](), kstore))({ (acc, ς) =>
         ς.step(kstore) match {
-          case (next, xi2) => (acc._1 ++ next.map((ς2) => (ς, ς2)), acc._2.join(xi2))
+          case (next, kstore2) => (acc._1 ++ next.map((ς2) => (ς, ς2)), acc._2.join(kstore2))
         }
       })
       loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
            visited ++ todo,
            halted ++ todo.filter((ς) => ς.halted(kstore)),
            graph.addEdges(edges),
-           xi2)
+           kstore2)
     }
   }
 
