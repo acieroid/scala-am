@@ -87,9 +87,9 @@ class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjecti
     binOp(">", (x, y) => abs.and(abs.not(abs.lt(x, y)), abs.not(abs.numEq(x, y)))),
     binOp(">=", (x, y) => abs.not(abs.lt(x, y)))
   )
-
-  val forEnv: List[(String, Addr)] = all.map({ case (name, _) => (name, addri.primitive(name)) })
-  val forStore: List[(Addr, Abs)] = all.map({ case (name, f) => (addri.primitive(name), i.inject((name, f))) })
+  private val allocated = all.map({ case (name, f) => (name, addri.primitive(name), i.inject((name, f))) })
+  val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
+  val forStore: List[(Addr, Abs)] = allocated.map({ case (_, a, v) => (a, v) })
 }
 
 object AbstractValue
