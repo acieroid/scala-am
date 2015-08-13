@@ -99,6 +99,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
         case Some((top, rest)) => Set((top, rest, κ))
       }
 
+
     private def pop(ι: LocalKont, κ: Kont, kstore: KontStore): Set[(Frame, LocalKont, Kont)] =
       pop(ι, κ, kstore, Set())
 
@@ -127,9 +128,15 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       case ControlError(_) => (Set(), kstore)
     }
 
-    def halted = control match {
+    def halted(kstore: KontStore) = control match {
       case ControlEval(_, _) => false
-      case ControlKont(_) => ι.isEmpty && κ.equals(KontEmpty)
+      case ControlKont(v) => {
+        /* TODO: isn't this a too strong requirement? What about states that *
+        could pop an continuation, but that might also not pop one? E.g., if κ
+        is bound to a set of two continuations, one being empty, the other one
+        being poppable */
+        ι.isEmpty && (κ.equals(KontEmpty) || pop(ι, κ, kstore).isEmpty)
+      }
       case ControlError(_) => true
     }
   }
@@ -146,7 +153,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       })
       loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
            visited ++ todo,
-           halted ++ todo.filter((ς) => ς.halted),
+           halted ++ todo.filter((ς) => ς.halted(kstore)),
            graph.addEdges(edges),
            xi2)
     }
