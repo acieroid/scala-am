@@ -4,6 +4,39 @@
   * syntax.
   */
 
+/** NOTE: How the lexer/parser works and how to debug it
+ *
+ * The SExpTokens trait defines the tokens of the language. The chars field of
+ * each token is the textual representation of the token.
+ *
+
+ * The SExpLexer class defines a bunch of lexers. Some of them are helper
+ * lexers, used in other ones. Lexers of type Parser[Token] will lex one of our
+ * token. All these lexers are then assembled into the 'token' function, which
+ * will parse either one of them, ignoring whitespace and comments.
+
+ * To test a lexer, one just has to apply it, providing a Reader[Char] as
+ * argument. For example, to test the character lexer:
+ *   val lexical = new SExpLexer
+ *   println(lexical.character(new scala.util.parsing.input.CharArrayReader("#\c".toCharArray))
+
+ * The SExpParser class defines parsers, similarly as SExpLexer. The difference
+ * is that the parser works by assembling a bunch of tokens into grammar items,
+ * whereas the lexer works by assembling a bunch of characters to tokens.
+
+ * To test a parser, similarly to the lexers, one just has to apply it,
+ * providing a Reader[Token] as argument (given by the Scanner class of the
+ * lexer). For example, to test the 'nil' parser:
+ *   val lexical = new SExpLexer
+ *   println(SExpParser.nil(new SExpParser.lexical.Scanner("()"))
+
+ * You may ask why is SExpLexer defined as a class, and SExpParser as an
+ * object. The answer is simple: I don't know, but that's apparently the idiom
+ * to use. SExpParser's lexical variable *needs* to be set to the lexer
+ * used. Also, having SExpLexer as a separate class seems the only way to be
+ * able to import it and test it outside this file.
+ */
+
 import scala.util.parsing.combinator.token._
 import scala.util.parsing.combinator.lexical._
 import scala.util.parsing.combinator.syntactical._
@@ -88,10 +121,10 @@ class SExpLexer extends Lexical with SExpTokens {
                                               }
                                             }
   def token: Parser[Token] =
-    (whitespace | comment) ~> {
+    (comment | whitespace) ~> {
       bool | float | integer | character | string | identifier |
       quote | leftParen | rightParen
-    } <~ (whitespace | comment)
+    } <~ (comment | whitespace)
 }
 
 object SExpParser extends TokenParsers {
