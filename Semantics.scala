@@ -230,7 +230,11 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
                      case Some((SchemeLambda(args, body), ρ1)) =>
                        if (args.length == argsv.length) {
                          bindArgs(args.zip(argsv), ρ1, σ) match {
-                           case (ρ2, σ) => Set(ActionStepIn((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ))
+                           case (ρ2, σ) =>
+                             if (body.length == 1)
+                               Set(ActionStepIn((SchemeLambda(args, body), ρ1), body.head, ρ2, σ))
+                             else
+                               Set(ActionStepIn((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ))
                          }
                        } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
                      case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))
