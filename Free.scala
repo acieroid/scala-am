@@ -46,8 +46,12 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   }
 
   abstract class KontAddress
-  case class NormalKontAddress(exp: Exp, ρ: Environment[Addr]) extends KontAddress
-  object HaltKontAddress extends KontAddress
+  case class NormalKontAddress(exp: Exp, ρ: Environment[Addr]) extends KontAddress {
+    override def toString = "NormalKontAddress"
+  }
+  object HaltKontAddress extends KontAddress {
+    override def toString = "HaltKontAddress"
+  }
 
   case class KontStore(content: Map[KontAddress, Set[Kont]]) {
     def this() = this(Map())
@@ -94,11 +98,14 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     }
   }
 
-  case class Configuration(control: Control, k: KontAddress)
+  case class Configuration(control: Control, k: KontAddress) {
+    override def toString = control.toString
+  }
   case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore) {
     def this(exp: Exp) = this(Set(Configuration(ControlEval(exp, initialEnv),
                                                 HaltKontAddress)),
                               initialStore, new KontStore())
+    override def toString = R.toString
     def step: States = {
       val states = R.map(conf => State(conf.control, σ, kstore, conf.k))
       val succs = states.flatMap(ς => ς.step)
@@ -146,18 +153,19 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   }
 
   @scala.annotation.tailrec
-  private def loop(s: States, graph: Graph[States]): (States, Graph[States]) = {
+  private def loop(s: States, visited: Set[States], graph: Graph[States]): (States, Graph[States]) = {
     println(s"Visiting $s")
-    if (s.halted) {
+    val s2 = s.step
+    // TODO: will not find the halted states correctly
+    if (s2.halted || visited.contains(s2)) {
       (s, graph)
     } else {
-      val s2 = s.step
-      loop(s2, graph.addEdge(s, s2))
+      loop(s2, visited + s, graph.addEdge(s, s2))
     }
   }
 
   def eval(exp: Exp, dotfile: Option[String]): States = {
-    loop(new States(exp), new Graph[States]()) match {
+    loop(new States(exp), Set(), new Graph[States]()) match {
       case (halted, graph: Graph[States]) => {
         println(s"${graph.size} states")
         dotfile match {
