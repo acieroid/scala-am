@@ -1,8 +1,9 @@
-case class Store[Addr : Address, Abs](content: Map[Addr, Abs])(implicit abs : AbstractValue[Abs], i : AbstractInjection[Abs]) {
+case class Store[Addr, Abs](content: Map[Addr, Abs])(implicit abs : AbstractValue[Abs], i : AbstractInjection[Abs], addr: Address[Addr]) {
+  override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys: collection.Iterable[Addr] = content.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall(p)
-  def lookup(addr: Addr): Abs = content.getOrElse(addr, i.bottom)
-  def extend(addr: Addr, v: Abs): Store[Addr, Abs] = Store(content + (addr -> (abs.join(lookup(addr), v))))
+  def lookup(a: Addr): Abs = content.getOrElse(a, i.bottom)
+  def extend(a: Addr, v: Abs): Store[Addr, Abs] = Store(content + (a -> (abs.join(lookup(a), v))))
   def extend(values: List[(Addr, Abs)]): Store[Addr, Abs] = Store(content ++ values)
   def subsumes(that: Store[Addr, Abs]): Boolean =
     that.forall((binding: (Addr, Abs)) => abs.subsumes(lookup(binding._1), binding._2))

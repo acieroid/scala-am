@@ -1,5 +1,6 @@
 trait Address[A] {
-  def subsumes(x: A, y: A) = x.equals(y)
+  def subsumes(x: A, y: A): Boolean = x.equals(y)
+  def isPrimitive(x: A): Boolean
 }
 
 trait AddressInjection[A] {
@@ -22,6 +23,10 @@ object ClassicalAddress {
 
   implicit object ClassicalAddressAddress extends Address[ClassicalAddress] {
     override def subsumes(x: ClassicalAddress, y: ClassicalAddress) = x.subsumes(y)
+    def isPrimitive(x: ClassicalAddress) = x match {
+      case PrimitiveAddress(_) => true
+      case _ => false
+    }
   }
   implicit object ClassicalAddressInjection extends AddressInjection[ClassicalAddress] {
     def halt = HaltKontAddress()
@@ -36,14 +41,19 @@ trait ConcreteAddress {
 }
 
 object ConcreteAddress {
+  case class PrimitiveAddress(name: String) extends ConcreteAddress
   case class IntAddress(name: String, id: Int) extends ConcreteAddress
   implicit object ConcreteAddressAddress extends Address[ConcreteAddress] {
     override def subsumes(x: ConcreteAddress, y: ConcreteAddress) = x.subsumes(y)
+    def isPrimitive(x: ConcreteAddress) = x match {
+      case PrimitiveAddress(_) => true
+      case _ => false
+    }
   }
   var id = 0
   implicit object ConcreteAddressInjection extends AddressInjection[ConcreteAddress] {
     def halt = IntAddress("halt", 0)
-    def primitive(name: String) = { id += 1; IntAddress(name, id) }
+    def primitive(name: String) = { PrimitiveAddress(name) }
     def variable(name: String) = { id += 1; IntAddress(name, id) }
     def kont[Exp : Expression](exp: Exp) = { id += 1; IntAddress(s"kont-$exp", id) }
   }
