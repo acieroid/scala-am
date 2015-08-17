@@ -1,5 +1,7 @@
+import scalaz.Semigroup
+
 /** Abstract values are abstract representations of the possible values of a variable */
-trait AbstractValue[A] {
+trait AbstractValue[A] extends Semigroup[A] {
   /** Can this abstract value be considered true for conditionals? */
   def isTrue(x: A): Boolean
   /** Can this abstract value be considered false for conditionals? */
@@ -10,8 +12,9 @@ trait AbstractValue[A] {
       should be redefined only for container-like abstract values (e.g., for a
       set abstraction) */
   def foldValues[B](x: A, f: A => Set[B]): Set[B]
-  /** Join operation on lattice elements */
+  /** Join operation on lattice elements  */
   def join(x: A, y: A): A
+  def append(x: A, y: => A): A = join(x, y)
   /** Meet operation on lattice elements */
   def meet(x: A, y: A): A
   /** Checks whether x subsumes y */
