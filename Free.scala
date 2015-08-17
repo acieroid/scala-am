@@ -4,7 +4,7 @@ import scalaz.Scalaz._
 /**
  * Implementation of "Pushdown Control-Flow Analysis for Free", which is
  * basically a variant of AAC with better complexity
- * TODO: global store & kstore, specific kont allocation
+ * TODO: global store & kstore
  */
 case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
                                                                              addr: Address[Addr], addri: AddressInjection[Addr]) {
@@ -35,38 +35,42 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
   val primitives = new Primitives[Abs, Addr]()
 
-  case class Kont(frame: Frame, next: Addr) extends Kontinuation {
+  case class Kont(frame: Frame, next: KontAddress) extends Kontinuation {
     def subsumes(that: Kontinuation) = that match {
-      case Kont(frame2, next2) => frame.subsumes(frame2) && addr.subsumes(next, next2)
+      case Kont(frame2, next2) => frame.subsumes(frame2) && next.equals(next2)
       case _ => false
     }
     def getFrame = frame
   }
 
-  case class KontStore(content: Map[Addr, Set[Kont]]) {
+  abstract class KontAddress
+  case class NormalKontAddress(exp: Exp, ρ: Environment[Addr]) extends KontAddress
+  object HaltKontAddress extends KontAddress
+
+  case class KontStore(content: Map[KontAddress, Set[Kont]]) {
     def this() = this(Map())
-    def lookup(a: Addr): Set[Kont] = content.getOrElse(a, Set())
-    def extend(a: Addr, κ: Kont): KontStore = KontStore(content + (a -> (lookup(a) + κ)))
+    def lookup(a: KontAddress): Set[Kont] = content.getOrElse(a, Set())
+    def extend(a: KontAddress, κ: Kont): KontStore = KontStore(content + (a -> (lookup(a) + κ)))
     def join(that: KontStore): KontStore = KontStore(content |+| that.content)
-    def forall(p: ((Addr, Set[Kont])) => Boolean) = content.forall(p)
+    def forall(p: ((KontAddress, Set[Kont])) => Boolean) = content.forall(p)
     def subsumes(that: KontStore): Boolean =
       that.forall({ case (a, ks) =>
         ks.forall((k1) => lookup(a).exists(k2 => k2.subsumes(k1)))
       })
   }
 
-  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore, k: Addr) {
+  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore, k: KontAddress) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
                               Store.empty[Addr, Abs]().extend(primitives.forStore),
-                              new KontStore(), addri.halt)
+                              new KontStore(), HaltKontAddress)
     override def toString() = control.toString
-    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && addr.subsumes(k, that.k)
+    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
-    private def integrate(k: Addr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
+    private def integrate(k: KontAddress, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.map({
         case ActionReachedValue(v, σ) => State(ControlKont(v), σ, kstore, k)
         case ActionPush(e, frame, ρ, σ) => {
-          val next = addri.kont(e)
+          val next = new NormalKontAddress(e, ρ)
           State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, k)), next)
         }
         case ActionEval(e, ρ, σ) => State(ControlEval(e, ρ), σ, kstore, k)
@@ -84,7 +88,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
     def halted = control match {
       case ControlEval(_, _) => false
-      case ControlKont(_) => addr.subsumes(k, addri.halt)
+      case ControlKont(_) => k.equals(HaltKontAddress)
       case ControlError(_) => true
     }
   }
