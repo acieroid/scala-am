@@ -49,7 +49,7 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
   }
 
   def bindArgs(l: List[(String, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs]): (Environment[Addr], Store[Addr, Abs]) =
-    l.foldLeft((ρ, σ))({ case ((ρ, sigma), (name, value)) => {
+    l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, value)) => {
       val a = addri.variable(name)
       (ρ.extend(name, a), σ.extend(a, value))
     }})
@@ -139,6 +139,7 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
   def exp = implicitly[Expression[SchemeExp]]
   sealed abstract class SchemeFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
+    override def toString = s"${this.getClass.getSimpleName}"
   }
   case class FrameFuncallOperator(args: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
   case class FrameFuncallOperands(f: Abs, args: List[Abs], toeval: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
@@ -158,7 +159,7 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
   }
 
   def bindArgs(l: List[(String, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs]): (Environment[Addr], Store[Addr, Abs]) =
-    l.foldLeft((ρ, σ))({ case ((ρ, sigma), (name, value)) => {
+    l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, value)) => {
       val a = addri.variable(name)
       (ρ.extend(name, a), σ.extend(a, value))
     }})
