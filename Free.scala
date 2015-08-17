@@ -34,6 +34,8 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   }
 
   val primitives = new Primitives[Abs, Addr]()
+  val initialEnv = Environment.empty[Addr]().extend(primitives.forEnv)
+  val initialStore = Store.empty[Addr, Abs]().extend(primitives.forStore)
 
   case class Kont(frame: Frame, next: KontAddress) extends Kontinuation {
     def subsumes(that: Kontinuation) = that match {
@@ -60,8 +62,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   }
 
   case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore, k: KontAddress) {
-    def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-                              Store.empty[Addr, Abs]().extend(primitives.forStore),
+    def this(exp: Exp) = this(ControlEval(exp, initialEnv), initialStore,
                               new KontStore(), HaltKontAddress)
     override def toString() = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
@@ -93,36 +94,74 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     }
   }
 
+  case class Configuration(control: Control, k: KontAddress)
+  case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore) {
+    def this(exp: Exp) = this(Set(Configuration(ControlEval(exp, initialEnv),
+                                                HaltKontAddress)),
+                              initialStore, new KontStore())
+    def step: States = {
+      val states = R.map(conf => State(conf.control, σ, kstore, conf.k))
+      val succs = states.flatMap(ς => ς.step)
+      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs](), new KontStore()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
+      States(succs.map(ς => Configuration(ς.control, ς.k)), σ1, kstore1)
+    }
+    def halted = R.isEmpty
+  }
+
   @scala.annotation.tailrec
-  private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) = {
+  private def loopLocal(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) = {
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
-          loop(todo.tail, visited, halted, graph)
+          loopLocal(todo.tail, visited, halted, graph)
         } else if (s.halted) {
-          loop(todo.tail, visited + s, halted + s, graph)
+          loopLocal(todo.tail, visited + s, halted + s, graph)
         } else {
           val succs = s.step
           val newGraph = graph.addEdges(succs.map(s2 => (s, s2)))
-          loop(todo.tail ++ succs, visited + s, halted, newGraph)
+          loopLocal(todo.tail ++ succs, visited + s, halted, newGraph)
         }
       case None => (halted, graph)
     }
   }
 
-  def outputDot(graph: Graph[State], path: String) =
+  def outputLocalDot(graph: Graph[State], path: String) =
     graph.toDotFile(path, _.toString.take(40), _.control match {
       case ControlEval(_, _) => "#DDFFDD"
       case ControlKont(_) => "#FFDDDD"
       case ControlError(_) => "#FF0000"
     })
 
-  def eval(exp: Exp, dotfile: Option[String]): Set[State] = {
-    loop(Set(new State(exp)), Set(), Set(), new Graph[State]()) match {
+  def evalLocal(exp: Exp, dotfile: Option[String]): Set[State] = {
+    loopLocal(Set(new State(exp)), Set(), Set(), new Graph[State]()) match {
       case (halted, graph: Graph[State]) => {
         println(s"${graph.size} states")
         dotfile match {
-          case Some(file) => outputDot(graph, file)
+          case Some(file) => outputLocalDot(graph, file)
+          case None => ()
+        }
+        halted
+      }
+    }
+  }
+
+  @scala.annotation.tailrec
+  private def loop(s: States, graph: Graph[States]): (States, Graph[States]) = {
+    println(s"Visiting $s")
+    if (s.halted) {
+      (s, graph)
+    } else {
+      val s2 = s.step
+      loop(s2, graph.addEdge(s, s2))
+    }
+  }
+
+  def eval(exp: Exp, dotfile: Option[String]): States = {
+    loop(new States(exp), new Graph[States]()) match {
+      case (halted, graph: Graph[States]) => {
+        println(s"${graph.size} states")
+        dotfile match {
+          case Some(file) => () /* TODO: graph representation? */
           case None => ()
         }
         halted
