@@ -95,15 +95,18 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) = {
-    if (todo.isEmpty) {
-      (halted, graph)
-    } else {
-      val edges: Set[(State, State)] = todo.foldLeft(Set[(State, State)]())((acc, ς) =>
-        acc ++ ς.step.map((ς2) => (ς, ς2)))
-      loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
-        visited ++ todo,
-        halted ++ todo.filter((ς) => ς.halted),
-        graph.addEdges(edges))
+    todo.headOption match {
+      case Some(s) =>
+        if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
+          loop(todo.tail, visited, halted, graph)
+        } else if (s.halted) {
+          loop(todo.tail, visited + s, halted + s, graph)
+        } else {
+          val succs = s.step
+          val newGraph = graph.addEdges(succs.map(s2 => (s, s2)))
+          loop(todo.tail ++ succs, visited + s, halted, newGraph)
+        }
+      case None => (halted, graph)
     }
   }
 
