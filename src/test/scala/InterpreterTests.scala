@@ -16,7 +16,10 @@ abstract class AACFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
 
   def checkResult(file: String, expected: Abs) = {
     val result = aacScheme.eval(loadScheme(s"test/$file"), None)
-    assert(result.exists((st: aacScheme.State) => st.control match { case aacScheme.ControlKont(v) => abs.subsumes(v, expected) }))
+    assert(result.exists((st: aacScheme.State) => st.control match {
+      case aacScheme.ControlKont(v) => abs.subsumes(v, expected)
+      case _ => false
+    }))
   }
 
   "blur.scm" should "eval to #t" in { checkResult("blur.scm", absi.inject(true)) }
