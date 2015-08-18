@@ -154,22 +154,27 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
   @scala.annotation.tailrec
   private def loop(s: States, visited: Set[States], graph: Graph[States]): (States, Graph[States]) = {
-    println(s"Visiting $s")
     val s2 = s.step
     // TODO: will not find the halted states correctly
-    if (s2.halted || visited.contains(s2)) {
+    if (s2.halted) {
       (s, graph)
+    } else if (visited.contains(s2)) {
+      (s2, graph.addEdge(s, s2))
     } else {
       loop(s2, visited + s, graph.addEdge(s, s2))
     }
   }
+
+  def outputDot(graph: Graph[States], path: String) =
+    graph.toDotFile(path, _.toString.take(40), _ => "#FFFFFF")
+
 
   def eval(exp: Exp, dotfile: Option[String]): States = {
     loop(new States(exp), Set(), new Graph[States]()) match {
       case (halted, graph: Graph[States]) => {
         println(s"${graph.size} states")
         dotfile match {
-          case Some(file) => () /* TODO: graph representation? */
+          case Some(file) => outputDot(graph, file) /* TODO: graph representation? */
           case None => ()
         }
         halted
