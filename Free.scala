@@ -113,6 +113,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
       States(succs.map(ς => Configuration(ς.control, ς.k)), σ1, kstore1)
     }
     def halted = R.isEmpty
+    def toStateSet: Set[State] = R.map({ case Configuration(control, k) => State(control, σ, kstore, k) })
   }
 
   @scala.annotation.tailrec
@@ -153,28 +154,46 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   }
 
   @scala.annotation.tailrec
-  private def loop(s: States, visited: Set[States], graph: Graph[States]): (States, Graph[States]) = {
+  private def loopWithLocalGraph(s: States, visited: Set[States], graph: Graph[State]): (Set[State], Graph[State]) = {
     val s2 = s.step
-    // TODO: will not find the halted states correctly
     if (s2.halted) {
-      (s, graph)
-    } else if (visited.contains(s2)) {
-      (s2, graph.addEdge(s, s2))
+      (s.toStateSet, graph)
     } else {
-      loop(s2, visited + s, graph.addEdge(s, s2))
+      /* TODO: we probably lose the "for free" when constructing the graph, since we
+       * have to take every possible combination of configurations and draw
+       * edges between them */
+      val g = graph.addEdges(s.toStateSet.flatMap(ς1 => s2.toStateSet.map(ς2 => (ς1, ς2))))
+      if (visited.contains(s2)) {
+        (s2.toStateSet, g)
+      } else {
+        loopWithLocalGraph(s2, visited + s, g)
+      }
+    }
+  }
+
+  private def loop(s: States, visited: Set[States], graph: Graph[States]): (Set[State], Graph[States]) = {
+    val s2 = s.step
+    if (s2.halted) {
+      (s.toStateSet, graph)
+    } else {
+      val g = graph.addEdge(s, s2)
+      if (visited.contains(s2)) {
+        (s2.toStateSet, g)
+      } else {
+        loop(s2, visited + s, g)
+      }
     }
   }
 
   def outputDot(graph: Graph[States], path: String) =
     graph.toDotFile(path, _.toString.take(40), _ => "#FFFFFF")
 
-
-  def eval(exp: Exp, dotfile: Option[String]): States = {
+  def eval(exp: Exp, dotfile: Option[String]): Set[State] = {
     loop(new States(exp), Set(), new Graph[States]()) match {
       case (halted, graph: Graph[States]) => {
         println(s"${graph.size} states")
         dotfile match {
-          case Some(file) => outputDot(graph, file) /* TODO: graph representation? */
+          case Some(file) => outputDot(graph, file)
           case None => ()
         }
         halted
