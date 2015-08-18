@@ -99,7 +99,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   }
 
   case class Configuration(control: Control, k: KontAddress) {
-    override def toString = control.toString
+    override def toString = s"($control, $k)"
   }
   case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore) {
     def this(exp: Exp) = this(Set(Configuration(ControlEval(exp, initialEnv),
@@ -112,7 +112,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
       val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs](), new KontStore()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
       States(succs.map(ς => Configuration(ς.control, ς.k)), σ1, kstore1)
     }
-    def halted = R.isEmpty
+    def isEmpty = R.isEmpty
     def toStateSet: Set[State] = R.map({ case Configuration(control, k) => State(control, σ, kstore, k) })
   }
 
@@ -156,7 +156,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   @scala.annotation.tailrec
   private def loopWithLocalGraph(s: States, visited: Set[States], graph: Graph[State]): (Set[State], Graph[State]) = {
     val s2 = s.step
-    if (s2.halted) {
+    if (s2.isEmpty) {
       (s.toStateSet, graph)
     } else {
       /* TODO: we probably lose the "for free" when constructing the graph, since we
@@ -171,16 +171,17 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     }
   }
 
-  private def loop(s: States, visited: Set[States], graph: Graph[States]): (Set[State], Graph[States]) = {
+  private def loop(s: States, visited: Set[States], halted: Set[State], graph: Graph[States]): (Set[State], Graph[States]) = {
     val s2 = s.step
-    if (s2.halted) {
-      (s.toStateSet, graph)
+    val h = halted ++ s.toStateSet.filter(_.halted)
+    if (s2.isEmpty) {
+      (h, graph)
     } else {
       val g = graph.addEdge(s, s2)
       if (visited.contains(s2)) {
-        (s2.toStateSet, g)
+        (h, g)
       } else {
-        loop(s2, visited + s, g)
+        loop(s2, visited + s, h, g)
       }
     }
   }
@@ -189,11 +190,24 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     graph.toDotFile(path, _.toString.take(40), _ => "#FFFFFF")
 
   def eval(exp: Exp, dotfile: Option[String]): Set[State] = {
-    loop(new States(exp), Set(), new Graph[States]()) match {
+    loop(new States(exp), Set(), Set(), new Graph[States]()) match {
       case (halted, graph: Graph[States]) => {
         println(s"${graph.size} states")
         dotfile match {
           case Some(file) => outputDot(graph, file)
+          case None => ()
+        }
+        halted
+      }
+    }
+  }
+
+  def evalBuildGraph(exp: Exp, dotfile: Option[String]): Set[State] = {
+    loopWithLocalGraph(new States(exp), Set(), new Graph[State]()) match {
+      case (halted, graph: Graph[State]) => {
+        println(s"${graph.size} states")
+        dotfile match {
+          case Some(file) => outputLocalDot(graph, file)
           case None => ()
         }
         halted
