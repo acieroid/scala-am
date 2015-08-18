@@ -91,7 +91,7 @@ abstract class FreeFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: A
 
   def checkResult(file: String, expected: Abs) = {
     val result = machine.eval(loadScheme(s"test/$file"), None)
-    assert(result.R.exists((conf: machine.Configuration) => conf.control match {
+    assert(result.exists((st: machine.State) => st.control match {
       case machine.ControlKont(v) => abs.subsumes(v, expected)
       case _ => false
     }))
