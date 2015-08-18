@@ -125,6 +125,7 @@ object AbstractConcrete {
   }
 
   implicit object AbstractConcreteInjection extends AbstractInjection[AbstractConcrete] {
+    def name = "Concrete"
     def bottom = AbstractBottom
     def inject(x: Int) = AbstractInt(x)
     def inject(x: String) = AbstractString(x)

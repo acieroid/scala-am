@@ -4,6 +4,7 @@ trait Address[A] {
 }
 
 trait AddressInjection[A] {
+  def name: String
   def halt: A
   def primitive(name: String): A
   def variable(name: String): A
@@ -29,6 +30,7 @@ object ClassicalAddress {
     }
   }
   implicit object ClassicalAddressInjection extends AddressInjection[ClassicalAddress] {
+    def name = "Classical"
     def halt = HaltKontAddress()
     def primitive(name: String) = PrimitiveAddress(name)
     def variable(name: String) = VariableAddress(name)
@@ -52,6 +54,7 @@ object ConcreteAddress {
   }
   var id = 0
   implicit object ConcreteAddressInjection extends AddressInjection[ConcreteAddress] {
+    def name = "Concrete"
     def halt = IntAddress("halt", 0)
     def primitive(name: String) = { PrimitiveAddress(name) }
     def variable(name: String) = { id += 1; IntAddress(name, id) }

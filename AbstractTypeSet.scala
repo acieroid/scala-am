@@ -198,6 +198,7 @@ object AbstractTypeSet {
   }
 
   implicit object AbstractTypeSetInjection extends AbstractInjection[AbstractTypeSet] {
+    def name = "TypeSet"
     def bottom = AbstractBottom
     def inject(x: Int) = AbstractInt
     def inject(x: String) = AbstractString

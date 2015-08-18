@@ -48,6 +48,8 @@ trait AbstractValue[A] extends Semigroup[A] {
 
 /** Concrete values have to be injected to become abstract */
 trait AbstractInjection[A] {
+  /** Name of this lattice */
+  def name: String
   /** Bottom element of the lattice */
   def bottom: A
   /** Injection of an integer */

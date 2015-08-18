@@ -146,6 +146,7 @@ object AbstractType {
   }
 
   implicit object AbstractTypeInjection extends AbstractInjection[AbstractType] {
+    def name = "Type"
     def bottom = AbstractBottom
     def inject(x: Int) = AbstractInt
     def inject(x: String) = AbstractString
