@@ -26,35 +26,25 @@ object Config {
 }
 
 object Main {
-  def fileContent(path: String): String = {
-    val f = scala.io.Source.fromFile(path)
-    val content = f.getLines.mkString("\n")
-    f.close()
-    println(content)
-    content
-  }
 
-  def runAAM[Abs, Addr](file: String, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
+  def runAAM[Abs, Addr](exp: SchemeExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
     println(s"Running AAM with lattice ${absi.name} and address ${addri.name}")
-    val p = Scheme.compile(SExpParser.parse(fileContent(file)))
     val machine = new AAM[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
-    val result = machine.eval(p, output)
+    val result = machine.eval(exp, output)
     println(result)
   }
 
-  def runAAC[Abs, Addr](file: String, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
+  def runAAC[Abs, Addr](exp: SchemeExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
     println(s"Running AAC with lattice ${absi.name} and address ${addri.name}")
-    val p = Scheme.compile(SExpParser.parse(fileContent(file)))
     val machine = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
-    val result = machine.eval(p, output)
+    val result = machine.eval(exp, output)
     println(result)
   }
 
-  def runFree[Abs, Addr](file: String, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
+  def runFree[Abs, Addr](exp: SchemeExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
     println(s"Running Free with lattice ${absi.name} and address ${addri.name}")
-    val p = Scheme.compile(SExpParser.parse(fileContent(file)))
     val machine = new Free[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
-    val result = machine.eval(p, output)
+    val result = machine.eval(exp, output)
     println(result)
   }
 
@@ -83,7 +73,9 @@ object Main {
           case (Config.Machine.Free, Config.Lattice.Type, false) => runFree[AbstractType, ClassicalAddress] _
           case _ => throw new Exception(s"Impossible configuration: $config")
         }
-        f(config.file, config.dotfile)
+        val program = Scheme.parse(config.file)
+        println(program)
+        f(program, config.dotfile)
       }
       case None => ()
     }

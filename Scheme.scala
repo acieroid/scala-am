@@ -402,20 +402,78 @@ object SchemeRenamer {
     }
 }
 
+object SchemeUndefiner {
+  def undefine(exps: List[SchemeExp]): SchemeExp =
+    undefine(exps, List())
+
+  def undefine(exps: List[SchemeExp], defs: List[(String, SchemeExp)]): SchemeExp = exps match {
+    case SchemeDefineFunction(name, args, body) :: rest => undefine(SchemeDefineVariable(name, SchemeLambda(args, body)) :: rest, defs)
+    case SchemeDefineVariable(name, value) :: rest => undefine(rest, (name, value) :: defs)
+    case _ => if (defs.isEmpty) {
+      undefineBody(exps) match {
+        case Nil => SchemeValue(ValueNil())
+        case exp :: Nil => exp
+        case exps => SchemeBegin(exps)
+      }
+    } else {
+      SchemeLetrec(defs, undefineBody(exps))
+    }
+  }
+
+  def undefine1(exp: SchemeExp): SchemeExp = undefine(List(exp))
+
+  def undefineBody(exps: List[SchemeExp]): List[SchemeExp] = exps match {
+    case Nil => Nil
+    case SchemeDefineFunction(_, _, _) :: _ => List(undefine(exps, List()))
+    case SchemeDefineVariable(_, _) :: _ => List(undefine(exps, List()))
+    case SchemeLambda(args, body) :: rest => SchemeLambda(args, undefineBody(body)) :: undefineBody(rest)
+    case SchemeFuncall(f, args) :: rest => SchemeFuncall(undefine1(f), args.map(undefine1)) :: undefineBody(rest)
+    case SchemeIf(cond, cons, alt) :: rest => SchemeIf(undefine1(cond), undefine1(cons), undefine1(alt)) :: undefineBody(rest)
+    case SchemeLet(bindings, body) :: rest => SchemeLet(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body)) :: undefineBody(rest)
+    case SchemeLetStar(bindings, body) :: rest => SchemeLetStar(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body)) :: undefineBody(rest)
+    case SchemeLetrec(bindings, body) :: rest => SchemeLetrec(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body)) :: undefineBody(rest)
+    case SchemeSet(variable, value) :: rest => SchemeSet(variable, undefine1(value)) :: undefineBody(rest)
+    case SchemeBegin(exps) :: rest => SchemeBegin(undefineBody(exps)) :: undefineBody(rest)
+    case SchemeCond(clauses) :: rest => SchemeCond(clauses.map({ case (cond, body) => (undefine1(cond), undefineBody(body)) })) :: undefineBody(rest)
+    case SchemeCase(key, clauses, default) :: rest => SchemeCase(undefine1(key), clauses.map({ case (vs, body) => (vs, undefineBody(body)) }), undefineBody(default)) :: undefineBody(rest)
+    case SchemeAnd(args) :: rest => SchemeAnd(args.map(undefine1)) :: undefineBody(rest)
+    case SchemeOr(args) :: rest => SchemeOr(args.map(undefine1)) :: undefineBody(rest)
+    case SchemeIdentifier(name) :: rest => SchemeIdentifier(name) :: undefineBody(rest)
+    case SchemeQuoted(quoted) :: rest => SchemeQuoted(quoted) :: undefineBody(rest)
+    case SchemeValue(value) :: rest => SchemeValue(value) :: undefineBody(rest)
+  }
+}
+
 object Scheme {
   /**
-    * Compiles a s-expression into a scheme expression
-    */
+   * Compiles a s-expression into a scheme expression
+   */
   def compile(exp: SExp): SchemeExp = SchemeCompiler.compile(exp)
 
-
   /**
-    * Performs alpha-renaming to ensure that every variable has a unique name
-    */
+   * Performs alpha-renaming to ensure that every variable has a unique name
+   */
   def rename(exp: SchemeExp): SchemeExp = SchemeRenamer.rename(exp)
 
   /**
-    * Replace defines in a program (a list of expressions) by a big letrec as a single expression
-    */
-  def undefine(exp: List[SchemeExp]): SchemeExp = throw new Exception("TODO: Scheme undefiner not implemented yet")
+   * Replace defines in a program (a list of expressions) by a big letrec as a single expression
+   */
+  def undefine(exps: List[SchemeExp]): SchemeExp = SchemeUndefiner.undefine(exps)
+
+  /**
+   * Parse a string representing a Scheme program
+   */
+  def parseString(s: String): SchemeExp = {
+    undefine(SExpParser.parse(s).map(compile _))
+  }
+
+  /**
+   * Parse a Scheme file into a single Scheme expression (replacing defines by let bindings)
+   */
+  def parse(file: String): SchemeExp = {
+    val f = scala.io.Source.fromFile(file)
+    val content = f.getLines.mkString("\n")
+    f.close()
+    parseString(content)
+  }
 }

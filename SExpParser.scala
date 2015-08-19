@@ -164,8 +164,9 @@ object SExpParser extends TokenParsers {
   def quoted: Parser[SExp] = quote ~> exp ^^ (e => SExpQuoted(e))
 
   def exp: Parser[SExp] = value | identifier | list | quoted
+  def expList: Parser[List[SExp]] = rep1(exp)
 
-  def parse(s: String): SExp = exp(new lexical.Scanner(s)) match {
+  def parse(s: String): List[SExp] = expList(new lexical.Scanner(s)) match {
     case Success(res, _) => res
     case Failure(msg, _) => throw new Exception("cannot parse expression: " + msg)
     case Error(msg, _) => throw new Exception("cannot parse expression: " + msg)
