@@ -14,7 +14,8 @@ case class Graph[A](ids: Map[A, Int], next: Int, nodes: Set[A], edges: Map[A, Se
       val existing: Set[A] = edges.getOrElse(node1, Set[A]())
       Graph(ids, next, nodes, edges + (node1 -> (existing ++ Set(node2))))
     }
-  def size(): Integer = nodes.size
+  def size: Integer = nodes.size
+  def foldNodes[B](init: B)(f: (B, A) => B) = nodes.foldLeft(init)(f)
   def toDot(label: A => String, color: A => String): String = {
       val sb = new StringBuilder("digraph G {\n")
       nodes.foreach((n) =>

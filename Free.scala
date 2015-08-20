@@ -192,7 +192,8 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   def eval(exp: Exp, dotfile: Option[String]): Set[State] = {
     loop(new States(exp), Set(), Set(), new Graph[States]()) match {
       case (halted, graph: Graph[States]) => {
-        println(s"${graph.size} states")
+        val (states, confs) = (graph.size, graph.foldNodes(0)((acc, st) => acc + st.R.size))
+        println(s"$states states, $confs configurations")
         dotfile match {
           case Some(file) => outputDot(graph, file)
           case None => ()
