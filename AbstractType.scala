@@ -129,7 +129,10 @@ object AbstractType {
     def and(x: AbstractType, y: AbstractType) = x.and(y)
     def or(x: AbstractType, y: AbstractType) = x.or(y)
 
-    def random = AbstractInt
+    def random(x: AbstractType) = x match {
+      case AbstractInt => AbstractInt
+      case _ => AbstractError
+    }
 
     def getKont(x: AbstractType) = x match {
       case AbstractKontinuation(κ) => Some(κ)

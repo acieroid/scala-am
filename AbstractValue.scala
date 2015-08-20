@@ -38,8 +38,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   /** Disjunction */
   def or(x: A, y: A): A
 
-  /** Returns a random integer */
-  def random(): A
+  /** Returns a random integer bounded by x*/
+  def random(x: A): A
 
   def getKont(x: A): Option[Kontinuation]
   def getClosure[Exp : Expression, Addr : Address](x: A): Option[(Exp, Environment[Addr])]
@@ -91,7 +91,8 @@ class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjecti
     binOp("=", abs.numEq),
     binOp(">", (x, y) => abs.and(abs.not(abs.lt(x, y)), abs.not(abs.numEq(x, y)))),
     binOp(">=", (x, y) => abs.not(abs.lt(x, y))),
-    unOp("not", abs.not)
+    unOp("not", abs.not),
+    unOp("random", abs.random)
   )
   private val allocated = all.map({ case (name, f) => (name, addri.primitive(name), i.inject((name, f))) })
   val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })

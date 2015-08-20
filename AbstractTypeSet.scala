@@ -181,7 +181,10 @@ object AbstractTypeSet {
     def and(x: A, y: A) = x.and(y)
     def or(x: A, y: A) = x.or(y)
 
-    def random = AbstractInt
+    def random(x: A) = x match {
+      case AbstractInt => AbstractInt
+      case _ => AbstractError
+    }
 
     def getKont(x: A) = x match {
       case AbstractKontinuation(κ) => Some(κ)

@@ -108,7 +108,10 @@ object AbstractConcrete {
     def and(x: AbstractConcrete, y: AbstractConcrete) = x.and(y)
     def or(x: AbstractConcrete, y: AbstractConcrete) = x.or(y)
 
-    def random = AbstractInt(scala.util.Random.nextInt)
+    def random(x: AbstractConcrete) = x match {
+      case AbstractInt(n) => AbstractInt(scala.util.Random.nextInt % n)
+      case _ => AbstractError(s"random: bound is not an integer, but $x")
+    }
 
     def getKont(x: AbstractConcrete) = x match {
       case AbstractKontinuation(κ) => Some(κ)
