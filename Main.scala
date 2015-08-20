@@ -31,21 +31,21 @@ object Main {
     println(s"Running AAM with lattice ${absi.name} and address ${addri.name}")
     val machine = new AAM[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
     val result = machine.eval(exp, output)
-    println(result)
+    println(s"${result.size} possible results: $result")
   }
 
   def runAAC[Abs, Addr](exp: SchemeExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
     println(s"Running AAC with lattice ${absi.name} and address ${addri.name}")
     val machine = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
     val result = machine.eval(exp, output)
-    println(result)
+    println(s"${result.size} possible results: $result")
   }
 
   def runFree[Abs, Addr](exp: SchemeExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
     println(s"Running Free with lattice ${absi.name} and address ${addri.name}")
     val machine = new Free[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
     val result = machine.eval(exp, output)
-    println(result)
+    println(s"${result.size} possible results: $result")
   }
 
   def main(args: Array[String]) {

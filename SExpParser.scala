@@ -127,6 +127,9 @@ class SExpLexer extends Lexical with SExpTokens {
     } <~ nonRelevant
 }
 
+/* TODO: bug in the parser: it fails on multi-line comments separated by empty
+ * lines. The lexer seems correct, because it correctly discards the comments
+ * and empty lines before any token. I have no idea why the parser fails. */
 object SExpParser extends TokenParsers {
   type Tokens = SExpTokens
   override val lexical = new SExpLexer
