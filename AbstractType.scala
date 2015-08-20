@@ -13,6 +13,9 @@ trait AbstractType {
   def minus(that: AbstractType): AbstractType = AbstractType.AbstractError
   def times(that: AbstractType): AbstractType = AbstractType.AbstractError
   def div(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def modulo(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def ceiling: AbstractType = AbstractType.AbstractError
+  def log: AbstractType = AbstractType.AbstractError
   def lt(that: AbstractType): AbstractType = AbstractType.AbstractError
   def numEq(that: AbstractType): AbstractType = AbstractType.AbstractError
   def not: AbstractType = AbstractType.AbstractError
@@ -30,6 +33,9 @@ object AbstractType {
     override def minus(that: AbstractType) = AbstractTop
     override def times(that: AbstractType) = AbstractTop
     override def div(that: AbstractType) = AbstractTop
+    override def modulo(that: AbstractType) = AbstractTop
+    override def ceiling = AbstractTop
+    override def log = AbstractTop
     override def lt(that: AbstractType) = AbstractTop
     override def numEq(that: AbstractType) = AbstractTop
     override def not = AbstractTop
@@ -62,6 +68,13 @@ object AbstractType {
       case AbstractInt => AbstractInt
       case _ => super.div(that)
     }
+    override def modulo(that: AbstractType) = that match {
+      case AbstractTop => AbstractTop
+      case AbstractInt => AbstractInt
+      case _ => super.modulo(that)
+    }
+    override def ceiling = AbstractInt
+    override def log = AbstractInt
     override def lt(that: AbstractType) = that match {
       case AbstractTop => AbstractTop
       case AbstractInt => AbstractBool
@@ -123,6 +136,9 @@ object AbstractType {
     def minus(x: AbstractType, y: AbstractType) = x.minus(y)
     def times(x: AbstractType, y: AbstractType) = x.times(y)
     def div(x: AbstractType, y: AbstractType) = x.div(y)
+    def modulo(x: AbstractType, y: AbstractType) = x.modulo(y)
+    def ceiling(x: AbstractType) = x.ceiling
+    def log(x: AbstractType) = x.ceiling
     def lt(x: AbstractType, y: AbstractType) = x.lt(y)
     def numEq(x: AbstractType, y: AbstractType) = x.numEq(y)
     def not(x: AbstractType) = x.not

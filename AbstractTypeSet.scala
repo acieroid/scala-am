@@ -13,6 +13,9 @@ trait AbstractTypeSet {
   def minus(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def times(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def div(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
+  def modulo(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
+  def ceiling: AbstractTypeSet = AbstractTypeSet.AbstractError
+  def log: AbstractTypeSet = AbstractTypeSet.AbstractError
   def lt(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def numEq(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def not: AbstractTypeSet = AbstractTypeSet.AbstractError
@@ -50,6 +53,13 @@ object AbstractTypeSet {
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.div(y))))
       case _ => super.div(that)
     }
+    override def modulo(that: A) = that match {
+      case AbstractInt => AbstractInt
+      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.modulo(y))))
+      case _ => super.div(that)
+    }
+    override def ceiling = AbstractInt
+    override def log = AbstractInt
     override def lt(that: A) = that match {
       case AbstractInt => AbstractSet(Set(AbstractTrue, AbstractFalse))
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(AbstractTrue, AbstractFalse)))
@@ -175,6 +185,9 @@ object AbstractTypeSet {
     def minus(x: A, y: A) = x.minus(y)
     def times(x: A, y: A) = x.times(y)
     def div(x: A, y: A) = x.div(y)
+    def modulo(x: A, y: A) = x.modulo(y)
+    def ceiling(x: A) = x.ceiling
+    def log(x: A) = x.log
     def lt(x: A, y: A) = x.lt(y)
     def numEq(x: A, y: A) = x.numEq(y)
     def not(x: A) = x.not

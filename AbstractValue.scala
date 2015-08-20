@@ -27,6 +27,12 @@ trait AbstractValue[A] extends Semigroup[A] {
   def times(x: A, y: A): A
   /** Divides two values */
   def div(x: A, y: A): A
+  /** x % y */
+  def modulo(x: A, y: A): A
+  /** Computes the ceiling of x */
+  def ceiling(x: A): A
+  /** Computes the log of x */
+  def log(x: A): A
   /** Is x strictly smaller than y? */
   def lt(x: A, y: A): A
   /** Is x numerically equal to y? */
@@ -91,8 +97,11 @@ class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjecti
     binOp("=", abs.numEq),
     binOp(">", (x, y) => abs.and(abs.not(abs.lt(x, y)), abs.not(abs.numEq(x, y)))),
     binOp(">=", (x, y) => abs.not(abs.lt(x, y))),
+    binOp("modulo", abs.modulo),
     unOp("not", abs.not),
-    unOp("random", abs.random)
+    unOp("random", abs.random),
+    unOp("ceiling", abs.ceiling),
+    unOp("log", abs.log)
   )
   private val allocated = all.map({ case (name, f) => (name, addri.primitive(name), i.inject((name, f))) })
   val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })

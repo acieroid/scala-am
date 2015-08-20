@@ -15,6 +15,9 @@ trait AbstractConcrete {
   def minus(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"minus not applicable with operands $this and $that")
   def times(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"times not applicable with operands $this and $that")
   def div(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"div not applicable with operands $this and $that")
+  def modulo(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"modulo not applicable with operands $this and $that")
+  def ceiling: AbstractConcrete = AbstractConcrete.AbstractError(s"ceiling not applicable with operand $this")
+  def log: AbstractConcrete = AbstractConcrete.AbstractError(s"log not applicable with operand $this")
   def lt(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"lt not applicable with operands $this and $that")
   def numEq(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"numEq not applicable with operands $this and $that")
   def not: AbstractConcrete = AbstractConcrete.AbstractError(s"not not applicable with operand $this")
@@ -33,14 +36,20 @@ object AbstractConcrete {
       case AbstractInt(v2) => AbstractInt(v - v2)
       case _ => super.minus(that)
     }
-    override def div(that: AbstractConcrete) = that match {
-      case AbstractInt(v2) => AbstractInt(v / v2) /* TODO: no support for floats nor fractions yet */
-      case _ => super.div(that)
-    }
     override def times(that: AbstractConcrete) = that match {
       case AbstractInt(v2) => AbstractInt(v * v2)
       case _ => super.times(that)
     }
+    override def div(that: AbstractConcrete) = that match {
+      case AbstractInt(v2) => AbstractInt(v / v2) /* TODO: no support for floats nor fractions yet */
+      case _ => super.div(that)
+    }
+    override def modulo(that: AbstractConcrete) = that match {
+      case AbstractInt(v2) => AbstractInt(v % v2)
+      case _ => super.modulo(that)
+    }
+    override def ceiling = AbstractInt(v) /* TODO: float */
+    override def log = AbstractInt(scala.math.log(v).toInt) /* TODO: float */
     override def lt(that: AbstractConcrete) = that match {
       case AbstractInt(v2) => AbstractBool(v < v2)
       case _ => super.lt(that)
@@ -102,6 +111,9 @@ object AbstractConcrete {
     def minus(x: AbstractConcrete, y: AbstractConcrete) = x.minus(y)
     def times(x: AbstractConcrete, y: AbstractConcrete) = x.times(y)
     def div(x: AbstractConcrete, y: AbstractConcrete) = x.div(y)
+    def modulo(x: AbstractConcrete, y: AbstractConcrete) = x.modulo(y)
+    def ceiling(x: AbstractConcrete) = x.ceiling
+    def log(x: AbstractConcrete) = x.log
     def lt(x: AbstractConcrete, y: AbstractConcrete) = x.lt(y)
     def numEq(x: AbstractConcrete, y: AbstractConcrete) = x.numEq(y)
     def not(x: AbstractConcrete) = x.not

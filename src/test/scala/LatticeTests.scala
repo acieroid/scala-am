@@ -42,6 +42,7 @@ abstract class LatticePropSpec[Abs](implicit abs: AbstractValue[Abs], absi: Abst
     assert(abs.isError(abs.minus(v1, v2))); assert(abs.isError(abs.minus(v2, v1)))
     assert(abs.isError(abs.times(v1, v2))); assert(abs.isError(abs.times(v2, v1)))
     assert(abs.isError(abs.div(v1, v2))); assert(abs.isError(abs.div(v2, v1)))
+    assert(abs.isError(abs.modulo(v1, v2)); assert(abs.isError(abs.modulo(v2, v1))))
     assert(abs.isError(abs.lt(v1, v2))); assert(abs.isError(abs.lt(v2, v1)))
     assert(abs.isError(abs.numEq(v1, v2))); assert(abs.isError(abs.numEq(v2, v1)))
     assert(abs.isError(abs.not(v1)))
