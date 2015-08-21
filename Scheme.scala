@@ -12,8 +12,12 @@ case class SchemeLambda(args: List[String], body: List[SchemeExp]) extends Schem
 }
 case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp]) extends SchemeExp {
   override def toString() = {
-    val a = args.mkString(" ")
-    s"($f $a)"
+    if (args.isEmpty) {
+      s"($f)"
+    } else {
+      val a = args.mkString(" ")
+      s"($f $a)"
+    }
   }
 }
 case class SchemeIf(cond: SchemeExp, cons: SchemeExp, alt: SchemeExp) extends SchemeExp {
