@@ -5,13 +5,13 @@ import scalaz.Scalaz._
  * Implementation of Johnson's CESIK*Ξ machine with a global continuation store
  */
 case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-                                                                            addr: Address[Addr], addri: AddressInjection[Addr]) {
+  addr: Address[Addr], addri: AddressInjection[Addr]) {
   sealed abstract class Control {
     def subsumes(that: Control): Boolean
   }
 
   case class ControlEval(exp: Exp, env: Environment[Addr]) extends Control {
-    override def toString() = s"ev(${exp.toString})"
+    override def toString() = s"ev($exp)"
     def subsumes(that: Control) = that match {
       case ControlEval(exp2, env2) => exp.equals(exp2) && env.subsumes(env2)
       case _ => false
@@ -19,7 +19,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   }
 
   case class ControlKont(v: Abs) extends Control {
-    override def toString = s"ko(${v.toString})"
+    override def toString = s"ko($v)"
     def subsumes(that: Control) = that match {
       case ControlKont(v2) => abs.subsumes(v, v2)
       case _ => false
@@ -27,7 +27,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   }
 
   case class ControlError(reason: String) extends Control {
-    override def toString() = s"err($reason)"
+    override def toString = s"err($reason)"
     def subsumes(that: Control) = that.equals(this)
   }
 
@@ -45,9 +45,11 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       case KontCtx(ctx2) => ctx.subsumes(ctx2)
       case _ => false
     }
+    override def toString = s"KontCtx(${ctx.clo._1}, ${ctx.v})"
   }
   object KontEmpty extends Kont {
     def subsumes(that: Kont) = that.equals(this)
+    override def toString = "KontEmpty"
   }
 
   case class LocalKont(frames: List[Frame]) {
@@ -99,9 +101,34 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
         case Some((top, rest)) => Set((top, rest, κ))
       }
 
-
     private def pop(ι: LocalKont, κ: Kont, kstore: KontStore): Set[(Frame, LocalKont, Kont)] =
       pop(ι, κ, kstore, Set())
+
+    private def computeKont(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Set[List[Frame]] =
+    ι.deconstruct match {
+      case None => κ match {
+        case KontEmpty => Set(List())
+        case KontCtx(τ) => {
+          val G2: Set[Kont] = kstore.lookup(τ).flatMap({
+            case (ι, κ) => ι.deconstruct match {
+              case None => Set(κ)
+              case Some(_) => Set[Kont]()
+            }
+          }).diff(G)
+          val GuG2 = G.union(G2)
+          kstore.lookup(τ).flatMap({
+            case (ι, κ) => ι.deconstruct match {
+              case None => Set[List[Frame]](List())
+              case Some((top, rest)) => computeKont(rest, κ, kstore, GuG2).map(k => top :: k)
+            }
+          }).union(G2.flatMap((κ) => computeKont(new LocalKont(), κ, kstore, GuG2)))
+        }
+      }
+      case Some((top, rest)) => computeKont(rest, κ, kstore, G).map(k => top :: k)
+    }
+
+    private def computeKont(ι: LocalKont, κ: Kont, kstore: KontStore): Set[List[Frame]] =
+      computeKont(ι, κ, kstore, Set())
 
     private def integrate(ι: LocalKont, κ: Kont, kstore: KontStore, v: Abs, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
       actions.foldLeft((Set[State](), kstore))({ (acc, act) =>
@@ -152,11 +179,20 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
           case (next, kstore2) => (acc._1 ++ next.map((ς2) => (ς, ς2)), acc._2.join(kstore2))
         }
       })
-      loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
-           visited ++ todo,
-           halted ++ todo.filter((ς) => ς.halted(kstore)),
-           graph.addEdges(edges),
-           kstore2)
+      if (kstore.equals(kstore2)) {
+        loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
+          visited ++ todo,
+          halted ++ todo.filter((ς) => ς.halted(kstore)),
+          graph.addEdges(edges),
+          kstore2)
+      } else {
+        /* KontStore changed, discard set of seen states */
+        loop(edges.map({ case (_, ς2) => ς2 }),
+          Set(),
+          halted ++ todo.filter((ς) => ς.halted(kstore)),
+          graph.addEdges(edges),
+          kstore2)
+      }
     }
   }
 
