@@ -132,10 +132,26 @@ object ANFCompiler {
 
 object ANF {
   /**
-    * Compile a Scheme expression into a mostly-equivalent ANF expression.
-    * Input should be alpha-renamed before calling this function.
-    * Incompatibilities are:
-    *   - no support for mutual recursion
-    */
+   * Compile a Scheme expression into a mostly-equivalent ANF expression.
+   * Input should be alpha-renamed before calling this function.
+   * Incompatibilities are:
+   *   - no support for mutual recursion
+   */
   def compile(exp: SchemeExp): ANFExp = ANFCompiler.compile(exp)
+
+  /**
+   * Parse a string representing a Scheme program
+   */
+  def parseString(s: String): ANFExp =
+    compile(Scheme.parseString(s))
+
+  /**
+   * Parse a Scheme file into a single ANF expression
+   */
+  def parse(file: String): ANFExp = {
+    val f = scala.io.Source.fromFile(file)
+    val content = f.getLines.mkString("\n")
+    f.close()
+    parseString(content)
+  }
 }

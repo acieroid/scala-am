@@ -16,10 +16,11 @@ case class Graph[A](ids: Map[A, Int], next: Int, nodes: Set[A], edges: Map[A, Se
     }
   def size: Integer = nodes.size
   def foldNodes[B](init: B)(f: (B, A) => B) = nodes.foldLeft(init)(f)
+  def getNode(id: Int): Option[A] = ids.find({ case (_, v) => id == v }).map(_._1)
   def toDot(label: A => String, color: A => String): String = {
       val sb = new StringBuilder("digraph G {\n")
       nodes.foreach((n) =>
-        sb.append("node_" + ids(n) + "[label=\"" + label(n).replaceAll("\"", "\\\\\"") + "\", fillcolor=\"" + color(n) + "\" style=\"filled\"];\n")
+        sb.append("node_" + ids(n) + "[label=\"" /* + ids(n).toString + " " */ + label(n).replaceAll("\"", "\\\\\"") + "\", fillcolor=\"" + color(n) + "\" style=\"filled\"];\n")
       )
       edges.foreach({ case (n1, ns) => ns.foreach((n2) => sb.append(s"node_${ids(n1)} -> node_${ids(n2)}\n")) })
       sb.append("}")

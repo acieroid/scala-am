@@ -6,15 +6,8 @@ abstract class AACFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
          extends FlatSpec with Matchers {
   val machine = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
 
-  def loadScheme(path: String): SchemeExp = {
-    val f = scala.io.Source.fromFile(path)
-    val content = f.getLines.mkString("\n")
-    f.close()
-    return Scheme.compile(SExpParser.parse(content))
-  }
-
   def checkResult(file: String, expected: Abs) = {
-    val result = machine.eval(loadScheme(s"test/$file"), None)
+    val result = machine.eval(Scheme.parse(s"test/$file"), None)
     assert(result.exists((st: machine.State) => st.control match {
       case machine.ControlKont(v) => abs.subsumes(v, expected)
       case _ => false
@@ -44,15 +37,8 @@ abstract class AAMFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
          extends FlatSpec with Matchers {
   val machine = new AAM[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
 
-  def loadScheme(path: String): SchemeExp = {
-    val f = scala.io.Source.fromFile(path)
-    val content = f.getLines.mkString("\n")
-    f.close()
-    return Scheme.compile(SExpParser.parse(content))
-  }
-
   def checkResult(file: String, expected: Abs) = {
-    val result = machine.eval(loadScheme(s"test/$file"), None)
+    val result = machine.eval(Scheme.parse(s"test/$file"), None)
     assert(result.exists((st: machine.State) => st.control match {
       case machine.ControlKont(v) => abs.subsumes(v, expected)
       case _ => false
@@ -82,15 +68,8 @@ abstract class FreeFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: A
          extends FlatSpec with Matchers {
   val machine = new Free[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
 
-  def loadScheme(path: String): SchemeExp = {
-    val f = scala.io.Source.fromFile(path)
-    val content = f.getLines.mkString("\n")
-    f.close()
-    return Scheme.compile(SExpParser.parse(content))
-  }
-
   def checkResult(file: String, expected: Abs) = {
-    val result = machine.eval(loadScheme(s"test/$file"), None)
+    val result = machine.eval(Scheme.parse(s"test/$file"), None)
     assert(result.exists((st: machine.State) => st.control match {
       case machine.ControlKont(v) => abs.subsumes(v, expected)
       case _ => false

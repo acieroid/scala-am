@@ -29,10 +29,7 @@ class ParserSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
 
   property("parser should parse without error") {
     forAll (files) { (file: String) =>
-      val f = scala.io.Source.fromFile("test/" + file)
-      val content = f.getLines.mkString("\n")
-      f.close()
-      Scheme.compile(SExpParser.parse(content))
+      Scheme.parse("test/" + file)
     }
   }
 }

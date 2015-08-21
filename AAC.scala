@@ -157,7 +157,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
     def halted(kstore: KontStore) = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => {
+      case ControlKont(_) => {
         /* TODO: isn't this a too strong requirement? What about states that *
         could pop an continuation, but that might also not pop one? E.g., if κ
         is bound to a set of two continuations, one being empty, the other one
