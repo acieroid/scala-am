@@ -67,8 +67,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     def this() = this(Map())
     def lookup(τ: Context): Set[(LocalKont, Kont)] = content.getOrElse(τ, Set())
     def extend(τ: Context, v: (LocalKont, Kont)): KontStore = KontStore(content + (τ -> (lookup(τ) + v)))
-    def join(that: KontStore): KontStore =
-      KontStore(content |+| that.content)
+    def join(that: KontStore): KontStore = KontStore(content |+| that.content)
   }
 
 
@@ -78,34 +77,35 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     override def toString() = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ)
 
-    private def pop(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Set[(Frame, LocalKont, Kont)] =
-      ι.deconstruct match {
-        case None => κ match {
-          case KontEmpty => Set()
-          case KontCtx(τ) => {
-            val G2: Set[Kont] = kstore.lookup(τ).flatMap({
-              case (ι, κ) => ι.deconstruct match {
-                case None => Set(κ)
-                case Some(_) => Set[Kont]()
-              }
-            }).diff(G)
-            val GuG2 = G.union(G2)
-            kstore.lookup(τ).flatMap({
-              case (ι, κ) => ι.deconstruct match {
-                case None => Set[(Frame, LocalKont, Kont)]()
-                case Some((top, rest)) => Set((top, rest, κ))
-              }
-            }).union(G2.flatMap((κ) => pop(new LocalKont(), κ, kstore, GuG2)))
-          }
+    /* TODO: functions inspecting the continuation can probably be factored into a
+     * single function with the stack-walking mechanics, and some helper
+     * functions telling what to do when encountering each kind of stack */
+    private def pop(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Set[(Frame, LocalKont, Kont)] = ι.deconstruct match {
+      case None => κ match {
+        case KontEmpty => Set()
+        case KontCtx(τ) => {
+          val G2: Set[Kont] = kstore.lookup(τ).flatMap({
+            case (ι, κ) => ι.deconstruct match {
+              case None => Set(κ)
+              case Some(_) => Set[Kont]()
+            }
+          }).diff(G)
+          val GuG2 = G.union(G2)
+          kstore.lookup(τ).flatMap({
+            case (ι, κ) => ι.deconstruct match {
+              case None => Set[(Frame, LocalKont, Kont)]()
+              case Some((top, rest)) => Set((top, rest, κ))
+            }
+          }).union(G2.flatMap((κ) => pop(new LocalKont(), κ, kstore, GuG2)))
         }
-        case Some((top, rest)) => Set((top, rest, κ))
       }
+      case Some((top, rest)) => Set((top, rest, κ))
+    }
 
     private def pop(ι: LocalKont, κ: Kont, kstore: KontStore): Set[(Frame, LocalKont, Kont)] =
       pop(ι, κ, kstore, Set())
 
-    private def computeKont(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Set[List[Frame]] =
-    ι.deconstruct match {
+    private def computeKont(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Set[List[Frame]] = ι.deconstruct match {
       case None => κ match {
         case KontEmpty => Set(List())
         case KontCtx(τ) => {
@@ -129,6 +129,31 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
     private def computeKont(ι: LocalKont, κ: Kont, kstore: KontStore): Set[List[Frame]] =
       computeKont(ι, κ, kstore, Set())
+
+    private def kontCanBeEmpty(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Boolean = ι.deconstruct match {
+      case None => κ match {
+        case KontEmpty => true
+        case KontCtx(τ) => {
+          val G2: Set[Kont] = kstore.lookup(τ).flatMap({
+            case (ι, κ) => ι.deconstruct match {
+              case None => Set(κ)
+              case Some(_) => Set[Kont]()
+            }
+          }).diff(G)
+          val GuG2 = G.union(G2)
+          kstore.lookup(τ).map({
+            case (ι, κ) => ι.deconstruct match {
+              case None => true
+              case Some((top, rest)) => false
+            }
+          }).union(G2.map((κ) => kontCanBeEmpty(new LocalKont(), κ, kstore, GuG2))).foldLeft(false)((x, y) => x || y)
+        }
+      }
+      case Some((top, rest)) => false
+    }
+
+    private def kontCanBeEmpty(ι: LocalKont, κ: Kont, kstore: KontStore): Boolean =
+      kontCanBeEmpty(ι, κ, kstore, Set())
 
     private def integrate(ι: LocalKont, κ: Kont, kstore: KontStore, v: Abs, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
       actions.foldLeft((Set[State](), kstore))({ (acc, act) =>
@@ -157,13 +182,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
     def halted(kstore: KontStore) = control match {
       case ControlEval(_, _) => false
-      case ControlKont(_) => {
-        /* TODO: isn't this a too strong requirement? What about states that *
-        could pop an continuation, but that might also not pop one? E.g., if κ
-        is bound to a set of two continuations, one being empty, the other one
-        being poppable */
-        ι.isEmpty && (κ.equals(KontEmpty) || pop(ι, κ, kstore).isEmpty)
-      }
+      case ControlKont(_) => ι.isEmpty && kontCanBeEmpty(ι, κ, kstore)
       case ControlError(_) => true
     }
   }
