@@ -76,6 +76,13 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
+          /* Non-determinism arises in the number of explored states because of the
+           * subsumption checking, and the fact that sets are not ordered: if a
+           * "bigger" state is explored first, it might cut off a large chunk of
+           * the exploration space, while if it is explored later, the explored
+           * state space might be bigger. Disabling subsumption checking leads
+           * to a deterministic amount of states, but enabling it can reduce
+           * this number of states, and never increases it. */
           loop(todo.tail, visited, halted, graph)
         } else if (s.halted) {
           loop(todo.tail, visited + s, halted + s, graph)
