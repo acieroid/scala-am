@@ -189,30 +189,28 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   def outputDot(graph: Graph[States], path: String) =
     graph.toDotFile(path, _.toString.take(40), _ => "#FFFFFF")
 
-  def eval(exp: Exp, dotfile: Option[String]): Set[State] = {
+  def evalNoGraph(exp: Exp): Set[State] = {
     loop(new States(exp), Set(), Set(), new Graph[States]()) match {
       case (halted, graph: Graph[States]) => {
         val (states, confs) = (graph.size, graph.foldNodes(0)((acc, st) => acc + st.R.size))
         println(s"$states states, $confs configurations")
-        dotfile match {
-          case Some(file) => outputDot(graph, file)
-          case None => ()
-        }
         halted
       }
     }
   }
 
-  def evalBuildGraph(exp: Exp, dotfile: Option[String]): Set[State] = {
+  def evalBuildGraph(exp: Exp, dotfile: String): Set[State] = {
     loopWithLocalGraph(new States(exp), Set(), new Graph[State]()) match {
       case (halted, graph: Graph[State]) => {
         println(s"${graph.size} states")
-        dotfile match {
-          case Some(file) => outputLocalDot(graph, file)
-          case None => ()
-        }
+        outputLocalDot(graph, dotfile)
         halted
       }
     }
+  }
+
+  def eval(exp: Exp, dotfile: Option[String]): Set[State] = dotfile match {
+    case Some(file) => evalBuildGraph(exp, file)
+    case None => evalNoGraph(exp)
   }
 }
