@@ -6,8 +6,10 @@ trait AbstractType {
   def isFalse: Boolean = false
   def isError: Boolean = false
   def foldValues[A](f: AbstractType => Set[A]): Set[A] = f(this)
-  def join(that: AbstractType): AbstractType = if (this.equals(that)) { this } else { AbstractType.AbstractTop }
-  def meet(that: AbstractType): AbstractType = if (this.equals(that)) { this } else { AbstractType.AbstractBottom }
+  def join(that: AbstractType): AbstractType =
+    if (this.equals(that) || that.equals(AbstractType.AbstractBottom)) { this } else { AbstractType.AbstractTop }
+  def meet(that: AbstractType): AbstractType =
+    if (this.equals(that) || that.equals(AbstractType.AbstractTop)) { this } else { AbstractType.AbstractBottom }
   def subsumes(that: AbstractType): Boolean = this.equals(that)
   def plus(that: AbstractType): AbstractType = AbstractType.AbstractError
   def minus(that: AbstractType): AbstractType = AbstractType.AbstractError

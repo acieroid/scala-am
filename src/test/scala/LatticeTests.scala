@@ -51,6 +51,21 @@ abstract class LatticePropSpec[Abs](implicit abs: AbstractValue[Abs], absi: Abst
   }
 }
 
+abstract class JoinLatticePropSpec[Abs](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs])
+    extends LatticePropSpec[Abs] {
+  property("lattice should join values correctly") {
+    val bot = absi.bottom
+    val t = absi.inject(true)
+    val f = absi.inject(false)
+    val tf = abs.join(t, f)
+    val tf2 = abs.join(tf, bot)
+    assert(abs.isTrue(tf)); assert(abs.isFalse(tf))
+    assert(abs.isTrue(tf2)); assert(abs.isFalse(tf2));
+    assert(abs.subsumes(tf, tf2)); assert(abs.subsumes(tf2, tf)); assert(tf.equals(tf2))
+  }
+}
+
+
 class AbstractConcreteTest extends LatticePropSpec[AbstractConcrete]
-class AbstractTypeTest extends LatticePropSpec[AbstractType]
-class AbstractTypeSetTest extends LatticePropSpec[AbstractTypeSet]
+class AbstractTypeTest extends JoinLatticePropSpec[AbstractType]
+class AbstractTypeSetTest extends JoinLatticePropSpec[AbstractTypeSet]

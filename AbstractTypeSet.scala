@@ -6,8 +6,10 @@ trait AbstractTypeSet {
   def isFalse: Boolean = false
   def isError: Boolean = false
   def foldValues[A](f: AbstractTypeSet => Set[A]): Set[A] = f(this)
-  def join(that: AbstractTypeSet): AbstractTypeSet = if (this.equals(that)) { this } else { AbstractTypeSet.AbstractSet(Set(this, that)) }
-  def meet(that: AbstractTypeSet): AbstractTypeSet = if (this.equals(that)) { this } else { AbstractTypeSet.AbstractBottom }
+  def join(that: AbstractTypeSet): AbstractTypeSet =
+    if (this.equals(that) || that.equals(AbstractTypeSet.AbstractBottom)) { this } else { AbstractTypeSet.AbstractSet(Set(this, that)) }
+  def meet(that: AbstractTypeSet): AbstractTypeSet =
+    if (this.equals(that)) { this } else { AbstractTypeSet.AbstractBottom }
   def subsumes(that: AbstractTypeSet): Boolean = this.equals(that)
   def plus(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def minus(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
@@ -129,6 +131,7 @@ object AbstractTypeSet {
     override def foldValues[B](f: A => Set[B]) =
       content.foldLeft(Set[B]())((s: Set[B], v: AbstractTypeSet) => s ++ v.foldValues(f))
     override def join(that: A) = that match {
+      case AbstractBottom => this
       case AbstractSet(content2) =>
         /* every element in the other set has to be joined in this set */
         AbstractSet(content2.foldLeft(Set[AbstractTypeSet]())((acc, v) =>
