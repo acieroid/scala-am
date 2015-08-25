@@ -31,6 +31,7 @@ object AbstractType {
     override def toString = "⊤"
     override def isTrue = true
     override def isFalse = true
+    override def subsumes(that: AbstractType) = true
     override def plus(that: AbstractType) = AbstractTop
     override def minus(that: AbstractType) = AbstractTop
     override def times(that: AbstractType) = AbstractTop
