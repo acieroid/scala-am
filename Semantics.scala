@@ -158,21 +158,79 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
     override def toString() = "FHalt"
   }
 
-  def bindArgs(l: List[(String, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs]): (Environment[Addr], Store[Addr, Abs]) =
+  private def bindArgs(l: List[(String, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs]): (Environment[Addr], Store[Addr, Abs]) =
     l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, value)) => {
       val a = addri.variable(name)
       (ρ.extend(name, a), σ.extend(a, value))
     }})
 
-  def evalBody(body: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Action[SchemeExp, Abs, Addr] = body match {
+  private def evalBody(body: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Action[SchemeExp, Abs, Addr] = body match {
     case Nil => ActionReachedValue(absi.bottom /* TODO: undefined */, σ)
     case List(exp) => ActionEval(exp, ρ, σ)
     case exp :: rest => ActionPush(exp, FrameBegin(rest, ρ), ρ, σ)
   }
 
+
+  def conditional(v: Abs, t: Action[SchemeExp, Abs, Addr], f: Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
+    (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
+
+  def evalCall(function: Abs, argsv: List[Abs], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
+    abs.foldValues(function, (v) =>
+                   abs.getClosure[SchemeExp, Addr](v) match {
+                     case Some((SchemeLambda(args, body), ρ1)) =>
+                       if (args.length == argsv.length) {
+                         bindArgs(args.zip(argsv), ρ1, σ) match {
+                           case (ρ2, σ) =>
+                             if (body.length == 1)
+                               Set(ActionStepIn((SchemeLambda(args, body), ρ1), body.head, ρ2, σ))
+                             else
+                               Set(ActionStepIn((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ))
+                         }
+                       } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
+                     case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))
+                     case None => abs.getPrimitive(v) match {
+                       case Some((name, f)) => f(argsv) match {
+                         case Right(res) => Set(ActionReachedValue(res, σ))
+                         case Left(err) => Set(ActionError(err))
+                       }
+                       case None => Set(ActionError(s"Called value is not a function: $v"))
+                     }
+                   })
+
+
+  private def evalValue(v: Value): Option[Abs] = v match {
+    case ValueString(s) => Some(absi.inject(s))
+    case ValueInteger(n) => Some(absi.inject(n))
+    case ValueBoolean(b) => Some(absi.inject(b))
+    case _ => None
+  }
+
+  /** Tries to perform atomic evaluation of an expression. Returns the result of
+    * the evaluation if it succeeded, otherwise returns None */
+  private def atomicEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Option[Abs] = e match {
+    case λ: SchemeLambda => Some(absi.inject[SchemeExp, Addr]((λ, ρ)))
+    case SchemeIdentifier(name) => ρ.lookup(name).map(σ.lookup _)
+    case SchemeValue(v) => evalValue(v)
+    case _ => None
+  }
+
+  private def funcallArgs(f: Abs, args: List[Abs], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
+    case Nil => evalCall(f, args.reverse, ρ, σ)
+    case e :: rest => atomicEval(e, ρ, σ) match {
+      case Some(v) => funcallArgs(f, v :: args, rest, ρ, σ)
+      case None => Set(ActionPush(e, FrameFuncallOperands(f, args, rest, ρ), ρ, σ))
+    }
+  }
+
+  private def funcallArgs(f: Abs, args: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
+    funcallArgs(f, List(), args, ρ, σ)
+
   def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
     case λ: SchemeLambda => Set(ActionReachedValue(absi.inject[SchemeExp, Addr]((λ, ρ)), σ))
-    case SchemeFuncall(f, args) => Set(ActionPush(f, FrameFuncallOperator(args, ρ), ρ, σ))
+    case SchemeFuncall(f, args) => atomicEval(f, ρ, σ) match {
+      case Some(v) => funcallArgs(v, args, ρ, σ)
+      case None => Set(ActionPush(f, FrameFuncallOperator(args, ρ), ρ, σ))
+    }
     case SchemeIf(cond, cons, alt) => Set(ActionPush(cond, FrameIf(cons, alt, ρ), ρ, σ))
     case SchemeLet(Nil, body) => Set(evalBody(body, ρ, σ))
     case SchemeLet((v, exp) :: bindings, body) => Set(ActionPush(exp, FrameLet(v, List(), bindings, body, ρ), ρ, σ))
@@ -208,52 +266,22 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
     }
     case SchemeQuoted(SExpIdentifier(sym)) => Set(ActionReachedValue(absi.injectSymbol(sym), σ))
     case SchemeQuoted(quoted) => throw new Exception(s"TODO: quoted expressions not yet handled")
-    case SchemeValue(v) => {
-      val injected = v match {
-        case ValueString(s) => Some(absi.inject(s))
-        case ValueInteger(n) => Some(absi.inject(n))
-        case ValueBoolean(b) => Some(absi.inject(b))
-        case _ => None
-      }
-      injected match {
-        case Some(v) => Set(ActionReachedValue(v, σ))
-        case None => Set(ActionError(s"Unhandled value: $v"))
-      }
+    case SchemeValue(v) => evalValue(v) match {
+      case Some(v) => Set(ActionReachedValue(v, σ))
+      case None => Set(ActionError(s"Unhandled value: $v"))
     }
   }
 
-  def conditional(v: Abs, t: Action[SchemeExp, Abs, Addr], f: Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
-    (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
-
-  def evalCall(function: Abs, argsv: List[Abs], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
-    abs.foldValues(function, (v) =>
-                   abs.getClosure[SchemeExp, Addr](v) match {
-                     case Some((SchemeLambda(args, body), ρ1)) =>
-                       if (args.length == argsv.length) {
-                         bindArgs(args.zip(argsv), ρ1, σ) match {
-                           case (ρ2, σ) =>
-                             if (body.length == 1)
-                               Set(ActionStepIn((SchemeLambda(args, body), ρ1), body.head, ρ2, σ))
-                             else
-                               Set(ActionStepIn((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ))
-                         }
-                       } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
-                     case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))
-                     case None => abs.getPrimitive(v) match {
-                       case Some((name, f)) => f(argsv) match {
-                         case Right(res) => Set(ActionReachedValue(res, σ))
-                         case Left(err) => Set(ActionError(err))
-                       }
-                       case None => Set(ActionError(s"Called value is not a function: $v"))
-                     }
-                   })
-
   def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {
     case FrameHalt => Set()
-    case FrameFuncallOperator(Nil, ρ) => evalCall(v, Nil, ρ, σ)
-    case FrameFuncallOperator(arg :: args, ρ) => Set(ActionPush(arg, FrameFuncallOperands(v, List(), args, ρ), ρ, σ))
-    case FrameFuncallOperands(f, args, Nil, ρ) => evalCall(f, (v :: args).reverse, ρ, σ)
-    case FrameFuncallOperands(f, args, e :: toeval, ρ) => Set(ActionPush(e, FrameFuncallOperands(f, v :: args, toeval, ρ), ρ, σ))
+    case FrameFuncallOperator(Nil, ρ) => funcallArgs(v, Nil, ρ, σ) // evalCall(v, Nil, ρ, σ)
+    case FrameFuncallOperator(arg :: args, ρ) => funcallArgs(v, arg :: args, ρ, σ) //  Set(ActionPush(arg, FrameFuncallOperands(v, List(), args, ρ), ρ, σ))
+    case FrameFuncallOperands(f, args, Nil, ρ) => funcallArgs(f, v :: args, Nil, ρ, σ)
+    case FrameFuncallOperands(f, args, e :: toeval, ρ) => funcallArgs(f, v :: args, e :: toeval, ρ, σ)
+      /*
+    case FrameFuncallOperator(arg :: args, ρ) => funcallArgs(v, args, ρ, σ)
+    case FrameFuncallOperands(f, args, toeval, ρ) => funcallArgs(f, v :: args, toeval, ρ, σ)
+       */
     case FrameIf(cons, alt, ρ) =>
       conditional(v, ActionEval(cons, ρ, σ), ActionEval(alt, ρ, σ))
     case FrameLet(name, bindings, Nil, body, ρ) => {
