@@ -86,7 +86,7 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
                     case Right(res) => Set(ActionReachedValue(res, σ))
                     case Left(err) => Set(ActionError(err))
                   }
-                  case None => Set(ActionError("Called value is not a function"))
+                  case None => Set(ActionError(s"Called value is not a function: $fv"))
                 }
               })
           }
@@ -176,27 +176,26 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
 
   def evalCall(function: Abs, argsv: List[Abs], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
     abs.foldValues(function, (v) =>
-                   abs.getClosure[SchemeExp, Addr](v) match {
-                     case Some((SchemeLambda(args, body), ρ1)) =>
-                       if (args.length == argsv.length) {
-                         bindArgs(args.zip(argsv), ρ1, σ) match {
-                           case (ρ2, σ) =>
-                             if (body.length == 1)
-                               Set(ActionStepIn((SchemeLambda(args, body), ρ1), body.head, ρ2, σ))
-                             else
-                               Set(ActionStepIn((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ))
-                         }
-                       } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
-                     case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))
-                     case None => abs.getPrimitive(v) match {
-                       case Some((name, f)) => f(argsv) match {
-                         case Right(res) => Set(ActionReachedValue(res, σ))
-                         case Left(err) => Set(ActionError(err))
-                       }
-                       case None => Set(ActionError(s"Called value is not a function: $v"))
-                     }
-                   })
-
+      abs.getClosure[SchemeExp, Addr](v) match {
+        case Some((SchemeLambda(args, body), ρ1)) =>
+          if (args.length == argsv.length) {
+            bindArgs(args.zip(argsv), ρ1, σ) match {
+              case (ρ2, σ) =>
+                if (body.length == 1)
+                  Set(ActionStepIn((SchemeLambda(args, body), ρ1), body.head, ρ2, σ))
+                else
+                  Set(ActionStepIn((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ))
+            }
+          } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
+        case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))
+        case None => abs.getPrimitive(v) match {
+          case Some((name, f)) => f(argsv) match {
+            case Right(res) => Set(ActionReachedValue(res, σ))
+            case Left(err) => Set(ActionError(err))
+          }
+          case None => Set(ActionError(s"Called value is not a function: $v"))
+        }
+      })
 
   private def evalValue(v: Value): Option[Abs] = v match {
     case ValueString(s) => Some(absi.inject(s))
@@ -274,14 +273,8 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
 
   def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {
     case FrameHalt => Set()
-    case FrameFuncallOperator(Nil, ρ) => funcallArgs(v, Nil, ρ, σ) // evalCall(v, Nil, ρ, σ)
-    case FrameFuncallOperator(arg :: args, ρ) => funcallArgs(v, arg :: args, ρ, σ) //  Set(ActionPush(arg, FrameFuncallOperands(v, List(), args, ρ), ρ, σ))
-    case FrameFuncallOperands(f, args, Nil, ρ) => funcallArgs(f, v :: args, Nil, ρ, σ)
-    case FrameFuncallOperands(f, args, e :: toeval, ρ) => funcallArgs(f, v :: args, e :: toeval, ρ, σ)
-      /*
-    case FrameFuncallOperator(arg :: args, ρ) => funcallArgs(v, args, ρ, σ)
+    case FrameFuncallOperator(args, ρ) => funcallArgs(v, args, ρ, σ)
     case FrameFuncallOperands(f, args, toeval, ρ) => funcallArgs(f, v :: args, toeval, ρ, σ)
-       */
     case FrameIf(cons, alt, ρ) =>
       conditional(v, ActionEval(cons, ρ, σ), ActionEval(alt, ρ, σ))
     case FrameLet(name, bindings, Nil, body, ρ) => {
