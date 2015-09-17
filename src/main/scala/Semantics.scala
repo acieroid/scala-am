@@ -76,7 +76,7 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
             case Right(fv) =>
               abs.foldValues(fv, (v) => abs.getClosure[ANFExp, Addr](v) match {
                 case Some((ANFLambda(args, body), ρ)) => if (args.length == argsv.length) {
-                  bindArgs(args.zip(argsv), ρ, σ) match {
+                  bindArgs(args.zip(argsv.reverse), ρ, σ) match {
                     case (ρ2, σ) => Set(ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ))
                   }
                 } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
