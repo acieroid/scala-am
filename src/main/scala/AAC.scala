@@ -173,6 +173,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
     def step(kstore: KontStore): (Set[State], KontStore) = control match {
       case ControlEval(e, ρ) => integrate(ι, κ, kstore, absi.bottom, sem.stepEval(e, ρ, σ))
+      case ControlKont(v) if abs.isError(v) => (Set(), kstore)
       case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore))((acc, popped) => {
         val (states, kstore1) = integrate(popped._2, popped._3, acc._2, v, sem.stepKont(v, σ, popped._1))
         (acc._1 ++ states, kstore1)
@@ -182,7 +183,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
     def halted(kstore: KontStore) = control match {
       case ControlEval(_, _) => false
-      case ControlKont(_) => ι.isEmpty && kontCanBeEmpty(ι, κ, kstore)
+      case ControlKont(v) => abs.isError(v) || (ι.isEmpty && kontCanBeEmpty(ι, κ, kstore))
       case ControlError(_) => true
     }
   }

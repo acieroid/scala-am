@@ -55,6 +55,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       })
     def step: Set[State] = control match {
       case ControlEval(e, ρ) => integrate(a, sem.stepEval(e, ρ, σ))
+      case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => abs.foldValues(σ.lookup(a),
                                             (v2) => { abs.getKont(v2) match {
                                               case Some(κ) => κ match {
@@ -66,7 +67,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     }
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
-      case ControlKont(_) => a.equals(addri.halt)
+      case ControlKont(v) => a.equals(addri.halt) || abs.isError(v)
       case ControlError(_) => true
     }
   }

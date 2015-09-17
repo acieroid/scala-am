@@ -85,6 +85,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
     def step: Set[State] = control match {
       case ControlEval(e, ρ) => integrate(k, sem.stepEval(e, ρ, σ))
+      case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(k).foldLeft(Set[State]())((acc, k) => k match {
         case Kont(frame, next) => acc ++ integrate(next, sem.stepKont(v, σ, frame))
       })
@@ -93,7 +94,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
     def halted = control match {
       case ControlEval(_, _) => false
-      case ControlKont(_) => k.equals(HaltKontAddress)
+      case ControlKont(v) => k.equals(HaltKontAddress) || abs.isError(v)
       case ControlError(_) => true
     }
   }
