@@ -27,7 +27,7 @@ case class ValueNil() extends Value {
   override def toString() = "()"
 }
 
-sealed abstract class SExp
+trait SExp extends scala.util.parsing.input.Positional
 case class SExpPair(car: SExp, cdr: SExp) extends SExp {
   override def toString() = {
     val content = toStringRest

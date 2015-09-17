@@ -2,7 +2,7 @@
   * Abstract syntax of Scheme programs (probably far from complete)
   */
 
-sealed abstract class SchemeExp
+trait SchemeExp extends scala.util.parsing.input.Positional
 case class SchemeLambda(args: List[String], body: List[SchemeExp]) extends SchemeExp {
   override def toString() = {
     val a = args.mkString(" ")
@@ -116,69 +116,72 @@ object SchemeCompiler {
     */
   val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define")
 
-  def compile(exp: SExp): SchemeExp = exp match {
-    case SExpPair(SExpIdentifier("lambda"),
-      SExpPair(args, SExpPair(first, rest))) =>
-      SchemeLambda(compileArgs(args), compile(first) :: compileBody(rest))
-    case SExpPair(SExpIdentifier("lambda"), _) =>
-      throw new Exception(s"Invalid Scheme lambda: $exp")
-    case SExpPair(SExpIdentifier("if"),
-      SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil()))))) =>
-      SchemeIf(compile(cond), compile(cons), compile(alt))
-    case SExpPair(SExpIdentifier("if"),
-      SExpPair(cond, SExpPair(cons, SExpValue(ValueNil())))) =>
-      /* Empty else branch is replaced by #f */
-      SchemeIf(compile(cond), compile(cons), SchemeValue(ValueBoolean(false)))
-    case SExpPair(SExpIdentifier("if"), _) =>
-      throw new Exception(s"Invalid Scheme if: $exp")
-    case SExpPair(SExpIdentifier("let"),
-      SExpPair(bindings, SExpPair(first, rest))) =>
-      SchemeLet(compileBindings(bindings), compile(first) :: compileBody(rest))
-    case SExpPair(SExpIdentifier("let"), _) =>
-      throw new Exception(s"Invalid Scheme let: $exp")
-    case SExpPair(SExpIdentifier("let*"),
-      SExpPair(bindings, SExpPair(first, rest))) =>
-      SchemeLetStar(compileBindings(bindings), compile(first) :: compileBody(rest))
-    case SExpPair(SExpIdentifier("let*"), _) =>
-      throw new Exception(s"Invalid Scheme let*: $exp")
-    case SExpPair(SExpIdentifier("letrec"),
-      SExpPair(bindings, SExpPair(first, rest))) =>
-      SchemeLetrec(compileBindings(bindings), compile(first) :: compileBody(rest))
-    case SExpPair(SExpIdentifier("letrec"), _) =>
-      throw new Exception(s"Invalid Scheme letrec: $exp")
-    case SExpPair(SExpIdentifier("set!"),
-      SExpPair(SExpIdentifier(variable), SExpPair(value, SExpValue(ValueNil())))) =>
+  def compile(exp: SExp): SchemeExp = {
+    val exp2 = exp match {
+      case SExpPair(SExpIdentifier("lambda"),
+        SExpPair(args, SExpPair(first, rest))) =>
+        SchemeLambda(compileArgs(args), compile(first) :: compileBody(rest))
+      case SExpPair(SExpIdentifier("lambda"), _) =>
+        throw new Exception(s"Invalid Scheme lambda: $exp")
+      case SExpPair(SExpIdentifier("if"),
+        SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil()))))) =>
+        SchemeIf(compile(cond), compile(cons), compile(alt))
+      case SExpPair(SExpIdentifier("if"),
+        SExpPair(cond, SExpPair(cons, SExpValue(ValueNil())))) =>
+        /* Empty else branch is replaced by #f */
+        SchemeIf(compile(cond), compile(cons), SchemeValue(ValueBoolean(false)))
+      case SExpPair(SExpIdentifier("if"), _) =>
+        throw new Exception(s"Invalid Scheme if: $exp")
+      case SExpPair(SExpIdentifier("let"),
+        SExpPair(bindings, SExpPair(first, rest))) =>
+        SchemeLet(compileBindings(bindings), compile(first) :: compileBody(rest))
+      case SExpPair(SExpIdentifier("let"), _) =>
+        throw new Exception(s"Invalid Scheme let: $exp")
+      case SExpPair(SExpIdentifier("let*"),
+        SExpPair(bindings, SExpPair(first, rest))) =>
+        SchemeLetStar(compileBindings(bindings), compile(first) :: compileBody(rest))
+      case SExpPair(SExpIdentifier("let*"), _) =>
+        throw new Exception(s"Invalid Scheme let*: $exp")
+      case SExpPair(SExpIdentifier("letrec"),
+        SExpPair(bindings, SExpPair(first, rest))) =>
+        SchemeLetrec(compileBindings(bindings), compile(first) :: compileBody(rest))
+      case SExpPair(SExpIdentifier("letrec"), _) =>
+        throw new Exception(s"Invalid Scheme letrec: $exp")
+      case SExpPair(SExpIdentifier("set!"),
+        SExpPair(SExpIdentifier(variable), SExpPair(value, SExpValue(ValueNil())))) =>
       SchemeSet(variable, compile(value))
-    case SExpPair(SExpIdentifier("set!"), _) =>
-      throw new Exception(s"Invalid Scheme set!: $exp")
-    case SExpPair(SExpIdentifier("begin"), body) =>
-      SchemeBegin(compileBody(body))
-    case SExpPair(SExpIdentifier("cond"), clauses) =>
-      SchemeCond(compileCondClauses(clauses))
-    case SExpPair(SExpIdentifier("case"), SExpPair(exp, clauses)) => {
-      val (c, d) = compileCaseClauses(clauses)
-      SchemeCase(compile(exp), c, d)
+      case SExpPair(SExpIdentifier("set!"), _) =>
+        throw new Exception(s"Invalid Scheme set!: $exp")
+      case SExpPair(SExpIdentifier("begin"), body) =>
+        SchemeBegin(compileBody(body))
+      case SExpPair(SExpIdentifier("cond"), clauses) =>
+        SchemeCond(compileCondClauses(clauses))
+      case SExpPair(SExpIdentifier("case"), SExpPair(exp, clauses)) => {
+        val (c, d) = compileCaseClauses(clauses)
+        SchemeCase(compile(exp), c, d)
+      }
+      case SExpPair(SExpIdentifier("and"), args) =>
+        SchemeAnd(compileBody(args))
+      case SExpPair(SExpIdentifier("or"), args) =>
+        SchemeOr(compileBody(args))
+      case SExpPair(SExpIdentifier("define"),
+        SExpPair(SExpIdentifier(name), SExpPair(value, SExpValue(ValueNil())))) =>
+        SchemeDefineVariable(name, compile(value))
+      case SExpPair(SExpIdentifier("define"),
+        SExpPair(SExpPair(SExpIdentifier(name), args),
+          SExpPair(first, rest))) =>
+        SchemeDefineFunction(name, compileArgs(args), compile(first) :: compileBody(rest))
+      case SExpPair(f, args) =>
+        SchemeFuncall(compile(f), compileBody(args))
+      case SExpIdentifier(name) => if (reserved.contains(name)) {
+        throw new Exception(s"Invalid Scheme identifier (reserved): $exp")
+      } else {
+        SchemeIdentifier(name)
+      }
+      case SExpValue(value) => SchemeValue(value)
+      case SExpQuoted(quoted) => SchemeQuoted(quoted)
     }
-    case SExpPair(SExpIdentifier("and"), args) =>
-      SchemeAnd(compileBody(args))
-    case SExpPair(SExpIdentifier("or"), args) =>
-      SchemeOr(compileBody(args))
-    case SExpPair(SExpIdentifier("define"),
-      SExpPair(SExpIdentifier(name), SExpPair(value, SExpValue(ValueNil())))) =>
-      SchemeDefineVariable(name, compile(value))
-    case SExpPair(SExpIdentifier("define"),
-      SExpPair(SExpPair(SExpIdentifier(name), args),
-        SExpPair(first, rest))) =>
-      SchemeDefineFunction(name, compileArgs(args), compile(first) :: compileBody(rest))
-    case SExpPair(f, args) =>
-      SchemeFuncall(compile(f), compileBody(args))
-    case SExpIdentifier(name) => if (reserved.contains(name)) {
-      throw new Exception(s"Invalid Scheme identifier (reserved): $exp")
-    } else {
-      SchemeIdentifier(name)
-    }
-    case SExpValue(value) => SchemeValue(value)
-    case SExpQuoted(quoted) => SchemeQuoted(quoted)
+    exp2.setPos(exp.pos)
   }
 
   def compileArgs(args: SExp): List[String] = args match {
@@ -204,7 +207,7 @@ object SchemeCompiler {
   def compileCondClauses(clauses: SExp): List[(SchemeExp, List[SchemeExp])] = clauses match {
     case SExpPair(SExpPair(SExpIdentifier("else"), SExpPair(first, rest)),
                   SExpValue(ValueNil())) =>
-      List((SchemeValue(ValueBoolean(true)), compile(first) :: compileBody(rest)))
+      List((SchemeValue(ValueBoolean(true)).setPos(clauses.pos), compile(first) :: compileBody(rest)))
     case SExpPair(SExpPair(cond, SExpPair(first, rest)), restClauses) =>
       (compile(cond), compile(first) :: compileBody(rest)) :: compileCondClauses(restClauses)
     case SExpValue(ValueNil()) => Nil
@@ -224,10 +227,10 @@ object SchemeCompiler {
 
   def compileCaseObjects(objects: SExp): List[SchemeValue] = objects match {
     case SExpPair(SExpValue(v), rest) =>
-      SchemeValue(v) :: compileCaseObjects(rest)
+      SchemeValue(v).setPos(objects.pos) :: compileCaseObjects(rest)
     case SExpPair(SExpIdentifier(id), rest) =>
       /* identifiers in case expressions are treated as symbols */
-      SchemeValue(ValueSymbol(id)) :: compileCaseObjects(rest)
+      SchemeValue(ValueSymbol(id)).setPos(objects.pos) :: compileCaseObjects(rest)
     case SExpValue(ValueNil()) => Nil
     case _ => throw new Exception(s"Invalid Scheme case objects: $objects")
   }
@@ -244,121 +247,125 @@ object SchemeRenamer {
       case (e, _) => e
     }
 
-  def rename(exp: SchemeExp, names: NameMap, count: CountMap): (SchemeExp, CountMap) = exp match {
-    case SchemeLambda(args, body) =>
-      countl(args, names, count) match {
-        case (args1, names1, count1) => renameList(body, names1, count1) match {
-          case (body1, count2) => (SchemeLambda(args1, body1), count2)
-        }
-      }
-    case SchemeFuncall(f, args) =>
-      rename(f, names, count) match {
-        case (f1, count1) => renameList(args, names, count1) match {
-          case (args1, count2) => (SchemeFuncall(f1, args1), count2)
-        }
-      }
-    case SchemeIf(cond, cons, alt) =>
-      rename(cond, names, count) match {
-        case (cond1, count1) => rename(cons, names, count1) match {
-          case (cons1, count2) => rename(alt, names, count2) match {
-            case (alt1, count3) => (SchemeIf(cond1, cons1, alt1), count3)
+  def rename(exp: SchemeExp, names: NameMap, count: CountMap): (SchemeExp, CountMap) = {
+    val (exp2, count2) = exp match {
+      case SchemeLambda(args, body) =>
+        countl(args, names, count) match {
+          case (args1, names1, count1) => renameList(body, names1, count1) match {
+            case (body1, count2) => (SchemeLambda(args1, body1), count2)
           }
         }
-      }
-    case SchemeLet(bindings, body) =>
-      countl(bindings.map(_._1), names, count) match {
-        /* Use old names for expressions of bindings */
-        case (variables, names1, count1) => renameList(bindings.map(_._2), names, count1) match {
-          case (exps, count2) => renameList(body, names1, count2) match {
-            case (body1, count3) => (SchemeLet(variables.zip(exps), body1), count3)
+      case SchemeFuncall(f, args) =>
+        rename(f, names, count) match {
+          case (f1, count1) => renameList(args, names, count1) match {
+            case (args1, count2) => (SchemeFuncall(f1, args1), count2)
           }
         }
-      }
-    case SchemeLetStar(bindings, body) =>
-      renameLetStarBindings(bindings, names, count) match {
-        case (bindings1, names1, count1) => renameList(body, names1, count1) match {
-          case (body1, count2) => (SchemeLetStar(bindings1, body1), count2)
-        }
-      }
-    case SchemeLetrec(bindings, body) =>
-      countl(bindings.map(_._1), names, count) match {
-        /* Use new names for expressions of bindings */
-        case (variables, names1, count1) => renameList(bindings.map(_._2), names1, count1) match {
-          case (exps, count2) => renameList(body, names1, count2) match {
-            case (body1, count3) => (SchemeLetrec(variables.zip(exps), body1), count3)
-          }
-        }
-      }
-    case SchemeSet(variable, value) =>
-      rename(value, names, count) match {
-        case (value1, count1) => (SchemeSet(names.get(variable) match {
-          case Some(n) => n
-          case None => variable
-        }, value1), count1)
-      }
-    case SchemeBegin(body) =>
-      renameList(body, names, count) match {
-        case (body1, count1) => (SchemeBegin(body1), count1)
-      }
-    case SchemeCond(clauses) =>
-      clauses.foldLeft((List[(SchemeExp, List[SchemeExp])](), count))(
-        (st: (List[(SchemeExp, List[SchemeExp])], CountMap),
-         cl: (SchemeExp, List[SchemeExp])) =>
-        (st, cl) match {
-          case ((l, cs), (e, body)) => rename(e, names, cs) match {
-            case (e1, count1) => renameList(body, names, count1) match {
-              case (body1, count2) =>
-                ((e1, body1) :: l, count2)
+      case SchemeIf(cond, cons, alt) =>
+        rename(cond, names, count) match {
+          case (cond1, count1) => rename(cons, names, count1) match {
+            case (cons1, count2) => rename(alt, names, count2) match {
+              case (alt1, count3) => (SchemeIf(cond1, cons1, alt1), count3)
             }
           }
-        }) match {
-        case (l, count1) => (SchemeCond(l.reverse), count1)
       }
-    case SchemeCase(exp, clauses, default) =>
-      rename(exp, names, count) match {
-          case (exp1, count1) => clauses.foldLeft((List[(List[SchemeValue], List[SchemeExp])](), count))(
-              (st: (List[(List[SchemeValue], List[SchemeExp])], CountMap),
-               cl: (List[SchemeValue], List[SchemeExp])) =>
-            (st, cl) match {
-                case ((l, cs), (objs, body)) => renameList(body, names, cs) match {
-                    case (body1, count1) => ((objs, body1) :: l, count1)
-                }
-            }) match {
-              case (l, count1) => renameList(default, names, count1) match {
-                  case (default1, count2) => (SchemeCase(exp1, l.reverse, default1), count2)
-              }
+      case SchemeLet(bindings, body) =>
+        countl(bindings.map(_._1), names, count) match {
+          /* Use old names for expressions of bindings */
+          case (variables, names1, count1) => renameList(bindings.map(_._2), names, count1) match {
+            case (exps, count2) => renameList(body, names1, count2) match {
+            case (body1, count3) => (SchemeLet(variables.zip(exps), body1), count3)
+            }
           }
+        }
+      case SchemeLetStar(bindings, body) =>
+        renameLetStarBindings(bindings, names, count) match {
+          case (bindings1, names1, count1) => renameList(body, names1, count1) match {
+            case (body1, count2) => (SchemeLetStar(bindings1, body1), count2)
+          }
+        }
+      case SchemeLetrec(bindings, body) =>
+        countl(bindings.map(_._1), names, count) match {
+        /* Use new names for expressions of bindings */
+          case (variables, names1, count1) => renameList(bindings.map(_._2), names1, count1) match {
+            case (exps, count2) => renameList(body, names1, count2) match {
+            case (body1, count3) => (SchemeLetrec(variables.zip(exps), body1), count3)
+            }
+          }
+        }
+      case SchemeSet(variable, value) =>
+        rename(value, names, count) match {
+          case (value1, count1) => (SchemeSet(names.get(variable) match {
+            case Some(n) => n
+          case None => variable
+          }, value1), count1)
+        }
+      case SchemeBegin(body) =>
+        renameList(body, names, count) match {
+          case (body1, count1) => (SchemeBegin(body1), count1)
+        }
+      case SchemeCond(clauses) =>
+        clauses.foldLeft((List[(SchemeExp, List[SchemeExp])](), count))(
+          (st: (List[(SchemeExp, List[SchemeExp])], CountMap),
+            cl: (SchemeExp, List[SchemeExp])) =>
+          (st, cl) match {
+            case ((l, cs), (e, body)) => rename(e, names, cs) match {
+              case (e1, count1) => renameList(body, names, count1) match {
+                case (body1, count2) =>
+                  ((e1, body1) :: l, count2)
+              }
+            }
+          }) match {
+          case (l, count1) => (SchemeCond(l.reverse), count1)
       }
-    case SchemeAnd(exps) =>
-      renameList(exps, names, count) match {
-        case (exps1, count1) => (SchemeAnd(exps1), count1)
-      }
-    case SchemeOr(exps) =>
+      case SchemeCase(exp, clauses, default) =>
+        rename(exp, names, count) match {
+          case (exp1, count1) => clauses.foldLeft((List[(List[SchemeValue], List[SchemeExp])](), count))(
+            (st: (List[(List[SchemeValue], List[SchemeExp])], CountMap),
+              cl: (List[SchemeValue], List[SchemeExp])) =>
+            (st, cl) match {
+              case ((l, cs), (objs, body)) => renameList(body, names, cs) match {
+                case (body1, count1) => ((objs, body1) :: l, count1)
+              }
+            }) match {
+            case (l, count1) => renameList(default, names, count1) match {
+              case (default1, count2) => (SchemeCase(exp1, l.reverse, default1), count2)
+            }
+          }
+        }
+      case SchemeAnd(exps) =>
+        renameList(exps, names, count) match {
+          case (exps1, count1) => (SchemeAnd(exps1), count1)
+        }
+      case SchemeOr(exps) =>
       renameList(exps, names, count) match {
         case (exps1, count1) => (SchemeOr(exps1), count1)
       }
-    case SchemeDefineVariable(name, value) =>
-      /* Keeps name untouched (maybe not correct?) */
-      rename(value, names, count) match {
-        case (value1, count1) => (SchemeDefineVariable(name, value1), count1)
-      }
-    case SchemeDefineFunction(name, args, body) =>
+      case SchemeDefineVariable(name, value) =>
+        /* Keeps name untouched (maybe not correct?) */
+        rename(value, names, count) match {
+          case (value1, count1) => (SchemeDefineVariable(name, value1), count1)
+        }
+      case SchemeDefineFunction(name, args, body) =>
       countl(args, names, count) match {
         case (args1, names1, count1) => renameList(body, names1, count1) match {
           case (body1, count2) =>
             (SchemeDefineFunction(name, args1, body1), count2)
         }
       }
-    case SchemeQuoted(quoted) =>
-      (SchemeQuoted(quoted), count)
-    case SchemeIdentifier(name) => names.get(name) match {
+      case SchemeQuoted(quoted) =>
+        (SchemeQuoted(quoted), count)
+      case SchemeIdentifier(name) => names.get(name) match {
       case Some(n) => (SchemeIdentifier(n), count)
-      case None => (SchemeIdentifier(name), count) /* keep original name */
+        case None => (SchemeIdentifier(name), count) /* keep original name */
+      }
+      case SchemeValue(v) =>
+        (SchemeValue(v), count)
+      case _ => throw new Exception(s"Unhandled expression in renamer: $exp")
     }
-    case SchemeValue(v) =>
-      (SchemeValue(v), count)
-    case _ => throw new Exception(s"Unhandled expression in renamer: $exp")
+    (exp2.setPos(exp.pos), count2)
   }
+
 
   /** Renames a list of expressions executed sequentially (eg. within a begin) */
   def renameList(exps: List[SchemeExp], names: NameMap, count: CountMap): (List[SchemeExp], CountMap) = exps match {
@@ -411,16 +418,17 @@ object SchemeUndefiner {
     undefine(exps, List())
 
   def undefine(exps: List[SchemeExp], defs: List[(String, SchemeExp)]): SchemeExp = exps match {
-    case SchemeDefineFunction(name, args, body) :: rest => undefine(SchemeDefineVariable(name, SchemeLambda(args, body)) :: rest, defs)
+    case Nil => SchemeBegin(Nil)
+    case SchemeDefineFunction(name, args, body) :: rest => undefine(SchemeDefineVariable(name, SchemeLambda(args, body)).setPos(exps.head.pos) :: rest, defs)
     case SchemeDefineVariable(name, value) :: rest => undefine(rest, (name, value) :: defs)
-    case _ => if (defs.isEmpty) {
+    case _ :: _ => if (defs.isEmpty) {
       undefineBody(exps) match {
-        case Nil => SchemeValue(ValueNil())
+        case Nil => SchemeBegin(Nil)
         case exp :: Nil => exp
-        case exps => SchemeBegin(exps)
+        case exps => SchemeBegin(exps).setPos(exps.head.pos)
       }
     } else {
-      SchemeLetrec(defs, undefineBody(exps))
+      SchemeLetrec(defs, undefineBody(exps)).setPos(exps.head.pos)
     }
   }
 
@@ -430,21 +438,26 @@ object SchemeUndefiner {
     case Nil => Nil
     case SchemeDefineFunction(_, _, _) :: _ => List(undefine(exps, List()))
     case SchemeDefineVariable(_, _) :: _ => List(undefine(exps, List()))
-    case SchemeLambda(args, body) :: rest => SchemeLambda(args, undefineBody(body)) :: undefineBody(rest)
-    case SchemeFuncall(f, args) :: rest => SchemeFuncall(undefine1(f), args.map(undefine1)) :: undefineBody(rest)
-    case SchemeIf(cond, cons, alt) :: rest => SchemeIf(undefine1(cond), undefine1(cons), undefine1(alt)) :: undefineBody(rest)
-    case SchemeLet(bindings, body) :: rest => SchemeLet(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body)) :: undefineBody(rest)
-    case SchemeLetStar(bindings, body) :: rest => SchemeLetStar(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body)) :: undefineBody(rest)
-    case SchemeLetrec(bindings, body) :: rest => SchemeLetrec(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body)) :: undefineBody(rest)
-    case SchemeSet(variable, value) :: rest => SchemeSet(variable, undefine1(value)) :: undefineBody(rest)
-    case SchemeBegin(exps) :: rest => SchemeBegin(undefineBody(exps)) :: undefineBody(rest)
-    case SchemeCond(clauses) :: rest => SchemeCond(clauses.map({ case (cond, body) => (undefine1(cond), undefineBody(body)) })) :: undefineBody(rest)
-    case SchemeCase(key, clauses, default) :: rest => SchemeCase(undefine1(key), clauses.map({ case (vs, body) => (vs, undefineBody(body)) }), undefineBody(default)) :: undefineBody(rest)
-    case SchemeAnd(args) :: rest => SchemeAnd(args.map(undefine1)) :: undefineBody(rest)
-    case SchemeOr(args) :: rest => SchemeOr(args.map(undefine1)) :: undefineBody(rest)
-    case SchemeIdentifier(name) :: rest => SchemeIdentifier(name) :: undefineBody(rest)
-    case SchemeQuoted(quoted) :: rest => SchemeQuoted(quoted) :: undefineBody(rest)
-    case SchemeValue(value) :: rest => SchemeValue(value) :: undefineBody(rest)
+    case exp :: rest => {
+      val exp2 = exp match {
+        case SchemeLambda(args, body) => SchemeLambda(args, undefineBody(body))
+        case SchemeFuncall(f, args) => SchemeFuncall(undefine1(f), args.map(undefine1))
+        case SchemeIf(cond, cons, alt) => SchemeIf(undefine1(cond), undefine1(cons), undefine1(alt))
+        case SchemeLet(bindings, body) => SchemeLet(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body))
+        case SchemeLetStar(bindings, body) => SchemeLetStar(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body))
+        case SchemeLetrec(bindings, body) => SchemeLetrec(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body))
+        case SchemeSet(variable, value) => SchemeSet(variable, undefine1(value))
+        case SchemeBegin(exps) => SchemeBegin(undefineBody(exps))
+        case SchemeCond(clauses) => SchemeCond(clauses.map({ case (cond, body) => (undefine1(cond), undefineBody(body)) }))
+        case SchemeCase(key, clauses, default) => SchemeCase(undefine1(key), clauses.map({ case (vs, body) => (vs, undefineBody(body)) }), undefineBody(default)).setPos(exps.head.pos)
+        case SchemeAnd(args) => SchemeAnd(args.map(undefine1)).setPos(exps.head.pos)
+        case SchemeOr(args) => SchemeOr(args.map(undefine1)).setPos(exps.head.pos)
+        case SchemeIdentifier(name) => SchemeIdentifier(name).setPos(exps.head.pos)
+        case SchemeQuoted(quoted) => SchemeQuoted(quoted).setPos(exps.head.pos)
+        case SchemeValue(value) => SchemeValue(value).setPos(exps.head.pos)
+      }
+      exp2.setPos(exp.pos) :: undefineBody(rest)
+    }
   }
 }
 

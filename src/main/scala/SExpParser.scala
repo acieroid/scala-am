@@ -40,36 +40,38 @@
 import scala.util.parsing.combinator.token._
 import scala.util.parsing.combinator.lexical._
 import scala.util.parsing.combinator.syntactical._
+import scala.util.parsing.input._
 
 trait SExpTokens extends Tokens {
-  case class TIdentifier(s: String) extends Token {
+  trait SExpToken extends Token with Positional
+  case class TIdentifier(s: String) extends SExpToken {
     def chars = s
   }
-  case class TString(s: String) extends Token {
+  case class TString(s: String) extends SExpToken {
     def chars = "\"" + s + "\""
   }
-  case class TInteger(n: Integer) extends Token {
+  case class TInteger(n: Integer) extends SExpToken {
     def chars = n.toString
   }
-  case class TFloat(n: Float) extends Token {
+  case class TFloat(n: Float) extends SExpToken {
     def chars = n.toString
   }
-  case class TBoolean(b: Boolean) extends Token {
+  case class TBoolean(b: Boolean) extends SExpToken {
     def chars = b match {
       case true => "#t"
       case false => "#f"
     }
   }
-  case class TCharacter(c: Character) extends Token {
+  case class TCharacter(c: Character) extends SExpToken {
     def chars = s"#\\$c"
   }
-  case class TQuote() extends Token {
+  case class TQuote() extends SExpToken {
     def chars = "'"
   }
-  case class TLeftParen() extends Token {
+  case class TLeftParen() extends SExpToken {
     def chars = "("
   }
-  case class TRightParen() extends Token {
+  case class TRightParen() extends SExpToken {
     def chars = ")"
   }
 }
@@ -89,9 +91,9 @@ class SExpLexer extends Lexical with SExpTokens {
     (rep(chrExcept('\"', '\n')) ^^ (_.mkString))
   }
 
-  def bool: Parser[Token] =
+  def bool: Parser[SExpToken] =
     '#' ~> ('t' ^^ (_ => TBoolean(true)) | 'f' ^^ (_ => TBoolean(false)))
-  def integer: Parser[Token] =
+  def integer: Parser[SExpToken] =
     sign ~ rep1(digit) ^^ { case s ~ n =>
                             s match {
                               case Some('+') => TInteger(n.mkString.toInt)
@@ -99,19 +101,19 @@ class SExpLexer extends Lexical with SExpTokens {
                               case _ => TInteger(n.mkString.toInt)
                             }
                           }
-  def character: Parser[Token] =
+  def character: Parser[SExpToken] =
     '#' ~> '\\' ~> any ^^ (c => TCharacter(c))
   def stringEnding: Parser[String] = chrExcept('\\', '\n') ^^ (_.toString)
-  def string: Parser[Token] = {
+  def string: Parser[SExpToken] = {
     ('\"' ~> stringContent ~ chrExcept('\\', '\n') <~ '\"' ^^ { case s ~ ending => TString(s + ending) }) |
     ('\"' ~> stringContent <~ '\"' ^^ (s => TString(s)))
   }
-  def identifier: Parser[Token] =
+  def identifier: Parser[SExpToken] =
     rep1(chrExcept('#', '\'', '\"', '(', ')', ' ', ';', '\n', '\t')) ^^ (s => TIdentifier(s.mkString))
-  def quote: Parser[Token] = chr('\'') ^^ { _ => TQuote() }
-  def leftParen: Parser[Token] = chr('(') ^^ { _ => TLeftParen() }
-  def rightParen: Parser[Token] = chr(')') ^^ { _ => TRightParen() }
-  def float: Parser[Token] =
+  def quote: Parser[SExpToken] = chr('\'') ^^ { _ => TQuote() }
+  def leftParen: Parser[SExpToken] = chr('(') ^^ { _ => TLeftParen() }
+  def rightParen: Parser[SExpToken] = chr(')') ^^ { _ => TRightParen() }
+  def float: Parser[SExpToken] =
     sign ~ rep(digit) ~ '.' ~ rep(digit) ^^ { case s ~ pre ~ _ ~ post =>
                                               val n = (pre.mkString + "." + post.mkString).toFloat
                                               s match {
@@ -120,11 +122,11 @@ class SExpLexer extends Lexical with SExpTokens {
                                                 case _ => TFloat(n)
                                               }
                                             }
-  def token: Parser[Token] =
-    nonRelevant ~> {
+  def token: Parser[SExpToken] =
+    nonRelevant ~> positioned ({
       bool | float | integer | character | string | identifier |
       quote | leftParen | rightParen
-    } <~ nonRelevant
+    }) <~ nonRelevant
 }
 
 /* TODO: bug in the parser: it fails on multi-line comments separated by empty
@@ -166,7 +168,7 @@ object SExpParser extends TokenParsers {
     leftParen ~> rep1(exp) <~ rightParen ^^ (e => SExpPair(e))
   def quoted: Parser[SExp] = quote ~> exp ^^ (e => SExpQuoted(e))
 
-  def exp: Parser[SExp] = value | identifier | list | quoted
+  def exp: Parser[SExp] = positioned(value | identifier | list | quoted)
   def expList: Parser[List[SExp]] = rep1(exp)
 
   def parse(s: String): List[SExp] = expList(new lexical.Scanner(s)) match {

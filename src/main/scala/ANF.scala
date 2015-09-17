@@ -3,8 +3,8 @@
   * TODO: desugar calls to some operators (eg. arithmetic, string-append, ...) with more than two arguments
   */
 
-sealed abstract class ANFExp
-sealed abstract class ANFAtomicExp extends ANFExp
+trait ANFExp extends scala.util.parsing.input.Positional
+trait ANFAtomicExp extends ANFExp
 case class ANFLambda(args: List[String], body: ANFExp) extends ANFAtomicExp {
   override def toString() = {
     val a = args.mkString(" ")
@@ -51,53 +51,53 @@ object ANFCompiler {
 
   def compile(exp: SchemeExp, tail: Boolean, k: ANFAtomicExp => ANFExp): ANFExp = exp match {
     case SchemeLambda(args, body) =>
-      k(ANFLambda(args, compileBody(body, a => a)))
+      k(ANFLambda(args, compileBody(body, a => a)).setPos(exp.pos))
     case SchemeFuncall(f, args) =>
-      compile(f, false, a => compileList(args, as => ret(ANFFuncall(a, as), tail, k)))
+      compile(f, false, a => compileList(args, as => ret(ANFFuncall(a, as).setPos(exp.pos), tail, k)))
     case SchemeIf(cond, cons, alt) =>
-      compile(cond, false, a => ret(ANFIf(a, compile(cons), compile(alt)), tail, k))
+      compile(cond, false, a => ret(ANFIf(a, compile(cons), compile(alt)).setPos(exp.pos), tail, k))
     case SchemeLet(bindings, body) =>
       bindings.reverse.foldLeft(compileBody(body, a => a))(
         (e: ANFExp, binding: (String, SchemeExp)) =>
-        ANFLet(binding._1, compile(binding._2), e))
+        ANFLet(binding._1, compile(binding._2), e).setPos(exp.pos))
     case SchemeLetStar(bindings, body) =>
       bindings.reverse.foldLeft(compileBody(body, a => a))(
         (e: ANFExp, binding: (String, SchemeExp)) =>
-        ANFLet(binding._1, compile(binding._2), e))
+        ANFLet(binding._1, compile(binding._2), e).setPos(exp.pos))
     case SchemeLetrec(bindings, body) =>
       /* TODO: we should at least warn when desugaring mutually-recursive functions,
        * as they are not supported. The best solution would be to desugar them
        * using set! to support them */
       bindings.reverse.foldLeft(compileBody(body, a => a))(
         (e: ANFExp, binding: (String, SchemeExp)) =>
-        ANFLetrec(binding._1, compile(binding._2), e))
+        ANFLetrec(binding._1, compile(binding._2), e).setPos(exp.pos))
     case SchemeSet(variable, value) =>
-      compile(value, false, a => ret(ANFSet(variable, a), tail, k))
+      compile(value, false, a => ret(ANFSet(variable, a).setPos(exp.pos), tail, k))
     case SchemeBegin(body) =>
       compileBody(body, a => k(a))
     case SchemeDefineFunction(name, args, body) =>
-      compile(SchemeDefineVariable(name, SchemeLambda(args, body)), tail, k)
+      compile(SchemeDefineVariable(name, SchemeLambda(args, body)).setPos(exp.pos), tail, k)
     case SchemeDefineVariable(name, value) =>
       throw new Exception("define not supported")
     case SchemeAnd(List()) =>
-      k(ANFValue(ValueBoolean(true)))
+      k(ANFValue(ValueBoolean(true)).setPos(exp.pos))
     case SchemeAnd(List(e)) =>
       compile(e, tail, k)
     case SchemeAnd(e :: es) =>
-      compile(e, false, a => ret(ANFIf(a, compile(SchemeAnd(es)), ANFValue(ValueBoolean(false))), tail, k))
+      compile(e, false, a => ret(ANFIf(a, compile(SchemeAnd(es).setPos(exp.pos)), ANFValue(ValueBoolean(false)).setPos(exp.pos)), tail, k))
     case SchemeOr(List()) =>
-      k(ANFValue(ValueBoolean(false)))
+      k(ANFValue(ValueBoolean(false)).setPos(exp.pos))
     case SchemeOr(List(e)) =>
       compile(e, tail, k)
     case SchemeOr(e :: es) =>
-      compile(e, false, a => ret(ANFIf(a, ANFValue(ValueBoolean(true)), compile(SchemeOr(es))), tail, k))
+      compile(e, false, a => ret(ANFIf(a, ANFValue(ValueBoolean(true)).setPos(exp.pos), compile(SchemeOr(es).setPos(exp.pos))).setPos(exp.pos), tail, k))
     case SchemeIdentifier(name) =>
-      k(ANFIdentifier(name))
+      k(ANFIdentifier(name).setPos(exp.pos))
     case SchemeQuoted(quoted) =>
       /* a quoted value is not atomic, as it may require an allocation to be evaluated */
-      ret(ANFQuoted(quoted), tail, k)
+      ret(ANFQuoted(quoted).setPos(exp.pos), tail, k)
     case SchemeValue(value) =>
-      k(ANFValue(value))
+      k(ANFValue(value).setPos(exp.pos))
     case _ =>
       throw new Exception(s"Unhandled expression in ANF compiler: $exp")
   }
