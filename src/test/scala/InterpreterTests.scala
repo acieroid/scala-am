@@ -21,7 +21,7 @@ abstract class AACFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
   "eta.scm" should "eval to #f" in { checkResult("eta.scm", absi.inject(false)) }
   "fact.scm" should "eval to 120" in { checkResult("fact.scm", absi.inject(120)) }
   "gcipd.scm" should "eval to 36" in { checkResult("gcipd.scm", absi.inject(36)) }
-  "inc.scm" should "eval to 2" in { checkResult("inc.scm", absi.inject(2)) }
+  "inc.scm" should "eval to 4" in { checkResult("inc.scm", absi.inject(4)) }
   "kcfa2.scm" should "eval to #f" in { checkResult("kcfa2.scm", absi.inject(false)) }
   "kcfa3.scm" should "eval to #f" in { checkResult("kcfa3.scm", absi.inject(false)) }
   "loop2.scm" should "eval to 550" in { checkResult("loop2.scm", absi.inject(550)) }
@@ -52,7 +52,7 @@ abstract class AAMFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Ab
   "eta.scm" should "eval to #f" in { checkResult("eta.scm", absi.inject(false)) }
   "fact.scm" should "eval to 120" in { checkResult("fact.scm", absi.inject(120)) }
   "gcipd.scm" should "eval to 36" in { checkResult("gcipd.scm", absi.inject(36)) }
-  "inc.scm" should "eval to 2" in { checkResult("inc.scm", absi.inject(2)) }
+  "inc.scm" should "eval to 4" in { checkResult("inc.scm", absi.inject(4)) }
   "kcfa2.scm" should "eval to #f" in { checkResult("kcfa2.scm", absi.inject(false)) }
   "kcfa3.scm" should "eval to #f" in { checkResult("kcfa3.scm", absi.inject(false)) }
   "loop2.scm" should "eval to 550" in { checkResult("loop2.scm", absi.inject(550)) }
@@ -83,7 +83,7 @@ abstract class FreeFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: A
   "eta.scm" should "eval to #f" in { checkResult("eta.scm", absi.inject(false)) }
   "fact.scm" should "eval to 120" in { checkResult("fact.scm", absi.inject(120)) }
   "gcipd.scm" should "eval to 36" in { checkResult("gcipd.scm", absi.inject(36)) }
-  "inc.scm" should "eval to 2" in { checkResult("inc.scm", absi.inject(2)) }
+  "inc.scm" should "eval to 4" in { checkResult("inc.scm", absi.inject(4)) }
   "kcfa2.scm" should "eval to #f" in { checkResult("kcfa2.scm", absi.inject(false)) }
   "kcfa3.scm" should "eval to #f" in { checkResult("kcfa3.scm", absi.inject(false)) }
   "loop2.scm" should "eval to 550" in { checkResult("loop2.scm", absi.inject(550)) }
