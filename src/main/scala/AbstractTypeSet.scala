@@ -202,13 +202,15 @@ object AbstractTypeSet {
       case _ => AbstractError
     }
 
-    def getKont(x: A) = x match {
-      case AbstractKontinuation(κ) => Some(κ)
-      case _ => None
+    def getKonts(x: A) = x match {
+      case AbstractKontinuation(κ) => Set(κ)
+      case AbstractSet(content) => content.flatMap(y => getKonts(y))
+      case _ => Set()
     }
-    def getClosure[Exp : Expression, Addr : Address](x: A) = x match {
-      case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Some((λ, ρ))
-      case _ => None
+    def getClosures[Exp : Expression, Addr : Address](x: A) = x match {
+      case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Set((λ, ρ))
+      case AbstractSet(content) => content.flatMap(y => getClosures(y))
+      case _ => Set()
     }
     def getPrimitive(x: A) = x match {
       case AbstractPrimitive(name, f) => Some((name, f))

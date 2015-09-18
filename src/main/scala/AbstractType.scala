@@ -120,11 +120,20 @@ object AbstractType {
   case class AbstractPrimitive(name: String, f: List[AbstractType] => Either[String, AbstractType]) extends AbstractType {
     override def toString = s"#<prim $name>"
   }
-  case class AbstractKontinuation[Kont <: Kontinuation](kont: Kont) extends AbstractType {
-    override def toString = s"#<kont $kont>"
+  /* We need to be able to represent multiple continuations and multiple closures in this lattice */
+  case class AbstractKontinuations[Kont <: Kontinuation](konts: Set[Kont]) extends AbstractType {
+    override def toString = s"#<konts $konts>"
+    override def join(that: AbstractType) = that match {
+      case AbstractKontinuations(konts2) => AbstractKontinuations(konts ++ konts2)
+      case _ => throw new Error("Type lattice cannot join a continuation with something else")
+    }
   }
-  case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractType {
-    override def toString = "#<clo>"
+  case class AbstractClosures[Exp : Expression, Addr : Address](clos: Set[(Exp, Environment[Addr])]) extends AbstractType {
+    override def toString = "#<clos>"
+    override def join(that: AbstractType) = that match {
+      case other: AbstractClosures[Exp, Addr] => AbstractClosures(clos ++ other.clos)
+      case _ => throw new Error("Type lattice cannot join a closure with something else")
+    }
   }
 
   implicit object AbstractTypeAbstractValue extends AbstractValue[AbstractType] {
@@ -153,13 +162,13 @@ object AbstractType {
       case _ => AbstractError
     }
 
-    def getKont(x: AbstractType) = x match {
-      case AbstractKontinuation(κ) => Some(κ)
-      case _ => None
+    def getKonts(x: AbstractType) = x match {
+      case AbstractKontinuations(κs) => κs
+      case _ => Set()
     }
-    def getClosure[Exp : Expression, Addr : Address](x: AbstractType) = x match {
-      case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Some((λ, ρ))
-      case _ => None
+    def getClosures[Exp : Expression, Addr : Address](x: AbstractType) = x match {
+      case v: AbstractClosures[Exp, Addr] => v.clos
+      case _ => Set()
     }
     def getPrimitive(x: AbstractType) = x match {
       case AbstractPrimitive(name, f) => Some((name, f))
@@ -174,8 +183,8 @@ object AbstractType {
     def inject(x: String) = AbstractString
     def inject(x: Boolean) = AbstractBool
     def inject(x: (String, List[AbstractType] => Either[String, AbstractType])) = AbstractPrimitive(x._1, x._2)
-    def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
-    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
+    def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuations(Set(x))
+    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosures[Exp, Addr](Set((x._1, x._2)))
     def injectSymbol(x: String) = AbstractSymbol
   }
 }

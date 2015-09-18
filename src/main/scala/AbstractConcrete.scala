@@ -125,13 +125,13 @@ object AbstractConcrete {
       case _ => AbstractError(s"random: bound is not an integer, but $x")
     }
 
-    def getKont(x: AbstractConcrete) = x match {
-      case AbstractKontinuation(κ) => Some(κ)
-      case _ => None
+    def getKonts(x: AbstractConcrete) = x match {
+      case AbstractKontinuation(κ) => Set(κ)
+      case _ => Set()
     }
-    def getClosure[Exp : Expression, Addr : Address](x: AbstractConcrete) = x match {
-      case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Some((λ, ρ))
-      case _ => None
+    def getClosures[Exp : Expression, Addr : Address](x: AbstractConcrete) = x match {
+      case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Set((λ, ρ))
+      case _ => Set()
     }
     def getPrimitive(x: AbstractConcrete) = x match {
       case AbstractPrimitive(name, f) => Some((name, f))

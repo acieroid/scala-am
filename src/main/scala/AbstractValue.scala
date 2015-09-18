@@ -47,8 +47,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   /** Returns a random integer bounded by x*/
   def random(x: A): A
 
-  def getKont(x: A): Option[Kontinuation]
-  def getClosure[Exp : Expression, Addr : Address](x: A): Option[(Exp, Environment[Addr])]
+  def getKonts(x: A): Set[Kontinuation]
+  def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
   def getPrimitive(x: A): Option[(String, List[A] => Either[String, A])]
 }
 

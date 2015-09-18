@@ -57,12 +57,9 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       case ControlEval(e, ρ) => integrate(a, sem.stepEval(e, ρ, σ))
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => abs.foldValues(σ.lookup(a),
-                                            (v2) => { abs.getKont(v2) match {
-                                              case Some(κ) => κ match {
-                                                case AAMKont(frame, next) => integrate(next, sem.stepKont(v, σ, frame))
-                                              }
-                                              case None => Set()
-                                            }} : Set[State])
+        (v2) => { abs.getKonts(v2).flatMap({
+          case AAMKont(frame, next) => integrate(next, sem.stepKont(v, σ, frame))
+        })})
       case ControlError(_) => Set()
     }
     def halted: Boolean = control match {

@@ -54,13 +54,12 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
       (ρ.extend(name, a), σ.extend(a, value))
     }})
 
-  def stepEval(e: ANFExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
+  def stepEval(e: ANFExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[ANFExp, Abs, Addr]] = e match {
     case ae: ANFAtomicExp => atomicEval(ae, ρ, σ) match {
       case Left(err) => Set(ActionError(err))
       case Right(v) => Set(ActionReachedValue(v, σ))
     }
     case ANFFuncall(f, args) =>
-      /* TODO: monadic style */
       val init : Either[String, List[Abs]] = Right(List())
       args.foldLeft(init)((acc: Either[String, List[Abs]], arg: ANFAtomicExp) => acc match {
         case Right(l) => atomicEval(arg, ρ, σ) match {
@@ -74,19 +73,26 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
           atomicEval(f, ρ, σ) match {
             case Left(err) => Set(ActionError(err))
             case Right(fv) =>
-              abs.foldValues(fv, (v) => abs.getClosure[ANFExp, Addr](v) match {
-                case Some((ANFLambda(args, body), ρ)) => if (args.length == argsv.length) {
-                  bindArgs(args.zip(argsv.reverse), ρ, σ) match {
-                    case (ρ2, σ) => Set(ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ))
-                  }
-                } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
-                case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))
-                case None => abs.getPrimitive(v) match {
+              abs.foldValues(fv, (v) => {
+                val fromClo: Set[Action[ANFExp, Abs, Addr]] = abs.getClosures[ANFExp, Addr](v).map({
+                  case (ANFLambda(args, body), ρ) => if (args.length == argsv.length) {
+                    bindArgs(args.zip(argsv.reverse), ρ, σ) match {
+                      case (ρ2, σ) => ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ)
+                    }
+                  } else { ActionError[ANFExp, Abs, Addr](s"Arity error (${args.length} arguments expected, got ${argsv.length}") }
+                  case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
+                })
+                val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitive(v) match {
                   case Some((name, f)) => f(argsv) match {
                     case Right(res) => Set(ActionReachedValue(res, σ))
                     case Left(err) => Set(ActionError(err))
                   }
-                  case None => Set(ActionError(s"Called value is not a function: $fv"))
+                  case None => Set()
+                }
+                if (fromClo.isEmpty && fromPrim.isEmpty) {
+                  Set(ActionError(s"Called value is not a function: $fv"))
+                } else {
+                  fromClo ++ fromPrim
                 }
               })
           }
@@ -175,27 +181,32 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
     (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
 
   def evalCall(function: Abs, argsv: List[Abs], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
-    abs.foldValues(function, (v) =>
-      abs.getClosure[SchemeExp, Addr](v) match {
-        case Some((SchemeLambda(args, body), ρ1)) =>
+    abs.foldValues(function, (v) => {
+      val fromClo: Set[Action[SchemeExp, Abs, Addr]] = abs.getClosures[SchemeExp, Addr](v).map({
+        case (SchemeLambda(args, body), ρ1) =>
           if (args.length == argsv.length) {
             bindArgs(args.zip(argsv), ρ1, σ) match {
               case (ρ2, σ) =>
                 if (body.length == 1)
-                  Set(ActionStepIn((SchemeLambda(args, body), ρ1), body.head, ρ2, σ))
+                  ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), body.head, ρ2, σ)
                 else
-                  Set(ActionStepIn((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ))
+                  ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ)
             }
-          } else { Set(ActionError(s"Arity error (${args.length} arguments expected, got ${argsv.length}")) }
-        case Some((λ, _)) => Set(ActionError(s"Incorrect closure with lambda-expression ${λ}"))
-        case None => abs.getPrimitive(v) match {
-          case Some((name, f)) => f(argsv) match {
-            case Right(res) => Set(ActionReachedValue(res, σ))
-            case Left(err) => Set(ActionError(err))
-          }
-          case None => Set(ActionError(s"Called value is not a function: $v"))
-        }
+          } else { ActionError[SchemeExp, Abs, Addr](s"Arity error (${args.length} arguments expected, got ${argsv.length}") }
+        case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
       })
+      val fromPrim = abs.getPrimitive(v) match {
+        case Some((name, f)) => f(argsv) match {
+          case Right(res) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, σ))
+          case Left(err) => Set(ActionError[SchemeExp, Abs, Addr](err))
+        }
+        case None => Set()
+      }
+      if (fromClo.isEmpty && fromPrim.isEmpty) {
+        Set(ActionError(s"Called value is not a function: $v"))
+      } else {
+        fromClo ++ fromPrim
+      }})
 
   private def evalValue(v: Value): Option[Abs] = v match {
     case ValueString(s) => Some(absi.inject(s))
