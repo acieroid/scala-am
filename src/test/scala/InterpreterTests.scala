@@ -94,6 +94,8 @@ abstract class FreeFlatSpec[Abs, Addr](implicit abs: AbstractValue[Abs], absi: A
   "sym.scm" should "eval to 'foo" in { checkResult("sym.scm", absi.injectSymbol("foo")) }
 }
 
+/* Concrete tests are disabled because of cpstak takes too much time to compute since it requires more than 75k recursive calls */
+/* Type tests are disabled because they fail due to their inability to support a join between a closure and other abstract values */
 //class AACConcreteTest extends AACFlatSpec[AbstractConcrete, ConcreteAddress]
 //class AACTypeTest extends AACFlatSpec[AbstractType, ClassicalAddress]
 class AACTypeSetTest extends AACFlatSpec[AbstractTypeSet, ClassicalAddress]
