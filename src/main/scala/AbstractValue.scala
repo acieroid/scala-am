@@ -85,6 +85,16 @@ class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjecti
     case x :: y :: Nil => Right(f(x, y))
     case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
   })
+  private def noOp(name: String, f: => Abs): (String, Primitive) = (name, {
+    case Nil => Right(f)
+    case l => Left(s"${name}: no operand expected, got ${l.size} instead")
+  })
+
+  private def newline: Abs = {
+    println("")
+    i.bottom
+  }
+  private def display(v: Abs): Abs = { print(v); i.bottom }
 
   /* TODO: handle +, -, etc. with no fixed number of argument (e.g., (+ 1), (+ 1 2 3), etc.) */
   val all: List[(String, Primitive)] = List(
@@ -101,7 +111,9 @@ class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjecti
     unOp("not", abs.not),
     unOp("random", abs.random),
     unOp("ceiling", abs.ceiling),
-    unOp("log", abs.log)
+    unOp("log", abs.log),
+    unOp("display", display),
+    noOp("newline", newline)
   )
   private val allocated = all.map({ case (name, f) => (name, addri.primitive(name), i.inject((name, f))) })
   val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
