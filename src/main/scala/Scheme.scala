@@ -4,6 +4,7 @@
 
 trait SchemeExp extends scala.util.parsing.input.Positional
 case class SchemeLambda(args: List[String], body: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeLambda] && pos == that.asInstanceOf[SchemeLambda].pos
   override def toString() = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
@@ -11,6 +12,7 @@ case class SchemeLambda(args: List[String], body: List[SchemeExp]) extends Schem
   }
 }
 case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeLambda] && pos == that.asInstanceOf[SchemeLambda].pos
   override def toString() = {
     if (args.isEmpty) {
       s"($f)"
@@ -21,9 +23,11 @@ case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp]) extends SchemeExp 
   }
 }
 case class SchemeIf(cond: SchemeExp, cons: SchemeExp, alt: SchemeExp) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeLambda] && pos == that.asInstanceOf[SchemeLambda].pos && super.equals(that)
   override def toString() = s"(if $cond $cons $alt)"
 }
 case class SchemeLet(bindings: List[(String, SchemeExp)], body: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeLet] && pos == that.asInstanceOf[SchemeLet].pos && super.equals(that)
   override def toString() = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
@@ -31,6 +35,7 @@ case class SchemeLet(bindings: List[(String, SchemeExp)], body: List[SchemeExp])
   }
 }
 case class SchemeLetStar(bindings: List[(String, SchemeExp)], body: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeLetStar] && pos == that.asInstanceOf[SchemeLetStar].pos && super.equals(that)
   override def toString() = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
@@ -38,6 +43,7 @@ case class SchemeLetStar(bindings: List[(String, SchemeExp)], body: List[SchemeE
   }
 }
 case class SchemeLetrec(bindings: List[(String, SchemeExp)], body: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeLetrec] && pos == that.asInstanceOf[SchemeLetrec].pos && super.equals(that)
   override def toString() = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
@@ -45,15 +51,18 @@ case class SchemeLetrec(bindings: List[(String, SchemeExp)], body: List[SchemeEx
   }
 }
 case class SchemeSet(variable: String, value: SchemeExp) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeSet] && pos == that.asInstanceOf[SchemeSet].pos && super.equals(that)
   override def toString() = s"(set! $variable $value)"
 }
 case class SchemeBegin(exps: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeBegin] && pos == that.asInstanceOf[SchemeBegin].pos && super.equals(that)
   override def toString() = {
     val body = exps.mkString(" ")
     s"(begin $body)"
   }
 }
 case class SchemeCond(clauses: List[(SchemeExp, List[SchemeExp])]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeCond] && pos == that.asInstanceOf[SchemeCond].pos && super.equals(that)
   override def toString() = {
     val c = clauses.map({ case (cond, cons) => {
       val b = cons.mkString(" ")
@@ -64,6 +73,7 @@ case class SchemeCond(clauses: List[(SchemeExp, List[SchemeExp])]) extends Schem
 }
 
 case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[SchemeExp])], default: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeCase] && pos == that.asInstanceOf[SchemeCase].pos && super.equals(that)
   override def toString() = {
     val c = clauses.map({ case (datums, cons) => {
       val d = datums.mkString(" ")
@@ -79,21 +89,25 @@ case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[Sch
 }
 
 case class SchemeAnd(exps: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeCase] && pos == that.asInstanceOf[SchemeCase].pos && super.equals(that)
   override def toString() = {
     val e = exps.mkString(" ")
     s"(and $e)"
   }
 }
 case class SchemeOr(exps: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeOr] && pos == that.asInstanceOf[SchemeOr].pos && super.equals(that)
   override def toString() = {
     val e = exps.mkString(" ")
     s"(or $e)"
   }
 }
 case class SchemeDefineVariable(name: String, value: SchemeExp) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeDefineVariable] && pos == that.asInstanceOf[SchemeDefineVariable].pos && super.equals(that)
   override def toString() = s"(define $name $value)"
 }
 case class SchemeDefineFunction(name: String, args: List[String], body: List[SchemeExp]) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeDefineFunction] && pos == that.asInstanceOf[SchemeDefineFunction].pos && super.equals(that)
   override def toString() = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
@@ -101,12 +115,15 @@ case class SchemeDefineFunction(name: String, args: List[String], body: List[Sch
   }
 }
 case class SchemeIdentifier(name: String) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeIdentifier] && pos == that.asInstanceOf[SchemeIdentifier].pos && super.equals(that)
   override def toString() = name
 }
 case class SchemeQuoted(quoted: SExp) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeQuoted] && pos == that.asInstanceOf[SchemeQuoted].pos && super.equals(that)
   override def toString() = s"'$quoted"
 }
 case class SchemeValue(value: Value) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeValue] && pos == that.asInstanceOf[SchemeValue].pos && super.equals(that)
   override def toString() = value.toString
 }
 

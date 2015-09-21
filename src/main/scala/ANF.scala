@@ -6,36 +6,45 @@
 trait ANFExp extends scala.util.parsing.input.Positional
 trait ANFAtomicExp extends ANFExp
 case class ANFLambda(args: List[String], body: ANFExp) extends ANFAtomicExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFLambda] && pos == that.asInstanceOf[ANFLambda].pos && super.equals(that)
   override def toString() = {
     val a = args.mkString(" ")
     s"(lambda ($a) $body)"
   }
 }
 case class ANFIf(cond: ANFAtomicExp, cons: ANFExp, alt: ANFExp) extends ANFExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFIf] && pos == that.asInstanceOf[ANFIf].pos && super.equals(that)
   override def toString() = s"(if $cond $cons $alt)"
 }
 case class ANFFuncall(f: ANFAtomicExp, args: List[ANFAtomicExp]) extends ANFExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFFuncall] && pos == that.asInstanceOf[ANFFuncall].pos && super.equals(that)
   override def toString() = {
     val a = args.mkString(" ")
     s"($f $a)"
   }
 }
 case class ANFLet(variable: String, value: ANFExp, body: ANFExp) extends ANFExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFLet] && pos == that.asInstanceOf[ANFLet].pos && super.equals(that)
   override def toString() = s"(let (($variable $value)) $body)"
 }
 case class ANFLetrec(variable: String, value: ANFExp, body: ANFExp) extends ANFExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFLetrec] && pos == that.asInstanceOf[ANFLetrec].pos && super.equals(that)
   override def toString() = s"(letrec (($variable $value)) $body)"
 }
 case class ANFSet(variable: String, value: ANFAtomicExp) extends ANFExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFSet] && pos == that.asInstanceOf[ANFSet].pos && super.equals(that)
   override def toString() = s"(set! $variable $value)"
 }
 case class ANFQuoted(quoted: SExp) extends ANFExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFQuoted] && pos == that.asInstanceOf[ANFQuoted].pos && super.equals(that)
   override def toString() = s"'$quoted"
 }
 case class ANFIdentifier(name: String) extends ANFAtomicExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFIdentifier] && pos == that.asInstanceOf[ANFIdentifier].pos && super.equals(that)
   override def toString() = name
 }
 case class ANFValue(value: Value) extends ANFAtomicExp {
+  override def equals(that: Any) = that.isInstanceOf[ANFValue] && pos == that.asInstanceOf[ANFValue].pos && super.equals(that)
   override def toString() = value.toString
 }
 
