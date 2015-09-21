@@ -12,7 +12,7 @@ case class SchemeLambda(args: List[String], body: List[SchemeExp]) extends Schem
   }
 }
 case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp]) extends SchemeExp {
-  override def equals(that: Any) = that.isInstanceOf[SchemeLambda] && pos == that.asInstanceOf[SchemeLambda].pos
+  override def equals(that: Any) = that.isInstanceOf[SchemeFuncall] && pos == that.asInstanceOf[SchemeFuncall].pos
   override def toString() = {
     if (args.isEmpty) {
       s"($f)"
@@ -23,7 +23,7 @@ case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp]) extends SchemeExp 
   }
 }
 case class SchemeIf(cond: SchemeExp, cons: SchemeExp, alt: SchemeExp) extends SchemeExp {
-  override def equals(that: Any) = that.isInstanceOf[SchemeLambda] && pos == that.asInstanceOf[SchemeLambda].pos && super.equals(that)
+  override def equals(that: Any) = that.isInstanceOf[SchemeIf] && pos == that.asInstanceOf[SchemeIf].pos && super.equals(that)
   override def toString() = s"(if $cond $cons $alt)"
 }
 case class SchemeLet(bindings: List[(String, SchemeExp)], body: List[SchemeExp]) extends SchemeExp {
@@ -89,7 +89,7 @@ case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[Sch
 }
 
 case class SchemeAnd(exps: List[SchemeExp]) extends SchemeExp {
-  override def equals(that: Any) = that.isInstanceOf[SchemeCase] && pos == that.asInstanceOf[SchemeCase].pos && super.equals(that)
+  override def equals(that: Any) = that.isInstanceOf[SchemeAnd] && pos == that.asInstanceOf[SchemeAnd].pos && super.equals(that)
   override def toString() = {
     val e = exps.mkString(" ")
     s"(and $e)"
