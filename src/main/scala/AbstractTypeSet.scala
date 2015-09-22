@@ -113,8 +113,8 @@ object AbstractTypeSet {
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
     }
   }
-  case class AbstractPrimitive(name: String, f: List[A] => Either[String, A]) extends AbstractTypeSet {
-    override def toString = s"#<prim $name>"
+  case class AbstractPrimitive(prim: Primitive[AbstractTypeSet]) extends AbstractTypeSet {
+    override def toString = s"#<prim ${prim.name}>"
   }
   case class AbstractKontinuation[Kont <: Kontinuation](kont: Kont) extends AbstractTypeSet {
     override def toString = s"#<kont $kont>"
@@ -213,7 +213,7 @@ object AbstractTypeSet {
       case _ => Set()
     }
     def getPrimitive(x: A) = x match {
-      case AbstractPrimitive(name, f) => Some((name, f))
+      case AbstractPrimitive(prim) => Some(prim)
       case _ => None
     }
   }
@@ -224,7 +224,7 @@ object AbstractTypeSet {
     def inject(x: Int) = AbstractInt
     def inject(x: String) = AbstractString
     def inject(x: Boolean) = if (x) { AbstractTrue } else { AbstractFalse }
-    def inject(x: (String, List[A] => Either[String, A])) = AbstractPrimitive(x._1, x._2)
+    def inject(x: Primitive[AbstractTypeSet]) = AbstractPrimitive(x)
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol

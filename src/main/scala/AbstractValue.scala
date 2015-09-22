@@ -1,5 +1,10 @@
 import scalaz.Semigroup
 
+trait Primitive[Abs] {
+  val name: String
+  def call(args: List[Abs]): Either[String, Abs]
+}
+
 /** Abstract values are abstract representations of the possible values of a variable */
 trait AbstractValue[A] extends Semigroup[A] {
   /** Can this abstract value be considered true for conditionals? */
@@ -49,7 +54,7 @@ trait AbstractValue[A] extends Semigroup[A] {
 
   def getKonts(x: A): Set[Kontinuation]
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
-  def getPrimitive(x: A): Option[(String, List[A] => Either[String, A])]
+  def getPrimitive(x: A): Option[Primitive[A]]
 }
 
 /** Concrete values have to be injected to become abstract */
@@ -65,7 +70,7 @@ trait AbstractInjection[A] {
   /** Injection of a boolean */
   def inject(x: Boolean): A
   /** Injection of a primitive function */
-  def inject(x: (String, List[A] => Either[String, A])): A
+  def inject(x: Primitive[A]): A
   /** Injection of a continuation */
   def inject[Kont <: Kontinuation](x: Kont): A
   /** Injection of a closure */
@@ -75,20 +80,27 @@ trait AbstractInjection[A] {
 }
 
 class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {
-  type Primitive = List[Abs] => Either[String, Abs]
-
-  private def unOp(name: String, f: Abs => Abs): (String, Primitive) = (name, {
-    case x :: Nil => Right(f(x))
-    case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
-  })
-  private def binOp(name: String, f: (Abs, Abs) => Abs): (String, Primitive) = (name, {
-    case x :: y :: Nil => Right(f(x, y))
-    case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
-  })
-  private def noOp(name: String, f: => Abs): (String, Primitive) = (name, {
-    case Nil => Right(f)
-    case l => Left(s"${name}: no operand expected, got ${l.size} instead")
-  })
+  class NullaryOperation(val name: String, f: => Abs) extends Primitive[Abs] {
+    def call(args: List[Abs]) = args match {
+      case Nil => Right(f)
+      case l => Left(s"${name}: no operand expected, got ${l.size} instead")
+    }
+  }
+  object NullaryOperation {
+    def apply(name: String, f: => Abs) = new NullaryOperation(name, f)
+  }
+  case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Abs] {
+    def call(args: List[Abs]) = args match {
+      case x :: Nil => Right(f(x))
+      case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
+    }
+  }
+  case class BinaryOperation(name: String, f: (Abs, Abs) => Abs) extends Primitive[Abs] {
+    def call(args: List[Abs]) = args match {
+      case x :: y :: Nil => Right(f(x, y))
+      case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
+    }
+  }
 
   private def newline: Abs = {
     println("")
@@ -97,25 +109,25 @@ class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjecti
   private def display(v: Abs): Abs = { print(v); i.bottom }
 
   /* TODO: handle +, -, etc. with no fixed number of argument (e.g., (+ 1), (+ 1 2 3), etc.) */
-  val all: List[(String, Primitive)] = List(
-    binOp("+", abs.plus),
-    binOp("-", abs.minus),
-    binOp("*", abs.times),
-    binOp("/", abs.div),
-    binOp("<", abs.lt),
-    binOp("<=", (x, y) => abs.or(abs.lt(x, y), abs.numEq(x, y))),
-    binOp("=", abs.numEq),
-    binOp(">", (x, y) => abs.and(abs.not(abs.lt(x, y)), abs.not(abs.numEq(x, y)))),
-    binOp(">=", (x, y) => abs.not(abs.lt(x, y))),
-    binOp("modulo", abs.modulo),
-    unOp("not", abs.not),
-    unOp("random", abs.random),
-    unOp("ceiling", abs.ceiling),
-    unOp("log", abs.log),
-    unOp("display", display),
-    noOp("newline", newline)
+  val all: List[Primitive[Abs]] = List(
+    BinaryOperation("+", abs.plus),
+    BinaryOperation("-", abs.minus),
+    BinaryOperation("*", abs.times),
+    BinaryOperation("/", abs.div),
+    BinaryOperation("<", abs.lt),
+    BinaryOperation("<=", (x, y) => abs.or(abs.lt(x, y), abs.numEq(x, y))),
+    BinaryOperation("=", abs.numEq),
+    BinaryOperation(">", (x, y) => abs.and(abs.not(abs.lt(x, y)), abs.not(abs.numEq(x, y)))),
+    BinaryOperation(">=", (x, y) => abs.not(abs.lt(x, y))),
+    BinaryOperation("modulo", abs.modulo),
+    UnaryOperation("not", abs.not),
+    UnaryOperation("random", abs.random),
+    UnaryOperation("ceiling", abs.ceiling),
+    UnaryOperation("log", abs.log),
+    UnaryOperation("display", display),
+    NullaryOperation("newline", newline)
   )
-  private val allocated = all.map({ case (name, f) => (name, addri.primitive(name), i.inject((name, f))) })
+  private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), i.inject(prim)) })
   val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
   val forStore: List[(Addr, Abs)] = allocated.map({ case (_, a, v) => (a, v) })
 }
