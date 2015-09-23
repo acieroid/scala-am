@@ -83,8 +83,8 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
                   case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
                 })
                 val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitive(v) match {
-                  case Some(prim) => prim.call(argsv) match {
-                    case Right(res) => Set(ActionReachedValue(res, σ))
+                  case Some(prim) => prim.call(argsv, σ) match {
+                    case Right((res, σ2)) => Set(ActionReachedValue(res, σ2))
                     case Left(err) => Set(ActionError(err))
                   }
                   case None => Set()
@@ -196,9 +196,17 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
         case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
       })
       val fromPrim = abs.getPrimitive(v) match {
-        case Some(prim) => prim.call(argsv) match {
-          case Right(res) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, σ))
-          case Left(err) => Set(ActionError[SchemeExp, Abs, Addr](err))
+        case Some(prim) => if (prim.name == "cons") {
+          if (argsv.size == 2) {
+            ???
+          } else {
+            Set(ActionError[SchemeExp, Abs, Addr]("cons: 2 operands expected, got ${argsv.size} instead"))
+          }
+        } else {
+          prim.call(argsv, σ) match {
+            case Right((res, σ2)) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, σ2))
+            case Left(err) => Set(ActionError[SchemeExp, Abs, Addr](err))
+          }
         }
         case None => Set()
       }

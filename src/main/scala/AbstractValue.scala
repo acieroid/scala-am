@@ -1,8 +1,8 @@
 import scalaz.Semigroup
 
-trait Primitive[Abs] {
+trait Primitive[Addr, Abs] {
   val name: String
-  def call(args: List[Abs]): Either[String, Abs]
+  def call(args: List[Abs], store: Store[Addr, Abs]): Either[String, (Abs, Store[Addr, Abs])]
 }
 
 /** Abstract values are abstract representations of the possible values of a variable */
@@ -54,7 +54,7 @@ trait AbstractValue[A] extends Semigroup[A] {
 
   def getKonts(x: A): Set[Kontinuation]
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
-  def getPrimitive(x: A): Option[Primitive[A]]
+  def getPrimitive[Addr : Address](x: A): Option[Primitive[Addr, A]]
 }
 
 /** Concrete values have to be injected to become abstract */
@@ -70,36 +70,43 @@ trait AbstractInjection[A] {
   /** Injection of a boolean */
   def inject(x: Boolean): A
   /** Injection of a primitive function */
-  def inject(x: Primitive[A]): A
+  def inject[Addr : Address](x: Primitive[Addr, A]): A
   /** Injection of a continuation */
   def inject[Kont <: Kontinuation](x: Kont): A
   /** Injection of a closure */
   def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): A
   /** Injection of a symbol */
   def injectSymbol(x: String): A
+  /** Creates a cons cell */
+  def cons[Addr : Address](car: Addr, cdr: Addr): A
 }
 
-class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {
-  class NullaryOperation(val name: String, f: => Abs) extends Primitive[Abs] {
-    def call(args: List[Abs]) = args match {
-      case Nil => Right(f)
+class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], i: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {
+  class NullaryOperation(val name: String, f: => Abs) extends Primitive[Addr, Abs] {
+    def call(args: List[Abs], store: Store[Addr, Abs]) = args match {
+      case Nil => Right((f, store))
       case l => Left(s"${name}: no operand expected, got ${l.size} instead")
     }
   }
   object NullaryOperation {
     def apply(name: String, f: => Abs) = new NullaryOperation(name, f)
   }
-  case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Abs] {
-    def call(args: List[Abs]) = args match {
-      case x :: Nil => Right(f(x))
+  case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Addr, Abs] {
+    def call(args: List[Abs], store: Store[Addr, Abs]) = args match {
+      case x :: Nil => Right((f(x), store))
       case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
     }
   }
-  case class BinaryOperation(name: String, f: (Abs, Abs) => Abs) extends Primitive[Abs] {
-    def call(args: List[Abs]) = args match {
-      case x :: y :: Nil => Right(f(x, y))
+  case class BinaryOperation(name: String, f: (Abs, Abs) => Abs) extends Primitive[Addr, Abs] {
+    def call(args: List[Abs], store: Store[Addr, Abs]) = args match {
+      case x :: y :: Nil => Right((f(x, y), store))
       case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
     }
+  }
+
+  object Cons extends Primitive[Addr, Abs] {
+    val name = "cons"
+    def call(args: List[Abs], store: Store[Addr, Abs]) = ???
   }
 
   private def newline: Abs = {
@@ -109,7 +116,7 @@ class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjecti
   private def display(v: Abs): Abs = { print(v); i.bottom }
 
   /* TODO: handle +, -, etc. with no fixed number of argument (e.g., (+ 1), (+ 1 2 3), etc.) */
-  val all: List[Primitive[Abs]] = List(
+  val all: List[Primitive[Addr, Abs]] = List(
     BinaryOperation("+", abs.plus),
     BinaryOperation("-", abs.minus),
     BinaryOperation("*", abs.times),
@@ -125,8 +132,10 @@ class Primitives[Abs, Addr](implicit abs: AbstractValue[Abs], i: AbstractInjecti
     UnaryOperation("ceiling", abs.ceiling),
     UnaryOperation("log", abs.log),
     UnaryOperation("display", display),
-    NullaryOperation("newline", newline)
+    NullaryOperation("newline", newline),
+    Cons
   )
+
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), i.inject(prim)) })
   val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
   val forStore: List[(Addr, Abs)] = allocated.map({ case (_, a, v) => (a, v) })

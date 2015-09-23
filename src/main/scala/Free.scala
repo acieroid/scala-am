@@ -33,7 +33,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     def subsumes(that: Control) = that.equals(this)
   }
 
-  val primitives = new Primitives[Abs, Addr]()
+  val primitives = new Primitives[Addr, Abs]()
   val initialEnv = Environment.empty[Addr]().extend(primitives.forEnv)
   val initialStore = Store.empty[Addr, Abs]().extend(primitives.forStore)
 
@@ -47,7 +47,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
   abstract class KontAddress
   case class NormalKontAddress(exp: Exp, ρ: Environment[Addr]) extends KontAddress {
-    override def toString = "NormalKontAddress"
+    override def toString = s"NormalKontAddress($exp)"
   }
   object HaltKontAddress extends KontAddress {
     override def toString = "HaltKontAddress"
@@ -56,7 +56,10 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   case class KontStore(content: Map[KontAddress, Set[Kont]]) {
     def this() = this(Map())
     def lookup(a: KontAddress): Set[Kont] = content.getOrElse(a, Set())
-    def extend(a: KontAddress, κ: Kont): KontStore = KontStore(content + (a -> (lookup(a) + κ)))
+    def extend(a: KontAddress, κ: Kont): KontStore = {
+      // println(s"Extending with $a -> $κ, joining with ${lookup(a)}")
+      KontStore(content + (a -> (lookup(a) + κ)))
+    }
     def join(that: KontStore): KontStore = KontStore(content |+| that.content)
     def forall(p: ((KontAddress, Set[Kont])) => Boolean) = content.forall(p)
     def subsumes(that: KontStore): Boolean =
@@ -157,7 +160,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   @scala.annotation.tailrec
   private def loopWithLocalGraph(s: States, visited: Set[States], graph: Graph[State]): (Set[State], Graph[State]) = {
     val s2 = s.step
-    if (s2.isEmpty) {
+    if (s2.isEmpty || visited.size > 500) {
       (s.toStateSet, graph)
     } else {
       /* TODO: we probably lose the "for free" when constructing the graph, since we

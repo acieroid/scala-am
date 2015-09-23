@@ -117,7 +117,7 @@ object AbstractType {
     override def isFalse = false
     override def join(that: AbstractType) = that
   }
-  case class AbstractPrimitive(prim: Primitive[AbstractType]) extends AbstractType {
+  case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractType]) extends AbstractType {
     override def toString = s"#<prim ${prim.name}>"
   }
   /* We need to be able to represent multiple continuations and multiple closures in this lattice */
@@ -170,8 +170,8 @@ object AbstractType {
       case v: AbstractClosures[Exp, Addr] => v.clos
       case _ => Set()
     }
-    def getPrimitive(x: AbstractType) = x match {
-      case AbstractPrimitive(prim) => Some(prim)
+    def getPrimitive[Addr : Address](x: AbstractType) = x match {
+      case AbstractPrimitive(prim: Primitive[Addr, AbstractType]) => Some(prim)
       case _ => None
     }
   }
@@ -182,9 +182,10 @@ object AbstractType {
     def inject(x: Int) = AbstractInt
     def inject(x: String) = AbstractString
     def inject(x: Boolean) = AbstractBool
-    def inject(x: Primitive[AbstractType]) = AbstractPrimitive(x)
+    def inject[Addr : Address](x: Primitive[Addr, AbstractType]) = AbstractPrimitive(x)
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuations(Set(x))
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosures[Exp, Addr](Set((x._1, x._2)))
     def injectSymbol(x: String) = AbstractSymbol
+    def cons[Addr : Address](car: Addr, cdr : Addr) = ???
   }
 }

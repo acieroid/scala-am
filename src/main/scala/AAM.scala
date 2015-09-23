@@ -36,7 +36,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     def getFrame = frame
   }
 
-  val primitives = new Primitives[Abs, Addr]()
+  val primitives = new Primitives[Addr, Abs]()
   case class State(control: Control, σ: Store[Addr, Abs], a: Addr) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
                               Store.empty[Addr, Abs]().extend(primitives.forStore), addri.halt)

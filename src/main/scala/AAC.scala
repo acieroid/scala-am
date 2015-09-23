@@ -31,7 +31,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     def subsumes(that: Control) = that.equals(this)
   }
 
-  val primitives = new Primitives[Abs, Addr]()
+  val primitives = new Primitives[Addr, Abs]()
 
   case class Context(clo: (Exp, Environment[Addr]), v: Abs, σ: Store[Addr, Abs]) {
     def subsumes(that: Context) = clo._1.equals(that.clo._1) && clo._2.subsumes(that.clo._2) && abs.subsumes(v, that.v) && σ.subsumes(that.σ)
