@@ -127,6 +127,14 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
 
+  case class BinaryStoreOperation(name: String, f: (Abs, Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs])) extends Primitive[Addr, Abs] {
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+      case (_, x) :: (_, y) :: Nil => Right(f(x, y, store))
+      case l => Left(s"${name}: 2 operand expected, got ${l.size} instead")
+    }
+  }
+
+
   private def newline: Abs = {
     println("")
     absi.bottom
@@ -153,13 +161,21 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     NullaryOperation("newline", newline),
     Cons,
     UnaryStoreOperation("car", (v, store) => (abs.car(v) match {
-      case Left(v) => v
+      case Left(v) => ??? /* TODO: should return an option instead of an Either */
       case Right(a) => store.lookup(a)
     }, store)),
     UnaryStoreOperation("cdr", (v, store) => (abs.cdr(v) match {
-      case Left(v) => v
+      case Left(v) => ???
       case Right(a) => store.lookup(a)
-    }, store))
+    }, store)),
+    BinaryStoreOperation("set-car!", (cell, v, store) => abs.car(cell) match {
+      case Left(v) => { println(cell); ??? }
+      case Right(a) => (absi.bottom, store.extend(a, v))
+    }),
+    BinaryStoreOperation("set-cdr!", (cell, v, store) => abs.cdr(cell) match {
+      case Left(v) => ???
+      case Right(a) => (absi.bottom, store.extend(a, v))
+    })
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })

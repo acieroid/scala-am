@@ -73,7 +73,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
   case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-                               Store.empty[Addr, Abs]().extend(primitives.forStore), new LocalKont(), KontEmpty)
+                               Store.initial[Addr, Abs](primitives.forStore), new LocalKont(), KontEmpty)
     override def toString() = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ)
 

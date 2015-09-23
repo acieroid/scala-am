@@ -35,7 +35,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
   val primitives = new Primitives[Addr, Abs]()
   val initialEnv = Environment.empty[Addr]().extend(primitives.forEnv)
-  val initialStore = Store.empty[Addr, Abs]().extend(primitives.forStore)
+  val initialStore = Store.initial[Addr, Abs](primitives.forStore)
 
   case class Kont(frame: Frame, next: KontAddress) extends Kontinuation {
     def subsumes(that: Kontinuation) = that match {

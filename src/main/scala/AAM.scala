@@ -39,7 +39,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   val primitives = new Primitives[Addr, Abs]()
   case class State(control: Control, σ: Store[Addr, Abs], a: Addr) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-                              Store.empty[Addr, Abs]().extend(primitives.forStore), addri.halt)
+                              Store.initial[Addr, Abs](primitives.forStore), addri.halt)
     override def toString() = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && addr.subsumes(a, that.a)
     private def integrate(a: Addr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
