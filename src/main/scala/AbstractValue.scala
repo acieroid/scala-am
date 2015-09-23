@@ -49,9 +49,9 @@ trait AbstractValue[A] extends Semigroup[A] {
   /** Disjunction */
   def or(x: A, y: A): A
   /** Takes the car of a cons cell */
-  def car[Addr : Address](x: A): Either[A, Addr]
+  def car[Addr : Address](x: A): Set[Addr]
   /** Takes the cdr of a cons cell */
-  def cdr[Addr : Address](x: A): Either[A, Addr]
+  def cdr[Addr : Address](x: A): Set[Addr]
 
   /** Returns a random integer bounded by x*/
   def random(x: A): A
@@ -160,22 +160,18 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("display", display),
     NullaryOperation("newline", newline),
     Cons,
-    UnaryStoreOperation("car", (v, store) => (abs.car(v) match {
-      case Left(v) => ??? /* TODO: should return an option instead of an Either */
-      case Right(a) => store.lookup(a)
-    }, store)),
-    UnaryStoreOperation("cdr", (v, store) => (abs.cdr(v) match {
-      case Left(v) => ???
-      case Right(a) => store.lookup(a)
-    }, store)),
-    BinaryStoreOperation("set-car!", (cell, v, store) => abs.car(cell) match {
-      case Left(v) => { println(cell); ??? }
-      case Right(a) => (absi.bottom, store.extend(a, v))
-    }),
-    BinaryStoreOperation("set-cdr!", (cell, v, store) => abs.cdr(cell) match {
-      case Left(v) => ???
-      case Right(a) => (absi.bottom, store.extend(a, v))
-    })
+    UnaryStoreOperation("car", (v, store) =>
+      (abs.car(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a))),
+        store)),
+    UnaryStoreOperation("cdr", (v, store) =>
+      (abs.cdr(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a))),
+        store)),
+    BinaryStoreOperation("set-car!", (cell, v, store) =>
+      (absi.bottom,
+        abs.car(cell).foldLeft(store)((acc, a) => acc.extend(a, v)))),
+    BinaryStoreOperation("set-cdr!", (cell, v, store) =>
+      (absi.bottom,
+        abs.cdr(cell).foldLeft(store)((acc, a) => acc.extend(a, v))))
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })

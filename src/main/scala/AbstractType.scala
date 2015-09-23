@@ -23,8 +23,6 @@ trait AbstractType {
   def not: AbstractType = AbstractType.AbstractError
   def and(that: AbstractType): AbstractType = AbstractType.AbstractError
   def or(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def car[Addr : Address]: Either[AbstractType, Addr] = Left(AbstractType.AbstractError)
-  def cdr[Addr : Address]: Either[AbstractType, Addr] = Left(AbstractType.AbstractError)
 }
 
 /** Lattice: Top > Error || String || Int || Boolean || Symbol > Bottom */
@@ -137,7 +135,7 @@ object AbstractType {
       case _ => throw new Error("Type lattice cannot join a closure with something else")
     }
   }
-  case class AbstractCons[Addr : Address](cara: Addr, cdra: Addr) extends AbstractType {
+  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractType {
     override def toString = "(? . ?)"
   }
 
@@ -162,12 +160,12 @@ object AbstractType {
     def and(x: AbstractType, y: AbstractType) = x.and(y)
     def or(x: AbstractType, y: AbstractType) = x.or(y)
     def car[Addr : Address](x: AbstractType) = x match {
-      case AbstractCons(car: Addr, cdr: Addr) => Right(car)
-      case _ => Left(AbstractError)
+      case AbstractCons(car: Addr, cdr: Addr) => Set(car)
+      case _ => Set()
     }
     def cdr[Addr : Address](x: AbstractType) = x match {
-      case AbstractCons(car: Addr, cdr: Addr) => Right(cdr)
-      case _ => Left(AbstractError)
+      case AbstractCons(car: Addr, cdr: Addr) => Set(cdr)
+      case _ => Set()
     }
 
     def random(x: AbstractType) = x match {
