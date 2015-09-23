@@ -98,7 +98,7 @@ object AbstractConcrete {
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractConcrete {
     override def toString = "#<clo>"
   }
-  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractConcrete {
+  case class AbstractCons[Addr : Address](cara: Addr, cdra: Addr) extends AbstractConcrete {
     override def toString = "(? . ?)"
   }
 
@@ -122,6 +122,14 @@ object AbstractConcrete {
     def not(x: AbstractConcrete) = x.not
     def and(x: AbstractConcrete, y: AbstractConcrete) = x.and(y)
     def or(x: AbstractConcrete, y: AbstractConcrete) = x.or(y)
+    def car[Addr : Address](x: AbstractConcrete): Either[AbstractConcrete, Addr] = x match {
+      case AbstractCons(car : Addr, cdr : Addr) => Right(car)
+      case _ => Left(AbstractError(s"car not applicable with operand $x"))
+    }
+    def cdr[Addr : Address](x: AbstractConcrete): Either[AbstractConcrete, Addr] = x match {
+      case AbstractCons(car : Addr, cdr : Addr) => Right(cdr)
+      case _ => Left(AbstractError(s"cdr not applicable with operand $x"))
+    }
 
     def random(x: AbstractConcrete) = x match {
       case AbstractInt(n) => AbstractInt(scala.util.Random.nextInt % n)

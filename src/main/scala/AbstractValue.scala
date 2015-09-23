@@ -48,6 +48,10 @@ trait AbstractValue[A] extends Semigroup[A] {
   def and(x: A, y: A): A
   /** Disjunction */
   def or(x: A, y: A): A
+  /** Takes the car of a cons cell */
+  def car[Addr : Address](x: A): Either[A, Addr]
+  /** Takes the cdr of a cons cell */
+  def cdr[Addr : Address](x: A): Either[A, Addr]
 
   /** Returns a random integer bounded by x*/
   def random(x: A): A
@@ -116,6 +120,13 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
 
+  case class UnaryStoreOperation(name: String, f: (Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs])) extends Primitive[Addr, Abs] {
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+      case (_, x) :: Nil => Right(f(x, store))
+      case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
+    }
+  }
+
   private def newline: Abs = {
     println("")
     absi.bottom
@@ -140,7 +151,15 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("log", abs.log),
     UnaryOperation("display", display),
     NullaryOperation("newline", newline),
-    Cons
+    Cons,
+    UnaryStoreOperation("car", (v, store) => (abs.car(v) match {
+      case Left(v) => v
+      case Right(a) => store.lookup(a)
+    }, store)),
+    UnaryStoreOperation("cdr", (v, store) => (abs.cdr(v) match {
+      case Left(v) => v
+      case Right(a) => store.lookup(a)
+    }, store))
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })

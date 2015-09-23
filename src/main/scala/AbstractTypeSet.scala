@@ -174,7 +174,7 @@ object AbstractTypeSet {
     override def or(that: A) = op((v) => v.or(that))
   }
 
-  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet {
+  case class AbstractCons[Addr : Address](cara: Addr, cdra: Addr) extends AbstractTypeSet {
     override def toString = "(? . ?)" /* TODO: toString with store to look up addresses */
   }
 
@@ -202,6 +202,14 @@ object AbstractTypeSet {
     def not(x: A) = x.not
     def and(x: A, y: A) = x.and(y)
     def or(x: A, y: A) = x.or(y)
+    def car[Addr : Address](x: AbstractTypeSet) = x match {
+      case AbstractCons(car : Addr, cdr : Addr) => Right(car)
+      case _ => Left(AbstractError)
+    }
+    def cdr[Addr : Address](x: AbstractTypeSet) = x match {
+      case AbstractCons(car : Addr, cdr : Addr) => Right(cdr)
+      case _ => Left(AbstractError)
+    }
 
     def random(x: A) = x match {
       case AbstractInt => AbstractInt
