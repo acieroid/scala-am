@@ -173,7 +173,13 @@ object AbstractTypeSet {
     override def and(that: A) = op((v) => v.and(that))
     override def or(that: A) = op((v) => v.or(that))
   }
+
+  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet {
+    override def toString = "(? . ?)" /* TODO: toString with store to look up addresses */
+  }
+
   val AbstractBottom = new AbstractSet(Set())
+
 
   implicit object AbstractTypeSetAbstractValue extends AbstractValue[AbstractTypeSet] {
     def isTrue(x: A) = x.isTrue
@@ -228,6 +234,6 @@ object AbstractTypeSet {
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol
-    def cons[Addr : Address](car: Addr, cdr : Addr) = ???
+    def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)
   }
 }

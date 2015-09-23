@@ -98,6 +98,9 @@ object AbstractConcrete {
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractConcrete {
     override def toString = "#<clo>"
   }
+  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractConcrete {
+    override def toString = "(? . ?)"
+  }
 
   implicit object AbstractConcreteAbstractValue extends AbstractValue[AbstractConcrete] {
     def isTrue(x: AbstractConcrete) = x.isTrue
@@ -149,6 +152,6 @@ object AbstractConcrete {
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol(x)
-    def cons[Addr : Address](car: Addr, cdr : Addr) = ???
+    def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)
   }
 }

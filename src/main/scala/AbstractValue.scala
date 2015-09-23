@@ -2,7 +2,7 @@ import scalaz.Semigroup
 
 trait Primitive[Addr, Abs] {
   val name: String
-  def call(args: List[Abs], store: Store[Addr, Abs]): Either[String, (Abs, Store[Addr, Abs])]
+  def call[Exp : Expression](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]): Either[String, (Abs, Store[Addr, Abs])]
 }
 
 /** Abstract values are abstract representations of the possible values of a variable */
@@ -81,9 +81,9 @@ trait AbstractInjection[A] {
   def cons[Addr : Address](car: Addr, cdr: Addr): A
 }
 
-class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], i: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {
+class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {
   class NullaryOperation(val name: String, f: => Abs) extends Primitive[Addr, Abs] {
-    def call(args: List[Abs], store: Store[Addr, Abs]) = args match {
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
       case Nil => Right((f, store))
       case l => Left(s"${name}: no operand expected, got ${l.size} instead")
     }
@@ -92,28 +92,35 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], i: AbstractInjecti
     def apply(name: String, f: => Abs) = new NullaryOperation(name, f)
   }
   case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Addr, Abs] {
-    def call(args: List[Abs], store: Store[Addr, Abs]) = args match {
-      case x :: Nil => Right((f(x), store))
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+      case (_, x) :: Nil => Right((f(x), store))
       case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
     }
   }
   case class BinaryOperation(name: String, f: (Abs, Abs) => Abs) extends Primitive[Addr, Abs] {
-    def call(args: List[Abs], store: Store[Addr, Abs]) = args match {
-      case x :: y :: Nil => Right((f(x, y), store))
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+      case (_, x) :: (_, y) :: Nil => Right((f(x, y), store))
       case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
     }
   }
 
   object Cons extends Primitive[Addr, Abs] {
     val name = "cons"
-    def call(args: List[Abs], store: Store[Addr, Abs]) = ???
+    def call[Exp : Expression](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+      case (carexp, car) :: (cdrexp, cdr) :: Nil => {
+        val cara = addri.cell(carexp)
+        val cdra = addri.cell(cdrexp)
+        Right((absi.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr)))
+      }
+      case l => Left(s"cons: 2 operands expected, got ${l.size} instead")
+    }
   }
 
   private def newline: Abs = {
     println("")
-    i.bottom
+    absi.bottom
   }
-  private def display(v: Abs): Abs = { print(v); i.bottom }
+  private def display(v: Abs): Abs = { print(v); absi.bottom }
 
   /* TODO: handle +, -, etc. with no fixed number of argument (e.g., (+ 1), (+ 1 2 3), etc.) */
   val all: List[Primitive[Addr, Abs]] = List(
@@ -136,7 +143,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], i: AbstractInjecti
     Cons
   )
 
-  private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), i.inject(prim)) })
+  private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })
   val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
   val forStore: List[(Addr, Abs)] = allocated.map({ case (_, a, v) => (a, v) })
 }

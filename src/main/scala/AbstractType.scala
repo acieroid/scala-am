@@ -135,6 +135,9 @@ object AbstractType {
       case _ => throw new Error("Type lattice cannot join a closure with something else")
     }
   }
+  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractType {
+    override def toString = "(? . ?)"
+  }
 
   implicit object AbstractTypeAbstractValue extends AbstractValue[AbstractType] {
     def isTrue(x: AbstractType) = x.isTrue
@@ -186,6 +189,6 @@ object AbstractType {
     def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuations(Set(x))
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosures[Exp, Addr](Set((x._1, x._2)))
     def injectSymbol(x: String) = AbstractSymbol
-    def cons[Addr : Address](car: Addr, cdr : Addr) = ???
+    def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)
   }
 }
