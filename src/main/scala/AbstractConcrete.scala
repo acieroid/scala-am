@@ -139,11 +139,12 @@ object AbstractConcrete {
         val carstr = toString(store.lookup(car), store, false)
         val cdrval = store.lookup(cdr)
         val cdrstr = toString(store.lookup(cdr), store, true)
-        cdrval match {
-          case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
-          case AbstractCons(_, _) => if (inside) { s"$carstr $cdrstr" } else { s"($carstr $cdrstr)" }
-          case _ => if (inside) { s"$carstr . $cdrstr" } else { s"($carstr . $cdrstr)" }
+        val content = cdrval match {
+          case AbstractNil => s"$carstr"
+          case AbstractCons(_, _) => s"$carstr $cdrstr"
+          case _ => s"$carstr . $cdrstr"
         }
+        if (inside) { content } else { s"($content)" }
       case _ => {
         x.toString
       }
