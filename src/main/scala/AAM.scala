@@ -30,18 +30,6 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     def subsumes(that: Control) = that.equals(this)
   }
 
-  case class Kont(frame: Frame, next: KontAddr) {
-    def subsumes(that: Kont) = that match {
-      case Kont(frame2, next2) => frame.subsumes(frame2) && next.equals(next2)
-      case _ => false
-    }
-  }
-  object Kont {
-    implicit object KontKontinuation extends Kontinuation[Kont] {
-      def subsumes(x: Kont, y: Kont) = x.subsumes(y)
-    }
-  }
-
   trait KontAddr
   case class NormalKontAddress(exp: Exp) extends KontAddr
   object HaltKontAddress extends KontAddr {
@@ -53,10 +41,10 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   }
 
   val primitives = new Primitives[Addr, Abs]()
-  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr, Kont], a: KontAddr) {
+  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], a: KontAddr) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
       Store.initial[Addr, Abs](primitives.forStore),
-      new KontStore[KontAddr, Kont](), HaltKontAddress)
+      new KontStore[KontAddr](), HaltKontAddress)
     override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && a == that.a
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =

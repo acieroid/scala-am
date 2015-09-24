@@ -38,18 +38,6 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   val initialEnv = Environment.empty[Addr]().extend(primitives.forEnv)
   val initialStore = Store.initial[Addr, Abs](primitives.forStore)
 
-  case class Kont(frame: Frame, next: KontAddr) {
-    def subsumes(that: Kont) = that match {
-      case Kont(frame2, next2) => frame.subsumes(frame2) && next.equals(next2)
-      case _ => false
-    }
-  }
-  object Kont {
-    implicit object KontKontinuation extends Kontinuation[Kont] {
-      def subsumes(x: Kont, y: Kont) = x.subsumes(y)
-    }
-  }
-
   trait KontAddr
   case class NormalKontAddress(exp: Exp, ρ: Environment[Addr]) extends KontAddr {
     override def toString = s"NormalKontAddress($exp)"
@@ -62,9 +50,9 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     implicit object KontAddrKontAddress extends KontAddress[KontAddr]
   }
 
-  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr, Kont], k: KontAddr) {
+  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], k: KontAddr) {
     def this(exp: Exp) = this(ControlEval(exp, initialEnv), initialStore,
-                              new KontStore[KontAddr, Kont](), HaltKontAddress)
+                              new KontStore[KontAddr](), HaltKontAddress)
     override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
@@ -99,15 +87,15 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   case class Configuration(control: Control, k: KontAddr) {
     override def toString = s"($control, $k)"
   }
-  case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore[KontAddr, Kont]) {
+  case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
     def this(exp: Exp) = this(Set(Configuration(ControlEval(exp, initialEnv),
                                                 HaltKontAddress)),
-                              initialStore, new KontStore[KontAddr, Kont]())
+                              initialStore, new KontStore[KontAddr]())
     override def toString = R.toString
     def step: States = {
       val states = R.map(conf => State(conf.control, σ, kstore, conf.k))
       val succs = states.flatMap(ς => ς.step)
-      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs](), new KontStore[KontAddr, Kont]()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
+      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs](), new KontStore[KontAddr]()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
       States(succs.map(ς => Configuration(ς.control, ς.k)), σ1, kstore1)
     }
     def isEmpty = R.isEmpty
