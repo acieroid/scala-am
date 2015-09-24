@@ -8,16 +8,18 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   /** The control component represents what needs to be evaluated; it can either be an expression or a continuation */
   sealed abstract class Control {
     def subsumes(that: Control): Boolean
+    def toString(store: Store[Addr, Abs]): String = toString()
   }
   case class ControlEval(exp: Exp, env: Environment[Addr]) extends Control {
-    override def toString() = s"ev(${exp.toString})"
+    override def toString() = s"ev(${exp})"
     def subsumes(that: Control) = that match {
       case ControlEval(exp2, env2) => exp.equals(exp2) && env.subsumes(env2)
       case _ => false
     }
   }
   case class ControlKont(v: Abs) extends Control {
-    override def toString() = s"ko(${v.toString})"
+    override def toString() = s"ko(${v})"
+    override def toString(store: Store[Addr, Abs]) = s"ko(${abs.toString(v, store)})"
     def subsumes(that: Control) = that match {
       case ControlKont(v2) => abs.subsumes(v, v2)
       case _ => false
@@ -40,7 +42,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   case class State(control: Control, σ: Store[Addr, Abs], a: Addr) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
                               Store.initial[Addr, Abs](primitives.forStore), addri.halt)
-    override def toString() = control.toString
+    override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && addr.subsumes(a, that.a)
     private def integrate(a: Addr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.flatMap({

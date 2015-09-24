@@ -98,9 +98,7 @@ object AbstractConcrete {
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractConcrete {
     override def toString = "#<clo>"
   }
-  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractConcrete {
-    override def toString = "(? . ?)"
-  }
+  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractConcrete
 
   implicit object AbstractConcreteAbstractValue extends AbstractValue[AbstractConcrete] {
     def isTrue(x: AbstractConcrete) = x.isTrue
@@ -130,11 +128,27 @@ object AbstractConcrete {
       case AbstractCons(car : Addr, cdr : Addr) => Set(cdr)
       case _ => Set()
     }
-
     def random(x: AbstractConcrete) = x match {
       case AbstractInt(n) => AbstractInt(scala.util.Random.nextInt % n)
       case _ => AbstractError(s"random: bound is not an integer, but $x")
     }
+
+    /* TODO: add circularity detection */
+    private def toString[Addr : Address](x: AbstractConcrete, store: Store[Addr, AbstractConcrete], inside: Boolean): String = x match {
+      case AbstractCons(car : Addr, cdr : Addr) =>
+        val carstr = toString(store.lookup(car), store, false)
+        val cdrval = store.lookup(cdr)
+        val cdrstr = toString(store.lookup(cdr), store, true)
+        cdrval match {
+          // TODO: case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
+          case AbstractCons(_, _) => if (inside) { s"$carstr $cdrstr" } else { s"($carstr $cdrstr)" }
+          case _ => if (inside) { s"$carstr . $cdrstr" } else { s"($carstr . $cdrstr)" }
+        }
+      case _ => {
+        x.toString
+      }
+    }
+    def toString[Addr : Address](x: AbstractConcrete, store: Store[Addr, AbstractConcrete]) = toString(x, store, false)
 
     def getKonts(x: AbstractConcrete) = x match {
       case AbstractKontinuation(κ) => Set(κ)

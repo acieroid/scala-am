@@ -187,12 +187,9 @@ object AbstractTypeSet {
     override def or(that: A) = op((v) => v.or(that))
   }
 
-  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet {
-    override def toString = "(? . ?)" /* TODO: toString with store to look up addresses */
-  }
+  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet
 
   val AbstractBottom = new AbstractSet(Set())
-
 
   implicit object AbstractTypeSetAbstractValue extends AbstractValue[AbstractTypeSet] {
     def isTrue(x: A) = x.isTrue
@@ -225,11 +222,25 @@ object AbstractTypeSet {
       case AbstractSet(_) => x.foldValues(y => cdr[Addr](y))
       case _ => Set()
     }
-
     def random(x: A) = x match {
       case AbstractInt => AbstractInt
       case _ => AbstractError
     }
+    private def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet], inside: Boolean): String = x match {
+      case AbstractCons(car : Addr, cdr : Addr) =>
+        val carstr = toString(store.lookup(car), store, false)
+        val cdrval = store.lookup(cdr)
+        val cdrstr = toString(store.lookup(cdr), store, true)
+        cdrval match {
+          // TODO: case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
+          case AbstractCons(_, _) => if (inside) { s"$carstr $cdrstr" } else { s"($carstr $cdrstr)" }
+          case _ => if (inside) { s"$carstr . $cdrstr" } else { s"($carstr . $cdrstr)" }
+        }
+      case _ => {
+        x.toString
+      }
+    }
+    def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet]) = toString(x, store, false)
 
     def getKonts(x: A) = x match {
       case AbstractKontinuation(κ) => Set(κ)

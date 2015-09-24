@@ -10,6 +10,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
                                                                              addr: Address[Addr], addri: AddressInjection[Addr]) {
   sealed abstract class Control {
     def subsumes(that: Control): Boolean
+    def toString(store: Store[Addr, Abs]): String = toString()
   }
 
   case class ControlEval(exp: Exp, env: Environment[Addr]) extends Control {
@@ -22,6 +23,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
 
   case class ControlKont(v: Abs) extends Control {
     override def toString = s"ko($v)"
+    override def toString(store: Store[Addr, Abs]) = s"ko(${abs.toString(v, store)}"
     def subsumes(that: Control) = that match {
       case ControlKont(v2) => abs.subsumes(v, v2)
       case _ => false
@@ -57,7 +59,6 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     def this() = this(Map())
     def lookup(a: KontAddress): Set[Kont] = content.getOrElse(a, Set())
     def extend(a: KontAddress, κ: Kont): KontStore = {
-      // println(s"Extending with $a -> $κ, joining with ${lookup(a)}")
       KontStore(content + (a -> (lookup(a) + κ)))
     }
     def join(that: KontStore): KontStore = KontStore(content |+| that.content)
@@ -71,7 +72,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore, k: KontAddress) {
     def this(exp: Exp) = this(ControlEval(exp, initialEnv), initialStore,
                               new KontStore(), HaltKontAddress)
-    override def toString() = control.toString
+    override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
     private def integrate(k: KontAddress, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =

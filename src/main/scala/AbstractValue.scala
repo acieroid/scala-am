@@ -52,9 +52,10 @@ trait AbstractValue[A] extends Semigroup[A] {
   def car[Addr : Address](x: A): Set[Addr]
   /** Takes the cdr of a cons cell */
   def cdr[Addr : Address](x: A): Set[Addr]
-
   /** Returns a random integer bounded by x*/
   def random(x: A): A
+  /** Returns the string representation of this value */
+  def toString[Addr : Address](x: A, store: Store[Addr, A]): String
 
   def getKonts(x: A): Set[Kontinuation]
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]

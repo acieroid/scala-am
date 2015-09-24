@@ -8,6 +8,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   addr: Address[Addr], addri: AddressInjection[Addr]) {
   sealed abstract class Control {
     def subsumes(that: Control): Boolean
+    def toString(store: Store[Addr, Abs]): String = toString()
   }
 
   case class ControlEval(exp: Exp, env: Environment[Addr]) extends Control {
@@ -20,6 +21,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
   case class ControlKont(v: Abs) extends Control {
     override def toString = s"ko($v)"
+    override def toString(store: Store[Addr, Abs]) = s"ko(${abs.toString(v, store)}"
     def subsumes(that: Control) = that match {
       case ControlKont(v2) => abs.subsumes(v, v2)
       case _ => false
@@ -74,7 +76,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
                                Store.initial[Addr, Abs](primitives.forStore), new LocalKont(), KontEmpty)
-    override def toString() = control.toString
+    override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ)
 
     /* TODO: functions inspecting the continuation can probably be factored into a

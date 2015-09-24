@@ -135,9 +135,7 @@ object AbstractType {
       case _ => throw new Error("Type lattice cannot join a closure with something else")
     }
   }
-  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractType {
-    override def toString = "(? . ?)"
-  }
+  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractType
 
   implicit object AbstractTypeAbstractValue extends AbstractValue[AbstractType] {
     def isTrue(x: AbstractType) = x.isTrue
@@ -167,11 +165,25 @@ object AbstractType {
       case AbstractCons(car: Addr, cdr: Addr) => Set(cdr)
       case _ => Set()
     }
-
     def random(x: AbstractType) = x match {
       case AbstractInt => AbstractInt
       case _ => AbstractError
     }
+    private def toString[Addr : Address](x: AbstractType, store: Store[Addr, AbstractType], inside: Boolean): String = x match {
+      case AbstractCons(car : Addr, cdr : Addr) =>
+        val carstr = toString(store.lookup(car), store, false)
+        val cdrval = store.lookup(cdr)
+        val cdrstr = toString(store.lookup(cdr), store, true)
+        cdrval match {
+          // TODO: case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
+          case AbstractCons(_, _) => if (inside) { s"$carstr $cdrstr" } else { s"($carstr $cdrstr)" }
+          case _ => if (inside) { s"$carstr . $cdrstr" } else { s"($carstr . $cdrstr)" }
+        }
+      case _ => {
+        x.toString
+      }
+    }
+    def toString[Addr : Address](x: AbstractType, store: Store[Addr, AbstractType]) = toString(x, store, false)
 
     def getKonts(x: AbstractType) = x match {
       case AbstractKontinuations(κs) => κs
