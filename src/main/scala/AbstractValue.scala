@@ -132,19 +132,64 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
 
+  abstract class VariadicOperation extends Primitive[Addr, Abs] {
+    def call(args: List[Abs]): Either[String, Abs]
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) =
+      call(args.map({ case (_, v) => v })) match {
+        case Right(v) => Right((v, store))
+        case Left(err) => Left(err)
+      }
+  }
+  object Plus extends VariadicOperation {
+    val name = "+"
+    def call(args: List[Abs]) = args match {
+      case Nil => Right(absi.inject(0))
+      case x :: rest => call(rest) match {
+        case Right(y) => Right(abs.plus(x, y))
+        case Left(err) => Left(err)
+      }
+    }
+  }
+  object Minus extends VariadicOperation {
+    val name = "-"
+    def call(args: List[Abs]) = args match {
+      case Nil => Left("-: at least 1 operand expected, got 0")
+      case x :: rest => Plus.call(rest) match {
+        case Right(y) => Right(abs.minus(x, y))
+        case Left(err) => Left(err)
+      }
+    }
+  }
+  object Times extends VariadicOperation {
+    val name = "*"
+    def call(args: List[Abs]) = args match {
+      case Nil => Right(absi.inject(1))
+      case x :: rest => call(rest) match {
+        case Right(y) => Right(abs.times(x, y))
+        case Left(err) => Left(err)
+      }
+    }
+  }
+  object Div extends VariadicOperation {
+    val name = "/"
+    def call(args: List[Abs]) = args match {
+      case Nil => Left("/: at least 1 operand expected, got 0")
+      case x :: rest => Times.call(rest) match {
+        case Right(y) => Right(abs.div(x, y))
+        case Left(err) => Left(err)
+      }
+    }
+  }
+
   private def newline: Abs = {
     println("")
     absi.bottom
   }
   private def display(v: Abs): Abs = { print(v); absi.bottom }
 
-  /* TODO: handle +, -, etc. with no fixed number of argument (e.g., (+ 1), (+ 1 2 3), etc.) */
   val all: List[Primitive[Addr, Abs]] = List(
-    BinaryOperation("+", abs.plus),
-    BinaryOperation("-", abs.minus),
-    BinaryOperation("*", abs.times),
-    BinaryOperation("/", abs.div),
-    BinaryOperation("<", abs.lt),
+    Plus, Minus, Times, Div,
+    BinaryOperation("<", abs.lt), // TODO: <, <=, =, >, >= should accept any number of arguments
     BinaryOperation("<=", (x, y) => abs.or(abs.lt(x, y), abs.numEq(x, y))),
     BinaryOperation("=", abs.numEq),
     BinaryOperation(">", (x, y) => abs.and(abs.not(abs.lt(x, y)), abs.not(abs.numEq(x, y)))),
