@@ -92,9 +92,6 @@ object AbstractConcrete {
   case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractConcrete]) extends AbstractConcrete {
     override def toString = s"#<prim ${prim.name}>"
   }
-  case class AbstractKontinuation[Kont <: Kontinuation](kont: Kont) extends AbstractConcrete {
-    override def toString = s"#<kont $kont>"
-  }
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractConcrete {
     override def toString = "#<clo>"
   }
@@ -150,10 +147,6 @@ object AbstractConcrete {
     }
     def toString[Addr : Address](x: AbstractConcrete, store: Store[Addr, AbstractConcrete]) = toString(x, store, false)
 
-    def getKonts(x: AbstractConcrete) = x match {
-      case AbstractKontinuation(κ) => Set(κ)
-      case _ => Set()
-    }
     def getClosures[Exp : Expression, Addr : Address](x: AbstractConcrete) = x match {
       case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Set((λ, ρ))
       case _ => Set()
@@ -171,7 +164,6 @@ object AbstractConcrete {
     def inject(x: String) = AbstractString(x)
     def inject(x: Boolean) = AbstractBool(x)
     def inject[Addr : Address](x: Primitive[Addr, AbstractConcrete]) = AbstractPrimitive(x)
-    def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol(x)
     def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)

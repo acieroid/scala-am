@@ -57,7 +57,6 @@ trait AbstractValue[A] extends Semigroup[A] {
   /** Returns the string representation of this value */
   def toString[Addr : Address](x: A, store: Store[Addr, A]): String
 
-  def getKonts(x: A): Set[Kontinuation]
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
   def getPrimitive[Addr : Address](x: A): Option[Primitive[Addr, A]]
 }
@@ -76,8 +75,6 @@ trait AbstractInjection[A] {
   def inject(x: Boolean): A
   /** Injection of a primitive function */
   def inject[Addr : Address](x: Primitive[Addr, A]): A
-  /** Injection of a continuation */
-  def inject[Kont <: Kontinuation](x: Kont): A
   /** Injection of a closure */
   def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): A
   /** Injection of a symbol */
@@ -134,7 +131,6 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
       case l => Left(s"${name}: 2 operand expected, got ${l.size} instead")
     }
   }
-
 
   private def newline: Abs = {
     println("")

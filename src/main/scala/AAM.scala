@@ -30,43 +30,57 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     def subsumes(that: Control) = that.equals(this)
   }
 
-  case class AAMKont(frame: Frame, next: Addr) extends Kontinuation {
-    def subsumes(that: Kontinuation) = that match {
-      case AAMKont(frame2, next2) => frame.subsumes(frame2) && addr.subsumes(next, next2)
+  case class Kont(frame: Frame, next: KontAddr) {
+    def subsumes(that: Kont) = that match {
+      case Kont(frame2, next2) => frame.subsumes(frame2) && next.equals(next2)
       case _ => false
     }
-    def getFrame = frame
+  }
+  object Kont {
+    implicit object KontKontinuation extends Kontinuation[Kont] {
+      def subsumes(x: Kont, y: Kont) = x.subsumes(y)
+    }
+  }
+
+  trait KontAddr
+  case class NormalKontAddress(exp: Exp) extends KontAddr
+  object HaltKontAddress extends KontAddr {
+    override def toString = "HaltKontAddress"
+  }
+
+  object KontAddr {
+    implicit object KontAddrKontAddress extends KontAddress[KontAddr]
   }
 
   val primitives = new Primitives[Addr, Abs]()
-  case class State(control: Control, σ: Store[Addr, Abs], a: Addr) {
+  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr, Kont], a: KontAddr) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-                              Store.initial[Addr, Abs](primitives.forStore), addri.halt)
+      Store.initial[Addr, Abs](primitives.forStore),
+      new KontStore[KontAddr, Kont](), HaltKontAddress)
     override def toString() = control.toString(σ)
-    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && addr.subsumes(a, that.a)
-    private def integrate(a: Addr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
+    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && a == that.a
+    private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.flatMap({
-        case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, a))
+        case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, kstore, a))
         case ActionPush(e, frame, ρ, σ) => {
-          val next = addri.kont(e)
-          Set(State(ControlEval(e, ρ), σ.extend(next, absi.inject(AAMKont(frame, a))), next))
+          val next = NormalKontAddress(e)
+          Set(State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, a)), next))
         }
-        case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, a))
-        case ActionStepIn(_, e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, a))
-        case ActionError(err) => Set(State(ControlError(err), σ, a))
+        case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, kstore, a))
+        case ActionStepIn(_, e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, kstore, a))
+        case ActionError(err) => Set(State(ControlError(err), σ, kstore, a))
       })
     def step: Set[State] = control match {
       case ControlEval(e, ρ) => integrate(a, sem.stepEval(e, ρ, σ))
       case ControlKont(v) if abs.isError(v) => Set()
-      case ControlKont(v) => abs.foldValues(σ.lookup(a),
-        (v2) => { abs.getKonts(v2).flatMap({
-          case AAMKont(frame, next) => integrate(next, sem.stepKont(v, σ, frame))
-        })})
+      case ControlKont(v) => kstore.lookup(a).flatMap({
+        case Kont(frame, next) => integrate(next, sem.stepKont(v, σ, frame))
+      })
       case ControlError(_) => Set()
     }
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => a.equals(addri.halt) || abs.isError(v)
+      case ControlKont(v) => a == HaltKontAddress || abs.isError(v)
       case ControlError(_) => true
     }
   }

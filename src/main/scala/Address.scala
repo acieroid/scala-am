@@ -5,11 +5,9 @@ trait Address[A] {
 
 trait AddressInjection[A] {
   def name: String
-  def halt: A
   def primitive(name: String): A
   def variable(name: String): A
   def cell[Exp : Expression](exp: Exp): A
-  def kont[Exp : Expression](exp: Exp): A
 }
 
 trait ClassicalAddress {
@@ -20,9 +18,6 @@ object ClassicalAddress {
   case class VariableAddress(name: String) extends ClassicalAddress
   case class PrimitiveAddress(name: String) extends ClassicalAddress
   case class CellAddress[Exp : Expression](exp: Exp) extends ClassicalAddress
-  abstract class KontAddress extends ClassicalAddress
-  case class NormalKontAddress[Exp : Expression](exp: Exp) extends KontAddress
-  case class HaltKontAddress() extends KontAddress
 
   implicit object ClassicalAddressAddress extends Address[ClassicalAddress] {
     override def subsumes(x: ClassicalAddress, y: ClassicalAddress) = x.subsumes(y)
@@ -33,11 +28,9 @@ object ClassicalAddress {
   }
   implicit object ClassicalAddressInjection extends AddressInjection[ClassicalAddress] {
     def name = "Classical"
-    def halt = HaltKontAddress()
     def primitive(name: String) = PrimitiveAddress(name)
     def variable(name: String) = VariableAddress(name)
     def cell[Exp : Expression](exp: Exp) = CellAddress(exp)
-    def kont[Exp : Expression](exp: Exp) = NormalKontAddress(exp)
   }
 }
 
@@ -58,10 +51,8 @@ object ConcreteAddress {
   var id = 0
   implicit object ConcreteAddressInjection extends AddressInjection[ConcreteAddress] {
     def name = "Concrete"
-    def halt = IntAddress("halt", 0)
     def primitive(name: String) = { PrimitiveAddress(name) }
     def variable(name: String) = { id += 1; IntAddress(name, id) }
     def cell[Exp : Expression](exp: Exp) = { id += 1; IntAddress(s"cell-$exp", id) }
-    def kont[Exp : Expression](exp: Exp) = { id += 1; IntAddress(s"kont-$exp", id) }
   }
 }

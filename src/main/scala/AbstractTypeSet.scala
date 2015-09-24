@@ -122,9 +122,6 @@ object AbstractTypeSet {
   case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractTypeSet]) extends AbstractTypeSet {
     override def toString = s"#<prim ${prim.name}>"
   }
-  case class AbstractKontinuation[Kont <: Kontinuation](kont: Kont) extends AbstractTypeSet {
-    override def toString = s"#<kont $kont>"
-  }
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractTypeSet {
     override def toString = "#<clo>"
   }
@@ -242,11 +239,6 @@ object AbstractTypeSet {
     }
     def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet]) = toString(x, store, false)
 
-    def getKonts(x: A) = x match {
-      case AbstractKontinuation(κ) => Set(κ)
-      case AbstractSet(content) => content.flatMap(y => getKonts(y))
-      case _ => Set()
-    }
     def getClosures[Exp : Expression, Addr : Address](x: A) = x match {
       case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Set((λ, ρ))
       case AbstractSet(content) => content.flatMap(y => getClosures(y))
@@ -265,7 +257,6 @@ object AbstractTypeSet {
     def inject(x: String) = AbstractString
     def inject(x: Boolean) = if (x) { AbstractTrue } else { AbstractFalse }
     def inject[Addr : Address](x: Primitive[Addr, AbstractTypeSet]) = AbstractPrimitive(x)
-    def inject[Kont <: Kontinuation](x: Kont) = AbstractKontinuation(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol
     def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)

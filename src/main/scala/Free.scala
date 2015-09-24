@@ -1,5 +1,4 @@
 import AbstractValue._
-import scalaz.Scalaz._
 
 /**
  * Implementation of "Pushdown Control-Flow Analysis for Free", which is
@@ -39,43 +38,37 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
   val initialEnv = Environment.empty[Addr]().extend(primitives.forEnv)
   val initialStore = Store.initial[Addr, Abs](primitives.forStore)
 
-  case class Kont(frame: Frame, next: KontAddress) extends Kontinuation {
-    def subsumes(that: Kontinuation) = that match {
+  case class Kont(frame: Frame, next: KontAddr) {
+    def subsumes(that: Kont) = that match {
       case Kont(frame2, next2) => frame.subsumes(frame2) && next.equals(next2)
       case _ => false
     }
-    def getFrame = frame
+  }
+  object Kont {
+    implicit object KontKontinuation extends Kontinuation[Kont] {
+      def subsumes(x: Kont, y: Kont) = x.subsumes(y)
+    }
   }
 
-  abstract class KontAddress
-  case class NormalKontAddress(exp: Exp, ρ: Environment[Addr]) extends KontAddress {
+  trait KontAddr
+  case class NormalKontAddress(exp: Exp, ρ: Environment[Addr]) extends KontAddr {
     override def toString = s"NormalKontAddress($exp)"
   }
-  object HaltKontAddress extends KontAddress {
+  object HaltKontAddress extends KontAddr {
     override def toString = "HaltKontAddress"
   }
 
-  case class KontStore(content: Map[KontAddress, Set[Kont]]) {
-    def this() = this(Map())
-    def lookup(a: KontAddress): Set[Kont] = content.getOrElse(a, Set())
-    def extend(a: KontAddress, κ: Kont): KontStore = {
-      KontStore(content + (a -> (lookup(a) + κ)))
-    }
-    def join(that: KontStore): KontStore = KontStore(content |+| that.content)
-    def forall(p: ((KontAddress, Set[Kont])) => Boolean) = content.forall(p)
-    def subsumes(that: KontStore): Boolean =
-      that.forall({ case (a, ks) =>
-        ks.forall((k1) => lookup(a).exists(k2 => k2.subsumes(k1)))
-      })
+  object KontAddr {
+    implicit object KontAddrKontAddress extends KontAddress[KontAddr]
   }
 
-  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore, k: KontAddress) {
+  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr, Kont], k: KontAddr) {
     def this(exp: Exp) = this(ControlEval(exp, initialEnv), initialStore,
-                              new KontStore(), HaltKontAddress)
+                              new KontStore[KontAddr, Kont](), HaltKontAddress)
     override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
-    private def integrate(k: KontAddress, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
+    private def integrate(k: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.map({
         case ActionReachedValue(v, σ) => State(ControlKont(v), σ, kstore, k)
         case ActionPush(e, frame, ρ, σ) => {
@@ -103,18 +96,18 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     }
   }
 
-  case class Configuration(control: Control, k: KontAddress) {
+  case class Configuration(control: Control, k: KontAddr) {
     override def toString = s"($control, $k)"
   }
-  case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore) {
+  case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore[KontAddr, Kont]) {
     def this(exp: Exp) = this(Set(Configuration(ControlEval(exp, initialEnv),
                                                 HaltKontAddress)),
-                              initialStore, new KontStore())
+                              initialStore, new KontStore[KontAddr, Kont]())
     override def toString = R.toString
     def step: States = {
       val states = R.map(conf => State(conf.control, σ, kstore, conf.k))
       val succs = states.flatMap(ς => ς.step)
-      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs](), new KontStore()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
+      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs](), new KontStore[KontAddr, Kont]()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
       States(succs.map(ς => Configuration(ς.control, ς.k)), σ1, kstore1)
     }
     def isEmpty = R.isEmpty
