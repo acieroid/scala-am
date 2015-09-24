@@ -63,9 +63,17 @@ abstract class JoinLatticePropSpec[Abs](implicit abs: AbstractValue[Abs], absi: 
     assert(abs.isTrue(tf2)); assert(abs.isFalse(tf2));
     assert(abs.subsumes(tf, tf2)); assert(abs.subsumes(tf2, tf)); assert(tf.equals(tf2))
   }
+  property("{#t, #f} joined with {#f} should give {#t, #f}") {
+    /* bug detected on commit 1a31d78 */
+    val tf = abs.join(absi.inject(true), absi.inject(false))
+    val f = absi.inject(false)
+    val tff = abs.join(f, tf)
+    assert(abs.isTrue(tff)); assert(abs.isFalse(tff))
+  }
 }
-
 
 class AbstractConcreteTest extends LatticePropSpec[AbstractConcrete]
 class AbstractTypeTest extends JoinLatticePropSpec[AbstractType]
-class AbstractTypeSetTest extends JoinLatticePropSpec[AbstractTypeSet]
+class AbstractTypeSetTest extends JoinLatticePropSpec[AbstractTypeSet] {
+  import AbstractTypeSet._
+}

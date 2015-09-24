@@ -9,6 +9,8 @@ trait AbstractTypeSet {
   def join(that: AbstractTypeSet): AbstractTypeSet =
     if (this.equals(that) || that.equals(AbstractTypeSet.AbstractBottom)) {
       this
+    } else if (that.isInstanceOf[AbstractTypeSet.AbstractSet]) {
+      that.join(this)
     } else {
       AbstractTypeSet.AbstractSet(Set(this, that))
     }
@@ -128,7 +130,7 @@ object AbstractTypeSet {
   }
   case class AbstractSet(content: Set[A]) extends AbstractTypeSet {
     /* invariant: content does not contain any other AbstractSet, i.e., content.exists(_.isInstanceOf[AbstractSet]) == false */
-    require(content.exists(_.isInstanceOf[AbstractSet]) == false, "AbstractSet content contains another AbstractSet")
+    require(content.exists(_.isInstanceOf[AbstractSet]) == false, s"AbstractSet content contains another AbstractSet: $content")
     override def toString = "{" + content.mkString(", ") + "}"
     override def isTrue = content.exists(_.isTrue)
     override def isFalse = content.exists(_.isFalse)
@@ -141,10 +143,11 @@ object AbstractTypeSet {
       else {
         that match {
           case AbstractBottom => this
-          case AbstractSet(content2) =>
+          case AbstractSet(content2) => {
             /* every element in the other set has to be joined in this set */
             AbstractSet(content2.foldLeft(Set[AbstractTypeSet]())((acc, v) =>
               if (acc.exists(_.subsumes(v))) { acc } else { content + v }))
+          }
           case _ => join(AbstractSet(Set(that)))
         }
       }
