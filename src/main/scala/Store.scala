@@ -33,7 +33,7 @@ case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(i
 }
 
 object Store {
-  /* TODO: have abstract counting as a parameter of the analysis */
-  def empty[Addr : Address, Abs]()(implicit abs : AbstractValue[Abs], i : AbstractInjection[Abs]) = Store(Map[Addr, (Int, Abs)](), true)
-  def initial[Addr, Abs](values: List[(Addr, Abs)])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr]): Store[Addr, Abs] = Store(values.map({ case (a, v) => (a, (1, v)) }).toMap, true)
+  /* TODO: have abstract counting as a parameter of the analysis. Also, when it is turned on, it prevents AAC and Free from converging */
+  def empty[Addr : Address, Abs]()(implicit abs : AbstractValue[Abs], i : AbstractInjection[Abs]) = Store(Map[Addr, (Int, Abs)](), false)
+  def initial[Addr, Abs](values: List[(Addr, Abs)])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr]): Store[Addr, Abs] = Store(values.map({ case (a, v) => (a, (1, v)) }).toMap, false)
 }
