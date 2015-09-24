@@ -117,7 +117,7 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
     case ANFSet(variable, value) => ρ.lookup(variable) match {
       case Some(vara) => atomicEval(value, ρ, σ) match {
         case Left(err) => Set(ActionError(err))
-        case Right(v) => Set(ActionReachedValue(v, σ.extend(vara, v)))
+        case Right(v) => Set(ActionReachedValue(v, σ.update(vara, v)))
       }
       case None => Set(ActionError(s"Unbound variable: ${variable}"))
     }
@@ -132,7 +132,7 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
       Set(ActionEval(body, ρ.extend(variable, vara), σ.extend(vara, v)))
     }
     case FrameLetrec(variable, vara, body, ρ) =>
-      Set(ActionEval(body, ρ, σ.extend(vara, v)))
+      Set(ActionEval(body, ρ, σ.update(vara, v)))
   }
 }
 
@@ -307,11 +307,11 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
         case (variable, exp) :: rest => Set(ActionPush(exp, FrameLetStar(variable, rest, body, ρ), ρ1, σ1))
       }
     }
-    case FrameLetrec(addr, Nil, body, ρ) => Set(evalBody(body, ρ, σ.extend(addr, v)))
+    case FrameLetrec(addr, Nil, body, ρ) => Set(evalBody(body, ρ, σ.update(addr, v)))
     case FrameLetrec(addr, (addr1, exp) :: rest, body, ρ) =>
-      Set(ActionPush(exp, FrameLetrec(addr1, rest, body, ρ), ρ, σ.extend(addr, v)))
+      Set(ActionPush(exp, FrameLetrec(addr1, rest, body, ρ), ρ, σ.update(addr, v)))
     case FrameSet(name, ρ) => ρ.lookup(name) match {
-      case Some(a) => Set(ActionReachedValue(absi.bottom /* TODO: undefined */, σ.extend(a, v)))
+      case Some(a) => Set(ActionReachedValue(absi.bottom /* TODO: undefined */, σ.update(a, v)))
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
     case FrameBegin(body, ρ) => Set(evalBody(body, ρ, σ))

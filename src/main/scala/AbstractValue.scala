@@ -168,10 +168,10 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
         store)),
     BinaryStoreOperation("set-car!", (cell, v, store) =>
       (absi.bottom,
-        abs.car(cell).foldLeft(store)((acc, a) => acc.extend(a, v)))),
+        abs.car(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
     BinaryStoreOperation("set-cdr!", (cell, v, store) =>
       (absi.bottom,
-        abs.cdr(cell).foldLeft(store)((acc, a) => acc.extend(a, v))))
+        abs.cdr(cell).foldLeft(store)((acc, a) => acc.update(a, v))))
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })
