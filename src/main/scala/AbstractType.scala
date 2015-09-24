@@ -128,6 +128,9 @@ object AbstractType {
       case _ => throw new Error("Type lattice cannot join a closure with something else")
     }
   }
+  object AbstractNil extends AbstractType {
+    override def toString = "()"
+  }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractType
 
   implicit object AbstractTypeAbstractValue extends AbstractValue[AbstractType] {
@@ -168,7 +171,7 @@ object AbstractType {
         val cdrval = store.lookup(cdr)
         val cdrstr = toString(store.lookup(cdr), store, true)
         cdrval match {
-          // TODO: case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
+          case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
           case AbstractCons(_, _) => if (inside) { s"$carstr $cdrstr" } else { s"($carstr $cdrstr)" }
           case _ => if (inside) { s"$carstr . $cdrstr" } else { s"($carstr . $cdrstr)" }
         }
@@ -197,6 +200,7 @@ object AbstractType {
     def inject[Addr : Address](x: Primitive[Addr, AbstractType]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosures[Exp, Addr](Set((x._1, x._2)))
     def injectSymbol(x: String) = AbstractSymbol
+    def nil = AbstractNil
     def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)
   }
 }

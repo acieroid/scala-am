@@ -95,6 +95,9 @@ object AbstractConcrete {
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractConcrete {
     override def toString = "#<clo>"
   }
+  object AbstractNil extends AbstractConcrete {
+    override def toString = "()"
+  }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractConcrete
 
   implicit object AbstractConcreteAbstractValue extends AbstractValue[AbstractConcrete] {
@@ -137,7 +140,7 @@ object AbstractConcrete {
         val cdrval = store.lookup(cdr)
         val cdrstr = toString(store.lookup(cdr), store, true)
         cdrval match {
-          // TODO: case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
+          case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
           case AbstractCons(_, _) => if (inside) { s"$carstr $cdrstr" } else { s"($carstr $cdrstr)" }
           case _ => if (inside) { s"$carstr . $cdrstr" } else { s"($carstr . $cdrstr)" }
         }
@@ -166,6 +169,7 @@ object AbstractConcrete {
     def inject[Addr : Address](x: Primitive[Addr, AbstractConcrete]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol(x)
+    def nil = AbstractNil
     def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)
   }
 }

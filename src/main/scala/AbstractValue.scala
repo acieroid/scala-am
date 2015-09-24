@@ -81,6 +81,9 @@ trait AbstractInjection[A] {
   def injectSymbol(x: String): A
   /** Creates a cons cell */
   def cons[Addr : Address](car: Addr, cdr: Addr): A
+  /** Nil value */
+  def nil: A
+
 }
 
 class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {
@@ -217,8 +220,9 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })
-  val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
-  val forStore: List[(Addr, Abs)] = allocated.map({ case (_, a, v) => (a, v) })
+  private val nila = addri.primitive("nil")
+  val forEnv: List[(String, Addr)] = ("nil", nila) :: allocated.map({ case (name, a, _) => (name, a) })
+  val forStore: List[(Addr, Abs)] =  (nila, absi.nil) :: allocated.map({ case (_, a, v) => (a, v) })
 }
 
 object AbstractValue

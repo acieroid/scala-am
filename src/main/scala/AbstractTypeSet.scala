@@ -183,7 +183,9 @@ object AbstractTypeSet {
     override def and(that: A) = op((v) => v.and(that))
     override def or(that: A) = op((v) => v.or(that))
   }
-
+  object AbstractNil extends AbstractTypeSet {
+    override def toString = "()"
+  }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet
 
   val AbstractBottom = new AbstractSet(Set())
@@ -229,7 +231,7 @@ object AbstractTypeSet {
         val cdrval = store.lookup(cdr)
         val cdrstr = toString(store.lookup(cdr), store, true)
         cdrval match {
-          // TODO: case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
+          case AbstractNil => if (inside) { "$carstr" } else { s"($carstr)" }
           case AbstractCons(_, _) => if (inside) { s"$carstr $cdrstr" } else { s"($carstr $cdrstr)" }
           case _ => if (inside) { s"$carstr . $cdrstr" } else { s"($carstr . $cdrstr)" }
         }
@@ -259,6 +261,7 @@ object AbstractTypeSet {
     def inject[Addr : Address](x: Primitive[Addr, AbstractTypeSet]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol
+    def nil = AbstractNil
     def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)
   }
 }
