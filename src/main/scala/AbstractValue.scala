@@ -194,6 +194,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
 
   val all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div,
+    BinaryOperation("quotient", abs.div),
     BinaryOperation("<", abs.lt), // TODO: <, <=, =, >, >= should accept any number of arguments
     BinaryOperation("<=", (x, y) => abs.or(abs.lt(x, y), abs.numEq(x, y))),
     BinaryOperation("=", abs.numEq),
@@ -204,6 +205,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("random", abs.random),
     UnaryOperation("ceiling", abs.ceiling),
     UnaryOperation("log", abs.log),
+    UnaryOperation("odd?", (x) => abs.numEq(absi.inject(1), abs.modulo(x, absi.inject(2)))), /* (define (odd? x) (= 1 (modulo x 2))) */
     UnaryOperation("display", display),
     NullaryOperation("newline", newline),
     Cons,
