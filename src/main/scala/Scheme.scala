@@ -445,7 +445,7 @@ object SchemeUndefiner {
         case exps => SchemeBegin(exps).setPos(exps.head.pos)
       }
     } else {
-      SchemeLetrec(defs, undefineBody(exps)).setPos(exps.head.pos)
+      SchemeLetrec(defs.reverse, undefineBody(exps)).setPos(exps.head.pos)
     }
   }
 
