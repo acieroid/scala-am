@@ -1,7 +1,3 @@
-(define (gcd a b)
-  (if (= b 0)
-      a
-      (gcd b (modulo a b))))
 (define (extended-gcd a b)
   (if (= (modulo a b) 0)
       (cons 0 1)

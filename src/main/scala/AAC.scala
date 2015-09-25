@@ -21,7 +21,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
   case class ControlKont(v: Abs) extends Control {
     override def toString = s"ko($v)"
-    override def toString(store: Store[Addr, Abs]) = s"ko(${abs.toString(v, store)}"
+    override def toString(store: Store[Addr, Abs]) = s"ko(${abs.toString(v, store)})"
     def subsumes(that: Control) = that match {
       case ControlKont(v2) => abs.subsumes(v, v2)
       case _ => false

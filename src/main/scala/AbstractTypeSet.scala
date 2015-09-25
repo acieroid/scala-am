@@ -112,11 +112,13 @@ object AbstractTypeSet {
       case AbstractTrue => AbstractFalse
       case AbstractFalse => AbstractFalse
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
+      case _ => super.and(that)
     }
     override def or(that: A) = that match {
       case AbstractTrue => AbstractTrue
       case AbstractFalse => AbstractFalse
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
+      case _ => super.and(that)
     }
   }
   case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractTypeSet]) extends AbstractTypeSet {

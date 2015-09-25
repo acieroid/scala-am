@@ -191,6 +191,19 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     absi.bottom
   }
   private def display(v: Abs): Abs = { print(v); absi.bottom }
+  /* Computes gcd as a fixpoint, otherwise abstract values (e.g., gcd(Int, Int)) can lead to infinite loops */
+  /* (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
+  private def gcd(a: Abs, b: Abs, visited: Set[(Abs, Abs)]): Abs = {
+    if (visited.contains(a, b)) {
+      absi.bottom
+    } else {
+      val cond = abs.numEq(b, absi.inject(0))
+      val t = if (abs.isTrue(cond)) { a } else { absi.bottom }
+      val f = if (abs.isFalse(cond)) { gcd(b, abs.modulo(a, b), visited + ((a, b))) } else { absi.bottom }
+      abs.join(t, f)
+    }
+  }
+  private def gcd(a: Abs, b: Abs): Abs = gcd(a, b, Set())
 
   val all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div,
@@ -201,6 +214,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     BinaryOperation(">", (x, y) => abs.and(abs.not(abs.lt(x, y)), abs.not(abs.numEq(x, y)))),
     BinaryOperation(">=", (x, y) => abs.not(abs.lt(x, y))),
     BinaryOperation("modulo", abs.modulo),
+    BinaryOperation("gcd", gcd),
     UnaryOperation("not", abs.not),
     UnaryOperation("random", abs.random),
     UnaryOperation("ceiling", abs.ceiling),

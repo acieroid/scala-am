@@ -8,7 +8,7 @@ trait AbstractConcrete {
   def isError: Boolean = false
   def foldValues[A](f: AbstractConcrete => Set[A]): Set[A] = f(this)
   def join(that: AbstractConcrete): AbstractConcrete =
-    if (this.equals(that)) { this } else { throw new Exception(s"AbstractConcrete lattice cannot join elements") }
+    if (this.equals(that) || that == AbstractConcrete.AbstractBottom) { this } else { throw new Exception(s"AbstractConcrete lattice cannot join elements") }
   def meet(that: AbstractConcrete): AbstractConcrete = if (this.equals(that)) { this } else { AbstractConcrete.AbstractBottom }
   def subsumes(that: AbstractConcrete): Boolean = this.equals(that)
   def plus(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"plus not applicable with operands $this and $that")
