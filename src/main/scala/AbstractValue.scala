@@ -67,6 +67,8 @@ trait AbstractInjection[A] {
   def name: String
   /** Bottom element of the lattice */
   def bottom: A
+  /** Injection of an error value */
+  def error(x: A): A
   /** Injection of an integer */
   def inject(x: Int): A
   /** Injection of a string */
@@ -216,7 +218,8 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
         abs.car(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
     BinaryStoreOperation("set-cdr!", (cell, v, store) =>
       (absi.bottom,
-        abs.cdr(cell).foldLeft(store)((acc, a) => acc.update(a, v))))
+        abs.cdr(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
+    UnaryOperation("error", absi.error)
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })

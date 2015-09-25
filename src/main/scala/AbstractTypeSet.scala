@@ -256,6 +256,7 @@ object AbstractTypeSet {
   implicit object AbstractTypeSetInjection extends AbstractInjection[AbstractTypeSet] {
     def name = "TypeSet"
     def bottom = AbstractBottom
+    def error(x: AbstractTypeSet) = AbstractError
     def inject(x: Int) = AbstractInt
     def inject(x: String) = AbstractString
     def inject(x: Boolean) = if (x) { AbstractTrue } else { AbstractFalse }
