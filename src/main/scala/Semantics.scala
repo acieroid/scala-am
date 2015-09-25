@@ -304,7 +304,7 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
       val σ1 = σ.extend(addr, v)
       bindings match {
         case Nil => Set(evalBody(body, ρ1, σ1))
-        case (variable, exp) :: rest => Set(ActionPush(exp, FrameLetStar(variable, rest, body, ρ), ρ1, σ1))
+        case (variable, exp) :: rest => Set(ActionPush(exp, FrameLetStar(variable, rest, body, ρ1), ρ1, σ1))
       }
     }
     case FrameLetrec(addr, Nil, body, ρ) => Set(evalBody(body, ρ, σ.update(addr, v)))

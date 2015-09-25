@@ -77,7 +77,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) =
     todo.headOption match {
       case Some(s) =>
-        if (visited.size > 100 || visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
+        if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
           /* Non-determinism arises in the number of explored states because of the
            * subsumption checking, and the fact that sets are not ordered: if a
            * "bigger" state is explored first, it might cut off a large chunk of
