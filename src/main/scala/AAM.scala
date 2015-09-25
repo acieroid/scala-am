@@ -31,7 +31,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   }
 
   trait KontAddr
-  case class NormalKontAddress(exp: Exp) extends KontAddr
+  case class NormalKontAddress(exp: Exp, addr: Addr) extends KontAddr
   object HaltKontAddress extends KontAddr {
     override def toString = "HaltKontAddress"
   }
@@ -51,7 +51,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       actions.flatMap({
         case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, kstore, a))
         case ActionPush(e, frame, ρ, σ) => {
-          val next = NormalKontAddress(e)
+          val next = NormalKontAddress(e, addri.variable("__kont__")) // Hack to get infinite number of addresses in concrete mode
           Set(State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, a)), next))
         }
         case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, kstore, a))
@@ -77,7 +77,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) =
     todo.headOption match {
       case Some(s) =>
-        if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
+        if (visited.size > 100 || visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
           /* Non-determinism arises in the number of explored states because of the
            * subsumption checking, and the fact that sets are not ordered: if a
            * "bigger" state is explored first, it might cut off a large chunk of
