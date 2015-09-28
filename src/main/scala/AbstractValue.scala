@@ -11,10 +11,12 @@ trait AbstractValue[A] extends Semigroup[A] {
   def isTrue(x: A): Boolean
   /** Can this abstract value be considered false for conditionals? */
   def isFalse(x: A): Boolean
-  /** Is this an erroneous value? */
+  /** Is this an erroneous value? (and only an erroneous value) */
   def isError(x: A): Boolean
-  /** Is this the null value? */
-  def isNull(x: A): Boolean
+  /** Is this the null value? (Scheme's null?, returns an abstract boolean) */
+  def isNull(x: A): A
+  /** Is this a cons cell? (Scheme's pair?, returns an abstract boolean) */
+  def isCons(x: A): A
   /** Fold a function over the values contained in this abstract values. This
       should be redefined only for container-like abstract values (e.g., for a
       set abstraction) */
@@ -238,7 +240,8 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
       (absi.bottom,
         abs.cdr(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
     UnaryOperation("error", absi.error),
-    UnaryOperation("null?", v => absi.inject(abs.isNull(v)))
+    UnaryOperation("null?", abs.isNull),
+    UnaryOperation("pair?", abs.isCons)
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })

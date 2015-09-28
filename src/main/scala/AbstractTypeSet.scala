@@ -5,7 +5,8 @@ trait AbstractTypeSet {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def isError: Boolean = false
-  def isNull: Boolean = false
+  def isNull: AbstractTypeSet = AbstractTypeSet.AbstractFalse
+  def isCons: AbstractTypeSet = AbstractTypeSet.AbstractFalse
   def foldValues[A](f: AbstractTypeSet => Set[A]): Set[A] = f(this)
   def join(that: AbstractTypeSet): AbstractTypeSet =
     if (this.equals(that) || that.equals(AbstractTypeSet.AbstractBottom)) {
@@ -134,6 +135,8 @@ object AbstractTypeSet {
     override def toString = "{" + content.mkString(", ") + "}"
     override def isTrue = content.exists(_.isTrue)
     override def isFalse = content.exists(_.isFalse)
+    override def isNull = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isNull))
+    override def isCons = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isCons))
     override def foldValues[B](f: A => Set[B]) =
       content.foldLeft(Set[B]())((s: Set[B], v: AbstractTypeSet) => s ++ v.foldValues(f))
     override def join(that: A) =
@@ -188,17 +191,20 @@ object AbstractTypeSet {
   }
   object AbstractNil extends AbstractTypeSet {
     override def toString = "()"
-    override def isNull = true
+    override def isNull = AbstractTrue
   }
-  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet
+  case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet {
+    override def isCons = AbstractTrue
+  }
 
-  val AbstractBottom = new AbstractSet(Set())
+  val AbstractBottom: AbstractTypeSet = new AbstractSet(Set())
 
   implicit object AbstractTypeSetAbstractValue extends AbstractValue[AbstractTypeSet] {
     def isTrue(x: A) = x.isTrue
     def isFalse(x: A) = x.isFalse
     def isError(x: A) = x.isError
     def isNull(x: A) = x.isNull
+    def isCons(x: A) = x.isCons
     def foldValues[B](x: A, f: A => Set[B]) = x.foldValues(f)
     def join(x: A, y: A) = x.join(y)
     def meet(x: A, y: A) = x.meet(y)
