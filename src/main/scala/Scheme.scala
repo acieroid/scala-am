@@ -227,6 +227,8 @@ object SchemeCompiler {
       List((SchemeValue(ValueBoolean(true)).setPos(clauses.pos), compile(first) :: compileBody(rest)))
     case SExpPair(SExpPair(cond, SExpPair(first, rest)), restClauses) =>
       (compile(cond), compile(first) :: compileBody(rest)) :: compileCondClauses(restClauses)
+    case SExpPair(SExpPair(cond, SExpValue(ValueNil())), restClauses) =>
+      (compile(cond), Nil) :: compileCondClauses(restClauses)
     case SExpValue(ValueNil()) => Nil
     case _ => throw new Exception(s"Invalid Scheme cond clauses: $clauses")
   }

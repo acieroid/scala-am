@@ -176,7 +176,6 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
     case exp :: rest => ActionPush(exp, FrameBegin(rest, ρ), ρ, σ)
   }
 
-
   def conditional(v: Abs, t: Action[SchemeExp, Abs, Addr], f: Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
     (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
 
@@ -338,10 +337,12 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
     case FrameBegin(body, ρ) => Set(evalBody(body, ρ, σ))
-    case FrameCond(cons, Nil, ρ) =>
-      conditional(v, evalBody(cons, ρ, σ), ActionReachedValue(absi.bottom, σ))
-    case FrameCond(cons, (exp, cons2) :: rest, ρ) =>
-      conditional(v, evalBody(cons, ρ, σ), ActionPush(exp, FrameCond(cons2, rest, ρ), ρ, σ))
+    case FrameCond(cons, clauses, ρ) =>
+      conditional(v, if (cons.isEmpty) { ActionReachedValue(v, σ) } else { evalBody(cons, ρ, σ) },
+        clauses match {
+          case Nil => ActionReachedValue(absi.bottom /* TODO: undefined */, σ)
+          case (exp, cons2) :: rest => ActionPush(exp, FrameCond(cons2, rest, ρ), ρ, σ)
+        })
     case FrameCase(clauses, default, ρ) => throw new Exception(s"TODO: case not handled (yet)")
       /* TODO: find every clause that can be true, generate one successor per
          clause in order, until a clause that can't be false is reached. If none
