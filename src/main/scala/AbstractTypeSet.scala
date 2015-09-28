@@ -232,8 +232,6 @@ object AbstractTypeSet {
     }
     private def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet], inside: Boolean): String = x match {
       case AbstractCons(car : Addr, cdr : Addr) =>
-        println(s"Looking up $car: ${store.lookup(car)}")
-        println(s"Looking up $car: ${store.lookup(cdr)}")
         val carstr = toString(store.lookup(car), store, false)
         val cdrval = store.lookup(cdr)
         val cdrstr = toString(store.lookup(cdr), store, true)
