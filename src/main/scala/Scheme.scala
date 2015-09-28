@@ -135,11 +135,12 @@ object SchemeCompiler {
 
   def compile(exp: SExp): SchemeExp = {
     val exp2 = exp match {
+      case SExpPair(SExpIdentifier("quote"), rest) => compile(SExpQuoted(rest))
       case SExpPair(SExpIdentifier("lambda"),
         SExpPair(args, SExpPair(first, rest))) =>
         SchemeLambda(compileArgs(args), compile(first) :: compileBody(rest))
       case SExpPair(SExpIdentifier("lambda"), _) =>
-        throw new Exception(s"Invalid Scheme lambda: $exp")
+        throw new Exception(s"Invalid Scheme lambda: $exp (${exp.pos})")
       case SExpPair(SExpIdentifier("if"),
         SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil()))))) =>
         SchemeIf(compile(cond), compile(cons), compile(alt))
@@ -148,7 +149,7 @@ object SchemeCompiler {
         /* Empty else branch is replaced by #f */
         SchemeIf(compile(cond), compile(cons), SchemeValue(ValueBoolean(false)))
       case SExpPair(SExpIdentifier("if"), _) =>
-        throw new Exception(s"Invalid Scheme if: $exp")
+        throw new Exception(s"Invalid Scheme if: $exp (${exp.pos})")
       case SExpPair(SExpIdentifier("let"),
         SExpPair(bindings, SExpPair(first, rest))) =>
         SchemeLet(compileBindings(bindings), compile(first) :: compileBody(rest))
