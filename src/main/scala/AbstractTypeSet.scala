@@ -238,6 +238,7 @@ object AbstractTypeSet {
           case _ => s"$carstr . $cdrstr"
         }
         if (inside) { content } else { s"($content)" }
+      case AbstractSet(content) =>  "{" + content.map(v => toString(v, store)).mkString(", ") + "}"
       case _ => {
         x.toString
       }

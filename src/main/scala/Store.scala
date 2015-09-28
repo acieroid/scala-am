@@ -7,8 +7,12 @@ case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(i
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({
     case (a, (_, v)) => p(a, v)
   })
-  /** Looks up a value in the store */
-  def lookup(a: Addr): Abs = content.getOrElse(a, (0, absi.bottom))._2
+  def lookup(a: Addr): Abs = content.get(a) match {
+    case None => throw new Exception(s"Unbound address (should not happen): $a")
+    case Some(v) => v._2
+  }
+  /** Looks up a value in the store (returning bottom if value not present) */
+  def lookupBot(a: Addr): Abs = content.getOrElse(a, (0, absi.bottom))._2
   /** Adds a new element to the store */
   def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
     case None => Store(content + (a -> (1, v)), counting)
@@ -29,7 +33,7 @@ case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(i
   def join(that: Store[Addr, Abs]): Store[Addr, Abs] = Store(this.content |+| that.content, counting)
   /** Checks whether this store subsumes another store */
   def subsumes(that: Store[Addr, Abs]): Boolean =
-    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookup(binding._1), binding._2))
+    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
 }
 
 object Store {

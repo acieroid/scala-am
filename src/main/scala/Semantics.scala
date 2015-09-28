@@ -231,9 +231,31 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
       case None => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
     }
   }
-
   private def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
     funcallArgs(f, fexp, List(), args, ρ, σ)
+
+  private def evalQuoted(exp: SExp, σ: Store[Addr, Abs]): (Abs, Store[Addr, Abs]) = exp match {
+    case SExpIdentifier(sym) => (absi.injectSymbol(sym), σ)
+    case SExpPair(car, cdr) => {
+      val care: SchemeExp = SchemeIdentifier(car.toString).setPos(car.pos)
+      val cdre: SchemeExp = SchemeIdentifier(cdr.toString).setPos(cdr.pos)
+      val cara = addri.cell(care)
+      val (carv, σ2) = evalQuoted(car, σ)
+      val cdra = addri.cell(cdre)
+      val (cdrv, σ3) = evalQuoted(cdr, σ2)
+      (absi.cons(cara, cdra), σ3.extend(cara, carv).extend(cdra, cdrv))
+    }
+    case SExpValue(v) => (v match {
+      case ValueString(str) => absi.inject(str)
+      case ValueCharacter(c) => throw new Exception("character not yet supported")
+      case ValueSymbol(sym) => absi.injectSymbol(sym) /* shouldn't happen */
+      case ValueInteger(n) => absi.inject(n)
+      case ValueFloat(n) => throw new Exception("floats not yet supported")
+      case ValueBoolean(b) => absi.inject(b)
+      case ValueNil() => absi.nil
+    }, σ)
+    case SExpQuoted(q) => evalQuoted(SExpPair(SExpIdentifier("quote"), SExpPair(q, SExpValue(ValueNil()))), σ)
+  }
 
   def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
     case λ: SchemeLambda => Set(ActionReachedValue(absi.inject[SchemeExp, Addr]((λ, ρ)), σ))
@@ -274,8 +296,9 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
       case Some(a) => Set(ActionReachedValue(σ.lookup(a), σ))
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
-    case SchemeQuoted(SExpIdentifier(sym)) => Set(ActionReachedValue(absi.injectSymbol(sym), σ))
-    case SchemeQuoted(quoted) => throw new Exception(s"TODO: quoted expressions not yet handled")
+    case SchemeQuoted(quoted) => evalQuoted(quoted, σ) match {
+      case (value, σ2) => Set(ActionReachedValue(value, σ2))
+    }
     case SchemeValue(v) => evalValue(v) match {
       case Some(v) => Set(ActionReachedValue(v, σ))
       case None => Set(ActionError(s"Unhandled value: $v"))
