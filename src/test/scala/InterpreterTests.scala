@@ -23,6 +23,7 @@ abstract class Benchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abs
   "sq.scm" should "eval to 9" in { checkResult("sq.scm", absi.inject(9)) }
   "sym.scm" should "eval to 'foo" in { checkResult("sym.scm", absi.injectSymbol("foo")) }
   "rsa.scm" should "eval to #t" in { checkResult("rsa.scm", absi.inject(true)) }
+  "sat.scm" should "eval to #t" in { checkResult("sat.scm", absi.inject(true)) }
   "primtest.scm" should "eval to 1" in { checkResult("primtest.scm", absi.inject(true)) }
 }
 
