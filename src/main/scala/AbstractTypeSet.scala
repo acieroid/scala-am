@@ -5,6 +5,7 @@ trait AbstractTypeSet {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def isError: Boolean = false
+  def isNull: Boolean = false
   def foldValues[A](f: AbstractTypeSet => Set[A]): Set[A] = f(this)
   def join(that: AbstractTypeSet): AbstractTypeSet =
     if (this.equals(that) || that.equals(AbstractTypeSet.AbstractBottom)) {
@@ -187,6 +188,7 @@ object AbstractTypeSet {
   }
   object AbstractNil extends AbstractTypeSet {
     override def toString = "()"
+    override def isNull = true
   }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet
 
@@ -196,6 +198,7 @@ object AbstractTypeSet {
     def isTrue(x: A) = x.isTrue
     def isFalse(x: A) = x.isFalse
     def isError(x: A) = x.isError
+    def isNull(x: A) = x.isNull
     def foldValues[B](x: A, f: A => Set[B]) = x.foldValues(f)
     def join(x: A, y: A) = x.join(y)
     def meet(x: A, y: A) = x.meet(y)
@@ -229,6 +232,8 @@ object AbstractTypeSet {
     }
     private def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet], inside: Boolean): String = x match {
       case AbstractCons(car : Addr, cdr : Addr) =>
+        println(s"Looking up $car: ${store.lookup(car)}")
+        println(s"Looking up $car: ${store.lookup(cdr)}")
         val carstr = toString(store.lookup(car), store, false)
         val cdrval = store.lookup(cdr)
         val cdrstr = toString(store.lookup(cdr), store, true)

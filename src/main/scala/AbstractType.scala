@@ -5,6 +5,7 @@ trait AbstractType {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def isError: Boolean = false
+  def isNull: Boolean = false
   def foldValues[A](f: AbstractType => Set[A]): Set[A] = f(this)
   def join(that: AbstractType): AbstractType =
     if (this.equals(that) || that.equals(AbstractType.AbstractBottom)) { this } else { AbstractType.AbstractTop }
@@ -130,6 +131,7 @@ object AbstractType {
   }
   object AbstractNil extends AbstractType {
     override def toString = "()"
+    override def isNull = true
   }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractType
 
@@ -137,6 +139,7 @@ object AbstractType {
     def isTrue(x: AbstractType) = x.isTrue
     def isFalse(x: AbstractType) = x.isFalse
     def isError(x: AbstractType) = x.isError
+    def isNull(x: AbstractType) = x.isNull
     def foldValues[B](x: AbstractType, f: AbstractType => Set[B]) = x.foldValues(f)
     def join(x: AbstractType, y: AbstractType) = x.join(y)
     def meet(x: AbstractType, y: AbstractType) = x.meet(y)

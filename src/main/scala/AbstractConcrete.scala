@@ -6,6 +6,7 @@ trait AbstractConcrete {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def isError: Boolean = false
+  def isNull: Boolean = false
   def foldValues[A](f: AbstractConcrete => Set[A]): Set[A] = f(this)
   def join(that: AbstractConcrete): AbstractConcrete =
     if (this.equals(that) || that == AbstractConcrete.AbstractBottom) { this } else { throw new Exception(s"AbstractConcrete lattice cannot join elements") }
@@ -97,6 +98,7 @@ object AbstractConcrete {
   }
   object AbstractNil extends AbstractConcrete {
     override def toString = "()"
+    override def isNull = true
   }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractConcrete
 
@@ -104,6 +106,7 @@ object AbstractConcrete {
     def isTrue(x: AbstractConcrete) = x.isTrue
     def isFalse(x: AbstractConcrete) = x.isFalse
     def isError(x: AbstractConcrete) = x.isError
+    def isNull(x: AbstractConcrete) = x.isNull
     def foldValues[B](x: AbstractConcrete, f: AbstractConcrete => Set[B]) = x.foldValues(f)
     def join(x: AbstractConcrete, y: AbstractConcrete) = x.join(y)
     def meet(x: AbstractConcrete, y: AbstractConcrete) = x.meet(y)
