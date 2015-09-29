@@ -21,11 +21,11 @@ abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstract
   val eq = Table(
     ("program", "answer"),
     ("(eq? 'a 'a)", t),
-    ("(eq? (list 'a) (list 'a))", f),
+    ("(eq? (cons 'a nil) (cons 'a nil))", f), // was: ("(eq? (list 'a) (list 'a))", f), but list not implemented
     ("(eq? '() '())", t),
     ("(eq? car car)", t),
     ("(let ((x '(a))) (eq? x x))", t),
-    ("(let ((p (lambda (x) x))) (eq? p p)", t)
+    ("(let ((p (lambda (x) x))) (eq? p p))", t)
   )
   property("eq? satisfies R5RS") { check(eq) }
 }
@@ -37,6 +37,7 @@ abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstr
 
   def checkResult(program: SchemeExp, answer: Abs) = {
     val result = machine.eval(program, None)
+    println(s"$program -> $result (vs. $answer)")
     assert(result.exists((st: machine.State) => st.control match {
       case machine.ControlKont(v) => abs.subsumes(v, answer)
       case _ => false
