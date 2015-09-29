@@ -75,14 +75,14 @@ abstract class FreeBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi:
 
 /* Concrete tests are disabled because of cpstak takes too much time to compute since it requires more than 75k recursive calls */
 /* Type tests are disabled because they fail due to their inability to support a join between a closure and other abstract values */
-//class AACConcreteTest extends AACFlatSpec[AbstractConcrete, ConcreteAddress]
-//class AACTypeTest extends AACFlatSpec[AbstractType, ClassicalAddress]
-class AACTypeSetTest extends AACBenchmarks[AbstractTypeSet, ClassicalAddress]
+//class AACConcreteBenchmarks extends AACBenchmarks[AbstractConcrete, ConcreteAddress]
+//class AACTypeBenchmarks extends AACBenchmarks[AbstractType, ClassicalAddress]
+class AACTypeSetBenchmarks extends AACBenchmarks[AbstractTypeSet, ClassicalAddress]
 
-//class AAMConcreteTest extends AAMFlatSpec[AbstractConcrete, ConcreteAddress]
-//class AAMTypeTest extends AAMFlatSpec[AbstractType, ClassicalAddress]
-class AAMTypeSetTest extends AAMBenchmarks[AbstractTypeSet, ClassicalAddress]
+//class AAMConcreteBenchmarks extends AAMBenchmarks[AbstractConcrete, ConcreteAddress]
+//class AAMTypeBenchmarks extends AAMBenchmarks[AbstractType, ClassicalAddress]
+class AAMTypeSetBenchmarks extends AAMBenchmarks[AbstractTypeSet, ClassicalAddress]
 
-//class FreeConcreteTest extends FreeFlatSpec[AbstractConcrete, ConcreteAddress]
-//class FreeTypeTest extends FreeFlatSpec[AbstractType, ClassicalAddress]
-class FreeTypeSetTest extends FreeBenchmarks[AbstractTypeSet, ClassicalAddress]
+//class FreeConcreteBenchmarks extends FreeBenchmarks[AbstractConcrete, ConcreteAddress]
+//class FreeTypeBenchmarks extends FreeBenchmarks[AbstractType, ClassicalAddress]
+class FreeTypeSetBenchmarks extends FreeBenchmarks[AbstractTypeSet, ClassicalAddress]
