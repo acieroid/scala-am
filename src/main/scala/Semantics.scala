@@ -79,7 +79,7 @@ class ANFSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInje
                     bindArgs(args.zip(argsv.reverse), ρ, σ) match {
                       case (ρ2, σ) => ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ)
                     }
-                  } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length}") }
+                  } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length})") }
                   case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
                 })
                 val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitive(v) match {
@@ -191,7 +191,7 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
                 else
                   ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ)
             }
-          } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length}") }
+          } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
         case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
       })
       val fromPrim = abs.getPrimitive(v) match {
