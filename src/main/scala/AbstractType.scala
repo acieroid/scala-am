@@ -7,6 +7,9 @@ trait AbstractType {
   def isError: Boolean = false
   def isNull: AbstractType = AbstractType.AbstractBool
   def isCons: AbstractType = AbstractType.AbstractBool
+  def isChar: AbstractType = AbstractType.AbstractBool
+  def isSymbol: AbstractType = AbstractType.AbstractBool
+  def isString: AbstractType = AbstractType.AbstractBool
   def foldValues[A](f: AbstractType => Set[A]): Set[A] = f(this)
   def join(that: AbstractType): AbstractType =
     if (this.equals(that) || that.equals(AbstractType.AbstractBottom)) { this } else { AbstractType.AbstractTop }
@@ -96,6 +99,9 @@ object AbstractType {
   object AbstractString extends AbstractType {
     override def toString = "String"
   }
+  object AbstractChar extends AbstractType {
+    override def toString = "Char"
+  }
   object AbstractSymbol extends AbstractType {
     override def toString = "Symbol"
   }
@@ -143,6 +149,9 @@ object AbstractType {
     def isError(x: AbstractType) = x.isError
     def isNull(x: AbstractType) = x.isNull
     def isCons(x: AbstractType) = x.isCons
+    def isChar(x: AbstractType) = x.isChar
+    def isSymbol(x: AbstractType) = x.isSymbol
+    def isString(x: AbstractType) = x.isString
     def foldValues[B](x: AbstractType, f: AbstractType => Set[B]) = x.foldValues(f)
     def join(x: AbstractType, y: AbstractType) = x.join(y)
     def meet(x: AbstractType, y: AbstractType) = x.meet(y)
@@ -206,6 +215,7 @@ object AbstractType {
     def inject(x: Int) = AbstractInt
     def inject(x: String) = AbstractString
     def inject(x: Boolean) = AbstractBool
+    def inject(x: Char) = AbstractChar
     def inject[Addr : Address](x: Primitive[Addr, AbstractType]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosures[Exp, Addr](Set((x._1, x._2)))
     def injectSymbol(x: String) = AbstractSymbol

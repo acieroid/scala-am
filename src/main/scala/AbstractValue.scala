@@ -15,8 +15,14 @@ trait AbstractValue[A] extends Semigroup[A] {
   def isError(x: A): Boolean
   /** Is this the null value? (Scheme's null?, returns an abstract boolean) */
   def isNull(x: A): A
-  /** Is this a cons cell? (Scheme's pair?, returns an abstract boolean) */
+  /** Is this a cons cell? (Scheme's pair?) */
   def isCons(x: A): A
+  /** Is this a character? (Scheme's char?) */
+  def isChar(x: A): A
+  /** Is this a symbol? (Scheme's symbol?) */
+  def isSymbol(x: A): A
+  /** Is this a string? (Scheme's string?) */
+  def isString(x: A): A
   /** Fold a function over the values contained in this abstract values. This
       should be redefined only for container-like abstract values (e.g., for a
       set abstraction) */
@@ -58,7 +64,7 @@ trait AbstractValue[A] extends Semigroup[A] {
   def car[Addr : Address](x: A): Set[Addr]
   /** Takes the cdr of a cons cell */
   def cdr[Addr : Address](x: A): Set[Addr]
-  /** Returns a random integer bounded by x*/
+  /** Returns a random integer bounded by x */
   def random(x: A): A
   /** Returns the string representation of this value */
   def toString[Addr : Address](x: A, store: Store[Addr, A]): String
@@ -81,6 +87,8 @@ trait AbstractInjection[A] {
   def inject(x: String): A
   /** Injection of a boolean */
   def inject(x: Boolean): A
+  /** Injection of a character */
+  def inject(x: Char): A
   /** Injection of a primitive function */
   def inject[Addr : Address](x: Primitive[Addr, A]): A
   /** Injection of a closure */
@@ -244,6 +252,9 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("error", absi.error),
     UnaryOperation("null?", abs.isNull),
     UnaryOperation("pair?", abs.isCons),
+    UnaryOperation("char?", abs.isChar),
+    UnaryOperation("symbol?", abs.isSymbol),
+    UnaryOperation("string?", abs.isString),
     BinaryOperation("eq?", abs.eq)
   )
 

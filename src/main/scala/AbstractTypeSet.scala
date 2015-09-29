@@ -7,6 +7,9 @@ trait AbstractTypeSet {
   def isError: Boolean = false
   def isNull: AbstractTypeSet = AbstractTypeSet.AbstractFalse
   def isCons: AbstractTypeSet = AbstractTypeSet.AbstractFalse
+  def isChar: AbstractTypeSet = AbstractTypeSet.AbstractFalse
+  def isSymbol: AbstractTypeSet = AbstractTypeSet.AbstractFalse
+  def isString: AbstractTypeSet = AbstractTypeSet.AbstractFalse
   def foldValues[A](f: AbstractTypeSet => Set[A]): Set[A] = f(this)
   def join(that: AbstractTypeSet): AbstractTypeSet =
     if (this.equals(that) || that.equals(AbstractTypeSet.AbstractBottom)) {
@@ -90,9 +93,15 @@ object AbstractTypeSet {
 
   object AbstractString extends AbstractTypeSet {
     override def toString = "String"
+    override def isString = AbstractTrue
+  }
+  object AbstractChar extends AbstractTypeSet {
+    override def toString = "Char"
+    override def isChar = AbstractTrue
   }
   object AbstractSymbol extends AbstractTypeSet {
     override def toString = "Symbol"
+    override def isSymbol = AbstractTrue
   }
   object AbstractTrue extends AbstractTypeSet {
     override def toString = "#t"
@@ -154,6 +163,8 @@ object AbstractTypeSet {
     override def isFalse = content.exists(_.isFalse)
     override def isNull = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isNull))
     override def isCons = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isCons))
+    override def isSymbol = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isSymbol))
+    override def isString = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isString))
     override def foldValues[B](f: A => Set[B]) =
       content.foldLeft(Set[B]())((s: Set[B], v: AbstractTypeSet) => s ++ v.foldValues(f))
     override def join(that: A) =
@@ -234,6 +245,9 @@ object AbstractTypeSet {
     def isError(x: A) = x.isError
     def isNull(x: A) = x.isNull
     def isCons(x: A) = x.isCons
+    def isChar(x: A) = x.isChar
+    def isSymbol(x: A) = x.isSymbol
+    def isString(x: A) = x.isString
     def foldValues[B](x: A, f: A => Set[B]) = x.foldValues(f)
     def join(x: A, y: A) = x.join(y)
     def meet(x: A, y: A) = x.meet(y)
@@ -301,6 +315,7 @@ object AbstractTypeSet {
     def error(x: AbstractTypeSet) = AbstractError
     def inject(x: Int) = AbstractInt
     def inject(x: String) = AbstractString
+    def inject(x: Char) = AbstractChar
     def inject(x: Boolean) = if (x) { AbstractTrue } else { AbstractFalse }
     def inject[Addr : Address](x: Primitive[Addr, AbstractTypeSet]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)

@@ -8,6 +8,9 @@ trait AbstractConcrete {
   def isError: Boolean = false
   def isNull: AbstractConcrete = AbstractConcrete.AbstractFalse
   def isCons: AbstractConcrete = AbstractConcrete.AbstractFalse
+  def isChar: AbstractConcrete = AbstractConcrete.AbstractFalse
+  def isSymbol: AbstractConcrete = AbstractConcrete.AbstractFalse
+  def isString: AbstractConcrete = AbstractConcrete.AbstractFalse
   def foldValues[A](f: AbstractConcrete => Set[A]): Set[A] = f(this)
   def join(that: AbstractConcrete): AbstractConcrete =
     if (this.equals(that) || that == AbstractConcrete.AbstractBottom) { this } else { throw new Exception(s"AbstractConcrete lattice cannot join elements") }
@@ -64,9 +67,15 @@ object AbstractConcrete {
   }
   case class AbstractString(v: String) extends AbstractConcrete {
     override def toString = '"' + v.toString + '"'
+    override def isString = AbstractTrue
+  }
+  case class AbstractChar(v: Char) extends AbstractConcrete {
+    override def toString = s"#\\$v"
+    override def isChar = AbstractTrue
   }
   case class AbstractSymbol(v: String) extends AbstractConcrete {
     override def toString = v.toString
+    override def isSymbol = AbstractTrue
   }
   case class AbstractBool(v: Boolean) extends AbstractConcrete {
     override def toString = if (v) "#t" else "#f"
@@ -115,6 +124,9 @@ object AbstractConcrete {
     def isError(x: AbstractConcrete) = x.isError
     def isNull(x: AbstractConcrete) = x.isNull
     def isCons(x: AbstractConcrete) = x.isCons
+    def isChar(x: AbstractConcrete) = x.isChar
+    def isSymbol(x: AbstractConcrete) = x.isSymbol
+    def isString(x: AbstractConcrete) = x.isString
     def foldValues[B](x: AbstractConcrete, f: AbstractConcrete => Set[B]) = x.foldValues(f)
     def join(x: AbstractConcrete, y: AbstractConcrete) = x.join(y)
     def meet(x: AbstractConcrete, y: AbstractConcrete) = x.meet(y)
@@ -179,6 +191,7 @@ object AbstractConcrete {
     def error(x: AbstractConcrete) = AbstractError(x.toString)
     def inject(x: Int) = AbstractInt(x)
     def inject(x: String) = AbstractString(x)
+    def inject(x: Char) = AbstractChar(x)
     def inject(x: Boolean) = AbstractBool(x)
     def inject[Addr : Address](x: Primitive[Addr, AbstractConcrete]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
