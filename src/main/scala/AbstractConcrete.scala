@@ -26,8 +26,8 @@ trait AbstractConcrete {
   def lt(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"lt not applicable with operands $this and $that")
   def numEq(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"numEq not applicable with operands $this and $that")
   def not: AbstractConcrete = AbstractConcrete.AbstractError(s"not not applicable with operand $this")
-  def and(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"and not applicable with operands $this and $that")
-  def or(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"or not applicable with operands $this and $that")
+  def and(that: => AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"and not applicable with operands $this and $that")
+  def or(that: => AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"or not applicable with operands $this and $that")
   def eq(that: AbstractConcrete): AbstractConcrete = if (this == that) { AbstractConcrete.AbstractTrue } else { AbstractConcrete.AbstractFalse }
 }
 
@@ -82,14 +82,8 @@ object AbstractConcrete {
     override def isTrue = v
     override def isFalse = !v
     override def not = AbstractBool(!v)
-    override def and(that: AbstractConcrete) = that match {
-      case AbstractBool(v2) => AbstractBool(v && v2)
-      case _ => super.and(that)
-    }
-    override def or(that: AbstractConcrete) = that match {
-      case AbstractBool(v2) => AbstractBool(v || v2)
-      case _ => super.and(that)
-    }
+    override def and(that: => AbstractConcrete) = if (v) { that } else { AbstractFalse }
+    override def or(that: => AbstractConcrete) = if (v) { this } else { that }
   }
   val AbstractTrue: AbstractConcrete = AbstractBool(true)
   val AbstractFalse: AbstractConcrete = AbstractBool(false)
@@ -141,8 +135,8 @@ object AbstractConcrete {
     def lt(x: AbstractConcrete, y: AbstractConcrete) = x.lt(y)
     def numEq(x: AbstractConcrete, y: AbstractConcrete) = x.numEq(y)
     def not(x: AbstractConcrete) = x.not
-    def and(x: AbstractConcrete, y: AbstractConcrete) = x.and(y)
-    def or(x: AbstractConcrete, y: AbstractConcrete) = x.or(y)
+    def and(x: AbstractConcrete, y: => AbstractConcrete) = x.and(y)
+    def or(x: AbstractConcrete, y: => AbstractConcrete) = x.or(y)
     def eq(x: AbstractConcrete, y: AbstractConcrete) = x.eq(y)
     def car[Addr : Address](x: AbstractConcrete) = x match {
       case AbstractCons(car : Addr, cdr : Addr) => Set(car)

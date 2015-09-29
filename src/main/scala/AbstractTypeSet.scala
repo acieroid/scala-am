@@ -32,8 +32,8 @@ trait AbstractTypeSet {
   def lt(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def numEq(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def not: AbstractTypeSet = AbstractTypeSet.AbstractError
-  def and(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def or(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
+  def and(that: => AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
+  def or(that: => AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def eq(that: AbstractTypeSet): AbstractTypeSet = that match {
     /* most elements of this lattice lose too much information to be compared precisely */
     case _ if this == that => AbstractTypeSet.AbstractBool
@@ -106,20 +106,8 @@ object AbstractTypeSet {
   object AbstractTrue extends AbstractTypeSet {
     override def toString = "#t"
     override def not = AbstractFalse
-    override def and(that: A) = that match {
-      case AbstractTrue => AbstractTrue
-      case AbstractFalse => AbstractFalse
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.and(v)))
-      case _ => super.and(that)
-    }
-    /* This isn't Scheme semantics. But Scheme semantics for or and and are
-     * handled at the level of the semantics definition, not here */
-    override def or(that: A) = that match {
-      case AbstractTrue => AbstractTrue
-      case AbstractFalse => AbstractTrue
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.or(v)))
-      case _ => super.and(that)
-    }
+    override def and(that: => A) = that
+    override def or(that: => A) = this
     override def eq(that: A) = that match {
       case AbstractTrue => AbstractTrue
       case _ => super.eq(that)
@@ -129,18 +117,8 @@ object AbstractTypeSet {
     override def toString = "#f"
     override def isTrue = false
     override def isFalse = true
-    override def and(that: A) = that match {
-      case AbstractTrue => AbstractFalse
-      case AbstractFalse => AbstractFalse
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.and(v)))
-      case _ => super.and(that)
-    }
-    override def or(that: A) = that match {
-      case AbstractTrue => AbstractTrue
-      case AbstractFalse => AbstractFalse
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.or(v)))
-      case _ => super.and(that)
-    }
+    override def and(that: => A) = this
+    override def or(that: => A) = that
     override def eq(that: A) = that match {
       case AbstractFalse => AbstractTrue
       case _ => super.eq(that)
@@ -157,7 +135,7 @@ object AbstractTypeSet {
   }
   case class AbstractSet(content: Set[A]) extends AbstractTypeSet {
     /* invariant: content does not contain any other AbstractSet, i.e., content.exists(_.isInstanceOf[AbstractSet]) == false */
-    require(content.exists(_.isInstanceOf[AbstractSet]) == false, s"AbstractSet content contains another AbstractSet: $content")
+    // require(content.exists(_.isInstanceOf[AbstractSet]) == false, s"AbstractSet content contains another AbstractSet: $content")
     override def toString = "{" + content.mkString(", ") + "}"
     override def isTrue = content.exists(_.isTrue)
     override def isFalse = content.exists(_.isFalse)
@@ -214,8 +192,8 @@ object AbstractTypeSet {
     override def lt(that: A) = op((v) => v.lt(that))
     override def numEq(that: A) = op((v) => v.numEq(that))
     override def not = op((v) => v.not)
-    override def and(that: A) = op((v) => v.and(that))
-    override def or(that: A) = op((v) => v.or(that))
+    override def and(that: => A) = op((v) => v.and(that))
+    override def or(that: => A) = op((v) => v.or(that))
     override def eq(that: A) = op((v) => v.eq(that))
   }
   object AbstractNil extends AbstractTypeSet {
@@ -263,8 +241,8 @@ object AbstractTypeSet {
     def lt(x: A, y: A) = x.lt(y)
     def numEq(x: A, y: A) = x.numEq(y)
     def not(x: A) = x.not
-    def and(x: A, y: A) = x.and(y)
-    def or(x: A, y: A) = x.or(y)
+    def and(x: A, y: => A) = x.and(y)
+    def or(x: A, y: => A) = x.or(y)
     def eq(x: A, y: A) = x.eq(y)
     def car[Addr : Address](x: AbstractTypeSet) = x match {
       case AbstractCons(car : Addr, cdr : Addr) => Set(car)

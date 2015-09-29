@@ -26,8 +26,8 @@ trait AbstractType {
   def lt(that: AbstractType): AbstractType = AbstractType.AbstractError
   def numEq(that: AbstractType): AbstractType = AbstractType.AbstractError
   def not: AbstractType = AbstractType.AbstractError
-  def and(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def or(that: AbstractType): AbstractType = AbstractType.AbstractError
+  def and(that: => AbstractType): AbstractType = AbstractType.AbstractError
+  def or(that: => AbstractType): AbstractType = AbstractType.AbstractError
   /* no other possible definition because lattice true or false by something else than an abstract boolean */
   def eq(that: AbstractType): AbstractType = AbstractType.AbstractBool
 }
@@ -49,8 +49,8 @@ object AbstractType {
     override def lt(that: AbstractType) = AbstractTop
     override def numEq(that: AbstractType) = AbstractTop
     override def not = AbstractTop
-    override def and(that: AbstractType) = AbstractTop
-    override def or(that: AbstractType) = AbstractTop
+    override def and(that: => AbstractType) = AbstractTop
+    override def or(that: => AbstractType) = AbstractTop
   }
   object AbstractError extends AbstractType {
     override def toString = "error"
@@ -110,12 +110,12 @@ object AbstractType {
     override def isTrue = true
     override def isFalse = true
     override def not = AbstractBool
-    override def and(that: AbstractType) = that match {
+    override def and(that: => AbstractType) = that match {
       case AbstractTop => AbstractTop
       case AbstractBool => AbstractBool
       case _ => super.and(that)
     }
-    override def or(that: AbstractType) = that match {
+    override def or(that: => AbstractType) = that match {
       case AbstractTop => AbstractTop
       case AbstractBool => AbstractBool
       case _ => super.or(that)
@@ -166,8 +166,8 @@ object AbstractType {
     def lt(x: AbstractType, y: AbstractType) = x.lt(y)
     def numEq(x: AbstractType, y: AbstractType) = x.numEq(y)
     def not(x: AbstractType) = x.not
-    def and(x: AbstractType, y: AbstractType) = x.and(y)
-    def or(x: AbstractType, y: AbstractType) = x.or(y)
+    def and(x: AbstractType, y: => AbstractType) = x.and(y)
+    def or(x: AbstractType, y: => AbstractType) = x.or(y)
     def eq(x: AbstractType, y: AbstractType) = x.eq(y)
     def car[Addr : Address](x: AbstractType) = x match {
       case AbstractCons(car: Addr, cdr: Addr) => Set(car)

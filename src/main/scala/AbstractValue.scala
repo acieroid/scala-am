@@ -55,9 +55,9 @@ trait AbstractValue[A] extends Semigroup[A] {
   /** Negation */
   def not(x: A): A
   /** Conjunction */
-  def and(x: A, y: A): A
+  def and(x: A, y: => A): A
   /** Disjunction */
-  def or(x: A, y: A): A
+  def or(x: A, y: => A): A
   /** Equality test (pointer comparison for cons cells, i.e., Scheme's eq?) */
   def eq(x: A, y: A): A
   /** Takes the car of a cons cell */
@@ -205,6 +205,14 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     absi.bottom
   }
   private def display(v: Abs): Abs = { print(v); absi.bottom }
+
+  private def car(v: Abs, store: Store[Addr, Abs]): Abs =
+    abs.car(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
+
+  private def cdr(v: Abs, store: Store[Addr, Abs]): Abs =
+    abs.cdr(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
+
+
   /* Computes gcd as a fixpoint, otherwise abstract values (e.g., gcd(Int, Int)) can lead to infinite loops */
   /* (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
   private def gcd(a: Abs, b: Abs, visited: Set[(Abs, Abs)]): Abs = {
@@ -218,6 +226,23 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
   private def gcd(a: Abs, b: Abs): Abs = gcd(a, b, Set())
+
+  /* Computes equal as a fixpoint */
+  // (define (equal? a b) (or (eq? a b) (and (null? a) (null? b)) (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))))
+  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): Abs = {
+    if (visited.contains(a, b)) {
+      absi.bottom
+    } else {
+      val visited2 = visited + ((a, b))
+      abs.or(abs.eq(a, b),
+        abs.or(abs.and(abs.isNull(a), abs.isNull(b)),
+          abs.and(abs.isCons(a),
+            abs.and(abs.isCons(b),
+              abs.and(equal(car(a, store), car(b, store), store, visited2),
+                equal(cdr(a, store), cdr(b, store), store, visited2))))))
+    }
+  }
+  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): Abs = equal(a, b, store, Set())
 
   val all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div,
@@ -237,12 +262,8 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("display", display),
     NullaryOperation("newline", newline),
     Cons,
-    UnaryStoreOperation("car", (v, store) =>
-      (abs.car(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a))),
-        store)),
-    UnaryStoreOperation("cdr", (v, store) =>
-      (abs.cdr(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a))),
-        store)),
+    UnaryStoreOperation("car", (v, store) => (car(v, store), store)),
+    UnaryStoreOperation("cdr", (v, store) => (cdr(v, store), store)),
     BinaryStoreOperation("set-car!", (cell, v, store) =>
       (absi.bottom,
         abs.car(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
@@ -255,7 +276,8 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("char?", abs.isChar),
     UnaryOperation("symbol?", abs.isSymbol),
     UnaryOperation("string?", abs.isString),
-    BinaryOperation("eq?", abs.eq)
+    BinaryOperation("eq?", abs.eq),
+    BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store))
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })
