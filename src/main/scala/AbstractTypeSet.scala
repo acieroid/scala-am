@@ -37,7 +37,7 @@ trait AbstractTypeSet {
   def eq(that: AbstractTypeSet): AbstractTypeSet = that match {
     /* most elements of this lattice lose too much information to be compared precisely */
     case _ if this == that => AbstractTypeSet.AbstractBool
-    case AbstractTypeSet.AbstractSet(_) => AbstractTypeSet.AbstractSet(that.foldValues(y => Set(this.eq(that))))
+    case AbstractTypeSet.AbstractSet(content) => content.foldLeft(AbstractTypeSet.AbstractBottom)((acc, v) => acc.join(this.eq(v)))
     case _ => AbstractTypeSet.AbstractFalse
   }
 }
@@ -54,39 +54,39 @@ object AbstractTypeSet {
     override def toString = "Int"
     override def plus(that: A) = that match {
       case AbstractInt => AbstractInt
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.plus(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.plus(v)))
       case _ => super.plus(that)
     }
     override def minus(that: A) = that match {
       case AbstractInt => AbstractInt
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.minus(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.minus(v)))
       case _ => super.minus(that)
     }
     override def times(that: A) = that match {
       case AbstractInt => AbstractInt
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.times(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.times(v)))
       case _ => super.times(that)
     }
     override def div(that: A) = that match {
       case AbstractInt => AbstractInt
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.div(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.div(v)))
       case _ => super.div(that)
     }
     override def modulo(that: A) = that match {
       case AbstractInt => AbstractInt
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.modulo(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.modulo(v)))
       case _ => super.div(that)
     }
     override def ceiling = AbstractInt
     override def log = AbstractInt
     override def lt(that: A) = that match {
       case AbstractInt => AbstractBool
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(AbstractTrue, AbstractFalse)))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.lt(v)))
       case _ => super.lt(that)
     }
     override def numEq(that: A) = that match {
       case AbstractInt => AbstractBool
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(AbstractTrue, AbstractFalse)))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.numEq(v)))
       case _ => super.numEq(that)
     }
   }
@@ -109,7 +109,7 @@ object AbstractTypeSet {
     override def and(that: A) = that match {
       case AbstractTrue => AbstractTrue
       case AbstractFalse => AbstractFalse
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.and(v)))
       case _ => super.and(that)
     }
     /* This isn't Scheme semantics. But Scheme semantics for or and and are
@@ -117,7 +117,7 @@ object AbstractTypeSet {
     override def or(that: A) = that match {
       case AbstractTrue => AbstractTrue
       case AbstractFalse => AbstractTrue
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.or(v)))
       case _ => super.and(that)
     }
     override def eq(that: A) = that match {
@@ -132,13 +132,13 @@ object AbstractTypeSet {
     override def and(that: A) = that match {
       case AbstractTrue => AbstractFalse
       case AbstractFalse => AbstractFalse
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.and(v)))
       case _ => super.and(that)
     }
     override def or(that: A) = that match {
       case AbstractTrue => AbstractTrue
       case AbstractFalse => AbstractFalse
-      case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
+      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.or(v)))
       case _ => super.and(that)
     }
     override def eq(that: A) = that match {
