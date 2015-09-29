@@ -25,6 +25,8 @@ trait AbstractType {
   def not: AbstractType = AbstractType.AbstractError
   def and(that: AbstractType): AbstractType = AbstractType.AbstractError
   def or(that: AbstractType): AbstractType = AbstractType.AbstractError
+  /* no other possible definition because lattice true or false by something else than an abstract boolean */
+  def eq(that: AbstractType): AbstractType = AbstractType.AbstractBool
 }
 
 /** Lattice: Top > Error || String || Int || Boolean || Symbol > Bottom */
@@ -157,6 +159,7 @@ object AbstractType {
     def not(x: AbstractType) = x.not
     def and(x: AbstractType, y: AbstractType) = x.and(y)
     def or(x: AbstractType, y: AbstractType) = x.or(y)
+    def eq(x: AbstractType, y: AbstractType) = x.eq(y)
     def car[Addr : Address](x: AbstractType) = x match {
       case AbstractCons(car: Addr, cdr: Addr) => Set(car)
       case _ => Set()

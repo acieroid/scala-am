@@ -31,6 +31,12 @@ trait AbstractTypeSet {
   def not: AbstractTypeSet = AbstractTypeSet.AbstractError
   def and(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def or(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
+  def eq(that: AbstractTypeSet): AbstractTypeSet = that match {
+    /* most elements of this lattice lose too much information to be compared precisely */
+    case _ if this == that => AbstractTypeSet.AbstractBool
+    case AbstractTypeSet.AbstractSet(_) => AbstractTypeSet.AbstractSet(that.foldValues(y => Set(this.eq(that))))
+    case _ => AbstractTypeSet.AbstractFalse
+  }
 }
 
 object AbstractTypeSet {
@@ -71,12 +77,12 @@ object AbstractTypeSet {
     override def ceiling = AbstractInt
     override def log = AbstractInt
     override def lt(that: A) = that match {
-      case AbstractInt => AbstractSet(Set(AbstractTrue, AbstractFalse))
+      case AbstractInt => AbstractBool
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(AbstractTrue, AbstractFalse)))
       case _ => super.lt(that)
     }
     override def numEq(that: A) = that match {
-      case AbstractInt => AbstractSet(Set(AbstractTrue, AbstractFalse))
+      case AbstractInt => AbstractBool
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(AbstractTrue, AbstractFalse)))
       case _ => super.numEq(that)
     }
@@ -105,6 +111,10 @@ object AbstractTypeSet {
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
       case _ => super.and(that)
     }
+    override def eq(that: A) = that match {
+      case AbstractTrue => AbstractTrue
+      case _ => super.eq(that)
+    }
   }
   object AbstractFalse extends AbstractTypeSet {
     override def toString = "#f"
@@ -122,12 +132,19 @@ object AbstractTypeSet {
       case AbstractSet(_) => AbstractSet(that.foldValues(y => Set(this.and(y))))
       case _ => super.and(that)
     }
+    override def eq(that: A) = that match {
+      case AbstractFalse => AbstractTrue
+      case _ => super.eq(that)
+    }
   }
+  val AbstractBool = AbstractSet(Set(AbstractTrue, AbstractFalse))
   case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractTypeSet]) extends AbstractTypeSet {
     override def toString = s"#<prim ${prim.name}>"
+    override def eq(that: A) = if (this == that) { AbstractTrue } else { AbstractFalse }
   }
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractTypeSet {
     override def toString = "#<clo>"
+    override def eq(that: A) = if (this == that) { AbstractTrue } else { AbstractFalse }
   }
   case class AbstractSet(content: Set[A]) extends AbstractTypeSet {
     /* invariant: content does not contain any other AbstractSet, i.e., content.exists(_.isInstanceOf[AbstractSet]) == false */
@@ -188,13 +205,25 @@ object AbstractTypeSet {
     override def not = op((v) => v.not)
     override def and(that: A) = op((v) => v.and(that))
     override def or(that: A) = op((v) => v.or(that))
+    override def eq(that: A) = op((v) => v.eq(that))
   }
   object AbstractNil extends AbstractTypeSet {
     override def toString = "()"
     override def isNull = AbstractTrue
+    override def eq(that: A) = that match {
+      case AbstractNil => AbstractTrue
+      case _ => super.eq(that)
+    }
   }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet {
     override def isCons = AbstractTrue
+    /* eq cannot be redefined to do pointer equality, because it would probably be
+     * incorrect since an address can be allocated more than once in the
+     * abstract. For example, for (cons x y), if x is stored in address xa, y
+     * in address ya, a different (in the concrete) cons cell (cons x z) where
+     * z resides in ya will be considered eq. Returning AbstractBool is the
+     * safest solution. Looking the number of times an address has been
+     * allocated is a solution to improve precision */
   }
 
   val AbstractBottom: AbstractTypeSet = new AbstractSet(Set())
@@ -222,6 +251,7 @@ object AbstractTypeSet {
     def not(x: A) = x.not
     def and(x: A, y: A) = x.and(y)
     def or(x: A, y: A) = x.or(y)
+    def eq(x: A, y: A) = x.eq(y)
     def car[Addr : Address](x: AbstractTypeSet) = x match {
       case AbstractCons(car : Addr, cdr : Addr) => Set(car)
       case AbstractSet(_) => x.foldValues(y => car[Addr](y))

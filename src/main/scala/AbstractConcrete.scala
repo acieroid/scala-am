@@ -6,8 +6,8 @@ trait AbstractConcrete {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def isError: Boolean = false
-  def isNull: AbstractConcrete = AbstractConcrete.AbstractBool(false)
-  def isCons: AbstractConcrete = AbstractConcrete.AbstractBool(false)
+  def isNull: AbstractConcrete = AbstractConcrete.AbstractFalse
+  def isCons: AbstractConcrete = AbstractConcrete.AbstractFalse
   def foldValues[A](f: AbstractConcrete => Set[A]): Set[A] = f(this)
   def join(that: AbstractConcrete): AbstractConcrete =
     if (this.equals(that) || that == AbstractConcrete.AbstractBottom) { this } else { throw new Exception(s"AbstractConcrete lattice cannot join elements") }
@@ -25,6 +25,7 @@ trait AbstractConcrete {
   def not: AbstractConcrete = AbstractConcrete.AbstractError(s"not not applicable with operand $this")
   def and(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"and not applicable with operands $this and $that")
   def or(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"or not applicable with operands $this and $that")
+  def eq(that: AbstractConcrete): AbstractConcrete = if (this == that) { AbstractConcrete.AbstractTrue } else { AbstractConcrete.AbstractFalse }
 }
 
 object AbstractConcrete {
@@ -71,7 +72,7 @@ object AbstractConcrete {
     override def toString = if (v) "#t" else "#f"
     override def isTrue = v
     override def isFalse = !v
-    override def not = if (v) AbstractBool(false) else AbstractBool(true)
+    override def not = AbstractBool(!v)
     override def and(that: AbstractConcrete) = that match {
       case AbstractBool(v2) => AbstractBool(v && v2)
       case _ => super.and(that)
@@ -81,6 +82,8 @@ object AbstractConcrete {
       case _ => super.and(that)
     }
   }
+  val AbstractTrue: AbstractConcrete = AbstractBool(true)
+  val AbstractFalse: AbstractConcrete = AbstractBool(false)
   case class AbstractError(reason: String) extends AbstractConcrete {
     override def toString = s"error: $reason"
     override def isError = true
@@ -90,6 +93,7 @@ object AbstractConcrete {
     override def isTrue = false
     override def isFalse = false
     override def join(that: AbstractConcrete) = that
+    override def eq(that: AbstractConcrete) = AbstractFalse
   }
   case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractConcrete]) extends AbstractConcrete {
     override def toString = s"#<prim ${prim.name}>"
@@ -99,10 +103,10 @@ object AbstractConcrete {
   }
   object AbstractNil extends AbstractConcrete {
     override def toString = "()"
-    override def isNull = AbstractBool(true)
+    override def isNull = AbstractTrue
   }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractConcrete {
-    override def isCons = AbstractBool(true)
+    override def isCons = AbstractTrue
   }
 
   implicit object AbstractConcreteAbstractValue extends AbstractValue[AbstractConcrete] {
@@ -127,6 +131,7 @@ object AbstractConcrete {
     def not(x: AbstractConcrete) = x.not
     def and(x: AbstractConcrete, y: AbstractConcrete) = x.and(y)
     def or(x: AbstractConcrete, y: AbstractConcrete) = x.or(y)
+    def eq(x: AbstractConcrete, y: AbstractConcrete) = x.eq(y)
     def car[Addr : Address](x: AbstractConcrete) = x match {
       case AbstractCons(car : Addr, cdr : Addr) => Set(car)
       case _ => Set()

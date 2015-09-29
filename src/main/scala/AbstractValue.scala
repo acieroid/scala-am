@@ -52,6 +52,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def and(x: A, y: A): A
   /** Disjunction */
   def or(x: A, y: A): A
+  /** Equality test (pointer comparison for cons cells, i.e., Scheme's eq?) */
+  def eq(x: A, y: A): A
   /** Takes the car of a cons cell */
   def car[Addr : Address](x: A): Set[Addr]
   /** Takes the cdr of a cons cell */
@@ -241,7 +243,8 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
         abs.cdr(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
     UnaryOperation("error", absi.error),
     UnaryOperation("null?", abs.isNull),
-    UnaryOperation("pair?", abs.isCons)
+    UnaryOperation("pair?", abs.isCons),
+    BinaryOperation("eq?", abs.eq)
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })
