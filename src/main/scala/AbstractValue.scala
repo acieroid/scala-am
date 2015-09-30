@@ -173,6 +173,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     val name = "-"
     def call(args: List[Abs]) = args match {
       case Nil => Left("-: at least 1 operand expected, got 0")
+      case x :: Nil => Right(abs.minus(absi.inject(0), x))
       case x :: rest => Plus.call(rest) match {
         case Right(y) => Right(abs.minus(x, y))
         case Left(err) => Left(err)
