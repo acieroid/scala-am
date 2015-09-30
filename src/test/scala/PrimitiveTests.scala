@@ -156,6 +156,39 @@ abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstract
   // assq not implemented
   // assoc not implemented
   // assv not implemented
+
+  r5rs("symbol?", Table(
+    ("program", "answer"),
+    ("(symbol? 'foo)", t),
+    ("(symbol? (car '(a b)))", t),
+    ("(symbol? \"bar\")", f),
+    ("(symbol? 'nil)", t),
+    ("(symbol? '())", f),
+    ("(symbol? #f)", f)
+  ))
+
+  // symbol->string not implemented
+  // string->symbol not implemented
+
+  // char->integer not implemented
+  // integer->char not implemented
+  // char<=? not implemented
+
+  // 6.3.6: vectors are not supported
+
+  /* 6.4 Control features */
+  // procedure not implemented
+  // apply not implemented
+  // map not implemented
+  // for-each not implemented
+  // force not implemented
+  // call/cc not implemented
+  // call-with-values not implemented
+
+  /* 6.5 Eval */
+  // eval not implemented
+
+  /* 6.6 Input and output */
 }
 
 abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
