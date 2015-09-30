@@ -25,7 +25,7 @@ trait AbstractConcrete {
   def log: AbstractConcrete = AbstractConcrete.AbstractError(s"log not applicable with operand $this")
   def lt(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"lt not applicable with operands $this and $that")
   def numEq(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"numEq not applicable with operands $this and $that")
-  def not: AbstractConcrete = AbstractConcrete.AbstractError(s"not not applicable with operand $this")
+  def not: AbstractConcrete = AbstractConcrete.AbstractFalse
   def and(that: => AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"and not applicable with operands $this and $that")
   def or(that: => AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"or not applicable with operands $this and $that")
   def eq(that: AbstractConcrete): AbstractConcrete = if (this == that) { AbstractConcrete.AbstractTrue } else { AbstractConcrete.AbstractFalse }

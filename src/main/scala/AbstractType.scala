@@ -25,7 +25,7 @@ trait AbstractType {
   def log: AbstractType = AbstractType.AbstractError
   def lt(that: AbstractType): AbstractType = AbstractType.AbstractError
   def numEq(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def not: AbstractType = AbstractType.AbstractError
+  def not: AbstractType = AbstractType.AbstractBool
   def and(that: => AbstractType): AbstractType = AbstractType.AbstractError
   def or(that: => AbstractType): AbstractType = AbstractType.AbstractError
   /* no other possible definition because lattice true or false by something else than an abstract boolean */

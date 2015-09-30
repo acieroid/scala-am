@@ -31,7 +31,7 @@ trait AbstractTypeSet {
   def log: AbstractTypeSet = AbstractTypeSet.AbstractError
   def lt(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def numEq(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def not: AbstractTypeSet = AbstractTypeSet.AbstractError
+  def not: AbstractTypeSet = AbstractTypeSet.AbstractFalse
   def and(that: => AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def or(that: => AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def eq(that: AbstractTypeSet): AbstractTypeSet = that match {

@@ -102,12 +102,12 @@ abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstract
   r5rs("not", Table(
     ("program", "answer"),
     ("(not #t)", f),
-    // ("(not 3)", f), // not currently only supports bool
-    // ("(not (cons 3 '()))", f), // not currently only supports bool
-    ("(not #f)", t)
-    // ("(not '())", f), // not currently only supports bool
-    // ("not (list)", f) // list not implemented
-    // ("(not 'nil)", f) // not currently only supports bool
+    ("(not 3)", f), // not currently only supports bool
+    ("(not (cons 3 '()))", f), // not currently only supports bool
+    ("(not #f)", t),
+    ("(not '())", f), // not currently only supports bool
+    // ("not (list)", f), // list not implemented
+    ("(not 'nil)", f) // not currently only supports bool
   ))
 
   // boolean? not implemented
@@ -138,3 +138,4 @@ abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstr
 
 /* Since these tests are small, they can be performed in concrete mode */
 class AAMConcreteTests extends AAMTests[AbstractConcrete, ConcreteAddress]
+class AAMTypeSetTests extends AAMTests[AbstractConcrete, ConcreteAddress]
