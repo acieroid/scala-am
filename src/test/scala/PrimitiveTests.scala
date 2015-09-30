@@ -119,6 +119,43 @@ abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstract
     ("(pair? '())", f)
     // ("(pair? '#(a b))", t) // vectors not supported
   ))
+
+  r5rs("cons", Table(
+    ("program", "answer"),
+    ("(equal? (cons 'a '()) '(a))", t),
+    ("(equal? (cons '(a) '(b c d)) '((a) b c d))", t),
+    ("(equal? (cons \"a\" '(b c)) '(\"a\" b c))", t)
+    // ("(equal? (cons 'a 3) '(a . 3))", t), // . notation not supported
+    // ("(equal? (cons '(a b) 'c) '((a b) . c))", t) // . notation not supported
+  ))
+
+  r5rs("car", Table(
+    ("program", "answer"),
+    ("(equal? (car '(a b c)) 'a)", t),
+    ("(equal? (car '((a) b c d)) '(a))", t),
+    ("(equal? (car (cons 1 2)) 1)", t)
+    // TODO: (car '()) should raise an error
+  ))
+
+  r5rs("cdr", Table(
+    ("program", "answer"),
+    ("(equal? (cdr '((a) b c d)) '(b c d))", t),
+    ("(equal? (cdr (cons 1 2)) 2)", t)
+    // TODO: (cdr '()) should raise an error
+  ))
+
+  // list? not implemented
+  // list not implemented
+  // length not implemented
+  // append not implemented
+  // reverse not implemented
+  // list-ref not implemented
+  // memq not implemented
+  // member not implemented
+  // memv not implemented
+  // assq not implemented
+  // assoc not implemented
+  // assv not implemented
 }
 
 abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
