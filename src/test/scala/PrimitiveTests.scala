@@ -117,6 +117,14 @@ abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstract
 
   // boolean? not implemented
 
+  val pair = Table(
+    ("program", "answer"),
+    ("(pair? (cons 'a 'b))", t),
+    ("(pair? '(a b c))", t),
+    ("(pair? '())", f)
+    // ("(pair? '#(a b))", t) // vectors not supported
+  )
+  property("pair? satisfies R5RS") { check(pair) }
 }
 
 abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
