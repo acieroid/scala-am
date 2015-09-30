@@ -259,7 +259,11 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("random", abs.random),
     UnaryOperation("ceiling", abs.ceiling),
     UnaryOperation("log", abs.log),
+    UnaryOperation("zero?", (x) => abs.numEq(absi.inject(0), x)), /* (define (zero? x) (= x 0)) */
+    UnaryOperation("positive?", (x) => abs.lt(absi.inject(0), x)), /* (define (positive? x) (< 0 x)) */
+    UnaryOperation("negative?", (x) => abs.lt(x, absi.inject(0))), /* (define (negative? x) (< x 0)) */
     UnaryOperation("odd?", (x) => abs.numEq(absi.inject(1), abs.modulo(x, absi.inject(2)))), /* (define (odd? x) (= 1 (modulo x 2))) */
+    UnaryOperation("even?", (x) => abs.numEq(absi.inject(0), abs.modulo(x, absi.inject(2)))), /* (define (even? x) (= 0 (modulo x 2))) */
     UnaryOperation("display", display),
     NullaryOperation("newline", newline),
     Cons,
