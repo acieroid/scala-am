@@ -117,6 +117,7 @@ object AbstractTypeSet {
     override def toString = "#f"
     override def isTrue = false
     override def isFalse = true
+    override def not = AbstractTrue
     override def and(that: => A) = this
     override def or(that: => A) = that
     override def eq(that: A) = that match {
