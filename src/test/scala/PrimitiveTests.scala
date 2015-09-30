@@ -206,6 +206,42 @@ abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstr
   }
 }
 
+
+abstract class AACTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+  addr: Address[Addr], addri: AddressInjection[Addr])
+    extends Tests[Abs, Addr] {
+  val machine = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+
+  def checkResult(program: SchemeExp, answer: Abs) = {
+    val result = machine.eval(program, None)
+    assert(result.exists((st: machine.State) => st.control match {
+      case machine.ControlKont(v) => abs.subsumes(v, answer)
+      case _ => false
+    }))
+  }
+}
+
+
+abstract class FreeTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+  addr: Address[Addr], addri: AddressInjection[Addr])
+    extends Tests[Abs, Addr] {
+  val machine = new Free[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+
+  def checkResult(program: SchemeExp, answer: Abs) = {
+    val result = machine.eval(program, None)
+    assert(result.exists((st: machine.State) => st.control match {
+      case machine.ControlKont(v) => abs.subsumes(v, answer)
+      case _ => false
+    }))
+  }
+}
+
+
+
 /* Since these tests are small, they can be performed in concrete mode */
 class AAMConcreteTests extends AAMTests[AbstractConcrete, ConcreteAddress]
-class AAMTypeSetTests extends AAMTests[AbstractConcrete, ConcreteAddress]
+class AAMTypeSetTests extends AAMTests[AbstractTypeSet, ClassicalAddress]
+class AACConcreteTests extends AACTests[AbstractConcrete, ConcreteAddress]
+class AACTypeSetTests extends AACTests[AbstractTypeSet, ClassicalAddress]
+class FreeConcreteTests extends FreeTests[AbstractConcrete, ClassicalAddress]
+class FreeTypeSetTests extends FreeTests[AbstractTypeSet, ClassicalAddress]

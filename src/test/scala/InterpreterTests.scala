@@ -70,7 +70,6 @@ abstract class FreeBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi:
       case _ => false
     }))
   }
-
 }
 
 /* Concrete tests are disabled because of cpstak takes too much time to compute since it requires more than 75k recursive calls */
