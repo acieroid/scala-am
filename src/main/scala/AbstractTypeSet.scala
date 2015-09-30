@@ -136,7 +136,7 @@ object AbstractTypeSet {
   }
   case class AbstractSet(content: Set[A]) extends AbstractTypeSet {
     /* invariant: content does not contain any other AbstractSet, i.e., content.exists(_.isInstanceOf[AbstractSet]) == false */
-    // require(content.exists(_.isInstanceOf[AbstractSet]) == false, s"AbstractSet content contains another AbstractSet: $content")
+    require(content.exists(_.isInstanceOf[AbstractSet]) == false, s"AbstractSet content contains another AbstractSet: $content")
     override def toString = "{" + content.mkString(", ") + "}"
     override def isTrue = content.exists(_.isTrue)
     override def isFalse = content.exists(_.isFalse)
