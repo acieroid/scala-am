@@ -15,7 +15,7 @@ case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(i
   def lookupBot(a: Addr): Abs = content.getOrElse(a, (0, absi.bottom))._2
   /** Adds a new element to the store */
   def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
-    case None => Store(content + (a -> (1, v)), counting)
+    case None => Store(content + (a -> (0, v)), counting)
     case Some((n, v2)) => Store(content + (a -> (if (counting) { n+1 } else { n }, abs.join(v2, v))), counting)
   }
   /** Updates an element in the store. Might perform a strong update if this store supports strong updates */
@@ -23,7 +23,7 @@ case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(i
     if (counting) {
       content.get(a) match {
         case None => throw new RuntimeException("Updating store at an adress not used")
-        case Some((1, _)) => Store(content + (a -> (1, v)), counting)
+        case Some((0, _)) => Store(content + (a -> (0, v)), counting)
         case _ => extend(a, v)
       }
     } else {
@@ -34,10 +34,17 @@ case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(i
   /** Checks whether this store subsumes another store */
   def subsumes(that: Store[Addr, Abs]): Boolean =
     that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
+  /** Returns a store containing items that are not equal with the other store */
+  def diff(that: Store[Addr, Abs]): Store[Addr, Abs] = {
+    Store(content.filter({ case (a, (n, v)) => that.content.get(a) match {
+      case Some((n2, v2)) => n != n2 && v != v2
+      case None => true
+    }}), counting)
+  }
 }
 
 object Store {
   /* TODO: have abstract counting as a parameter of the analysis. Also, when it is turned on, it prevents AAC and Free from converging */
   def empty[Addr : Address, Abs]()(implicit abs : AbstractValue[Abs], i : AbstractInjection[Abs]) = Store(Map[Addr, (Int, Abs)](), false)
-  def initial[Addr, Abs](values: List[(Addr, Abs)])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr]): Store[Addr, Abs] = Store(values.map({ case (a, v) => (a, (1, v)) }).toMap, false)
+  def initial[Addr, Abs](values: List[(Addr, Abs)])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr]): Store[Addr, Abs] = Store(values.map({ case (a, v) => (a, (0, v)) }).toMap, false)
 }
