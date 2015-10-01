@@ -231,7 +231,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
   private def gcd(a: Abs, b: Abs): Abs = gcd(a, b, Set())
 
   /* Computes equal as a fixpoint */
-  // (define (equal? a b) (or (eq? a b) (and (null? a) (null? b)) (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))))
+  /* (define (equal? a b) (or (eq? a b) (and (null? a) (null? b)) (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b))))) */
   private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): Abs = {
     if (visited.contains(a, b)) {
       absi.bottom
@@ -246,6 +246,27 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
   private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): Abs = equal(a, b, store, Set())
+
+  /* (define (length l) (if (pair? l) (+ 1 (length (cdr l))) (if (null? l) 0 (error "length called with a non-list")))) */
+  private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs = {
+    if (visited.contains(l)) {
+      absi.bottom
+    } else {
+      val visited2 = visited + l
+      val cond = abs.isCons(l)
+      val t = if (abs.isTrue(cond)) { abs.plus(absi.inject(1), length(cdr(l, store), store, visited2)) } else { absi.bottom }
+      val f = if (abs.isFalse(cond)) {
+        val fcond = abs.isNull(l)
+        val ft = if (abs.isTrue(fcond)) { absi.inject(0) } else { absi.bottom }
+        val ff = if (abs.isFalse(fcond)) { absi.error(absi.inject("length called with a non-list")) } else { absi.bottom }
+        abs.join(ft, ff)
+      } else {
+        absi.bottom
+      }
+      abs.join(t, f)
+    }
+  }
+  private def length(l: Abs, store: Store[Addr, Abs]): Abs = length(l, store, Set())
 
   val all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div,
@@ -297,7 +318,8 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("string?", abs.isString),
     UnaryOperation("integer?", abs.isInteger),
     BinaryOperation("eq?", abs.eq),
-    BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store))
+    BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store)),
+    UnaryStoreOperation("length", (v, store) => (length(v, store), store))
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })
