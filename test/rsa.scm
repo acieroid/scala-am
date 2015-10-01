@@ -5,7 +5,6 @@
              (x (car x:y))
              (y (cdr x:y)))
         (cons y (- x (* y (quotient a b)))))))
-(extended-gcd 5 10)
 (define (modulo-inverse a n)
   (modulo (car (extended-gcd a n)) n))
 (define (totient p q) (* (- p 1) (- q 1)))
