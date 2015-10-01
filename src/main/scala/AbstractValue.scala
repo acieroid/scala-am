@@ -23,6 +23,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def isSymbol(x: A): A
   /** Is this a string? (Scheme's string?) */
   def isString(x: A): A
+  /** Is this an integer? (Scheme's integer?) */
+  def isInteger(x: A): A
   /** Fold a function over the values contained in this abstract values. This
       should be redefined only for container-like abstract values (e.g., for a
       set abstraction) */
@@ -281,6 +283,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("char?", abs.isChar),
     UnaryOperation("symbol?", abs.isSymbol),
     UnaryOperation("string?", abs.isString),
+    UnaryOperation("integer?", abs.isInteger),
     BinaryOperation("eq?", abs.eq),
     BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store))
   )

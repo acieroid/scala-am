@@ -10,6 +10,7 @@ trait AbstractTypeSet {
   def isChar: AbstractTypeSet = AbstractTypeSet.AbstractFalse
   def isSymbol: AbstractTypeSet = AbstractTypeSet.AbstractFalse
   def isString: AbstractTypeSet = AbstractTypeSet.AbstractFalse
+  def isInteger: AbstractTypeSet = AbstractTypeSet.AbstractFalse
   def foldValues[A](f: AbstractTypeSet => Set[A]): Set[A] = f(this)
   def join(that: AbstractTypeSet): AbstractTypeSet =
     if (this.equals(that) || that.equals(AbstractTypeSet.AbstractBottom)) {
@@ -52,6 +53,7 @@ object AbstractTypeSet {
 
   object AbstractInt extends AbstractTypeSet {
     override def toString = "Int"
+    override def isInteger = AbstractTrue
     override def plus(that: A) = that match {
       case AbstractInt => AbstractInt
       case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.plus(v)))
@@ -227,6 +229,7 @@ object AbstractTypeSet {
     def isChar(x: A) = x.isChar
     def isSymbol(x: A) = x.isSymbol
     def isString(x: A) = x.isString
+    def isInteger(x: A) = x.isInteger
     def foldValues[B](x: A, f: A => Set[B]) = x.foldValues(f)
     def join(x: A, y: A) = x.join(y)
     def meet(x: A, y: A) = x.meet(y)

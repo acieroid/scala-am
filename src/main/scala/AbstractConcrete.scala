@@ -11,6 +11,7 @@ trait AbstractConcrete {
   def isChar: AbstractConcrete = AbstractConcrete.AbstractFalse
   def isSymbol: AbstractConcrete = AbstractConcrete.AbstractFalse
   def isString: AbstractConcrete = AbstractConcrete.AbstractFalse
+  def isInteger: AbstractConcrete = AbstractConcrete.AbstractFalse
   def foldValues[A](f: AbstractConcrete => Set[A]): Set[A] = f(this)
   def join(that: AbstractConcrete): AbstractConcrete =
     if (this.equals(that) || that == AbstractConcrete.AbstractBottom) { this } else { throw new Exception(s"AbstractConcrete lattice cannot join elements") }
@@ -34,6 +35,7 @@ trait AbstractConcrete {
 object AbstractConcrete {
   case class AbstractInt(v: Int) extends AbstractConcrete {
     override def toString = v.toString
+    override def isInteger = AbstractTrue
     override def plus(that: AbstractConcrete) = that match {
       case AbstractInt(v2) => AbstractInt(v + v2)
       case _ => super.plus(that)
@@ -121,6 +123,7 @@ object AbstractConcrete {
     def isChar(x: AbstractConcrete) = x.isChar
     def isSymbol(x: AbstractConcrete) = x.isSymbol
     def isString(x: AbstractConcrete) = x.isString
+    def isInteger(x: AbstractConcrete) = x.isInteger
     def foldValues[B](x: AbstractConcrete, f: AbstractConcrete => Set[B]) = x.foldValues(f)
     def join(x: AbstractConcrete, y: AbstractConcrete) = x.join(y)
     def meet(x: AbstractConcrete, y: AbstractConcrete) = x.meet(y)

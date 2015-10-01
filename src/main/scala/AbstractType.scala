@@ -10,6 +10,7 @@ trait AbstractType {
   def isChar: AbstractType = AbstractType.AbstractBool
   def isSymbol: AbstractType = AbstractType.AbstractBool
   def isString: AbstractType = AbstractType.AbstractBool
+  def isInteger: AbstractType = AbstractType.AbstractBool
   def foldValues[A](f: AbstractType => Set[A]): Set[A] = f(this)
   def join(that: AbstractType): AbstractType =
     if (this.equals(that) || that.equals(AbstractType.AbstractBottom)) { this } else { AbstractType.AbstractTop }
@@ -152,6 +153,7 @@ object AbstractType {
     def isChar(x: AbstractType) = x.isChar
     def isSymbol(x: AbstractType) = x.isSymbol
     def isString(x: AbstractType) = x.isString
+    def isInteger(x: AbstractType) = x.isInteger
     def foldValues[B](x: AbstractType, f: AbstractType => Set[B]) = x.foldValues(f)
     def join(x: AbstractType, y: AbstractType) = x.join(y)
     def meet(x: AbstractType, y: AbstractType) = x.meet(y)
