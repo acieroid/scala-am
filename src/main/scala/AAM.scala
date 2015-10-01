@@ -31,7 +31,9 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   }
 
   trait KontAddr
-  case class NormalKontAddress(exp: Exp, addr: Addr) extends KontAddr
+  case class NormalKontAddress(exp: Exp, addr: Addr) extends KontAddr {
+    override def toString = s"NormalKontAddress($exp)"
+  }
   object HaltKontAddress extends KontAddr {
     override def toString = "HaltKontAddress"
   }
@@ -46,7 +48,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       Store.initial[Addr, Abs](primitives.forStore),
       new KontStore[KontAddr](), HaltKontAddress)
     override def toString() = control.toString(σ)
-    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && a == that.a
+    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && a == that.a && kstore.subsumes(that.kstore)
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.flatMap({
         case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, kstore, a))
