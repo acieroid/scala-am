@@ -1,3 +1,4 @@
+(define (map f l) (if (pair? l) (cons (f (car l)) (map f (cdr l))) (if (null? l) '() (error "map applied to a non-list"))))
 (define (self-evaluating? exp)
   (cond ((number? exp) #t)
         ((string? exp) #t)
