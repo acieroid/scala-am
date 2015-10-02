@@ -317,6 +317,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     UnaryOperation("symbol?", abs.isSymbol),
     UnaryOperation("string?", abs.isString),
     UnaryOperation("integer?", abs.isInteger),
+    UnaryOperation("number?", abs.isInteger), // TODO: support other numbers as well
     BinaryOperation("eq?", abs.eq),
     BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store)),
     UnaryStoreOperation("length", (v, store) => (length(v, store), store))
