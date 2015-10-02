@@ -38,6 +38,23 @@ import AbstractValue._
  *      - A type set lattice, representing each value by a set of its possible
  *        types (to avoid having a top element that loses all precision),
  *        AbstractTypeSet.scala
+ *
+ *  If you want to:
+ *  - Support a new language: you will need:
+ *    - A parser, you can look into SExpParser.scala as an inspiration. If your
+ *      language is s-expression based, you can use this parser and compile
+ *      s-expressions into your abstract grammar. To do so, look at Scheme.scala
+ *    - An abstract grammar, look at SExp.scala or the SchemeExp class in Scheme.scala
+ *    - A semantics, look at Semantics.scala
+ *    - Support for your language operations at the lattice level. For this,
+ *      you'll probably need to extend the lattices (AbstractValue.scala,
+ *      AbstractConcrete.scala, AbstractType.scala, AbstractTypeSet.scala)
+ *  - Play with abstract machines, you can look into AAM.scala, AAC.scala or Free.scala
+ *  - Implement some kind of analysis, you'll probably need to design a lattice
+ *    that is suited for your analysis. You can use an existing lattice as an
+ *    inspiration (AbstractType.scala is a good lattice to start with, even
+ *    though its very imprecise, it's simple. AbstractTypeSet.scala for
+ *    example).
  */
 object Config {
   object Machine extends Enumeration {
