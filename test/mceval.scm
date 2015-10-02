@@ -69,7 +69,7 @@
 (define (no-operands? ops) (null? ops))
 (define (first-operand ops) (car ops))
 (define (rest-operands ops) (cdr ops))
-(define (cond? ops) (tagged-list? exp 'cond))
+(define (cond? exp) (tagged-list? exp 'cond))
 (define (cond-clauses exp) (cdr exp))
 (define (cond-predicate clause) (car clause))
 (define (cond-else-clause? clause) (eq? (cond-predicate clause) 'else))
