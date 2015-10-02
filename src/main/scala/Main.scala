@@ -1,5 +1,44 @@
 import AbstractValue._
 
+/**
+ * This is the entry point. It parses the arguments, parses the input file and
+ * launch an abstract machine on the parsed expression. The code isn't very
+ * clean and I'd like to improve it at some point, but my scala-fu isn't good
+ * enough to do it now. The pipeline goes as follows:
+ *   1. The input file is parsed. For Scheme files, it is done by:
+ *      - Parsing the file as a list of s-expressions (SExp.scala, SExpParser.scala)
+ *      - Compiling these s-expressions into Scheme expressions (Scheme.scala)
+ *      - Optionally, converting Scheme expressions into ANF form (ANF.scala) to
+ *        have a simpler interpreter (but longer programs)
+
+ *   2. The abstract machine is created by giving it some semantics. For now,
+ *      the only semantics available are ANF Scheme semantics and Scheme
+ *      semantics (Semantics.scala)
+
+ *   3. The abstract machine performs its evaluation, relying on methods of the
+ *      semantics class to know how to evaluate expressions. The abstract
+ *      machine only deals with which states to evaluate in which order, where
+ *      to store values, where to store continuations, how to push and pop
+ *      continuations, etc. The semantics encode what to do when encountering a
+ *      program construct. For example, the semantics can tell what to evaluate
+ *      next, that a continuation needs to be pushed, or that a variable needs
+ *      to be updated. The abstract machine will then respectively evaluate the
+ *      expression needed, push the continuation, or update the variable.
+ *
+ *      Three abstract machine implementations are available:
+ *      - The classical Abstracting Abstract Machine of Might and Van Horn (AAM.scala)
+ *      - Johnson's Abstracting Abstract Control (AAC.scala)
+ *      - Gilrey's Pushdown Control-Flow Analysis for Free (Free.scala)
+ *
+ *      The abstract machine also uses a lattice to represent values. Lattices
+ *      should implement some traits that can be found in
+ *      AbstractValue.scala. The following lattices are available:
+ *      - A concrete lattice, AbstractConcrete.scala
+ *      - A type lattice, representing each value by its type, AbstractType.scala
+ *      - A type set lattice, representing each value by a set of its possible
+ *        types (to avoid having a top element that loses all precision),
+ *        AbstractTypeSet.scala
+ */
 object Config {
   object Machine extends Enumeration {
     type Machine = Value
