@@ -120,7 +120,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
           val GuG2 = G.union(G2)
           kstore.lookup(τ).flatMap({
             case (ι, κ) => ι.deconstruct match {
-              case None => Set[List[Frame]](List())
+              case None => Set[List[Frame]]()
               case Some((top, rest)) => computeKont(rest, κ, kstore, GuG2).map(k => top :: k)
             }
           }).union(G2.flatMap((κ) => computeKont(new LocalKont(), κ, kstore, GuG2)))
@@ -144,8 +144,9 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
           }).diff(G)
           val GuG2 = G.union(G2)
           kstore.lookup(τ).map({
+            case (ι, KontEmpty) => true
             case (ι, κ) => ι.deconstruct match {
-              case None => true
+              case None => false
               case Some((top, rest)) => false
             }
           }).union(G2.map((κ) => kontCanBeEmpty(new LocalKont(), κ, kstore, GuG2))).foldLeft(false)((x, y) => x || y)
