@@ -262,23 +262,31 @@ object AbstractTypeSet {
       case AbstractInt => AbstractInt
       case _ => AbstractError
     }
-    private def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet], inside: Boolean): String = x match {
-      case AbstractCons(car : Addr, cdr : Addr) =>
-        val carstr = toString(store.lookup(car), store, false)
-        val cdrval = store.lookup(cdr)
-        val cdrstr = toString(store.lookup(cdr), store, true)
-        val content = cdrval match {
-          case AbstractNil => s"$carstr"
-          case AbstractCons(_, _) => s"$carstr $cdrstr"
-          case _ => s"$carstr . $cdrstr"
+    private def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet], inside: Boolean, visited: Set[AbstractTypeSet]): String =
+      if (visited.contains(x)) {
+        "#loop"
+      } else {
+        x match {
+          case AbstractCons(car : Addr, cdr : Addr) => {
+            val carstr =  toString(store.lookup(car), store, false, visited + x)
+            val cdrval = store.lookup(cdr)
+            val cdrstr =  toString(store.lookup(cdr), store, true, visited + x)
+            val content = cdrval match {
+              case AbstractNil => s"$carstr"
+              case AbstractCons(_, _) => s"$carstr $cdrstr"
+              case _ => s"$carstr . $cdrstr"
+            }
+            if (inside) { content } else { s"($content)" }
+          }
+          case AbstractSet(content) => {
+            "{" + content.map(v => toString(v, store, false, visited + x)).mkString(", ") + "}"
+          }
+          case _ => {
+            x.toString
+          }
         }
-        if (inside) { content } else { s"($content)" }
-      case AbstractSet(content) =>  "{" + content.map(v => toString(v, store)).mkString(", ") + "}"
-      case _ => {
-        x.toString
-      }
     }
-    def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet]) = toString(x, store, false)
+    def toString[Addr : Address](x: AbstractTypeSet, store: Store[Addr, AbstractTypeSet]) = toString(x, store, false, Set())
 
     def getClosures[Exp : Expression, Addr : Address](x: A) = x match {
       case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Set((λ, ρ))
