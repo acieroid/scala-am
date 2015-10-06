@@ -1,6 +1,7 @@
 /**
-  * S-expressions and related values
-  */
+ * S-expressions and related values
+ */
+
 sealed abstract class Value
 case class ValueString(value: String) extends Value {
   override def toString() = "\"" + value + "\"" // https://issues.scala-lang.org/browse/SI-6476
@@ -27,7 +28,20 @@ case class ValueNil() extends Value {
   override def toString() = "()"
 }
 
+/**
+ * Abstract grammar elements for S-expressions include some positional
+ * information. This serves two purposes: identify where the s-expression
+ * resides in the input file, and as tagging information for the abstract
+ * machine.
+ */
 trait SExp extends scala.util.parsing.input.Positional
+/**
+ * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair
+ * with identifier foo as car and another pair -- with identifier bar as car and
+ * value nil as cdr -- as cdr. Pairs are pretty-printed when converted to
+ * string. i.e., (foo bar) is stringified as (foo bar) and not (foo . (bar
+ * . ()))
+ */
 case class SExpPair(car: SExp, cdr: SExp) extends SExp {
   override def toString() = {
     val content = toStringRest
@@ -52,13 +66,21 @@ object SExpPair {
     case head :: tail => SExpPair(head, SExpPair(tail))
   }
 }
+/**
+ * An identifier, such as foo, bar, etc.
+ */
 case class SExpIdentifier(name: String) extends SExp {
   override def toString() = name
 }
+/**
+ * A literal value, such as 1, "foo", 'foo, etc.
+ */
 case class SExpValue(value: Value) extends SExp {
   override def toString = value.toString
 }
-
+/**
+ * A quoted element, such as 'foo, '(foo (bar)), etc.
+ */
 case class SExpQuoted(content: SExp) extends SExp {
   override def toString() = s"'$content"
 }
