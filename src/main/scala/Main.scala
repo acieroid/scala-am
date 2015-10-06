@@ -128,6 +128,8 @@ object Main {
     println(s"${result.size} possible results: $result")
   }
 
+  object Done extends Exception
+
   def main(args: Array[String]) {
     import scala.util.control.Breaks._
     Config.parser.parse(args, Config.Config()) match {
@@ -155,16 +157,21 @@ object Main {
             case (Config.Machine.Free, Config.Lattice.Type, false) => runFreeANF[AbstractType, ClassicalAddress] _
             case _ => throw new Exception(s"Impossible configuration: $config")
           }
-          do {
-            breakable {
+          try {
+            do {
               val program = config.file match {
                 case Some(file) => ANF.parse(file)
-                case None => ANF.parseString(StdIn.readLine(">>> "))
+                case None => {
+                  val in = StdIn.readLine(">>> ")
+                  if (in == null) throw Done
+                  ANF.parseString(in)
+                }
               }
-              if (program == null) break
               f(program, config.dotfile)
-            }
-          } while (config.file.isEmpty)
+            } while (config.file.isEmpty)
+          } catch {
+            case Done => ()
+          }
         } else {
           val f = (config.machine, config.lattice, config.concrete) match {
             case (Config.Machine.AAM, Config.Lattice.Concrete, true) => runAAM[AbstractConcrete, ConcreteAddress] _
@@ -187,15 +194,21 @@ object Main {
             case (Config.Machine.Free, Config.Lattice.Type, false) => runFree[AbstractType, ClassicalAddress] _
             case _ => throw new Exception(s"Impossible configuration: $config")
           }
-          do {
-            breakable {
+          try {
+            do {
               val program = config.file match {
                 case Some(file) => Scheme.parse(file)
-                case None => Scheme.parseString(StdIn.readLine(">>> "))
+                case None => {
+                  val in = StdIn.readLine(">>> ")
+                  if (in == null) throw Done
+                  Scheme.parseString(in)
+                }
               }
               f(program, config.dotfile)
-            }
-          } while (config.file.isEmpty)
+            } while (config.file.isEmpty)
+          } catch {
+            case Done => ()
+          }
         }
       }
       case None => ()
