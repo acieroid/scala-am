@@ -1,8 +1,13 @@
 /**
-  * Abstract syntax of Scheme programs (probably far from complete)
-  */
+ * Abstract syntax of Scheme programs (probably far from complete)
+ */
 
 trait SchemeExp extends scala.util.parsing.input.Positional
+
+/**
+ * A lambda expression: (lambda (args...) body...)
+ * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
+ */
 case class SchemeLambda(args: List[String], body: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeLambda] && pos == that.asInstanceOf[SchemeLambda].pos
   override def toString() = {
@@ -11,6 +16,10 @@ case class SchemeLambda(args: List[String], body: List[SchemeExp]) extends Schem
     s"(lambda ($a) $b)"
   }
 }
+
+/**
+ * A function call: (f args...)
+ */
 case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeFuncall] && pos == that.asInstanceOf[SchemeFuncall].pos
   override def toString() = {
@@ -22,10 +31,17 @@ case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp]) extends SchemeExp 
     }
   }
 }
+/**
+ * An if statement: (if cond cons alt)
+ * If without alt clauses need to be encoded with an empty begin as alt clause
+ */
 case class SchemeIf(cond: SchemeExp, cons: SchemeExp, alt: SchemeExp) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeIf] && pos == that.asInstanceOf[SchemeIf].pos && super.equals(that)
   override def toString() = s"(if $cond $cons $alt)"
 }
+/**
+ * Let-bindings: (let ((v1 e1) ...) body...)
+ */
 case class SchemeLet(bindings: List[(String, SchemeExp)], body: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeLet] && pos == that.asInstanceOf[SchemeLet].pos && super.equals(that)
   override def toString() = {
@@ -34,6 +50,9 @@ case class SchemeLet(bindings: List[(String, SchemeExp)], body: List[SchemeExp])
     s"(let ($bi) $bo)"
   }
 }
+/**
+ * Let*-bindings: (let* ((v1 e1) ...) body...)
+ */
 case class SchemeLetStar(bindings: List[(String, SchemeExp)], body: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeLetStar] && pos == that.asInstanceOf[SchemeLetStar].pos && super.equals(that)
   override def toString() = {
@@ -42,6 +61,9 @@ case class SchemeLetStar(bindings: List[(String, SchemeExp)], body: List[SchemeE
     s"(let* ($bi) $bo)"
   }
 }
+/**
+ * Letrec-bindings: (letrec ((v1 e1) ...) body...)
+ */
 case class SchemeLetrec(bindings: List[(String, SchemeExp)], body: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeLetrec] && pos == that.asInstanceOf[SchemeLetrec].pos && super.equals(that)
   override def toString() = {
@@ -50,10 +72,16 @@ case class SchemeLetrec(bindings: List[(String, SchemeExp)], body: List[SchemeEx
     s"(letrec ($bi) $bo)"
   }
 }
+/**
+ * A set! expression: (set! variable value)
+ */
 case class SchemeSet(variable: String, value: SchemeExp) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeSet] && pos == that.asInstanceOf[SchemeSet].pos && super.equals(that)
   override def toString() = s"(set! $variable $value)"
 }
+/**
+ * A begin clause: (begin body...)
+ */
 case class SchemeBegin(exps: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeBegin] && pos == that.asInstanceOf[SchemeBegin].pos && super.equals(that)
   override def toString() = {
@@ -61,6 +89,9 @@ case class SchemeBegin(exps: List[SchemeExp]) extends SchemeExp {
     s"(begin $body)"
   }
 }
+/**
+ * A cond expression: (cond (test1 body1...) ...)
+ */
 case class SchemeCond(clauses: List[(SchemeExp, List[SchemeExp])]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeCond] && pos == that.asInstanceOf[SchemeCond].pos && super.equals(that)
   override def toString() = {
@@ -72,6 +103,9 @@ case class SchemeCond(clauses: List[(SchemeExp, List[SchemeExp])]) extends Schem
   }
 }
 
+/**
+ * A case expression: (case key ((vals1...) body1...) ... (else default...))
+ */
 case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[SchemeExp])], default: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeCase] && pos == that.asInstanceOf[SchemeCase].pos && super.equals(that)
   override def toString() = {
@@ -88,6 +122,9 @@ case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[Sch
   }
 }
 
+/**
+ * An and expression: (and exps...)
+ */
 case class SchemeAnd(exps: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeAnd] && pos == that.asInstanceOf[SchemeAnd].pos && super.equals(that)
   override def toString() = {
@@ -95,6 +132,9 @@ case class SchemeAnd(exps: List[SchemeExp]) extends SchemeExp {
     s"(and $e)"
   }
 }
+/**
+ * An or expression: (or exps...)
+ */
 case class SchemeOr(exps: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeOr] && pos == that.asInstanceOf[SchemeOr].pos && super.equals(that)
   override def toString() = {
@@ -102,10 +142,16 @@ case class SchemeOr(exps: List[SchemeExp]) extends SchemeExp {
     s"(or $e)"
   }
 }
+/**
+ * A variable definition: (define name value)
+ */
 case class SchemeDefineVariable(name: String, value: SchemeExp) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeDefineVariable] && pos == that.asInstanceOf[SchemeDefineVariable].pos && super.equals(that)
   override def toString() = s"(define $name $value)"
 }
+/**
+ * A function definition: (define (name args...) body...)
+ */
 case class SchemeDefineFunction(name: String, args: List[String], body: List[SchemeExp]) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeDefineFunction] && pos == that.asInstanceOf[SchemeDefineFunction].pos && super.equals(that)
   override def toString() = {
@@ -114,19 +160,33 @@ case class SchemeDefineFunction(name: String, args: List[String], body: List[Sch
     s"(define ($name $a) $b)"
   }
 }
+/**
+ * An identifier: name
+ */
 case class SchemeIdentifier(name: String) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeIdentifier] && pos == that.asInstanceOf[SchemeIdentifier].pos && super.equals(that)
   override def toString() = name
 }
+/**
+ * A quoted expression: '(foo (bar baz))
+ *  The quoted expression is *not* converted to a Scheme expression, and remains
+ * a simple s-expression, because that's exactly what it should be.
+ */
 case class SchemeQuoted(quoted: SExp) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeQuoted] && pos == that.asInstanceOf[SchemeQuoted].pos && super.equals(that)
   override def toString() = s"'$quoted"
 }
+/**
+ * A literal value (number, symbol, string, ...)
+ */
 case class SchemeValue(value: Value) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeValue] && pos == that.asInstanceOf[SchemeValue].pos && super.equals(that)
   override def toString() = value.toString
 }
 
+/**
+ * Object that provides a method to compile an s-expression into a Scheme expression
+ */
 object SchemeCompiler {
   /**
     * Reserved keywords
@@ -146,8 +206,8 @@ object SchemeCompiler {
         SchemeIf(compile(cond), compile(cons), compile(alt))
       case SExpPair(SExpIdentifier("if"),
         SExpPair(cond, SExpPair(cons, SExpValue(ValueNil())))) =>
-        /* Empty else branch is replaced by #f */
-        SchemeIf(compile(cond), compile(cons), SchemeValue(ValueBoolean(false)))
+        /* Empty else branch is replaced by (begin) */
+        SchemeIf(compile(cond), compile(cons), SchemeBegin(List()))
       case SExpPair(SExpIdentifier("if"), _) =>
         throw new Exception(s"Invalid Scheme if: $exp (${exp.pos})")
       case SExpPair(SExpIdentifier("let"),
@@ -256,6 +316,12 @@ object SchemeCompiler {
   }
 }
 
+/**
+ * Object that provides a method to rename variables in a Scheme program in
+ * order to have only unique names. For example, (let ((x 1)) (let ((x 2)) x))
+ * will be converted to (let ((_x0 1)) (let ((_x1 2)) _x1)). This is useful to
+ * perform ANF conversion.
+ */
 object SchemeRenamer {
   /** Maps each variables to their alpha-renamed version (eg. x -> _x0) */
   type NameMap = Map[String, String]
@@ -433,6 +499,18 @@ object SchemeRenamer {
     }
 }
 
+/**
+ * Remove defines from a Scheme expression, replacing them by let bindings.
+ * For example:
+ *   (define foo 1)
+ *   (define (f x) x)
+ *   (f foo)
+ * Will be converted to:
+ *   (letrec ((foo 1)
+ *            (f (lambda (x) x)))
+ *     (f foo))
+ * Which is semantically equivalent with respect to the end result
+ */
 object SchemeUndefiner {
   def undefine(exps: List[SchemeExp]): SchemeExp =
     undefine(exps, List())
