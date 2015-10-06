@@ -1,4 +1,5 @@
 import AbstractValue._
+import scala.io.StdIn
 
 /**
  * This is the entry point. It parses the arguments, parses the input file and
@@ -69,7 +70,7 @@ object Config {
   }
   implicit val latticeRead: scopt.Read[Lattice.Value] = scopt.Read.reads(Lattice withName _)
 
-  case class Config(machine: Machine.Value = Machine.Free, lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false, file: String = "", dotfile: Option[String] = None, anf: Boolean = false, diff: Option[(Int, Int)] = None)
+  case class Config(machine: Machine.Value = Machine.Free, lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false, file: Option[String] = None, dotfile: Option[String] = None, anf: Boolean = false, diff: Option[(Int, Int)] = None)
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
     head("scala-ac", "0.0")
@@ -78,8 +79,8 @@ object Config {
     opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
     opt[Unit]("anf") action { (_, c) => c.copy(anf = true) } text("Desugar program into ANF")
-    opt[(Int, Int)]("diff") action { (x, c) => c.copy(diff = Some(x)) } text("States to diff") /* TODO: take this into account */
-    arg[String]("<file>") required() maxOccurs(1) action { (x, c) => c.copy(file = x) } text("File to read program from")
+    // opt[(Int, Int)]("diff") action { (x, c) => c.copy(diff = Some(x)) } text("States to diff") /* TODO: take this into account */
+    opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
   }
 }
 
@@ -128,6 +129,7 @@ object Main {
   }
 
   def main(args: Array[String]) {
+    import scala.util.control.Breaks._
     Config.parser.parse(args, Config.Config()) match {
       case Some(config) => {
         /* ugly as fuck, but I don't find a simpler way to pass type parameters that are computed at runtime */
@@ -153,9 +155,16 @@ object Main {
             case (Config.Machine.Free, Config.Lattice.Type, false) => runFreeANF[AbstractType, ClassicalAddress] _
             case _ => throw new Exception(s"Impossible configuration: $config")
           }
-          val program = ANF.parse(config.file)
-          println(program)
-          f(program, config.dotfile)
+          do {
+            breakable {
+              val program = config.file match {
+                case Some(file) => ANF.parse(file)
+                case None => ANF.parseString(StdIn.readLine(">>> "))
+              }
+              if (program == null) break
+              f(program, config.dotfile)
+            }
+          } while (config.file.isEmpty)
         } else {
           val f = (config.machine, config.lattice, config.concrete) match {
             case (Config.Machine.AAM, Config.Lattice.Concrete, true) => runAAM[AbstractConcrete, ConcreteAddress] _
@@ -178,9 +187,15 @@ object Main {
             case (Config.Machine.Free, Config.Lattice.Type, false) => runFree[AbstractType, ClassicalAddress] _
             case _ => throw new Exception(s"Impossible configuration: $config")
           }
-          val program = Scheme.parse(config.file)
-          println(program)
-          f(program, config.dotfile)
+          do {
+            breakable {
+              val program = config.file match {
+                case Some(file) => Scheme.parse(file)
+                case None => Scheme.parseString(StdIn.readLine(">>> "))
+              }
+              f(program, config.dotfile)
+            }
+          } while (config.file.isEmpty)
         }
       }
       case None => ()

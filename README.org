@@ -14,10 +14,11 @@ dependencies, you can perform the following:
 
 #+BEGIN_SRC sh
 run -h # Shows the possible options
-run test/fact.scm # Performs abstract interpretation on fact.scm
-run test/fact.scm -l Concrete -c # Performs concrete interpretation on fact.scm
-run test/fact.scm -m AAM # Use the AAM approach (default one is Free)
-run test/fact.scm -m AAC # Use the AAC approach
-run test/fact.scm -l Type # Use the type lattice (default one is TypeSet, which is more precise than Type)
-run test/fact.scm -m AAM -d fact.dot # Output the state graph in fact.dot
+run -f test/fact.scm # Performs abstract interpretation on fact.scm
+run -f test/fact.scm -l Concrete -c # Performs concrete interpretation on fact.scm
+run -f test/fact.scm -m AAM # Use the AAM approach (default one is Free)
+run -f test/fact.scm -m AAC # Use the AAC approach
+run -f test/fact.scm -l Type # Use the type lattice (default one is TypeSet, which is more precise than Type)
+run -f test/fact.scm -m AAM -d fact.dot # Output the state graph in fact.dot
+run # Launches a REPL that performs interpretation of the input
 #+END_SRC
