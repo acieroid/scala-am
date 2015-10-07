@@ -233,12 +233,12 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     }
   }
 
-  def outputDot(graph: Graph[State], path: String) =
-    graph.toDotFile(path, _.toString.take(40), _.control match {
+  def outputDot(graph: Graph[State], halted: Set[State], path: String) =
+    graph.toDotFile(path, _.toString.take(40), (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
       case ControlEval(_, _) => "#DDFFDD"
       case ControlKont(_) => "#FFDDDD"
       case ControlError(_) => "#FF0000"
-    })
+    }})
 
 
   def eval(exp: Exp, dotfile: Option[String]): Set[State] = {
@@ -246,7 +246,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       case (halted, graph: Graph[State]) => {
         println(s"${graph.size} states")
         dotfile match {
-          case Some(file) => outputDot(graph, file)
+          case Some(file) => outputDot(graph, halted, file)
           case None => ()
         }
         halted
