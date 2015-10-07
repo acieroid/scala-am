@@ -68,10 +68,24 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   case class KontStore(content: Map[Context, Set[(LocalKont, Kont)]]) {
     def this() = this(Map())
     def lookup(τ: Context): Set[(LocalKont, Kont)] = content.getOrElse(τ, Set())
-    def extend(τ: Context, v: (LocalKont, Kont)): KontStore = KontStore(content + (τ -> (lookup(τ) + v)))
+    def extend(τ: Context, v: (LocalKont, Kont)): KontStore =
+      KontStore(content + (τ -> (lookup(τ) + v)))
     def join(that: KontStore): KontStore = KontStore(content |+| that.content)
+    /** Useful for debugging purposes, in order to have a visualization of the
+      * kontinuation store */
+    def toDotFile(file: String): Unit = {
+      val graph = content.foldLeft(new Graph[Kont]())({ case (g, (τ, succs)) =>
+        succs.foldLeft(g)({ case (g, (local, κ)) =>
+          // TODO: annotate with local
+          g.addEdge(KontCtx(τ), κ)
+        })
+      })
+      graph.toDotFile(file, {
+        case KontCtx(τ) => τ.toString.take(40)
+        case KontEmpty => "ε"
+      }, x => "#FFFFFF")
+    }
   }
-
 
   case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
