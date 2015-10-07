@@ -359,9 +359,8 @@ class Primitives[Addr, Abs]
   )
 
   private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })
-  private val nila = addri.primitive("nil")
-  val forEnv: List[(String, Addr)] = ("nil", nila) :: allocated.map({ case (name, a, _) => (name, a) })
-  val forStore: List[(Addr, Abs)] =  (nila, absi.nil) :: allocated.map({ case (_, a, v) => (a, v) })
+  val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
+  val forStore: List[(Addr, Abs)] =  allocated.map({ case (_, a, v) => (a, v) })
 }
 
 object AbstractValue
