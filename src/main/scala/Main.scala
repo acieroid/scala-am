@@ -14,7 +14,7 @@ import scala.io.StdIn
 
  *   2. The abstract machine is created by giving it some semantics. For now,
  *      the only semantics available are ANF Scheme semantics and Scheme
- *      semantics (Semantics.scala)
+ *      semantics (ANFSemantics.scala, SchemeSemantics.scala)
 
  *   3. The abstract machine performs its evaluation, relying on methods of the
  *      semantics class to know how to evaluate expressions. The abstract
@@ -46,7 +46,7 @@ import scala.io.StdIn
  *      language is s-expression based, you can use this parser and compile
  *      s-expressions into your abstract grammar. To do so, look at Scheme.scala
  *    - An abstract grammar, look at SExp.scala or the SchemeExp class in Scheme.scala
- *    - A semantics, look at Semantics.scala
+ *    - A semantics, look at ANFSemantics.scala for a simple example
  *    - Support for your language operations at the lattice level. For this,
  *      you'll probably need to extend the lattices (AbstractValue.scala,
  *      AbstractConcrete.scala, AbstractType.scala, AbstractTypeSet.scala)
