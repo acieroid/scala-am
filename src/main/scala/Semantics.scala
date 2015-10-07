@@ -303,10 +303,12 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
 
   def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
     case λ: SchemeLambda => Set(ActionReachedValue(absi.inject[SchemeExp, Addr]((λ, ρ)), σ))
-    case SchemeFuncall(f, args) => atomicEval(f, ρ, σ) match {
-      case Some(v) => funcallArgs(v, f, args, ρ, σ)
-      case None => Set(ActionPush(f, FrameFuncallOperator(f, args, ρ), ρ, σ))
-    }
+    case SchemeFuncall(f, args) => Set(ActionPush(f, FrameFuncallOperator(f, args, ρ), ρ, σ))
+      /* TODO: the following optimization for the SchemeFuncall case breaks AAC on kcfa3 */
+      /* atomicEval(f, ρ, σ) match {
+           case Some(v) => funcallArgs(v, f, args, ρ, σ)
+           case None => Set(ActionPush(f, FrameFuncallOperator(f, args, ρ), ρ, σ))
+      } */
     case SchemeIf(cond, cons, alt) => Set(ActionPush(cond, FrameIf(cons, alt, ρ), ρ, σ))
     case SchemeLet(Nil, body) => Set(evalBody(body, ρ, σ))
     case SchemeLet((v, exp) :: bindings, body) => Set(ActionPush(exp, FrameLet(v, List(), bindings, body, ρ), ρ, σ))
