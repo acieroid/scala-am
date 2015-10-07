@@ -1,5 +1,10 @@
-class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-                                 ad: Address[Addr], adi: AddressInjection[Addr]) extends BaseSemantics[SchemeExp, Abs, Addr] {
+/**
+ * Basic Scheme semantics, without any optimization
+ */
+class BaseSchemeSemantics[Abs, Addr]
+  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
+    ad: Address[Addr], adi: AddressInjection[Addr]) extends BaseSemantics[SchemeExp, Abs, Addr] {
+
   trait SchemeFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
     override def toString = s"${this.getClass.getSimpleName}"
@@ -21,7 +26,7 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
     override def toString() = "FHalt"
   }
 
-  private def evalBody(body: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Action[SchemeExp, Abs, Addr] = body match {
+  protected def evalBody(body: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Action[SchemeExp, Abs, Addr] = body match {
     case Nil => ActionReachedValue(absi.bottom /* TODO: undefined */, σ)
     case List(exp) => ActionEval(exp, ρ, σ)
     case exp :: rest => ActionPush(exp, FrameBegin(rest, ρ), ρ, σ)
@@ -58,33 +63,21 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
         fromClo ++ fromPrim
       }})
 
-  private def evalValue(v: Value): Option[Abs] = v match {
+  protected def evalValue(v: Value): Option[Abs] = v match {
     case ValueString(s) => Some(absi.inject(s))
     case ValueInteger(n) => Some(absi.inject(n))
     case ValueBoolean(b) => Some(absi.inject(b))
     case _ => None
   }
 
-  /** Tries to perform atomic evaluation of an expression. Returns the result of
-    * the evaluation if it succeeded, otherwise returns None */
-  private def atomicEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Option[Abs] = e match {
-    case λ: SchemeLambda => Some(absi.inject[SchemeExp, Addr]((λ, ρ)))
-    case SchemeIdentifier(name) => ρ.lookup(name).map(σ.lookup _)
-    case SchemeValue(v) => evalValue(v)
-    case _ => None
-  }
-
-  private def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
+  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
     case Nil => evalCall(f, fexp, args.reverse, ρ, σ)
-    case e :: rest => atomicEval(e, ρ, σ) match {
-      case Some(v) => funcallArgs(f, fexp, (e, v) :: args, rest, ρ, σ)
-      case None => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
-    }
+    case e :: rest => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
   }
-  private def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
+  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
     funcallArgs(f, fexp, List(), args, ρ, σ)
 
-  private def evalQuoted(exp: SExp, σ: Store[Addr, Abs]): (Abs, Store[Addr, Abs]) = exp match {
+  protected def evalQuoted(exp: SExp, σ: Store[Addr, Abs]): (Abs, Store[Addr, Abs]) = exp match {
     case SExpIdentifier(sym) => (absi.injectSymbol(sym), σ)
     case SExpPair(car, cdr) => {
       val care: SchemeExp = SchemeIdentifier(car.toString).setPos(car.pos)
@@ -210,4 +203,47 @@ class SchemeSemantics[Abs, Addr](implicit ab: AbstractValue[Abs], abi: AbstractI
       conditional(v, ActionReachedValue(v, σ), ActionPush(e, FrameOr(rest, ρ), ρ, σ))
     case FrameDefine(name, ρ) => throw new Exception(s"TODO: define not handled (no global environment)")
   }
+}
+
+/**
+ * Extend base Scheme semantics with:
+ *   - atomic evaluation: parts of some constructs can be evaluated atomically
+ *     without needing to introduce more states in the state graph. For example,
+ *     (+ 1 1) can directly be evaluated to 2 without modifying the store. Also,
+ *     to evaluate (+ 1 (f)), we can directly push the continuation and jump to
+ *     the evaluation of (f), instead of evaluating +, and 1 in separate states.
+ */
+class SchemeSemantics[Abs, Addr]
+  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
+    ad: Address[Addr], adi: AddressInjection[Addr]) extends BaseSchemeSemantics[Abs, Addr] {
+
+  /** Tries to perform atomic evaluation of an expression. Returns the result of
+    * the evaluation if it succeeded, otherwise returns None */
+  protected def atomicEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Option[Abs] = e match {
+    case λ: SchemeLambda => Some(absi.inject[SchemeExp, Addr]((λ, ρ)))
+    case SchemeIdentifier(name) => ρ.lookup(name).map(σ.lookup _)
+    case SchemeValue(v) => evalValue(v)
+    case _ => None
+  }
+
+  override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
+    case Nil => evalCall(f, fexp, args.reverse, ρ, σ)
+    case e :: rest => atomicEval(e, ρ, σ) match {
+      case Some(v) => funcallArgs(f, fexp, (e, v) :: args, rest, ρ, σ)
+      case None => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
+    }
+  }
+
+  /*
+  override def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
+    case SchemeFuncall(f, args) =>
+      /* TODO: the following optimization for the SchemeFuncall case breaks AAC on kcfa3 */
+      atomicEval(f, ρ, σ) match {
+        case Some(v) => funcallArgs(v, f, args, ρ, σ)
+        case None => Set(ActionPush(f, FrameFuncallOperator(f, args, ρ), ρ, σ))
+      }
+    case _ => super.stepEval(e, ρ, σ)
+  }
+   */
+
 }
