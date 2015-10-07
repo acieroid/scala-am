@@ -1,7 +1,17 @@
 import scalaz.Semigroup
 
+/**
+ * Each primitive has to implement this trait.
+ */
 trait Primitive[Addr, Abs] {
+  /** The name of the primitive */
   val name: String
+  /** Calls the primitive.
+   * @param fexp: the expression with which the primitive has been called
+   * @param args: the arguments with which the primitive has been called, both their expression and their value
+   * @param store: the store
+   * @return either an error, or the value returned by the primitive along with the updated store
+   */
   def call[Exp : Expression](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]): Either[String, (Abs, Store[Addr, Abs])]
 }
 
@@ -71,7 +81,9 @@ trait AbstractValue[A] extends Semigroup[A] {
   /** Returns the string representation of this value */
   def toString[Addr : Address](x: A, store: Store[Addr, A]): String
 
+  /** Extract closures contained in this value */
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
+  /** Extract primitives contained in this value */
   def getPrimitive[Addr : Address](x: A): Option[Primitive[Addr, A]]
 }
 
@@ -104,29 +116,12 @@ trait AbstractInjection[A] {
 
 }
 
-class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]) {
-  class NullaryOperation(val name: String, f: => Abs) extends Primitive[Addr, Abs] {
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
-      case Nil => Right((f, store))
-      case l => Left(s"${name}: no operand expected, got ${l.size} instead")
-    }
-  }
-  object NullaryOperation {
-    def apply(name: String, f: => Abs) = new NullaryOperation(name, f)
-  }
-  case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Addr, Abs] {
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
-      case (_, x) :: Nil => Right((f(x), store))
-      case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
-    }
-  }
-  case class BinaryOperation(name: String, f: (Abs, Abs) => Abs) extends Primitive[Addr, Abs] {
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
-      case (_, x) :: (_, y) :: Nil => Right((f(x, y), store))
-      case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
-    }
-  }
+/** This is where we define (Scheme) primitives */
+class Primitives[Addr, Abs]
+  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+    addr: Address[Addr], addri: AddressInjection[Addr]) {
 
+  /** This is how a primitive is defined by extending Primitive */
   object Cons extends Primitive[Addr, Abs] {
     val name = "cons"
     def call[Exp : Expression](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
@@ -139,6 +134,36 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
 
+  /* Other primitives are much simpler than cons and sometimes don't need access
+   * to the store, or have a fixed amount of arguments, so we define a few
+   * helper classes to define them */
+
+  /** A primitive taking no argument, e.g., (newline) */
+  class NullaryOperation(val name: String, f: => Abs) extends Primitive[Addr, Abs] {
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+      case Nil => Right((f, store))
+      case l => Left(s"${name}: no operand expected, got ${l.size} instead")
+    }
+  }
+  object NullaryOperation {
+    def apply(name: String, f: => Abs) = new NullaryOperation(name, f)
+  }
+  /** A primitive taking a single argument, e.g., (random 1) */
+  case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Addr, Abs] {
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+      case (_, x) :: Nil => Right((f(x), store))
+      case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
+    }
+  }
+  /** A primitive taking two arguments, e.g., (modulo 5 1) */
+  case class BinaryOperation(name: String, f: (Abs, Abs) => Abs) extends Primitive[Addr, Abs] {
+    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+      case (_, x) :: (_, y) :: Nil => Right((f(x, y), store))
+      case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
+    }
+  }
+
+  /** A primitive taking a single argument and modifying the store */
   case class UnaryStoreOperation(name: String, f: (Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs])) extends Primitive[Addr, Abs] {
     def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
       case (_, x) :: Nil => Right(f(x, store))
@@ -146,6 +171,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
 
+  /** A primitive taking two arguments and modifying the store */
   case class BinaryStoreOperation(name: String, f: (Abs, Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs])) extends Primitive[Addr, Abs] {
     def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
       case (_, x) :: (_, y) :: Nil => Right(f(x, y, store))
@@ -153,6 +179,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
 
+  /** A primitive that doesn't modify the store but takes a variable amount of arguments */
   abstract class VariadicOperation extends Primitive[Addr, Abs] {
     def call(args: List[Abs]): Either[String, Abs]
     def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) =
@@ -161,6 +188,9 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
         case Left(err) => Left(err)
       }
   }
+
+  /* Some primitives are defined by extending one of the helper class */
+
   object Plus extends VariadicOperation {
     val name = "+"
     def call(args: List[Abs]) = args match {
@@ -203,6 +233,8 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     }
   }
 
+  /* Some primitives can be defined as just a function that we pass to one of the helper class' constructor */
+
   private def newline: Abs = {
     println("")
     absi.bottom
@@ -216,8 +248,11 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
     abs.cdr(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
 
 
-  /* Computes gcd as a fixpoint, otherwise abstract values (e.g., gcd(Int, Int)) can lead to infinite loops */
-  /* (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
+  /* Among them, recursive primitives need to be defined as a fixpoint operation,
+   * otherwise abstract values (e.g., gcd(Int, Int)) can lead to infinite
+   * loops */
+
+  /** (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
   private def gcd(a: Abs, b: Abs, visited: Set[(Abs, Abs)]): Abs = {
     if (visited.contains(a, b)) {
       absi.bottom
@@ -230,8 +265,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
   }
   private def gcd(a: Abs, b: Abs): Abs = gcd(a, b, Set())
 
-  /* Computes equal as a fixpoint */
-  /* (define (equal? a b) (or (eq? a b) (and (null? a) (null? b)) (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b))))) */
+  /** (define (equal? a b) (or (eq? a b) (and (null? a) (null? b)) (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b))))) */
   private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): Abs = {
     if (visited.contains(a, b)) {
       absi.bottom
@@ -247,7 +281,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
   }
   private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): Abs = equal(a, b, store, Set())
 
-  /* (define (length l) (if (pair? l) (+ 1 (length (cdr l))) (if (null? l) 0 (error "length called with a non-list")))) */
+  /** (define (length l) (if (pair? l) (+ 1 (length (cdr l))) (if (null? l) 0 (error "length called with a non-list")))) */
   private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs = {
     if (visited.contains(l)) {
       absi.bottom
@@ -268,6 +302,7 @@ class Primitives[Addr, Abs](implicit abs: AbstractValue[Abs], absi: AbstractInje
   }
   private def length(l: Abs, store: Store[Addr, Abs]): Abs = length(l, store, Set())
 
+  /** Bundles all the primitives together */
   val all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div,
     BinaryOperation("quotient", abs.div),
