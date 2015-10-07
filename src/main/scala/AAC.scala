@@ -35,8 +35,11 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
 
   val primitives = new Primitives[Addr, Abs]()
 
-  case class Context(clo: (Exp, Environment[Addr]), v: Abs, σ: Store[Addr, Abs]) {
-    def subsumes(that: Context) = clo._1.equals(that.clo._1) && clo._2.subsumes(that.clo._2) && abs.subsumes(v, that.v) && σ.subsumes(that.σ)
+  case class Context(clo: (Exp, Environment[Addr]), argsv: List[(Exp, Abs)], σ: Store[Addr, Abs]) {
+    def subsumes(that: Context) = {
+      clo._1.equals(that.clo._1) && clo._2.subsumes(that.clo._2) && σ.subsumes(that.σ) &&
+      argsv.zip(that.argsv).forall({ case ((e1, v1), (e2, v2)) => e1 == e2 && abs.subsumes(v1, v2) })
+    }
   }
 
   sealed abstract class Kont {
@@ -47,7 +50,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
       case KontCtx(ctx2) => ctx.subsumes(ctx2)
       case _ => false
     }
-    override def toString = s"KontCtx(${ctx.clo._1}, ${ctx.v})"
+    override def toString = s"KontCtx(${ctx.clo._1}, ${ctx.argsv})"
   }
   object KontEmpty extends Kont {
     def subsumes(that: Kont) = that.equals(this)
@@ -68,8 +71,14 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
   case class KontStore(content: Map[Context, Set[(LocalKont, Kont)]]) {
     def this() = this(Map())
     def lookup(τ: Context): Set[(LocalKont, Kont)] = content.getOrElse(τ, Set())
-    def extend(τ: Context, v: (LocalKont, Kont)): KontStore =
+    def extend(τ: Context, v: (LocalKont, Kont)): KontStore = {
+      /*
+      content.get(τ) match {
+        case Some(vals) if !vals.contains(v) => println(s"Joining at $τ: $v + $vals")
+        case _ => ()
+      } */
       KontStore(content + (τ -> (lookup(τ) + v)))
+    }
     def join(that: KontStore): KontStore = KontStore(content |+| that.content)
     /** Useful for debugging purposes, in order to have a visualization of the
       * kontinuation store */
@@ -180,8 +189,8 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
           case ActionReachedValue(v, σ) => (states + State(ControlKont(v), σ, ι, κ), kstore)
           case ActionPush(e, frame, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ), kstore)
           case ActionEval(e, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι, κ), kstore)
-          case ActionStepIn(clo, e, ρ, σ) => {
-            val τ = Context(clo, v, σ)
+          case ActionStepIn(clo, e, ρ, σ, argsv) => {
+            val τ = Context(clo, argsv, σ)
             (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ)),
              kstore.extend(τ, (ι, κ)))
           }

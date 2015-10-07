@@ -119,7 +119,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])
         /* When a value needs to be evaluated, we go to an eval state */
         case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, kstore, a))
         /* When a function is stepped in, we also go to an eval state */
-        case ActionStepIn(_, e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, kstore, a))
+        case ActionStepIn(_, e, ρ, σ, _) => Set(State(ControlEval(e, ρ), σ, kstore, a))
         /* When an error is reached, we go to an error state */
         case ActionError(err) => Set(State(ControlError(err), σ, kstore, a))
       })

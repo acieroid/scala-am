@@ -63,7 +63,7 @@ class ANFSemantics[Abs, Addr]
                   case (ANFLambda(args, body), ρ) => if (args.length == argsv.length) {
                     /* To call a closure, bind the arguments and step into the function */
                     bindArgs(args.zip(argsv.reverse), ρ, σ) match {
-                      case (ρ2, σ) => ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ)
+                      case (ρ2, σ) => ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ, argsv)
                     }
                   } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length})") }
                   case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")

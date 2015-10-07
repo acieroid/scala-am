@@ -52,9 +52,12 @@ case class ActionPush[Exp : Expression, Abs : AbstractValue, Addr : Address](e: 
  */
 case class ActionEval[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 /**
- * Similar to ActionEval, but only used when stepping inside a function's body (clo is therefore the function stepped into)
+ * Similar to ActionEval, but only used when stepping inside a function's body
+ * (clo is therefore the function stepped into). The expressions and values of
+ * the arguments should also be provided, as they can be needed by the abstract
+ * machine.
  */
-case class ActionStepIn[Exp : Expression, Abs : AbstractValue, Addr : Address](clo: (Exp, Environment[Addr]), e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
+case class ActionStepIn[Exp : Expression, Abs : AbstractValue, Addr : Address](clo: (Exp, Environment[Addr]), e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs], argsv: List[(Exp, Abs)]) extends Action[Exp, Abs, Addr]
 /**
  * An error has been reached
  */

@@ -43,9 +43,9 @@ class BaseSchemeSemantics[Abs, Addr]
             bindArgs(args.zip(argsv), ρ1, σ) match {
               case (ρ2, σ) =>
                 if (body.length == 1)
-                  ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), body.head, ρ2, σ)
+                  ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), body.head, ρ2, σ, argsv)
                 else
-                  ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ)
+                  ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ, argsv)
             }
           } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
         case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
@@ -233,17 +233,12 @@ class SchemeSemantics[Abs, Addr]
       case None => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
     }
   }
-
-  /*
   override def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
     case SchemeFuncall(f, args) =>
-      /* TODO: the following optimization for the SchemeFuncall case breaks AAC on kcfa3 */
       atomicEval(f, ρ, σ) match {
         case Some(v) => funcallArgs(v, f, args, ρ, σ)
         case None => Set(ActionPush(f, FrameFuncallOperator(f, args, ρ), ρ, σ))
       }
     case _ => super.stepEval(e, ρ, σ)
   }
-   */
-
 }

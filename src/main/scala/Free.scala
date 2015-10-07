@@ -64,7 +64,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
           State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, k)), next)
         }
         case ActionEval(e, ρ, σ) => State(ControlEval(e, ρ), σ, kstore, k)
-        case ActionStepIn(_, e, ρ, σ) => State(ControlEval(e, ρ), σ, kstore, k)
+        case ActionStepIn(_, e, ρ, σ, _) => State(ControlEval(e, ρ), σ, kstore, k)
         case ActionError(err) => State(ControlError(err), σ, kstore, k)
       })
 
