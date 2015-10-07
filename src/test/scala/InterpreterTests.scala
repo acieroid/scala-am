@@ -36,8 +36,9 @@ abstract class AACBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: 
   val machine = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
 
   def checkResult(file: String, expected: Abs) = {
-    println(s"Testing $file")
+    println(s"Testing $file (AAC)")
     val result = machine.eval(Scheme.parse(s"test/$file"), None)
+    println(s"$file (AAC): ${result.size} final states")
     assert(result.exists((st: machine.State) => st.control match {
       case machine.ControlKont(v) => abs.subsumes(v, expected)
       case _ => false
@@ -51,8 +52,9 @@ abstract class AAMBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: 
   val machine = new AAM[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
 
   def checkResult(file: String, expected: Abs) = {
-    println(s"Testing $file")
+    println(s"Testing $file (AAM)")
     val result = machine.eval(Scheme.parse(s"test/$file"), None)
+    println(s"$file (AAM): ${result.size} final states")
     assert(result.exists((st: machine.State) => st.control match {
       case machine.ControlKont(v) => abs.subsumes(v, expected)
       case _ => false
@@ -66,8 +68,9 @@ abstract class FreeBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi:
   val machine = new Free[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
 
   def checkResult(file: String, expected: Abs) = {
-    println(s"Testing $file")
+    println(s"Testing $file (Free)")
     val result = machine.eval(Scheme.parse(s"test/$file"), None)
+    println(s"$file (Free): ${result.size} final states")
     assert(result.exists((st: machine.State) => st.control match {
       case machine.ControlKont(v) => abs.subsumes(v, expected)
       case _ => false
