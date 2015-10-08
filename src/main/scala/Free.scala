@@ -150,7 +150,6 @@ case class Free[Exp : Expression, Abs, Addr]
   }
 
   private def loop(s: States, visited: Set[States], halted: Set[State], sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
-    println(s)
     val s2 = s.step(sem)
     val h = halted ++ s.toStateSet.filter(_.halted)
     if (s2.isEmpty || visited.contains(s2)) {

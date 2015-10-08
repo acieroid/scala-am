@@ -11,10 +11,10 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
 abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
-  def checkResult(program: SchemeExp, answer: Abs): Unit
+  def checkResult(program: String, answer: Abs): Unit
   def check(table: TableFor2[String, Abs]) =
     forAll (table) { (program: String, answer: Abs) =>
-      checkResult(Scheme.parseString(program), answer)
+      checkResult(program, answer)
     }
   def r5rs(name: String, table: TableFor2[String, Abs]) =
     property(s"$name satisfies R5RS") { check(table) }
@@ -194,15 +194,12 @@ abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstract
 abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends Tests[Abs, Addr] {
-  val machine = new AAM[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+  val sem = new SchemeSemantics[Abs, Addr]
+  val machine = new AAM[SchemeExp, Abs, Addr]
 
-  def checkResult(program: SchemeExp, answer: Abs) = {
-    val result = machine.eval(program, None)
-    println(s"$program -> $result ($answer)")
-    assert(result.exists((st: machine.State) => st.control match {
-      case machine.ControlKont(v) => abs.subsumes(v, answer)
-      case _ => false
-    }))
+  def checkResult(program: String, answer: Abs) = {
+    val result = machine.eval(sem.parse(program), sem, false)
+    assert(result.containsFinalValue(answer))
   }
 }
 
@@ -210,14 +207,12 @@ abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstr
 abstract class AACTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends Tests[Abs, Addr] {
-  val machine = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+  val sem = new SchemeSemantics[Abs, Addr]
+  val machine = new AAC[SchemeExp, Abs, Addr]
 
-  def checkResult(program: SchemeExp, answer: Abs) = {
-    val result = machine.eval(program, None)
-    assert(result.exists((st: machine.State) => st.control match {
-      case machine.ControlKont(v) => abs.subsumes(v, answer)
-      case _ => false
-    }))
+  def checkResult(program: String, answer: Abs) = {
+    val result = machine.eval(sem.parse(program), sem, false)
+    assert(result.containsFinalValue(answer))
   }
 }
 
@@ -225,14 +220,12 @@ abstract class AACTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstr
 abstract class FreeTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends Tests[Abs, Addr] {
-  val machine = new Free[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+  val sem = new SchemeSemantics[Abs, Addr]
+  val machine = new Free[SchemeExp, Abs, Addr]
 
-  def checkResult(program: SchemeExp, answer: Abs) = {
-    val result = machine.eval(program, None)
-    assert(result.exists((st: machine.State) => st.control match {
-      case machine.ControlKont(v) => abs.subsumes(v, answer)
-      case _ => false
-    }))
+  def checkResult(program: String, answer: Abs) = {
+    val result = machine.eval(sem.parse(program), sem, false)
+    assert(result.containsFinalValue(answer))
   }
 }
 

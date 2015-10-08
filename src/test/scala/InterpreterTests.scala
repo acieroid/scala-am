@@ -24,57 +24,48 @@ abstract class Benchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abs
   check("rotate.scm", absi.inject("hallo"))
   check("sq.scm", absi.inject(9))
   check("sym.scm", absi.injectSymbol("foo"))
-  check("rsa.scm", absi.inject(true))
-  check("sat.scm", absi.inject(true))
-  check("primtest.scm", absi.inject(1))
-  check("nqueens.scm", absi.inject(92))
+  //check("rsa.scm", absi.inject(true))
+  //check("sat.scm", absi.inject(true))
+  //check("primtest.scm", absi.inject(1))
+  //check("nqueens.scm", absi.inject(92))
 }
 
 abstract class AACBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends Benchmarks[Abs, Addr] {
-  val machine = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+  val sem = new SchemeSemantics[Abs, Addr]
+  val machine = new AAC[SchemeExp, Abs, Addr]
 
   def checkResult(file: String, expected: Abs) = {
     println(s"Testing $file (AAC)")
-    val result = machine.eval(Scheme.parse(s"test/$file"), None)
-    println(s"$file (AAC): ${result.size} final states")
-    assert(result.exists((st: machine.State) => st.control match {
-      case machine.ControlKont(v) => abs.subsumes(v, expected)
-      case _ => false
-    }))
+    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
+    assert(result.containsFinalValue(expected))
   }
 }
 
 abstract class AAMBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends Benchmarks[Abs, Addr] {
-  val machine = new AAM[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+  val sem = new SchemeSemantics[Abs, Addr]
+  val machine = new AAM[SchemeExp, Abs, Addr]
 
   def checkResult(file: String, expected: Abs) = {
     println(s"Testing $file (AAM)")
-    val result = machine.eval(Scheme.parse(s"test/$file"), None)
-    println(s"$file (AAM): ${result.size} final states")
-    assert(result.exists((st: machine.State) => st.control match {
-      case machine.ControlKont(v) => abs.subsumes(v, expected)
-      case _ => false
-    }))
+    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
+    assert(result.containsFinalValue(expected))
   }
 }
 
 abstract class FreeBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends Benchmarks[Abs, Addr] {
-  val machine = new Free[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
+  val sem = new SchemeSemantics[Abs, Addr]
+  val machine = new Free[SchemeExp, Abs, Addr]
 
   def checkResult(file: String, expected: Abs) = {
     println(s"Testing $file (Free)")
-    val result = machine.eval(Scheme.parse(s"test/$file"), None)
-    println(s"$file (Free): ${result.size} final states")
-    assert(result.exists((st: machine.State) => st.control match {
-      case machine.ControlKont(v) => abs.subsumes(v, expected)
-      case _ => false
-    }))
+    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
+    assert(result.containsFinalValue(expected))
   }
 }
 
