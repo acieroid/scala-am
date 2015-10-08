@@ -117,6 +117,7 @@ case class Free[Exp : Expression, Abs, Addr]
       extends Output[Abs] {
     def containsFinalValue(v: Abs) = halted.exists((st) => st.control match {
       case ControlKont(v2) => abs.subsumes(v2, v)
+      case _ => false
     })
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, _.toString.take(40),
