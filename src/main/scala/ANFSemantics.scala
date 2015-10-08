@@ -133,4 +133,6 @@ class ANFSemantics[Abs, Addr]
     case FrameLetrec(variable, vara, body, ρ) =>
       Set(ActionEval(body, ρ, σ.update(vara, v)))
   }
+
+  def parse(program: String): ANFExp = ANF.parse(program)
 }

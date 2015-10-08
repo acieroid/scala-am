@@ -198,6 +198,8 @@ class BaseSchemeSemantics[Abs, Addr]
       conditional(v, ActionReachedValue(v, σ), ActionPush(e, FrameOr(rest, ρ), ρ, σ))
     case FrameDefine(name, ρ) => throw new Exception(s"TODO: define not handled (no global environment)")
   }
+
+  def parse(program: String): SchemeExp = Scheme.parse(program)
 }
 
 /**

@@ -86,129 +86,82 @@ object Config {
 
 object Main {
 
-  def runAAM[Abs, Addr](exp: SchemeExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
-    println(s"Running AAM with lattice ${absi.name} and address ${addri.name}")
-    val machine = new AAM[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
-    val result = machine.eval(exp, output)
-    println(s"${result.size} possible results: $result")
-  }
-
-  def runAAC[Abs, Addr](exp: SchemeExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
-    println(s"Running AAC with lattice ${absi.name} and address ${addri.name}")
-    val machine = new AAC[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
-    val result = machine.eval(exp, output)
-    println(s"${result.size} possible results: $result")
-  }
-
-  def runFree[Abs, Addr](exp: SchemeExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
-    println(s"Running Free with lattice ${absi.name} and address ${addri.name}")
-    val machine = new Free[Abs, Addr, SchemeExp](new SchemeSemantics[Abs, Addr])
-    val result = machine.eval(exp, output)
-    println(s"${result.size} possible results: $result")
-  }
-
-  def runAAMANF[Abs, Addr](exp: ANFExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
-    println(s"Running AAM (ANF) with lattice ${absi.name} and address ${addri.name}")
-    val machine = new AAM[Abs, Addr, ANFExp](new ANFSemantics[Abs, Addr])
-    val result = machine.eval(exp, output)
-    println(s"${result.size} possible results: $result")
-  }
-
-  def runAACANF[Abs, Addr](exp: ANFExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
-    println(s"Running AAC (ANF) with lattice ${absi.name} and address ${addri.name}")
-    val machine = new AAC[Abs, Addr, ANFExp](new ANFSemantics[Abs, Addr])
-    val result = machine.eval(exp, output)
-    println(s"${result.size} possible results: $result")
-  }
-
-  def runFreeANF[Abs, Addr](exp: ANFExp, output: Option[String])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
-    println(s"Running Free (ANF) with lattice ${absi.name} and address ${addri.name}")
-    val machine = new Free[Abs, Addr, ANFExp](new ANFSemantics[Abs, Addr])
-    val result = machine.eval(exp, output)
-    println(s"${result.size} possible results: $result")
+  def run[Exp, Abs, Addr](machine: AbstractMachine[Exp, Abs, Addr], sem: Semantics[Exp, Abs, Addr])(program: String, output: Option[String])
+  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+    addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
+    println(s"Running ${machine.name} with lattice ${absi.name} and address ${addri.name}")
+    val result = machine.eval(sem.parse(program), sem, !output.isEmpty)
+    output match {
+      case Some(f) => result.toDotFile(f)
+      case None => ()
+    }
+    println(result) // TODO: print stats & final results
   }
 
   object Done extends Exception
+
+  def fileContent(file: String): String = {
+    val f = scala.io.Source.fromFile(file)
+    val content = f.getLines.mkString("\n")
+    f.close()
+    content
+  }
 
   def main(args: Array[String]) {
     import scala.util.control.Breaks._
     Config.parser.parse(args, Config.Config()) match {
       case Some(config) => {
         /* ugly as fuck, but I don't find a simpler way to pass type parameters that are computed at runtime */
-        if (config.anf) {
-          val f = (config.machine, config.lattice, config.concrete) match {
-            case (Config.Machine.AAM, Config.Lattice.Concrete, true) => runAAMANF[AbstractConcrete, ConcreteAddress] _
-            case (Config.Machine.AAM, Config.Lattice.Concrete, false) => runAAMANF[AbstractConcrete, ClassicalAddress] _
-            case (Config.Machine.AAM, Config.Lattice.TypeSet, true) => runAAMANF[AbstractTypeSet, ConcreteAddress] _
-            case (Config.Machine.AAM, Config.Lattice.TypeSet, false) => runAAMANF[AbstractTypeSet, ClassicalAddress] _
-            case (Config.Machine.AAM, Config.Lattice.Type, true) => runAAMANF[AbstractType, ConcreteAddress] _
-            case (Config.Machine.AAM, Config.Lattice.Type, false) => runAAMANF[AbstractType, ClassicalAddress] _
-            case (Config.Machine.AAC, Config.Lattice.Concrete, true) => runAACANF[AbstractConcrete, ConcreteAddress] _
-            case (Config.Machine.AAC, Config.Lattice.Concrete, false) => runAACANF[AbstractConcrete, ClassicalAddress] _
-            case (Config.Machine.AAC, Config.Lattice.TypeSet, true) => runAACANF[AbstractTypeSet, ConcreteAddress] _
-            case (Config.Machine.AAC, Config.Lattice.TypeSet, false) => runAACANF[AbstractTypeSet, ClassicalAddress] _
-            case (Config.Machine.AAC, Config.Lattice.Type, true) => runAACANF[AbstractType, ConcreteAddress] _
-            case (Config.Machine.AAC, Config.Lattice.Type, false) => runAACANF[AbstractType, ClassicalAddress] _
-            case (Config.Machine.Free, Config.Lattice.Concrete, true) => runFreeANF[AbstractConcrete, ConcreteAddress] _
-            case (Config.Machine.Free, Config.Lattice.Concrete, false) => runFreeANF[AbstractConcrete, ClassicalAddress] _
-            case (Config.Machine.Free, Config.Lattice.TypeSet, true) => runFreeANF[AbstractTypeSet, ConcreteAddress] _
-            case (Config.Machine.Free, Config.Lattice.TypeSet, false) => runFreeANF[AbstractTypeSet, ClassicalAddress] _
-            case (Config.Machine.Free, Config.Lattice.Type, true) => runFreeANF[AbstractType, ConcreteAddress] _
-            case (Config.Machine.Free, Config.Lattice.Type, false) => runFreeANF[AbstractType, ClassicalAddress] _
-            case _ => throw new Exception(s"Impossible configuration: $config")
-          }
-          try {
-            do {
-              val program = config.file match {
-                case Some(file) => ANF.parse(file)
-                case None => {
-                  val in = StdIn.readLine(">>> ")
-                  if (in == null) throw Done
-                  ANF.parseString(in)
-                }
-              }
-              f(program, config.dotfile)
-            } while (config.file.isEmpty)
-          } catch {
-            case Done => ()
-          }
-        } else {
-          val f = (config.machine, config.lattice, config.concrete) match {
-            case (Config.Machine.AAM, Config.Lattice.Concrete, true) => runAAM[AbstractConcrete, ConcreteAddress] _
-            case (Config.Machine.AAM, Config.Lattice.Concrete, false) => runAAM[AbstractConcrete, ClassicalAddress] _
-            case (Config.Machine.AAM, Config.Lattice.TypeSet, true) => runAAM[AbstractTypeSet, ConcreteAddress] _
-            case (Config.Machine.AAM, Config.Lattice.TypeSet, false) => runAAM[AbstractTypeSet, ClassicalAddress] _
-            case (Config.Machine.AAM, Config.Lattice.Type, true) => runAAM[AbstractType, ConcreteAddress] _
-            case (Config.Machine.AAM, Config.Lattice.Type, false) => runAAM[AbstractType, ClassicalAddress] _
-            case (Config.Machine.AAC, Config.Lattice.Concrete, true) => runAAC[AbstractConcrete, ConcreteAddress] _
-            case (Config.Machine.AAC, Config.Lattice.Concrete, false) => runAAC[AbstractConcrete, ClassicalAddress] _
-            case (Config.Machine.AAC, Config.Lattice.TypeSet, true) => runAAC[AbstractTypeSet, ConcreteAddress] _
-            case (Config.Machine.AAC, Config.Lattice.TypeSet, false) => runAAC[AbstractTypeSet, ClassicalAddress] _
-            case (Config.Machine.AAC, Config.Lattice.Type, true) => runAAC[AbstractType, ConcreteAddress] _
-            case (Config.Machine.AAC, Config.Lattice.Type, false) => runAAC[AbstractType, ClassicalAddress] _
-            case (Config.Machine.Free, Config.Lattice.Concrete, true) => runFree[AbstractConcrete, ConcreteAddress] _
-            case (Config.Machine.Free, Config.Lattice.Concrete, false) => runFree[AbstractConcrete, ClassicalAddress] _
-            case (Config.Machine.Free, Config.Lattice.TypeSet, true) => runFree[AbstractTypeSet, ConcreteAddress] _
-            case (Config.Machine.Free, Config.Lattice.TypeSet, false) => runFree[AbstractTypeSet, ClassicalAddress] _
-            case (Config.Machine.Free, Config.Lattice.Type, true) => runFree[AbstractType, ConcreteAddress] _
-            case (Config.Machine.Free, Config.Lattice.Type, false) => runFree[AbstractType, ClassicalAddress] _
-            case _ => throw new Exception(s"Impossible configuration: $config")
-          }
-          try {
-            do {
-              val program = config.file match {
-                case Some(file) => Scheme.parse(file)
-                case None => {
-                  val in = StdIn.readLine(">>> ")
-                  if (in == null) throw Done
-                  Scheme.parseString(in)
-                }
-              }
-              f(program, config.dotfile)
-            } while (config.file.isEmpty)
-          } catch {
-            case Done => ()
-          }
+        val f = (config.anf, config.machine, config.lattice, config.concrete) match {
+          case (true, Config.Machine.AAM, Config.Lattice.Concrete, true) => run[ANFExp, AbstractConcrete, ConcreteAddress](new AAM[ANFExp, AbstractConcrete, ConcreteAddress], new ANFSemantics[AbstractConcrete, ConcreteAddress]) _
+          case (false, Config.Machine.AAM, Config.Lattice.Concrete, true) => run[SchemeExp, AbstractConcrete, ConcreteAddress](new AAM[SchemeExp, AbstractConcrete, ConcreteAddress], new SchemeSemantics[AbstractConcrete, ConcreteAddress]) _
+          case (true, Config.Machine.AAM, Config.Lattice.Concrete, false) => run[ANFExp, AbstractConcrete, ClassicalAddress](new AAM[ANFExp, AbstractConcrete, ClassicalAddress], new ANFSemantics[AbstractConcrete, ClassicalAddress]) _
+          case (false, Config.Machine.AAM, Config.Lattice.Concrete, false) => run[SchemeExp, AbstractConcrete, ClassicalAddress](new AAM[SchemeExp, AbstractConcrete, ClassicalAddress], new SchemeSemantics[AbstractConcrete, ClassicalAddress]) _
+          case (true, Config.Machine.AAM, Config.Lattice.Type, true) => run[ANFExp, AbstractType, ConcreteAddress](new AAM[ANFExp, AbstractType, ConcreteAddress], new ANFSemantics[AbstractType, ConcreteAddress]) _
+          case (false, Config.Machine.AAM, Config.Lattice.Type, true) => run[SchemeExp, AbstractType, ConcreteAddress](new AAM[SchemeExp, AbstractType, ConcreteAddress], new SchemeSemantics[AbstractType, ConcreteAddress]) _
+          case (true, Config.Machine.AAM, Config.Lattice.Type, false) => run[ANFExp, AbstractType, ClassicalAddress](new AAM[ANFExp, AbstractType, ClassicalAddress], new ANFSemantics[AbstractType, ClassicalAddress]) _
+          case (false, Config.Machine.AAM, Config.Lattice.Type, false) => run[SchemeExp, AbstractType, ClassicalAddress](new AAM[SchemeExp, AbstractType, ClassicalAddress], new SchemeSemantics[AbstractType, ClassicalAddress]) _
+          case (true, Config.Machine.AAM, Config.Lattice.TypeSet, true) => run[ANFExp, AbstractTypeSet, ConcreteAddress](new AAM[ANFExp, AbstractTypeSet, ConcreteAddress], new ANFSemantics[AbstractTypeSet, ConcreteAddress]) _
+          case (false, Config.Machine.AAM, Config.Lattice.TypeSet, true) => run[SchemeExp, AbstractTypeSet, ConcreteAddress](new AAM[SchemeExp, AbstractTypeSet, ConcreteAddress], new SchemeSemantics[AbstractTypeSet, ConcreteAddress]) _
+          case (true, Config.Machine.AAM, Config.Lattice.TypeSet, false) => run[ANFExp, AbstractTypeSet, ClassicalAddress](new AAM[ANFExp, AbstractTypeSet, ClassicalAddress], new ANFSemantics[AbstractTypeSet, ClassicalAddress]) _
+          case (false, Config.Machine.AAM, Config.Lattice.TypeSet, false) => run[SchemeExp, AbstractTypeSet, ClassicalAddress](new AAM[SchemeExp, AbstractTypeSet, ClassicalAddress], new SchemeSemantics[AbstractTypeSet, ClassicalAddress]) _
+          case (true, Config.Machine.AAC, Config.Lattice.Concrete, true) => run[ANFExp, AbstractConcrete, ConcreteAddress](new AAC[ANFExp, AbstractConcrete, ConcreteAddress], new ANFSemantics[AbstractConcrete, ConcreteAddress]) _
+          case (false, Config.Machine.AAC, Config.Lattice.Concrete, true) => run[SchemeExp, AbstractConcrete, ConcreteAddress](new AAC[SchemeExp, AbstractConcrete, ConcreteAddress], new SchemeSemantics[AbstractConcrete, ConcreteAddress]) _
+          case (true, Config.Machine.AAC, Config.Lattice.Concrete, false) => run[ANFExp, AbstractConcrete, ClassicalAddress](new AAC[ANFExp, AbstractConcrete, ClassicalAddress], new ANFSemantics[AbstractConcrete, ClassicalAddress]) _
+          case (false, Config.Machine.AAC, Config.Lattice.Concrete, false) => run[SchemeExp, AbstractConcrete, ClassicalAddress](new AAC[SchemeExp, AbstractConcrete, ClassicalAddress], new SchemeSemantics[AbstractConcrete, ClassicalAddress]) _
+          case (true, Config.Machine.AAC, Config.Lattice.Type, true) => run[ANFExp, AbstractType, ConcreteAddress](new AAC[ANFExp, AbstractType, ConcreteAddress], new ANFSemantics[AbstractType, ConcreteAddress]) _
+          case (false, Config.Machine.AAC, Config.Lattice.Type, true) => run[SchemeExp, AbstractType, ConcreteAddress](new AAC[SchemeExp, AbstractType, ConcreteAddress], new SchemeSemantics[AbstractType, ConcreteAddress]) _
+          case (true, Config.Machine.AAC, Config.Lattice.Type, false) => run[ANFExp, AbstractType, ClassicalAddress](new AAC[ANFExp, AbstractType, ClassicalAddress], new ANFSemantics[AbstractType, ClassicalAddress]) _
+          case (false, Config.Machine.AAC, Config.Lattice.Type, false) => run[SchemeExp, AbstractType, ClassicalAddress](new AAC[SchemeExp, AbstractType, ClassicalAddress], new SchemeSemantics[AbstractType, ClassicalAddress]) _
+          case (true, Config.Machine.AAC, Config.Lattice.TypeSet, true) => run[ANFExp, AbstractTypeSet, ConcreteAddress](new AAC[ANFExp, AbstractTypeSet, ConcreteAddress], new ANFSemantics[AbstractTypeSet, ConcreteAddress]) _
+          case (false, Config.Machine.AAC, Config.Lattice.TypeSet, true) => run[SchemeExp, AbstractTypeSet, ConcreteAddress](new AAC[SchemeExp, AbstractTypeSet, ConcreteAddress], new SchemeSemantics[AbstractTypeSet, ConcreteAddress]) _
+          case (true, Config.Machine.AAC, Config.Lattice.TypeSet, false) => run[ANFExp, AbstractTypeSet, ClassicalAddress](new AAC[ANFExp, AbstractTypeSet, ClassicalAddress], new ANFSemantics[AbstractTypeSet, ClassicalAddress]) _
+          case (false, Config.Machine.AAC, Config.Lattice.TypeSet, false) => run[SchemeExp, AbstractTypeSet, ClassicalAddress](new AAC[SchemeExp, AbstractTypeSet, ClassicalAddress], new SchemeSemantics[AbstractTypeSet, ClassicalAddress]) _
+          case (true, Config.Machine.Free, Config.Lattice.Concrete, true) => run[ANFExp, AbstractConcrete, ConcreteAddress](new Free[ANFExp, AbstractConcrete, ConcreteAddress], new ANFSemantics[AbstractConcrete, ConcreteAddress]) _
+          case (false, Config.Machine.Free, Config.Lattice.Concrete, true) => run[SchemeExp, AbstractConcrete, ConcreteAddress](new Free[SchemeExp, AbstractConcrete, ConcreteAddress], new SchemeSemantics[AbstractConcrete, ConcreteAddress]) _
+          case (true, Config.Machine.Free, Config.Lattice.Concrete, false) => run[ANFExp, AbstractConcrete, ClassicalAddress](new Free[ANFExp, AbstractConcrete, ClassicalAddress], new ANFSemantics[AbstractConcrete, ClassicalAddress]) _
+          case (false, Config.Machine.Free, Config.Lattice.Concrete, false) => run[SchemeExp, AbstractConcrete, ClassicalAddress](new Free[SchemeExp, AbstractConcrete, ClassicalAddress], new SchemeSemantics[AbstractConcrete, ClassicalAddress]) _
+          case (true, Config.Machine.Free, Config.Lattice.Type, true) => run[ANFExp, AbstractType, ConcreteAddress](new Free[ANFExp, AbstractType, ConcreteAddress], new ANFSemantics[AbstractType, ConcreteAddress]) _
+          case (false, Config.Machine.Free, Config.Lattice.Type, true) => run[SchemeExp, AbstractType, ConcreteAddress](new Free[SchemeExp, AbstractType, ConcreteAddress], new SchemeSemantics[AbstractType, ConcreteAddress]) _
+          case (true, Config.Machine.Free, Config.Lattice.Type, false) => run[ANFExp, AbstractType, ClassicalAddress](new Free[ANFExp, AbstractType, ClassicalAddress], new ANFSemantics[AbstractType, ClassicalAddress]) _
+          case (false, Config.Machine.Free, Config.Lattice.Type, false) => run[SchemeExp, AbstractType, ClassicalAddress](new Free[SchemeExp, AbstractType, ClassicalAddress], new SchemeSemantics[AbstractType, ClassicalAddress]) _
+          case (true, Config.Machine.Free, Config.Lattice.TypeSet, true) => run[ANFExp, AbstractTypeSet, ConcreteAddress](new Free[ANFExp, AbstractTypeSet, ConcreteAddress], new ANFSemantics[AbstractTypeSet, ConcreteAddress]) _
+          case (false, Config.Machine.Free, Config.Lattice.TypeSet, true) => run[SchemeExp, AbstractTypeSet, ConcreteAddress](new Free[SchemeExp, AbstractTypeSet, ConcreteAddress], new SchemeSemantics[AbstractTypeSet, ConcreteAddress]) _
+          case (true, Config.Machine.Free, Config.Lattice.TypeSet, false) => run[ANFExp, AbstractTypeSet, ClassicalAddress](new Free[ANFExp, AbstractTypeSet, ClassicalAddress], new ANFSemantics[AbstractTypeSet, ClassicalAddress]) _
+          case (false, Config.Machine.Free, Config.Lattice.TypeSet, false) => run[SchemeExp, AbstractTypeSet, ClassicalAddress](new Free[SchemeExp, AbstractTypeSet, ClassicalAddress], new SchemeSemantics[AbstractTypeSet, ClassicalAddress]) _
+          case _ => throw new Exception(s"Impossible configuration: $config")
+        }
+        try {
+          do {
+            val program = config.file match {
+              case Some(file) => fileContent(file)
+              case None => StdIn.readLine(">>> ")
+            }
+            if (program == null) throw Done
+            f(program, config.dotfile)
+          } while (config.file.isEmpty)
+        } catch {
+          case Done => ()
         }
       }
       case None => ()

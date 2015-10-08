@@ -5,9 +5,19 @@ import AbstractValue._
  * basically a variant of AAC with better complexity
  * TODO: global store & kstore
  */
-case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-                                                                             addr: Address[Addr], addri: AddressInjection[Addr]) {
-  sealed abstract class Control {
+case class Free[Exp : Expression, Abs, Addr]
+  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
+    ad: Address[Addr], adi: AddressInjection[Addr])
+    extends AbstractMachine[Exp, Abs, Addr] {
+  def abs = implicitly[AbstractValue[Abs]]
+  def absi = implicitly[AbstractInjection[Abs]]
+  def addr = implicitly[Address[Addr]]
+  def addri = implicitly[AddressInjection[Addr]]
+  def exp = implicitly[Expression[Exp]]
+
+  def name = "Free"
+
+  trait Control {
     def subsumes(that: Control): Boolean
     def toString(store: Store[Addr, Abs]): String = toString()
   }
@@ -68,7 +78,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
         case ActionError(err) => State(ControlError(err), σ, kstore, k)
       })
 
-    def step: Set[State] = control match {
+    def step(sem: Semantics[Exp, Abs, Addr]): Set[State] = control match {
       case ControlEval(e, ρ) => integrate(k, sem.stepEval(e, ρ, σ))
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(k).foldLeft(Set[State]())((acc, k) => k match {
@@ -92,9 +102,9 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
                                                 HaltKontAddress)),
                               initialStore, new KontStore[KontAddr]())
     override def toString = R.toString
-    def step: States = {
+    def step(sem: Semantics[Exp, Abs, Addr]): States = {
       val states = R.map(conf => State(conf.control, σ, kstore, conf.k))
-      val succs = states.flatMap(ς => ς.step)
+      val succs = states.flatMap(ς => ς.step(sem))
       val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs](), new KontStore[KontAddr]()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
       States(succs.map(ς => Configuration(ς.control, ς.k)), σ1, kstore1)
     }
@@ -102,101 +112,63 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     def toStateSet: Set[State] = R.map({ case Configuration(control, k) => State(control, σ, kstore, k) })
   }
 
-  @scala.annotation.tailrec
-  private def loopLocal(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State]): (Set[State], Graph[State]) = {
-    todo.headOption match {
-      case Some(s) =>
-        if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
-          loopLocal(todo.tail, visited, halted, graph)
-        } else if (s.halted) {
-          loopLocal(todo.tail, visited + s, halted + s, graph)
-        } else {
-          val succs = s.step
-          val newGraph = graph.addEdges(succs.map(s2 => (s, s2)))
-          loopLocal(todo.tail ++ succs, visited + s, halted, newGraph)
-        }
-      case None => (halted, graph)
-    }
-  }
-
-  def outputLocalDot(graph: Graph[State], halted: Set[State], path: String) =
-    graph.toDotFile(path, _.toString.take(40), (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
-      case ControlEval(_, _) => "#DDFFDD"
-      case ControlKont(_) => "#FFDDDD"
-      case ControlError(_) => "#FF0000"
-    }})
-
-  def evalLocal(exp: Exp, dotfile: Option[String]): Set[State] = {
-    loopLocal(Set(new State(exp)), Set(), Set(), new Graph[State]()) match {
-      case (halted, graph: Graph[State]) => {
-        println(s"${graph.size} states")
-        dotfile match {
-          case Some(file) => outputLocalDot(graph, halted, file)
-          case None => ()
-        }
-        halted
-      }
+  case class FreeOutput(halted: Set[State], graph: Option[Graph[State]])
+      extends Output[Abs] {
+    def containsFinalValue(v: Abs) = halted.exists((st) => st.control match {
+      case ControlKont(v2) => abs.subsumes(v2, v)
+    })
+    def toDotFile(path: String) = graph match {
+      case Some(g) => g.toDotFile(path, _.toString.take(40),
+        (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
+          case ControlEval(_, _) => "#DDFFDD"
+          case ControlKont(_) => "#FFDDDD"
+          case ControlError(_) => "#FF0000"
+        }})
+      case None =>
+        println("Not generating graph because no graph was computed")
     }
   }
 
   @scala.annotation.tailrec
-  private def loopWithLocalGraph(s: States, visited: Set[States], graph: Graph[State]): (Set[State], Graph[State]) = {
-    val s2 = s.step
-    if (s2.isEmpty || visited.size > 500) {
-      (s.toStateSet, graph)
-    } else {
-      /* TODO: we probably lose the "for free" when constructing the graph, since we
-       * have to take every possible combination of configurations and draw
-       * edges between them */
-      val g = graph.addEdges(s.toStateSet.flatMap(ς1 => s2.toStateSet.map(ς2 => (ς1, ς2))))
-      if (visited.contains(s2)) {
-        (s2.toStateSet, g)
-      } else {
-        loopWithLocalGraph(s2, visited + s, g)
-      }
-    }
-  }
-
-  private def loop(s: States, visited: Set[States], halted: Set[State], graph: Graph[States]): (Set[State], Graph[States]) = {
-    val s2 = s.step
-    val h = halted ++ s.toStateSet.filter(_.halted)
+  private def loopWithLocalGraph(s: States, visited: Set[States], graph: Graph[State], sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
+    val s2 = s.step(sem)
     if (s2.isEmpty) {
-      (h, graph)
+      FreeOutput(s.toStateSet, Some(graph))
     } else {
-      val g = graph.addEdge(s, s2)
+      /* TODO: we lose the "for free" when constructing the graph, since we have to
+       * take every possible combination of configurations and draw edges
+       * between them */
+      val g = graph.addEdges(s.toStateSet.flatMap(ς1 =>
+        s2.toStateSet.map(ς2 => (ς1, ς2))))
       if (visited.contains(s2)) {
-        (h, g)
+        FreeOutput(s2.toStateSet, Some(g))
       } else {
-        loop(s2, visited + s, h, g)
+        loopWithLocalGraph(s2, visited + s, g, sem)
       }
     }
   }
 
-  def outputDot(graph: Graph[States], path: String) =
-    graph.toDotFile(path, _.toString.take(40), _ => "#FFFFFF")
-
-  def evalNoGraph(exp: Exp): Set[State] = {
-    loop(new States(exp), Set(), Set(), new Graph[States]()) match {
-      case (halted, graph: Graph[States]) => {
-        val (states, confs) = (graph.size, graph.foldNodes(0)((acc, st) => acc + st.R.size))
-        println(s"$states states, $confs configurations")
-        halted
-      }
+  private def loop(s: States, visited: Set[States], halted: Set[State], sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
+    println(s)
+    val s2 = s.step(sem)
+    val h = halted ++ s.toStateSet.filter(_.halted)
+    if (s2.isEmpty || visited.contains(s2)) {
+      FreeOutput(halted, None)
+    } else {
+      loop(s2, visited + s, h, sem)
     }
   }
 
-  def evalBuildGraph(exp: Exp, dotfile: String): Set[State] = {
-    loopWithLocalGraph(new States(exp), Set(), new Graph[State]()) match {
-      case (halted, graph: Graph[State]) => {
-        println(s"${graph.size} states")
-        outputLocalDot(graph, halted, dotfile)
-        halted
-      }
-    }
-  }
+  def evalNoGraph(exp: Exp, sem: Semantics[Exp, Abs, Addr]): Output[Abs] =
+    loop(new States(exp), Set(), Set(), sem)
 
-  def eval(exp: Exp, dotfile: Option[String]): Set[State] = dotfile match {
-    case Some(file) => evalBuildGraph(exp, file)
-    case None => evalNoGraph(exp)
-  }
+  def evalBuildGraph(exp: Exp, sem: Semantics[Exp, Abs, Addr]): Output[Abs] =
+    loopWithLocalGraph(new States(exp), Set(), new Graph[State](), sem)
+
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
+    if (graph) {
+      evalBuildGraph(exp, sem)
+    } else {
+      evalNoGraph(exp, sem)
+    }
 }

@@ -151,16 +151,5 @@ object ANF {
   /**
    * Parse a string representing a Scheme program
    */
-  def parseString(s: String): ANFExp =
-    compile(Scheme.parseString(s))
-
-  /**
-   * Parse a Scheme file into a single ANF expression
-   */
-  def parse(file: String): ANFExp = {
-    val f = scala.io.Source.fromFile(file)
-    val content = f.getLines.mkString("\n")
-    f.close()
-    parseString(content)
-  }
+  def parse(s: String): ANFExp = compile(Scheme.parse(s))
 }

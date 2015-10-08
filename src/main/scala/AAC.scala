@@ -4,9 +4,19 @@ import scalaz.Scalaz._
 /**
  * Implementation of Johnson's CESIK*Ξ machine with a global continuation store
  */
-case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr]) {
-  sealed abstract class Control {
+case class AAC[Exp : Expression, Abs, Addr]
+  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
+    ad: Address[Addr], adi: AddressInjection[Addr])
+    extends AbstractMachine[Exp, Abs, Addr] {
+  def abs = implicitly[AbstractValue[Abs]]
+  def absi = implicitly[AbstractInjection[Abs]]
+  def addr = implicitly[Address[Addr]]
+  def addri = implicitly[AddressInjection[Addr]]
+  def exp = implicitly[Expression[Exp]]
+
+  def name = "AAC"
+
+  trait Control {
     def subsumes(that: Control): Boolean
     def toString(store: Store[Addr, Abs]): String = toString()
   }
@@ -197,7 +207,7 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
           case ActionError(err) => (states + State(ControlError(err), σ, ι, κ), kstore)
         }})
 
-    def step(kstore: KontStore): (Set[State], KontStore) = control match {
+    def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr]): (Set[State], KontStore) = control match {
       case ControlEval(e, ρ) => integrate(ι, κ, kstore, absi.bottom, sem.stepEval(e, ρ, σ))
       case ControlKont(v) if abs.isError(v) => (Set(), kstore)
       case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore))((acc, popped) => {
@@ -214,52 +224,57 @@ case class AAC[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(impl
     }
   }
 
+  case class AACOutput(halted: Set[State], graph: Option[Graph[State]])
+      extends Output[Abs] {
+    def containsFinalValue(v: Abs) = halted.exists((st) => st.control match {
+      case ControlKont(v2) => abs.subsumes(v2, v)
+      case _ => false
+    })
+    def toDotFile(path: String) = graph match {
+      case Some(g) => g.toDotFile(path, _.toString.take(40),
+        (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
+          case ControlEval(_, _) => "#DDFFDD"
+          case ControlKont(_) => "#FFDDDD"
+          case ControlError(_) => "#FF0000"
+        }})
+      case None =>
+        println("Not generating graph because no graph was computed")
+    }
+  }
+
   /* frontier-based state exploration */
   @scala.annotation.tailrec
-  private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Graph[State], kstore: KontStore): (Set[State], Graph[State]) = {
+  private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State]], kstore: KontStore, sem: Semantics[Exp, Abs, Addr]): AACOutput = {
     if (todo.isEmpty) {
-      (halted, graph)
+      AACOutput(halted, graph)
     } else {
       val (edges, kstore2) = todo.foldLeft((Set[(State, State)](), kstore))({ (acc, ς) =>
-        ς.step(kstore) match {
-          case (next, kstore2) => (acc._1 ++ next.map((ς2) => (ς, ς2)), acc._2.join(kstore2))
+        ς.step(kstore, sem) match {
+          case (next, kstore2) =>
+            (acc._1 ++ next.map((ς2) => (ς, ς2)), acc._2.join(kstore2))
         }
       })
       if (kstore.equals(kstore2)) {
         loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
           visited ++ todo,
           halted ++ todo.filter((ς) => ς.halted(kstore)),
-          graph.addEdges(edges),
-          kstore2)
+          graph.map(_.addEdges(edges)),
+          kstore2,
+          sem)
       } else {
         /* KontStore changed, discard set of seen states */
         loop(edges.map({ case (_, ς2) => ς2 }),
           Set(),
           halted ++ todo.filter((ς) => ς.halted(kstore)),
-          graph.addEdges(edges),
-          kstore2)
+          graph.map(_.addEdges(edges)),
+          kstore2,
+          sem)
       }
     }
   }
 
-  def outputDot(graph: Graph[State], halted: Set[State], path: String) =
-    graph.toDotFile(path, _.toString.take(40), (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
-      case ControlEval(_, _) => "#DDFFDD"
-      case ControlKont(_) => "#FFDDDD"
-      case ControlError(_) => "#FF0000"
-    }})
-
-
-  def eval(exp: Exp, dotfile: Option[String]): Set[State] = {
-    loop(Set(new State(exp)), Set(), Set(), new Graph[State](), new KontStore()) match {
-      case (halted, graph: Graph[State]) => {
-        println(s"${graph.size} states")
-        dotfile match {
-          case Some(file) => outputDot(graph, halted, file)
-          case None => ()
-        }
-        halted
-      }
-    }
-  }
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
+    loop(Set(new State(exp)), Set(), Set(),
+      if (graph) { Some(new Graph[State]()) } else { None },
+      new KontStore(), sem)
 }

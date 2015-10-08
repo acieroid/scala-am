@@ -33,6 +33,11 @@ trait Semantics[Exp, Abs, Addr] {
    * the topmost frame is frame
    */
   def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame): Set[Action[Exp, Abs, Addr]]
+
+  /**
+   * Defines how to parse a program
+   */
+  def parse(program: String): Exp
 }
 
 /**

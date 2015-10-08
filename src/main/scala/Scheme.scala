@@ -578,17 +578,5 @@ object Scheme {
   /**
    * Parse a string representing a Scheme program
    */
-  def parseString(s: String): SchemeExp = {
-    undefine(SExpParser.parse(s).map(compile _))
-  }
-
-  /**
-   * Parse a Scheme file into a single Scheme expression (replacing defines by let bindings)
-   */
-  def parse(file: String): SchemeExp = {
-    val f = scala.io.Source.fromFile(file)
-    val content = f.getLines.mkString("\n")
-    f.close()
-    parseString(content)
-  }
+  def parse(s: String): SchemeExp = undefine(SExpParser.parse(s).map(compile _))
 }
