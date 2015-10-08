@@ -119,19 +119,19 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     }
   }
 
-  def outputLocalDot(graph: Graph[State], path: String) =
-    graph.toDotFile(path, _.toString.take(40), _.control match {
+  def outputLocalDot(graph: Graph[State], halted: Set[State], path: String) =
+    graph.toDotFile(path, _.toString.take(40), (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
       case ControlEval(_, _) => "#DDFFDD"
       case ControlKont(_) => "#FFDDDD"
       case ControlError(_) => "#FF0000"
-    })
+    }})
 
   def evalLocal(exp: Exp, dotfile: Option[String]): Set[State] = {
     loopLocal(Set(new State(exp)), Set(), Set(), new Graph[State]()) match {
       case (halted, graph: Graph[State]) => {
         println(s"${graph.size} states")
         dotfile match {
-          case Some(file) => outputLocalDot(graph, file)
+          case Some(file) => outputLocalDot(graph, halted, file)
           case None => ()
         }
         halted
@@ -189,7 +189,7 @@ case class Free[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])(imp
     loopWithLocalGraph(new States(exp), Set(), new Graph[State]()) match {
       case (halted, graph: Graph[State]) => {
         println(s"${graph.size} states")
-        outputLocalDot(graph, dotfile)
+        outputLocalDot(graph, halted, dotfile)
         halted
       }
     }

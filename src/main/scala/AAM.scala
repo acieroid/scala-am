@@ -184,12 +184,12 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])
   /**
    * Outputs the graph in a dot file
    */
-  private def outputDot(graph: Graph[State], path: String) =
-    graph.toDotFile(path, _.toString.take(40), _.control match {
+  private def outputDot(graph: Graph[State], halted: Set[State], path: String) =
+    graph.toDotFile(path, _.toString.take(40), (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
       case ControlEval(_, _) => "#DDFFDD"
       case ControlKont(_) => "#FFDDDD"
       case ControlError(_) => "#FF0000"
-    })
+    }})
 
   /**
    * Performs the evaluation of an expression, possibly writing the output graph
@@ -201,7 +201,7 @@ case class AAM[Abs, Addr, Exp : Expression](sem: Semantics[Exp, Abs, Addr])
       case (halted, graph: Graph[State]) => {
         println(s"${graph.size} states")
         dotfile match {
-          case Some(file) => outputDot(graph, file)
+          case Some(file) => outputDot(graph, halted, file)
           case None => ()
         }
         halted
