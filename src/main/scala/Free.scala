@@ -89,7 +89,8 @@ case class Free[Exp : Expression, Abs, Addr]
 
     def halted = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => k.equals(HaltKontAddress) || abs.isError(v)
+      case ControlKont(v) =>
+        k.equals(HaltKontAddress) || abs.isError(v)
       case ControlError(_) => true
     }
   }
@@ -133,7 +134,7 @@ case class Free[Exp : Expression, Abs, Addr]
   private def loopWithLocalGraph(s: States, visited: Set[States], graph: Graph[State], sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
     val s2 = s.step(sem)
     if (s2.isEmpty) {
-      FreeOutput(s.toStateSet, Some(graph))
+      FreeOutput(s.toStateSet.filter(_.halted), Some(graph))
     } else {
       /* TODO: we lose the "for free" when constructing the graph, since we have to
        * take every possible combination of configurations and draw edges
@@ -153,7 +154,7 @@ case class Free[Exp : Expression, Abs, Addr]
     val s2 = s.step(sem)
     val h = halted ++ s.toStateSet.filter(_.halted)
     if (s2.isEmpty || visited.contains(s2)) {
-      FreeOutput(halted, None)
+      FreeOutput(h, None)
     } else {
       loop(s2, visited + s, h, sem)
     }
