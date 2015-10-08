@@ -1,11 +1,19 @@
 import org.scalatest._
 import org.scalatest.prop._
 
-abstract class Benchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+abstract class Benchmarks[Exp, Abs, Addr]
+  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends FlatSpec with Matchers {
-  def checkResult(file: String, expected: Abs): Unit
-  def check(file: String, expected: Abs) =
+  val sem: Semantics[Exp, Abs, Addr]
+  val machine: AbstractMachine[Exp, Abs, Addr]
+
+  def checkResult(file: String, expected: Abs): Unit = {
+    println(s"Testing $file (${machine.name})")
+    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
+    assert(result.containsFinalValue(expected))
+  }
+  def check(file: String, expected: Abs): Unit =
     file should s"eval to $expected" in { checkResult(file, expected) }
 
   check("blur.scm", absi.inject(true))
@@ -30,43 +38,28 @@ abstract class Benchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abs
   //check("nqueens.scm", absi.inject(92))
 }
 
-abstract class AACBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr])
-    extends Benchmarks[Abs, Addr] {
+abstract class AACBenchmarks[Abs, Addr]
+  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+    addr: Address[Addr], addri: AddressInjection[Addr])
+    extends Benchmarks[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAC[SchemeExp, Abs, Addr]
-
-  def checkResult(file: String, expected: Abs) = {
-    println(s"Testing $file (AAC)")
-    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
-    assert(result.containsFinalValue(expected))
-  }
 }
 
-abstract class AAMBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr])
-    extends Benchmarks[Abs, Addr] {
+abstract class AAMBenchmarks[Abs, Addr]
+  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+    addr: Address[Addr], addri: AddressInjection[Addr])
+    extends Benchmarks[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAM[SchemeExp, Abs, Addr]
-
-  def checkResult(file: String, expected: Abs) = {
-    println(s"Testing $file (AAM)")
-    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
-    assert(result.containsFinalValue(expected))
-  }
 }
 
-abstract class FreeBenchmarks[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr])
-    extends Benchmarks[Abs, Addr] {
+abstract class FreeBenchmarks[Abs, Addr]
+  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+    addr: Address[Addr], addri: AddressInjection[Addr])
+    extends Benchmarks[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new Free[SchemeExp, Abs, Addr]
-
-  def checkResult(file: String, expected: Abs) = {
-    println(s"Testing $file (Free)")
-    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
-    assert(result.containsFinalValue(expected))
-  }
 }
 
 /* Concrete tests are disabled because of cpstak takes too much time to compute since it requires more than 75k recursive calls */

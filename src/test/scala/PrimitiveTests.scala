@@ -8,10 +8,16 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
   * not tested (because they aren't given any test case in R5RS). Unsupported
   * primitives with test cases defined in R5RS are explicitely stated in
   * comments. If you're bored, you can implement some of them. */
-abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+abstract class Tests[Exp : Expression, Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
-  def checkResult(program: String, answer: Abs): Unit
+  val sem: Semantics[Exp, Abs, Addr]
+  val machine: AbstractMachine[Exp, Abs, Addr]
+
+  def checkResult(program: String, answer: Abs) = {
+    val result = machine.eval(sem.parse(program), sem, false)
+    assert(result.containsFinalValue(answer))
+  }
   def check(table: TableFor2[String, Abs]) =
     forAll (table) { (program: String, answer: Abs) =>
       checkResult(program, answer)
@@ -193,40 +199,25 @@ abstract class Tests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstract
 
 abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
-    extends Tests[Abs, Addr] {
+    extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAM[SchemeExp, Abs, Addr]
-
-  def checkResult(program: String, answer: Abs) = {
-    val result = machine.eval(sem.parse(program), sem, false)
-    assert(result.containsFinalValue(answer))
-  }
 }
 
 
 abstract class AACTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
-    extends Tests[Abs, Addr] {
+    extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAC[SchemeExp, Abs, Addr]
-
-  def checkResult(program: String, answer: Abs) = {
-    val result = machine.eval(sem.parse(program), sem, false)
-    assert(result.containsFinalValue(answer))
-  }
 }
 
 
 abstract class FreeTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
-    extends Tests[Abs, Addr] {
+    extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new Free[SchemeExp, Abs, Addr]
-
-  def checkResult(program: String, answer: Abs) = {
-    val result = machine.eval(sem.parse(program), sem, false)
-    assert(result.containsFinalValue(answer))
-  }
 }
 
 
