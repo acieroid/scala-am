@@ -228,19 +228,25 @@ class SchemeSemantics[Abs, Addr]
       case None => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
     }
   }
-  override def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
-    case SchemeFuncall(f, args) => atomicEval(f, ρ, σ) match {
-      case Some(v) => super.stepKont(v, σ, FrameFuncallOperator(f, args, ρ))
-      case None => super.stepEval(e, ρ, σ)
-    }
-    case SchemeIf(cond, cons, alt) => atomicEval(cond, ρ, σ) match {
-      case Some(v) => super.stepKont(v, σ, FrameIf(cons, alt, ρ))
-      case None => super.stepEval(e, ρ, σ)
-    }
-    case SchemeSet(variable, exp) => atomicEval(exp) match {
-      case Some(v) => super.stepKont(v, σ, FrameSet(variable, ρ))
-      case None => super.stepEval(e, ρ, σ)
-    }
-    case _ => super.stepEval(e, ρ, σ)
+
+  /**
+   * Optimize the following pattern: when we see an ActionPush(exp, frame, ρ, σ)
+   * where exp is an atomic expression, we can atomically evaluate exp to get v,
+   * and call stepKont(v, σ, frame).
+   */
+  protected def optimizeAtomic(actions: Set[Action[SchemeExp, Abs, Addr]]): Set[Action[SchemeExp, Abs, Addr]] = {
+    actions.flatMap({
+      case ActionPush(exp, frame, ρ, σ) => atomicEval(exp, ρ, σ) match {
+        case Some(v) => stepKont(v, σ, frame)
+        case None => Set[Action[SchemeExp, Abs, Addr]](ActionPush(exp, frame, ρ, σ))
+      }
+      case action => Set[Action[SchemeExp, Abs, Addr]](action)
+    })
   }
+
+  override def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) =
+    optimizeAtomic(super.stepEval(e, ρ, σ))
+
+  override def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) =
+    optimizeAtomic(super.stepKont(v, σ, frame))
 }
