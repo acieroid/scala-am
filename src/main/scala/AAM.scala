@@ -162,12 +162,17 @@ case class AAM[Exp : Expression, Abs, Addr]
       extends Output[Abs] {
 
     /**
+     * Returns the list of final values that can be reached
+     */
+    def finalValues = halted.flatMap(st => st.control match {
+      case ControlKont(v) => Set[Abs](v)
+      case _ => Set[Abs]()
+    })
+
+    /**
      * Checks if a halted state contains a value that subsumes @param v
      */
-    def containsFinalValue(v: Abs) = halted.exists((st) => st.control match {
-      case ControlKont(v2) => abs.subsumes(v2, v)
-      case _ => false
-    })
+    def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
 
     /**
      * Outputs the graph in a dot file

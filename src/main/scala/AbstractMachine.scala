@@ -1,6 +1,7 @@
 import AbstractValue._
 
 trait Output[Abs] {
+  def finalValues: Set[Abs]
   def containsFinalValue(v: Abs): Boolean
   def toDotFile(path: String): Unit
 }

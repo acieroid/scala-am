@@ -226,10 +226,11 @@ case class AAC[Exp : Expression, Abs, Addr]
 
   case class AACOutput(halted: Set[State], graph: Option[Graph[State]])
       extends Output[Abs] {
-    def containsFinalValue(v: Abs) = halted.exists((st) => st.control match {
-      case ControlKont(v2) => abs.subsumes(v2, v)
-      case _ => false
+    def finalValues = halted.flatMap(st => st.control match {
+      case ControlKont(v) => Set[Abs](v)
+      case _ => Set[Abs]()
     })
+    def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, _.toString.take(40),
         (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
