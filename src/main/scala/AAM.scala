@@ -212,10 +212,18 @@ case class AAM[Exp : Expression, Abs, Addr]
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
+          /* If we already visited the state, or if it is subsumed by another already
+           * visited state, we ignore it. The subsumption part reduces the
+           * number of visited states but leads to non-determinism due to the
+           * non-determinism of Scala's headOption (it seems so at least). */
           loop(todo.tail, visited, halted, startingTime, graph, sem)
         } else if (s.halted) {
+          /* If the state is a final state, add it to the list of final states and
+           * continue exploring the graph */
           loop(todo.tail, visited + s, halted + s, startingTime, graph, sem)
         } else {
+          /* Otherwise, compute the successors of this state, update the graph, and push
+           * the new successors on the todo list */
           val succs = s.step(sem)
           val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, s2))))
           loop(todo.tail ++ succs, visited + s, halted, startingTime, newGraph, sem)
