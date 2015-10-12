@@ -8,6 +8,10 @@ Control-Flow Analyses).
 To find out about the architecture of the implementation, look at the comments
 on the top of Main.scala (src/main/scala/Main.scala). They will bring you to
 other parts of the code that are worth seeing.
+
+When doing modification to the source code, you can run the test suite to test
+your changes by running =sbt test=. It should take a few minutes to run
+everything and will report which tests are failing if there are any.
 * Usage
 Use sbt to launch the program. Once sbt is launched and has installed the
 dependencies, you can perform the following:
