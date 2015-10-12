@@ -9,9 +9,9 @@ abstract class Benchmarks[Exp, Abs, Addr]
   val machine: AbstractMachine[Exp, Abs, Addr]
 
   def checkResult(file: String, expected: Abs): Unit = {
-    println(s"Testing $file (${machine.name})")
     val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
     assert(result.containsFinalValue(expected))
+    println(s"${machine.name}, $file: ${result.numberOfStates}, ${result.time}")
   }
   def check(file: String, expected: Abs): Unit =
     file should s"eval to $expected" in { checkResult(file, expected) }
@@ -32,10 +32,18 @@ abstract class Benchmarks[Exp, Abs, Addr]
   check("rotate.scm", absi.inject("hallo"))
   check("sq.scm", absi.inject(9))
   check("sym.scm", absi.injectSymbol("foo"))
-  //check("rsa.scm", absi.inject(true))
-  //check("sat.scm", absi.inject(true))
-  //check("primtest.scm", absi.inject(1))
-  //check("nqueens.scm", absi.inject(92))
+  check("ack.scm", absi.inject(4))
+  check("collatz.scm", absi.inject(5))
+  check("widen.scm", absi.inject(10))
+  /* The following tests are disabled because they can take a long time to evaluate */
+  // check("rsa.scm", absi.inject(true))
+  // check("sat.scm", absi.inject(true))
+  // check("primtest.scm", absi.inject(1))
+  // check("nqueens.scm", absi.inject(92))
+  // check("church.scm", absi.inject(true))
+  // check("boyer.scm", absi.inject(true))
+  // check("dderiv.scm", absi.inject(true))
+  // check("takl.scm", absi.inject(true))
 }
 
 abstract class AACBenchmarks[Abs, Addr]
