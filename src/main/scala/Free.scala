@@ -135,25 +135,20 @@ case class Free[Exp : Expression, Abs, Addr]
 
   @scala.annotation.tailrec
   private def loopWithLocalGraph(s: States, visited: Set[States],
-    startingTime: Long, graph: Graph[State], sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
+    halted: Set[State], startingTime: Long, graph: Graph[State],
+    sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
     val s2 = s.step(sem)
-    if (s2.isEmpty) {
-      FreeOutput(s.toStateSet.filter(_.halted),
-        visited.foldLeft(0)((acc, s) => acc + s.size),
+    val h = halted ++ s.toStateSet.filter(_.halted)
+    if (s2.isEmpty || visited.contains(s2)) {
+      FreeOutput(h, visited.foldLeft(0)((acc, s) => acc + s.size),
         (System.nanoTime - startingTime) / Math.pow(10, 9), Some(graph))
     } else {
       /* TODO: we lose the "for free" when constructing the graph, since we have to
        * take every possible combination of configurations and draw edges
        * between them */
-      val g = graph.addEdges(s.toStateSet.flatMap(ς1 =>
-        s2.toStateSet.map(ς2 => (ς1, ς2))))
-      if (visited.contains(s2)) {
-        FreeOutput(s2.toStateSet,
-          visited.foldLeft(0)((acc, s) => acc + s.size),
-          (System.nanoTime - startingTime) / Math.pow(10, 9), Some(g))
-      } else {
-        loopWithLocalGraph(s2, visited + s, startingTime, g, sem)
-      }
+      loopWithLocalGraph(s2, visited + s, h, startingTime,
+        graph.addEdges(s.toStateSet.flatMap(ς1 =>
+          s2.toStateSet.map(ς2 => (ς1, ς2)))), sem)
     }
   }
 
@@ -173,7 +168,7 @@ case class Free[Exp : Expression, Abs, Addr]
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
     if (graph) {
-      loopWithLocalGraph(new States(exp), Set(), System.nanoTime, new Graph[State](), sem)
+      loopWithLocalGraph(new States(exp), Set(), Set(), System.nanoTime, new Graph[State](), sem)
     } else {
       loop(new States(exp), Set(), Set(), System.nanoTime, sem)
     }
