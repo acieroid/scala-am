@@ -20,6 +20,16 @@ trait Output[Abs] {
   def containsFinalValue(v: Abs): Boolean
 
   /**
+   * Returns the number of states visited to evaluate the program
+   */
+  def numberOfStates: Int
+
+  /**
+   * Returns the time it took to evaluate the program
+   */
+  def time: Double
+
+  /**
    * Outputs the graph computed by the machine in a dot file
    */
   def toDotFile(path: String): Unit

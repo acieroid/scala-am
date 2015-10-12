@@ -158,7 +158,7 @@ case class AAM[Exp : Expression, Abs, Addr]
     }
   }
 
-  case class AAMOutput(halted: Set[State], graph: Option[Graph[State]])
+  case class AAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
       extends Output[Abs] {
 
     /**
@@ -173,6 +173,16 @@ case class AAM[Exp : Expression, Abs, Addr]
      * Checks if a halted state contains a value that subsumes @param v
      */
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
+
+    /**
+     * Returns the number of visited states
+     */
+    def numberOfStates = count
+
+    /**
+     * Returns the time taken to evaluate the expression
+     */
+    def time = t
 
     /**
      * Outputs the graph in a dot file
@@ -198,26 +208,22 @@ case class AAM[Exp : Expression, Abs, Addr]
    * @return the final states as well as the computed graph
    */
   @scala.annotation.tailrec
-  private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State]], sem: Semantics[Exp, Abs, Addr]): AAMOutput =
+  private def loop(todo: Set[State], visited: Set[State],
+    halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
+    sem: Semantics[Exp, Abs, Addr]): AAMOutput =
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
-          /* Non-determinism arises in the number of explored states because of the
-           * subsumption checking, and the fact that sets are not ordered: if a
-           * "bigger" state is explored first, it might cut off a large chunk of
-           * the exploration space, while if it is explored later, the explored
-           * state space might be bigger. Disabling subsumption checking leads
-           * to a deterministic amount of states, but enabling it can reduce
-           * this number of states, and never increases it. */
-          loop(todo.tail, visited, halted, graph, sem)
+          loop(todo.tail, visited, halted, startingTime, graph, sem)
         } else if (s.halted) {
-          loop(todo.tail, visited + s, halted + s, graph, sem)
+          loop(todo.tail, visited + s, halted + s, startingTime, graph, sem)
         } else {
           val succs = s.step(sem)
           val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, s2))))
-          loop(todo.tail ++ succs, visited + s, halted, newGraph, sem)
+          loop(todo.tail ++ succs, visited + s, halted, startingTime, newGraph, sem)
         }
-      case None => AAMOutput(halted, graph)
+      case None => AAMOutput(halted, visited.size,
+        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     }
 
   /**
@@ -225,7 +231,7 @@ case class AAM[Exp : Expression, Abs, Addr]
    * in a file, and returns the set of final states reached
    */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
-    loop(Set(new State(exp)), Set(), Set(),
+    loop(Set(new State(exp)), Set(), Set(), System.nanoTime,
       if (graph) { Some(new Graph[State]()) } else { None },
       sem)
 }

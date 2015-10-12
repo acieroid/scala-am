@@ -111,15 +111,18 @@ case class Free[Exp : Expression, Abs, Addr]
     }
     def isEmpty = R.isEmpty
     def toStateSet: Set[State] = R.map({ case Configuration(control, k) => State(control, σ, kstore, k) })
+    def size: Int = R.size
   }
 
-  case class FreeOutput(halted: Set[State], graph: Option[Graph[State]])
+  case class FreeOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     })
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
+    def numberOfStates = count
+    def time = t
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, _.toString.take(40),
         (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
@@ -133,10 +136,13 @@ case class Free[Exp : Expression, Abs, Addr]
   }
 
   @scala.annotation.tailrec
-  private def loopWithLocalGraph(s: States, visited: Set[States], graph: Graph[State], sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
+  private def loopWithLocalGraph(s: States, visited: Set[States],
+    startingTime: Long, graph: Graph[State], sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
     val s2 = s.step(sem)
     if (s2.isEmpty) {
-      FreeOutput(s.toStateSet.filter(_.halted), Some(graph))
+      FreeOutput(s.toStateSet.filter(_.halted),
+        visited.foldLeft(0)((acc, s) => acc + s.size),
+        (System.nanoTime - startingTime) / Math.pow(10, 9), Some(graph))
     } else {
       /* TODO: we lose the "for free" when constructing the graph, since we have to
        * take every possible combination of configurations and draw edges
@@ -144,33 +150,33 @@ case class Free[Exp : Expression, Abs, Addr]
       val g = graph.addEdges(s.toStateSet.flatMap(ς1 =>
         s2.toStateSet.map(ς2 => (ς1, ς2))))
       if (visited.contains(s2)) {
-        FreeOutput(s2.toStateSet, Some(g))
+        FreeOutput(s2.toStateSet,
+          visited.foldLeft(0)((acc, s) => acc + s.size),
+          (System.nanoTime - startingTime) / Math.pow(10, 9), Some(g))
       } else {
-        loopWithLocalGraph(s2, visited + s, g, sem)
+        loopWithLocalGraph(s2, visited + s, startingTime, g, sem)
       }
     }
   }
 
-  private def loop(s: States, visited: Set[States], halted: Set[State], sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
+  private def loop(s: States, visited: Set[States],
+    halted: Set[State], startingTime: Long,
+    sem: Semantics[Exp, Abs, Addr]): Output[Abs] = {
     val s2 = s.step(sem)
     val h = halted ++ s.toStateSet.filter(_.halted)
     if (s2.isEmpty || visited.contains(s2)) {
-      FreeOutput(h, None)
+      FreeOutput(h, visited.foldLeft(0)((acc, s) => acc + s.size),
+        (System.nanoTime - startingTime) / Math.pow(10, 9),
+        None)
     } else {
-      loop(s2, visited + s, h, sem)
+      loop(s2, visited + s, h, startingTime, sem)
     }
   }
 
-  def evalNoGraph(exp: Exp, sem: Semantics[Exp, Abs, Addr]): Output[Abs] =
-    loop(new States(exp), Set(), Set(), sem)
-
-  def evalBuildGraph(exp: Exp, sem: Semantics[Exp, Abs, Addr]): Output[Abs] =
-    loopWithLocalGraph(new States(exp), Set(), new Graph[State](), sem)
-
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
     if (graph) {
-      evalBuildGraph(exp, sem)
+      loop(new States(exp), Set(), Set(), System.nanoTime, sem)
     } else {
-      evalNoGraph(exp, sem)
+      loopWithLocalGraph(new States(exp), Set(), System.nanoTime, new Graph[State](), sem)
     }
 }

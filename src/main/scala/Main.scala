@@ -109,8 +109,7 @@ object Main {
       case Some(f) => result.toDotFile(f)
       case None => ()
     }
-    // TODO: print number of states
-    println(s"${result.finalValues.size} possible results: ${result.finalValues}")
+    println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
   }
 
   object Done extends Exception

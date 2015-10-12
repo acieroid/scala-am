@@ -224,13 +224,15 @@ case class AAC[Exp : Expression, Abs, Addr]
     }
   }
 
-  case class AACOutput(halted: Set[State], graph: Option[Graph[State]])
+  case class AACOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     })
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
+    def numberOfStates = count
+    def time = t
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, _.toString.take(40),
         (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
@@ -245,9 +247,12 @@ case class AAC[Exp : Expression, Abs, Addr]
 
   /* frontier-based state exploration */
   @scala.annotation.tailrec
-  private def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State]], kstore: KontStore, sem: Semantics[Exp, Abs, Addr]): AACOutput = {
+  private def loop(todo: Set[State], visited: Set[State],
+    halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
+    kstore: KontStore, sem: Semantics[Exp, Abs, Addr]): AACOutput = {
     if (todo.isEmpty) {
-      AACOutput(halted, graph)
+      AACOutput(halted, visited.size,
+        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     } else {
       val (edges, kstore2) = todo.foldLeft((Set[(State, State)](), kstore))({ (acc, ς) =>
         ς.step(kstore, sem) match {
@@ -259,6 +264,7 @@ case class AAC[Exp : Expression, Abs, Addr]
         loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
           visited ++ todo,
           halted ++ todo.filter((ς) => ς.halted(kstore)),
+          startingTime,
           graph.map(_.addEdges(edges)),
           kstore2,
           sem)
@@ -267,6 +273,7 @@ case class AAC[Exp : Expression, Abs, Addr]
         loop(edges.map({ case (_, ς2) => ς2 }),
           Set(),
           halted ++ todo.filter((ς) => ς.halted(kstore)),
+          startingTime,
           graph.map(_.addEdges(edges)),
           kstore2,
           sem)
@@ -275,7 +282,7 @@ case class AAC[Exp : Expression, Abs, Addr]
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
-    loop(Set(new State(exp)), Set(), Set(),
+    loop(Set(new State(exp)), Set(), Set(), System.nanoTime,
       if (graph) { Some(new Graph[State]()) } else { None },
       new KontStore(), sem)
 }
