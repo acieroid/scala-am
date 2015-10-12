@@ -1,7 +1,7 @@
 /**
- * This is where the semantics of a language are defined. By defining the
- * semantics of a language, you get an abstract abstract machine for free (but
- * you might need to adapt existing lattices to support values from your
+ * This is where the interface of a language's semantics is defined. By defining
+ * the semantics of a language, you get an abstract abstract machine for free
+ * (but you might need to adapt existing lattices to support values from your
  * language).
  *
  * Semantics should be defined as small-step operational semantics. To define a
@@ -13,8 +13,8 @@
  *   2. Continuing evaluation when a value v has been reached (stepKont)
  *
  * To have a simple overview of how semantics should be defined, look at the
- * ANFSemantics class, as it defines semantics of ANF Scheme, a very lightweight
- * language.
+ * ANFSemantics.scala, as it defines semantics of ANF Scheme, a very lightweight
+ * language. A more complex definition resides in SchemeSemantics.scala.
  */
 
 trait Semantics[Exp, Abs, Addr] {
@@ -45,11 +45,13 @@ trait Semantics[Exp, Abs, Addr] {
  */
 abstract class Action[Exp : Expression, Abs : AbstractValue, Addr : Address]
 /**
- * A value is reached by the interpreter. As a result, a continuation will be popped with the given reached value.
+ * A value is reached by the interpreter. As a result, a continuation will be
+ * popped with the given reached value.
  */
 case class ActionReachedValue[Exp : Expression, Abs : AbstractValue, Addr : Address](v: Abs, σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 /**
- * A frame needs to be pushed on the stack, and the interpretation continues by evaluating expression e in environment ρ
+ * A frame needs to be pushed on the stack, and the interpretation continues by
+ * evaluating expression e in environment ρ
  */
 case class ActionPush[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, frame: Frame, ρ: Environment[Addr], σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 /**
