@@ -173,8 +173,8 @@ case class Free[Exp : Expression, Abs, Addr]
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
     if (graph) {
-      loop(new States(exp), Set(), Set(), System.nanoTime, sem)
-    } else {
       loopWithLocalGraph(new States(exp), Set(), System.nanoTime, new Graph[State](), sem)
+    } else {
+      loop(new States(exp), Set(), Set(), System.nanoTime, sem)
     }
 }
