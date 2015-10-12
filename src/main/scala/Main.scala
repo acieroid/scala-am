@@ -1,4 +1,3 @@
-import AbstractValue._
 import scala.io.StdIn
 
 /**

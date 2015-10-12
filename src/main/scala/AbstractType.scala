@@ -1,5 +1,3 @@
-import AbstractValue._
-
 /** Simple type lattice, where incompatible elements get promoted to Top */
 trait AbstractType {
   def isTrue: Boolean = true

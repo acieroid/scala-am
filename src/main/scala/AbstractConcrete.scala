@@ -1,5 +1,3 @@
-import AbstractValue._
-
 /** Concrete value lattice. Throws errors when joining elements (and therefore
     has to be used only with a infinite precision allocator) */
 trait AbstractConcrete {

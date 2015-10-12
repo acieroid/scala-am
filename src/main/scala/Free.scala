@@ -1,5 +1,3 @@
-import AbstractValue._
-
 /**
  * Implementation of "Pushdown Control-Flow Analysis for Free", which is
  * basically a variant of AAC with better complexity

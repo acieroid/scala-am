@@ -1,5 +1,3 @@
-import AbstractValue._
-
 /**
  * Implementation of a CESK machine following the AAM approach (Van Horn, David,
  * and Matthew Might. "Abstracting abstract machines." ACM Sigplan

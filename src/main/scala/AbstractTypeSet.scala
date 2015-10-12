@@ -1,5 +1,3 @@
-import AbstractValue._
-
 /* Type lattice (with precise bools) that joins incompatible elements into a set. No top element is therefore needed */
 trait AbstractTypeSet {
   def isTrue: Boolean = true
