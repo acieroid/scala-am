@@ -243,7 +243,7 @@ case class AAC[Exp : Expression, Abs, Addr]
           }).diff(G)
           val GuG2 = G.union(G2)
           kstore.lookup(τ).map({
-            case (ι, KontEmpty) => true
+            case (ι, KontEmpty) => ι.isEmpty
             case (ι, κ) => ι.deconstruct match {
               case None => false
               case Some((top, rest)) => false
