@@ -167,6 +167,7 @@ case class SchemeIdentifier(name: String) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeIdentifier] && pos == that.asInstanceOf[SchemeIdentifier].pos && super.equals(that)
   override def toString() = name
 }
+
 /**
  * A quoted expression: '(foo (bar baz))
  *  The quoted expression is *not* converted to a Scheme expression, and remains
@@ -176,12 +177,21 @@ case class SchemeQuoted(quoted: SExp) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeQuoted] && pos == that.asInstanceOf[SchemeQuoted].pos && super.equals(that)
   override def toString() = s"'$quoted"
 }
+
 /**
  * A literal value (number, symbol, string, ...)
  */
 case class SchemeValue(value: Value) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeValue] && pos == that.asInstanceOf[SchemeValue].pos && super.equals(that)
   override def toString() = value.toString
+}
+
+/**
+ * Compare-and-swap, concurrency synchronization primitive.
+ */
+case class SchemeCas(variable: String, eold: SchemeExp, enew: SchemeExp) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeCas] && pos == that.asInstanceOf[SchemeCas].pos && super.equals(that)
+  override def toString() = s"(cas $variable $eold $enew)"
 }
 
 /**
@@ -249,6 +259,12 @@ object SchemeCompiler {
         SExpPair(SExpPair(SExpIdentifier(name), args),
           SExpPair(first, rest))) =>
         SchemeDefineFunction(name, compileArgs(args), compile(first) :: compileBody(rest))
+      case SExpPair(SExpIdentifier("cas"),
+        SExpPair(SExpIdentifier(variable),
+          SExpPair(eold, SExpPair(enew, SExpValue(ValueNil()))))) =>
+        SchemeCas(variable, compile(eold), compile(enew))
+      case SExpPair(SExpIdentifier("cas"), _) =>
+        throw new Exception(s"Invalid Scheme cas: $exp")
       case SExpPair(f, args) =>
         SchemeFuncall(compile(f), compileBody(args))
       case SExpIdentifier(name) => if (reserved.contains(name)) {
@@ -547,12 +563,13 @@ object SchemeUndefiner {
         case SchemeSet(variable, value) => SchemeSet(variable, undefine1(value))
         case SchemeBegin(exps) => SchemeBegin(undefineBody(exps))
         case SchemeCond(clauses) => SchemeCond(clauses.map({ case (cond, body) => (undefine1(cond), undefineBody(body)) }))
-        case SchemeCase(key, clauses, default) => SchemeCase(undefine1(key), clauses.map({ case (vs, body) => (vs, undefineBody(body)) }), undefineBody(default)).setPos(exps.head.pos)
-        case SchemeAnd(args) => SchemeAnd(args.map(undefine1)).setPos(exps.head.pos)
-        case SchemeOr(args) => SchemeOr(args.map(undefine1)).setPos(exps.head.pos)
-        case SchemeIdentifier(name) => SchemeIdentifier(name).setPos(exps.head.pos)
-        case SchemeQuoted(quoted) => SchemeQuoted(quoted).setPos(exps.head.pos)
-        case SchemeValue(value) => SchemeValue(value).setPos(exps.head.pos)
+        case SchemeCase(key, clauses, default) => SchemeCase(undefine1(key), clauses.map({ case (vs, body) => (vs, undefineBody(body)) }), undefineBody(default))
+        case SchemeAnd(args) => SchemeAnd(args.map(undefine1))
+        case SchemeOr(args) => SchemeOr(args.map(undefine1))
+        case SchemeIdentifier(name) => SchemeIdentifier(name)
+        case SchemeQuoted(quoted) => SchemeQuoted(quoted)
+        case SchemeValue(value) => SchemeValue(value)
+        case SchemeCas(variable, eold, enew) => SchemeCas(variable, eold, enew)
       }
       exp2.setPos(exp.pos) :: undefineBody(rest)
     }

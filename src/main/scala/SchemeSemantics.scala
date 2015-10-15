@@ -22,6 +22,8 @@ class BaseSchemeSemantics[Abs, Addr]
   case class FrameAnd(rest: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
   case class FrameOr(rest: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
   case class FrameDefine(variable: String, ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameCasOld(variable: String, enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameCasNew(variable: String, old: Abs, ρ: Environment[Addr]) extends SchemeFrame
   object FrameHalt extends SchemeFrame {
     override def toString() = "FHalt"
   }
@@ -143,6 +145,7 @@ class BaseSchemeSemantics[Abs, Addr]
       case Some(v) => Set(ActionReachedValue(v, σ))
       case None => Set(ActionError(s"Unhandled value: $v"))
     }
+    case SchemeCas(variable, eold, enew) => Set(ActionPush(eold, FrameCasOld(variable, enew, ρ), ρ, σ))
   }
 
   def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {
@@ -197,6 +200,17 @@ class BaseSchemeSemantics[Abs, Addr]
     case FrameOr(e :: rest, ρ) =>
       conditional(v, ActionReachedValue(v, σ), ActionPush(e, FrameOr(rest, ρ), ρ, σ))
     case FrameDefine(name, ρ) => throw new Exception(s"TODO: define not handled (no global environment)")
+    case FrameCasOld(variable, enew, ρ) =>
+      Set(ActionPush(enew, FrameCasNew(variable, v, ρ), ρ, σ))
+    case FrameCasNew(variable, old, ρ) =>
+      ρ.lookup(variable) match {
+        case Some(a) => conditional(abs.eq(σ.lookup(a), old),
+          /* Compare and swap succeeds */
+          ActionReachedValue(absi.inject(true), σ.update(a, v)),
+          /* Compare and swap fails */
+          ActionReachedValue(absi.inject(false), σ))
+        case None => Set(ActionError(s"Unbound variable: $variable"))
+      }
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)
