@@ -27,7 +27,7 @@ class BaseSchemeSemantics[Abs, Addr]
   }
 
   protected def evalBody(body: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Action[SchemeExp, Abs, Addr] = body match {
-    case Nil => ActionReachedValue(absi.bottom /* TODO: undefined */, σ)
+    case Nil => ActionReachedValue(absi.inject(false), σ)
     case List(exp) => ActionEval(exp, ρ, σ)
     case exp :: rest => ActionPush(exp, FrameBegin(rest, ρ), ρ, σ)
   }
@@ -174,14 +174,14 @@ class BaseSchemeSemantics[Abs, Addr]
     case FrameLetrec(addr, (addr1, exp) :: rest, body, ρ) =>
       Set(ActionPush(exp, FrameLetrec(addr1, rest, body, ρ), ρ, σ.update(addr, v)))
     case FrameSet(name, ρ) => ρ.lookup(name) match {
-      case Some(a) => Set(ActionReachedValue(absi.bottom /* TODO: undefined */, σ.update(a, v)))
+      case Some(a) => Set(ActionReachedValue(absi.inject(false), σ.update(a, v)))
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
     case FrameBegin(body, ρ) => Set(evalBody(body, ρ, σ))
     case FrameCond(cons, clauses, ρ) =>
       conditional(v, if (cons.isEmpty) { ActionReachedValue(v, σ) } else { evalBody(cons, ρ, σ) },
         clauses match {
-          case Nil => ActionReachedValue(absi.bottom /* TODO: undefined */, σ)
+          case Nil => ActionReachedValue(absi.inject(false), σ)
           case (exp, cons2) :: rest => ActionPush(exp, FrameCond(cons2, rest, ρ), ρ, σ)
         })
     case FrameCase(clauses, default, ρ) => throw new Exception(s"TODO: case not handled (yet)")

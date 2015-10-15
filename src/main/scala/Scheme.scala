@@ -206,8 +206,8 @@ object SchemeCompiler {
         SchemeIf(compile(cond), compile(cons), compile(alt))
       case SExpPair(SExpIdentifier("if"),
         SExpPair(cond, SExpPair(cons, SExpValue(ValueNil())))) =>
-        /* Empty else branch is replaced by (begin) */
-        SchemeIf(compile(cond), compile(cons), SchemeBegin(List()))
+        /* Empty else branch is replaced by #f (R5RS states it's unspecified) */
+        SchemeIf(compile(cond), compile(cons), SchemeValue(ValueBoolean(false)))
       case SExpPair(SExpIdentifier("if"), _) =>
         throw new Exception(s"Invalid Scheme if: $exp (${exp.pos})")
       case SExpPair(SExpIdentifier("let"),

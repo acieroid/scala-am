@@ -113,7 +113,6 @@ trait AbstractInjection[A] {
   def cons[Addr : Address](car: Addr, cdr: Addr): A
   /** Nil value */
   def nil: A
-
 }
 
 /** This is where we define (Scheme) primitives */
