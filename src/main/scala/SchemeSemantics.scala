@@ -187,10 +187,21 @@ class BaseSchemeSemantics[Abs, Addr]
           case Nil => ActionReachedValue(absi.inject(false), σ)
           case (exp, cons2) :: rest => ActionPush(exp, FrameCond(cons2, rest, ρ), ρ, σ)
         })
-    case FrameCase(clauses, default, ρ) => throw new Exception(s"TODO: case not handled (yet)")
-      /* TODO: find every clause that can be true, generate one successor per
-         clause in order, until a clause that can't be false is reached. If none
-         is reached, generate a successor for the default */
+    case FrameCase(clauses, default, ρ) => {
+      val fromClauses = clauses.flatMap({ case (values, body) =>
+        if (values.exists(v2 => evalValue(v2.value) match {
+          case None => false
+          case Some(v2) => abs.subsumes(v, v2)
+        }))
+          /* TODO: precision could be improved by restricting v to v2 */
+          Set[Action[SchemeExp, Abs, Addr]](evalBody(body, ρ, σ))
+        else
+          Set[Action[SchemeExp, Abs, Addr]]()
+      })
+      /* TODO: precision could be improved in cases where we know that default is not
+       * reachable */
+      fromClauses.toSet + evalBody(default, ρ, σ)
+    }
     case FrameAnd(Nil, ρ) =>
       conditional(v, ActionReachedValue(v, σ), ActionReachedValue(absi.inject(false), σ))
     case FrameAnd(e :: rest, ρ) =>
