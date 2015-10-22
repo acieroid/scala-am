@@ -7,45 +7,8 @@
 case class Free[Exp : Expression, Abs, Addr]
   (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
     ad: Address[Addr], adi: AddressInjection[Addr])
-    extends AbstractMachine[Exp, Abs, Addr] {
-  def abs = implicitly[AbstractValue[Abs]]
-  def absi = implicitly[AbstractInjection[Abs]]
-  def addr = implicitly[Address[Addr]]
-  def addri = implicitly[AddressInjection[Addr]]
-  def exp = implicitly[Expression[Exp]]
-
+    extends EvalKontMachine[Exp, Abs, Addr] {
   def name = "Free"
-
-  /** Again the same control component as in AAM and AAC */
-  trait Control {
-    def subsumes(that: Control): Boolean
-    def toString(store: Store[Addr, Abs]): String = toString()
-  }
-
-  /** An eval state has an expression and a binding environment */
-  case class ControlEval(exp: Exp, env: Environment[Addr]) extends Control {
-    override def toString() = s"ev($exp)"
-    def subsumes(that: Control) = that match {
-      case ControlEval(exp2, env2) => exp.equals(exp2) && env.subsumes(env2)
-      case _ => false
-    }
-  }
-
-  /** A continuation state has a reached value */
-  case class ControlKont(v: Abs) extends Control {
-    override def toString = s"ko($v)"
-    override def toString(store: Store[Addr, Abs]) = s"ko(${abs.toString(v, store)})"
-    def subsumes(that: Control) = that match {
-      case ControlKont(v2) => abs.subsumes(v, v2)
-      case _ => false
-    }
-  }
-
-  /** An error state with the reason for the error */
-  case class ControlError(reason: String) extends Control {
-    override def toString = s"err($reason)"
-    def subsumes(that: Control) = that.equals(this)
-  }
 
   val primitives = new Primitives[Addr, Abs]()
   val initialEnv = Environment.empty[Addr]().extend(primitives.forEnv)
