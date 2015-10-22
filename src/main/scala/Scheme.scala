@@ -195,13 +195,29 @@ case class SchemeCas(variable: String, eold: SchemeExp, enew: SchemeExp) extends
 }
 
 /**
+ * Acquire a lock
+ */
+case class SchemeAquire(variable: String) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeAquire] && pos == that.asInstanceOf[SchemeAquire].pos && super.equals(that)
+  override def toString() = s"(aquire $variable)"
+}
+
+/**
+ * Release a lock
+ */
+case class SchemeRelease(variable: String) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeRelease] && pos == that.asInstanceOf[SchemeRelease].pos && super.equals(that)
+  override def toString() = s"(release $variable)"
+}
+
+/**
  * Object that provides a method to compile an s-expression into a Scheme expression
  */
 object SchemeCompiler {
   /**
     * Reserved keywords
     */
-  val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define")
+  val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "cas", "aquire", "release")
 
   def compile(exp: SExp): SchemeExp = {
     val exp2 = exp match {
@@ -265,6 +281,16 @@ object SchemeCompiler {
         SchemeCas(variable, compile(eold), compile(enew))
       case SExpPair(SExpIdentifier("cas"), _) =>
         throw new Exception(s"Invalid Scheme cas: $exp")
+      case SExpPair(SExpIdentifier("aquire"),
+        SExpPair(SExpIdentifier(variable), SExpValue(ValueNil()))) =>
+        SchemeAquire(variable)
+      case SExpPair(SExpIdentifier("aquire"), _) =>
+        throw new Exception(s"Invalid Scheme aquire: $exp")
+      case SExpPair(SExpIdentifier("release"),
+        SExpPair(SExpIdentifier(variable), SExpValue(ValueNil()))) =>
+        SchemeRelease(variable)
+      case SExpPair(SExpIdentifier("release"), _) =>
+        throw new Exception(s"Invalid Scheme release: $exp")
       case SExpPair(f, args) =>
         SchemeFuncall(compile(f), compileBody(args))
       case SExpIdentifier(name) => if (reserved.contains(name)) {
@@ -570,6 +596,8 @@ object SchemeUndefiner {
         case SchemeQuoted(quoted) => SchemeQuoted(quoted)
         case SchemeValue(value) => SchemeValue(value)
         case SchemeCas(variable, eold, enew) => SchemeCas(variable, eold, enew)
+        case SchemeAquire(variable) => SchemeAquire(variable)
+        case SchemeRelease(variable) => SchemeAquire(variable)
       }
       exp2.setPos(exp.pos) :: undefineBody(rest)
     }

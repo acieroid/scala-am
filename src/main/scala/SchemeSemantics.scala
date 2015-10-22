@@ -146,6 +146,18 @@ class BaseSchemeSemantics[Abs, Addr]
       case None => Set(ActionError(s"Unhandled value: $v"))
     }
     case SchemeCas(variable, eold, enew) => Set(ActionPush(eold, FrameCasOld(variable, enew, ρ), ρ, σ))
+    case SchemeAquire(variable) => ρ.lookup(variable) match {
+      case Some(a) => {
+        val v = σ.lookup(a)
+        /* Only performs a step if the lock is possibly unlocked (true is unlocked, false is locked) */
+        if (abs.isTrue(v)) Set(ActionReachedValue(absi.inject(true), σ.update(a, absi.inject(false)))) else Set()
+      }
+      case None => Set(ActionError(s"Unbound variable: $variable"))
+    }
+    case SchemeRelease(variable) => ρ.lookup(variable) match {
+      case Some(a) => Set(ActionReachedValue(absi.inject(true), σ.update(a, absi.inject(true))))
+      case None => Set(ActionError(s"Unbound variable: $variable"))
+    }
   }
 
   def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {
