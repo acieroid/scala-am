@@ -197,6 +197,6 @@ object AbstractConcrete {
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol(x)
     def nil = AbstractNil
-    def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)
+    def cons[Addr : Address](car: Addr, cdr: Addr) = AbstractCons(car, cdr)
   }
 }

@@ -76,7 +76,7 @@ object Config {
 
   object Lattice extends Enumeration {
     type Lattice = Value
-    val Concrete, Type, TypeSet = Value
+    val Concrete, Type, TypeSet, Test = Value
   }
   implicit val latticeRead: scopt.Read[Lattice.Value] = scopt.Read.reads(Lattice withName _)
 
@@ -161,6 +161,12 @@ object Main {
           case (false, Config.Machine.Free, Config.Lattice.TypeSet, true) => run(new Free[SchemeExp, AbstractTypeSet, ConcreteAddress], new SchemeSemantics[AbstractTypeSet, ConcreteAddress]) _
           case (true, Config.Machine.Free, Config.Lattice.TypeSet, false) => run(new Free[ANFExp, AbstractTypeSet, ClassicalAddress], new ANFSemantics[AbstractTypeSet, ClassicalAddress]) _
           case (false, Config.Machine.Free, Config.Lattice.TypeSet, false) => run(new Free[SchemeExp, AbstractTypeSet, ClassicalAddress], new SchemeSemantics[AbstractTypeSet, ClassicalAddress]) _
+          /* Example of how to use the product lattice */
+          case (false, Config.Machine.Free, Config.Lattice.Test, false) => {
+            val prod = new ProductLattice[AbstractType, AbstractTypeSet]
+            import prod._
+            run(new Free[SchemeExp, Product, ClassicalAddress], new SchemeSemantics[Product, ClassicalAddress]) _
+          }
           case _ => throw new Exception(s"Impossible configuration: $config")
         }
         try {
