@@ -211,6 +211,22 @@ case class SchemeRelease(variable: String) extends SchemeExp {
 }
 
 /**
+ * Spawn a new thread to compute an expression
+ */
+case class SchemeSpawn(exp: SchemeExp) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeSpawn] && pos == that.asInstanceOf[SchemeSpawn].pos && super.equals(that)
+  override def toString() = s"(spawn $exp)"
+}
+
+/**
+ * Wait for a thread (whose identifier is the value of exp) to terminate
+ */
+case class SchemeJoin(exp: SchemeExp) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeJoin] && pos == that.asInstanceOf[SchemeJoin].pos && super.equals(that)
+  override def toString() = s"(join $exp)"
+}
+
+/**
  * Object that provides a method to compile an s-expression into a Scheme expression
  */
 object SchemeCompiler {
@@ -291,6 +307,16 @@ object SchemeCompiler {
         SchemeRelease(variable)
       case SExpPair(SExpIdentifier("release"), _) =>
         throw new Exception(s"Invalid Scheme release: $exp")
+      case SExpPair(SExpIdentifier("spawn"),
+        SExpPair(exp, SExpValue(ValueNil()))) =>
+        SchemeSpawn(compile(exp))
+      case SExpPair(SExpIdentifier("spawn"), _) =>
+        throw new Exception(s"Invalid Scheme spawn: $exp")
+      case SExpPair(SExpIdentifier("join"),
+        SExpPair(exp, SExpValue(ValueNil()))) =>
+        SchemeJoin(compile(exp))
+      case SExpPair(SExpIdentifier("join"), _) =>
+        throw new Exception(s"Invalid Scheme join: $exp")
       case SExpPair(f, args) =>
         SchemeFuncall(compile(f), compileBody(args))
       case SExpIdentifier(name) => if (reserved.contains(name)) {
