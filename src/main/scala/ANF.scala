@@ -151,5 +151,5 @@ object ANF {
   /**
    * Parse a string representing a Scheme program
    */
-  def parse(s: String): ANFExp = compile(Scheme.parse(s))
+  def parse(s: String): ANFExp = compile(Scheme.rename(Scheme.parse(s)))
 }
