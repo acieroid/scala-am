@@ -37,33 +37,33 @@ class BaseSchemeSemantics[Abs, Addr]
   def conditional(v: Abs, t: Action[SchemeExp, Abs, Addr], f: Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
     (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
 
-  def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
-    abs.foldValues(function, (v) => {
-      val fromClo: Set[Action[SchemeExp, Abs, Addr]] = abs.getClosures[SchemeExp, Addr](v).map({
-        case (SchemeLambda(args, body), ρ1) =>
-          if (args.length == argsv.length) {
-            bindArgs(args.zip(argsv), ρ1, σ) match {
-              case (ρ2, σ) =>
-                if (body.length == 1)
-                  ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), body.head, ρ2, σ, argsv)
-                else
-                  ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ, argsv)
-            }
-          } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
-        case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
-      })
-      val fromPrim = abs.getPrimitive(v) match {
-        case Some(prim) => prim.call(fexp, argsv, σ) match {
-          case Right((res, σ2)) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, σ2))
-          case Left(err) => Set(ActionError[SchemeExp, Abs, Addr](err))
-        }
-        case None => Set()
+  def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = {
+    val fromClo: Set[Action[SchemeExp, Abs, Addr]] = abs.getClosures[SchemeExp, Addr](function).map({
+      case (SchemeLambda(args, body), ρ1) =>
+        if (args.length == argsv.length) {
+          bindArgs(args.zip(argsv), ρ1, σ) match {
+            case (ρ2, σ) =>
+              if (body.length == 1)
+                ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), body.head, ρ2, σ, argsv)
+              else
+                ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ, argsv)
+          }
+        } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
+      case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
+    })
+    val fromPrim = abs.getPrimitive(function) match {
+      case Some(prim) => prim.call(fexp, argsv, σ) match {
+        case Right((res, σ2)) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, σ2))
+        case Left(err) => Set(ActionError[SchemeExp, Abs, Addr](err))
       }
-      if (fromClo.isEmpty && fromPrim.isEmpty) {
-        Set(ActionError(s"Called value is not a function: $v"))
-      } else {
-        fromClo ++ fromPrim
-      }})
+      case None => Set()
+    }
+    if (fromClo.isEmpty && fromPrim.isEmpty) {
+      Set(ActionError(s"Called value is not a function: $function"))
+    } else {
+      fromClo ++ fromPrim
+    }
+  }
 
   protected def evalValue(v: Value): Option[Abs] = v match {
     case ValueString(s) => Some(absi.inject(s))

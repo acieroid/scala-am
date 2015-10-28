@@ -56,32 +56,31 @@ class ANFSemantics[Abs, Addr]
            * and atomic expressions cannot perform store updates). */
           atomicEval(f, ρ, σ) match {
             case Left(err) => Set(ActionError(err))
-            case Right(fv) =>
+            case Right(fv) => {
               /* For every value of the operand, we call the contained closure and primitive */
-              abs.foldValues(fv, (v) => {
-                val fromClo: Set[Action[ANFExp, Abs, Addr]] = abs.getClosures[ANFExp, Addr](v).map({
-                  case (ANFLambda(args, body), ρ) => if (args.length == argsv.length) {
-                    /* To call a closure, bind the arguments and step into the function */
-                    bindArgs(args.zip(argsv.reverse), ρ, σ) match {
-                      case (ρ2, σ) => ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ, argsv)
-                    }
-                  } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length})") }
-                  case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
-                })
-                val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitive(v) match {
-                  /* To call a primitive, apply the call method with the given arguments and the store */
-                  case Some(prim) => prim.call(f, argsv, σ) match {
-                    case Right((res, σ2)) => Set(ActionReachedValue(res, σ2))
-                    case Left(err) => Set(ActionError(err))
+              val fromClo: Set[Action[ANFExp, Abs, Addr]] = abs.getClosures[ANFExp, Addr](fv).map({
+                case (ANFLambda(args, body), ρ) => if (args.length == argsv.length) {
+                  /* To call a closure, bind the arguments and step into the function */
+                  bindArgs(args.zip(argsv.reverse), ρ, σ) match {
+                    case (ρ2, σ) => ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ, argsv)
                   }
-                  case None => Set()
-                }
-                if (fromClo.isEmpty && fromPrim.isEmpty) {
-                  Set(ActionError(s"Called value is not a function: $fv"))
-                } else {
-                  fromClo ++ fromPrim
-                }
+                } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length})") }
+                case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
               })
+              val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitive(fv) match {
+                /* To call a primitive, apply the call method with the given arguments and the store */
+                case Some(prim) => prim.call(f, argsv, σ) match {
+                  case Right((res, σ2)) => Set(ActionReachedValue(res, σ2))
+                  case Left(err) => Set(ActionError(err))
+                }
+                case None => Set()
+              }
+              if (fromClo.isEmpty && fromPrim.isEmpty) {
+                Set(ActionError(s"Called value is not a function: $fv"))
+              } else {
+                fromClo ++ fromPrim
+              }
+            }
           }
       }
     /* To evaluate (if cond cons alt), evaluate cons (which is atomic), and
