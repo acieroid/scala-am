@@ -158,6 +158,7 @@ class BaseSchemeSemantics[Abs, Addr]
       case Some(a) => Set(ActionReachedValue(absi.inject(true), σ.update(a, absi.inject(true))))
       case None => Set(ActionError(s"Unbound variable: $variable"))
     }
+    case SchemeSpawn(exp) => Set(ActionSpawn(exp, ρ, /* TODO: tid */ ActionReachedValue(absi.bottom, σ)))
   }
 
   def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {

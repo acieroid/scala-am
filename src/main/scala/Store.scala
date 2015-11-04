@@ -47,6 +47,6 @@ object Store {
   /* TODO: have abstract counting as a parameter of the analysis. Also, when it is
    * turned on, it prevents AAC and Free from converging. For now, it's only
    * enabled with the AbstractConcrete lattice. */
-  def empty[Addr : Address, Abs]()(implicit abs : AbstractValue[Abs], absi : AbstractInjection[Abs]) = Store(Map[Addr, (Int, Abs)](), absi.name == "Concrete")
+  def empty[Addr, Abs]()(implicit abs : AbstractValue[Abs], absi : AbstractInjection[Abs], addr: Address[Addr]) = Store(Map[Addr, (Int, Abs)](), absi.name == "Concrete")
   def initial[Addr, Abs](values: List[(Addr, Abs)])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr]): Store[Addr, Abs] = Store(values.map({ case (a, v) => (a, (0, v)) }).toMap, absi.name == "Concrete")
 }

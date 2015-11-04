@@ -69,6 +69,11 @@ case class ActionStepIn[Exp : Expression, Abs : AbstractValue, Addr : Address](c
  * An error has been reached
  */
 case class ActionError[Exp : Expression, Abs : AbstractValue, Addr : Address](reason: String) extends Action[Exp, Abs, Addr]
+/**
+ * Spawns a new thread that evaluates expression e in environment ρ. The current
+ * thread continues its execution by performing action act.
+ */
+case class ActionSpawn[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, ρ: Environment[Addr], act: Action[Exp, Abs, Addr]) extends Action[Exp, Abs, Addr]
 
 /**
  * Base class for semantics that define some helper methods
