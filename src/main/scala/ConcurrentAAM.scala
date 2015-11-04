@@ -34,10 +34,8 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
       case ActionEval(e, ρ, σ) => (threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ)
       case ActionStepIn(_, e, ρ, σ, _) => (threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ)
       case ActionError(err) => (threads.update(tid, Context(ControlError(err), kstore, a)), results, Store.empty[Addr, Abs]()(abs, absi, addr))
-      case ActionSpawn(e, ρ, act) => {
-        println(s"Spawning thread: $e, $act")
+      case ActionSpawn(e, ρ, act) =>
         integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress)), results)
-      }
     }
 
     def integrate(tid: TID, a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], threads: ThreadMap, results: ThreadResults):
@@ -48,6 +46,7 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
     def step(sem: Semantics[Exp, Abs, Addr], tid: TID, store: Store[Addr, Abs], threads: ThreadMap, results: ThreadResults):
         (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) = control match {
       case ControlEval(e, ρ) => integrate(tid, a, sem.stepEval(e, ρ, store), threads, results)
+      case ControlKont(v) if halted && tid != initialtid => Set((threads.remove(tid), results.add(tid, v), store))
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
         case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, store, frame), threads, results)
@@ -69,6 +68,8 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
       ThreadMap(content + (tid -> Set(context))) /* TODO: abstract thread counting, join */
     def add(tid: TID, context: Context): ThreadMap =
       ThreadMap(content + (tid -> (get(tid) + context)))
+    def remove(tid: TID): ThreadMap =
+      ThreadMap(content - tid)
     def join(that: ThreadMap): ThreadMap = ThreadMap(this.content |+| that.content) /* TODO: does this correctly joins sets? */
     def forall(f: ((TID, Set[Context])) => Boolean): Boolean = content.forall(f)
   }
