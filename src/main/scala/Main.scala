@@ -70,7 +70,7 @@ import scala.io.StdIn
 object Config {
   object Machine extends Enumeration {
     type Machine = Value
-    val AAC, AAM, Free = Value
+    val AAC, AAM, Free, ConcurrentAAM = Value
   }
   implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
 
@@ -84,7 +84,7 @@ object Config {
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
     head("scala-ac", "0.0")
-    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAC, Free)")
+    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAC, Free, ConcurrentAAM)")
     opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text("Lattice to use (Concrete, Type, TypeSet)")
     opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
@@ -161,6 +161,18 @@ object Main {
           case (false, Config.Machine.Free, Config.Lattice.TypeSet, true) => run(new Free[SchemeExp, AbstractTypeSet, ConcreteAddress], new SchemeSemantics[AbstractTypeSet, ConcreteAddress]) _
           case (true, Config.Machine.Free, Config.Lattice.TypeSet, false) => run(new Free[ANFExp, AbstractTypeSet, ClassicalAddress], new ANFSemantics[AbstractTypeSet, ClassicalAddress]) _
           case (false, Config.Machine.Free, Config.Lattice.TypeSet, false) => run(new Free[SchemeExp, AbstractTypeSet, ClassicalAddress], new SchemeSemantics[AbstractTypeSet, ClassicalAddress]) _
+          case (true, Config.Machine.ConcurrentAAM, Config.Lattice.Concrete, true) => run(new ConcurrentAAM[ANFExp, AbstractConcrete, ConcreteAddress], new ANFSemantics[AbstractConcrete, ConcreteAddress]) _
+          case (false, Config.Machine.ConcurrentAAM, Config.Lattice.Concrete, true) => run(new ConcurrentAAM[SchemeExp, AbstractConcrete, ConcreteAddress], new SchemeSemantics[AbstractConcrete, ConcreteAddress]) _
+          case (true, Config.Machine.ConcurrentAAM, Config.Lattice.Concrete, false) => run(new ConcurrentAAM[ANFExp, AbstractConcrete, ClassicalAddress], new ANFSemantics[AbstractConcrete, ClassicalAddress]) _
+          case (false, Config.Machine.ConcurrentAAM, Config.Lattice.Concrete, false) => run(new ConcurrentAAM[SchemeExp, AbstractConcrete, ClassicalAddress], new SchemeSemantics[AbstractConcrete, ClassicalAddress]) _
+          case (true, Config.Machine.ConcurrentAAM, Config.Lattice.Type, true) => run(new ConcurrentAAM[ANFExp, AbstractType, ConcreteAddress], new ANFSemantics[AbstractType, ConcreteAddress]) _
+          case (false, Config.Machine.ConcurrentAAM, Config.Lattice.Type, true) => run(new ConcurrentAAM[SchemeExp, AbstractType, ConcreteAddress], new SchemeSemantics[AbstractType, ConcreteAddress]) _
+          case (true, Config.Machine.ConcurrentAAM, Config.Lattice.Type, false) => run(new ConcurrentAAM[ANFExp, AbstractType, ClassicalAddress], new ANFSemantics[AbstractType, ClassicalAddress]) _
+          case (false, Config.Machine.ConcurrentAAM, Config.Lattice.Type, false) => run(new ConcurrentAAM[SchemeExp, AbstractType, ClassicalAddress], new SchemeSemantics[AbstractType, ClassicalAddress]) _
+          case (true, Config.Machine.ConcurrentAAM, Config.Lattice.TypeSet, true) => run(new ConcurrentAAM[ANFExp, AbstractTypeSet, ConcreteAddress], new ANFSemantics[AbstractTypeSet, ConcreteAddress]) _
+          case (false, Config.Machine.ConcurrentAAM, Config.Lattice.TypeSet, true) => run(new ConcurrentAAM[SchemeExp, AbstractTypeSet, ConcreteAddress], new SchemeSemantics[AbstractTypeSet, ConcreteAddress]) _
+          case (true, Config.Machine.ConcurrentAAM, Config.Lattice.TypeSet, false) => run(new ConcurrentAAM[ANFExp, AbstractTypeSet, ClassicalAddress], new ANFSemantics[AbstractTypeSet, ClassicalAddress]) _
+          case (false, Config.Machine.ConcurrentAAM, Config.Lattice.TypeSet, false) => run(new ConcurrentAAM[SchemeExp, AbstractTypeSet, ClassicalAddress], new SchemeSemantics[AbstractTypeSet, ClassicalAddress]) _
           /* Example of how to use the product lattice */
           case (false, Config.Machine.Free, Config.Lattice.Test, false) => {
             val prod = new ProductLattice[AbstractType, AbstractTypeSet]
