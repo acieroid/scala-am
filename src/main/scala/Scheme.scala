@@ -624,6 +624,8 @@ object SchemeUndefiner {
         case SchemeCas(variable, eold, enew) => SchemeCas(variable, eold, enew)
         case SchemeAquire(variable) => SchemeAquire(variable)
         case SchemeRelease(variable) => SchemeAquire(variable)
+        case SchemeSpawn(exp) => SchemeSpawn(undefine1(exp))
+        case SchemeJoin(exp) => SchemeJoin(undefine1(exp))
       }
       exp2.setPos(exp.pos) :: undefineBody(rest)
     }
