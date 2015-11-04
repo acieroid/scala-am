@@ -74,6 +74,10 @@ case class ActionError[Exp : Expression, Abs : AbstractValue, Addr : Address](re
  * thread continues its execution by performing action act.
  */
 case class ActionSpawn[Exp : Expression, Abs : AbstractValue, Addr : Address](e: Exp, ρ: Environment[Addr], act: Action[Exp, Abs, Addr]) extends Action[Exp, Abs, Addr]
+/**
+ * Waits for the execution of a thread, with tid as its identifier.
+ */
+case class ActionJoin[Exp : Expression, Abs : AbstractValue, Addr : Address](tid: Abs, σ: Store[Addr, Abs]) extends Action[Exp, Abs, Addr]
 
 /**
  * Base class for semantics that define some helper methods

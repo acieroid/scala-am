@@ -25,28 +25,38 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
-        (ThreadMap, ThreadResults, Store[Addr, Abs]) = action match {
-      case ActionReachedValue(v, σ) => (threads.update(tid, Context(ControlKont(v), kstore, a)), results, σ)
+        Option[(ThreadMap, ThreadResults, Store[Addr, Abs])] = action match {
+      case ActionReachedValue(v, σ) => Some((threads.update(tid, Context(ControlKont(v), kstore, a)), results, σ))
       case ActionPush(e, frame, ρ, σ) => {
         val next = NormalKontAddress(e, addri.variable("__kont__"))
-        (threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next)), results, σ)
+        Some((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next)), results, σ))
       }
-      case ActionEval(e, ρ, σ) => (threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ)
-      case ActionStepIn(_, e, ρ, σ, _) => (threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ)
-      case ActionError(err) => (threads.update(tid, Context(ControlError(err), kstore, a)), results, Store.empty[Addr, Abs]()(abs, absi, addr))
+      case ActionEval(e, ρ, σ) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ))
+      case ActionStepIn(_, e, ρ, σ, _) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ))
+      case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a)), results, Store.empty[Addr, Abs]()(abs, absi, addr)))
       case ActionSpawn(e, ρ, act) =>
         integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress)), results)
+      case ActionJoin(tid2, σ) => ??? /* TODO: if (results.contains(tid2)) {
+        Some((threads.update(tid, Context(ControlKont(results.get(tid2), kstore, a))), results, σ))
+      } else {
+        None
+      } */
     }
 
     def integrate(tid: TID, a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], threads: ThreadMap, results: ThreadResults):
         (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) =
-      actions.foldLeft(Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]())((acc, action) =>
-        acc + integrate1(tid, a, action)(threads, results))
+      actions.map(action => integrate1(tid, a, action)(threads, results)).flatMap({
+        case Some(res) => Set[(ThreadMap, ThreadResults, Store[Addr, Abs])](res)
+        case None => Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]()
+      })
 
     def step(sem: Semantics[Exp, Abs, Addr], tid: TID, store: Store[Addr, Abs], threads: ThreadMap, results: ThreadResults):
         (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) = control match {
       case ControlEval(e, ρ) => integrate(tid, a, sem.stepEval(e, ρ, store), threads, results)
-      case ControlKont(v) if halted && tid != initialtid => Set((threads.remove(tid), results.add(tid, v), store))
+      case ControlKont(v) if halted && tid != initialtid =>
+        /* TODO: we could avoid distinguishing the initial thread, and just get the
+         * final results at its location in results */
+        Set((threads.remove(tid), results.add(tid, v), store))
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
         case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, store, frame), threads, results)

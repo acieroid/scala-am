@@ -24,6 +24,7 @@ class BaseSchemeSemantics[Abs, Addr]
   case class FrameDefine(variable: String, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCasOld(variable: String, enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCasNew(variable: String, old: Abs, ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameJoin(ρ: Environment[Addr]) extends SchemeFrame
   object FrameHalt extends SchemeFrame {
     override def toString() = "FHalt"
   }
@@ -159,6 +160,7 @@ class BaseSchemeSemantics[Abs, Addr]
       case None => Set(ActionError(s"Unbound variable: $variable"))
     }
     case SchemeSpawn(exp) => Set(ActionSpawn(exp, ρ, /* TODO: tid */ ActionReachedValue(absi.bottom, σ)))
+    case SchemeJoin(exp) => Set(ActionPush(exp, FrameJoin(ρ), ρ, σ))
   }
 
   def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {
@@ -235,6 +237,8 @@ class BaseSchemeSemantics[Abs, Addr]
           ActionReachedValue(absi.inject(false), σ))
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
+    case FrameJoin(ρ) =>
+      Set(ActionJoin(v, σ))
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)
