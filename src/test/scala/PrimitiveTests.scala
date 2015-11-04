@@ -204,14 +204,12 @@ abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abstr
   val machine = new AAM[SchemeExp, Abs, Addr]
 }
 
-
 abstract class AACTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAC[SchemeExp, Abs, Addr]
 }
-
 
 abstract class FreeTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
   addr: Address[Addr], addri: AddressInjection[Addr])
@@ -220,6 +218,12 @@ abstract class FreeTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: Abst
   val machine = new Free[SchemeExp, Abs, Addr]
 }
 
+abstract class ConcurrentAAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+  addr: Address[Addr], addri: AddressInjection[Addr])
+    extends Tests[SchemeExp, Abs, Addr] {
+  val sem = new SchemeSemantics[Abs, Addr]
+  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr]
+}
 
 
 /* Since these tests are small, they can be performed in concrete mode */
@@ -229,3 +233,5 @@ class AACConcreteTests extends AACTests[AbstractConcrete, ConcreteAddress]
 class AACTypeSetTests extends AACTests[AbstractTypeSet, ClassicalAddress]
 class FreeConcreteTests extends FreeTests[AbstractConcrete, ClassicalAddress]
 class FreeTypeSetTests extends FreeTests[AbstractTypeSet, ClassicalAddress]
+class ConcurrentAAMConcreteTests extends ConcurrentAAMTests[AbstractConcrete, ClassicalAddress]
+class ConcurrentAAMTypeSetTests extends ConcurrentAAMTests[AbstractTypeSet, ClassicalAddress]

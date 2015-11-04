@@ -114,6 +114,14 @@ abstract class FreeBenchmarks[Abs, Addr]
   val machine = new Free[SchemeExp, Abs, Addr]
 }
 
+abstract class ConcurrentAAMBenchmarks[Abs, Addr]
+  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
+    addr: Address[Addr], addri: AddressInjection[Addr])
+    extends Benchmarks[SchemeExp, Abs, Addr] {
+  val sem = new SchemeSemantics[Abs, Addr]
+  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr]
+}
+
 /* Concrete tests are disabled because of cpstak takes too much time to compute since it requires more than 75k recursive calls */
 /* Type tests are disabled because they fail due to their inability to support a join between a closure and other abstract values */
 //class AACConcreteBenchmarks extends AACBenchmarks[AbstractConcrete, ConcreteAddress]
@@ -128,6 +136,8 @@ class AAMTypeSetBenchmarks extends AAMBenchmarks[AbstractTypeSet, ClassicalAddre
 //class FreeTypeBenchmarks extends FreeBenchmarks[AbstractType, ClassicalAddress]
 class FreeTypeSetBenchmarks extends FreeBenchmarks[AbstractTypeSet, ClassicalAddress]
 
+class ConcurrentAAMTypeSetBenchmarks extends ConcurrentAAMBenchmarks[AbstractTypeSet, ClassicalAddress]
+
 class AACOneResultTests extends OneResultTests[SchemeExp, AbstractConcrete, ConcreteAddress] {
   val sem = new SchemeSemantics[AbstractConcrete, ConcreteAddress]
   val machine = new AAC[SchemeExp, AbstractConcrete, ConcreteAddress]
@@ -141,4 +151,9 @@ class AAMOneResultTests extends OneResultTests[SchemeExp, AbstractConcrete, Conc
 class FreeOneResultTests extends OneResultTests[SchemeExp, AbstractConcrete, ConcreteAddress] {
   val sem = new SchemeSemantics[AbstractConcrete, ConcreteAddress]
   val machine = new Free[SchemeExp, AbstractConcrete, ConcreteAddress]
+}
+
+class ConcurrentAAMOneResultTests extends OneResultTests[SchemeExp, AbstractConcrete, ConcreteAddress] {
+  val sem = new SchemeSemantics[AbstractConcrete, ConcreteAddress]
+  val machine = new ConcurrentAAM[SchemeExp, AbstractConcrete, ConcreteAddress]
 }

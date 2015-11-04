@@ -16,40 +16,41 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
 
   type KontAddr = aam.KontAddr
   type TID = Int /* TODO: tid */
-  var maxtid = 1
+  val initialtid = 1
+  var maxtid = initialtid
   def newtid(): Int = {
     maxtid = maxtid + 1
     maxtid
   }
 
-  /* TODO: switch Set[(TID, Context)] to the ThreadMap, as thread creation/update/removal decisions impact it */
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr) {
-    def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, store: Store[Addr, Abs]):
+    def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap):
         (ThreadMap, Store[Addr, Abs]) = action match {
-      case ActionReachedValue(v, σ) => (threads.update(tid, Context(ControlKont(v), kstore, a)), store.join(σ))
+      case ActionReachedValue(v, σ) => (threads.update(tid, Context(ControlKont(v), kstore, a)), σ)
       case ActionPush(e, frame, ρ, σ) => {
         val next = NormalKontAddress(e, addri.variable("__kont__"))
-        (threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next)), store.join(σ))
+        (threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next)), σ)
       }
-      case ActionEval(e, ρ, σ) => (threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), store.join(σ))
-      case ActionStepIn(_, e, ρ, σ, _) => (threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), store.join(σ))
-      case ActionSpawn(e, ρ, act) => integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress)), store)
+      case ActionEval(e, ρ, σ) => (threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), σ)
+      case ActionStepIn(_, e, ρ, σ, _) => (threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), σ)
+      case ActionError(err) => (threads.update(tid, Context(ControlError(err), kstore, a)), Store.empty[Addr, Abs]()(abs, absi, addr))
+      case ActionSpawn(e, ρ, act) => integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress)))
     }
 
     def integrate(tid: TID, a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], threads: ThreadMap):
-        (ThreadMap, Store[Addr, Abs]) =
-      actions.foldLeft((threads, Store.empty[Addr, Abs]()(abs, absi, addr)))((acc, action) => integrate1(tid, a, action)(acc._1, acc._2))
+        (Set[(ThreadMap, Store[Addr, Abs])]) =
+      actions.foldLeft(Set[(ThreadMap, Store[Addr, Abs])]())((acc, action) =>
+        acc + integrate1(tid, a, action)(threads))
 
     def step(sem: Semantics[Exp, Abs, Addr], tid: TID, store: Store[Addr, Abs], threads: ThreadMap):
-        (ThreadMap, Store[Addr, Abs]) = control match {
+        (Set[(ThreadMap, Store[Addr, Abs])]) = control match {
       case ControlEval(e, ρ) => integrate(tid, a, sem.stepEval(e, ρ, store), threads)
-      case ControlKont(v) if abs.isError(v) => (threads, store)
-      case ControlKont(v) => kstore.lookup(a).foldLeft((threads, Store.empty[Addr, Abs]()(abs, absi, addr)))((acc, k) => k match {
+      case ControlKont(v) if abs.isError(v) => Set()
+      case ControlKont(v) => kstore.lookup(a).foldLeft(Set[(ThreadMap, Store[Addr, Abs])]())((acc, k) => k match {
         case Kont(frame, next) =>
-          val (threads2: ThreadMap, store2: Store[Addr, Abs]) = integrate(tid, next, sem.stepKont(v, store, frame), threads)
-          (acc._1.join(threads2), acc._2.join(store2))
+          acc ++ integrate(tid, next, sem.stepKont(v, store, frame), threads)
       })
-      case ControlError(_) => (threads, store)
+      case ControlError(_) => Set()
     }
 
     def halted: Boolean = control match {
@@ -69,19 +70,18 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
   }
 
   case class State(threads: ThreadMap, store: Store[Addr, Abs]) {
-    def step(sem: Semantics[Exp, Abs, Addr], tid: TID): State = {
-      val (threads2, store2) = threads.get(tid).foldLeft((threads, Store.empty[Addr, Abs]()(abs, absi, addr)))((acc, ctx) => {
-        val (threads3, store2) = ctx.step(sem, tid, store, acc._1)
-        (threads3, acc._2.join(store2))
-      })
-      State(threads2, store2)
-    }
+    def step(sem: Semantics[Exp, Abs, Addr], tid: TID): Set[State] =
+      threads.get(tid).flatMap(ctx => ctx.step(sem, tid, store, threads).map({
+        case (threads, store) => State(threads, store)
+      }))
     def stepAll(sem: Semantics[Exp, Abs, Addr]): Set[(TID, State)] =
-      threads.tids.foldLeft(Set[(TID, State)]())((acc, tid) => acc + (tid -> step(sem, tid)))
+      threads.tids.foldLeft(Set[(TID, State)]())((acc, tid) => step(sem, tid).foldLeft(acc)((acc, st) => acc + (tid -> st)))
 
     def halted: Boolean = threads.forall({
       case (_, ctxs) => ctxs.forall(_.halted)
     })
+
+    // override def toString = threads.get(initialtid).map(ctx => ctx.control).toString
   }
 
   object State {
@@ -94,7 +94,7 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
 
   case class ConcurrentAAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
       extends Output[Abs] {
-    def finalValues = halted.flatMap(st => st.threads.get(0).flatMap(ctx => ctx.control match {
+    def finalValues = halted.flatMap(st => st.threads.get(initialtid).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     }))
@@ -115,6 +115,7 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
     sem: Semantics[Exp, Abs, Addr]): ConcurrentAAMOutput =
     todo.headOption match {
       case Some(s) =>
+        // println(s)
         if (visited.contains(s)) {
           loop(todo.tail, visited, halted, startingTime, graph, sem)
         } else if (s.halted) {
