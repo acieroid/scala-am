@@ -61,12 +61,12 @@ class SumLattice[X, Y]
     def and(s1: Sum, s2: => Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.and(x1, x2))
       case (Right(y1), Right(y2)) => Right(yabs.and(y1, y2))
-      case _ => ??? /* should be implementable by using isTrue and isFalse */
+      case (Left(x1), Right(y2)) => err("and used on two different element of a sum lattice: $s1 and $s2")
     }
     def or(s1: Sum, s2: => Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.or(x1, x2))
       case (Right(y1), Right(y2)) => Right(yabs.or(y1, y2))
-      case _ => ??? /* also, should be implementable by using isTrue and isFalse */
+      case _ => err("or used on two different element of a sum lattice: $s1 and $s2")
     }
     def car[Addr : Address](s: Sum) = s match {
       case Left(x) => xabs.car[Addr](x)
