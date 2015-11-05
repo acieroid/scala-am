@@ -1,14 +1,25 @@
+import UnaryOperator._
+import BinaryOperator._
+
 /* Type lattice (with precise bools) that joins incompatible elements into a set. No top element is therefore needed */
 trait AbstractTypeSet {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def isError: Boolean = false
-  def isNull: AbstractTypeSet = AbstractTypeSet.AbstractFalse
-  def isCons: AbstractTypeSet = AbstractTypeSet.AbstractFalse
-  def isChar: AbstractTypeSet = AbstractTypeSet.AbstractFalse
-  def isSymbol: AbstractTypeSet = AbstractTypeSet.AbstractFalse
-  def isString: AbstractTypeSet = AbstractTypeSet.AbstractFalse
-  def isInteger: AbstractTypeSet = AbstractTypeSet.AbstractFalse
+  def unaryOp(op: UnaryOperator): AbstractTypeSet = op match {
+    case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsBoolean => AbstractTypeSet.AbstractFalse
+    case Not => AbstractTypeSet.AbstractFalse
+    case _ => AbstractTypeSet.AbstractError
+  }
+  def binaryOp(op: BinaryOperator)(that: AbstractTypeSet): AbstractTypeSet = op match {
+    case Eq => that match {
+      /* most elements of this lattice lose too much information to be compared precisely */
+      case _ if this == that => AbstractTypeSet.AbstractBool
+      case AbstractTypeSet.AbstractSet(content) => content.foldLeft(AbstractTypeSet.AbstractBottom)((acc, v) => acc.join(binaryOp(op)(v)))
+      case _ => AbstractTypeSet.AbstractFalse
+    }
+    case _ => AbstractTypeSet.AbstractError
+  }
   def foldValues[A](f: AbstractTypeSet => Set[A]): Set[A] = f(this)
   def join(that: AbstractTypeSet): AbstractTypeSet =
     if (this.equals(that) || that.equals(AbstractTypeSet.AbstractBottom)) {
@@ -21,24 +32,8 @@ trait AbstractTypeSet {
   def meet(that: AbstractTypeSet): AbstractTypeSet =
     if (this.equals(that)) { this } else { AbstractTypeSet.AbstractBottom }
   def subsumes(that: AbstractTypeSet): Boolean = this.equals(that)
-  def plus(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def minus(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def times(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def div(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def modulo(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def ceiling: AbstractTypeSet = AbstractTypeSet.AbstractError
-  def log: AbstractTypeSet = AbstractTypeSet.AbstractError
-  def lt(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def numEq(that: AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def not: AbstractTypeSet = AbstractTypeSet.AbstractFalse
   def and(that: => AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
   def or(that: => AbstractTypeSet): AbstractTypeSet = AbstractTypeSet.AbstractError
-  def eq(that: AbstractTypeSet): AbstractTypeSet = that match {
-    /* most elements of this lattice lose too much information to be compared precisely */
-    case _ if this == that => AbstractTypeSet.AbstractBool
-    case AbstractTypeSet.AbstractSet(content) => content.foldLeft(AbstractTypeSet.AbstractBottom)((acc, v) => acc.join(this.eq(v)))
-    case _ => AbstractTypeSet.AbstractFalse
-  }
 }
 
 object AbstractTypeSet {
@@ -51,88 +46,101 @@ object AbstractTypeSet {
 
   object AbstractInt extends AbstractTypeSet {
     override def toString = "Int"
-    override def isInteger = AbstractTrue
-    override def plus(that: A) = that match {
-      case AbstractInt => AbstractInt
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.plus(v)))
-      case _ => super.plus(that)
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsInteger => AbstractTrue
+      case Ceiling | Log | Random => AbstractInt
+      case _ => super.unaryOp(op)
     }
-    override def minus(that: A) = that match {
-      case AbstractInt => AbstractInt
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.minus(v)))
-      case _ => super.minus(that)
-    }
-    override def times(that: A) = that match {
-      case AbstractInt => AbstractInt
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.times(v)))
-      case _ => super.times(that)
-    }
-    override def div(that: A) = that match {
-      case AbstractInt => AbstractInt
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.div(v)))
-      case _ => super.div(that)
-    }
-    override def modulo(that: A) = that match {
-      case AbstractInt => AbstractInt
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.modulo(v)))
-      case _ => super.div(that)
-    }
-    override def ceiling = AbstractInt
-    override def log = AbstractInt
-    override def lt(that: A) = that match {
-      case AbstractInt => AbstractBool
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.lt(v)))
-      case _ => super.lt(that)
-    }
-    override def numEq(that: A) = that match {
-      case AbstractInt => AbstractBool
-      case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(this.numEq(v)))
-      case _ => super.numEq(that)
+    override def binaryOp(op: BinaryOperator)(that: AbstractTypeSet) = op match {
+      case Plus | Minus | Times | Div | Modulo => that match {
+        case AbstractInt => AbstractInt
+        case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(binaryOp(op)(that)))
+        case _ => super.binaryOp(op)(that)
+      }
+      case Lt | NumEq => that match {
+        case AbstractInt => AbstractBool
+        case AbstractSet(content) => content.foldLeft(AbstractBottom)((acc, v) => acc.join(binaryOp(op)(v)))
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
     }
   }
 
   object AbstractString extends AbstractTypeSet {
     override def toString = "String"
-    override def isString = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsString => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
   }
   object AbstractChar extends AbstractTypeSet {
     override def toString = "Char"
-    override def isChar = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsChar => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
   }
   object AbstractSymbol extends AbstractTypeSet {
     override def toString = "Symbol"
-    override def isSymbol = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsSymbol => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
   }
   object AbstractTrue extends AbstractTypeSet {
     override def toString = "#t"
-    override def not = AbstractFalse
+    override def unaryOp(op: UnaryOperator) = op match {
+      case Not => AbstractFalse
+      case _ => super.unaryOp(op)
+    }
+    override def binaryOp(op: BinaryOperator)(that: AbstractTypeSet) = op match {
+      case Eq => that match {
+        case AbstractTrue => AbstractTrue
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
+    }
     override def and(that: => A) = that
     override def or(that: => A) = this
-    override def eq(that: A) = that match {
-      case AbstractTrue => AbstractTrue
-      case _ => super.eq(that)
-    }
   }
   object AbstractFalse extends AbstractTypeSet {
     override def toString = "#f"
     override def isTrue = false
     override def isFalse = true
-    override def not = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case Not => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
+    override def binaryOp(op: BinaryOperator)(that: AbstractTypeSet) = op match {
+      case Eq => that match {
+        case AbstractFalse => AbstractTrue
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
+    }
     override def and(that: => A) = this
     override def or(that: => A) = that
-    override def eq(that: A) = that match {
-      case AbstractFalse => AbstractTrue
-      case _ => super.eq(that)
-    }
   }
   val AbstractBool = AbstractSet(Set(AbstractTrue, AbstractFalse))
   case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractTypeSet]) extends AbstractTypeSet {
     override def toString = s"#<prim ${prim.name}>"
-    override def eq(that: A) = if (this == that) { AbstractTrue } else { AbstractFalse }
+    override def binaryOp(op: BinaryOperator)(that: AbstractTypeSet) = op match {
+      case Eq => that match {
+        case AbstractPrimitive(_) => if (this == that) { AbstractTrue } else { AbstractFalse }
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
+    }
   }
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractTypeSet {
     override def toString = "#<clo>"
-    override def eq(that: A) = if (this == that) { AbstractTrue } else { AbstractFalse }
+    override def binaryOp(op: BinaryOperator)(that: AbstractTypeSet) = op match {
+      case Eq => that match {
+        case AbstractClosure(_, _) => if (this == that) { AbstractTrue } else { AbstractFalse }
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
+    }
   }
   case class AbstractSet(content: Set[A]) extends AbstractTypeSet {
     /* invariant: content does not contain any other AbstractSet, i.e., content.exists(_.isInstanceOf[AbstractSet]) == false */
@@ -140,10 +148,21 @@ object AbstractTypeSet {
     override def toString = "{" + content.mkString(", ") + "}"
     override def isTrue = content.exists(_.isTrue)
     override def isFalse = content.exists(_.isFalse)
-    override def isNull = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isNull))
-    override def isCons = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isCons))
-    override def isSymbol = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isSymbol))
-    override def isString = content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.isString))
+    override def unaryOp(op: UnaryOperator) =
+      content.foldLeft(AbstractBottom)((acc, v) => acc.join(v.unaryOp(op)))
+    private def dropBottoms(set: Set[A]) =
+      set.filter({ case AbstractSet(content) => content.size != 0
+                   case _ => true })
+    private def merge(set: Set[A]): Set[A] =
+        set.foldLeft(Set[A]())((res, x) => x match {
+          case AbstractSet(content) => res ++ merge(content)
+          case _ => res + x
+        })
+    private def oper(f: A => A) =  AbstractSet(dropBottoms(merge(content.map(f))))
+    override def binaryOp(op: BinaryOperator)(that: A) =
+      oper((v) => v.binaryOp(op)(that))
+    override def and(that: => A) = oper((v) => v.and(that))
+    override def or(that: => A) = oper((v) => v.or(that))
     override def foldValues[B](f: A => Set[B]) =
       content.foldLeft(Set[B]())((s: Set[B], v: AbstractTypeSet) => s ++ v.foldValues(f))
     override def join(that: A) =
@@ -177,36 +196,26 @@ object AbstractTypeSet {
           /* ...or the abstract value is not a set itself and is contained in this set */
           case v => content.exists(_.subsumes(v))
         }
-    private def dropBottoms(set: Set[A]) =
-      set.filter({ case AbstractSet(content) => content.size != 0
-                   case _ => true })
-    private def merge(set: Set[A]): Set[A] =
-        set.foldLeft(Set[A]())((res, x) => x match {
-          case AbstractSet(content) => res ++ merge(content)
-          case _ => res + x
-        })
-    private def op(f: A => A) =  AbstractSet(dropBottoms(merge(content.map(f))))
-    override def plus(that: A) = op((v) => v.plus(that))
-    override def minus(that: A) = op((v) => v.minus(that))
-    override def times(that: A) = op((v) => v.times(that))
-    override def div(that: A) = op((v) => v.div(that))
-    override def lt(that: A) = op((v) => v.lt(that))
-    override def numEq(that: A) = op((v) => v.numEq(that))
-    override def not = op((v) => v.not)
-    override def and(that: => A) = op((v) => v.and(that))
-    override def or(that: => A) = op((v) => v.or(that))
-    override def eq(that: A) = op((v) => v.eq(that))
   }
   object AbstractNil extends AbstractTypeSet {
     override def toString = "()"
-    override def isNull = AbstractTrue
-    override def eq(that: A) = that match {
-      case AbstractNil => AbstractTrue
-      case _ => super.eq(that)
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsNull => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
+    override def binaryOp(op: BinaryOperator)(that: AbstractTypeSet) = op match {
+      case Eq => that match {
+        case AbstractNil => AbstractTrue
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
     }
   }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractTypeSet {
-    override def isCons = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsCons => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
     /* eq cannot be redefined to do pointer equality, because it would probably be
      * incorrect since an address can be allocated more than once in the
      * abstract. For example, for (cons x y), if x is stored in address xa, y
@@ -222,30 +231,14 @@ object AbstractTypeSet {
     def isTrue(x: A) = x.isTrue
     def isFalse(x: A) = x.isFalse
     def isError(x: A) = x.isError
-    def isNull(x: A) = x.isNull
-    def isCons(x: A) = x.isCons
-    def isChar(x: A) = x.isChar
-    def isSymbol(x: A) = x.isSymbol
-    def isString(x: A) = x.isString
-    def isInteger(x: A) = x.isInteger
+    def unaryOp(op: UnaryOperator)(x: A) = x.unaryOp(op)
+    def binaryOp(op: BinaryOperator)(x: A, y: A) = x.binaryOp(op)(y)
     def foldValues[B](x: A, f: A => Set[B]) = x.foldValues(f)
     def join(x: A, y: A) = x.join(y)
     def meet(x: A, y: A) = x.meet(y)
     def subsumes(x: A, y: A) = x.subsumes(y)
-
-    def plus(x: A, y: A) = x.plus(y)
-    def minus(x: A, y: A) = x.minus(y)
-    def times(x: A, y: A) = x.times(y)
-    def div(x: A, y: A) = x.div(y)
-    def modulo(x: A, y: A) = x.modulo(y)
-    def ceiling(x: A) = x.ceiling
-    def log(x: A) = x.log
-    def lt(x: A, y: A) = x.lt(y)
-    def numEq(x: A, y: A) = x.numEq(y)
-    def not(x: A) = x.not
     def and(x: A, y: => A) = x.and(y)
     def or(x: A, y: => A) = x.or(y)
-    def eq(x: A, y: A) = x.eq(y)
     def car[Addr : Address](x: AbstractTypeSet) = x match {
       case AbstractCons(car : Addr, cdr : Addr) => Set(car)
       case AbstractSet(_) => x.foldValues(y => car[Addr](y))

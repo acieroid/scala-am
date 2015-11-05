@@ -1,87 +1,84 @@
+import UnaryOperator._
+import BinaryOperator._
+
 /** Concrete value lattice. Throws errors when joining elements (and therefore
     has to be used only with a infinite precision allocator) */
 trait AbstractConcrete {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def isError: Boolean = false
-  def isNull: AbstractConcrete = AbstractConcrete.AbstractFalse
-  def isCons: AbstractConcrete = AbstractConcrete.AbstractFalse
-  def isChar: AbstractConcrete = AbstractConcrete.AbstractFalse
-  def isSymbol: AbstractConcrete = AbstractConcrete.AbstractFalse
-  def isString: AbstractConcrete = AbstractConcrete.AbstractFalse
-  def isInteger: AbstractConcrete = AbstractConcrete.AbstractFalse
+  def unaryOp(op: UnaryOperator): AbstractConcrete = op match {
+    case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsBoolean => AbstractConcrete.AbstractFalse
+    case Not => AbstractConcrete.AbstractFalse
+    case _ => AbstractConcrete.AbstractError(s"$op not applicable with operand $this")
+  }
+  def binaryOp(op: BinaryOperator)(that: AbstractConcrete): AbstractConcrete = op match {
+    case Eq => if (this == that) { AbstractConcrete.AbstractTrue } else { AbstractConcrete.AbstractFalse }
+    case _ => AbstractConcrete.AbstractError(s"$op not applicable with operands $this and $that")
+  }
   def foldValues[A](f: AbstractConcrete => Set[A]): Set[A] = f(this)
   def join(that: AbstractConcrete): AbstractConcrete =
     if (this.equals(that) || that == AbstractConcrete.AbstractBottom) { this } else { throw new Exception(s"AbstractConcrete lattice cannot join elements") }
   def meet(that: AbstractConcrete): AbstractConcrete = if (this.equals(that)) { this } else { AbstractConcrete.AbstractBottom }
   def subsumes(that: AbstractConcrete): Boolean = this.equals(that)
-  def plus(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"plus not applicable with operands $this and $that")
-  def minus(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"minus not applicable with operands $this and $that")
-  def times(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"times not applicable with operands $this and $that")
-  def div(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"div not applicable with operands $this and $that")
-  def modulo(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"modulo not applicable with operands $this and $that")
-  def ceiling: AbstractConcrete = AbstractConcrete.AbstractError(s"ceiling not applicable with operand $this")
-  def log: AbstractConcrete = AbstractConcrete.AbstractError(s"log not applicable with operand $this")
-  def lt(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"lt not applicable with operands $this and $that")
-  def numEq(that: AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"numEq not applicable with operands $this and $that")
-  def not: AbstractConcrete = AbstractConcrete.AbstractFalse
   def and(that: => AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"and not applicable with operands $this and $that")
   def or(that: => AbstractConcrete): AbstractConcrete = AbstractConcrete.AbstractError(s"or not applicable with operands $this and $that")
-  def eq(that: AbstractConcrete): AbstractConcrete = if (this == that) { AbstractConcrete.AbstractTrue } else { AbstractConcrete.AbstractFalse }
 }
 
 object AbstractConcrete {
   case class AbstractInt(v: Int) extends AbstractConcrete {
     override def toString = v.toString
-    override def isInteger = AbstractTrue
-    override def plus(that: AbstractConcrete) = that match {
-      case AbstractInt(v2) => AbstractInt(v + v2)
-      case _ => super.plus(that)
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsInteger => AbstractTrue
+      case Ceiling => AbstractInt(v)
+      case Log => AbstractInt(scala.math.log(v).toInt) /* TODO: float */
+      case Random => AbstractInt(scala.util.Random.nextInt % v)
+      case _ => super.unaryOp(op)
     }
-    override def minus(that: AbstractConcrete) = that match {
-      case AbstractInt(v2) => AbstractInt(v - v2)
-      case _ => super.minus(that)
-    }
-    override def times(that: AbstractConcrete) = that match {
-      case AbstractInt(v2) => AbstractInt(v * v2)
-      case _ => super.times(that)
-    }
-    override def div(that: AbstractConcrete) = that match {
-      case AbstractInt(v2) => AbstractInt(v / v2) /* TODO: no support for floats nor fractions yet */
-      case _ => super.div(that)
-    }
-    override def modulo(that: AbstractConcrete) = that match {
-      case AbstractInt(v2) => AbstractInt(v % v2)
-      case _ => super.modulo(that)
-    }
-    override def ceiling = AbstractInt(v) /* TODO: float */
-    override def log = AbstractInt(scala.math.log(v).toInt) /* TODO: float */
-    override def lt(that: AbstractConcrete) = that match {
-      case AbstractInt(v2) => AbstractBool(v < v2)
-      case _ => super.lt(that)
-    }
-    override def numEq(that: AbstractConcrete) = that match {
-      case AbstractInt(v2) => AbstractBool(v == v2)
-      case _ => super.numEq(that)
+    override def binaryOp(op: BinaryOperator)(that: AbstractConcrete) = that match {
+      case AbstractInt(v2) => op match {
+        case Plus => AbstractInt(v + v2)
+        case Minus => AbstractInt(v - v2)
+        case Times => AbstractInt(v * v2)
+        case Div => AbstractInt(v / v2)
+        case Modulo => AbstractInt(v % v2)
+        case Lt => AbstractBool(v < v2)
+        case NumEq => AbstractBool(v == v2)
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
     }
   }
   case class AbstractString(v: String) extends AbstractConcrete {
     override def toString = '"' + v.toString + '"'
-    override def isString = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsString => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
   }
   case class AbstractChar(v: Char) extends AbstractConcrete {
     override def toString = s"#\\$v"
-    override def isChar = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsChar => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
   }
   case class AbstractSymbol(v: String) extends AbstractConcrete {
     override def toString = v.toString
-    override def isSymbol = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsSymbol => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
   }
   case class AbstractBool(v: Boolean) extends AbstractConcrete {
     override def toString = if (v) "#t" else "#f"
     override def isTrue = v
     override def isFalse = !v
-    override def not = AbstractBool(!v)
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsBoolean => AbstractTrue
+      case Not => AbstractBool(!v)
+      case _ => super.unaryOp(op)
+    }
     override def and(that: => AbstractConcrete) = if (v) { that } else { AbstractFalse }
     override def or(that: => AbstractConcrete) = if (v) { this } else { that }
   }
@@ -96,7 +93,8 @@ object AbstractConcrete {
     override def isTrue = false
     override def isFalse = false
     override def join(that: AbstractConcrete) = that
-    override def eq(that: AbstractConcrete) = AbstractFalse
+    override def unaryOp(op: UnaryOperator) = AbstractError(s"operation ($op) performed on bottom value")
+    override def binaryOp(op: BinaryOperator)(that: AbstractConcrete) = AbstractError(s"operation ($op) performed on bottom value")
   }
   case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractConcrete]) extends AbstractConcrete {
     override def toString = s"#<prim ${prim.name}>"
@@ -106,39 +104,30 @@ object AbstractConcrete {
   }
   object AbstractNil extends AbstractConcrete {
     override def toString = "()"
-    override def isNull = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsNull => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
   }
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractConcrete {
-    override def isCons = AbstractTrue
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsCons => AbstractTrue
+      case _ => super.unaryOp(op)
+    }
   }
 
   implicit object AbstractConcreteAbstractValue extends AbstractValue[AbstractConcrete] {
     def isTrue(x: AbstractConcrete) = x.isTrue
     def isFalse(x: AbstractConcrete) = x.isFalse
     def isError(x: AbstractConcrete) = x.isError
-    def isNull(x: AbstractConcrete) = x.isNull
-    def isCons(x: AbstractConcrete) = x.isCons
-    def isChar(x: AbstractConcrete) = x.isChar
-    def isSymbol(x: AbstractConcrete) = x.isSymbol
-    def isString(x: AbstractConcrete) = x.isString
-    def isInteger(x: AbstractConcrete) = x.isInteger
+    def unaryOp(op: UnaryOperator)(x: AbstractConcrete) = x.unaryOp(op)
+    def binaryOp(op: BinaryOperator)(x: AbstractConcrete, y: AbstractConcrete) = x.binaryOp(op)(y)
     def foldValues[B](x: AbstractConcrete, f: AbstractConcrete => Set[B]) = x.foldValues(f)
     def join(x: AbstractConcrete, y: AbstractConcrete) = x.join(y)
     def meet(x: AbstractConcrete, y: AbstractConcrete) = x.meet(y)
     def subsumes(x: AbstractConcrete, y: AbstractConcrete) = x.subsumes(y)
-    def plus(x: AbstractConcrete, y: AbstractConcrete) = x.plus(y)
-    def minus(x: AbstractConcrete, y: AbstractConcrete) = x.minus(y)
-    def times(x: AbstractConcrete, y: AbstractConcrete) = x.times(y)
-    def div(x: AbstractConcrete, y: AbstractConcrete) = x.div(y)
-    def modulo(x: AbstractConcrete, y: AbstractConcrete) = x.modulo(y)
-    def ceiling(x: AbstractConcrete) = x.ceiling
-    def log(x: AbstractConcrete) = x.log
-    def lt(x: AbstractConcrete, y: AbstractConcrete) = x.lt(y)
-    def numEq(x: AbstractConcrete, y: AbstractConcrete) = x.numEq(y)
-    def not(x: AbstractConcrete) = x.not
     def and(x: AbstractConcrete, y: => AbstractConcrete) = x.and(y)
     def or(x: AbstractConcrete, y: => AbstractConcrete) = x.or(y)
-    def eq(x: AbstractConcrete, y: AbstractConcrete) = x.eq(y)
     def car[Addr : Address](x: AbstractConcrete) = x match {
       case AbstractCons(car : Addr, cdr : Addr) => Set(car)
       case _ => Set()
@@ -147,11 +136,6 @@ object AbstractConcrete {
       case AbstractCons(car : Addr, cdr : Addr) => Set(cdr)
       case _ => Set()
     }
-    def random(x: AbstractConcrete) = x match {
-      case AbstractInt(n) => AbstractInt(scala.util.Random.nextInt % n)
-      case _ => AbstractError(s"random: bound is not an integer, but $x")
-    }
-
     private def toString[Addr : Address](x: AbstractConcrete, store: Store[Addr, AbstractConcrete], inside: Boolean, visited: Set[AbstractConcrete]): String =
       if (visited.contains(x)) {
         "#loop"

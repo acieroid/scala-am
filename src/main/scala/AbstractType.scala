@@ -1,34 +1,28 @@
+import UnaryOperator._
+import BinaryOperator._
+
 /** Simple type lattice, where incompatible elements get promoted to Top */
 trait AbstractType {
   def isTrue: Boolean = true
   def isFalse: Boolean = false
   def isError: Boolean = false
-  def isNull: AbstractType = AbstractType.AbstractBool
-  def isCons: AbstractType = AbstractType.AbstractBool
-  def isChar: AbstractType = AbstractType.AbstractBool
-  def isSymbol: AbstractType = AbstractType.AbstractBool
-  def isString: AbstractType = AbstractType.AbstractBool
-  def isInteger: AbstractType = AbstractType.AbstractBool
+  def unaryOp(op: UnaryOperator): AbstractType = op match {
+    case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsBoolean => AbstractType.AbstractBool
+    case Not => AbstractType.AbstractBool
+    case _ => AbstractType.AbstractError
+  }
+  def binaryOp(op: BinaryOperator)(that: AbstractType): AbstractType = op match {
+    case Eq => AbstractType.AbstractBool
+    case _ => AbstractType.AbstractError
+  }
   def foldValues[A](f: AbstractType => Set[A]): Set[A] = f(this)
   def join(that: AbstractType): AbstractType =
     if (this.equals(that) || that.equals(AbstractType.AbstractBottom)) { this } else { AbstractType.AbstractTop }
   def meet(that: AbstractType): AbstractType =
     if (this.equals(that) || that.equals(AbstractType.AbstractTop)) { this } else { AbstractType.AbstractBottom }
   def subsumes(that: AbstractType): Boolean = this.equals(that)
-  def plus(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def minus(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def times(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def div(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def modulo(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def ceiling: AbstractType = AbstractType.AbstractError
-  def log: AbstractType = AbstractType.AbstractError
-  def lt(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def numEq(that: AbstractType): AbstractType = AbstractType.AbstractError
-  def not: AbstractType = AbstractType.AbstractBool
   def and(that: => AbstractType): AbstractType = AbstractType.AbstractError
   def or(that: => AbstractType): AbstractType = AbstractType.AbstractError
-  /* no other possible definition because lattice true or false by something else than an abstract boolean */
-  def eq(that: AbstractType): AbstractType = AbstractType.AbstractBool
 }
 
 /** Lattice: Top > Error || String || Int || Boolean || Symbol > Bottom */
@@ -38,16 +32,16 @@ object AbstractType {
     override def isTrue = true
     override def isFalse = true
     override def subsumes(that: AbstractType) = true
-    override def plus(that: AbstractType) = AbstractTop
-    override def minus(that: AbstractType) = AbstractTop
-    override def times(that: AbstractType) = AbstractTop
-    override def div(that: AbstractType) = AbstractTop
-    override def modulo(that: AbstractType) = AbstractTop
-    override def ceiling = AbstractTop
-    override def log = AbstractTop
-    override def lt(that: AbstractType) = AbstractTop
-    override def numEq(that: AbstractType) = AbstractTop
-    override def not = AbstractTop
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsBoolean => AbstractBool
+      case Not => AbstractBool
+      case Ceiling | Log | Random => AbstractTop
+      case _ => super.unaryOp(op)
+    }
+    override def binaryOp(op: BinaryOperator)(that: AbstractType) = op match {
+      case Plus | Minus | Times | Div | Modulo | Lt | NumEq | Eq => AbstractTop
+      case _ => super.binaryOp(op)(that)
+    }
     override def and(that: => AbstractType) = AbstractTop
     override def or(that: => AbstractType) = AbstractTop
   }
@@ -57,42 +51,18 @@ object AbstractType {
   }
   object AbstractInt extends AbstractType {
     override def toString = "Int"
-    override def plus(that: AbstractType) = that match {
-      case AbstractTop => AbstractTop
-      case AbstractInt => AbstractInt
-      case _ => super.plus(that)
+    override def unaryOp(op: UnaryOperator) = op match {
+      case Ceiling | Log | Random => AbstractInt
+      case _ => super.unaryOp(op)
     }
-    override def minus(that: AbstractType) = that match {
+    override def binaryOp(op: BinaryOperator)(that: AbstractType) = that match {
       case AbstractTop => AbstractTop
-      case AbstractInt => AbstractInt
-      case _ => super.minus(that)
-    }
-    override def times(that: AbstractType) = that match {
-      case AbstractTop => AbstractTop
-      case AbstractInt => AbstractInt
-      case _ => super.times(that)
-    }
-    override def div(that: AbstractType) = that match {
-      case AbstractTop => AbstractTop
-      case AbstractInt => AbstractInt
-      case _ => super.div(that)
-    }
-    override def modulo(that: AbstractType) = that match {
-      case AbstractTop => AbstractTop
-      case AbstractInt => AbstractInt
-      case _ => super.modulo(that)
-    }
-    override def ceiling = AbstractInt
-    override def log = AbstractInt
-    override def lt(that: AbstractType) = that match {
-      case AbstractTop => AbstractTop
-      case AbstractInt => AbstractBool
-      case _ => super.lt(that)
-    }
-    override def numEq(that: AbstractType) = that match {
-      case AbstractTop => AbstractTop
-      case AbstractInt => AbstractBool
-      case _ => super.numEq(that)
+      case AbstractInt => op match {
+        case Plus | Minus | Times | Div | Modulo => AbstractInt
+        case Lt | NumEq => AbstractBool
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
     }
   }
   object AbstractString extends AbstractType {
@@ -108,7 +78,6 @@ object AbstractType {
     override def toString = "Bool"
     override def isTrue = true
     override def isFalse = true
-    override def not = AbstractBool
     override def and(that: => AbstractType) = that match {
       case AbstractTop => AbstractTop
       case AbstractBool => AbstractBool
@@ -146,29 +115,14 @@ object AbstractType {
     def isTrue(x: AbstractType) = x.isTrue
     def isFalse(x: AbstractType) = x.isFalse
     def isError(x: AbstractType) = x.isError
-    def isNull(x: AbstractType) = x.isNull
-    def isCons(x: AbstractType) = x.isCons
-    def isChar(x: AbstractType) = x.isChar
-    def isSymbol(x: AbstractType) = x.isSymbol
-    def isString(x: AbstractType) = x.isString
-    def isInteger(x: AbstractType) = x.isInteger
+    def unaryOp(op: UnaryOperator)(x: AbstractType) = x.unaryOp(op)
+    def binaryOp(op: BinaryOperator)(x: AbstractType, y: AbstractType) = x.binaryOp(op)(y)
     def foldValues[B](x: AbstractType, f: AbstractType => Set[B]) = x.foldValues(f)
     def join(x: AbstractType, y: AbstractType) = x.join(y)
     def meet(x: AbstractType, y: AbstractType) = x.meet(y)
     def subsumes(x: AbstractType, y: AbstractType) = x.subsumes(y)
-    def plus(x: AbstractType, y: AbstractType) = x.plus(y)
-    def minus(x: AbstractType, y: AbstractType) = x.minus(y)
-    def times(x: AbstractType, y: AbstractType) = x.times(y)
-    def div(x: AbstractType, y: AbstractType) = x.div(y)
-    def modulo(x: AbstractType, y: AbstractType) = x.modulo(y)
-    def ceiling(x: AbstractType) = x.ceiling
-    def log(x: AbstractType) = x.ceiling
-    def lt(x: AbstractType, y: AbstractType) = x.lt(y)
-    def numEq(x: AbstractType, y: AbstractType) = x.numEq(y)
-    def not(x: AbstractType) = x.not
     def and(x: AbstractType, y: => AbstractType) = x.and(y)
     def or(x: AbstractType, y: => AbstractType) = x.or(y)
-    def eq(x: AbstractType, y: AbstractType) = x.eq(y)
     def car[Addr : Address](x: AbstractType) = x match {
       case AbstractCons(car: Addr, cdr: Addr) => Set(car)
       case _ => Set()
@@ -176,10 +130,6 @@ object AbstractType {
     def cdr[Addr : Address](x: AbstractType) = x match {
       case AbstractCons(car: Addr, cdr: Addr) => Set(cdr)
       case _ => Set()
-    }
-    def random(x: AbstractType) = x match {
-      case AbstractInt => AbstractInt
-      case _ => AbstractError
     }
     private def toString[Addr : Address](x: AbstractType, store: Store[Addr, AbstractType], inside: Boolean): String = x match {
       case AbstractCons(car : Addr, cdr : Addr) =>

@@ -230,7 +230,7 @@ class BaseSchemeSemantics[Abs, Addr]
       Set(ActionPush(enew, FrameCasNew(variable, v, ρ), ρ, σ))
     case FrameCasNew(variable, old, ρ) =>
       ρ.lookup(variable) match {
-        case Some(a) => conditional(abs.eq(σ.lookup(a), old),
+        case Some(a) => conditional(abs.binaryOp(BinaryOperator.Eq)(σ.lookup(a), old),
           /* Compare and swap succeeds */
           ActionReachedValue(absi.inject(true), σ.update(a, v)),
           /* Compare and swap fails */

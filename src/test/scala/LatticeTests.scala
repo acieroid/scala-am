@@ -1,6 +1,9 @@
 import org.scalatest._
 import org.scalatest.prop._
 
+import UnaryOperator._
+import BinaryOperator._
+
 class LatticeFlatSpec extends FlatSpec with Matchers {
   "AbstractTypeSet" should "not accept sets" in {
     val v = AbstractTypeSet.AbstractSet(Set())
@@ -16,7 +19,7 @@ abstract class LatticePropSpec[Abs](implicit abs: AbstractValue[Abs], absi: Abst
     forAll { (b: Boolean) =>
       val v = absi.inject(b)
       if (b) assert(abs.isTrue(v)) else assert(abs.isFalse(v))
-      if (b) assert(abs.isFalse(abs.not(v))) else assert(abs.isTrue(abs.not(v)))
+      if (b) assert(abs.isFalse(abs.unaryOp(Not)(v))) else assert(abs.isTrue(abs.unaryOp(Not)(v)))
     }
   }
   property("lattice should correctly implement boolean operations") {
@@ -31,20 +34,20 @@ abstract class LatticePropSpec[Abs](implicit abs: AbstractValue[Abs], absi: Abst
     forAll { (n1: Int, n2: Int) =>
       val v1 = absi.inject(n1)
       val v2 = absi.inject(n2)
-      if (n1 < n2) assert(abs.isTrue(abs.lt(v1, v2))) else assert(abs.isFalse(abs.lt(v1, v2)))
-      if (n1 == n2) assert(abs.isTrue(abs.numEq(v1, v2))) else assert(abs.isFalse(abs.numEq(v1, v2)))
+      if (n1 < n2) assert(abs.isTrue(abs.binaryOp(Lt)(v1, v2))) else assert(abs.isFalse(abs.binaryOp(Lt)(v1, v2)))
+      if (n1 == n2) assert(abs.isTrue(abs.binaryOp(NumEq)(v1, v2))) else assert(abs.isFalse(abs.binaryOp(NumEq)(v1, v2)))
     }
   }
   property("lattice should report errors on invalid operations") {
     val v1 = absi.inject(1)
     val v2 = absi.inject(true)
-    assert(abs.isError(abs.plus(v1, v2))); assert(abs.isError(abs.plus(v2, v1)))
-    assert(abs.isError(abs.minus(v1, v2))); assert(abs.isError(abs.minus(v2, v1)))
-    assert(abs.isError(abs.times(v1, v2))); assert(abs.isError(abs.times(v2, v1)))
-    assert(abs.isError(abs.div(v1, v2))); assert(abs.isError(abs.div(v2, v1)))
-    assert(abs.isError(abs.modulo(v1, v2))); assert(abs.isError(abs.modulo(v2, v1)))
-    assert(abs.isError(abs.lt(v1, v2))); assert(abs.isError(abs.lt(v2, v1)))
-    assert(abs.isError(abs.numEq(v1, v2))); assert(abs.isError(abs.numEq(v2, v1)))
+    assert(abs.isError(abs.binaryOp(Plus)(v1, v2))); assert(abs.isError(abs.binaryOp(Plus)(v2, v1)))
+    assert(abs.isError(abs.binaryOp(Minus)(v1, v2))); assert(abs.isError(abs.binaryOp(Minus)(v2, v1)))
+    assert(abs.isError(abs.binaryOp(Times)(v1, v2))); assert(abs.isError(abs.binaryOp(Times)(v2, v1)))
+    assert(abs.isError(abs.binaryOp(Div)(v1, v2))); assert(abs.isError(abs.binaryOp(Div)(v2, v1)))
+    assert(abs.isError(abs.binaryOp(Modulo)(v1, v2))); assert(abs.isError(abs.binaryOp(Modulo)(v2, v1)))
+    assert(abs.isError(abs.binaryOp(Lt)(v1, v2))); assert(abs.isError(abs.binaryOp(Lt)(v2, v1)))
+    assert(abs.isError(abs.binaryOp(NumEq)(v1, v2))); assert(abs.isError(abs.binaryOp(NumEq)(v2, v1)))
   }
 }
 

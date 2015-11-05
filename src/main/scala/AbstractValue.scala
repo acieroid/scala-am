@@ -15,6 +15,20 @@ trait Primitive[Addr, Abs] {
   def call[Exp : Expression](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]): Either[String, (Abs, Store[Addr, Abs])]
 }
 
+object UnaryOperator extends Enumeration {
+  type UnaryOperator = Value
+  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsBoolean,
+    Not,
+    Ceiling, Log, Random = Value
+}
+import UnaryOperator._
+
+object BinaryOperator extends Enumeration {
+  type BinaryOperator = Value
+  val Plus, Minus, Times, Div, Modulo, Lt, NumEq, Eq = Value
+}
+import BinaryOperator._
+
 /** Abstract values are abstract representations of the possible values of a variable */
 trait AbstractValue[A] extends Semigroup[A] {
   /** Can this abstract value be considered true for conditionals? */
@@ -23,18 +37,10 @@ trait AbstractValue[A] extends Semigroup[A] {
   def isFalse(x: A): Boolean
   /** Is this an erroneous value? (and only an erroneous value) */
   def isError(x: A): Boolean
-  /** Is this the null value? (Scheme's null?, returns an abstract boolean) */
-  def isNull(x: A): A
-  /** Is this a cons cell? (Scheme's pair?) */
-  def isCons(x: A): A
-  /** Is this a character? (Scheme's char?) */
-  def isChar(x: A): A
-  /** Is this a symbol? (Scheme's symbol?) */
-  def isSymbol(x: A): A
-  /** Is this a string? (Scheme's string?) */
-  def isString(x: A): A
-  /** Is this an integer? (Scheme's integer?) */
-  def isInteger(x: A): A
+  /** Performs an unary operation on the abstract value x */
+  def unaryOp(op: UnaryOperator.UnaryOperator)(x: A): A
+  /** Performs a binary operation on abstract values x and y */
+  def binaryOp(op: BinaryOperator.BinaryOperator)(x: A, y: A): A
   /** Fold a function over the values contained in this abstract values. This
       should be redefined only for container-like abstract values (e.g., for a
       set abstraction) */
@@ -46,38 +52,14 @@ trait AbstractValue[A] extends Semigroup[A] {
   def meet(x: A, y: A): A
   /** Checks whether x subsumes y */
   def subsumes(x: A, y: A): Boolean
-  /** Adds two values */
-  def plus(x: A, y: A): A
-  /** Subtracts two values */
-  def minus(x: A, y: A): A
-  /** Multiplies two values */
-  def times(x: A, y: A): A
-  /** Divides two values */
-  def div(x: A, y: A): A
-  /** x % y */
-  def modulo(x: A, y: A): A
-  /** Computes the ceiling of x */
-  def ceiling(x: A): A
-  /** Computes the log of x */
-  def log(x: A): A
-  /** Is x strictly smaller than y? */
-  def lt(x: A, y: A): A
-  /** Is x numerically equal to y? */
-  def numEq(x: A, y: A): A
-  /** Negation */
-  def not(x: A): A
   /** Conjunction */
   def and(x: A, y: => A): A
   /** Disjunction */
   def or(x: A, y: => A): A
-  /** Equality test (pointer comparison for cons cells, i.e., Scheme's eq?) */
-  def eq(x: A, y: A): A
   /** Takes the car of a cons cell */
   def car[Addr : Address](x: A): Set[Addr]
   /** Takes the cdr of a cons cell */
   def cdr[Addr : Address](x: A): Set[Addr]
-  /** Returns a random integer bounded by x */
-  def random(x: A): A
   /** Returns the string representation of this value */
   def toString[Addr : Address](x: A, store: Store[Addr, A]): String
 
@@ -119,6 +101,27 @@ trait AbstractInjection[A] {
 class Primitives[Addr, Abs]
   (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
     addr: Address[Addr], addri: AddressInjection[Addr]) {
+
+  /** Some shortcuts */
+  def isNull = abs.unaryOp(UnaryOperator.IsNull) _
+  def isCons = abs.unaryOp(UnaryOperator.IsCons) _
+  def isChar = abs.unaryOp(UnaryOperator.IsChar) _
+  def isSymbol = abs.unaryOp(UnaryOperator.IsSymbol) _
+  def isString = abs.unaryOp(UnaryOperator.IsString) _
+  def isInteger = abs.unaryOp(UnaryOperator.IsInteger) _
+  def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
+  def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
+  def log = abs.unaryOp(UnaryOperator.Log) _
+  def not = abs.unaryOp(UnaryOperator.Not) _
+  def random = abs.unaryOp(UnaryOperator.Random) _
+  def plus = abs.binaryOp(BinaryOperator.Plus) _
+  def minus = abs.binaryOp(BinaryOperator.Minus) _
+  def times = abs.binaryOp(BinaryOperator.Times) _
+  def div = abs.binaryOp(BinaryOperator.Div) _
+  def modulo = abs.binaryOp(BinaryOperator.Modulo) _
+  def lt = abs.binaryOp(BinaryOperator.Lt) _
+  def numEq = abs.binaryOp(BinaryOperator.NumEq) _
+  def eq = abs.binaryOp(BinaryOperator.Eq) _
 
   /** This is how a primitive is defined by extending Primitive */
   object Cons extends Primitive[Addr, Abs] {
@@ -195,7 +198,7 @@ class Primitives[Addr, Abs]
     def call(args: List[Abs]) = args match {
       case Nil => Right(absi.inject(0))
       case x :: rest => call(rest) match {
-        case Right(y) => Right(abs.plus(x, y))
+        case Right(y) => Right(plus(x, y))
         case Left(err) => Left(err)
       }
     }
@@ -204,9 +207,9 @@ class Primitives[Addr, Abs]
     val name = "-"
     def call(args: List[Abs]) = args match {
       case Nil => Left("-: at least 1 operand expected, got 0")
-      case x :: Nil => Right(abs.minus(absi.inject(0), x))
+      case x :: Nil => Right(minus(absi.inject(0), x))
       case x :: rest => Plus.call(rest) match {
-        case Right(y) => Right(abs.minus(x, y))
+        case Right(y) => Right(minus(x, y))
         case Left(err) => Left(err)
       }
     }
@@ -216,7 +219,7 @@ class Primitives[Addr, Abs]
     def call(args: List[Abs]) = args match {
       case Nil => Right(absi.inject(1))
       case x :: rest => call(rest) match {
-        case Right(y) => Right(abs.times(x, y))
+        case Right(y) => Right(times(x, y))
         case Left(err) => Left(err)
       }
     }
@@ -226,7 +229,7 @@ class Primitives[Addr, Abs]
     def call(args: List[Abs]) = args match {
       case Nil => Left("/: at least 1 operand expected, got 0")
       case x :: rest => Times.call(rest) match {
-        case Right(y) => Right(abs.div(x, y))
+        case Right(y) => Right(div(x, y))
         case Left(err) => Left(err)
       }
     }
@@ -256,9 +259,9 @@ class Primitives[Addr, Abs]
     if (visited.contains(a, b)) {
       absi.bottom
     } else {
-      val cond = abs.numEq(b, absi.inject(0))
+      val cond = numEq(b, absi.inject(0))
       val t = if (abs.isTrue(cond)) { a } else { absi.bottom }
-      val f = if (abs.isFalse(cond)) { gcd(b, abs.modulo(a, b), visited + ((a, b))) } else { absi.bottom }
+      val f = if (abs.isFalse(cond)) { gcd(b, modulo(a, b), visited + ((a, b))) } else { absi.bottom }
       abs.join(t, f)
     }
   }
@@ -270,10 +273,10 @@ class Primitives[Addr, Abs]
       absi.bottom
     } else {
       val visited2 = visited + ((a, b))
-      abs.or(abs.eq(a, b),
-        abs.or(abs.and(abs.isNull(a), abs.isNull(b)),
-          abs.and(abs.isCons(a),
-            abs.and(abs.isCons(b),
+      abs.or(eq(a, b),
+        abs.or(abs.and(isNull(a), isNull(b)),
+          abs.and(isCons(a),
+            abs.and(isCons(b),
               abs.and(equal(car(a, store), car(b, store), store, visited2),
                 equal(cdr(a, store), cdr(b, store), store, visited2))))))
     }
@@ -286,10 +289,10 @@ class Primitives[Addr, Abs]
       absi.bottom
     } else {
       val visited2 = visited + l
-      val cond = abs.isCons(l)
-      val t = if (abs.isTrue(cond)) { abs.plus(absi.inject(1), length(cdr(l, store), store, visited2)) } else { absi.bottom }
+      val cond = isCons(l)
+      val t = if (abs.isTrue(cond)) { plus(absi.inject(1), length(cdr(l, store), store, visited2)) } else { absi.bottom }
       val f = if (abs.isFalse(cond)) {
-        val fcond = abs.isNull(l)
+        val fcond = isNull(l)
         val ft = if (abs.isTrue(fcond)) { absi.inject(0) } else { absi.bottom }
         val ff = if (abs.isFalse(fcond)) { absi.error(absi.inject("length called with a non-list")) } else { absi.bottom }
         abs.join(ft, ff)
@@ -304,23 +307,23 @@ class Primitives[Addr, Abs]
   /** Bundles all the primitives together */
   val all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div,
-    BinaryOperation("quotient", abs.div),
-    BinaryOperation("<", abs.lt), // TODO: <, <=, =, >, >= should accept any number of arguments
-    BinaryOperation("<=", (x, y) => abs.or(abs.lt(x, y), abs.numEq(x, y))),
-    BinaryOperation("=", abs.numEq),
-    BinaryOperation(">", (x, y) => abs.and(abs.not(abs.lt(x, y)), abs.not(abs.numEq(x, y)))),
-    BinaryOperation(">=", (x, y) => abs.not(abs.lt(x, y))),
-    BinaryOperation("modulo", abs.modulo),
+    BinaryOperation("quotient", div),
+    BinaryOperation("<", lt), // TODO: <, <=, =, >, >= should accept any number of arguments
+    BinaryOperation("<=", (x, y) => abs.or(lt(x, y), numEq(x, y))),
+    BinaryOperation("=", numEq),
+    BinaryOperation(">", (x, y) => abs.and(not(lt(x, y)), not(numEq(x, y)))),
+    BinaryOperation(">=", (x, y) => not(lt(x, y))),
+    BinaryOperation("modulo", modulo),
     BinaryOperation("gcd", gcd),
-    UnaryOperation("not", abs.not),
-    UnaryOperation("random", abs.random),
-    UnaryOperation("ceiling", abs.ceiling),
-    UnaryOperation("log", abs.log),
-    UnaryOperation("zero?", (x) => abs.numEq(absi.inject(0), x)), /* (define (zero? x) (= x 0)) */
-    UnaryOperation("positive?", (x) => abs.lt(absi.inject(0), x)), /* (define (positive? x) (< 0 x)) */
-    UnaryOperation("negative?", (x) => abs.lt(x, absi.inject(0))), /* (define (negative? x) (< x 0)) */
-    UnaryOperation("odd?", (x) => abs.numEq(absi.inject(1), abs.modulo(x, absi.inject(2)))), /* (define (odd? x) (= 1 (modulo x 2))) */
-    UnaryOperation("even?", (x) => abs.numEq(absi.inject(0), abs.modulo(x, absi.inject(2)))), /* (define (even? x) (= 0 (modulo x 2))) */
+    UnaryOperation("not", not),
+    UnaryOperation("random", random),
+    UnaryOperation("ceiling", ceiling),
+    UnaryOperation("log", log),
+    UnaryOperation("zero?", (x) => numEq(absi.inject(0), x)), /* (define (zero? x) (= x 0)) */
+    UnaryOperation("positive?", (x) => lt(absi.inject(0), x)), /* (define (positive? x) (< 0 x)) */
+    UnaryOperation("negative?", (x) => lt(x, absi.inject(0))), /* (define (negative? x) (< x 0)) */
+    UnaryOperation("odd?", (x) => numEq(absi.inject(1), modulo(x, absi.inject(2)))), /* (define (odd? x) (= 1 (modulo x 2))) */
+    UnaryOperation("even?", (x) => numEq(absi.inject(0), modulo(x, absi.inject(2)))), /* (define (even? x) (= 0 (modulo x 2))) */
     UnaryOperation("display", display),
     NullaryOperation("newline", newline),
     Cons,
@@ -345,14 +348,15 @@ class Primitives[Addr, Abs]
       (absi.bottom,
         abs.cdr(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
     UnaryOperation("error", absi.error),
-    UnaryOperation("null?", abs.isNull),
-    UnaryOperation("pair?", abs.isCons),
-    UnaryOperation("char?", abs.isChar),
-    UnaryOperation("symbol?", abs.isSymbol),
-    UnaryOperation("string?", abs.isString),
-    UnaryOperation("integer?", abs.isInteger),
-    UnaryOperation("number?", abs.isInteger), // TODO: support other numbers as well
-    BinaryOperation("eq?", abs.eq),
+    UnaryOperation("null?", isNull),
+    UnaryOperation("pair?", isCons),
+    UnaryOperation("char?", isChar),
+    UnaryOperation("symbol?", isSymbol),
+    UnaryOperation("string?", isString),
+    UnaryOperation("integer?", isInteger),
+    UnaryOperation("number?", isInteger), // TODO: support other numbers as well
+    UnaryOperation("boolean?", isBoolean),
+    BinaryOperation("eq?", eq),
     BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store)),
     UnaryStoreOperation("length", (v, store) => (length(v, store), store))
   )
