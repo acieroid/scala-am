@@ -39,7 +39,7 @@ object AbstractType {
       case _ => super.unaryOp(op)
     }
     override def binaryOp(op: BinaryOperator)(that: AbstractType) = op match {
-      case Plus | Minus | Times | Div | Modulo | Lt | NumEq | Eq => AbstractTop
+      case Plus | Minus | Times | Div | Modulo | Lt | NumEq => AbstractTop
       case _ => super.binaryOp(op)(that)
     }
     override def and(that: => AbstractType) = AbstractTop
