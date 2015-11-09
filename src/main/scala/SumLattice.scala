@@ -11,6 +11,9 @@ class SumLattice[X, Y]
   (implicit xabs: AbstractValue[X], xabsi: AbstractInjection[X],
     yabs: AbstractValue[Y], yabsi: AbstractInjection[Y]) {
   trait Sum
+  case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Sum {
+    override def toString = s"#<prim ${prim.name}>"
+  }
   case class Left(x: X) extends Sum
   case class Right(y: Y) extends Sum
 
@@ -20,18 +23,22 @@ class SumLattice[X, Y]
     def isTrue(s: Sum) = s match {
       case Left(x) => xabs.isTrue(x)
       case Right(y) => yabs.isTrue(y)
+      case Prim(_) => true
     }
     def isFalse(s: Sum) = s match {
       case Left(x) => xabs.isFalse(x)
       case Right(y) => yabs.isFalse(y)
+      case Prim(_) => false
     }
     def isError(s: Sum) = s match {
       case Left(x) => xabs.isError(x)
       case Right(y) => yabs.isError(y)
+      case Prim(_) => false
     }
     def unaryOp(op: UnaryOperator)(s: Sum) = s match {
       case Left(x) => Left(xabs.unaryOp(op)(x))
       case Right(y) => Right(yabs.unaryOp(op)(y))
+      case Prim(_) => err("unary operation ($op) performed on primitive $s")
     }
     def binaryOp(op: BinaryOperator)(s1: Sum, s2: Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.binaryOp(op)(x1, x2))
@@ -41,6 +48,7 @@ class SumLattice[X, Y]
     def foldValues[B](s: Sum, f: Sum => Set[B]) = s match {
       case Left(x) => xabs.foldValues(x, (x) => f(Left(x)))
       case Right(y) => yabs.foldValues(y, (y) => f(Right(y)))
+      case Prim(_) => f(s)
     }
     def join(s1: Sum, s2: Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.join(x1, x2))
@@ -50,18 +58,18 @@ class SumLattice[X, Y]
     def meet(s1: Sum, s2: Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.meet(x1, x2))
       case (Right(y1), Right(y2)) => Right(yabs.meet(y1, y2))
-      case (Left(_), Right(_)) => SumInjection.bottom
-      case (Right(_), Left(_)) => SumInjection.bottom
+      case _ => SumInjection.bottom
     }
     def subsumes(s1: Sum, s2: Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => xabs.subsumes(x1, x2)
       case (Right(y1), Right(y2)) => yabs.subsumes(y1, y2)
+      case (Prim(p1), Prim(p2)) => p1 == p2
       case _ => false
     }
     def and(s1: Sum, s2: => Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.and(x1, x2))
       case (Right(y1), Right(y2)) => Right(yabs.and(y1, y2))
-      case (Left(x1), Right(y2)) => err("and used on two different element of a sum lattice: $s1 and $s2")
+      case _ => err("and used on two different element of a sum lattice: $s1 and $s2")
     }
     def or(s1: Sum, s2: => Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.or(x1, x2))
@@ -71,19 +79,22 @@ class SumLattice[X, Y]
     def car[Addr : Address](s: Sum) = s match {
       case Left(x) => xabs.car[Addr](x)
       case Right(y) => yabs.car[Addr](y)
+      case Prim(_) => Set[Addr]()
     }
     def cdr[Addr : Address](s: Sum) = s match {
       case Left(x) => xabs.cdr[Addr](x)
       case Right(y) => yabs.cdr[Addr](y)
+      case Prim(_) => Set[Addr]()
     }
     def toString[Addr : Address](s: Sum, store: Store[Addr, Sum]) = s.toString
     def getClosures[Exp : Expression, Addr : Address](s: Sum) = s match {
       case Left(x) => xabs.getClosures[Exp, Addr](x)
       case Right(y) => yabs.getClosures[Exp, Addr](y)
+      case Prim(_) => Set()
     }
-    def getPrimitive[Addr : Address](s: Sum) = s match {
-      case Left(x) => ??? // TODO
-      case Right(y) => ??? // TODO
+    def getPrimitive[Addr : Address, Abs : AbstractValue](s: Sum) = s match {
+      case Prim(p: Primitive[Addr, Abs]) => Some(p)
+      case _ => None
     }
   }
   implicit object SumInjection extends AbstractInjection[Sum] {
@@ -99,7 +110,7 @@ class SumLattice[X, Y]
     def inject(x: String) = Left(xabsi.inject(x))
     def inject(x: Char) = Left(xabsi.inject(x))
     def inject(x: Boolean) = Left(xabsi.inject(x))
-    def inject[Addr : Address](x: Primitive[Addr, Sum]) = ??? // TODO: have a primitive element
+    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = Left(xabsi.inject[Addr, Abs](x))
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Left(xabsi.inject[Exp, Addr](x))
     def injectSymbol(x: String) = Left(xabsi.injectSymbol(x))
     def nil = Left(xabsi.nil)

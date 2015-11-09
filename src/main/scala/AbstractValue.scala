@@ -66,7 +66,7 @@ trait AbstractValue[A] extends Semigroup[A] {
   /** Extract closures contained in this value */
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
   /** Extract primitives contained in this value */
-  def getPrimitive[Addr : Address](x: A): Option[Primitive[Addr, A]]
+  def getPrimitive[Addr : Address, Abs : AbstractValue](x: A): Option[Primitive[Addr, Abs]]
 }
 
 /** Concrete values have to be injected to become abstract */
@@ -86,7 +86,7 @@ trait AbstractInjection[A] {
   /** Injection of a character */
   def inject(x: Char): A
   /** Injection of a primitive function */
-  def inject[Addr : Address](x: Primitive[Addr, A]): A
+  def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): A
   /** Injection of a closure */
   def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): A
   /** Injection of a symbol */

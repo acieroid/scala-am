@@ -96,7 +96,7 @@ object AbstractConcrete {
     override def unaryOp(op: UnaryOperator) = AbstractError(s"operation ($op) performed on bottom value")
     override def binaryOp(op: BinaryOperator)(that: AbstractConcrete) = AbstractError(s"operation ($op) performed on bottom value")
   }
-  case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractConcrete]) extends AbstractConcrete {
+  case class AbstractPrimitive[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends AbstractConcrete {
     override def toString = s"#<prim ${prim.name}>"
   }
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractConcrete {
@@ -163,8 +163,8 @@ object AbstractConcrete {
       case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Set((λ, ρ))
       case _ => Set()
     }
-    def getPrimitive[Addr : Address](x: AbstractConcrete) = x match {
-      case AbstractPrimitive(prim: Primitive[Addr, AbstractConcrete]) => Some(prim)
+    def getPrimitive[Addr : Address, Abs : AbstractValue](x: AbstractConcrete) = x match {
+      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
   }
@@ -177,7 +177,7 @@ object AbstractConcrete {
     def inject(x: String) = AbstractString(x)
     def inject(x: Char) = AbstractChar(x)
     def inject(x: Boolean) = AbstractBool(x)
-    def inject[Addr : Address](x: Primitive[Addr, AbstractConcrete]) = AbstractPrimitive(x)
+    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol(x)
     def nil = AbstractNil

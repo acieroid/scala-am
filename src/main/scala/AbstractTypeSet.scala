@@ -122,7 +122,7 @@ object AbstractTypeSet {
     override def or(that: => A) = that
   }
   val AbstractBool = AbstractSet(Set(AbstractTrue, AbstractFalse))
-  case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractTypeSet]) extends AbstractTypeSet {
+  case class AbstractPrimitive[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends AbstractTypeSet {
     override def toString = s"#<prim ${prim.name}>"
     override def binaryOp(op: BinaryOperator)(that: AbstractTypeSet) = op match {
       case Eq => that match {
@@ -284,8 +284,8 @@ object AbstractTypeSet {
       case AbstractSet(content) => content.flatMap(y => getClosures(y))
       case _ => Set()
     }
-    def getPrimitive[Addr : Address](x: A) = x match {
-      case AbstractPrimitive(prim: Primitive[Addr, AbstractTypeSet]) => Some(prim)
+    def getPrimitive[Addr : Address, Abs : AbstractValue](x: A) = x match {
+      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
   }
@@ -298,7 +298,7 @@ object AbstractTypeSet {
     def inject(x: String) = AbstractString
     def inject(x: Char) = AbstractChar
     def inject(x: Boolean) = if (x) { AbstractTrue } else { AbstractFalse }
-    def inject[Addr : Address](x: Primitive[Addr, AbstractTypeSet]) = AbstractPrimitive(x)
+    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
     def injectSymbol(x: String) = AbstractSymbol
     def nil = AbstractNil

@@ -12,7 +12,7 @@ class ProductLattice[X, Y]
   (implicit xabs: AbstractValue[X], xabsi: AbstractInjection[X],
     yabs: AbstractValue[Y], yabsi: AbstractInjection[Y]) {
   trait Product
-  case class Prim[Addr : Address](prim: Primitive[Addr, Product]) extends Product {
+  case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Product {
     override def toString = s"#<prim ${prim.name}>"
   }
   case class Prod(x: X, y: Y) extends Product
@@ -78,8 +78,8 @@ class ProductLattice[X, Y]
       case Prod(x, y) => xabs.getClosures[Exp, Addr](x) ++ yabs.getClosures[Exp, Addr](y)
       case Prim(_) => Set()
     }
-    def getPrimitive[Addr : Address](p: Product) = p match {
-      case Prim(prim: Primitive[Addr, Product]) => Some(prim)
+    def getPrimitive[Addr : Address, Abs : AbstractValue](p: Product) = p match {
+      case Prim(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
   }
@@ -94,7 +94,7 @@ class ProductLattice[X, Y]
     def inject(x: String) = Prod(xabsi.inject(x), yabsi.inject(x))
     def inject(x: Char) = Prod(xabsi.inject(x), yabsi.inject(x))
     def inject(x: Boolean) = Prod(xabsi.inject(x), yabsi.inject(x))
-    def inject[Addr : Address](x: Primitive[Addr, Product]) = Prim(x)
+    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = Prim(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Prod(xabsi.inject[Exp, Addr](x), yabsi.inject[Exp, Addr](x))
     def injectSymbol(x: String) = Prod(xabsi.injectSymbol(x), yabsi.injectSymbol(x))
     def nil = Prod(xabsi.nil, yabsi.nil)

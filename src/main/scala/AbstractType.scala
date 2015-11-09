@@ -95,7 +95,7 @@ object AbstractType {
     override def isFalse = false
     override def join(that: AbstractType) = that
   }
-  case class AbstractPrimitive[Addr : Address](prim: Primitive[Addr, AbstractType]) extends AbstractType {
+  case class AbstractPrimitive[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends AbstractType {
     override def toString = s"#<prim ${prim.name}>"
   }
   /* We need to be able to represent multiple closures in this lattice */
@@ -152,8 +152,8 @@ object AbstractType {
       case v: AbstractClosures[Exp, Addr] => v.clos
       case _ => Set()
     }
-    def getPrimitive[Addr : Address](x: AbstractType) = x match {
-      case AbstractPrimitive(prim: Primitive[Addr, AbstractType]) => Some(prim)
+    def getPrimitive[Addr : Address, Abs : AbstractValue](x: AbstractType) = x match {
+      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
   }
@@ -166,7 +166,7 @@ object AbstractType {
     def inject(x: String) = AbstractString
     def inject(x: Boolean) = AbstractBool
     def inject(x: Char) = AbstractChar
-    def inject[Addr : Address](x: Primitive[Addr, AbstractType]) = AbstractPrimitive(x)
+    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosures[Exp, Addr](Set((x._1, x._2)))
     def injectSymbol(x: String) = AbstractSymbol
     def nil = AbstractNil
