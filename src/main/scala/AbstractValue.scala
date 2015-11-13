@@ -69,6 +69,12 @@ trait AbstractValue[A] extends Semigroup[A] {
   def getPrimitive[Addr : Address, Abs : AbstractValue](x: A): Option[Primitive[Addr, Abs]]
 }
 
+/**
+ * Exception to be raised during injection if an element of the lattice is not
+ * supported (e.g., a lattice that doesn't support primitives)
+ */
+object UnsupportedLatticeElement extends Exception
+
 /** Concrete values have to be injected to become abstract */
 trait AbstractInjection[A] {
   /** Name of this lattice */

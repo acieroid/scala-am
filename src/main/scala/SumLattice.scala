@@ -106,14 +106,59 @@ class SumLattice[X, Y]
     }
     /* TODO: have an execption raised by inject if a lattice doesn't support some
      * type of elements, and fallback on Y when it is the case */
-    def inject(x: Int) = Left(xabsi.inject(x))
-    def inject(x: String) = Left(xabsi.inject(x))
-    def inject(x: Char) = Left(xabsi.inject(x))
-    def inject(x: Boolean) = Left(xabsi.inject(x))
-    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = Left(xabsi.inject[Addr, Abs](x))
-    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Left(xabsi.inject[Exp, Addr](x))
-    def injectSymbol(x: String) = Left(xabsi.injectSymbol(x))
-    def nil = Left(xabsi.nil)
-    def cons[Addr : Address](car: Addr, cdr: Addr) = Left(xabsi.cons[Addr](car, cdr))
+    def inject(x: Int) = try {
+      Left(xabsi.inject(x))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.inject(x))
+    }
+    def inject(x: String) = try {
+      Left(xabsi.inject(x))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.inject(x))
+    }
+    def inject(x: Char) = try {
+      Left(xabsi.inject(x))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.inject(x))
+    }
+    def inject(x: Boolean) = try {
+      Left(xabsi.inject(x))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.inject(x))
+    }
+    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = try {
+      Left(xabsi.inject[Addr, Abs](x))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.inject[Addr, Abs](x))
+    }
+    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = try {
+      Left(xabsi.inject[Exp, Addr](x))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.inject[Exp, Addr](x))
+    }
+    def injectSymbol(x: String) = try {
+      Left(xabsi.injectSymbol(x))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.injectSymbol(x))
+    }
+    def nil = try {
+      Left(xabsi.nil)
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.nil)
+    }
+    def cons[Addr : Address](car: Addr, cdr: Addr) = try {
+      Left(xabsi.cons[Addr](car, cdr))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabsi.cons[Addr](car, cdr))
+    }
   }
 }
