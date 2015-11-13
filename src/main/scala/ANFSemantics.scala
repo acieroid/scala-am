@@ -1,8 +1,7 @@
 /**
  * Semantics for ANF Scheme (abstract grammar defined in ANF.scala)
  */
-class ANFSemantics[Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+class ANFSemantics[Abs : AbstractValue, Addr : Address]
     extends BaseSemantics[ANFExp, Abs, Addr] {
   /** ANF Scheme only has three types of continuation frames: halt, let, and letrec */
   trait ANFFrame extends Frame {

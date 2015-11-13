@@ -102,8 +102,9 @@ trait AbstractValue[A] extends Semigroup[A] {
 }
 
 /** This is where we define (Scheme) primitives */
-class Primitives[Addr, Abs]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr]) {
+class Primitives[Addr : Address, Abs : AbstractValue] {
+  val abs = implicitly[AbstractValue[Abs]]
+  val addr = implicitly[Address[Addr]]
 
   /** Some shortcuts */
   def isNull = abs.unaryOp(UnaryOperator.IsNull) _

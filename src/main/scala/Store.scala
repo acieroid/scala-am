@@ -1,6 +1,8 @@
 import scalaz.Scalaz._
 
-case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(implicit abs: AbstractValue[Abs], addr: Address[Addr]) {
+case class Store[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Int, Abs)], counting: Boolean) {
+  val abs = implicitly[AbstractValue[Abs]]
+  val addr = implicitly[Address[Addr]]
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys: collection.Iterable[Addr] = content.keys
   /** Checks if a predicate is true for all elements of the store */
@@ -47,6 +49,8 @@ object Store {
   /* TODO: have abstract counting as a parameter of the analysis. Also, when it is
    * turned on, it prevents AAC and Free from converging. For now, it's only
    * enabled with the AbstractConcrete lattice. */
-  def empty[Addr, Abs]()(implicit abs : AbstractValue[Abs], addr: Address[Addr]) = Store(Map[Addr, (Int, Abs)](), abs.name == "Concrete")
-  def initial[Addr, Abs](values: List[(Addr, Abs)])(implicit abs: AbstractValue[Abs], addr: Address[Addr]): Store[Addr, Abs] = Store(values.map({ case (a, v) => (a, (0, v)) }).toMap, abs.name == "Concrete")
+  def empty[Addr : Address, Abs : AbstractValue] =
+    Store(Map[Addr, (Int, Abs)](), implicitly[AbstractValue[Abs]].name == "Concrete")
+  def initial[Addr : Address, Abs : AbstractValue](values: List[(Addr, Abs)]): Store[Addr, Abs] =
+    Store(values.map({ case (a, v) => (a, (0, v)) }).toMap, implicitly[AbstractValue[Abs]].name == "Concrete")
 }

@@ -8,9 +8,9 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
   * not tested (because they aren't given any test case in R5RS). Unsupported
   * primitives with test cases defined in R5RS are explicitely stated in
   * comments. If you're bored, you can implement some of them. */
-abstract class Tests[Exp : Expression, Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address]
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
+  val abs = implicitly[AbstractValue[Abs]]
   val sem: Semantics[Exp, Abs, Addr]
   val machine: AbstractMachine[Exp, Abs, Addr]
 
@@ -197,29 +197,25 @@ abstract class Tests[Exp : Expression, Abs, Addr]
   /* 6.6 Input and output */
 }
 
-abstract class AAMTests[Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class AAMTests[Abs : AbstractValue, Addr : Address]
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAM[SchemeExp, Abs, Addr]
 }
 
-abstract class AACTests[Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class AACTests[Abs : AbstractValue, Addr : Address]
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAC[SchemeExp, Abs, Addr]
 }
 
-abstract class FreeTests[Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class FreeTests[Abs : AbstractValue, Addr : Address]
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new Free[SchemeExp, Abs, Addr]
 }
 
-abstract class ConcurrentAAMTests[Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class ConcurrentAAMTests[Abs : AbstractValue, Addr : Address]
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new ConcurrentAAM[SchemeExp, Abs, Addr]

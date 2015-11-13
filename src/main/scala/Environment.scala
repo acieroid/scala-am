@@ -1,4 +1,5 @@
-case class Environment[Addr](content: Map[String, Addr])(implicit addr: Address[Addr]) {
+case class Environment[Addr : Address](content: Map[String, Addr]) {
+  val addr = implicitly[Address[Addr]]
   override def toString = content.filter({ case (_, a) => !addr.isPrimitive(a) }).toString
   def keys = content.keys
   def forall(p: ((String, Addr)) => Boolean) = content.forall(p)

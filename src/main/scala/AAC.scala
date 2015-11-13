@@ -16,8 +16,7 @@ import scalaz.Scalaz._
  * used. Use it or remove the definitions.
  * TODO: Investigating AAC with a global value store might be interesting.
  */
-case class AAC[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address]
     extends EvalKontMachine[Exp, Abs, Addr] {
   def name = "AAC"
 

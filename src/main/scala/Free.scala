@@ -4,13 +4,12 @@
  * al. "Pushdown Control-Flow Analysis for Free." arXiv preprint
  * arXiv:1507.03137 (2015)).
  */
-case class Free[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+class Free[Exp : Expression, Abs : AbstractValue, Addr : Address]
     extends EvalKontMachine[Exp, Abs, Addr] {
   def name = "Free"
 
   val primitives = new Primitives[Addr, Abs]()
-  val initialEnv = Environment.empty[Addr]().extend(primitives.forEnv)
+  val initialEnv = Environment.empty[Addr].extend(primitives.forEnv)
   val initialStore = Store.initial[Addr, Abs](primitives.forStore)
 
   trait KontAddr
@@ -94,7 +93,7 @@ case class Free[Exp : Expression, Abs, Addr]
     def step(sem: Semantics[Exp, Abs, Addr]): States = {
       val states = R.map(conf => State(conf.control, σ, kstore, conf.k))
       val succs = states.flatMap(ς => ς.step(sem))
-      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs](), new KontStore[KontAddr]()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
+      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs], new KontStore[KontAddr]()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
       States(succs.map(ς => Configuration(ς.control, ς.k)), σ1, kstore1)
     }
     def isEmpty = R.isEmpty

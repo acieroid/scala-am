@@ -7,8 +7,10 @@ import BinaryOperator._
  *
  * Lattice: X || Y > Bottom (no top element)
  */
-class SumLattice[X, Y]
-  (implicit xabs: AbstractValue[X], yabs: AbstractValue[Y]) {
+class SumLattice[X : AbstractValue, Y : AbstractValue] {
+  val xabs = implicitly[AbstractValue[X]]
+  val yabs = implicitly[AbstractValue[Y]]
+
   trait Sum
   case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Sum {
     override def toString = s"#<prim ${prim.name}>"

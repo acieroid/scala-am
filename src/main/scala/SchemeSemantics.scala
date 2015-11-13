@@ -1,8 +1,7 @@
 /**
  * Basic Scheme semantics, without any optimization
  */
-class BaseSchemeSemantics[Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
     extends BaseSemantics[SchemeExp, Abs, Addr] {
 
   trait SchemeFrame extends Frame {
@@ -252,8 +251,8 @@ class BaseSchemeSemantics[Abs, Addr]
  *     to evaluate (+ 1 (f)), we can directly push the continuation and jump to
  *     the evaluation of (f), instead of evaluating +, and 1 in separate states.
  */
-class SchemeSemantics[Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr]) extends BaseSchemeSemantics[Abs, Addr] {
+class SchemeSemantics[Abs : AbstractValue, Addr : Address]
+    extends BaseSchemeSemantics[Abs, Addr] {
 
   /** Tries to perform atomic evaluation of an expression. Returns the result of
     * the evaluation if it succeeded, otherwise returns None */

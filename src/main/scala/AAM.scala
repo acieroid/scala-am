@@ -16,8 +16,7 @@
  * be evaluated within this environment, whereas a continuation state only
  * contains the value reached.
  */
-case class AAM[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
     extends EvalKontMachine[Exp, Abs, Addr] {
   def name = "AAM"
 

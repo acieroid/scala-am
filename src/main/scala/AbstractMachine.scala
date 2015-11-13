@@ -64,8 +64,7 @@ trait AbstractMachine[Exp, Abs, Addr] {
  * can either be evaluating something, or have reached a value and will pop a
  * continuation.
  */
-abstract class EvalKontMachine[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+abstract class EvalKontMachine[Exp : Expression, Abs : AbstractValue, Addr : Address]
     extends AbstractMachine[Exp, Abs, Addr] {
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]

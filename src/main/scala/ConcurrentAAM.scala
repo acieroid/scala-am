@@ -1,7 +1,6 @@
 import scalaz.Scalaz._
 
-case class ConcurrentAAM[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
     extends AbstractMachine[Exp, Abs, Addr] {
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
@@ -30,7 +29,7 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
       }
       case ActionEval(e, ρ, σ) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ))
       case ActionStepIn(_, e, ρ, σ, _) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ))
-      case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a)), results, Store.empty[Addr, Abs]()(abs, addr)))
+      case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a)), results, Store.empty[Addr, Abs]))
       case ActionSpawn(e, ρ, act) =>
         integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress)), results)
       case ActionJoin(tid2, σ) => ??? /* TODO: if (results.contains(tid2)) {

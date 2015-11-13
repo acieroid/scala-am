@@ -8,8 +8,10 @@ import BinaryOperator._
  *   import prod._ // import its elements (and most importantly, Product)
  *   run(new Free[SchemeExp, Product, ClassicalAddress], new SchemeSemantics[Product, ClassicalAddress]) _ // run a machine with it
  */
-class ProductLattice[X, Y]
-  (implicit xabs: AbstractValue[X], yabs: AbstractValue[Y]) {
+class ProductLattice[X : AbstractValue, Y : AbstractValue] {
+  val xabs = implicitly[AbstractValue[X]]
+  val yabs = implicitly[AbstractValue[Y]]
+
   trait Product
   case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Product {
     override def toString = s"#<prim ${prim.name}>"

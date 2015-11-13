@@ -99,8 +99,9 @@ object Main {
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
     * file. */
-  def run[Exp, Abs, Addr](machine: AbstractMachine[Exp, Abs, Addr], sem: Semantics[Exp, Abs, Addr])(program: String, output: Option[String])
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr]): Unit = {
+  def run[Exp : Expression, Abs : AbstractValue, Addr : Address](machine: AbstractMachine[Exp, Abs, Addr], sem: Semantics[Exp, Abs, Addr])(program: String, output: Option[String]): Unit = {
+    val abs = implicitly[AbstractValue[Abs]]
+    val addr = implicitly[Address[Addr]]
     println(s"Running ${machine.name} with lattice ${abs.name} and address ${addr.name}")
     val result = machine.eval(sem.parse(program), sem, !output.isEmpty)
     output match {

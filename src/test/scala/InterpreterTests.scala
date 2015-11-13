@@ -1,9 +1,9 @@
 import org.scalatest._
 import org.scalatest.prop._
 
-abstract class Benchmarks[Exp, Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class Benchmarks[Exp : Expression, Abs : AbstractValue, Addr : Address]
     extends FlatSpec with Matchers {
+  val abs = implicitly[AbstractValue[Abs]]
   val sem: Semantics[Exp, Abs, Addr]
   val machine: AbstractMachine[Exp, Abs, Addr]
 
@@ -45,9 +45,9 @@ abstract class Benchmarks[Exp, Abs, Addr]
   // check("takl.scm", abs.inject(true))
 }
 
-abstract class OneResultTests[Exp, Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class OneResultTests[Exp : Expression, Abs : AbstractValue, Addr : Address]
     extends FlatSpec with Matchers {
+  val abs = implicitly[AbstractValue[Abs]]
   val sem: Semantics[Exp, Abs, Addr]
   val machine: AbstractMachine[Exp, Abs, Addr]
 
@@ -88,29 +88,25 @@ abstract class OneResultTests[Exp, Abs, Addr]
   // check("takl.scm", abs.inject(true))
 }
 
-abstract class AACBenchmarks[Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class AACBenchmarks[Abs : AbstractValue, Addr : Address]
     extends Benchmarks[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAC[SchemeExp, Abs, Addr]
 }
 
-abstract class AAMBenchmarks[Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class AAMBenchmarks[Abs : AbstractValue, Addr : Address]
     extends Benchmarks[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAM[SchemeExp, Abs, Addr]
 }
 
-abstract class FreeBenchmarks[Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class FreeBenchmarks[Abs : AbstractValue, Addr : Address]
     extends Benchmarks[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new Free[SchemeExp, Abs, Addr]
 }
 
-abstract class ConcurrentAAMBenchmarks[Abs, Addr]
-  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
+abstract class ConcurrentAAMBenchmarks[Abs : AbstractValue, Addr : Address]
     extends Benchmarks[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new ConcurrentAAM[SchemeExp, Abs, Addr]

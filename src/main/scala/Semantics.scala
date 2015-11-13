@@ -80,8 +80,8 @@ case class ActionJoin[Exp : Expression, Abs : AbstractValue, Addr : Address](tid
 /**
  * Base class for semantics that define some helper methods
  */
-abstract class BaseSemantics[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], ad: Address[Addr]) extends Semantics[Exp, Abs, Addr] {
+abstract class BaseSemantics[Exp : Expression, Abs : AbstractValue, Addr : Address]
+    extends Semantics[Exp, Abs, Addr] {
   /* wtf scala */
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
