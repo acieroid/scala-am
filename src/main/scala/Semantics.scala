@@ -19,9 +19,7 @@
 
 trait Semantics[Exp, Abs, Addr] {
   implicit def abs : AbstractValue[Abs]
-  implicit def absi : AbstractInjection[Abs]
   implicit def addr : Address[Addr]
-  implicit def addri : AddressInjection[Addr]
   implicit def exp : Expression[Exp]
   /**
    * Defines what actions should be taken when an expression e needs to be
@@ -83,13 +81,10 @@ case class ActionJoin[Exp : Expression, Abs : AbstractValue, Addr : Address](tid
  * Base class for semantics that define some helper methods
  */
 abstract class BaseSemantics[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr]) extends Semantics[Exp, Abs, Addr] {
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr]) extends Semantics[Exp, Abs, Addr] {
   /* wtf scala */
   def abs = implicitly[AbstractValue[Abs]]
-  def absi = implicitly[AbstractInjection[Abs]]
   def addr = implicitly[Address[Addr]]
-  def addri = implicitly[AddressInjection[Addr]]
   def exp = implicitly[Expression[Exp]]
 
   /**
@@ -101,7 +96,7 @@ abstract class BaseSemantics[Exp : Expression, Abs, Addr]
    */
   protected def bindArgs(l: List[(String, (Exp, Abs))], ρ: Environment[Addr], σ: Store[Addr, Abs]): (Environment[Addr], Store[Addr, Abs]) =
     l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, (exp, value))) => {
-      val a = addri.variable(name)
+      val a = addr.variable(name)
       (ρ.extend(name, a), σ.extend(a, value))
     }})
 }

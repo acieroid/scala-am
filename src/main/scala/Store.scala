@@ -1,6 +1,6 @@
 import scalaz.Scalaz._
 
-case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr]) {
+case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(implicit abs: AbstractValue[Abs], addr: Address[Addr]) {
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys: collection.Iterable[Addr] = content.keys
   /** Checks if a predicate is true for all elements of the store */
@@ -12,7 +12,7 @@ case class Store[Addr, Abs](content: Map[Addr, (Int, Abs)], counting: Boolean)(i
     case Some(v) => v._2
   }
   /** Looks up a value in the store (returning bottom if value not present) */
-  def lookupBot(a: Addr): Abs = content.getOrElse(a, (0, absi.bottom))._2
+  def lookupBot(a: Addr): Abs = content.getOrElse(a, (0, abs.bottom))._2
   /** Adds a new element to the store */
   def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
     case None => Store(content + (a -> (0, v)), counting)
@@ -47,6 +47,6 @@ object Store {
   /* TODO: have abstract counting as a parameter of the analysis. Also, when it is
    * turned on, it prevents AAC and Free from converging. For now, it's only
    * enabled with the AbstractConcrete lattice. */
-  def empty[Addr, Abs]()(implicit abs : AbstractValue[Abs], absi : AbstractInjection[Abs], addr: Address[Addr]) = Store(Map[Addr, (Int, Abs)](), absi.name == "Concrete")
-  def initial[Addr, Abs](values: List[(Addr, Abs)])(implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs], addr: Address[Addr]): Store[Addr, Abs] = Store(values.map({ case (a, v) => (a, (0, v)) }).toMap, absi.name == "Concrete")
+  def empty[Addr, Abs]()(implicit abs : AbstractValue[Abs], addr: Address[Addr]) = Store(Map[Addr, (Int, Abs)](), abs.name == "Concrete")
+  def initial[Addr, Abs](values: List[(Addr, Abs)])(implicit abs: AbstractValue[Abs], addr: Address[Addr]): Store[Addr, Abs] = Store(values.map({ case (a, v) => (a, (0, v)) }).toMap, abs.name == "Concrete")
 }

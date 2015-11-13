@@ -228,6 +228,8 @@ object AbstractTypeSet {
   val AbstractBottom: AbstractTypeSet = new AbstractSet(Set())
 
   implicit object AbstractTypeSetAbstractValue extends AbstractValue[AbstractTypeSet] {
+    def name = "TypeSet"
+
     def isTrue(x: A) = x.isTrue
     def isFalse(x: A) = x.isFalse
     def isError(x: A) = x.isError
@@ -288,10 +290,7 @@ object AbstractTypeSet {
       case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
-  }
 
-  implicit object AbstractTypeSetInjection extends AbstractInjection[AbstractTypeSet] {
-    def name = "TypeSet"
     def bottom = AbstractBottom
     def error(x: AbstractTypeSet) = AbstractError
     def inject(x: Int) = AbstractInt

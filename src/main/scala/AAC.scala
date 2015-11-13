@@ -17,8 +17,7 @@ import scalaz.Scalaz._
  * TODO: Investigating AAC with a global value store might be interesting.
  */
 case class AAC[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr])
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
     extends EvalKontMachine[Exp, Abs, Addr] {
   def name = "AAC"
 
@@ -222,7 +221,7 @@ case class AAC[Exp : Expression, Abs, Addr]
      * Integrate a set of actions to generate successor states, and returns
      * these states as well as the updated continuation store (which is global)
      */
-    private def integrate(ι: LocalKont, κ: Kont, kstore: KontStore, v: Abs, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
+    private def integrate(ι: LocalKont, κ: Kont, kstore: KontStore, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
       actions.foldLeft((Set[State](), kstore))({ (acc, act) =>
         val states = acc._1
         val kstore = acc._2
@@ -242,10 +241,10 @@ case class AAC[Exp : Expression, Abs, Addr]
      * Performs an evaluation step, relying on the given semantics (@param sem)
      */
     def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr]): (Set[State], KontStore) = control match {
-      case ControlEval(e, ρ) => integrate(ι, κ, kstore, absi.bottom, sem.stepEval(e, ρ, σ))
+      case ControlEval(e, ρ) => integrate(ι, κ, kstore, sem.stepEval(e, ρ, σ))
       case ControlKont(v) if abs.isError(v) => (Set(), kstore)
       case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore))((acc, popped) => {
-        val (states, kstore1) = integrate(popped._2, popped._3, acc._2, v, sem.stepKont(v, σ, popped._1))
+        val (states, kstore1) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, σ, popped._1))
         (acc._1 ++ states, kstore1)
       })
       case ControlError(_) => (Set(), kstore)

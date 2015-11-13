@@ -9,8 +9,7 @@ import BinaryOperator._
  *   run(new Free[SchemeExp, Product, ClassicalAddress], new SchemeSemantics[Product, ClassicalAddress]) _ // run a machine with it
  */
 class ProductLattice[X, Y]
-  (implicit xabs: AbstractValue[X], xabsi: AbstractInjection[X],
-    yabs: AbstractValue[Y], yabsi: AbstractInjection[Y]) {
+  (implicit xabs: AbstractValue[X], yabs: AbstractValue[Y]) {
   trait Product
   case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Product {
     override def toString = s"#<prim ${prim.name}>"
@@ -18,14 +17,16 @@ class ProductLattice[X, Y]
   case class Prod(x: X, y: Y) extends Product
 
   implicit object ProductAbstractValue extends AbstractValue[Product] {
-    private def err(reason: String) = ProductInjection.error(ProductInjection.inject(reason))
+    def name = s"(${xabs.name}, ${yabs.name})"
+
+    private def err(reason: String) = error(inject(reason))
 
     def isTrue(p: Product) = p match {
-      case Prod(x, y) => xabs.isTrue(x) || yabs.isTrue(y) /* TODO: && or || ? */
+      case Prod(x, y) => xabs.isTrue(x) || yabs.isTrue(y)
       case Prim(_) => true
     }
     def isFalse(p: Product) = p match {
-      case Prod(x, y) => xabs.isFalse(x) || yabs.isFalse(y) /* TODO: && or || ? */
+      case Prod(x, y) => xabs.isFalse(x) || yabs.isFalse(y)
       case Prim(_) => false
     }
     def isError(p: Product) = p match {
@@ -35,7 +36,7 @@ class ProductLattice[X, Y]
     def unaryOp(op: UnaryOperator)(p: Product) = p match {
       case Prod(x, y) => Prod(xabs.unaryOp(op)(x), yabs.unaryOp(op)(y))
       case Prim(_) => op match {
-        case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger => ProductInjection.inject(false)
+        case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger => inject(false)
         case _ => err(s"operator $op cannot work on primitive (argument was $p)")
       }
     }
@@ -59,11 +60,11 @@ class ProductLattice[X, Y]
     }
     def and(p1: Product, p2: => Product) = (p1, p2) match {
       case (Prod(x1, y1), Prod(x2, y2)) => Prod(xabs.and(x1, x2), yabs.and(y1, y2))
-      case _ => ProductInjection.error(ProductInjection.inject(s"and cannot work on primitives (arguments were $p1 and $p2)"))
+      case _ => err(s"and cannot work on primitives (arguments were $p1 and $p2)")
     }
     def or(p1: Product, p2: => Product) = (p1, p2) match {
       case (Prod(x1, y1), Prod(x2, y2)) => Prod(xabs.or(x1, x2), yabs.or(y1, y2))
-      case _ => ProductInjection.error(ProductInjection.inject(s"or cannot work on primitives (arguments were $p1 and $p2)"))
+      case _ => err(s"or cannot work on primitives (arguments were $p1 and $p2)")
     }
     def car[Addr : Address](p: Product) = p match {
       case Prod(x, y) => xabs.car[Addr](x) ++ yabs.car[Addr](y)
@@ -82,22 +83,20 @@ class ProductLattice[X, Y]
       case Prim(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
-  }
-  implicit object ProductInjection extends AbstractInjection[Product] {
-    def name = s"(${xabsi.name}, ${yabsi.name})"
-    def bottom = Prod(xabsi.bottom, yabsi.bottom)
+
+    def bottom = Prod(xabs.bottom, yabs.bottom)
     def error(p: Product) = p match {
-      case Prod(x, y) => Prod(xabsi.error(x), yabsi.error(y))
+      case Prod(x, y) => Prod(xabs.error(x), yabs.error(y))
       case Prim(_) => error(inject(p.toString))
     }
-    def inject(x: Int) = Prod(xabsi.inject(x), yabsi.inject(x))
-    def inject(x: String) = Prod(xabsi.inject(x), yabsi.inject(x))
-    def inject(x: Char) = Prod(xabsi.inject(x), yabsi.inject(x))
-    def inject(x: Boolean) = Prod(xabsi.inject(x), yabsi.inject(x))
+    def inject(x: Int) = Prod(xabs.inject(x), yabs.inject(x))
+    def inject(x: String) = Prod(xabs.inject(x), yabs.inject(x))
+    def inject(x: Char) = Prod(xabs.inject(x), yabs.inject(x))
+    def inject(x: Boolean) = Prod(xabs.inject(x), yabs.inject(x))
     def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = Prim(x)
-    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Prod(xabsi.inject[Exp, Addr](x), yabsi.inject[Exp, Addr](x))
-    def injectSymbol(x: String) = Prod(xabsi.injectSymbol(x), yabsi.injectSymbol(x))
-    def nil = Prod(xabsi.nil, yabsi.nil)
-    def cons[Addr : Address](car: Addr, cdr: Addr) = Prod(xabsi.cons[Addr](car, cdr), yabsi.cons[Addr](car, cdr))
+    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Prod(xabs.inject[Exp, Addr](x), yabs.inject[Exp, Addr](x))
+    def injectSymbol(x: String) = Prod(xabs.injectSymbol(x), yabs.injectSymbol(x))
+    def nil = Prod(xabs.nil, yabs.nil)
+    def cons[Addr : Address](car: Addr, cdr: Addr) = Prod(xabs.cons[Addr](car, cdr), yabs.cons[Addr](car, cdr))
   }
 }

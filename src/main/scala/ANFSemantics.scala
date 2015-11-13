@@ -2,8 +2,8 @@
  * Semantics for ANF Scheme (abstract grammar defined in ANF.scala)
  */
 class ANFSemantics[Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr]) extends BaseSemantics[ANFExp, Abs, Addr] {
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+    extends BaseSemantics[ANFExp, Abs, Addr] {
   /** ANF Scheme only has three types of continuation frames: halt, let, and letrec */
   trait ANFFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
@@ -20,14 +20,14 @@ class ANFSemantics[Abs, Addr]
 
   /** Performs evaluation of an atomic expression, returning either an error or the produced value */
   def atomicEval(e: ANFAtomicExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Either[String, Abs] = e match {
-    case λ: ANFLambda => Right(absi.inject[ANFExp, Addr]((λ, ρ)))
+    case λ: ANFLambda => Right(abs.inject[ANFExp, Addr]((λ, ρ)))
     case ANFIdentifier(name) => ρ.lookup(name) match {
       case Some(a) => Right(σ.lookup(a))
       case None => Left(s"Unbound variable: $name")
     }
-    case ANFValue(ValueString(s)) => Right(absi.inject(s))
-    case ANFValue(ValueInteger(n)) => Right(absi.inject(n))
-    case ANFValue(ValueBoolean(b)) => Right(absi.inject(b))
+    case ANFValue(ValueString(s)) => Right(abs.inject(s))
+    case ANFValue(ValueInteger(n)) => Right(abs.inject(n))
+    case ANFValue(ValueBoolean(b)) => Right(abs.inject(b))
     case ANFValue(v) => Left(s"Unhandled value: ${v}")
   }
 
@@ -99,9 +99,9 @@ class ANFSemantics[Abs, Addr]
       Set(ActionPush(exp, FrameLet(variable, body, ρ), ρ, σ))
     /* Same for letrec, but we need to bind the variable to an undefined value first */
     case ANFLetrec(variable, exp, body) => {
-      val vara = addri.variable(variable)
+      val vara = addr.variable(variable)
       val ρ1 = ρ.extend(variable, vara)
-      val σ1 = σ.extend(vara, absi.bottom)
+      val σ1 = σ.extend(vara, abs.bottom)
       Set(ActionPush(exp, FrameLetrec(variable, vara, body, ρ1), ρ1, σ1))
     }
     /* A set! needs to update the value of a variable in the store */
@@ -113,7 +113,7 @@ class ANFSemantics[Abs, Addr]
       case None => Set(ActionError(s"Unbound variable: ${variable}"))
     }
     /* A quoted identifier is a value */
-    case ANFQuoted(SExpIdentifier(sym)) => Set(ActionReachedValue(absi.injectSymbol(sym), σ))
+    case ANFQuoted(SExpIdentifier(sym)) => Set(ActionReachedValue(abs.injectSymbol(sym), σ))
     /* A quoted s-expression is more complicated to evaluate, as it may require
      * store allocation and is therefore not atomic. We don't deal with them in
      * ANF (they can always be converted into calls to cons). */
@@ -125,7 +125,7 @@ class ANFSemantics[Abs, Addr]
     case FrameHalt => Set()
     /* Allocate the variable and bind it to the reached value */
     case FrameLet(variable, body, ρ) => {
-      val vara = addri.variable(variable)
+      val vara = addr.variable(variable)
       Set(ActionEval(body, ρ.extend(variable, vara), σ.extend(vara, v)))
     }
     /* Just bind the variable to the reached value, since it has already been allocated */

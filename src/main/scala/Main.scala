@@ -100,9 +100,8 @@ object Main {
     * set, generate a dot graph visualizing the computed graph in the given
     * file. */
   def run[Exp, Abs, Addr](machine: AbstractMachine[Exp, Abs, Addr], sem: Semantics[Exp, Abs, Addr])(program: String, output: Option[String])
-  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-    addr: Address[Addr], addri: AddressInjection[Addr]): Unit = {
-    println(s"Running ${machine.name} with lattice ${absi.name} and address ${addri.name}")
+  (implicit abs: AbstractValue[Abs], addr: Address[Addr]): Unit = {
+    println(s"Running ${machine.name} with lattice ${abs.name} and address ${addr.name}")
     val result = machine.eval(sem.parse(program), sem, !output.isEmpty)
     output match {
       case Some(f) => result.toDotFile(f)

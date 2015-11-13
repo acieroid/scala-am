@@ -5,8 +5,7 @@
  * arXiv:1507.03137 (2015)).
  */
 case class Free[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr])
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
     extends EvalKontMachine[Exp, Abs, Addr] {
   def name = "Free"
 

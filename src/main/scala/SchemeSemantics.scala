@@ -2,8 +2,8 @@
  * Basic Scheme semantics, without any optimization
  */
 class BaseSchemeSemantics[Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr]) extends BaseSemantics[SchemeExp, Abs, Addr] {
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
+    extends BaseSemantics[SchemeExp, Abs, Addr] {
 
   trait SchemeFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
@@ -30,7 +30,7 @@ class BaseSchemeSemantics[Abs, Addr]
   }
 
   protected def evalBody(body: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Action[SchemeExp, Abs, Addr] = body match {
-    case Nil => ActionReachedValue(absi.inject(false), σ)
+    case Nil => ActionReachedValue(abs.inject(false), σ)
     case List(exp) => ActionEval(exp, ρ, σ)
     case exp :: rest => ActionPush(exp, FrameBegin(rest, ρ), ρ, σ)
   }
@@ -67,9 +67,9 @@ class BaseSchemeSemantics[Abs, Addr]
   }
 
   protected def evalValue(v: Value): Option[Abs] = v match {
-    case ValueString(s) => Some(absi.inject(s))
-    case ValueInteger(n) => Some(absi.inject(n))
-    case ValueBoolean(b) => Some(absi.inject(b))
+    case ValueString(s) => Some(abs.inject(s))
+    case ValueInteger(n) => Some(abs.inject(n))
+    case ValueBoolean(b) => Some(abs.inject(b))
     case _ => None
   }
 
@@ -81,30 +81,30 @@ class BaseSchemeSemantics[Abs, Addr]
     funcallArgs(f, fexp, List(), args, ρ, σ)
 
   protected def evalQuoted(exp: SExp, σ: Store[Addr, Abs]): (Abs, Store[Addr, Abs]) = exp match {
-    case SExpIdentifier(sym) => (absi.injectSymbol(sym), σ)
+    case SExpIdentifier(sym) => (abs.injectSymbol(sym), σ)
     case SExpPair(car, cdr) => {
       val care: SchemeExp = SchemeIdentifier(car.toString).setPos(car.pos)
       val cdre: SchemeExp = SchemeIdentifier(cdr.toString).setPos(cdr.pos)
-      val cara = addri.cell(care)
+      val cara = addr.cell(care)
       val (carv, σ2) = evalQuoted(car, σ)
-      val cdra = addri.cell(cdre)
+      val cdra = addr.cell(cdre)
       val (cdrv, σ3) = evalQuoted(cdr, σ2)
-      (absi.cons(cara, cdra), σ3.extend(cara, carv).extend(cdra, cdrv))
+      (abs.cons(cara, cdra), σ3.extend(cara, carv).extend(cdra, cdrv))
     }
     case SExpValue(v) => (v match {
-      case ValueString(str) => absi.inject(str)
+      case ValueString(str) => abs.inject(str)
       case ValueCharacter(c) => throw new Exception("character not yet supported")
-      case ValueSymbol(sym) => absi.injectSymbol(sym) /* shouldn't happen */
-      case ValueInteger(n) => absi.inject(n)
+      case ValueSymbol(sym) => abs.injectSymbol(sym) /* shouldn't happen */
+      case ValueInteger(n) => abs.inject(n)
       case ValueFloat(n) => throw new Exception("floats not yet supported")
-      case ValueBoolean(b) => absi.inject(b)
-      case ValueNil() => absi.nil
+      case ValueBoolean(b) => abs.inject(b)
+      case ValueNil() => abs.nil
     }, σ)
     case SExpQuoted(q) => evalQuoted(SExpPair(SExpIdentifier("quote"), SExpPair(q, SExpValue(ValueNil()))), σ)
   }
 
   def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
-    case λ: SchemeLambda => Set(ActionReachedValue(absi.inject[SchemeExp, Addr]((λ, ρ)), σ))
+    case λ: SchemeLambda => Set(ActionReachedValue(abs.inject[SchemeExp, Addr]((λ, ρ)), σ))
     case SchemeFuncall(f, args) => Set(ActionPush(f, FrameFuncallOperator(f, args, ρ), ρ, σ))
     case SchemeIf(cond, cons, alt) => Set(ActionPush(cond, FrameIf(cons, alt, ρ), ρ, σ))
     case SchemeLet(Nil, body) => Set(evalBody(body, ρ, σ))
@@ -114,8 +114,8 @@ class BaseSchemeSemantics[Abs, Addr]
     case SchemeLetrec(Nil, body) => Set(evalBody(body, ρ, σ))
     case SchemeLetrec((v, exp) :: bindings, body) => {
       val variables = v :: bindings.map(_._1)
-      val addresses = variables.map(addri.variable)
-      val (ρ1, σ1) = variables.zip(addresses).foldLeft((ρ, σ))({ case ((ρ, σ), (v, a)) => (ρ.extend(v, a), σ.extend(a, absi.bottom)) })
+      val addresses = variables.map(addr.variable)
+      val (ρ1, σ1) = variables.zip(addresses).foldLeft((ρ, σ))({ case ((ρ, σ), (v, a)) => (ρ.extend(v, a), σ.extend(a, abs.bottom)) })
       Set(ActionPush(exp, FrameLetrec(addresses.head, addresses.tail.zip(bindings.map(_._2)), body, ρ1), ρ1, σ1))
     }
     case SchemeSet(variable, exp) => Set(ActionPush(exp, FrameSet(variable, ρ), ρ, σ))
@@ -123,16 +123,16 @@ class BaseSchemeSemantics[Abs, Addr]
     case SchemeCond(Nil) => Set(ActionError(s"cond without clauses"))
     case SchemeCond((cond, cons) :: clauses) => Set(ActionPush(cond, FrameCond(cons, clauses, ρ), ρ, σ))
     case SchemeCase(key, clauses, default) => Set(ActionPush(key, FrameCase(clauses, default, ρ), ρ, σ))
-    case SchemeAnd(Nil) => Set(ActionReachedValue(absi.inject(true), σ))
+    case SchemeAnd(Nil) => Set(ActionReachedValue(abs.inject(true), σ))
     case SchemeAnd(exp :: exps) => Set(ActionPush(exp, FrameAnd(exps, ρ), ρ, σ))
-    case SchemeOr(Nil) => Set(ActionReachedValue(absi.inject(false), σ))
+    case SchemeOr(Nil) => Set(ActionReachedValue(abs.inject(false), σ))
     case SchemeOr(exp :: exps) => Set(ActionPush(exp, FrameOr(exps, ρ), ρ, σ))
     case SchemeDefineVariable(name, exp) => Set(ActionPush(exp, FrameDefine(name, ρ), ρ, σ))
     case SchemeDefineFunction(name, args, body) => {
-      val addr = addri.variable(name)
-      val v = absi.inject[SchemeExp, Addr]((SchemeLambda(args, body), ρ))
-      val ρ1 = ρ.extend(name, addr)
-      val σ1 = σ.extend(addr, v)
+      val a = addr.variable(name)
+      val v = abs.inject[SchemeExp, Addr]((SchemeLambda(args, body), ρ))
+      val ρ1 = ρ.extend(name, a)
+      val σ1 = σ.extend(a, v)
       Set(ActionReachedValue(v, σ))
     }
     case SchemeIdentifier(name) => ρ.lookup(name) match {
@@ -151,15 +151,15 @@ class BaseSchemeSemantics[Abs, Addr]
       case Some(a) => {
         val v = σ.lookup(a)
         /* Only performs a step if the lock is possibly unlocked (true is unlocked, false is locked) */
-        if (abs.isTrue(v)) Set(ActionReachedValue(absi.inject(true), σ.update(a, absi.inject(false)))) else Set()
+        if (abs.isTrue(v)) Set(ActionReachedValue(abs.inject(true), σ.update(a, abs.inject(false)))) else Set()
       }
       case None => Set(ActionError(s"Unbound variable: $variable"))
     }
     case SchemeRelease(variable) => ρ.lookup(variable) match {
-      case Some(a) => Set(ActionReachedValue(absi.inject(true), σ.update(a, absi.inject(true))))
+      case Some(a) => Set(ActionReachedValue(abs.inject(true), σ.update(a, abs.inject(true))))
       case None => Set(ActionError(s"Unbound variable: $variable"))
     }
-    case SchemeSpawn(exp) => Set(ActionSpawn(exp, ρ, /* TODO: tid */ ActionReachedValue(absi.bottom, σ)))
+    case SchemeSpawn(exp) => Set(ActionSpawn(exp, ρ, /* TODO: tid */ ActionReachedValue(abs.bottom, σ)))
     case SchemeJoin(exp) => Set(ActionPush(exp, FrameJoin(ρ), ρ, σ))
   }
 
@@ -171,7 +171,7 @@ class BaseSchemeSemantics[Abs, Addr]
       conditional(v, ActionEval(cons, ρ, σ), ActionEval(alt, ρ, σ))
     case FrameLet(name, bindings, Nil, body, ρ) => {
       val variables = name :: bindings.reverse.map(_._1)
-      val addresses = variables.map(addri.variable)
+      val addresses = variables.map(addr.variable)
       val (ρ1, σ1) = ((name, v) :: bindings).zip(addresses).foldLeft((ρ, σ))({
         case ((ρ, σ), ((variable, value), addr)) => (ρ.extend(variable, addr), σ.extend(addr, value))
       })
@@ -180,9 +180,9 @@ class BaseSchemeSemantics[Abs, Addr]
     case FrameLet(name, bindings, (variable, e) :: toeval, body, ρ) =>
       Set(ActionPush(e, FrameLet(variable, (name, v) :: bindings, toeval, body, ρ), ρ, σ))
     case FrameLetStar(name, bindings, body, ρ) => {
-      val addr = addri.variable(name)
-      val ρ1 = ρ.extend(name, addr)
-      val σ1 = σ.extend(addr, v)
+      val a = addr.variable(name)
+      val ρ1 = ρ.extend(name, a)
+      val σ1 = σ.extend(a, v)
       bindings match {
         case Nil => Set(evalBody(body, ρ1, σ1))
         case (variable, exp) :: rest => Set(ActionPush(exp, FrameLetStar(variable, rest, body, ρ1), ρ1, σ1))
@@ -192,14 +192,14 @@ class BaseSchemeSemantics[Abs, Addr]
     case FrameLetrec(addr, (addr1, exp) :: rest, body, ρ) =>
       Set(ActionPush(exp, FrameLetrec(addr1, rest, body, ρ), ρ, σ.update(addr, v)))
     case FrameSet(name, ρ) => ρ.lookup(name) match {
-      case Some(a) => Set(ActionReachedValue(absi.inject(false), σ.update(a, v)))
+      case Some(a) => Set(ActionReachedValue(abs.inject(false), σ.update(a, v)))
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
     case FrameBegin(body, ρ) => Set(evalBody(body, ρ, σ))
     case FrameCond(cons, clauses, ρ) =>
       conditional(v, if (cons.isEmpty) { ActionReachedValue(v, σ) } else { evalBody(cons, ρ, σ) },
         clauses match {
-          case Nil => ActionReachedValue(absi.inject(false), σ)
+          case Nil => ActionReachedValue(abs.inject(false), σ)
           case (exp, cons2) :: rest => ActionPush(exp, FrameCond(cons2, rest, ρ), ρ, σ)
         })
     case FrameCase(clauses, default, ρ) => {
@@ -218,11 +218,11 @@ class BaseSchemeSemantics[Abs, Addr]
       fromClauses.toSet + evalBody(default, ρ, σ)
     }
     case FrameAnd(Nil, ρ) =>
-      conditional(v, ActionReachedValue(v, σ), ActionReachedValue(absi.inject(false), σ))
+      conditional(v, ActionReachedValue(v, σ), ActionReachedValue(abs.inject(false), σ))
     case FrameAnd(e :: rest, ρ) =>
-      conditional(v, ActionPush(e, FrameAnd(rest, ρ), ρ, σ), ActionReachedValue(absi.inject(false), σ))
+      conditional(v, ActionPush(e, FrameAnd(rest, ρ), ρ, σ), ActionReachedValue(abs.inject(false), σ))
     case FrameOr(Nil, ρ) =>
-      conditional(v, ActionReachedValue(v, σ), ActionReachedValue(absi.inject(false), σ))
+      conditional(v, ActionReachedValue(v, σ), ActionReachedValue(abs.inject(false), σ))
     case FrameOr(e :: rest, ρ) =>
       conditional(v, ActionReachedValue(v, σ), ActionPush(e, FrameOr(rest, ρ), ρ, σ))
     case FrameDefine(name, ρ) => throw new Exception(s"TODO: define not handled (no global environment)")
@@ -232,9 +232,9 @@ class BaseSchemeSemantics[Abs, Addr]
       ρ.lookup(variable) match {
         case Some(a) => conditional(abs.binaryOp(BinaryOperator.Eq)(σ.lookup(a), old),
           /* Compare and swap succeeds */
-          ActionReachedValue(absi.inject(true), σ.update(a, v)),
+          ActionReachedValue(abs.inject(true), σ.update(a, v)),
           /* Compare and swap fails */
-          ActionReachedValue(absi.inject(false), σ))
+          ActionReachedValue(abs.inject(false), σ))
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
     case FrameJoin(ρ) =>
@@ -253,13 +253,12 @@ class BaseSchemeSemantics[Abs, Addr]
  *     the evaluation of (f), instead of evaluating +, and 1 in separate states.
  */
 class SchemeSemantics[Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr]) extends BaseSchemeSemantics[Abs, Addr] {
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr]) extends BaseSchemeSemantics[Abs, Addr] {
 
   /** Tries to perform atomic evaluation of an expression. Returns the result of
     * the evaluation if it succeeded, otherwise returns None */
   protected def atomicEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Option[Abs] = e match {
-    case λ: SchemeLambda => Some(absi.inject[SchemeExp, Addr]((λ, ρ)))
+    case λ: SchemeLambda => Some(abs.inject[SchemeExp, Addr]((λ, ρ)))
     case SchemeIdentifier(name) => ρ.lookup(name).map(σ.lookup _)
     case SchemeValue(v) => evalValue(v)
     case _ => None

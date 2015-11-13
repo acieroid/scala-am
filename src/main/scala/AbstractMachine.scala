@@ -44,9 +44,7 @@ trait AbstractMachine[Exp, Abs, Addr] {
    * expressions. Look into AAM.scala for an example of how to define these
    * parameters */
   implicit def abs : AbstractValue[Abs]
-  implicit def absi : AbstractInjection[Abs]
   implicit def addr : Address[Addr]
-  implicit def addri : AddressInjection[Addr]
   implicit def exp : Expression[Exp]
 
   /** The name of the abstract machine */
@@ -67,13 +65,10 @@ trait AbstractMachine[Exp, Abs, Addr] {
  * continuation.
  */
 abstract class EvalKontMachine[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr])
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
     extends AbstractMachine[Exp, Abs, Addr] {
   def abs = implicitly[AbstractValue[Abs]]
-  def absi = implicitly[AbstractInjection[Abs]]
   def addr = implicitly[Address[Addr]]
-  def addri = implicitly[AddressInjection[Addr]]
   def exp = implicitly[Expression[Exp]]
 
   /**

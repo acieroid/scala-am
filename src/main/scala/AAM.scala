@@ -17,8 +17,7 @@
  * contains the value reached.
  */
 case class AAM[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr])
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
     extends EvalKontMachine[Exp, Abs, Addr] {
   def name = "AAM"
 
@@ -74,7 +73,7 @@ case class AAM[Exp : Expression, Abs, Addr]
         case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, kstore, a))
         /* When a continuation needs to be pushed, push it in the continuation store */
         case ActionPush(e, frame, ρ, σ) => {
-          val next = NormalKontAddress(e, addri.variable("__kont__")) // Hack to get infinite number of addresses in concrete mode
+          val next = NormalKontAddress(e, addr.variable("__kont__")) // Hack to get infinite number of addresses in concrete mode
           Set(State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, a)), next))
         }
         /* When a value needs to be evaluated, we go to an eval state */

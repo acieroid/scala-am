@@ -29,8 +29,17 @@ object BinaryOperator extends Enumeration {
 }
 import BinaryOperator._
 
+/**
+ * Exception to be raised during injection if an element of the lattice is not
+ * supported (e.g., a lattice that doesn't support primitives)
+ */
+object UnsupportedLatticeElement extends Exception
+
 /** Abstract values are abstract representations of the possible values of a variable */
 trait AbstractValue[A] extends Semigroup[A] {
+  /** Name of this lattice */
+  def name: String
+
   /** Can this abstract value be considered true for conditionals? */
   def isTrue(x: A): Boolean
   /** Can this abstract value be considered false for conditionals? */
@@ -67,18 +76,7 @@ trait AbstractValue[A] extends Semigroup[A] {
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
   /** Extract primitives contained in this value */
   def getPrimitive[Addr : Address, Abs : AbstractValue](x: A): Option[Primitive[Addr, Abs]]
-}
 
-/**
- * Exception to be raised during injection if an element of the lattice is not
- * supported (e.g., a lattice that doesn't support primitives)
- */
-object UnsupportedLatticeElement extends Exception
-
-/** Concrete values have to be injected to become abstract */
-trait AbstractInjection[A] {
-  /** Name of this lattice */
-  def name: String
   /** Bottom element of the lattice */
   def bottom: A
   /** Injection of an error value */
@@ -105,8 +103,7 @@ trait AbstractInjection[A] {
 
 /** This is where we define (Scheme) primitives */
 class Primitives[Addr, Abs]
-  (implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-    addr: Address[Addr], addri: AddressInjection[Addr]) {
+  (implicit abs: AbstractValue[Abs], addr: Address[Addr]) {
 
   /** Some shortcuts */
   def isNull = abs.unaryOp(UnaryOperator.IsNull) _
@@ -134,9 +131,9 @@ class Primitives[Addr, Abs]
     val name = "cons"
     def call[Exp : Expression](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
       case (carexp, car) :: (cdrexp, cdr) :: Nil => {
-        val cara = addri.cell(carexp)
-        val cdra = addri.cell(cdrexp)
-        Right((absi.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr)))
+        val cara = addr.cell(carexp)
+        val cdra = addr.cell(cdrexp)
+        Right((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr)))
       }
       case l => Left(s"cons: 2 operands expected, got ${l.size} instead")
     }
@@ -202,7 +199,7 @@ class Primitives[Addr, Abs]
   object Plus extends VariadicOperation {
     val name = "+"
     def call(args: List[Abs]) = args match {
-      case Nil => Right(absi.inject(0))
+      case Nil => Right(abs.inject(0))
       case x :: rest => call(rest) match {
         case Right(y) => Right(plus(x, y))
         case Left(err) => Left(err)
@@ -213,7 +210,7 @@ class Primitives[Addr, Abs]
     val name = "-"
     def call(args: List[Abs]) = args match {
       case Nil => Left("-: at least 1 operand expected, got 0")
-      case x :: Nil => Right(minus(absi.inject(0), x))
+      case x :: Nil => Right(minus(abs.inject(0), x))
       case x :: rest => Plus.call(rest) match {
         case Right(y) => Right(minus(x, y))
         case Left(err) => Left(err)
@@ -223,7 +220,7 @@ class Primitives[Addr, Abs]
   object Times extends VariadicOperation {
     val name = "*"
     def call(args: List[Abs]) = args match {
-      case Nil => Right(absi.inject(1))
+      case Nil => Right(abs.inject(1))
       case x :: rest => call(rest) match {
         case Right(y) => Right(times(x, y))
         case Left(err) => Left(err)
@@ -245,15 +242,15 @@ class Primitives[Addr, Abs]
 
   private def newline: Abs = {
     println("")
-    absi.bottom
+    abs.bottom
   }
-  private def display(v: Abs): Abs = { print(v); absi.bottom }
+  private def display(v: Abs): Abs = { print(v); abs.bottom }
 
   private def car(v: Abs, store: Store[Addr, Abs]): Abs =
-    abs.car(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
+    abs.car(v).foldLeft(abs.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
 
   private def cdr(v: Abs, store: Store[Addr, Abs]): Abs =
-    abs.cdr(v).foldLeft(absi.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
+    abs.cdr(v).foldLeft(abs.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
 
 
   /* Among them, recursive primitives need to be defined as a fixpoint operation,
@@ -263,11 +260,11 @@ class Primitives[Addr, Abs]
   /** (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
   private def gcd(a: Abs, b: Abs, visited: Set[(Abs, Abs)]): Abs = {
     if (visited.contains(a, b)) {
-      absi.bottom
+      abs.bottom
     } else {
-      val cond = numEq(b, absi.inject(0))
-      val t = if (abs.isTrue(cond)) { a } else { absi.bottom }
-      val f = if (abs.isFalse(cond)) { gcd(b, modulo(a, b), visited + ((a, b))) } else { absi.bottom }
+      val cond = numEq(b, abs.inject(0))
+      val t = if (abs.isTrue(cond)) { a } else { abs.bottom }
+      val f = if (abs.isFalse(cond)) { gcd(b, modulo(a, b), visited + ((a, b))) } else { abs.bottom }
       abs.join(t, f)
     }
   }
@@ -276,7 +273,7 @@ class Primitives[Addr, Abs]
   /** (define (equal? a b) (or (eq? a b) (and (null? a) (null? b)) (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b))))) */
   private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): Abs = {
     if (visited.contains(a, b)) {
-      absi.bottom
+      abs.bottom
     } else {
       val visited2 = visited + ((a, b))
       abs.or(eq(a, b),
@@ -292,18 +289,18 @@ class Primitives[Addr, Abs]
   /** (define (length l) (if (pair? l) (+ 1 (length (cdr l))) (if (null? l) 0 (error "length called with a non-list")))) */
   private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs = {
     if (visited.contains(l)) {
-      absi.bottom
+      abs.bottom
     } else {
       val visited2 = visited + l
       val cond = isCons(l)
-      val t = if (abs.isTrue(cond)) { plus(absi.inject(1), length(cdr(l, store), store, visited2)) } else { absi.bottom }
+      val t = if (abs.isTrue(cond)) { plus(abs.inject(1), length(cdr(l, store), store, visited2)) } else { abs.bottom }
       val f = if (abs.isFalse(cond)) {
         val fcond = isNull(l)
-        val ft = if (abs.isTrue(fcond)) { absi.inject(0) } else { absi.bottom }
-        val ff = if (abs.isFalse(fcond)) { absi.error(absi.inject("length called with a non-list")) } else { absi.bottom }
+        val ft = if (abs.isTrue(fcond)) { abs.inject(0) } else { abs.bottom }
+        val ff = if (abs.isFalse(fcond)) { abs.error(abs.inject("length called with a non-list")) } else { abs.bottom }
         abs.join(ft, ff)
       } else {
-        absi.bottom
+        abs.bottom
       }
       abs.join(t, f)
     }
@@ -325,11 +322,11 @@ class Primitives[Addr, Abs]
     UnaryOperation("random", random),
     UnaryOperation("ceiling", ceiling),
     UnaryOperation("log", log),
-    UnaryOperation("zero?", (x) => numEq(absi.inject(0), x)), /* (define (zero? x) (= x 0)) */
-    UnaryOperation("positive?", (x) => lt(absi.inject(0), x)), /* (define (positive? x) (< 0 x)) */
-    UnaryOperation("negative?", (x) => lt(x, absi.inject(0))), /* (define (negative? x) (< x 0)) */
-    UnaryOperation("odd?", (x) => numEq(absi.inject(1), modulo(x, absi.inject(2)))), /* (define (odd? x) (= 1 (modulo x 2))) */
-    UnaryOperation("even?", (x) => numEq(absi.inject(0), modulo(x, absi.inject(2)))), /* (define (even? x) (= 0 (modulo x 2))) */
+    UnaryOperation("zero?", (x) => numEq(abs.inject(0), x)), /* (define (zero? x) (= x 0)) */
+    UnaryOperation("positive?", (x) => lt(abs.inject(0), x)), /* (define (positive? x) (< 0 x)) */
+    UnaryOperation("negative?", (x) => lt(x, abs.inject(0))), /* (define (negative? x) (< x 0)) */
+    UnaryOperation("odd?", (x) => numEq(abs.inject(1), modulo(x, abs.inject(2)))), /* (define (odd? x) (= 1 (modulo x 2))) */
+    UnaryOperation("even?", (x) => numEq(abs.inject(0), modulo(x, abs.inject(2)))), /* (define (even? x) (= 0 (modulo x 2))) */
     UnaryOperation("display", display),
     NullaryOperation("newline", newline),
     Cons,
@@ -348,12 +345,12 @@ class Primitives[Addr, Abs]
     UnaryStoreOperation("cadar", (v, store) => (car(cdr(car(v, store), store), store), store)),
     UnaryStoreOperation("cddar", (v, store) => (cdr(cdr(car(v, store), store), store), store)),
     BinaryStoreOperation("set-car!", (cell, v, store) =>
-      (absi.bottom,
+      (abs.bottom,
         abs.car(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
     BinaryStoreOperation("set-cdr!", (cell, v, store) =>
-      (absi.bottom,
+      (abs.bottom,
         abs.cdr(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
-    UnaryOperation("error", absi.error),
+    UnaryOperation("error", abs.error),
     UnaryOperation("null?", isNull),
     UnaryOperation("pair?", isCons),
     UnaryOperation("char?", isChar),
@@ -367,7 +364,7 @@ class Primitives[Addr, Abs]
     UnaryStoreOperation("length", (v, store) => (length(v, store), store))
   )
 
-  private val allocated = all.map({ prim => (prim.name, addri.primitive(prim.name), absi.inject(prim)) })
+  private val allocated = all.map({ prim => (prim.name, addr.primitive(prim.name), abs.inject(prim)) })
   val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
   val forStore: List[(Addr, Abs)] =  allocated.map({ case (_, a, v) => (a, v) })
 }

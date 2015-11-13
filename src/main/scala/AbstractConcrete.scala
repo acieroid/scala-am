@@ -117,6 +117,8 @@ object AbstractConcrete {
   }
 
   implicit object AbstractConcreteAbstractValue extends AbstractValue[AbstractConcrete] {
+    def name = "Concrete"
+
     def isTrue(x: AbstractConcrete) = x.isTrue
     def isFalse(x: AbstractConcrete) = x.isFalse
     def isError(x: AbstractConcrete) = x.isError
@@ -167,10 +169,7 @@ object AbstractConcrete {
       case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
-  }
 
-  implicit object AbstractConcreteInjection extends AbstractInjection[AbstractConcrete] {
-    def name = "Concrete"
     def bottom = AbstractBottom
     def error(x: AbstractConcrete) = AbstractError(x.toString)
     def inject(x: Int) = AbstractInt(x)

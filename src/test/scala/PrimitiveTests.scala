@@ -8,8 +8,8 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
   * not tested (because they aren't given any test case in R5RS). Unsupported
   * primitives with test cases defined in R5RS are explicitely stated in
   * comments. If you're bored, you can implement some of them. */
-abstract class Tests[Exp : Expression, Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr])
+abstract class Tests[Exp : Expression, Abs, Addr]
+  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
   val sem: Semantics[Exp, Abs, Addr]
   val machine: AbstractMachine[Exp, Abs, Addr]
@@ -25,8 +25,8 @@ abstract class Tests[Exp : Expression, Abs, Addr](implicit abs: AbstractValue[Ab
   def r5rs(name: String, table: TableFor2[String, Abs]) =
     property(s"$name satisfies R5RS") { check(table) }
 
-  val t = absi.inject(true)
-  val f = absi.inject(false)
+  val t = abs.inject(true)
+  val f = abs.inject(false)
 
   /* 6.1 Equivalence predicates */
   // eqv? is not implemented
@@ -60,18 +60,18 @@ abstract class Tests[Exp : Expression, Abs, Addr](implicit abs: AbstractValue[Ab
 
   r5rs("+", Table(
     ("program", "answer"),
-    ("(+ 3 4)", absi.inject(7)),
-    ("(+ 3)", absi.inject(3)),
-    ("(+)", absi.inject(0)),
-    ("(* 4)", absi.inject(4)),
-    ("(*)", absi.inject(1))
+    ("(+ 3 4)", abs.inject(7)),
+    ("(+ 3)", abs.inject(3)),
+    ("(+)", abs.inject(0)),
+    ("(* 4)", abs.inject(4)),
+    ("(*)", abs.inject(1))
   ))
 
   r5rs("-", Table(
     ("program", "answer"),
-    ("(- 3 4)", absi.inject(-1)),
-    ("(- 3 4 5)", absi.inject(-6)),
-    ("(- 3)", absi.inject(-3))
+    ("(- 3 4)", abs.inject(-1)),
+    ("(- 3 4 5)", abs.inject(-6)),
+    ("(- 3)", abs.inject(-3))
   ))
 
   // division (/) is implemented BUT we don't support non-integers yet
@@ -79,18 +79,18 @@ abstract class Tests[Exp : Expression, Abs, Addr](implicit abs: AbstractValue[Ab
 
   r5rs("modulo", Table(
     ("program", "answer"),
-    ("(modulo 13 4)", absi.inject(1)),
-    //("(modulo -13 4)", absi.inject(3)), // modulo is Scala's modulo, which is different from Scheme's
-    //("(modulo 13 -4)", absi.inject(-3)), // modulo is Scala's modulo, which is different from Scheme's
-    ("(modulo -13 -4)", absi.inject(-1))
+    ("(modulo 13 4)", abs.inject(1)),
+    //("(modulo -13 4)", abs.inject(3)), // modulo is Scala's modulo, which is different from Scheme's
+    //("(modulo 13 -4)", abs.inject(-3)), // modulo is Scala's modulo, which is different from Scheme's
+    ("(modulo -13 -4)", abs.inject(-1))
   ))
 
   // remainder not implemented
 
   r5rs("gcd", Table(
     ("program", "answer")
-    // ("(gcd 32 -36)", absi.inject(4)) // TODO: not implemented correctly?
-    // ("(gcd)", absi.inject(0)), // gcd doesn't support 0 arguments yet
+    // ("(gcd 32 -36)", abs.inject(4)) // TODO: not implemented correctly?
+    // ("(gcd)", abs.inject(0)), // gcd doesn't support 0 arguments yet
   ))
 
   // lcm not implemented yet
@@ -197,34 +197,33 @@ abstract class Tests[Exp : Expression, Abs, Addr](implicit abs: AbstractValue[Ab
   /* 6.6 Input and output */
 }
 
-abstract class AAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr])
+abstract class AAMTests[Abs, Addr]
+  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAM[SchemeExp, Abs, Addr]
 }
 
-abstract class AACTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr])
+abstract class AACTests[Abs, Addr]
+  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new AAC[SchemeExp, Abs, Addr]
 }
 
-abstract class FreeTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr])
+abstract class FreeTests[Abs, Addr]
+  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new Free[SchemeExp, Abs, Addr]
 }
 
-abstract class ConcurrentAAMTests[Abs, Addr](implicit abs: AbstractValue[Abs], absi: AbstractInjection[Abs],
-  addr: Address[Addr], addri: AddressInjection[Addr])
+abstract class ConcurrentAAMTests[Abs, Addr]
+  (implicit abs: AbstractValue[Abs], addr: Address[Addr])
     extends Tests[SchemeExp, Abs, Addr] {
   val sem = new SchemeSemantics[Abs, Addr]
   val machine = new ConcurrentAAM[SchemeExp, Abs, Addr]
 }
-
 
 /* Since these tests are small, they can be performed in concrete mode */
 class AAMConcreteTests extends AAMTests[AbstractConcrete, ConcreteAddress]

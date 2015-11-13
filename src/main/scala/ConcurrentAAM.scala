@@ -1,13 +1,10 @@
 import scalaz.Scalaz._
 
 case class ConcurrentAAM[Exp : Expression, Abs, Addr]
-  (implicit ab: AbstractValue[Abs], abi: AbstractInjection[Abs],
-    ad: Address[Addr], adi: AddressInjection[Addr])
+  (implicit ab: AbstractValue[Abs], ad: Address[Addr])
     extends AbstractMachine[Exp, Abs, Addr] {
   def abs = implicitly[AbstractValue[Abs]]
-  def absi = implicitly[AbstractInjection[Abs]]
   def addr = implicitly[Address[Addr]]
-  def addri = implicitly[AddressInjection[Addr]]
   def exp = implicitly[Expression[Exp]]
 
   def name = "ConcurrentAAM"
@@ -28,12 +25,12 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
         Option[(ThreadMap, ThreadResults, Store[Addr, Abs])] = action match {
       case ActionReachedValue(v, σ) => Some((threads.update(tid, Context(ControlKont(v), kstore, a)), results, σ))
       case ActionPush(e, frame, ρ, σ) => {
-        val next = NormalKontAddress(e, addri.variable("__kont__"))
+        val next = NormalKontAddress(e, addr.variable("__kont__"))
         Some((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next)), results, σ))
       }
       case ActionEval(e, ρ, σ) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ))
       case ActionStepIn(_, e, ρ, σ, _) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ))
-      case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a)), results, Store.empty[Addr, Abs]()(abs, absi, addr)))
+      case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a)), results, Store.empty[Addr, Abs]()(abs, addr)))
       case ActionSpawn(e, ρ, act) =>
         integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress)), results)
       case ActionJoin(tid2, σ) => ??? /* TODO: if (results.contains(tid2)) {
@@ -87,7 +84,7 @@ case class ConcurrentAAM[Exp : Expression, Abs, Addr]
   case class ThreadResults(content: Map[TID, Abs]) {
     /* TODO: what if two threads share tid, one is done but not the other? -> use thread counting to know more*/
     def isDone(tid: TID): Boolean = content.contains(tid)
-    def get(tid: TID): Abs = content.getOrElse(tid, absi.bottom)
+    def get(tid: TID): Abs = content.getOrElse(tid, abs.bottom)
     def add(tid: TID, v: Abs): ThreadResults = ThreadResults(content + (tid -> abs.join(get(tid), v)))
   }
 

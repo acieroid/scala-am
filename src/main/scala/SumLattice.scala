@@ -8,8 +8,7 @@ import BinaryOperator._
  * Lattice: X || Y > Bottom (no top element)
  */
 class SumLattice[X, Y]
-  (implicit xabs: AbstractValue[X], xabsi: AbstractInjection[X],
-    yabs: AbstractValue[Y], yabsi: AbstractInjection[Y]) {
+  (implicit xabs: AbstractValue[X], yabs: AbstractValue[Y]) {
   trait Sum
   case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Sum {
     override def toString = s"#<prim ${prim.name}>"
@@ -18,7 +17,9 @@ class SumLattice[X, Y]
   case class Right(y: Y) extends Sum
 
   implicit object SumAbstractValue extends AbstractValue[Sum] {
-    private def err(reason: String) = SumInjection.error(SumInjection.inject(reason))
+    def name = s"(${xabs.name} | ${xabs.name})"
+
+    private def err(reason: String) = error(inject(reason))
 
     def isTrue(s: Sum) = s match {
       case Left(x) => xabs.isTrue(x)
@@ -58,7 +59,7 @@ class SumLattice[X, Y]
     def meet(s1: Sum, s2: Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.meet(x1, x2))
       case (Right(y1), Right(y2)) => Right(yabs.meet(y1, y2))
-      case _ => SumInjection.bottom
+      case _ => bottom
     }
     def subsumes(s1: Sum, s2: Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => xabs.subsumes(x1, x2)
@@ -96,69 +97,67 @@ class SumLattice[X, Y]
       case Prim(p: Primitive[Addr, Abs]) => Some(p)
       case _ => None
     }
-  }
-  implicit object SumInjection extends AbstractInjection[Sum] {
-    def name = s"(${xabsi.name} | ${xabsi.name})"
-    def bottom = Left(xabsi.bottom)
+
+    def bottom = Left(xabs.bottom)
     def error(s: Sum) = s match {
-      case Left(x) => Left(xabsi.error(x))
-      case Right(y) => Right(yabsi.error(y))
+      case Left(x) => Left(xabs.error(x))
+      case Right(y) => Right(yabs.error(y))
     }
     /* TODO: have an execption raised by inject if a lattice doesn't support some
      * type of elements, and fallback on Y when it is the case */
     def inject(x: Int) = try {
-      Left(xabsi.inject(x))
+      Left(xabs.inject(x))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.inject(x))
+        Right(yabs.inject(x))
     }
     def inject(x: String) = try {
-      Left(xabsi.inject(x))
+      Left(xabs.inject(x))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.inject(x))
+        Right(yabs.inject(x))
     }
     def inject(x: Char) = try {
-      Left(xabsi.inject(x))
+      Left(xabs.inject(x))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.inject(x))
+        Right(yabs.inject(x))
     }
     def inject(x: Boolean) = try {
-      Left(xabsi.inject(x))
+      Left(xabs.inject(x))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.inject(x))
+        Right(yabs.inject(x))
     }
     def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = try {
-      Left(xabsi.inject[Addr, Abs](x))
+      Left(xabs.inject[Addr, Abs](x))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.inject[Addr, Abs](x))
+        Right(yabs.inject[Addr, Abs](x))
     }
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = try {
-      Left(xabsi.inject[Exp, Addr](x))
+      Left(xabs.inject[Exp, Addr](x))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.inject[Exp, Addr](x))
+        Right(yabs.inject[Exp, Addr](x))
     }
     def injectSymbol(x: String) = try {
-      Left(xabsi.injectSymbol(x))
+      Left(xabs.injectSymbol(x))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.injectSymbol(x))
+        Right(yabs.injectSymbol(x))
     }
     def nil = try {
-      Left(xabsi.nil)
+      Left(xabs.nil)
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.nil)
+        Right(yabs.nil)
     }
     def cons[Addr : Address](car: Addr, cdr: Addr) = try {
-      Left(xabsi.cons[Addr](car, cdr))
+      Left(xabs.cons[Addr](car, cdr))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabsi.cons[Addr](car, cdr))
+        Right(yabs.cons[Addr](car, cdr))
     }
   }
 }

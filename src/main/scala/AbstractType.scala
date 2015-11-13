@@ -112,6 +112,8 @@ object AbstractType {
   case class AbstractCons[Addr : Address](car: Addr, cdr: Addr) extends AbstractType
 
   implicit object AbstractTypeAbstractValue extends AbstractValue[AbstractType] {
+    def name = "Type"
+
     def isTrue(x: AbstractType) = x.isTrue
     def isFalse(x: AbstractType) = x.isFalse
     def isError(x: AbstractType) = x.isError
@@ -156,10 +158,7 @@ object AbstractType {
       case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
-  }
 
-  implicit object AbstractTypeInjection extends AbstractInjection[AbstractType] {
-    def name = "Type"
     def bottom = AbstractBottom
     def error(x: AbstractType) = AbstractError
     def inject(x: Int) = AbstractInt
