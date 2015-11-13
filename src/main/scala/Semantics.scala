@@ -17,20 +17,21 @@
  * language. A more complex definition resides in SchemeSemantics.scala.
  */
 
-trait Semantics[Exp, Abs, Addr] {
+trait Semantics[Exp, Abs, Addr, Time] {
   implicit def abs : AbstractValue[Abs]
   implicit def addr : Address[Addr]
   implicit def exp : Expression[Exp]
+  implicit def time : Timestamp[Time]
   /**
    * Defines what actions should be taken when an expression e needs to be
    * evaluated, in environment e with store σ
    */
-  def stepEval(e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[Exp, Abs, Addr]]
+  def stepEval(e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
   /**
    * Defines what actions should be taken when a value v has been reached, and
    * the topmost frame is frame
    */
-  def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame): Set[Action[Exp, Abs, Addr]]
+  def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
 
   /**
    * Defines how to parse a program
@@ -62,7 +63,7 @@ case class ActionEval[Exp : Expression, Abs : AbstractValue, Addr : Address](e: 
  * the arguments should also be provided, as they can be needed by the abstract
  * machine.
  */
-case class ActionStepIn[Exp : Expression, Abs : AbstractValue, Addr : Address](clo: (Exp, Environment[Addr]), e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs], argsv: List[(Exp, Abs)]) extends Action[Exp, Abs, Addr]
+case class ActionStepIn[Exp : Expression, Abs : AbstractValue, Addr : Address](fexp: Exp, clo: (Exp, Environment[Addr]), e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs], argsv: List[(Exp, Abs)]) extends Action[Exp, Abs, Addr]
 /**
  * An error has been reached
  */
@@ -80,12 +81,13 @@ case class ActionJoin[Exp : Expression, Abs : AbstractValue, Addr : Address](tid
 /**
  * Base class for semantics that define some helper methods
  */
-abstract class BaseSemantics[Exp : Expression, Abs : AbstractValue, Addr : Address]
-    extends Semantics[Exp, Abs, Addr] {
+abstract class BaseSemantics[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends Semantics[Exp, Abs, Addr, Time] {
   /* wtf scala */
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
+  def time = implicitly[Timestamp[Time]]
 
   /**
    * Binds arguments in the environment and store. Arguments are given as a list
@@ -94,9 +96,9 @@ abstract class BaseSemantics[Exp : Expression, Abs : AbstractValue, Addr : Addre
    *   - the expression evaluated to get the argument's value
    *   - the value of the argument
    */
-  protected def bindArgs(l: List[(String, (Exp, Abs))], ρ: Environment[Addr], σ: Store[Addr, Abs]): (Environment[Addr], Store[Addr, Abs]) =
+  protected def bindArgs(l: List[(String, (Exp, Abs))], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
     l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, (exp, value))) => {
-      val a = addr.variable(name)
+      val a = addr.variable(name, t)
       (ρ.extend(name, a), σ.extend(a, value))
     }})
 }

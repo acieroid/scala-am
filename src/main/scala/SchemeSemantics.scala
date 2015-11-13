@@ -1,8 +1,8 @@
 /**
  * Basic Scheme semantics, without any optimization
  */
-class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
-    extends BaseSemantics[SchemeExp, Abs, Addr] {
+class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends BaseSemantics[SchemeExp, Abs, Addr, Time] {
 
   trait SchemeFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
@@ -37,22 +37,22 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
   def conditional(v: Abs, t: Action[SchemeExp, Abs, Addr], f: Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
     (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
 
-  def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = {
+  def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = {
     val fromClo: Set[Action[SchemeExp, Abs, Addr]] = abs.getClosures[SchemeExp, Addr](function).map({
       case (SchemeLambda(args, body), ρ1) =>
         if (args.length == argsv.length) {
-          bindArgs(args.zip(argsv), ρ1, σ) match {
+          bindArgs(args.zip(argsv), ρ1, σ, t) match {
             case (ρ2, σ) =>
               if (body.length == 1)
-                ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), body.head, ρ2, σ, argsv)
+                ActionStepIn[SchemeExp, Abs, Addr](fexp, (SchemeLambda(args, body), ρ1), body.head, ρ2, σ, argsv)
               else
-                ActionStepIn[SchemeExp, Abs, Addr]((SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ, argsv)
+                ActionStepIn[SchemeExp, Abs, Addr](fexp, (SchemeLambda(args, body), ρ1), SchemeBegin(body), ρ2, σ, argsv)
           }
         } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
       case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
     })
     val fromPrim = abs.getPrimitive(function) match {
-      case Some(prim) => prim.call(fexp, argsv, σ) match {
+      case Some(prim) => prim.call(fexp, argsv, σ, t) match {
         case Right((res, σ2)) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, σ2))
         case Left(err) => Set(ActionError[SchemeExp, Abs, Addr](err))
       }
@@ -72,22 +72,22 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
     case _ => None
   }
 
-  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
-    case Nil => evalCall(f, fexp, args.reverse, ρ, σ)
+  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
+    case Nil => evalCall(f, fexp, args.reverse, ρ, σ, t)
     case e :: rest => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
   }
-  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] =
-    funcallArgs(f, fexp, List(), args, ρ, σ)
+  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] =
+    funcallArgs(f, fexp, List(), args, ρ, σ, t)
 
-  protected def evalQuoted(exp: SExp, σ: Store[Addr, Abs]): (Abs, Store[Addr, Abs]) = exp match {
+  protected def evalQuoted(exp: SExp, σ: Store[Addr, Abs], t: Time): (Abs, Store[Addr, Abs]) = exp match {
     case SExpIdentifier(sym) => (abs.injectSymbol(sym), σ)
     case SExpPair(car, cdr) => {
       val care: SchemeExp = SchemeIdentifier(car.toString).setPos(car.pos)
       val cdre: SchemeExp = SchemeIdentifier(cdr.toString).setPos(cdr.pos)
-      val cara = addr.cell(care)
-      val (carv, σ2) = evalQuoted(car, σ)
-      val cdra = addr.cell(cdre)
-      val (cdrv, σ3) = evalQuoted(cdr, σ2)
+      val cara = addr.cell(care, t)
+      val (carv, σ2) = evalQuoted(car, σ, t)
+      val cdra = addr.cell(cdre, t)
+      val (cdrv, σ3) = evalQuoted(cdr, σ2, t)
       (abs.cons(cara, cdra), σ3.extend(cara, carv).extend(cdra, cdrv))
     }
     case SExpValue(v) => (v match {
@@ -99,10 +99,10 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
       case ValueBoolean(b) => abs.inject(b)
       case ValueNil() => abs.nil
     }, σ)
-    case SExpQuoted(q) => evalQuoted(SExpPair(SExpIdentifier("quote"), SExpPair(q, SExpValue(ValueNil()))), σ)
+    case SExpQuoted(q) => evalQuoted(SExpPair(SExpIdentifier("quote"), SExpPair(q, SExpValue(ValueNil()))), σ, t)
   }
 
-  def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) = e match {
+  def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time) = e match {
     case λ: SchemeLambda => Set(ActionReachedValue(abs.inject[SchemeExp, Addr]((λ, ρ)), σ))
     case SchemeFuncall(f, args) => Set(ActionPush(f, FrameFuncallOperator(f, args, ρ), ρ, σ))
     case SchemeIf(cond, cons, alt) => Set(ActionPush(cond, FrameIf(cons, alt, ρ), ρ, σ))
@@ -113,7 +113,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
     case SchemeLetrec(Nil, body) => Set(evalBody(body, ρ, σ))
     case SchemeLetrec((v, exp) :: bindings, body) => {
       val variables = v :: bindings.map(_._1)
-      val addresses = variables.map(addr.variable)
+      val addresses = variables.map(v => addr.variable(v, t))
       val (ρ1, σ1) = variables.zip(addresses).foldLeft((ρ, σ))({ case ((ρ, σ), (v, a)) => (ρ.extend(v, a), σ.extend(a, abs.bottom)) })
       Set(ActionPush(exp, FrameLetrec(addresses.head, addresses.tail.zip(bindings.map(_._2)), body, ρ1), ρ1, σ1))
     }
@@ -128,7 +128,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
     case SchemeOr(exp :: exps) => Set(ActionPush(exp, FrameOr(exps, ρ), ρ, σ))
     case SchemeDefineVariable(name, exp) => Set(ActionPush(exp, FrameDefine(name, ρ), ρ, σ))
     case SchemeDefineFunction(name, args, body) => {
-      val a = addr.variable(name)
+      val a = addr.variable(name, t)
       val v = abs.inject[SchemeExp, Addr]((SchemeLambda(args, body), ρ))
       val ρ1 = ρ.extend(name, a)
       val σ1 = σ.extend(a, v)
@@ -138,7 +138,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
       case Some(a) => Set(ActionReachedValue(σ.lookup(a), σ))
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
-    case SchemeQuoted(quoted) => evalQuoted(quoted, σ) match {
+    case SchemeQuoted(quoted) => evalQuoted(quoted, σ, t) match {
       case (value, σ2) => Set(ActionReachedValue(value, σ2))
     }
     case SchemeValue(v) => evalValue(v) match {
@@ -162,24 +162,24 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
     case SchemeJoin(exp) => Set(ActionPush(exp, FrameJoin(ρ), ρ, σ))
   }
 
-  def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {
+  def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
     case FrameHalt => Set()
-    case FrameFuncallOperator(fexp, args, ρ) => funcallArgs(v, fexp, args, ρ, σ)
-    case FrameFuncallOperands(f, fexp, exp, args, toeval, ρ) => funcallArgs(f, fexp, (exp, v) :: args, toeval, ρ, σ)
+    case FrameFuncallOperator(fexp, args, ρ) => funcallArgs(v, fexp, args, ρ, σ, t)
+    case FrameFuncallOperands(f, fexp, exp, args, toeval, ρ) => funcallArgs(f, fexp, (exp, v) :: args, toeval, ρ, σ, t)
     case FrameIf(cons, alt, ρ) =>
       conditional(v, ActionEval(cons, ρ, σ), ActionEval(alt, ρ, σ))
     case FrameLet(name, bindings, Nil, body, ρ) => {
       val variables = name :: bindings.reverse.map(_._1)
-      val addresses = variables.map(addr.variable)
+      val addresses = variables.map(v => addr.variable(v, t))
       val (ρ1, σ1) = ((name, v) :: bindings).zip(addresses).foldLeft((ρ, σ))({
-        case ((ρ, σ), ((variable, value), addr)) => (ρ.extend(variable, addr), σ.extend(addr, value))
+        case ((ρ, σ), ((variable, value), a)) => (ρ.extend(variable, a), σ.extend(a, value))
       })
       Set(evalBody(body, ρ1, σ1))
     }
     case FrameLet(name, bindings, (variable, e) :: toeval, body, ρ) =>
       Set(ActionPush(e, FrameLet(variable, (name, v) :: bindings, toeval, body, ρ), ρ, σ))
     case FrameLetStar(name, bindings, body, ρ) => {
-      val a = addr.variable(name)
+      val a = addr.variable(name, t)
       val ρ1 = ρ.extend(name, a)
       val σ1 = σ.extend(a, v)
       bindings match {
@@ -187,9 +187,9 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
         case (variable, exp) :: rest => Set(ActionPush(exp, FrameLetStar(variable, rest, body, ρ1), ρ1, σ1))
       }
     }
-    case FrameLetrec(addr, Nil, body, ρ) => Set(evalBody(body, ρ, σ.update(addr, v)))
-    case FrameLetrec(addr, (addr1, exp) :: rest, body, ρ) =>
-      Set(ActionPush(exp, FrameLetrec(addr1, rest, body, ρ), ρ, σ.update(addr, v)))
+    case FrameLetrec(a, Nil, body, ρ) => Set(evalBody(body, ρ, σ.update(a, v)))
+    case FrameLetrec(a, (a1, exp) :: rest, body, ρ) =>
+      Set(ActionPush(exp, FrameLetrec(a1, rest, body, ρ), ρ, σ.update(a1, v)))
     case FrameSet(name, ρ) => ρ.lookup(name) match {
       case Some(a) => Set(ActionReachedValue(abs.inject(false), σ.update(a, v)))
       case None => Set(ActionError(s"Unbound variable: $name"))
@@ -251,8 +251,8 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address]
  *     to evaluate (+ 1 (f)), we can directly push the continuation and jump to
  *     the evaluation of (f), instead of evaluating +, and 1 in separate states.
  */
-class SchemeSemantics[Abs : AbstractValue, Addr : Address]
-    extends BaseSchemeSemantics[Abs, Addr] {
+class SchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends BaseSchemeSemantics[Abs, Addr, Time] {
 
   /** Tries to perform atomic evaluation of an expression. Returns the result of
     * the evaluation if it succeeded, otherwise returns None */
@@ -263,10 +263,10 @@ class SchemeSemantics[Abs : AbstractValue, Addr : Address]
     case _ => None
   }
 
-  override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
-    case Nil => evalCall(f, fexp, args.reverse, ρ, σ)
+  override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
+    case Nil => evalCall(f, fexp, args.reverse, ρ, σ, t)
     case e :: rest => atomicEval(e, ρ, σ) match {
-      case Some(v) => funcallArgs(f, fexp, (e, v) :: args, rest, ρ, σ)
+      case Some(v) => funcallArgs(f, fexp, (e, v) :: args, rest, ρ, σ, t)
       case None => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
     }
   }
@@ -276,19 +276,19 @@ class SchemeSemantics[Abs : AbstractValue, Addr : Address]
    * where exp is an atomic expression, we can atomically evaluate exp to get v,
    * and call stepKont(v, σ, frame).
    */
-  protected def optimizeAtomic(actions: Set[Action[SchemeExp, Abs, Addr]]): Set[Action[SchemeExp, Abs, Addr]] = {
+  protected def optimizeAtomic(actions: Set[Action[SchemeExp, Abs, Addr]], t: Time): Set[Action[SchemeExp, Abs, Addr]] = {
     actions.flatMap({
       case ActionPush(exp, frame, ρ, σ) => atomicEval(exp, ρ, σ) match {
-        case Some(v) => stepKont(v, σ, frame)
+        case Some(v) => stepKont(v, frame, σ, t)
         case None => Set[Action[SchemeExp, Abs, Addr]](ActionPush(exp, frame, ρ, σ))
       }
       case action => Set[Action[SchemeExp, Abs, Addr]](action)
     })
   }
 
-  override def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]) =
-    optimizeAtomic(super.stepEval(e, ρ, σ))
+  override def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time) =
+    optimizeAtomic(super.stepEval(e, ρ, σ, t), t)
 
-  override def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) =
-    optimizeAtomic(super.stepKont(v, σ, frame))
+  override def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) =
+    optimizeAtomic(super.stepKont(v, frame, σ, t), t)
 }

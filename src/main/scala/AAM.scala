@@ -16,8 +16,8 @@
  * be evaluated within this environment, whereas a continuation state only
  * contains the value reached.
  */
-class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
-    extends EvalKontMachine[Exp, Abs, Addr] {
+class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "AAM"
 
   /**
@@ -45,13 +45,13 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
    * continuation store, and an address representing where the current
    * continuation lives.
    */
-  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], a: KontAddr) {
+  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     /**
      * Builds the state with the initial environment and stores
      */
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
       Store.initial[Addr, Abs](primitives.forStore),
-      new KontStore[KontAddr](), HaltKontAddress)
+      new KontStore[KontAddr](), HaltKontAddress, time.initial)
     override def toString() = control.toString(σ)
     /**
      * Checks whether a states subsumes another, i.e., if it is "bigger". This
@@ -59,7 +59,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
      * in order to avoid exploring states for which another state that subsumes
      * them has already been explored.
      */
-    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && a == that.a && kstore.subsumes(that.kstore)
+    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && a == that.a && kstore.subsumes(that.kstore) && t == that.t
 
     /**
      * Integrates a set of actions (returned by the semantics, see
@@ -69,31 +69,31 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.flatMap({
         /* When a value is reached, we go to a continuation state */
-        case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, kstore, a))
+        case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, kstore, a, t))
         /* When a continuation needs to be pushed, push it in the continuation store */
         case ActionPush(e, frame, ρ, σ) => {
-          val next = NormalKontAddress(e, addr.variable("__kont__")) // Hack to get infinite number of addresses in concrete mode
-          Set(State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, a)), next))
+          val next = NormalKontAddress(e, addr.variable("__kont__", t)) // Hack to get infinite number of addresses in concrete mode
+          Set(State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, a)), next, t))
         }
         /* When a value needs to be evaluated, we go to an eval state */
-        case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, kstore, a))
+        case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, kstore, a, t))
         /* When a function is stepped in, we also go to an eval state */
-        case ActionStepIn(_, e, ρ, σ, _) => Set(State(ControlEval(e, ρ), σ, kstore, a))
+        case ActionStepIn(fexp, _, e, ρ, σ, _) => Set(State(ControlEval(e, ρ), σ, kstore, a, time.tick(t, fexp)))
         /* When an error is reached, we go to an error state */
-        case ActionError(err) => Set(State(ControlError(err), σ, kstore, a))
+        case ActionError(err) => Set(State(ControlError(err), σ, kstore, a, t))
       })
 
     /**
      * Computes the set of states that follow the current state
      */
-    def step(sem: Semantics[Exp, Abs, Addr]): Set[State] = control match {
+    def step(sem: Semantics[Exp, Abs, Addr, Time]): Set[State] = control match {
       /* In a eval state, call the semantic's evaluation method */
-      case ControlEval(e, ρ) => integrate(a, sem.stepEval(e, ρ, σ))
+      case ControlEval(e, ρ) => integrate(a, sem.stepEval(e, ρ, σ, t))
       /* In a continuation state, if the value reached is not an error, call the
        * semantic's continuation method */
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
-        case Kont(frame, next) => integrate(next, sem.stepKont(v, σ, frame))
+        case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, σ, t))
       })
       /* In an error state, the state is not able to make a step */
       case ControlError(_) => Set()
@@ -161,7 +161,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
     halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
-    sem: Semantics[Exp, Abs, Addr]): AAMOutput =
+    sem: Semantics[Exp, Abs, Addr, Time]): AAMOutput =
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s) || visited.exists(s2 => s2.subsumes(s))) {
@@ -189,7 +189,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
    * Performs the evaluation of an expression, possibly writing the output graph
    * in a file, and returns the set of final states reached
    */
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(new State(exp)), Set(), Set(), System.nanoTime,
       if (graph) { Some(new Graph[State]()) } else { None },
       sem)

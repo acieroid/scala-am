@@ -12,7 +12,7 @@ trait Primitive[Addr, Abs] {
    * @param store: the store
    * @return either an error, or the value returned by the primitive along with the updated store
    */
-  def call[Exp : Expression](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]): Either[String, (Abs, Store[Addr, Abs])]
+  def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time): Either[String, (Abs, Store[Addr, Abs])]
 }
 
 object UnaryOperator extends Enumeration {
@@ -130,10 +130,10 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   /** This is how a primitive is defined by extending Primitive */
   object Cons extends Primitive[Addr, Abs] {
     val name = "cons"
-    def call[Exp : Expression](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+    def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (carexp, car) :: (cdrexp, cdr) :: Nil => {
-        val cara = addr.cell(carexp)
-        val cdra = addr.cell(cdrexp)
+        val cara = addr.cell(carexp, t)
+        val cdra = addr.cell(cdrexp, t)
         Right((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr)))
       }
       case l => Left(s"cons: 2 operands expected, got ${l.size} instead")
@@ -146,7 +146,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
 
   /** A primitive taking no argument, e.g., (newline) */
   class NullaryOperation(val name: String, f: => Abs) extends Primitive[Addr, Abs] {
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case Nil => Right((f, store))
       case l => Left(s"${name}: no operand expected, got ${l.size} instead")
     }
@@ -156,14 +156,14 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   }
   /** A primitive taking a single argument, e.g., (random 1) */
   case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Addr, Abs] {
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: Nil => Right((f(x), store))
       case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
     }
   }
   /** A primitive taking two arguments, e.g., (modulo 5 1) */
   case class BinaryOperation(name: String, f: (Abs, Abs) => Abs) extends Primitive[Addr, Abs] {
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: (_, y) :: Nil => Right((f(x, y), store))
       case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
     }
@@ -171,7 +171,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
 
   /** A primitive taking a single argument and modifying the store */
   case class UnaryStoreOperation(name: String, f: (Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs])) extends Primitive[Addr, Abs] {
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: Nil => Right(f(x, store))
       case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
     }
@@ -179,7 +179,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
 
   /** A primitive taking two arguments and modifying the store */
   case class BinaryStoreOperation(name: String, f: (Abs, Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs])) extends Primitive[Addr, Abs] {
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) = args match {
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: (_, y) :: Nil => Right(f(x, y, store))
       case l => Left(s"${name}: 2 operand expected, got ${l.size} instead")
     }
@@ -188,7 +188,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   /** A primitive that doesn't modify the store but takes a variable amount of arguments */
   abstract class VariadicOperation extends Primitive[Addr, Abs] {
     def call(args: List[Abs]): Either[String, Abs]
-    def call[Exp : Expression](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs]) =
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) =
       call(args.map({ case (_, v) => v })) match {
         case Right(v) => Right((v, store))
         case Left(err) => Left(err)

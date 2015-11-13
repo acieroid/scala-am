@@ -1,8 +1,8 @@
 /**
  * Semantics for ANF Scheme (abstract grammar defined in ANF.scala)
  */
-class ANFSemantics[Abs : AbstractValue, Addr : Address]
-    extends BaseSemantics[ANFExp, Abs, Addr] {
+class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends BaseSemantics[ANFExp, Abs, Addr, Time] {
   /** ANF Scheme only has three types of continuation frames: halt, let, and letrec */
   trait ANFFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
@@ -30,7 +30,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address]
     case ANFValue(v) => Left(s"Unhandled value: ${v}")
   }
 
-  def stepEval(e: ANFExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Set[Action[ANFExp, Abs, Addr]] = e match {
+  def stepEval(e: ANFExp, ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[ANFExp, Abs, Addr]] = e match {
     /* To step an atomic expression, performs atomic evaluation on it */
     case ae: ANFAtomicExp => atomicEval(ae, ρ, σ) match {
       case Left(err) => Set(ActionError(err))
@@ -60,15 +60,15 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address]
               val fromClo: Set[Action[ANFExp, Abs, Addr]] = abs.getClosures[ANFExp, Addr](fv).map({
                 case (ANFLambda(args, body), ρ) => if (args.length == argsv.length) {
                   /* To call a closure, bind the arguments and step into the function */
-                  bindArgs(args.zip(argsv.reverse), ρ, σ) match {
-                    case (ρ2, σ) => ActionStepIn((ANFLambda(args, body), ρ), body, ρ2, σ, argsv)
+                  bindArgs(args.zip(argsv.reverse), ρ, σ, t) match {
+                    case (ρ2, σ) => ActionStepIn(f, (ANFLambda(args, body), ρ), body, ρ2, σ, argsv)
                   }
                 } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length})") }
                 case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
               })
               val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitive(fv) match {
                 /* To call a primitive, apply the call method with the given arguments and the store */
-                case Some(prim) => prim.call(f, argsv, σ) match {
+                case Some(prim) => prim.call(f, argsv, σ, t) match {
                   case Right((res, σ2)) => Set(ActionReachedValue(res, σ2))
                   case Left(err) => Set(ActionError(err))
                 }
@@ -98,7 +98,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address]
       Set(ActionPush(exp, FrameLet(variable, body, ρ), ρ, σ))
     /* Same for letrec, but we need to bind the variable to an undefined value first */
     case ANFLetrec(variable, exp, body) => {
-      val vara = addr.variable(variable)
+      val vara = addr.variable(variable, t)
       val ρ1 = ρ.extend(variable, vara)
       val σ1 = σ.extend(vara, abs.bottom)
       Set(ActionPush(exp, FrameLetrec(variable, vara, body, ρ1), ρ1, σ1))
@@ -119,12 +119,12 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address]
     case ANFQuoted(sexp) => Set(ActionError("TODO: quoted expressions not yet handled"))
   }
 
-  def stepKont(v: Abs, σ: Store[Addr, Abs], frame: Frame) = frame match {
+  def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
     /* Final state is reached */
     case FrameHalt => Set()
     /* Allocate the variable and bind it to the reached value */
     case FrameLet(variable, body, ρ) => {
-      val vara = addr.variable(variable)
+      val vara = addr.variable(variable, t)
       Set(ActionEval(body, ρ.extend(variable, vara), σ.extend(vara, v)))
     }
     /* Just bind the variable to the reached value, since it has already been allocated */

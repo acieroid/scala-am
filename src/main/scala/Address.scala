@@ -3,16 +3,16 @@ trait Address[A] {
   def subsumes(x: A, y: A): Boolean = x.equals(y)
   def isPrimitive(x: A): Boolean
   def primitive(name: String): A
-  def variable(name: String): A
-  def cell[Exp : Expression](exp: Exp): A
+  def variable[Time : Timestamp](name: String, t: Time): A
+  def cell[Exp : Expression, Time : Timestamp](exp: Exp, t: Time): A
 }
 
 trait ClassicalAddress
 
 object ClassicalAddress {
-  case class VariableAddress(name: String) extends ClassicalAddress
+  case class VariableAddress[Time : Timestamp](name: String, t: Time) extends ClassicalAddress
   case class PrimitiveAddress(name: String) extends ClassicalAddress
-  case class CellAddress[Exp : Expression](exp: Exp) extends ClassicalAddress
+  case class CellAddress[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) extends ClassicalAddress
 
   implicit object ClassicalAddressAddress extends Address[ClassicalAddress] {
     def name = "Classical"
@@ -21,8 +21,8 @@ object ClassicalAddress {
       case _ => false
     }
     def primitive(name: String) = PrimitiveAddress(name)
-    def variable(name: String) = VariableAddress(name)
-    def cell[Exp : Expression](exp: Exp) = CellAddress(exp)
+    def variable[Time : Timestamp](name: String, t: Time) = VariableAddress(name, t)
+    def cell[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) = CellAddress(exp, t)
   }
 }
 
@@ -39,7 +39,7 @@ object ConcreteAddress {
       case _ => false
     }
     def primitive(name: String) = { PrimitiveAddress(name) }
-    def variable(name: String) = { id += 1; IntAddress(name, id) }
-    def cell[Exp : Expression](exp: Exp) = { id += 1; IntAddress(s"cell-$exp", id) }
+    def variable[Time : Timestamp](name: String, t: Time) = { id += 1; IntAddress(name, id) }
+    def cell[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) = { id += 1; IntAddress(s"cell-$exp", id) }
   }
 }

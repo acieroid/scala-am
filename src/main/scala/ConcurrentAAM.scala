@@ -1,13 +1,14 @@
 import scalaz.Scalaz._
 
-class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
-    extends AbstractMachine[Exp, Abs, Addr] {
+class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends AbstractMachine[Exp, Abs, Addr, Time] {
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
+  def time = implicitly[Timestamp[Time]]
 
   def name = "ConcurrentAAM"
-  val aam = new AAM[Exp, Abs, Addr]
+  val aam = new AAM[Exp, Abs, Addr, Time]
   import aam._
 
   type KontAddr = aam.KontAddr
@@ -19,19 +20,19 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
     maxtid
   }
 
-  case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr) {
+  case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
         Option[(ThreadMap, ThreadResults, Store[Addr, Abs])] = action match {
-      case ActionReachedValue(v, σ) => Some((threads.update(tid, Context(ControlKont(v), kstore, a)), results, σ))
+      case ActionReachedValue(v, σ) => Some((threads.update(tid, Context(ControlKont(v), kstore, a, t)), results, σ))
       case ActionPush(e, frame, ρ, σ) => {
-        val next = NormalKontAddress(e, addr.variable("__kont__"))
-        Some((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next)), results, σ))
+        val next = NormalKontAddress(e, addr.variable("__kont__", t))
+        Some((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, t)), results, σ))
       }
-      case ActionEval(e, ρ, σ) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ))
-      case ActionStepIn(_, e, ρ, σ, _) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a)), results, σ))
-      case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a)), results, Store.empty[Addr, Abs]))
+      case ActionEval(e, ρ, σ) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, t)), results, σ))
+      case ActionStepIn(fexp, _, e, ρ, σ, _) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ))
+      case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a, t)), results, Store.empty[Addr, Abs]))
       case ActionSpawn(e, ρ, act) =>
-        integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress)), results)
+        integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, t)), results)
       case ActionJoin(tid2, σ) => ??? /* TODO: if (results.contains(tid2)) {
         Some((threads.update(tid, Context(ControlKont(results.get(tid2), kstore, a))), results, σ))
       } else {
@@ -46,16 +47,16 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
         case None => Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]()
       })
 
-    def step(sem: Semantics[Exp, Abs, Addr], tid: TID, store: Store[Addr, Abs], threads: ThreadMap, results: ThreadResults):
+    def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID, store: Store[Addr, Abs], threads: ThreadMap, results: ThreadResults):
         (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) = control match {
-      case ControlEval(e, ρ) => integrate(tid, a, sem.stepEval(e, ρ, store), threads, results)
+      case ControlEval(e, ρ) => integrate(tid, a, sem.stepEval(e, ρ, store, t), threads, results)
       case ControlKont(v) if halted && tid != initialtid =>
         /* TODO: we could avoid distinguishing the initial thread, and just get the
          * final results at its location in results */
         Set((threads.remove(tid), results.add(tid, v), store))
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
-        case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, store, frame), threads, results)
+        case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, frame, store, t), threads, results)
       })
       case ControlError(_) => Set()
     }
@@ -88,11 +89,11 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
   }
 
   case class State(threads: ThreadMap, results: ThreadResults, store: Store[Addr, Abs]) {
-    def step(sem: Semantics[Exp, Abs, Addr], tid: TID): Set[State] =
+    def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID): Set[State] =
       threads.get(tid).flatMap(ctx => ctx.step(sem, tid, store, threads, results).map({
         case (threads, results, store) => State(threads, results, store)
       }))
-    def stepAll(sem: Semantics[Exp, Abs, Addr]): Set[(TID, State)] =
+    def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(TID, State)] =
       threads.tids.foldLeft(Set[(TID, State)]())((acc, tid) => step(sem, tid).foldLeft(acc)((acc, st) => acc + (tid -> st)))
 
     def halted: Boolean = threads.forall({
@@ -107,7 +108,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
   object State {
     def inject(exp: Exp) = {
       val st = new aam.State(exp)
-      State(ThreadMap(Map[TID, Set[Context]](1 -> Set(Context(st.control, st.kstore, st.a)))),
+      State(ThreadMap(Map[TID, Set[Context]](1 -> Set(Context(st.control, st.kstore, st.a, st.t)))),
         ThreadResults(Map[TID, Abs]()), st.σ)
     }
   }
@@ -132,7 +133,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
     halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
-    sem: Semantics[Exp, Abs, Addr]): ConcurrentAAMOutput =
+    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s)) {
@@ -148,7 +149,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address]
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
       if (graph) { Some (new Graph[State]()) } else { None },
       sem)

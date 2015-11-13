@@ -1,6 +1,7 @@
 import org.scalatest._
 import org.scalatest.prop._
 import org.scalatest.prop.TableDrivenPropertyChecks._
+import Timestamps._
 
 /** Tests that encodes Chapter 6 of R5RS (only for specified behaviour,
   * unspecified behaviour is not tested because it's... unspecified). This is
@@ -8,11 +9,11 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
   * not tested (because they aren't given any test case in R5RS). Unsupported
   * primitives with test cases defined in R5RS are explicitely stated in
   * comments. If you're bored, you can implement some of them. */
-abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address]
+abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
   val abs = implicitly[AbstractValue[Abs]]
-  val sem: Semantics[Exp, Abs, Addr]
-  val machine: AbstractMachine[Exp, Abs, Addr]
+  val sem: Semantics[Exp, Abs, Addr, Time]
+  val machine: AbstractMachine[Exp, Abs, Addr, Time]
 
   def checkResult(program: String, answer: Abs) = {
     val result = machine.eval(sem.parse(program), sem, false)
@@ -197,36 +198,36 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address]
   /* 6.6 Input and output */
 }
 
-abstract class AAMTests[Abs : AbstractValue, Addr : Address]
-    extends Tests[SchemeExp, Abs, Addr] {
-  val sem = new SchemeSemantics[Abs, Addr]
-  val machine = new AAM[SchemeExp, Abs, Addr]
+abstract class AAMTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends Tests[SchemeExp, Abs, Addr, Time] {
+  val sem = new SchemeSemantics[Abs, Addr, Time]
+  val machine = new AAM[SchemeExp, Abs, Addr, Time]
 }
 
-abstract class AACTests[Abs : AbstractValue, Addr : Address]
-    extends Tests[SchemeExp, Abs, Addr] {
-  val sem = new SchemeSemantics[Abs, Addr]
-  val machine = new AAC[SchemeExp, Abs, Addr]
+abstract class AACTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends Tests[SchemeExp, Abs, Addr, Time] {
+  val sem = new SchemeSemantics[Abs, Addr, Time]
+  val machine = new AAC[SchemeExp, Abs, Addr, Time]
 }
 
-abstract class FreeTests[Abs : AbstractValue, Addr : Address]
-    extends Tests[SchemeExp, Abs, Addr] {
-  val sem = new SchemeSemantics[Abs, Addr]
-  val machine = new Free[SchemeExp, Abs, Addr]
+abstract class FreeTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends Tests[SchemeExp, Abs, Addr, Time] {
+  val sem = new SchemeSemantics[Abs, Addr, Time]
+  val machine = new Free[SchemeExp, Abs, Addr, Time]
 }
 
-abstract class ConcurrentAAMTests[Abs : AbstractValue, Addr : Address]
-    extends Tests[SchemeExp, Abs, Addr] {
-  val sem = new SchemeSemantics[Abs, Addr]
-  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr]
+abstract class ConcurrentAAMTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends Tests[SchemeExp, Abs, Addr, Time] {
+  val sem = new SchemeSemantics[Abs, Addr, Time]
+  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time]
 }
 
 /* Since these tests are small, they can be performed in concrete mode */
-class AAMConcreteTests extends AAMTests[AbstractConcrete, ConcreteAddress]
-class AAMTypeSetTests extends AAMTests[AbstractTypeSet, ClassicalAddress]
-class AACConcreteTests extends AACTests[AbstractConcrete, ConcreteAddress]
-class AACTypeSetTests extends AACTests[AbstractTypeSet, ClassicalAddress]
-class FreeConcreteTests extends FreeTests[AbstractConcrete, ClassicalAddress]
-class FreeTypeSetTests extends FreeTests[AbstractTypeSet, ClassicalAddress]
-class ConcurrentAAMConcreteTests extends ConcurrentAAMTests[AbstractConcrete, ClassicalAddress]
-class ConcurrentAAMTypeSetTests extends ConcurrentAAMTests[AbstractTypeSet, ClassicalAddress]
+class AAMConcreteTests extends AAMTests[AbstractConcrete, ConcreteAddress, ZeroCFA]
+class AAMTypeSetTests extends AAMTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
+class AACConcreteTests extends AACTests[AbstractConcrete, ConcreteAddress, ZeroCFA]
+class AACTypeSetTests extends AACTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
+class FreeConcreteTests extends FreeTests[AbstractConcrete, ClassicalAddress, ZeroCFA]
+class FreeTypeSetTests extends FreeTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
+class ConcurrentAAMConcreteTests extends ConcurrentAAMTests[AbstractConcrete, ClassicalAddress, ZeroCFA]
+class ConcurrentAAMTypeSetTests extends ConcurrentAAMTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]

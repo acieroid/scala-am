@@ -16,8 +16,8 @@ import scalaz.Scalaz._
  * used. Use it or remove the definitions.
  * TODO: Investigating AAC with a global value store might be interesting.
  */
-class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address]
-    extends EvalKontMachine[Exp, Abs, Addr] {
+class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "AAC"
 
   val primitives = new Primitives[Addr, Abs]()
@@ -108,11 +108,11 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address]
    * The state of the machine contains the control component, the local store, a
    * local continuation and the address of the rest of the continuation
    */
-  case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont) {
+  case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont, t: Time) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-                               Store.initial[Addr, Abs](primitives.forStore), new LocalKont(), KontEmpty)
+                               Store.initial[Addr, Abs](primitives.forStore), new LocalKont(), KontEmpty, time.initial)
     override def toString() = control.toString(σ)
-    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ)
+    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ) && t == that.t
 
     /* TODO: There are a few functions inspecting the continuation (pop,
      * computeKont, kontCanBeEmpty). They should be factored into a single
@@ -225,25 +225,25 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address]
         val states = acc._1
         val kstore = acc._2
         act match {
-          case ActionReachedValue(v, σ) => (states + State(ControlKont(v), σ, ι, κ), kstore)
-          case ActionPush(e, frame, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ), kstore)
-          case ActionEval(e, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι, κ), kstore)
-          case ActionStepIn(clo, e, ρ, σ, argsv) => {
+          case ActionReachedValue(v, σ) => (states + State(ControlKont(v), σ, ι, κ, t), kstore)
+          case ActionPush(e, frame, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, t), kstore)
+          case ActionEval(e, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι, κ, t), kstore)
+          case ActionStepIn(fexp, clo, e, ρ, σ, argsv) => {
             val τ = Context(clo, argsv, σ)
-            (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ)),
+            (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ), time.tick(t, fexp)),
              kstore.extend(τ, (ι, κ)))
           }
-          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ), kstore)
+          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ, t), kstore)
         }})
 
     /**
      * Performs an evaluation step, relying on the given semantics (@param sem)
      */
-    def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr]): (Set[State], KontStore) = control match {
-      case ControlEval(e, ρ) => integrate(ι, κ, kstore, sem.stepEval(e, ρ, σ))
+    def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], KontStore) = control match {
+      case ControlEval(e, ρ) => integrate(ι, κ, kstore, sem.stepEval(e, ρ, σ, t))
       case ControlKont(v) if abs.isError(v) => (Set(), kstore)
       case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore))((acc, popped) => {
-        val (states, kstore1) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, σ, popped._1))
+        val (states, kstore1) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, popped._1, σ, t))
         (acc._1 ++ states, kstore1)
       })
       case ControlError(_) => (Set(), kstore)
@@ -288,8 +288,30 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address]
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
     halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
-    kstore: KontStore, sem: Semantics[Exp, Abs, Addr]): AACOutput = {
-    if (todo.isEmpty) {
+    kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): AACOutput = {
+    if (todo.isEmpty) { /* || (false && ((System.nanoTime - startingTime) / Math.pow(10, 9)) > 1000)) {
+      graph.map(g => {
+        println(s"There are ${g.nodes.size} states")
+        println(s"c: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control) }).size}")
+        println(s"σ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ) }).size}")
+        println(s"ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (ι) }).size}")
+        println(s"κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (κ) }).size}")
+
+        println(s"c, σ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ) }).size}")
+        println(s"c, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, ι) }).size}")
+        println(s"c, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, κ) }).size}")
+        println(s"σ, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, ι) }).size}")
+        println(s"σ, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, κ) }).size}")
+        println(s"ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (ι, κ) }).size}")
+
+        println(s"c, σ, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, ι) }).size}")
+        println(s"c, σ, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, κ) }).size}")
+        println(s"c, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, ι, κ) }).size}")
+        println(s"σ, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, ι, κ) }).size}")
+
+        println(s"c, σ, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, ι, κ) }).size}")
+        // grouped.toList.map({ case (k, v) => println(s"Group $k has ${v.size} items") })
+      }) */
       /* No more element to visit, outputs the result */
       AACOutput(halted, visited.size,
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
@@ -324,7 +346,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address]
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs] =
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(new State(exp)), Set(), Set(), System.nanoTime,
       if (graph) { Some(new Graph[State]()) } else { None },
       new KontStore(), sem)

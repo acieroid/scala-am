@@ -38,7 +38,7 @@ trait Output[Abs] {
 /**
  * The interface of the abstract machine itself
  */
-trait AbstractMachine[Exp, Abs, Addr] {
+trait AbstractMachine[Exp, Abs, Addr, Time] {
   /**
    * The abstract machine is parameterized by abstract values, addresses and
    * expressions. Look into AAM.scala for an example of how to define these
@@ -46,6 +46,7 @@ trait AbstractMachine[Exp, Abs, Addr] {
   implicit def abs : AbstractValue[Abs]
   implicit def addr : Address[Addr]
   implicit def exp : Expression[Exp]
+  implicit def time : Timestamp[Time]
 
   /** The name of the abstract machine */
   def name: String
@@ -56,7 +57,7 @@ trait AbstractMachine[Exp, Abs, Addr] {
    * implementing the Output trait, containing information about the
    * evaluation.
    */
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr], graph: Boolean): Output[Abs]
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs]
 }
 
 /**
@@ -64,11 +65,12 @@ trait AbstractMachine[Exp, Abs, Addr] {
  * can either be evaluating something, or have reached a value and will pop a
  * continuation.
  */
-abstract class EvalKontMachine[Exp : Expression, Abs : AbstractValue, Addr : Address]
-    extends AbstractMachine[Exp, Abs, Addr] {
+abstract class EvalKontMachine[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+    extends AbstractMachine[Exp, Abs, Addr, Time] {
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
+  def time = implicitly[Timestamp[Time]]
 
   /**
    * The control component of the machine
