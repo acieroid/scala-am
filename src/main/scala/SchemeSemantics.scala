@@ -189,7 +189,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     }
     case FrameLetrec(a, Nil, body, ρ) => Set(evalBody(body, ρ, σ.update(a, v)))
     case FrameLetrec(a, (a1, exp) :: rest, body, ρ) =>
-      Set(ActionPush(exp, FrameLetrec(a1, rest, body, ρ), ρ, σ.update(a1, v)))
+      Set(ActionPush(exp, FrameLetrec(a1, rest, body, ρ), ρ, σ.update(a, v)))
     case FrameSet(name, ρ) => ρ.lookup(name) match {
       case Some(a) => Set(ActionReachedValue(abs.inject(false), σ.update(a, v)))
       case None => Set(ActionError(s"Unbound variable: $name"))
