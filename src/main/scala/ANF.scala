@@ -1,6 +1,5 @@
 /**
   * Abstract syntax of ANF programs
-  * TODO: desugar calls to some operators (eg. arithmetic, string-append, ...) with more than two arguments
   */
 
 trait ANFExp extends scala.util.parsing.input.Positional

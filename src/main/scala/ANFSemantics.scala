@@ -13,9 +13,6 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   case class FrameLetrec(v: String, a: Addr, body: ANFExp, env: Environment[Addr]) extends ANFFrame {
     override def toString() = s"FrameLetrec(${v.toString})"
   }
-  object FrameHalt extends ANFFrame {
-    override def toString() = "FHalt"
-  }
 
   /** Performs evaluation of an atomic expression, returning either an error or the produced value */
   def atomicEval(e: ANFAtomicExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Either[String, Abs] = e match {
@@ -120,8 +117,6 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   }
 
   def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
-    /* Final state is reached */
-    case FrameHalt => Set()
     /* Allocate the variable and bind it to the reached value */
     case FrameLet(variable, body, ρ) => {
       val vara = addr.variable(variable, t)
