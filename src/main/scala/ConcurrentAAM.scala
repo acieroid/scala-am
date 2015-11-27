@@ -135,10 +135,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
 
+  type Exploration = State => Set[(TID, State)]
+
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
     halted: Set[State], startingTime: Long, graph: Option[Graph[State]])
-    (step: State => Set[(TID, State)]): ConcurrentAAMOutput =
+    (step: Exploration): ConcurrentAAMOutput =
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s)) {
@@ -154,33 +156,13 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     }
 
-  private def loopOneInterleaving(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
-    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
-    todo.headOption match {
-      case Some(s) =>
-        if (visited.contains(s)) {
-          loopOneInterleaving(todo.tail, visited, halted, startingTime, graph, sem)
-        } else if (s.halted) {
-          loopOneInterleaving(todo.tail, visited + s, halted + s, startingTime, graph, sem)
-        } else {
-          s.stepAny(sem) match {
-            case Some((tid, succs)) =>
-              val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, s2))))
-              loopOneInterleaving(todo.tail ++ succs, visited + s, halted, startingTime, newGraph, sem)
-            case None =>
-              /* No thread is steppable from this state: deadlock ! */
-              loopOneInterleaving(todo.tail, visited + s, halted, startingTime, graph, sem)
-          }
-        }
-      case None => ConcurrentAAMOutput(halted, visited.size,
-        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
-    }
+  private def allInterleavings(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = s => s.stepAll(sem)
+  private def oneInterleaving(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = s => s.stepAny(sem) match {
+    case Some((tid, succs)) => succs.map(s2 => (tid, s2))
+    case None => Set()
+  }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State]()) } else { None })(s => s.stepAny(sem) match {
-        case Some((tid, succs)) => succs.map(s2 => (tid, s2))
-        case None => Set()
-      })// (s => s.stepAll(sem))
+      if (graph) { Some (new Graph[State]()) } else { None })(oneInterleaving(sem))
 }
