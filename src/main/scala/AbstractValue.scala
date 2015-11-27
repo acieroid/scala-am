@@ -76,6 +76,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
   /** Extract primitives contained in this value */
   def getPrimitive[Addr : Address, Abs : AbstractValue](x: A): Option[Primitive[Addr, Abs]]
+  /** Extract thread ids contained in this value */
+  def getTids[T : Tid](x: A): Set[T]
 
   /** Bottom element of the lattice */
   def bottom: A
@@ -93,6 +95,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): A
   /** Injection of a closure */
   def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): A
+  /** Inject a thread id */
+  def injectTid[T : Tid](tid: T): A
   /** Injection of a symbol */
   def injectSymbol(x: String): A
   /** Creates a cons cell */

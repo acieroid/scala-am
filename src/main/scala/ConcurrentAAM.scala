@@ -12,7 +12,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   import aam._
 
   type KontAddr = aam.KontAddr
-  type TID = Int /* TODO: tid */
+  type TID = Int /* TODO: abstract tid (now it will only work if there are a finite amount of threads) */
   val initialtid = 1
   var maxtid = initialtid
   def newtid(): Int = {
@@ -133,7 +133,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
     halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
-    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
+    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput = {
+    if (visited.size % 100 == 0) println(visited.size)
+    if (visited.size > 30000) {
+      ConcurrentAAMOutput(halted, visited.size,
+        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
+    } else {
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s)) {
@@ -148,6 +153,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case None => ConcurrentAAMOutput(halted, visited.size,
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     }
+    }
+  }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,

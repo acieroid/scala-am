@@ -99,6 +99,11 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
       case Prim(p: Primitive[Addr, Abs]) => Some(p)
       case _ => None
     }
+    def getTids[T : Tid](s: Sum) = s match {
+      case Left(x) => xabs.getTids[T](x)
+      case Right(y) => yabs.getTids[T](y)
+      case Prim(_) => Set()
+    }
 
     def bottom = Left(xabs.bottom)
     def error(s: Sum) = s match {
@@ -142,6 +147,12 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
     } catch {
       case UnsupportedLatticeElement =>
         Right(yabs.inject[Exp, Addr](x))
+    }
+    def injectTid[T : Tid](t: T) = try {
+      Left(xabs.injectTid[T](t))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabs.injectTid[T](t))
     }
     def injectSymbol(x: String) = try {
       Left(xabs.injectSymbol(x))

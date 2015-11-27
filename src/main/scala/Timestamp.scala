@@ -24,4 +24,3 @@ object Timestamps {
   val OneCFA = KCFA(1)
   type OneCFA = OneCFA.KCFATimestamp
 }
-

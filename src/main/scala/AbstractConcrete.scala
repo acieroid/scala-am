@@ -102,6 +102,9 @@ object AbstractConcrete {
   case class AbstractClosure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends AbstractConcrete {
     override def toString = "#<clo>"
   }
+  case class AbstractTid[T : Tid](t: T) extends AbstractConcrete {
+    override def toString = s"#<thread $t>"
+  }
   object AbstractNil extends AbstractConcrete {
     override def toString = "()"
     override def unaryOp(op: UnaryOperator) = op match {
@@ -169,6 +172,10 @@ object AbstractConcrete {
       case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
+    def getTids[T : Tid](x: AbstractConcrete) = x match {
+      case AbstractTid(t: T) => Set(t)
+      case _ => Set()
+    }
 
     def bottom = AbstractBottom
     def error(x: AbstractConcrete) = AbstractError(x.toString)
@@ -178,6 +185,7 @@ object AbstractConcrete {
     def inject(x: Boolean) = AbstractBool(x)
     def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
+    def injectTid[T : Tid](tid: T) = AbstractTid(tid)
     def injectSymbol(x: String) = AbstractSymbol(x)
     def nil = AbstractNil
     def cons[Addr : Address](car: Addr, cdr: Addr) = AbstractCons(car, cdr)
