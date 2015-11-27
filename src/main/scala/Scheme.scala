@@ -197,9 +197,9 @@ case class SchemeCas(variable: String, eold: SchemeExp, enew: SchemeExp) extends
 /**
  * Acquire a lock
  */
-case class SchemeAquire(variable: String) extends SchemeExp {
-  override def equals(that: Any) = that.isInstanceOf[SchemeAquire] && pos == that.asInstanceOf[SchemeAquire].pos && super.equals(that)
-  override def toString() = s"(aquire $variable)"
+case class SchemeAcquire(variable: String) extends SchemeExp {
+  override def equals(that: Any) = that.isInstanceOf[SchemeAcquire] && pos == that.asInstanceOf[SchemeAcquire].pos && super.equals(that)
+  override def toString() = s"(acquire $variable)"
 }
 
 /**
@@ -233,7 +233,7 @@ object SchemeCompiler {
   /**
     * Reserved keywords
     */
-  val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "cas", "aquire", "release")
+  val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "cas", "acquire", "release")
 
   def compile(exp: SExp): SchemeExp = {
     val exp2 = exp match {
@@ -297,11 +297,11 @@ object SchemeCompiler {
         SchemeCas(variable, compile(eold), compile(enew))
       case SExpPair(SExpIdentifier("cas"), _) =>
         throw new Exception(s"Invalid Scheme cas: $exp")
-      case SExpPair(SExpIdentifier("aquire"),
+      case SExpPair(SExpIdentifier("acquire"),
         SExpPair(SExpIdentifier(variable), SExpValue(ValueNil()))) =>
-        SchemeAquire(variable)
-      case SExpPair(SExpIdentifier("aquire"), _) =>
-        throw new Exception(s"Invalid Scheme aquire: $exp")
+        SchemeAcquire(variable)
+      case SExpPair(SExpIdentifier("acquire"), _) =>
+        throw new Exception(s"Invalid Scheme acquire: $exp")
       case SExpPair(SExpIdentifier("release"),
         SExpPair(SExpIdentifier(variable), SExpValue(ValueNil()))) =>
         SchemeRelease(variable)
@@ -622,8 +622,8 @@ object SchemeUndefiner {
         case SchemeQuoted(quoted) => SchemeQuoted(quoted)
         case SchemeValue(value) => SchemeValue(value)
         case SchemeCas(variable, eold, enew) => SchemeCas(variable, eold, enew)
-        case SchemeAquire(variable) => SchemeAquire(variable)
-        case SchemeRelease(variable) => SchemeAquire(variable)
+        case SchemeAcquire(variable) => SchemeAcquire(variable)
+        case SchemeRelease(variable) => SchemeRelease(variable)
         case SchemeSpawn(exp) => SchemeSpawn(undefine1(exp))
         case SchemeJoin(exp) => SchemeJoin(undefine1(exp))
       }
