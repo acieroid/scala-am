@@ -25,8 +25,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case ActionEval(e, ρ, σ) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, t)), results, σ))
       case ActionStepIn(fexp, _, e, ρ, σ, _) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ))
       case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a, t)), results, Store.empty[Addr, Abs]))
-      case ActionSpawn(e, ρ, act) =>
-        integrate1(tid, a, act)(threads.add(thread.thread[Exp, Time](e, t), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, t)), results)
+      case ActionSpawn(tid2: TID, e, ρ, act) =>
+        integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, t)), results)
       case ActionJoin(tid2, σ) => ??? /* TODO: if (results.contains(tid2)) {
         Some((threads.update(tid, Context(ControlKont(results.get(tid2), kstore, a))), results, σ))
       } else {

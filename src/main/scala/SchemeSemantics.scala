@@ -23,7 +23,6 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   case class FrameDefine(variable: String, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCasOld(variable: String, enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCasNew(variable: String, old: Abs, ρ: Environment[Addr]) extends SchemeFrame
-  case class FrameJoin(ρ: Environment[Addr]) extends SchemeFrame
   object FrameHalt extends SchemeFrame {
     override def toString() = "FHalt"
   }
@@ -158,8 +157,6 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       case Some(a) => Set(ActionReachedValue(abs.inject(true), σ.update(a, abs.inject(true))))
       case None => Set(ActionError(s"Unbound variable: $variable"))
     }
-    case SchemeSpawn(exp) => Set(ActionSpawn(exp, ρ, /* TODO: tid */ ActionReachedValue(abs.bottom, σ)))
-    case SchemeJoin(exp) => Set(ActionPush(exp, FrameJoin(ρ), ρ, σ))
   }
 
   def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
@@ -236,8 +233,6 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
           ActionReachedValue(abs.inject(false), σ))
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
-    case FrameJoin(ρ) =>
-      Set(ActionJoin(v, σ))
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)
@@ -291,4 +286,24 @@ class SchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
 
   override def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) =
     optimizeAtomic(super.stepKont(v, frame, σ, t), t)
+}
+
+class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
+    extends SchemeSemantics[Abs, Addr, Time] {
+  def thread = implicitly[ThreadIdentifier[TID]]
+
+  case class FrameJoin(ρ: Environment[Addr]) extends SchemeFrame
+
+  override def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time) = e match {
+    case SchemeSpawn(exp) =>
+      val tid = thread.thread[SchemeExp, Time](exp, t)
+      Set(ActionSpawn(tid, exp, ρ, ActionReachedValue(abs.injectTid(tid), σ)))
+    case SchemeJoin(exp) => Set(ActionPush(exp, FrameJoin(ρ), ρ, σ))
+    case _ => super.stepEval(e, ρ, σ, t)
+  }
+
+  override def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
+    case FrameJoin(ρ) => Set(ActionJoin(v, σ))
+    case _ => super.stepKont(v, frame, σ, t)
+  }
 }
