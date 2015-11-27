@@ -87,6 +87,19 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       }))
     def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(TID, State)] =
       threads.tids.foldLeft(Set[(TID, State)]())((acc, tid) => step(sem, tid).foldLeft(acc)((acc, st) => acc + (tid -> st)))
+    def stepAny(sem: Semantics[Exp, Abs, Addr, Time]): Option[(TID, Set[State])] = {
+      val init: Option[(TID, Set[State])] = None
+      threads.tids.foldLeft(init)((acc, tid) => acc match {
+        case None =>
+          val stepped = step(sem, tid)
+          if (stepped.isEmpty) {
+            None
+          } else {
+            Some((tid, stepped))
+          }
+        case Some(_) => acc
+      })
+    }
 
     def halted: Boolean = threads.forall({
       case (_, ctxs) => ctxs.forall(_.halted)
@@ -124,32 +137,50 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
-    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput = {
-    if (visited.size % 100 == 0) println(visited.size)
-    if (visited.size > 30000) {
-      ConcurrentAAMOutput(halted, visited.size,
-        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
-    } else {
+    halted: Set[State], startingTime: Long, graph: Option[Graph[State]])
+    (step: State => Set[(TID, State)]): ConcurrentAAMOutput =
     todo.headOption match {
       case Some(s) =>
         if (visited.contains(s)) {
-          loop(todo.tail, visited, halted, startingTime, graph, sem)
+          loop(todo.tail, visited, halted, startingTime, graph)(step)
         } else if (s.halted) {
-          loop(todo.tail, visited + s, halted + s, startingTime, graph, sem)
+          loop(todo.tail, visited + s, halted + s, startingTime, graph)(step)
         } else {
-          val succs = s.stepAll(sem).map(_._2)
+          val succs = step(s).map(_._2)
           val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, s2))))
-          loop(todo.tail ++ succs, visited + s, halted, startingTime, newGraph, sem)
+          loop(todo.tail ++ succs, visited + s, halted, startingTime, newGraph)(step)
         }
       case None => ConcurrentAAMOutput(halted, visited.size,
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     }
+
+  private def loopOneInterleaving(todo: Set[State], visited: Set[State],
+    halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
+    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
+    todo.headOption match {
+      case Some(s) =>
+        if (visited.contains(s)) {
+          loopOneInterleaving(todo.tail, visited, halted, startingTime, graph, sem)
+        } else if (s.halted) {
+          loopOneInterleaving(todo.tail, visited + s, halted + s, startingTime, graph, sem)
+        } else {
+          s.stepAny(sem) match {
+            case Some((tid, succs)) =>
+              val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, s2))))
+              loopOneInterleaving(todo.tail ++ succs, visited + s, halted, startingTime, newGraph, sem)
+            case None =>
+              /* No thread is steppable from this state: deadlock ! */
+              loopOneInterleaving(todo.tail, visited + s, halted, startingTime, graph, sem)
+          }
+        }
+      case None => ConcurrentAAMOutput(halted, visited.size,
+        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     }
-  }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State]()) } else { None },
-      sem)
+      if (graph) { Some (new Graph[State]()) } else { None })(s => s.stepAny(sem) match {
+        case Some((tid, succs)) => succs.map(s2 => (tid, s2))
+        case None => Set()
+      })// (s => s.stepAll(sem))
 }
