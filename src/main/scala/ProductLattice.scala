@@ -85,8 +85,8 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
       case Prim(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
-    def getTids[T : Tid](p: Product) = p match {
-      case Prod(x, y) => xabs.getTids[T](x) ++ yabs.getTids[T](y)
+    def getTids[TID : ThreadIdentifier](p: Product) = p match {
+      case Prod(x, y) => xabs.getTids[TID](x) ++ yabs.getTids[TID](y)
       case _ => Set()
     }
 
@@ -101,7 +101,7 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     def inject(x: Boolean) = Prod(xabs.inject(x), yabs.inject(x))
     def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = Prim(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Prod(xabs.inject[Exp, Addr](x), yabs.inject[Exp, Addr](x))
-    def injectTid[T : Tid](t: T) = Prod(xabs.injectTid[T](t), yabs.injectTid[T](t))
+    def injectTid[TID : ThreadIdentifier](t: TID) = Prod(xabs.injectTid[TID](t), yabs.injectTid[TID](t))
     def injectSymbol(x: String) = Prod(xabs.injectSymbol(x), yabs.injectSymbol(x))
     def nil = Prod(xabs.nil, yabs.nil)
     def cons[Addr : Address](car: Addr, cdr: Addr) = Prod(xabs.cons[Addr](car, cdr), yabs.cons[Addr](car, cdr))

@@ -99,9 +99,9 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
       case Prim(p: Primitive[Addr, Abs]) => Some(p)
       case _ => None
     }
-    def getTids[T : Tid](s: Sum) = s match {
-      case Left(x) => xabs.getTids[T](x)
-      case Right(y) => yabs.getTids[T](y)
+    def getTids[TID : ThreadIdentifier](s: Sum) = s match {
+      case Left(x) => xabs.getTids[TID](x)
+      case Right(y) => yabs.getTids[TID](y)
       case Prim(_) => Set()
     }
 
@@ -110,8 +110,6 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
       case Left(x) => Left(xabs.error(x))
       case Right(y) => Right(yabs.error(y))
     }
-    /* TODO: have an execption raised by inject if a lattice doesn't support some
-     * type of elements, and fallback on Y when it is the case */
     def inject(x: Int) = try {
       Left(xabs.inject(x))
     } catch {
@@ -148,11 +146,11 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
       case UnsupportedLatticeElement =>
         Right(yabs.inject[Exp, Addr](x))
     }
-    def injectTid[T : Tid](t: T) = try {
-      Left(xabs.injectTid[T](t))
+    def injectTid[TID : ThreadIdentifier](t: TID) = try {
+      Left(xabs.injectTid[TID](t))
     } catch {
       case UnsupportedLatticeElement =>
-        Right(yabs.injectTid[T](t))
+        Right(yabs.injectTid[TID](t))
     }
     def injectSymbol(x: String) = try {
       Left(xabs.injectSymbol(x))

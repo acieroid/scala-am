@@ -197,7 +197,7 @@ object AbstractTypeSet {
           case v => content.exists(_.subsumes(v))
         }
   }
-  case class AbstractTid[T : Tid](t: T) extends AbstractTypeSet {
+  case class AbstractTid[TID : ThreadIdentifier](t: TID) extends AbstractTypeSet {
     override def toString = s"#<thread $t>"
   }
   object AbstractNil extends AbstractTypeSet {
@@ -294,9 +294,9 @@ object AbstractTypeSet {
         /* TODO: AbstractSet case */
       case _ => None
     }
-    def getTids[T : Tid](x: A) = x match {
-      case AbstractTid(t: T) => Set(t)
-      case AbstractSet(content) => content.flatMap(y => getTids[T](y))
+    def getTids[TID : ThreadIdentifier](x: A) = x match {
+      case AbstractTid(t: TID) => Set(t)
+      case AbstractSet(content) => content.flatMap(y => getTids[TID](y))
       case _ => Set()
     }
 
@@ -308,7 +308,7 @@ object AbstractTypeSet {
     def inject(x: Boolean) = if (x) { AbstractTrue } else { AbstractFalse }
     def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosure[Exp, Addr](x._1, x._2)
-    def injectTid[T : Tid](t: T) = AbstractTid(t)
+    def injectTid[TID : ThreadIdentifier](t: TID) = AbstractTid(t)
     def injectSymbol(x: String) = AbstractSymbol
     def nil = AbstractNil
     def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)

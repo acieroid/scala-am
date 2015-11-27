@@ -1,24 +1,18 @@
 import scalaz.Scalaz._
 
-class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
   def time = implicitly[Timestamp[Time]]
+  def thread = implicitly[ThreadIdentifier[TID]]
 
   def name = "ConcurrentAAM"
   val aam = new AAM[Exp, Abs, Addr, Time]
   import aam._
 
   type KontAddr = aam.KontAddr
-  type TID = Int /* TODO: abstract tid (now it will only work if there are a finite amount of threads) */
-  val initialtid = 1
-  var maxtid = initialtid
-  def newtid(): Int = {
-    maxtid = maxtid + 1
-    maxtid
-  }
 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
@@ -32,7 +26,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case ActionStepIn(fexp, _, e, ρ, σ, _) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ))
       case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a, t)), results, Store.empty[Addr, Abs]))
       case ActionSpawn(e, ρ, act) =>
-        integrate1(tid, a, act)(threads.add(newtid(), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, t)), results)
+        integrate1(tid, a, act)(threads.add(thread.thread[Exp, Time](e, t), Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, t)), results)
       case ActionJoin(tid2, σ) => ??? /* TODO: if (results.contains(tid2)) {
         Some((threads.update(tid, Context(ControlKont(results.get(tid2), kstore, a))), results, σ))
       } else {
@@ -50,7 +44,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID, store: Store[Addr, Abs], threads: ThreadMap, results: ThreadResults):
         (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) = control match {
       case ControlEval(e, ρ) => integrate(tid, a, sem.stepEval(e, ρ, store, t), threads, results)
-      case ControlKont(v) if halted && tid != initialtid =>
+      case ControlKont(v) if halted && tid != thread.initial =>
         /* TODO: we could avoid distinguishing the initial thread, and just get the
          * final results at its location in results */
         Set((threads.remove(tid), results.add(tid, v), store))
@@ -108,14 +102,14 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   object State {
     def inject(exp: Exp) = {
       val st = new aam.State(exp)
-      State(ThreadMap(Map[TID, Set[Context]](1 -> Set(Context(st.control, st.kstore, st.a, st.t)))),
+      State(ThreadMap(Map[TID, Set[Context]](thread.initial -> Set(Context(st.control, st.kstore, st.a, st.t)))),
         ThreadResults(Map[TID, Abs]()), st.σ)
     }
   }
 
   case class ConcurrentAAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
       extends Output[Abs] {
-    def finalValues = halted.flatMap(st => st.threads.get(initialtid).flatMap(ctx => ctx.control match {
+    def finalValues = halted.flatMap(st => st.threads.get(thread.initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     }))

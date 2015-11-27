@@ -106,7 +106,7 @@ object AbstractType {
       case _ => throw new Error("Type lattice cannot join a closure with something else")
     }
   }
-  case class AbstractTid[T : Tid](t: T) extends AbstractType {
+  case class AbstractTid[TID : ThreadIdentifier](t: TID) extends AbstractType {
     override def toString = "#<thread $t>"
   }
   object AbstractNil extends AbstractType {
@@ -161,8 +161,8 @@ object AbstractType {
       case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
       case _ => None
     }
-    def getTids[T : Tid](x: AbstractType): Set[T] = x match {
-      case AbstractTid(t: T) => Set(t)
+    def getTids[TID : ThreadIdentifier](x: AbstractType) = x match {
+      case AbstractTid(t: TID) => Set(t)
       case _ => Set()
     }
 
@@ -174,7 +174,7 @@ object AbstractType {
     def inject(x: Char) = AbstractChar
     def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = AbstractPrimitive(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = AbstractClosures[Exp, Addr](Set((x._1, x._2)))
-    def injectTid[T : Tid](t: T) = AbstractTid(t)
+    def injectTid[TID : ThreadIdentifier](t: TID) = AbstractTid(t)
     def injectSymbol(x: String) = AbstractSymbol
     def nil = AbstractNil
     def cons[Addr : Address](car: Addr, cdr : Addr) = AbstractCons(car, cdr)
