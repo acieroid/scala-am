@@ -102,7 +102,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
   }
 
   /** The output of the machine */
-  case class FreeOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
+  case class FreeOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, Unit]])
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
@@ -117,7 +117,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
           case ControlEval(_, _) => "#DDFFDD"
           case ControlKont(_) => "#FFDDDD"
           case ControlError(_) => "#FF0000"
-        }})
+        }}, _ => "")
       case None =>
         println("Not generating graph because no graph was computed")
     }
@@ -131,7 +131,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    */
   @scala.annotation.tailrec
   private def loopWithLocalGraph(s: States, visited: Set[States],
-    halted: Set[State], startingTime: Long, graph: Graph[State],
+    halted: Set[State], startingTime: Long, graph: Graph[State, Unit],
     sem: Semantics[Exp, Abs, Addr, Time]): Output[Abs] = {
     val s2 = s.step(sem)
     val h = halted ++ s.toStateSet.filter(_.halted)
@@ -163,7 +163,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
     } else {
       loopWithLocalGraph(s2, visited + s, h, startingTime,
         graph.addEdges(s.toStateSet.flatMap(ς1 =>
-          s2.toStateSet.map(ς2 => (ς1, ς2)))), sem)
+          s2.toStateSet.map(ς2 => (ς1, (), ς2)))), sem)
     }
   }
 
@@ -186,7 +186,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     if (graph) {
-      loopWithLocalGraph(new States(exp), Set(), Set(), System.nanoTime, new Graph[State](), sem)
+      loopWithLocalGraph(new States(exp), Set(), Set(), System.nanoTime, new Graph[State, Unit](), sem)
     } else {
       loop(new States(exp), Set(), Set(), System.nanoTime, sem)
     }

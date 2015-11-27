@@ -109,7 +109,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
     }
   }
 
-  case class AAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
+  case class AAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, Unit]])
       extends Output[Abs] {
 
     /**
@@ -144,7 +144,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
           case ControlEval(_, _) => "#DDFFDD"
           case ControlKont(_) => "#FFDDDD"
           case ControlError(_) => "#FF0000"
-        }})
+        }}, _ => "")
       case None =>
         println("Not generating graph because no graph was computed")
     }
@@ -160,7 +160,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
    */
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
+    halted: Set[State], startingTime: Long, graph: Option[Graph[State, Unit]],
     sem: Semantics[Exp, Abs, Addr, Time]): AAMOutput =
     todo.headOption match {
       case Some(s) =>
@@ -178,7 +178,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
           /* Otherwise, compute the successors of this state, update the graph, and push
            * the new successors on the todo list */
           val succs = s.step(sem)
-          val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, s2))))
+          val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, (), s2))))
           loop(todo.tail ++ succs, visited + s, halted, startingTime, newGraph, sem)
         }
       case None => AAMOutput(halted, visited.size,
@@ -191,6 +191,6 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
    */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(new State(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some(new Graph[State]()) } else { None },
+      if (graph) { Some(new Graph[State, Unit]()) } else { None },
       sem)
 }

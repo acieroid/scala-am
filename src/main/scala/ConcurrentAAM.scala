@@ -118,7 +118,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
 
-  case class ConcurrentAAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
+  case class ConcurrentAAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, TID]])
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.threads.get(thread.initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
@@ -129,7 +129,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def time = t
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, _.toString.take(40),
-        (s) => if (halted.contains(s)) { "#FFFFDD" } else { "#FFFFFF" })
+        (s) => if (halted.contains(s)) { "#FFFFDD" } else { "#FFFFFF" }, tid => tid.toString)
       case None =>
         println("Not generating graph because no graph was computed")
     }
@@ -139,7 +139,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State]])
+    halted: Set[State], startingTime: Long, graph: Option[Graph[State, TID]])
     (step: Exploration): ConcurrentAAMOutput =
     todo.headOption match {
       case Some(s) =>
@@ -148,9 +148,9 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         } else if (s.halted) {
           loop(todo.tail, visited + s, halted + s, startingTime, graph)(step)
         } else {
-          val succs = step(s).map(_._2)
-          val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, s2))))
-          loop(todo.tail ++ succs, visited + s, halted, startingTime, newGraph)(step)
+          val succs = step(s)
+          val newGraph = graph.map(_.addEdges(succs.map({ case (tid, s2) => (s, tid, s2) })))
+          loop(todo.tail ++ succs.map(_._2), visited + s, halted, startingTime, newGraph)(step)
         }
       case None => ConcurrentAAMOutput(halted, visited.size,
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
@@ -164,5 +164,5 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State]()) } else { None })(oneInterleaving(sem))
+      if (graph) { Some (new Graph[State, TID]()) } else { None })(oneInterleaving(sem))
 }

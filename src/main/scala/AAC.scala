@@ -90,17 +90,15 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
     /** Useful for debugging purposes, in order to have a visualization of the
       * kontinuation store */
     def toDotFile(file: String): Unit = {
-      val graph = content.foldLeft(new Graph[Kont]())({ case (g, (τ, succs)) =>
+      val graph = content.foldLeft(new Graph[Kont, LocalKont]())({ case (g, (τ, succs)) =>
         succs.foldLeft(g)({ case (g, (local, κ)) =>
-          /* TODO: annotate edge with local continuation (but graph doesn't
-           * support edge annotations yet) */
-          g.addEdge(KontCtx(τ), κ)
+          g.addEdge(KontCtx(τ), local, κ)
         })
       })
       graph.toDotFile(file, {
         case KontCtx(τ) => τ.toString.take(40)
         case KontEmpty => "ε"
-      }, x => "#FFFFFF")
+      }, x => "#FFFFFF", _.toString)
     }
   }
 
@@ -263,7 +261,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
   /**
    * Output of the machine
    */
-  case class AACOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State]])
+  case class AACOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, Unit]])
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
@@ -278,7 +276,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
           case ControlEval(_, _) => "#DDFFDD"
           case ControlKont(_) => "#FFDDDD"
           case ControlError(_) => "#FF0000"
-        }})
+        }}, _ => "")
       case None =>
         println("Not generating graph because no graph was computed")
     }
@@ -287,7 +285,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
   /** Performs the frontier-based state exploration */
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State]],
+    halted: Set[State], startingTime: Long, graph: Option[Graph[State, Unit]],
     kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): AACOutput = {
     if (todo.isEmpty) { /* || (false && ((System.nanoTime - startingTime) / Math.pow(10, 9)) > 1000)) {
       graph.map(g => {
@@ -330,7 +328,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
           visited ++ todo,
           halted ++ todo.filter((ς) => ς.halted(kstore)),
           startingTime,
-          graph.map(_.addEdges(edges)),
+          graph.map(_.addEdges(edges.map({ case (n1, n2) => (n1, (), n2) }))),
           kstore2,
           sem)
       } else {
@@ -339,7 +337,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
           Set(),
           halted ++ todo.filter((ς) => ς.halted(kstore)),
           startingTime,
-          graph.map(_.addEdges(edges)),
+          graph.map(_.addEdges(edges.map({ case (n1, n2) => (n1, (), n2) }))),
           kstore2,
           sem)
       }
@@ -348,6 +346,6 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(new State(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some(new Graph[State]()) } else { None },
+      if (graph) { Some(new Graph[State, Unit]()) } else { None },
       new KontStore(), sem)
 }
