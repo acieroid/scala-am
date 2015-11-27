@@ -16,30 +16,28 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
-        Option[(ThreadMap, ThreadResults, Store[Addr, Abs])] = action match {
-      case ActionReachedValue(v, σ) => Some((threads.update(tid, Context(ControlKont(v), kstore, a, t)), results, σ))
+        Set[(ThreadMap, ThreadResults, Store[Addr, Abs])] = action match {
+      case ActionReachedValue(v, σ) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, t)), results, σ))
       case ActionPush(e, frame, ρ, σ) => {
         val next = NormalKontAddress(e, addr.variable("__kont__", t))
-        Some((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, t)), results, σ))
+        Set((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, t)), results, σ))
       }
-      case ActionEval(e, ρ, σ) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, t)), results, σ))
-      case ActionStepIn(fexp, _, e, ρ, σ, _) => Some((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ))
-      case ActionError(err) => Some((threads.update(tid, Context(ControlError(err), kstore, a, t)), results, Store.empty[Addr, Abs]))
+      case ActionEval(e, ρ, σ) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, t)), results, σ))
+      case ActionStepIn(fexp, _, e, ρ, σ, _) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ))
+      case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, t)), results, Store.empty[Addr, Abs]))
       case ActionSpawn(tid2: TID, e, ρ, act) =>
         integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, t)), results)
-      case ActionJoin(tid2, σ) => ??? /* TODO: if (results.contains(tid2)) {
-        Some((threads.update(tid, Context(ControlKont(results.get(tid2), kstore, a))), results, σ))
-      } else {
-        None
-      } */
+      case ActionJoin(v, σ) => abs.getTids(v).flatMap(tid2 =>
+        if (results.isDone(tid2)) {
+          Set((threads.update(tid, Context(ControlKont(results.get(tid2)), kstore, a, t)), results, σ))
+        } else {
+          Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]()
+        })
     }
 
     def integrate(tid: TID, a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], threads: ThreadMap, results: ThreadResults):
         (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) =
-      actions.map(action => integrate1(tid, a, action)(threads, results)).flatMap({
-        case Some(res) => Set[(ThreadMap, ThreadResults, Store[Addr, Abs])](res)
-        case None => Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]()
-      })
+      actions.flatMap(action => integrate1(tid, a, action)(threads, results))
 
     def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID, store: Store[Addr, Abs], threads: ThreadMap, results: ThreadResults):
         (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) = control match {
