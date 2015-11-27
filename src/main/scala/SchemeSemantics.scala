@@ -298,7 +298,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
     case SchemeSpawn(exp) =>
       val tid = thread.thread[SchemeExp, Time](exp, t)
       Set(ActionSpawn(tid, exp, ρ, ActionReachedValue(abs.injectTid(tid), σ)))
-    case SchemeJoin(exp) => Set(ActionPush(exp, FrameJoin(ρ), ρ, σ))
+    case SchemeJoin(exp) => optimizeAtomic(Set(ActionPush(exp, FrameJoin(ρ), ρ, σ)), t)
     case _ => super.stepEval(e, ρ, σ, t)
   }
 
