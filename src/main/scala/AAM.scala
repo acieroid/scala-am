@@ -69,16 +69,16 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.flatMap({
         /* When a value is reached, we go to a continuation state */
-        case ActionReachedValue(v, σ) => Set(State(ControlKont(v), σ, kstore, a, t))
+        case ActionReachedValue(v, σ, _, _) => Set(State(ControlKont(v), σ, kstore, a, t))
         /* When a continuation needs to be pushed, push it in the continuation store */
-        case ActionPush(e, frame, ρ, σ) => {
+        case ActionPush(e, frame, ρ, σ, _, _) => {
           val next = NormalKontAddress(e, addr.variable("__kont__", t)) // Hack to get infinite number of addresses in concrete mode
           Set(State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, a)), next, t))
         }
         /* When a value needs to be evaluated, we go to an eval state */
-        case ActionEval(e, ρ, σ) => Set(State(ControlEval(e, ρ), σ, kstore, a, t))
+        case ActionEval(e, ρ, σ, _, _) => Set(State(ControlEval(e, ρ), σ, kstore, a, t))
         /* When a function is stepped in, we also go to an eval state */
-        case ActionStepIn(fexp, _, e, ρ, σ, _) => Set(State(ControlEval(e, ρ), σ, kstore, a, time.tick(t, fexp)))
+        case ActionStepIn(fexp, _, e, ρ, σ, _, _, _) => Set(State(ControlEval(e, ρ), σ, kstore, a, time.tick(t, fexp)))
         /* When an error is reached, we go to an error state */
         case ActionError(err) => Set(State(ControlError(err), σ, kstore, a, t))
       })

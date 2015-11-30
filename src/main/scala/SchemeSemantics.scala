@@ -273,7 +273,7 @@ class SchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
    */
   protected def optimizeAtomic(actions: Set[Action[SchemeExp, Abs, Addr]], t: Time): Set[Action[SchemeExp, Abs, Addr]] = {
     actions.flatMap({
-      case ActionPush(exp, frame, ρ, σ) => atomicEval(exp, ρ, σ) match {
+      case ActionPush(exp, frame, ρ, σ, _, _) => atomicEval(exp, ρ, σ) match {
         case Some(v) => stepKont(v, frame, σ, t)
         case None => Set[Action[SchemeExp, Abs, Addr]](ActionPush(exp, frame, ρ, σ))
       }

@@ -223,10 +223,10 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
         val states = acc._1
         val kstore = acc._2
         act match {
-          case ActionReachedValue(v, σ) => (states + State(ControlKont(v), σ, ι, κ, t), kstore)
-          case ActionPush(e, frame, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, t), kstore)
-          case ActionEval(e, ρ, σ) => (states + State(ControlEval(e, ρ), σ, ι, κ, t), kstore)
-          case ActionStepIn(fexp, clo, e, ρ, σ, argsv) => {
+          case ActionReachedValue(v, σ, _, _) => (states + State(ControlKont(v), σ, ι, κ, t), kstore)
+          case ActionPush(e, frame, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, t), kstore)
+          case ActionEval(e, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι, κ, t), kstore)
+          case ActionStepIn(fexp, clo, e, ρ, σ, argsv, _, _) => {
             val τ = Context(clo, argsv, σ)
             (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ), time.tick(t, fexp)),
              kstore.extend(τ, (ι, κ)))
