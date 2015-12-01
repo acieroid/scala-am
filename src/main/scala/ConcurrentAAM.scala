@@ -14,9 +14,19 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   type KontAddr = aam.KontAddr
 
+  def printReadWrite(action: Action[Exp, Abs, Addr]): Unit = action match {
+    case ActionReachedValue(_, _, read, write) => println(s"Read: $read; Write: $write")
+    case ActionPush(_, _, _, _, read, write) => println(s"Read: $read; Write: $write")
+    case ActionEval(_, _, _, read, write) => println(s"Read: $read; Write: $write")
+    case ActionStepIn(_, _, _, _, _, _, read, write) => println(s"Read: $read; Write: $write")
+    case ActionError(_) => ()
+    case ActionSpawn(_, _, _, _, read, write) => println(s"Read: $read; Write: $write")
+    case ActionJoin(_, _, read, write) => println(s"Read: $read; Write: $write")
+  }
+
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
-        Set[(ThreadMap, ThreadResults, Store[Addr, Abs])] = action match {
+        Set[(ThreadMap, ThreadResults, Store[Addr, Abs])] = { println(s"$control: $action"); printReadWrite(action); action match {
       case ActionReachedValue(v, σ, _, _) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, t)), results, σ))
       case ActionPush(e, frame, ρ, σ, _, _) => {
         val next = NormalKontAddress(e, addr.variable("__kont__", t))
@@ -33,6 +43,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         } else {
           Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]()
         })
+        }
     }
 
     def integrate(tid: TID, a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], threads: ThreadMap, results: ThreadResults):
@@ -85,8 +96,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       threads.get(tid).flatMap(ctx => ctx.step(sem, tid, store, threads, results).map({
         case (threads, results, store) => State(threads, results, store)
       }))
+    def stepTids(sem: Semantics[Exp, Abs, Addr, Time], tids: Set[TID]): Set[(TID, State)] =
+      tids.foldLeft(Set[(TID, State)]())((acc, tid) => step(sem, tid).foldLeft(acc)((acc, st) => acc + (tid -> st)))
     def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(TID, State)] =
-      threads.tids.foldLeft(Set[(TID, State)]())((acc, tid) => step(sem, tid).foldLeft(acc)((acc, st) => acc + (tid -> st)))
+      stepTids(sem, threads.tids)
     def stepAny(sem: Semantics[Exp, Abs, Addr, Time]): Option[(TID, Set[State])] = {
       val init: Option[(TID, Set[State])] = None
       threads.tids.foldLeft(init)((acc, tid) => acc match {
@@ -162,7 +175,14 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     case None => Set()
   }
 
+  type Ample = State => Set[TID]
+  private def partialOrderReduced(sem: Semantics[Exp, Abs, Addr, Time], ample: Ample): Exploration =
+    s => s.stepTids(sem, ample(s))
+
+  private def noReduction: Ample = s => s.threads.tids
+
+
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State, TID]()) } else { None })(oneInterleaving(sem))
+      if (graph) { Some (new Graph[State, TID]()) } else { None })(partialOrderReduced(sem, noReduction))
 }
