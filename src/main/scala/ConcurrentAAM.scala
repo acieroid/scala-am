@@ -98,6 +98,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       }))
     def stepTids(sem: Semantics[Exp, Abs, Addr, Time], tids: Set[TID]): Set[(TID, State)] =
       tids.foldLeft(Set[(TID, State)]())((acc, tid) => step(sem, tid).foldLeft(acc)((acc, st) => acc + (tid -> st)))
+    def stepTid(sem: Semantics[Exp, Abs, Addr, Time], tid: TID): Set[State] =
+      stepTids(sem, Set(tid)).map(_._2)
     def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(TID, State)] =
       stepTids(sem, threads.tids)
     def stepAny(sem: Semantics[Exp, Abs, Addr, Time]): Option[(TID, Set[State])] = {
@@ -112,6 +114,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           }
         case Some(_) => acc
       })
+    }
+    def hasEnabledTransitions(sem: Semantics[Exp, Abs, Addr, Time]): Boolean = stepAny(sem) match {
+      case Some(_) => true
+      case None => false
     }
 
     def halted: Boolean = threads.forall({
@@ -175,14 +181,34 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     case None => Set()
   }
 
-  type Ample = State => Set[TID]
+  type Ample = (Semantics[Exp, Abs, Addr, Time], State) => Set[TID]
   private def partialOrderReduced(sem: Semantics[Exp, Abs, Addr, Time], ample: Ample): Exploration =
-    s => s.stepTids(sem, ample(s))
+    s => s.stepTids(sem, ample(sem, s))
 
-  private def noReduction: Ample = s => s.threads.tids
+  private def noReduction: Ample = (sem, s) => s.threads.tids
 
+  private def checkAmpleConditions(s: State, tid: TID, stepped: Set[State]): Boolean =
+    /* TODO: C1, C2, C3 */
+    !stepped.isEmpty /* C0: ample(s) is empty iff enabled(s) is empty: discard empty ample to satisfy this */
+  /** Implements classical POR reduction, as described in chapter 10 of "Model Checking" (Clarke, Grumberg, Peled) */
+  private def classicalReduction: Ample = (sem, s) => s.threads.tids.foldLeft(None: Option[TID])((acc, tid) => acc match {
+    case None =>
+      val stepped = s.stepTid(sem, tid)
+      if (checkAmpleConditions(s, tid, stepped)) {
+        /* conditions are satisfied, ample set is found */
+        Some(tid)
+      } else {
+        None
+      }
+    case Some(_) =>
+      /* we already found an ample set */
+      acc
+  }) match {
+    case None => s.threads.tids /* falls back on all interleavings for this state */
+    case Some(tid) => Set[TID](tid) /* ample set found */
+  }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State, TID]()) } else { None })(partialOrderReduced(sem, noReduction))
+      if (graph) { Some (new Graph[State, TID]()) } else { None })(partialOrderReduced(sem, classicalReduction))
 }
