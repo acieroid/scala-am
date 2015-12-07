@@ -216,10 +216,10 @@ abstract class FreeTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   val machine = new Free[SchemeExp, Abs, Addr, Time]
 }
 
-abstract class ConcurrentAAMTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+abstract class ConcurrentAAMTests[Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
     extends Tests[SchemeExp, Abs, Addr, Time] {
   val sem = new SchemeSemantics[Abs, Addr, Time]
-  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time]
+  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time, TID]
 }
 
 /* Since these tests are small, they can be performed in concrete mode */
@@ -229,5 +229,5 @@ class AACConcreteTests extends AACTests[AbstractConcrete, ConcreteAddress, ZeroC
 class AACTypeSetTests extends AACTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
 class FreeConcreteTests extends FreeTests[AbstractConcrete, ClassicalAddress, ZeroCFA]
 class FreeTypeSetTests extends FreeTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
-class ConcurrentAAMConcreteTests extends ConcurrentAAMTests[AbstractConcrete, ClassicalAddress, ZeroCFA]
-class ConcurrentAAMTypeSetTests extends ConcurrentAAMTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
+class ConcurrentAAMConcreteTests extends ConcurrentAAMTests[AbstractConcrete, ClassicalAddress, ZeroCFA, ConcreteTID]
+class ConcurrentAAMTypeSetTests extends ConcurrentAAMTests[AbstractTypeSet, ClassicalAddress, ZeroCFA, ContextSensitiveTID]

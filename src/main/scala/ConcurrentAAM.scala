@@ -26,7 +26,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
-        Set[(ThreadMap, ThreadResults, Store[Addr, Abs])] = { println(s"$control: $action"); printReadWrite(action); action match {
+        Set[(ThreadMap, ThreadResults, Store[Addr, Abs])] = { /* println(s"$control: $action"); printReadWrite(action); */ action match {
       case ActionReachedValue(v, σ, _, _) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, t)), results, σ))
       case ActionPush(e, frame, ρ, σ, _, _) => {
         val next = NormalKontAddress(e, addr.variable("__kont__", t))
@@ -190,6 +190,15 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   private def checkAmpleConditions(s: State, tid: TID, stepped: Set[State]): Boolean =
     /* TODO: C1, C2, C3 */
     !stepped.isEmpty /* C0: ample(s) is empty iff enabled(s) is empty: discard empty ample to satisfy this */
+  /* C1: TODO */
+  /* C2: this is about invisibility of transitions. In our case we don't have
+   * something similar to states labelled with atomic propositions, so we
+   * consider all states invisible for now. If we need to verify properties,
+   * this can be added, and the condition states that the ample set can't
+   * contain a visible transition, i.e., a transition that changes the value of
+   * an atomic proposition */
+  /* C3: TODO */
+
   /** Implements classical POR reduction, as described in chapter 10 of "Model Checking" (Clarke, Grumberg, Peled) */
   private def classicalReduction: Ample = (sem, s) => s.threads.tids.foldLeft(None: Option[TID])((acc, tid) => acc match {
     case None =>

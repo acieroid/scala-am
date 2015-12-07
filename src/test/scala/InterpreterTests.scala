@@ -107,10 +107,10 @@ abstract class FreeBenchmarks[Abs : AbstractValue, Addr : Address, Time : Timest
   val machine = new Free[SchemeExp, Abs, Addr, Time]
 }
 
-abstract class ConcurrentAAMBenchmarks[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+abstract class ConcurrentAAMBenchmarks[Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
     extends Benchmarks[SchemeExp, Abs, Addr, Time] {
   val sem = new SchemeSemantics[Abs, Addr, Time]
-  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time]
+  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time, TID]
 }
 
 /* Concrete tests are disabled because of cpstak takes too much time to compute since it requires more than 75k recursive calls */
@@ -127,7 +127,7 @@ class AAMTypeSetBenchmarks extends AAMBenchmarks[AbstractTypeSet, ClassicalAddre
 //class FreeTypeBenchmarks extends FreeBenchmarks[AbstractType, ClassicalAddress]
 class FreeTypeSetBenchmarks extends FreeBenchmarks[AbstractTypeSet, ClassicalAddress, ZeroCFA]
 
-class ConcurrentAAMTypeSetBenchmarks extends ConcurrentAAMBenchmarks[AbstractTypeSet, ClassicalAddress, ZeroCFA]
+class ConcurrentAAMTypeSetBenchmarks extends ConcurrentAAMBenchmarks[AbstractTypeSet, ClassicalAddress, ZeroCFA, ContextSensitiveTID]
 
 class AACOneResultTests extends OneResultTests[SchemeExp, AbstractConcrete, ConcreteAddress, ZeroCFA] {
   val sem = new SchemeSemantics[AbstractConcrete, ConcreteAddress, ZeroCFA]
@@ -146,5 +146,5 @@ class FreeOneResultTests extends OneResultTests[SchemeExp, AbstractConcrete, Con
 
 class ConcurrentAAMOneResultTests extends OneResultTests[SchemeExp, AbstractConcrete, ConcreteAddress, ZeroCFA] {
   val sem = new SchemeSemantics[AbstractConcrete, ConcreteAddress, ZeroCFA]
-  val machine = new ConcurrentAAM[SchemeExp, AbstractConcrete, ConcreteAddress, ZeroCFA]
+  val machine = new ConcurrentAAM[SchemeExp, AbstractConcrete, ConcreteAddress, ZeroCFA, ContextSensitiveTID]
 }
