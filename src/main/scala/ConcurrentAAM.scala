@@ -13,50 +13,44 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   import aam._
 
   type KontAddr = aam.KontAddr
-
-  def printReadWrite(action: Action[Exp, Abs, Addr]): Unit = action match {
-    case ActionReachedValue(_, _, read, write) => println(s"Read: $read; Write: $write")
-    case ActionPush(_, _, _, _, read, write) => println(s"Read: $read; Write: $write")
-    case ActionEval(_, _, _, read, write) => println(s"Read: $read; Write: $write")
-    case ActionStepIn(_, _, _, _, _, _, read, write) => println(s"Read: $read; Write: $write")
-    case ActionError(_) => ()
-    case ActionSpawn(_, _, _, _, read, write) => println(s"Read: $read; Write: $write")
-    case ActionJoin(_, _, read, write) => println(s"Read: $read; Write: $write")
-  }
+  type Effects = (Set[Addr], Set[Addr]) /* (read, write) */
 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
-        Set[(ThreadMap, ThreadResults, Store[Addr, Abs])] = { /* println(s"$control: $action"); printReadWrite(action); */ action match {
-      case ActionReachedValue(v, σ, _, _) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, t)), results, σ))
-      case ActionPush(e, frame, ρ, σ, _, _) => {
+        Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)] = action match {
+      case ActionReachedValue(v, σ, read, write) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, t)), results, σ, (read, write)))
+      case ActionPush(e, frame, ρ, σ, read, write) => {
         val next = NormalKontAddress(e, addr.variable("__kont__", t))
-        Set((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, t)), results, σ))
+        Set((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, t)), results, σ, (read, write)))
       }
-      case ActionEval(e, ρ, σ, _, _) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, t)), results, σ))
-      case ActionStepIn(fexp, _, e, ρ, σ, _, _, _) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ))
-      case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, t)), results, Store.empty[Addr, Abs]))
-      case ActionSpawn(tid2: TID, e, ρ, act, _, _) =>
+      case ActionEval(e, ρ, σ, read, write) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, t)), results, σ, (read, write)))
+      case ActionStepIn(fexp, _, e, ρ, σ, _, read, write) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ, (read, write)))
+      case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, t)), results, Store.empty[Addr, Abs], (Set[Addr](), Set[Addr]())))
+      case ActionSpawn(tid2: TID, e, ρ, act, read, write) => {
+        assert(read.isEmpty && write.isEmpty) /* TODO */
         integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, t)), results)
-      case ActionJoin(v, σ, _, _) => abs.getTids(v).flatMap(tid2 =>
+      }
+      case ActionJoin(v, σ, read, write) => {
+        abs.getTids(v).flatMap(tid2 =>
         if (results.isDone(tid2)) {
-          Set((threads.update(tid, Context(ControlKont(results.get(tid2)), kstore, a, t)), results, σ))
+          Set((threads.update(tid, Context(ControlKont(results.get(tid2)), kstore, a, t)), results, σ, (read, write)))
         } else {
-          Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]()
+          Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)]()
         })
-        }
+      }
     }
 
     def integrate(tid: TID, a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], threads: ThreadMap, results: ThreadResults):
-        (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) =
+        (Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)]) =
       actions.flatMap(action => integrate1(tid, a, action)(threads, results))
 
     def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID, store: Store[Addr, Abs], threads: ThreadMap, results: ThreadResults):
-        (Set[(ThreadMap, ThreadResults, Store[Addr, Abs])]) = control match {
+        (Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)]) = control match {
       case ControlEval(e, ρ) => integrate(tid, a, sem.stepEval(e, ρ, store, t), threads, results)
       case ControlKont(v) if halted && tid != thread.initial =>
         /* TODO: we could avoid distinguishing the initial thread, and just get the
          * final results at its location in results */
-        Set((threads.remove(tid), results.add(tid, v), store))
+        Set((threads.remove(tid), results.add(tid, v), store, (Set[Addr](), Set[Addr]())))
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
         case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, frame, store, t), threads, results)
@@ -92,18 +86,18 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   }
 
   case class State(threads: ThreadMap, results: ThreadResults, store: Store[Addr, Abs]) {
-    def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID): Set[State] =
+    def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID): Set[(Effects, State)] =
       threads.get(tid).flatMap(ctx => ctx.step(sem, tid, store, threads, results).map({
-        case (threads, results, store) => State(threads, results, store)
+        case (threads, results, store, effects) => (effects, State(threads, results, store))
       }))
-    def stepTids(sem: Semantics[Exp, Abs, Addr, Time], tids: Set[TID]): Set[(TID, State)] =
-      tids.foldLeft(Set[(TID, State)]())((acc, tid) => step(sem, tid).foldLeft(acc)((acc, st) => acc + (tid -> st)))
-    def stepTid(sem: Semantics[Exp, Abs, Addr, Time], tid: TID): Set[State] =
-      stepTids(sem, Set(tid)).map(_._2)
-    def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(TID, State)] =
+    def stepTids(sem: Semantics[Exp, Abs, Addr, Time], tids: Set[TID]): Set[(TID, Effects, State)] =
+      tids.foldLeft(Set[(TID, Effects, State)]())((acc, tid) => step(sem, tid).foldLeft(acc)((acc, stepped) => acc + ((tid, stepped._1, stepped._2))))
+    def stepTid(sem: Semantics[Exp, Abs, Addr, Time], tid: TID): Set[(Effects, State)] =
+      stepTids(sem, Set(tid)).map(x => (x._2, x._3))
+    def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(TID, Effects, State)] =
       stepTids(sem, threads.tids)
-    def stepAny(sem: Semantics[Exp, Abs, Addr, Time]): Option[(TID, Set[State])] = {
-      val init: Option[(TID, Set[State])] = None
+    def stepAny(sem: Semantics[Exp, Abs, Addr, Time]): Option[(TID, Set[(Effects, State)])] = {
+      val init: Option[(TID, Set[(Effects, State)])] = None
       threads.tids.foldLeft(init)((acc, tid) => acc match {
         case None =>
           val stepped = step(sem, tid)
@@ -154,7 +148,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
 
-  type Exploration = State => Set[(TID, State)]
+  type Exploration = (State, Set[State]) => Set[(TID, State)]
 
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
@@ -167,7 +161,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         } else if (s.halted) {
           loop(todo.tail, visited + s, halted + s, startingTime, graph)(step)
         } else {
-          val succs = step(s)
+          val succs = step(s, todo)
           val newGraph = graph.map(_.addEdges(succs.map({ case (tid, s2) => (s, tid, s2) })))
           loop(todo.tail ++ succs.map(_._2), visited + s, halted, startingTime, newGraph)(step)
         }
@@ -175,35 +169,77 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     }
 
-  private def allInterleavings(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = s => s.stepAll(sem)
-  private def oneInterleaving(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = s => s.stepAny(sem) match {
-    case Some((tid, succs)) => succs.map(s2 => (tid, s2))
+  private def allInterleavings(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAll(sem).map(x => (x._1, x._3))
+  private def oneInterleaving(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAny(sem) match {
+    case Some((tid, succs)) => succs.map(s2 => (tid, s2._2))
     case None => Set()
   }
 
-  type Ample = (Semantics[Exp, Abs, Addr, Time], State) => Set[TID]
+  type Ample = (Semantics[Exp, Abs, Addr, Time], State, Set[State]) => Set[TID]
   private def partialOrderReduced(sem: Semantics[Exp, Abs, Addr, Time], ample: Ample): Exploration =
-    s => s.stepTids(sem, ample(sem, s))
+    (s, todo) => s.stepTids(sem, ample(sem, s, todo)).map(x => (x._1, x._3))
 
-  private def noReduction: Ample = (sem, s) => s.threads.tids
+  private def noReduction: Ample = (sem, s, _) => s.threads.tids
 
-  private def checkAmpleConditions(s: State, tid: TID, stepped: Set[State]): Boolean =
-    /* TODO: C1, C2, C3 */
-    !stepped.isEmpty /* C0: ample(s) is empty iff enabled(s) is empty: discard empty ample to satisfy this */
-  /* C1: TODO */
-  /* C2: this is about invisibility of transitions. In our case we don't have
-   * something similar to states labelled with atomic propositions, so we
-   * consider all states invisible for now. If we need to verify properties,
-   * this can be added, and the condition states that the ample set can't
-   * contain a visible transition, i.e., a transition that changes the value of
-   * an atomic proposition */
-  /* C3: TODO */
+  private def effectsOf(transitions: Set[(Effects, State)]): Effects =
+    transitions.map(_._1).foldLeft((Set[Addr](), Set[Addr]()))((acc, eff) => (acc._1 ++ eff._1, acc._2 ++ eff._2))
+  private def dependent(eff1: Effects, eff2: Effects) = {
+    /* This is our dependency relation. One effect is dependent on another if they
+     * act on the same variable and at least one of them is a write. This is
+     * extended to sets of effects, and to transitions */
+    eff1._1.foldLeft(false)((acc, a) =>
+      acc || eff2._2.contains(a)) ||
+    eff2._1.foldLeft(false)((acc, a) =>
+      acc || eff2._1.contains(a))
+  }
+
+  private def checkAmpleConditions(s: State, tid: TID, stepped: Set[(Effects, State)], sem: Semantics[Exp, Abs, Addr, Time], todo: Set[State]): Boolean = {
+    /* C0: ample(s) is empty iff enabled(s) is empty: discard empty ample to satisfy this */
+    !stepped.isEmpty &&
+    /* C1: a transitiion dependent on one in ample(ss cannot be executed without a transition in ample(s) occuring first.
+     "Checking this condition is at least as hard as cheacking reachability for the full state space."
+     But we can construct ample(s) in a way that C1 satisfied, by taking as candidate the set of transitions Ti(s) of thread i, and checking:
+     1) no transition of another process are dependent on these transitions
+       Our dependency relation is the following: two transitions are dependent if they share a variable and at least one writes to it
+     */
+    s.threads.tids.foldLeft(true)((acc, tid2) =>
+      acc && (if (tid == tid2) {
+        /* don't look at transitions of the same thread */
+        true
+      } else {
+        /* for other threads, if a transition that is dependent on this one is possible, C1 is violated */
+        val effects = effectsOf(stepped)
+        val effects2 = effectsOf(s.stepTid(sem, tid2))
+        // println(s"$s: $effects, $effects2 -> dependent(effects, effects2)")
+        !dependent(effects, effects2)
+      })) &&
+    /*
+     2) If there is a transition from another thread that enables a transition
+     for tid from a different state, but with the same control component, then
+     C1 is violated. TODO: we ignore this condition for now and therefore do
+     not support locks (the only transitions that can enable a transition on a
+     different thread)
+     */
+    true &&
+    /* C2: this is about invisibility of transitions. In our case we don't have
+     * something similar to states labelled with atomic propositions, so we
+     * consider all states invisible for now. If we need to verify properties,
+     * this can be added, and the condition states that the ample set can't
+     * contain a visible transition, i.e., a transition that changes the value of
+     * an atomic proposition */
+    true &&
+    /* C3: a cycle cannot be closed if it contains a state for which a transition is
+     * enabled but never included in ample(s) for any s on the cycle. This is
+     * avoided by not computing an ample set for states that lead to states that
+     * are on the todo list (they will be fully expanded) */
+    stepped.foldLeft(true)((acc, s2) => acc && !todo.contains(s2._2))
+  }
 
   /** Implements classical POR reduction, as described in chapter 10 of "Model Checking" (Clarke, Grumberg, Peled) */
-  private def classicalReduction: Ample = (sem, s) => s.threads.tids.foldLeft(None: Option[TID])((acc, tid) => acc match {
+  private def classicalReduction: Ample = (sem, s, todo) => s.threads.tids.foldLeft(None: Option[TID])((acc, tid) => acc match {
     case None =>
       val stepped = s.stepTid(sem, tid)
-      if (checkAmpleConditions(s, tid, stepped)) {
+      if (checkAmpleConditions(s, tid, stepped, sem, todo)) {
         /* conditions are satisfied, ample set is found */
         Some(tid)
       } else {
