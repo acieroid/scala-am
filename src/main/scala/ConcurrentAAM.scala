@@ -194,10 +194,14 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     /* This is our dependency relation. One effect is dependent on another if they
      * act on the same variable and at least one of them is a write. This is
      * extended to sets of effects, and to transitions */
-    eff1._1.foldLeft(false)((acc, a) =>
-      acc || eff2._2.contains(a)) ||
-    eff2._1.foldLeft(false)((acc, a) =>
+    val res = eff1._2.foldLeft(false)((acc, a) =>
+      /* Check write-write and read-write dependencies */
+      acc || eff2._2.contains(a) || eff2._1.contains(a)) ||
+    eff2._2.foldLeft(false)((acc, a) =>
+      /* Check write-read dependencies */
       acc || eff2._1.contains(a))
+    println(s"Dependent? $eff1 vs. $eff2: $res")
+    res
   }
 
   private def checkAmpleConditions(s: State, tid: TID, stepped: Set[(Effects, State)], sem: Semantics[Exp, Abs, Addr, Time], todo: Set[State]): Boolean = {
