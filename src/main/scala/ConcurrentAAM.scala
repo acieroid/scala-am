@@ -146,9 +146,9 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def numberOfStates = count
     def time = t
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, _.toString,
-        (s) => if (halted.contains(s)) { "#FFFFDD" } else { "#FFFFFF" }, {
-          case (tid, eff) => s"$tid ${effectsToString(eff)}"
+      case Some(g) => g.toDotFile(path, node => HTMLString(HTMLString.escape(node.toString)),
+        (s) => if (halted.contains(s)) { HTMLString("#FFFFDD") } else { HTMLString("#FFFFFF") }, {
+          case (tid, eff) => HTMLString(s"$tid ${effectsToString(eff)}")
         })
       case None =>
         println("Not generating graph because no graph was computed")
@@ -262,5 +262,5 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(partialOrderReduced(sem, noReduction))
+      if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(partialOrderReduced(sem, classicalReduction))
 }

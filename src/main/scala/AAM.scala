@@ -139,12 +139,12 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
      * Outputs the graph in a dot file
      */
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, _.toString.take(40).replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
-        (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
-          case ControlEval(_, _) => "#DDFFDD"
-          case ControlKont(_) => "#FFDDDD"
-          case ControlError(_) => "#FF0000"
-        }}, _ => "")
+      case Some(g) => g.toDotFile(path, node => HTMLString(HTMLString.escape(node.toString)),
+        (s) => if (halted.contains(s)) { HTMLString("#FFFFDD") } else { s.control match {
+          case ControlEval(_, _) => HTMLString("#DDFFDD")
+          case ControlKont(_) => HTMLString("#FFDDDD")
+          case ControlError(_) => HTMLString("#FF0000")
+        }}, _ => HTMLString(""))
       case None =>
         println("Not generating graph because no graph was computed")
     }
