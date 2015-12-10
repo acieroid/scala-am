@@ -124,8 +124,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
     /* TODO: have a different type for HTML-like strings */
     override def toString = threads.tids.map(tid =>
-      s"$tid: " + threads.get(tid).map(ctx => ctx.control.toString().take(40).replaceAll("<", "&lt;").replaceAll(">", "&gt;")).mkString(", ")
-    ).mkString("<br/>")
+      s"$tid: " + threads.get(tid).map(ctx => ctx.control.toString().take(40)).mkString(", ")
+    ).mkString("\n")
   }
 
   object State {
@@ -194,14 +194,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     /* This is our dependency relation. One effect is dependent on another if they
      * act on the same variable and at least one of them is a write. This is
      * extended to sets of effects, and to transitions */
-    val res = eff1._2.foldLeft(false)((acc, a) =>
+    eff1._2.foldLeft(false)((acc, a) =>
       /* Check write-write and read-write dependencies */
       acc || eff2._2.contains(a) || eff2._1.contains(a)) ||
     eff2._2.foldLeft(false)((acc, a) =>
       /* Check write-read dependencies */
       acc || eff2._1.contains(a))
-    println(s"Dependent? $eff1 vs. $eff2: $res")
-    res
   }
 
   private def checkAmpleConditions(s: State, tid: TID, stepped: Set[(Effects, State)], sem: Semantics[Exp, Abs, Addr, Time], todo: Set[State]): Boolean = {

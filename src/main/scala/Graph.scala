@@ -3,15 +3,16 @@ case class HTMLString(s: String) {
 }
 object HTMLString {
   def escape(s: String): String =
-    /* From Graphviz's documentation: "As HTML strings are processed like HTML input,
-     * any use of the ", &, <, and > characters in literal text or in attribute
-     * values need to be replaced by the corresponding escape sequence. For
-     * example, if you want to use & in an href value, this should be
-     * represented as &amp;." */
-    s.replaceAll("\"", "&quot;").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\n", "<br/>")
+    /* From Graphviz's documentation: "As HTML strings are processed like HTML
+     * input, any use of the ", &, <, and > characters in literal text or in
+     * attribute values need to be replaced by the corresponding escape
+     * sequence. For example, if you want to use & in an href value, this should
+     * be represented as &amp;." Note that the order of replacements matters,
+     * the & should be replaced first. */
+    s.replaceAll("&", "&amp;").replaceAll("\"", "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\n", "<br/>")
   def unescape(s: String): String =
     /* TODO: font colors */
-    s.replaceAll("&quot;", "\"").replaceAll("&amp;", "&").replaceAll("&lt;", "<").replaceAll("&gt;", "<").replaceAll("<br/>", "\n")
+    s.replaceAll("&amp;", "&").replaceAll("&quot;", "\"").replaceAll("&lt;", "<").replaceAll("&gt;", "<").replaceAll("<br/>", "\n")
 }
 
 case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[Node], edges: Map[Node, Set[(Annotation, Node)]]) {
