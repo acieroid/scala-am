@@ -20,9 +20,9 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
   def toDot(label: Node => String, color: Node => String, annotLabel: Annotation => String): String = {
       val sb = new StringBuilder("digraph G {\n")
       nodes.foreach((n) =>
-        sb.append("node_" + ids(n) + "[label=\"" /* + ids(n).toString + " " */ + label(n).replaceAll("\"", "\\\\\"") + "\", fillcolor=\"" + color(n) + "\" style=\"filled\"];\n")
+        sb.append(s"node_${ids(n)}[label=<${label(n)}>, fillcolor=<${color(n)}> style=<filled>];\n")
       )
-      edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) => sb.append("node_" + ids(n1) + " -> node_" + ids(n2) + " [label=\"" + annotLabel(annot).replaceAll("\"", "\\\\\"") + "\"]")})})
+      edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) => sb.append(s"node_${ids(n1)} -> node_${ids(n2)} [label=<${annotLabel(annot)}>]")})})
       sb.append("}")
       return sb.toString
     }
