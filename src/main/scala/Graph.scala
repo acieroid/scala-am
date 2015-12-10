@@ -22,7 +22,7 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
       nodes.foreach((n) =>
         sb.append(s"node_${ids(n)}[label=<${label(n)}>, fillcolor=<${color(n)}> style=<filled>];\n")
       )
-      edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) => sb.append(s"node_${ids(n1)} -> node_${ids(n2)} [label=<${annotLabel(annot)}>]")})})
+      edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) => sb.append(s"node_${ids(n1)} -> node_${ids(n2)} [label=<${annotLabel(annot)}>]\n")})})
       sb.append("}")
       return sb.toString
     }

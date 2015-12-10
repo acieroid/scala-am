@@ -15,6 +15,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   type KontAddr = aam.KontAddr
   type Effects = (Set[Addr], Set[Addr]) /* (read, write) */
 
+  private def effectsToString(eff: Effects) = eff match {
+    case (read, write) => (read.map(r => s"""<font color="forestgreen">R$r</font>""") ++ write.map(w => s"""<font color="red2">W$w</font>""")).mkString(", ")
+  }
+
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
         Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)] = action match {
@@ -118,9 +122,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case (_, ctxs) => ctxs.forall(_.halted)
     })
 
+    /* TODO: have a different type for HTML-like strings */
     override def toString = threads.tids.map(tid =>
-      s"$tid: " + threads.get(tid).map(ctx => ctx.control).mkString(", ")
-    ).mkString("\n")
+      s"$tid: " + threads.get(tid).map(ctx => ctx.control.toString().take(40).replaceAll("<", "&lt;").replaceAll(">", "&gt;")).mkString(", ")
+    ).mkString("<br/>")
   }
 
   object State {
@@ -131,7 +136,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
 
-  case class ConcurrentAAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, TID]])
+  case class ConcurrentAAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, (TID, Effects)]])
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.threads.get(thread.initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
@@ -141,18 +146,20 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def numberOfStates = count
     def time = t
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, _.toString.take(40),
-        (s) => if (halted.contains(s)) { "#FFFFDD" } else { "#FFFFFF" }, tid => tid.toString)
+      case Some(g) => g.toDotFile(path, _.toString,
+        (s) => if (halted.contains(s)) { "#FFFFDD" } else { "#FFFFFF" }, {
+          case (tid, eff) => s"$tid ${effectsToString(eff)}"
+        })
       case None =>
         println("Not generating graph because no graph was computed")
     }
   }
 
-  type Exploration = (State, Set[State]) => Set[(TID, State)]
+  type Exploration = (State, Set[State]) => Set[(TID, Effects, State)]
 
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State, TID]])
+    halted: Set[State], startingTime: Long, graph: Option[Graph[State, (TID, Effects)]])
     (step: Exploration): ConcurrentAAMOutput =
     todo.headOption match {
       case Some(s) =>
@@ -162,22 +169,22 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           loop(todo.tail, visited + s, halted + s, startingTime, graph)(step)
         } else {
           val succs = step(s, todo)
-          val newGraph = graph.map(_.addEdges(succs.map({ case (tid, s2) => (s, tid, s2) })))
-          loop(todo.tail ++ succs.map(_._2), visited + s, halted, startingTime, newGraph)(step)
+          val newGraph = graph.map(_.addEdges(succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })))
+          loop(todo.tail ++ succs.map(_._3), visited + s, halted, startingTime, newGraph)(step)
         }
       case None => ConcurrentAAMOutput(halted, visited.size,
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
     }
 
-  private def allInterleavings(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAll(sem).map(x => (x._1, x._3))
+  private def allInterleavings(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAll(sem)
   private def oneInterleaving(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAny(sem) match {
-    case Some((tid, succs)) => succs.map(s2 => (tid, s2._2))
+    case Some((tid, succs)) => succs.map(s2 => (tid, s2._1, s2._2))
     case None => Set()
   }
 
   type Ample = (Semantics[Exp, Abs, Addr, Time], State, Set[State]) => Set[TID]
   private def partialOrderReduced(sem: Semantics[Exp, Abs, Addr, Time], ample: Ample): Exploration =
-    (s, todo) => s.stepTids(sem, ample(sem, s, todo)).map(x => (x._1, x._3))
+    (s, todo) => s.stepTids(sem, ample(sem, s, todo))
 
   private def noReduction: Ample = (sem, s, _) => s.threads.tids
 
@@ -255,5 +262,5 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State, TID]()) } else { None })(partialOrderReduced(sem, classicalReduction))
+      if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(partialOrderReduced(sem, noReduction))
 }

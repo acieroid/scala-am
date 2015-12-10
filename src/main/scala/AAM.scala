@@ -139,7 +139,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
      * Outputs the graph in a dot file
      */
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, _.toString.take(40),
+      case Some(g) => g.toDotFile(path, _.toString.take(40).replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
         (s) => if (halted.contains(s)) { "#FFFFDD" } else { s.control match {
           case ControlEval(_, _) => "#DDFFDD"
           case ControlKont(_) => "#FFDDDD"
