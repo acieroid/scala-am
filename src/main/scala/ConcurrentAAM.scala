@@ -209,7 +209,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
      "Checking this condition is at least as hard as cheacking reachability for the full state space."
      But we can construct ample(s) in a way that C1 satisfied, by taking as candidate the set of transitions Ti(s) of thread i, and checking:
      1) no transition of another process are dependent on these transitions
-       Our dependency relation is the following: two transitions are dependent if they share a variable and at least one writes to it
+        Our dependency relation is the following: two transitions are dependent if they share a variable and at least one writes to it.
+        Here, we only check between transitions of tid and transitions of tid2 from state s. For correctness, we should check transitions of tid2 from any state, but we can't do that because we don't have this information statically (i.e., we can check for dependency of transitions, but can't generate a set of dependent transitions and then check if this set contains a transition of another thread).
      */
     s.threads.tids.foldLeft(true)((acc, tid2) =>
       acc && (if (tid == tid2) {
@@ -264,5 +265,5 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
     loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(partialOrderReduced(sem, classicalReduction))
+      if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(partialOrderReduced(sem, noReduction))
 }
