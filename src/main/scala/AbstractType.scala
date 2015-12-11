@@ -103,7 +103,8 @@ object AbstractType {
     override def toString = "#<clos>"
     override def join(that: AbstractType) = that match {
       case other: AbstractClosures[Exp, Addr] => AbstractClosures(clos ++ other.clos)
-      case _ => throw new Error("Type lattice cannot join a closure with something else")
+      case AbstractBottom => this
+      case _ => throw new Error(s"Type lattice cannot join a closure with something else ($that)")
     }
   }
   case class AbstractTid[TID : ThreadIdentifier](t: TID) extends AbstractType {
