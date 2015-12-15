@@ -122,6 +122,7 @@ object TypeLattice {
       case False => false
       case Error => false
       case Bottom => false
+      case _ => true
     }
     def isFalse(x: Type) = x match {
       case False => true

@@ -17,7 +17,7 @@ class PowerSetLattice[X : AbstractValue] {
   }
 
   implicit object PowerSetAbstractValue extends AbstractValue[PowerSet] {
-    def name = "PowerSet(${abs.name})"
+    def name = s"PowerSet(${abs.name})"
     def isTrue(p: PowerSet) = p match {
       case Element(x) => abs.isTrue(x)
       case Elements(xs) => xs.exists(x => abs.isTrue(x))
