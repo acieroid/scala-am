@@ -50,13 +50,11 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
         } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
       case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
     })
-    val fromPrim = abs.getPrimitive(function) match {
-      case Some(prim) => prim.call(fexp, argsv, σ, t) match {
-        case Right((res, σ2)) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, σ2))
-        case Left(err) => Set(ActionError[SchemeExp, Abs, Addr](err))
-      }
-      case None => Set()
-    }
+    val fromPrim = abs.getPrimitives(function).map(prim =>
+      prim.call(fexp, argsv, σ, t) match {
+        case Right((res, σ2)) => ActionReachedValue[SchemeExp, Abs, Addr](res, σ2)
+        case Left(err) => ActionError[SchemeExp, Abs, Addr](err)
+      })
     if (fromClo.isEmpty && fromPrim.isEmpty) {
       Set(ActionError(s"Called value is not a function: $function"))
     } else {

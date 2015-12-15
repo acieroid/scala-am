@@ -35,6 +35,11 @@ import BinaryOperator._
  */
 object UnsupportedLatticeElement extends Exception
 
+/**
+ * Exception to be raised when two objects cannot be joined
+ */
+case class CannotJoin[Abs](x: Abs, y: Abs) extends Exception
+
 /** Abstract values are abstract representations of the possible values of a variable */
 trait AbstractValue[A] extends Semigroup[A] {
   /** Name of this lattice */
@@ -75,7 +80,7 @@ trait AbstractValue[A] extends Semigroup[A] {
   /** Extract closures contained in this value */
   def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
   /** Extract primitives contained in this value */
-  def getPrimitive[Addr : Address, Abs : AbstractValue](x: A): Option[Primitive[Addr, Abs]]
+  def getPrimitives[Addr : Address, Abs : AbstractValue](x: A): Set[Primitive[Addr, Abs]]
   /** Extract thread ids contained in this value */
   def getTids[TID : ThreadIdentifier](x: A): Set[TID]
 

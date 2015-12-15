@@ -168,9 +168,9 @@ object AbstractConcrete {
       case AbstractClosure(λ: Exp, ρ: Environment[Addr]) => Set((λ, ρ))
       case _ => Set()
     }
-    def getPrimitive[Addr : Address, Abs : AbstractValue](x: AbstractConcrete) = x match {
-      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
-      case _ => None
+    def getPrimitives[Addr : Address, Abs : AbstractValue](x: AbstractConcrete) = x match {
+      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Set(prim)
+      case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](x: AbstractConcrete) = x match {
       case AbstractTid(t: TID) => Set(t)

@@ -289,10 +289,10 @@ object AbstractTypeSet {
       case AbstractSet(content) => content.flatMap(y => getClosures(y))
       case _ => Set()
     }
-    def getPrimitive[Addr : Address, Abs : AbstractValue](x: A) = x match {
-      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
-        /* TODO: AbstractSet case */
-      case _ => None
+    def getPrimitives[Addr : Address, Abs : AbstractValue](x: A) = x match {
+      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Set(prim)
+      case AbstractSet(content) => content.flatMap(y => getPrimitives[Addr, Abs](y))
+      case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](x: A) = x match {
       case AbstractTid(t: TID) => Set(t)

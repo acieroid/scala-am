@@ -95,9 +95,9 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
       case Right(y) => yabs.getClosures[Exp, Addr](y)
       case Prim(_) => Set()
     }
-    def getPrimitive[Addr : Address, Abs : AbstractValue](s: Sum) = s match {
-      case Prim(p: Primitive[Addr, Abs]) => Some(p)
-      case _ => None
+    def getPrimitives[Addr : Address, Abs : AbstractValue](s: Sum) = s match {
+      case Prim(p: Primitive[Addr, Abs]) => Set(p)
+      case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](s: Sum) = s match {
       case Left(x) => xabs.getTids[TID](x)

@@ -108,7 +108,7 @@ object AbstractType {
     }
   }
   case class AbstractTid[TID : ThreadIdentifier](t: TID) extends AbstractType {
-    override def toString = "#<thread $t>"
+    override def toString = s"#<thread $t>"
   }
   object AbstractNil extends AbstractType {
     override def toString = "()"
@@ -158,9 +158,9 @@ object AbstractType {
       case v: AbstractClosures[Exp, Addr] => v.clos
       case _ => Set()
     }
-    def getPrimitive[Addr : Address, Abs : AbstractValue](x: AbstractType) = x match {
-      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Some(prim)
-      case _ => None
+    def getPrimitives[Addr : Address, Abs : AbstractValue](x: AbstractType) = x match {
+      case AbstractPrimitive(prim: Primitive[Addr, Abs]) => Set(prim)
+      case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](x: AbstractType) = x match {
       case AbstractTid(t: TID) => Set(t)

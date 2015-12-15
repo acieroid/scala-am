@@ -13,9 +13,6 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
   val yabs = implicitly[AbstractValue[Y]]
 
   trait Product
-  case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Product {
-    override def toString = s"#<prim ${prim.name}>"
-  }
   case class Prod(x: X, y: Y) extends Product
 
   implicit object ProductAbstractValue extends AbstractValue[Product] {
@@ -25,22 +22,15 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
 
     def isTrue(p: Product) = p match {
       case Prod(x, y) => xabs.isTrue(x) || yabs.isTrue(y)
-      case Prim(_) => true
     }
     def isFalse(p: Product) = p match {
       case Prod(x, y) => xabs.isFalse(x) || yabs.isFalse(y)
-      case Prim(_) => false
     }
     def isError(p: Product) = p match {
       case Prod(x, y) => xabs.isError(x) || yabs.isError(y)
-      case Prim(_) => false
     }
     def unaryOp(op: UnaryOperator)(p: Product) = p match {
       case Prod(x, y) => Prod(xabs.unaryOp(op)(x), yabs.unaryOp(op)(y))
-      case Prim(_) => op match {
-        case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger => inject(false)
-        case _ => err(s"operator $op cannot work on primitive (argument was $p)")
-      }
     }
     def binaryOp(op: BinaryOperator)(p1: Product, p2: Product) = (p1, p2) match {
       case (Prod(x1, y1), Prod(x2, y2)) => Prod(xabs.binaryOp(op)(x1, x2), yabs.binaryOp(op)(y1, y2))
@@ -57,7 +47,6 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     }
     def subsumes(p1: Product, p2: Product) = (p1, p2) match {
       case (Prod(x1, y1), Prod(x2, y2)) => xabs.subsumes(x1, x2) && yabs.subsumes(y1, y2)
-      case (Prim(prim1), Prim(prim2)) => prim1 == prim2
       case _ => false
     }
     def and(p1: Product, p2: => Product) = (p1, p2) match {
@@ -81,9 +70,9 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
       case Prod(x, y) => xabs.getClosures[Exp, Addr](x) ++ yabs.getClosures[Exp, Addr](y)
       case _ => Set()
     }
-    def getPrimitive[Addr : Address, Abs : AbstractValue](p: Product) = p match {
-      case Prim(prim: Primitive[Addr, Abs]) => Some(prim)
-      case _ => None
+    def getPrimitives[Addr : Address, Abs : AbstractValue](p: Product) = p match {
+      case Prod(x, y) => xabs.getPrimitives[Addr, Abs](x) ++ yabs.getPrimitives[Addr, Abs](y)
+      case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](p: Product) = p match {
       case Prod(x, y) => xabs.getTids[TID](x) ++ yabs.getTids[TID](y)
@@ -93,13 +82,12 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     def bottom = Prod(xabs.bottom, yabs.bottom)
     def error(p: Product) = p match {
       case Prod(x, y) => Prod(xabs.error(x), yabs.error(y))
-      case Prim(_) => error(inject(p.toString))
     }
     def inject(x: Int) = Prod(xabs.inject(x), yabs.inject(x))
     def inject(x: String) = Prod(xabs.inject(x), yabs.inject(x))
     def inject(x: Char) = Prod(xabs.inject(x), yabs.inject(x))
     def inject(x: Boolean) = Prod(xabs.inject(x), yabs.inject(x))
-    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = Prim(x)
+    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]) = Prod(xabs.inject[Addr, Abs](x), yabs.inject[Addr, Abs](x))
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Prod(xabs.inject[Exp, Addr](x), yabs.inject[Exp, Addr](x))
     def injectTid[TID : ThreadIdentifier](t: TID) = Prod(xabs.injectTid[TID](t), yabs.injectTid[TID](t))
     def injectSymbol(x: String) = Prod(xabs.injectSymbol(x), yabs.injectSymbol(x))

@@ -63,14 +63,12 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
                 } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length})") }
                 case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
               })
-              val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitive(fv) match {
+              val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitives(fv).map(prim =>
                 /* To call a primitive, apply the call method with the given arguments and the store */
-                case Some(prim) => prim.call(f, argsv, σ, t) match {
-                  case Right((res, σ2)) => Set(ActionReachedValue(res, σ2))
-                  case Left(err) => Set(ActionError(err))
-                }
-                case None => Set()
-              }
+                prim.call(f, argsv, σ, t) match {
+                  case Right((res, σ2)) => ActionReachedValue[ANFExp, Abs, Addr](res, σ2)
+                  case Left(err) => ActionError[ANFExp, Abs, Addr](err)
+                })
               if (fromClo.isEmpty && fromPrim.isEmpty) {
                 Set(ActionError(s"Called value is not a function: $fv"))
               } else {
