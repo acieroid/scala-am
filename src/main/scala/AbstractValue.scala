@@ -380,3 +380,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
 }
 
 object AbstractValue
+
+trait Lattice {
+  type L
+  val isAbstractValue: AbstractValue[L]
+}
