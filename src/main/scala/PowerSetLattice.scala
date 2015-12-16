@@ -18,7 +18,7 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
     override def toString = "{" + xs.mkString(", ") + "}"
   }
 
-  val isAbstractValue = new AbstractValue[L] {
+  implicit val isAbstractValue = new AbstractValue[L] {
     def name = s"P(${abs.name})"
     def isTrue(p: L) = p match {
       case Element(x) => abs.isTrue(x)

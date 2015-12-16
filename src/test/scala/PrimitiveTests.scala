@@ -223,11 +223,11 @@ abstract class ConcurrentAAMTests[Abs : AbstractValue, Addr : Address, Time : Ti
 }
 
 /* Since these tests are small, they can be performed in concrete mode */
-class AAMConcreteTests extends AAMTests[AbstractConcrete, ConcreteAddress, ZeroCFA]
-class AAMTypeSetTests extends AAMTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
-class AACConcreteTests extends AACTests[AbstractConcrete, ConcreteAddress, ZeroCFA]
-class AACTypeSetTests extends AACTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
-class FreeConcreteTests extends FreeTests[AbstractConcrete, ClassicalAddress, ZeroCFA]
-class FreeTypeSetTests extends FreeTests[AbstractTypeSet, ClassicalAddress, ZeroCFA]
-class ConcurrentAAMConcreteTests extends ConcurrentAAMTests[AbstractConcrete, ClassicalAddress, ZeroCFA, ConcreteTID]
-class ConcurrentAAMTypeSetTests extends ConcurrentAAMTests[AbstractTypeSet, ClassicalAddress, ZeroCFA, ContextSensitiveTID]
+class AAMConcreteTests extends AAMTests[ConcreteLattice.L, ConcreteAddress, ZeroCFA]
+class AAMTypeSetTests extends AAMTests[TypeSetLattice.L, ClassicalAddress, ZeroCFA]
+class AACConcreteTests extends AACTests[ConcreteLattice.L, ConcreteAddress, ZeroCFA]
+class AACTypeSetTests extends AACTests[TypeSetLattice.L, ClassicalAddress, ZeroCFA]
+class FreeConcreteTests extends FreeTests[ConcreteLattice.L, ClassicalAddress, ZeroCFA]
+class FreeTypeSetTests extends FreeTests[TypeSetLattice.L, ClassicalAddress, ZeroCFA]
+class ConcurrentAAMConcreteTests extends ConcurrentAAMTests[ConcreteLattice.L, ClassicalAddress, ZeroCFA, ConcreteTID]
+class ConcurrentAAMTypeSetTests extends ConcurrentAAMTests[TypeSetLattice.L, ClassicalAddress, ZeroCFA, ContextSensitiveTID]
