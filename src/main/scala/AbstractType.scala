@@ -15,7 +15,6 @@ trait AbstractType {
     case Eq => AbstractType.AbstractBool
     case _ => AbstractType.AbstractError
   }
-  def foldValues[A](f: AbstractType => Set[A]): Set[A] = f(this)
   def join(that: AbstractType): AbstractType =
     if (this.equals(that) || that.equals(AbstractType.AbstractBottom)) { this } else { AbstractType.AbstractTop }
   def meet(that: AbstractType): AbstractType =
@@ -123,7 +122,6 @@ object AbstractType {
     def isError(x: AbstractType) = x.isError
     def unaryOp(op: UnaryOperator)(x: AbstractType) = x.unaryOp(op)
     def binaryOp(op: BinaryOperator)(x: AbstractType, y: AbstractType) = x.binaryOp(op)(y)
-    def foldValues[B](x: AbstractType, f: AbstractType => Set[B]) = x.foldValues(f)
     def join(x: AbstractType, y: AbstractType) = x.join(y)
     def meet(x: AbstractType, y: AbstractType) = x.meet(y)
     def subsumes(x: AbstractType, y: AbstractType) = x.subsumes(y)

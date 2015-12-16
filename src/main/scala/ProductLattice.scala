@@ -36,7 +36,6 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
       case (Prod(x1, y1), Prod(x2, y2)) => Prod(xabs.binaryOp(op)(x1, x2), yabs.binaryOp(op)(y1, y2))
       case _ => err("operator $op cannot work on primitives (arguments were $p1 and $p2)")
     }
-    def foldValues[B](p: Product, f: Product => Set[B]) = ???
     def join(p1: Product, p2: Product) = (p1, p2) match {
       case (Prod(x1, y1), Prod(x2, y2)) => Prod(xabs.join(x1, x2), yabs.join(y1, y2))
       case _ => ???

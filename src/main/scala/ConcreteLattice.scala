@@ -17,7 +17,6 @@ object ConcreteLattice extends Lattice {
       case Eq => if (this == that) { True } else { False }
       case _ => ConcreteError(s"$op not applicable with operands $this and $that")
     }
-    def foldValues[A](f: L => Set[A]): Set[A] = f(this)
     def join(that: L): L =
       if (this.equals(that) || that == Bottom) {
         this
@@ -132,7 +131,6 @@ object ConcreteLattice extends Lattice {
     def isError(x: L) = x.isError
     def unaryOp(op: UnaryOperator)(x: L) = x.unaryOp(op)
     def binaryOp(op: BinaryOperator)(x: L, y: L) = x.binaryOp(op)(y)
-    def foldValues[B](x: L, f: L => Set[B]) = x.foldValues(f)
     def join(x: L, y: L) = x.join(y)
     def meet(x: L, y: L) = x.meet(y)
     def subsumes(x: L, y: L) = x.subsumes(y)

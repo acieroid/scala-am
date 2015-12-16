@@ -48,11 +48,6 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
       case (Right(y1), Right(y2)) => Right(yabs.binaryOp(op)(y1, y2))
       case _ => err("binary operation ($op) on sum lattice cannot mix elements from two lattices: $s1 and $s2")
     }
-    def foldValues[B](s: Sum, f: Sum => Set[B]) = s match {
-      case Left(x) => xabs.foldValues(x, (x) => f(Left(x)))
-      case Right(y) => yabs.foldValues(y, (y) => f(Right(y)))
-      case Prim(_) => f(s)
-    }
     def join(s1: Sum, s2: Sum) = (s1, s2) match {
       case (Left(x1), Left(x2)) => Left(xabs.join(x1, x2))
       case (Right(y1), Right(y2)) => Right(yabs.join(y1, y2))

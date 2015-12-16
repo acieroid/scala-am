@@ -238,7 +238,6 @@ object AbstractTypeSet {
     def isError(x: A) = x.isError
     def unaryOp(op: UnaryOperator)(x: A) = x.unaryOp(op)
     def binaryOp(op: BinaryOperator)(x: A, y: A) = x.binaryOp(op)(y)
-    def foldValues[B](x: A, f: A => Set[B]) = x.foldValues(f)
     def join(x: A, y: A) = x.join(y)
     def meet(x: A, y: A) = x.meet(y)
     def subsumes(x: A, y: A) = x.subsumes(y)

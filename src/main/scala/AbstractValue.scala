@@ -55,10 +55,6 @@ trait AbstractValue[A] extends Semigroup[A] {
   def unaryOp(op: UnaryOperator.UnaryOperator)(x: A): A
   /** Performs a binary operation on abstract values x and y */
   def binaryOp(op: BinaryOperator.BinaryOperator)(x: A, y: A): A
-  /** Fold a function over the values contained in this abstract values. This
-      should be redefined only for container-like abstract values (e.g., for a
-      set abstraction) */
-  def foldValues[B](x: A, f: A => Set[B]): Set[B]
   /** Join operation on lattice elements  */
   def join(x: A, y: A): A
   def append(x: A, y: => A): A = join(x, y)

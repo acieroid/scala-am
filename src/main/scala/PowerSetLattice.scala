@@ -66,10 +66,6 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
       case (Elements(xs1), Elements(xs2)) => ???
         xs1.foldLeft(bottom)((acc, x1) => xs2.foldLeft(acc)((acc, x2) => join(acc, wrapped(abs.or(x1, x2)))))
     }
-    def foldValues[B](s: L, f: L => Set[B]) = s match {
-      case Element(x) => abs.foldValues(x, (x) => f(Element(x)))
-      case Elements(xs) => xs.foldLeft(Set[B]())((acc: Set[B], x: X) => acc ++ abs.foldValues(x, (x) => f(Element(x))))
-    }
     def join(p1: L, p2: L): L = (p1, p2) match {
       case (Element(x1), Element(x2)) => wrapped(abs.join(x1, x2))
       case (Elements(xs), Element(x)) => join(p1, Elements(Set[X](x)))

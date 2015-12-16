@@ -16,7 +16,6 @@ trait AbstractConcrete {
     case Eq => if (this == that) { AbstractConcrete.AbstractTrue } else { AbstractConcrete.AbstractFalse }
     case _ => AbstractConcrete.AbstractError(s"$op not applicable with operands $this and $that")
   }
-  def foldValues[A](f: AbstractConcrete => Set[A]): Set[A] = f(this)
   def join(that: AbstractConcrete): AbstractConcrete =
     if (this.equals(that) || that == AbstractConcrete.AbstractBottom) { this } else { throw new Exception(s"AbstractConcrete lattice cannot join elements") }
   def meet(that: AbstractConcrete): AbstractConcrete = if (this.equals(that)) { this } else { AbstractConcrete.AbstractBottom }
@@ -127,7 +126,6 @@ object AbstractConcrete {
     def isError(x: AbstractConcrete) = x.isError
     def unaryOp(op: UnaryOperator)(x: AbstractConcrete) = x.unaryOp(op)
     def binaryOp(op: BinaryOperator)(x: AbstractConcrete, y: AbstractConcrete) = x.binaryOp(op)(y)
-    def foldValues[B](x: AbstractConcrete, f: AbstractConcrete => Set[B]) = x.foldValues(f)
     def join(x: AbstractConcrete, y: AbstractConcrete) = x.join(y)
     def meet(x: AbstractConcrete, y: AbstractConcrete) = x.meet(y)
     def subsumes(x: AbstractConcrete, y: AbstractConcrete) = x.subsumes(y)
