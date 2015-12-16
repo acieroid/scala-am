@@ -15,17 +15,23 @@ trait Primitive[Addr, Abs] {
   def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time): Either[String, (Abs, Store[Addr, Abs])]
 }
 
+/** These are the unary operations that should be supported by lattices */
 object UnaryOperator extends Enumeration {
   type UnaryOperator = Value
-  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsBoolean,
-    Not,
-    Ceiling, Log, Random = Value
+  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsBoolean, /* Checks the type of a value */
+    Not, /* Negate a value */
+    Ceiling, Log, Random /* Unary arithmetic operations */
+  = Value
 }
 import UnaryOperator._
 
+/** Binary operations thatt should be supported by lattices */
 object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
-  val Plus, Minus, Times, Div, Modulo, Lt, NumEq, Eq = Value
+  val Plus, Minus, Times, Div, Modulo, /* Arithmetic operations */
+    Lt, /* Arithmetic comparison */
+    NumEq, Eq /* Equality checking (number equality, physical equality) */
+  = Value
 }
 import BinaryOperator._
 
