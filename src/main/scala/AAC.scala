@@ -217,34 +217,34 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
     /**
      * Integrate a set of actions to generate successor states, and returns
      * these states as well as the updated continuation store (which is global)
+     * and the set of contexts changed in this store.
      */
-    private def integrate(ι: LocalKont, κ: Kont, kstore: KontStore, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore) =
-      actions.foldLeft((Set[State](), kstore))({ (acc, act) =>
-        val states = acc._1
-        val kstore = acc._2
+    private def integrate(ι: LocalKont, κ: Kont, kstore: KontStore, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore, Set[Context]) =
+      actions.foldLeft((Set[State](), kstore, Set[Context]()))({ (acc, act) =>
+        val (states, kstore, contexts) = acc
         act match {
-          case ActionReachedValue(v, σ, _, _) => (states + State(ControlKont(v), σ, ι, κ, time.tick(t)), kstore)
-          case ActionPush(e, frame, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, time.tick(t)), kstore)
-          case ActionEval(e, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι, κ, time.tick(t)), kstore)
+          case ActionReachedValue(v, σ, _, _) => (states + State(ControlKont(v), σ, ι, κ, time.tick(t)), kstore, contexts)
+          case ActionPush(e, frame, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, time.tick(t)), kstore, contexts)
+          case ActionEval(e, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι, κ, time.tick(t)), kstore, contexts)
           case ActionStepIn(fexp, clo, e, ρ, σ, argsv, _, _) => {
             val τ = Context(clo, argsv, σ, t)
             (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ), time.tick(t, fexp)),
-             kstore.extend(τ, (ι, κ)))
+             kstore.extend(τ, (ι, κ)), contexts + τ)
           }
-          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ, time.tick(t)), kstore)
+          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ, time.tick(t)), kstore, contexts)
         }})
 
     /**
      * Performs an evaluation step, relying on the given semantics (@param sem)
      */
-    def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], KontStore) = control match {
+    def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], KontStore, Set[Context]) = control match {
       case ControlEval(e, ρ) => integrate(ι, κ, kstore, sem.stepEval(e, ρ, σ, t))
-      case ControlKont(v) if abs.isError(v) => (Set(), kstore)
-      case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore))((acc, popped) => {
-        val (states, kstore1) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, popped._1, σ, t))
-        (acc._1 ++ states, kstore1)
+      case ControlKont(v) if abs.isError(v) => (Set(), kstore, Set[Context]())
+      case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore, Set[Context]()))((acc, popped) => {
+        val (states, kstore1, contexts) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, popped._1, σ, t))
+        (acc._1 ++ states, kstore1, acc._3 ++ contexts)
       })
-      case ControlError(_) => (Set(), kstore)
+      case ControlError(_) => (Set(), kstore, Set[Context]())
     }
 
     /**
@@ -319,7 +319,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
        * together */
       val (edges, kstore2) = todo.foldLeft((Set[(State, State)](), kstore))({ (acc, ς) =>
         ς.step(kstore, sem) match {
-          case (next, kstore2) =>
+          case (next, kstore2, contexts) =>
             (acc._1 ++ next.map((ς2) => (ς, ς2)), acc._2.join(kstore2))
         }
       })
