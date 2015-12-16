@@ -135,7 +135,7 @@ object TypeLattice extends Lattice {
     def binaryOp(op: BinaryOperator)(x: L, y: L) = x.binaryOp(op)(y)
     def join(x: L, y: L) = if (x == y) { x } else { throw CannotJoin[L](x, y) }
     def meet(x: L, y: L) = if (x == y) { x } else { bottom }
-    def subsumes(x: L, y: L) = x == y || (x == Bottom && (y == True || y == False))
+    def subsumes(x: L, y: L) = x == y || y == Bottom
     def and(x: L, y: => L) = x match {
       case False => False
       case _ => y
