@@ -1,11 +1,12 @@
 import org.scalatest._
 import org.scalatest.prop._
+import org.scalatest.prop.TableDrivenPropertyChecks._
 
 import UnaryOperator._
 import BinaryOperator._
 
 abstract class LatticePropSpec[Abs : AbstractValue]
-    extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
+    extends PropSpec with GeneratorDrivenPropertyChecks with Matchers with TableDrivenPropertyChecks {
   val abs = implicitly[AbstractValue[Abs]]
   property("lattice should preserve boolean value and correctly implement not") {
     forAll { (b: Boolean) =>
@@ -56,6 +57,23 @@ abstract class LatticePropSpec[Abs : AbstractValue]
     } catch {
       case CannotJoin(_, _) => ()
     }
+  }
+  property("bottom should be subsumed by any other value") {
+    val values = Table(
+      ("v"),
+      (abs.inject(1)),
+      (abs.inject(2)),
+      (abs.inject(true)),
+      (abs.inject(false)),
+      (abs.inject("foo")),
+      (abs.injectSymbol("foo")))
+    forAll (values) { (v: Abs) =>
+      assert(abs.subsumes(v, abs.bottom))
+      assert(!abs.subsumes(abs.bottom, v))
+    }
+  }
+  property("bottom should subsume itself") {
+    assert(abs.subsumes(abs.bottom, abs.bottom))
   }
 }
 
