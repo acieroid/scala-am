@@ -237,7 +237,10 @@ object SchemeCompiler {
 
   def compile(exp: SExp): SchemeExp = {
     val exp2 = exp match {
-      case SExpPair(SExpIdentifier("quote"), rest) => compile(SExpQuoted(rest))
+      case SExpPair(SExpIdentifier("quote"), SExpPair(quoted, SExpValue(ValueNil()))) =>
+        compile(SExpQuoted(quoted))
+      case SExpPair(SExpIdentifier("quote"), _) =>
+        throw new Exception(s"Invalid Scheme quote: $exp (${exp.pos})")
       case SExpPair(SExpIdentifier("lambda"),
         SExpPair(args, SExpPair(first, rest))) =>
         SchemeLambda(compileArgs(args), compile(first) :: compileBody(rest))
