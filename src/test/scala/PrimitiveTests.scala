@@ -1,7 +1,6 @@
 import org.scalatest._
 import org.scalatest.prop._
 import org.scalatest.prop.TableDrivenPropertyChecks._
-import Timestamps._
 
 /** Tests that encodes Chapter 6 of R5RS (only for specified behaviour,
   * unspecified behaviour is not tested because it's... unspecified). This is
@@ -223,11 +222,11 @@ abstract class ConcurrentAAMPrimitiveTests[Abs : AbstractValue, Addr : Address, 
 }
 
 /* Since these tests are small, they can be performed in concrete mode */
-class AAMConcretePrimitiveTests extends AAMPrimitiveTests[ConcreteLattice.L, ConcreteAddress, ZeroCFA]
-class AAMTypeSetPrimitiveTests extends AAMPrimitiveTests[TypeSetLattice.L, ClassicalAddress, ZeroCFA]
-class AACConcretePrimitiveTests extends AACPrimitiveTests[ConcreteLattice.L, ConcreteAddress, ZeroCFA]
-class AACTypeSetPrimitiveTests extends AACPrimitiveTests[TypeSetLattice.L, ClassicalAddress, ZeroCFA]
-class FreeConcretePrimitiveTests extends FreePrimitiveTests[ConcreteLattice.L, ClassicalAddress, ZeroCFA]
-class FreeTypeSetPrimitiveTests extends FreePrimitiveTests[TypeSetLattice.L, ClassicalAddress, ZeroCFA]
-class ConcurrentAAMConcretePrimitiveTests extends ConcurrentAAMPrimitiveTests[ConcreteLattice.L, ClassicalAddress, ZeroCFA, ConcreteTID]
-class ConcurrentAAMTypeSetPrimitiveTests extends ConcurrentAAMPrimitiveTests[TypeSetLattice.L, ClassicalAddress, ZeroCFA, ContextSensitiveTID]
+class AAMConcretePrimitiveTests extends AAMPrimitiveTests[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
+class AAMTypeSetPrimitiveTests extends AAMPrimitiveTests[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA]
+class AACConcretePrimitiveTests extends AACPrimitiveTests[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
+class AACTypeSetPrimitiveTests extends AACPrimitiveTests[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA]
+class FreeConcretePrimitiveTests extends FreePrimitiveTests[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
+class FreeTypeSetPrimitiveTests extends FreePrimitiveTests[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA]
+class ConcurrentAAMConcretePrimitiveTests extends ConcurrentAAMPrimitiveTests[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp, ContextSensitiveTID]
+class ConcurrentAAMTypeSetPrimitiveTests extends ConcurrentAAMPrimitiveTests[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA, ContextSensitiveTID]

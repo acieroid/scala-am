@@ -126,17 +126,9 @@ object Main {
     content
   }
 
-  trait AddressWrapper {
-    type A
-    val isAddress: Address[A]
-  }
   trait TimestampWrapper {
     type T
     val isTimestamp: Timestamp[T]
-  }
-  trait ExpWrapper {
-    type E
-    val isExpression: Expression[E]
   }
 
   def main(args: Array[String]) {
@@ -151,36 +143,30 @@ object Main {
         }
         implicit val isAbstractValue = lattice.isAbstractValue
 
-        val addr: AddressWrapper = if (config.concrete) {
-          new AddressWrapper {
-            type A = ConcreteAddress
-            val isAddress = implicitly[Address[A]]
+        val time: TimestampWrapper = if (config.concrete) {
+          new TimestampWrapper {
+            type T = ConcreteTimestamp
+            val isTimestamp = implicitly[Timestamp[T]]
           }
         } else {
-          new AddressWrapper {
-            type A = ClassicalAddress
-            val isAddress = implicitly[Address[A]]
+          new TimestampWrapper {
+            type T = CFA.ZeroCFA
+            val isTimestamp = implicitly[Timestamp[T]]
           }
-        }
-        implicit val isAddress = addr.isAddress
-
-        val time: TimestampWrapper = new TimestampWrapper {
-          type T = Timestamps.ZeroCFA
-          val isTimestamp = implicitly[Timestamp[T]]
         }
         implicit val isTimestamp = time.isTimestamp
 
         val machine = config.machine match {
-          case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, addr.A, time.T]
-          case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, addr.A, time.T]
-          case Config.Machine.Free => new Free[SchemeExp, lattice.L, addr.A, time.T]
-          case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, addr.A, time.T, ContextSensitiveTID]
+          case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, ClassicalAddress, time.T]
+          case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, ClassicalAddress, time.T]
+          case Config.Machine.Free => new Free[SchemeExp, lattice.L, ClassicalAddress, time.T]
+          case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress, time.T, ContextSensitiveTID]
         }
 
         val sem = if (config.machine == Config.Machine.ConcurrentAAM) {
-          new ConcurrentSchemeSemantics[lattice.L, addr.A, time.T, ContextSensitiveTID]
+          new ConcurrentSchemeSemantics[lattice.L, ClassicalAddress, time.T, ContextSensitiveTID]
         } else {
-          new SchemeSemantics[lattice.L, addr.A, time.T]
+          new SchemeSemantics[lattice.L, ClassicalAddress, time.T]
         }
 
         try {

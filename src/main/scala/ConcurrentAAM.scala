@@ -22,22 +22,22 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, results: ThreadResults):
         Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)] = action match {
-      case ActionReachedValue(v, σ, read, write) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, t)), results, σ, (read, write)))
+      case ActionReachedValue(v, σ, read, write) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, time.tick(t))), results, σ, (read, write)))
       case ActionPush(e, frame, ρ, σ, read, write) => {
         val next = NormalKontAddress(e, addr.variable("__kont__", t))
-        Set((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, t)), results, σ, (read, write)))
+        Set((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, time.tick(t))), results, σ, (read, write)))
       }
-      case ActionEval(e, ρ, σ, read, write) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, t)), results, σ, (read, write)))
+      case ActionEval(e, ρ, σ, read, write) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t))), results, σ, (read, write)))
       case ActionStepIn(fexp, _, e, ρ, σ, _, read, write) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ, (read, write)))
-      case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, t)), results, Store.empty[Addr, Abs], (Set[Addr](), Set[Addr]())))
+      case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, time.tick(t))), results, Store.empty[Addr, Abs], (Set[Addr](), Set[Addr]())))
       case ActionSpawn(tid2: TID, e, ρ, act, read, write) => {
         assert(read.isEmpty && write.isEmpty) /* TODO */
-        integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, t)), results)
+        integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, time.tick(t))), results)
       }
       case ActionJoin(v, σ, read, write) => {
         abs.getTids(v).flatMap(tid2 =>
         if (results.isDone(tid2)) {
-          Set((threads.update(tid, Context(ControlKont(results.get(tid2)), kstore, a, t)), results, σ, (read, write)))
+          Set((threads.update(tid, Context(ControlKont(results.get(tid2)), kstore, a, time.tick(t))), results, σ, (read, write)))
         } else {
           Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)]()
         })

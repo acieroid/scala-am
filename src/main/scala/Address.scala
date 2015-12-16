@@ -29,21 +29,3 @@ object ClassicalAddress {
     def cell[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) = CellAddress(exp, t)
   }
 }
-
-trait ConcreteAddress
-
-object ConcreteAddress {
-  var id = 0
-  case class PrimitiveAddress(name: String) extends ConcreteAddress
-  case class IntAddress(name: String, id: Int) extends ConcreteAddress
-  implicit object ConcreteAddressAddress extends Address[ConcreteAddress] {
-    def name = "Concrete"
-    def isPrimitive(x: ConcreteAddress) = x match {
-      case PrimitiveAddress(_) => true
-      case _ => false
-    }
-    def primitive(name: String) = { PrimitiveAddress(name) }
-    def variable[Time : Timestamp](name: String, t: Time) = { id += 1; IntAddress(name, id) }
-    def cell[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) = { id += 1; IntAddress(s"cell-$exp", id) }
-  }
-}

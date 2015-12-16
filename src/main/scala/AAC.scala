@@ -28,7 +28,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
    * the closure itself, the expressions and values of the arguments, and the
    * store at calling time.
    */
-  case class Context(clo: (Exp, Environment[Addr]), argsv: List[(Exp, Abs)], σ: Store[Addr, Abs]) {
+  case class Context(clo: (Exp, Environment[Addr]), argsv: List[(Exp, Abs)], σ: Store[Addr, Abs], t: Time) {
     def subsumes(that: Context) = {
       clo._1.equals(that.clo._1) && clo._2.subsumes(that.clo._2) && σ.subsumes(that.σ) &&
       argsv.zip(that.argsv).forall({ case ((e1, v1), (e2, v2)) => e1 == e2 && abs.subsumes(v1, v2) })
@@ -223,15 +223,15 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
         val states = acc._1
         val kstore = acc._2
         act match {
-          case ActionReachedValue(v, σ, _, _) => (states + State(ControlKont(v), σ, ι, κ, t), kstore)
-          case ActionPush(e, frame, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, t), kstore)
-          case ActionEval(e, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι, κ, t), kstore)
+          case ActionReachedValue(v, σ, _, _) => (states + State(ControlKont(v), σ, ι, κ, time.tick(t)), kstore)
+          case ActionPush(e, frame, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, time.tick(t)), kstore)
+          case ActionEval(e, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι, κ, time.tick(t)), kstore)
           case ActionStepIn(fexp, clo, e, ρ, σ, argsv, _, _) => {
-            val τ = Context(clo, argsv, σ)
+            val τ = Context(clo, argsv, σ, t)
             (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ), time.tick(t, fexp)),
              kstore.extend(τ, (ι, κ)))
           }
-          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ, t), kstore)
+          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ, time.tick(t)), kstore)
         }})
 
     /**
@@ -287,7 +287,8 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
   private def loop(todo: Set[State], visited: Set[State],
     halted: Set[State], startingTime: Long, graph: Option[Graph[State, Unit]],
     kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): AACOutput = {
-    if (todo.isEmpty) { /* || (false && ((System.nanoTime - startingTime) / Math.pow(10, 9)) > 1000)) {
+    if (todo.isEmpty) { // || (((System.nanoTime - startingTime) / Math.pow(10, 9)) > 2)) {
+      /*
       graph.map(g => {
         println(s"There are ${g.nodes.size} states")
         println(s"c: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control) }).size}")

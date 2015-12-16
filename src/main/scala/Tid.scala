@@ -20,20 +20,3 @@ object ContextSensitiveTID {
     def thread[Exp : Expression, Time : Timestamp](exp: Exp, time: Time) = TID(exp, time)
   }
 }
-
-trait ConcreteTID
-
-object ConcreteTID {
-  var id = 0
-  object Initial extends ConcreteTID {
-    override def toString = "main"
-  }
-  case class TID[Exp : Expression](exp: Exp, id: Int) extends ConcreteTID {
-    override def toString = s"$id"
-  }
-  implicit object ConcreteTIDThreadIdentifier extends ThreadIdentifier[ConcreteTID] {
-    def name = "Concrete"
-    def initial = Initial
-    def thread[Exp : Expression, Time : Timestamp](exp: Exp, time: Time) = { id += 1; TID[Exp](exp, id) }
-  }
-}
