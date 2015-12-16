@@ -63,7 +63,7 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
       case (Element(x1), Element(x2)) => wrapped(abs.or(x1, x2))
       case (Element(x), Elements(xs)) => or(Elements(Set[X](x)), p2)
       case (Elements(xs), Element(x)) => or(p1, Elements(Set[X](x)))
-      case (Elements(xs1), Elements(xs2)) => ???
+      case (Elements(xs1), Elements(xs2)) =>
         xs1.foldLeft(bottom)((acc, x1) => xs2.foldLeft(acc)((acc, x2) => join(acc, wrapped(abs.or(x1, x2)))))
     }
     def join(p1: L, p2: L): L = (p1, p2) match {
@@ -125,7 +125,7 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
     def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): L = Element(abs.inject[Addr, Abs](x))
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = Element(abs.inject[Exp, Addr](x))
     def injectTid[TID : ThreadIdentifier](t: TID): L = Element(abs.injectTid[TID](t))
-    def injectSymbol(x: String): L = Element(abs.inject(x))
+    def injectSymbol(x: String): L = Element(abs.injectSymbol(x))
     def nil: L = Element(abs.nil)
     def cons[Addr : Address](car: Addr, cdr: Addr): L = Element(abs.cons(car, cdr))
   }
