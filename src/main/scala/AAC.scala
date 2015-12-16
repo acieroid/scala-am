@@ -282,7 +282,10 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
     }
   }
 
-  /** Performs the frontier-based state exploration */
+  /** Performs the frontier-based state exploration.
+   * TODO: This is still WIP. Some states needs to be reexplored when the stack store changes. Possibilities are the following:
+   *   - When the stack store changes, empty the set of visited states (used solution, but doesn't terminate on nqueens)
+   *   - Track which states use which contexts, and when contexts are modified, reexplore these states (not implemented) */
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
     halted: Set[State], startingTime: Long, graph: Option[Graph[State, Unit]],
