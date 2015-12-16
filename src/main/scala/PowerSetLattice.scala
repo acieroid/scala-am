@@ -87,7 +87,7 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
     def subsumes(p1: L, p2: L) = (p1, p2) match {
       case (Element(x1), Element(x2)) => abs.subsumes(x1, x2)
       case (Elements(xs), Element(x2)) => xs.exists(x1 => abs.subsumes(x1, x2))
-      case (Element(x1), Elements(xs)) => xs.exists(x2 => abs.subsumes(x1, x2))
+      case (Element(x1), Elements(xs)) => xs.forall(x2 => abs.subsumes(x1, x2))
       case (Elements(xs1), Elements(xs2)) =>
         /* every element in xs2 should be subsumed by an element of xs1 */
         xs2.forall(x2 => xs1.exists(x1 => abs.subsumes(x1, x2)))
