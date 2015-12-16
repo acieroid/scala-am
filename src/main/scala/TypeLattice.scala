@@ -62,7 +62,7 @@ object TypeLattice extends Lattice {
     override def toString = "#t"
     override def unaryOp(op: UnaryOperator) = op match {
       case IsBoolean => True
-      case Not => True
+      case Not => False
       case _ => super.unaryOp(op)
     }
     override def binaryOp(op: BinaryOperator)(that: L) = op match {
@@ -70,13 +70,14 @@ object TypeLattice extends Lattice {
         case True => True
         case _ => super.binaryOp(op)(that)
       }
+      case _ => super.binaryOp(op)(that)
     }
   }
   object False extends L {
     override def toString = "#f"
     override def unaryOp(op: UnaryOperator) = op match {
       case IsBoolean => True
-      case Not => False
+      case Not => True
       case _ => super.unaryOp(op)
     }
     override def binaryOp(op: BinaryOperator)(that: L) = op match {
@@ -117,7 +118,7 @@ object TypeLattice extends Lattice {
     }
   }
 
-  val isAbstractValue = new AbstractValue[L] {
+  implicit val isAbstractValue = new AbstractValue[L] {
     def name = "Type"
     def isTrue(x: L) = x match {
       case False => false
