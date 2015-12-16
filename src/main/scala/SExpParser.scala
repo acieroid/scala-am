@@ -152,7 +152,7 @@ object SExpParser extends TokenParsers {
   def string: Parser[Value] = elem("string", _.isInstanceOf[TString]) ^^ {
     case TString(s) => ValueString(s)
   }
-  def nil: Parser[Value] = leftParen ~ rightParen ^^ (_ => ValueNil())
+  def nil: Parser[Value] = leftParen ~ rightParen ^^ (_ => ValueNil)
 
   def value: Parser[SExp] =
     (bool | float | integer | character | string | nil) ^^ (v => SExpValue(v))

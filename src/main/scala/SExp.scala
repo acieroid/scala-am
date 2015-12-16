@@ -24,7 +24,7 @@ case class ValueBoolean(value: Boolean) extends Value {
 case class ValueCharacter(value: Character) extends Value {
   override def toString() = s"#\\$value" // not entirely correct (eg. newline, ...)
 }
-case class ValueNil() extends Value {
+object ValueNil extends Value {
   override def toString() = "()"
 }
 
@@ -52,7 +52,7 @@ case class SExpPair(car: SExp, cdr: SExp) extends SExp {
       case pair: SExpPair =>
         val rest = pair.toStringRest
         s"$car $rest"
-      case SExpValue(ValueNil()) => s"$car"
+      case SExpValue(ValueNil) => s"$car"
       case _ => s"$car . $cdr"
     }
 }
@@ -62,7 +62,7 @@ object SExpPair {
   def apply(content: List[SExp]) = fromList(content)
 
   def fromList(content: List[SExp]): SExp = content match {
-    case Nil => SExpValue(ValueNil())
+    case Nil => SExpValue(ValueNil)
     case head :: tail => SExpPair(head, SExpPair(tail))
   }
 }

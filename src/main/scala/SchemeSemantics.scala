@@ -94,9 +94,9 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       case ValueInteger(n) => abs.inject(n)
       case ValueFloat(n) => throw new Exception("floats not yet supported")
       case ValueBoolean(b) => abs.inject(b)
-      case ValueNil() => abs.nil
+      case ValueNil => abs.nil
     }, σ)
-    case SExpQuoted(q) => evalQuoted(SExpPair(SExpIdentifier("quote"), SExpPair(q, SExpValue(ValueNil()))), σ, t)
+    case SExpQuoted(q) => evalQuoted(SExpPair(SExpIdentifier("quote"), SExpPair(q, SExpValue(ValueNil))), σ, t)
   }
 
   def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time) = e match {
