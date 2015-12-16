@@ -18,13 +18,13 @@ object ConcreteLattice extends Lattice {
       case _ => ConcreteError(s"$op not applicable with operands $this and $that")
     }
     def join(that: L): L =
-      if (this.equals(that) || that == Bottom) {
+      if (subsumes(that)) {
         this
       } else {
         throw new CannotJoin[L](this, that)
       }
-    def meet(that: L): L = if (this.equals(that)) { this } else { Bottom }
-    def subsumes(that: L): Boolean = this.equals(that)
+    def meet(that: L): L = if (this == that) { this } else { Bottom }
+    def subsumes(that: L): Boolean = this == that || that == Bottom
     def and(that: => L): L = ConcreteError(s"and not applicable with operands $this and $that")
     def or(that: => L): L = ConcreteError(s"or not applicable with operands $this and $that")
   }
