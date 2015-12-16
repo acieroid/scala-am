@@ -39,11 +39,19 @@ import scala.io.StdIn
  *      The abstract machine also uses a lattice to represent values. Lattices
  *      should implement some traits that can be found in
  *      AbstractValue.scala. The following lattices are available:
- *      - A concrete lattice, AbstractConcrete.scala
- *      - A type lattice, representing each value by its type, AbstractType.scala
- *      - A type set lattice, representing each value by a set of its possible
- *        types (to avoid having a top element that loses all precision),
- *        AbstractTypeSet.scala
+ *      - A concrete lattice, ConcreteLattice.scala
+ *      - A type lattice, representing each value by its type, TypeLattice.scala
+ *      Other lattices are made available by combining existing lattices, using:
+ *      - A powerset lattice, representing elements as sets of values. Example:
+ *        the type lattice can represent Int, or String, but not join the two
+ *        elements together (and raises a CannotJoin exception). The powerset
+ *        lattice of the type lattice will join them together in a set,
+ *        representing the result as {Int, String}. The TypeSet lattice is in
+ *        fact the lattice PowerSet(Type).
+ *      - A product lattice, combining two lattices together as a cartesian
+ *        product. Example: one could combine the type lattice with a sign
+ *        lattice, getting abstract values such as (Int, +), (String, bottom),
+ *        ...
  *
  *  If you want to:
  *  - Support a new language: you will need:
@@ -54,14 +62,12 @@ import scala.io.StdIn
  *    - A semantics, look at ANFSemantics.scala for a simple example
  *    - Support for your language operations at the lattice level. For this,
  *      you'll probably need to extend the lattices (AbstractValue.scala,
- *      AbstractConcrete.scala, AbstractType.scala, AbstractTypeSet.scala)
+ *      ConcreteLattice.scala, TypeLattice.scala)
  *  - Play with abstract machines, you can look into AAM.scala, AAC.scala or
  *    Free.scala (AAM is the simplest machine).
  *  - Implement some kind of analysis, you'll probably need to design a lattice
  *    that is suited for your analysis. You can use an existing lattice as an
- *    inspiration (AbstractType.scala is a good lattice to start with, even
- *    though its very imprecise, it's simple. You can then look into
- *    AbstractTypeSet.scala).
+ *    inspiration.
  */
 
 /**
