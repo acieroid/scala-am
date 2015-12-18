@@ -301,9 +301,13 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       abs.bottom
     } else {
       val cond = numEq(b, abs.inject(0))
-      val t = if (abs.isTrue(cond)) { a } else { abs.bottom }
-      val f = if (abs.isFalse(cond)) { gcd(b, modulo(a, b), visited + ((a, b))) } else { abs.bottom }
-      abs.join(t, f)
+      if (cond.isError) {
+        cond
+      } else {
+        val t = if (abs.isTrue(cond)) { a } else { abs.bottom }
+        val f = if (abs.isFalse(cond)) { gcd(b, modulo(a, b), visited + ((a, b))) } else { abs.bottom }
+        abs.join(t, f)
+      }
     }
   }
   private def gcd(a: Abs, b: Abs): Abs = gcd(a, b, Set())
