@@ -83,8 +83,12 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     ("(- 3)", abs.inject(-3))
   ))
 
-  // division (/) is implemented BUT we don't support non-integers yet
-  // abs is not implemented
+  // division (/) is implemented BUT we don't support fractions yet
+  r5rs("abs", Table(
+    ("program", "answer"),
+    ("(abs -7)", abs.inject(7)),
+    ("(abs 7)", abs.inject(7)),
+    ("(abs 0)", abs.inject(0))))
 
   r5rs("modulo", Table(
     ("program", "answer"),
@@ -106,7 +110,10 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
   // numerator not implemented yet
   // denominator not implemented yet
   // floor not implemented yet
-  // ceiling not implemented yet
+  r5rs("ceiling", Table(
+    ("program", "answer"),
+    ("(ceiling -4.3)", abs.inject(-4.toFloat)),
+    ("(ceiling 3.5)", abs.inject(4.toFloat))))
   // truncate not implemented yet
   // round not implemented yet
   // rationalize not implemented yet

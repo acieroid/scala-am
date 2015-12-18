@@ -290,6 +290,16 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   private def cdr(v: Abs, store: Store[Addr, Abs]): Abs =
     abs.cdr(v).foldLeft(abs.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
 
+  private def abs(v: Abs): Abs = {
+    val test = lt(v, abs.inject(0))
+    if (abs.isError(test)) {
+      test
+    } else {
+      val t = if (abs.isTrue(test)) { minus(abs.inject(0), v) } else { abs.bottom }
+      val f = if (abs.isFalse(test)) { v } else { abs.bottom }
+      abs.join(t, f)
+    }
+  }
 
   /* Among them, recursive primitives need to be defined as a fixpoint operation,
    * otherwise abstract values (e.g., gcd(Int, Int)) can lead to infinite
@@ -301,7 +311,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       abs.bottom
     } else {
       val cond = numEq(b, abs.inject(0))
-      if (cond.isError) {
+      if (abs.isError(cond)) {
         cond
       } else {
         val t = if (abs.isTrue(cond)) { a } else { abs.bottom }
@@ -404,7 +414,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("boolean?", isBoolean),
     BinaryOperation("eq?", eq),
     BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store)),
-    UnaryStoreOperation("length", (v, store) => (length(v, store), store))
+    UnaryStoreOperation("length", (v, store) => (length(v, store), store)),
+    UnaryOperation("abs", abs)
     // BinaryStoreOperation("make-vector", makeVector _),
     // UnaryOperation("vector?", isVector),
     // BinaryOperation(
