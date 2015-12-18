@@ -176,7 +176,8 @@ object Main {
               case None => StdIn.readLine(">>> ")
             }
             if (program == null) throw Done
-            run(machine, sem)(program, config.dotfile)
+            if (program.size > 0)
+              run(machine, sem)(program, config.dotfile)
           } while (config.file.isEmpty)
         } catch {
           case Done => ()
