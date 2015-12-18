@@ -54,7 +54,10 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
 
   /* 6.2 Numbers */
   // complex? is not implemented
-  // real? is not implemented
+  r5rs("real?", Table(
+    ("program", "answer"),
+    ("(real? 3)", t),
+    ("(real? 1.5)", t)))
   // rational? is not implemented
   // max is not implemented
 

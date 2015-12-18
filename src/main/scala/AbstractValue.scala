@@ -374,7 +374,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("symbol?", isSymbol),
     UnaryOperation("string?", isString),
     UnaryOperation("integer?", isInteger),
-    UnaryOperation("number?", isInteger), // TODO: support other numbers as well
+    UnaryOperation("number?", x => abs.or(isInteger(x), isFloat(x))), /* TODO: complex numbers */
+    UnaryOperation("real?", x => abs.or(isInteger(x), isFloat(x))),
     UnaryOperation("boolean?", isBoolean),
     BinaryOperation("eq?", eq),
     BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store)),

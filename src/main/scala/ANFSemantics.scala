@@ -23,6 +23,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     }
     case ANFValue(ValueString(s)) => Right(abs.inject(s))
     case ANFValue(ValueInteger(n)) => Right(abs.inject(n))
+    case ANFValue(ValueFloat(n)) => Right(abs.inject(n))
     case ANFValue(ValueBoolean(b)) => Right(abs.inject(b))
     case ANFValue(v) => Left(s"Unhandled value: ${v}")
   }
