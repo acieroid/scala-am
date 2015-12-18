@@ -254,6 +254,27 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       }
     }
   }
+  object Max extends VariadicOperation {
+    /* TODO: In Scheme, max casts numbers to inexact as soon as one of them is inexact, but we don't support that */
+    val name = "max"
+    private def call(args: List[Abs], max: Abs): Abs = args match {
+      case Nil => max
+      case x :: rest => {
+        val test = lt(max, x)
+        if (abs.isError(test)) {
+          test
+        } else {
+          val t = if (abs.isTrue(test)) { call(rest, x) } else { abs.bottom }
+          val f = if (abs.isFalse(test)) { call(rest, max) } else { abs.bottom }
+          abs.join(t, f)
+        }
+      }
+    }
+    def call(args: List[Abs]) = args match {
+      case Nil => Left("max: at least 1 operand expected, got 0")
+      case x :: rest => Right(call(rest, x))
+    }
+  }
 
   /* Some primitives can be defined as just a function that we pass to one of the helper class' constructor */
 
@@ -326,7 +347,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
 
   /** Bundles all the primitives together */
   val all: List[Primitive[Addr, Abs]] = List(
-    Plus, Minus, Times, Div,
+    Plus, Minus, Times, Div, Max,
     BinaryOperation("quotient", div),
     BinaryOperation("<", lt), // TODO: <, <=, =, >, >= should accept any number of arguments
     BinaryOperation("<=", (x, y) => abs.or(lt(x, y), numEq(x, y))),

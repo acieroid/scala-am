@@ -59,7 +59,13 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     ("(real? 3)", t),
     ("(real? 1.5)", t)))
   // rational? is not implemented
-  // max is not implemented
+
+  r5rs("max", Table(
+    ("program", "answer"),
+    ("(max 3 4)", abs.inject(4)),
+    ("(max 3.9 4)", abs.inject(4)), /* TODO: Does not exactly follow spec (should be 4.0) */
+    ("(max 1)", abs.inject(1)),
+    ("(max 1 2 3 4 5 4 3 2 1)", abs.inject(5))))
 
   r5rs("+", Table(
     ("program", "answer"),
