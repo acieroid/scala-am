@@ -9,7 +9,7 @@ object ConcreteLattice extends Lattice {
     def isFalse: Boolean = false
     def isError: Boolean = false
     def unaryOp(op: UnaryOperator): L = op match {
-      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsBoolean => False
+      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsFloat | IsBoolean => False
       case Not => False
       case _ => ConcreteError(s"$op not applicable with operand $this")
     }
@@ -34,8 +34,8 @@ object ConcreteLattice extends Lattice {
     override def toString = v.toString
     override def unaryOp(op: UnaryOperator) = op match {
       case IsInteger => True
-      case Ceiling => ConcreteInt(v)
-      case Log => ConcreteInt(scala.math.log(v).toInt) /* TODO: float */
+      case Ceiling => ConcreteFloat(v)
+      case Log => ConcreteFloat(scala.math.log(v).toFloat)
       case Random => ConcreteInt(scala.util.Random.nextInt % v)
       case _ => super.unaryOp(op)
     }
@@ -46,6 +46,38 @@ object ConcreteLattice extends Lattice {
         case Times => ConcreteInt(v * v2)
         case Div => ConcreteInt(v / v2)
         case Modulo => ConcreteInt(v % v2)
+        case Lt => ConcreteBool(v < v2)
+        case NumEq => ConcreteBool(v == v2)
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
+    }
+  }
+  case class ConcreteFloat(v: Float) extends L {
+    override def toString = v.toString
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsFloat => True
+      case Ceiling => ConcreteFloat(scala.math.ceil(v).toFloat)
+      case Log => ConcreteFloat(scala.math.log(v).toFloat)
+      case Random => ConcreteFloat(scala.util.Random.nextFloat % v)
+      case _ => super.unaryOp(op)
+    }
+    override def binaryOp(op: BinaryOperator)(that: L) = that match {
+      case ConcreteInt(v2) => op match {
+        case Plus => ConcreteFloat(v + v2)
+        case Minus => ConcreteFloat(v - v2)
+        case Times => ConcreteFloat(v * v2)
+        case Div => ConcreteFloat(v / v2)
+        case Modulo => ConcreteFloat(v % v2)
+        case Lt => ConcreteBool(v < v2)
+        case NumEq => ConcreteBool(v == v2)
+        case _ => super.binaryOp(op)(that)
+      }
+      case ConcreteFloat(v2) => op match {
+        case Plus => ConcreteFloat(v + v2)
+        case Minus => ConcreteFloat(v - v2)
+        case Times => ConcreteFloat(v * v2)
+        case Div => ConcreteFloat(v / v2)
         case Lt => ConcreteBool(v < v2)
         case NumEq => ConcreteBool(v == v2)
         case _ => super.binaryOp(op)(that)
@@ -183,6 +215,7 @@ object ConcreteLattice extends Lattice {
     def bottom = Bottom
     def error(x: L): L = ConcreteError(x.toString)
     def inject(x: Int): L = ConcreteInt(x)
+    def inject(x: Float): L = ConcreteFloat(x)
     def inject(x: String): L = ConcreteString(x)
     def inject(x: Char): L = ConcreteChar(x)
     def inject(x: Boolean): L = ConcreteBool(x)

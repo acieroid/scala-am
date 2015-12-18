@@ -119,6 +119,7 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
       case Elements(xs) => xs.foldLeft(bottom)((acc, x) => join(acc, Element(abs.error(x))))
     }
     def inject(x: Int): L = Element(abs.inject(x))
+    def inject(x: Float): L = Element(abs.inject(x))
     def inject(x: String): L = Element(abs.inject(x))
     def inject(x: Char): L = Element(abs.inject(x))
     def inject(x: Boolean): L = Element(abs.inject(x))

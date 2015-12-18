@@ -18,7 +18,7 @@ trait Primitive[Addr, Abs] {
 /** These are the unary operations that should be supported by lattices */
 object UnaryOperator extends Enumeration {
   type UnaryOperator = Value
-  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsBoolean, /* Checks the type of a value */
+  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsFloat, IsBoolean, /* Checks the type of a value */
     Not, /* Negate a value */
     Ceiling, Log, Random /* Unary arithmetic operations */
   = Value
@@ -92,6 +92,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def error(x: A): A
   /** Injection of an integer */
   def inject(x: Int): A
+  /** Injection of a float */
+  def inject(x: Float): A
   /** Injection of a string */
   def inject(x: String): A
   /** Injection of a boolean */
@@ -108,6 +110,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def injectSymbol(x: String): A
   /** Creates a cons cell */
   def cons[Addr : Address](car: Addr, cdr: Addr): A
+  // /** Creates a vector */
+  // def vector(size: A, init: A): A
   /** Nil value */
   def nil: A
 }
@@ -124,6 +128,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   def isSymbol = abs.unaryOp(UnaryOperator.IsSymbol) _
   def isString = abs.unaryOp(UnaryOperator.IsString) _
   def isInteger = abs.unaryOp(UnaryOperator.IsInteger) _
+  def isFloat = abs.unaryOp(UnaryOperator.IsFloat) _
   def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
   def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
   def log = abs.unaryOp(UnaryOperator.Log) _
@@ -374,6 +379,9 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     BinaryOperation("eq?", eq),
     BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store)),
     UnaryStoreOperation("length", (v, store) => (length(v, store), store))
+    // BinaryStoreOperation("make-vector", makeVector _),
+    // UnaryOperation("vector?", isVector),
+    // BinaryOperation(
   )
 
   private val allocated = all.map({ prim => (prim.name, addr.primitive(prim.name), abs.inject(prim)) })

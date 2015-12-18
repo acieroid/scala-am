@@ -111,6 +111,12 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
       case UnsupportedLatticeElement =>
         Right(yabs.inject(x))
     }
+    def inject(x: Float) = try {
+      Left(xabs.inject(x))
+    } catch {
+      case UnsupportedLatticeElement =>
+        Right(yabs.inject(x))
+    }
     def inject(x: String) = try {
       Left(xabs.inject(x))
     } catch {

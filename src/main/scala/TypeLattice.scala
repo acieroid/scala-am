@@ -6,7 +6,7 @@ import BinaryOperator._
 object TypeLattice extends Lattice {
   trait Element {
     def unaryOp(op: UnaryOperator): L = op match {
-      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsBoolean => False
+      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsFloat | IsBoolean => False
       case Not => False
       case _ => Error
     }
@@ -25,12 +25,38 @@ object TypeLattice extends Lattice {
     override def toString = "Int"
     override def unaryOp(op: UnaryOperator) = op match {
       case IsInteger => True
-      case Ceiling | Log | Random => Int
+      case Ceiling | Random => Int
+      case Log => Float
       case _ => super.unaryOp(op)
     }
     override def binaryOp(op: BinaryOperator)(that: L) = that match {
       case Int => op match {
         case Plus | Minus | Times | Div | Modulo => Int
+        case Lt | NumEq => throw CannotJoin[L](True, False)
+        case _ => super.binaryOp(op)(that)
+      }
+      case Float => op match {
+        case Plus | Minus | Times | Div => Float
+        case Lt | NumEq => throw CannotJoin[L](True, False)
+      }
+      case _ => super.binaryOp(op)(that)
+    }
+  }
+  object Float extends L {
+    override def toString = "Float"
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsFloat => True
+      case Ceiling | Log | Random => Float
+      case _ => super.unaryOp(op)
+    }
+    override def binaryOp(op: BinaryOperator)(that: L) = that match {
+      case Float => op match {
+        case Plus | Minus | Times | Div => Float
+        case Lt | NumEq => throw CannotJoin[L](True, False)
+        case _ => super.binaryOp(op)(that)
+      }
+      case Int => op match {
+        case Plus | Minus | Times | Div | Modulo => Float
         case Lt | NumEq => throw CannotJoin[L](True, False)
         case _ => super.binaryOp(op)(that)
       }
@@ -188,6 +214,7 @@ object TypeLattice extends Lattice {
     def bottom = Bottom
     def error(x: L) = Error
     def inject(x: Int) = Int
+    def inject(x: Float) = Float
     def inject(x: String) = String
     def inject(x: Boolean) = if (x) { True } else { False }
     def inject(x: Char) = Char
