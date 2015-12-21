@@ -8,14 +8,18 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
   private type X = lattice.L
   private val abs = lattice.isAbstractValue
 
-  trait El
+  trait El {
+    private[PowerSetLattice] def values: Set[X]
+  }
   type L = El
   private case class Element(x: X) extends L {
     override def toString = x.toString
+    private[PowerSetLattice] def values = Set(x)
   }
   private case class Elements(xs: Set[X]) extends L {
-    require(xs.size > 0, "Power set element created with no elements inside, X's bottom should be used instead")
+    require(xs.size > 1, s"Power set element created with less than two elements inside ($xs), Element class should be used instead")
     override def toString = "{" + xs.mkString(", ") + "}"
+    private[PowerSetLattice] def values = xs
   }
 
   implicit val isAbstractValue = new AbstractValue[L] {
@@ -39,7 +43,7 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
     private def wrapped(x: => X): L = try {
       Element(x)
     } catch {
-      case CannotJoin(x1: X, x2: X) => Elements(Set[X](x1, x2))
+      case err: CannotJoin[X] => Elements(err.values)
     }
     def unaryOp(op: UnaryOperator)(p: L): L = p match {
       case Element(x) => wrapped(abs.unaryOp(op)(x))
@@ -100,6 +104,10 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
       case Element(x) => abs.cdr[Addr](x)
       case Elements(xs) => xs.flatMap(x => abs.cdr[Addr](x))
     }
+    def vectorSet[Addr : Address](vector: L, index: L, value: L) = (vector, index, value) match {
+      case (Element(vec), Element(i), Element(v)) => Element(abs.vectorSet(vec, i, v))
+      case _ => Elements(vector.values.flatMap(vec => index.values.flatMap(i => value.values.map(v => abs.vectorSet(vec, i, v)))))
+    }
     def toString[Addr : Address](p: L, store: Store[Addr, L]) = p.toString /* TODO */
     def getClosures[Exp : Expression, Addr : Address](p: L) = p match {
       case Element(x) => abs.getClosures[Exp, Addr](x)
@@ -112,6 +120,10 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
     def getTids[TID : ThreadIdentifier](p: L) = p match {
       case Element(x) => abs.getTids[TID](x)
       case Elements(xs) => xs.flatMap(x => abs.getTids[TID](x))
+    }
+    def getVectors[Addr : Address](p: L) = p match {
+      case Element(x) => abs.getVectors[Addr](x)
+      case Elements(xs) => xs.flatMap(x => abs.getVectors[Addr](x))
     }
     def bottom: L = Element(abs.bottom)
     def error(p: L) = p match {
@@ -129,5 +141,14 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
     def injectSymbol(x: String): L = Element(abs.injectSymbol(x))
     def nil: L = Element(abs.nil)
     def cons[Addr : Address](car: Addr, cdr: Addr): L = Element(abs.cons(car, cdr))
+    def vector[Addr : Address](addr: Addr, size: L, init: L) = (size, init) match {
+      case (Element(n), Element(i)) => {
+        val (va, vec) = abs.vector(addr, n, i)
+        (Element(va), Element(vec))
+      }
+      case _ =>
+        val vs = size.values.flatMap(n => init.values.map(i => abs.vector(addr, n, i)))
+        (Elements(vs.map(_._1)), Elements(vs.map(_._2)))
+    }
   }
 }

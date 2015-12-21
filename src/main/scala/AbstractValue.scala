@@ -18,9 +18,10 @@ trait Primitive[Addr, Abs] {
 /** These are the unary operations that should be supported by lattices */
 object UnaryOperator extends Enumeration {
   type UnaryOperator = Value
-  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsFloat, IsBoolean, /* Checks the type of a value */
+  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsFloat, IsBoolean, IsVector, /* Checks the type of a value */
     Not, /* Negate a value */
-    Ceiling, Log, Random /* Unary arithmetic operations */
+    Ceiling, Log, Random, /* Unary arithmetic operations */
+    VectorLength, StringLength /* Length operations */
   = Value
 }
 import UnaryOperator._
@@ -30,7 +31,8 @@ object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
   val Plus, Minus, Times, Div, Modulo, /* Arithmetic operations */
     Lt, /* Arithmetic comparison */
-    NumEq, Eq /* Equality checking (number equality, physical equality) */
+    NumEq, Eq, /* Equality checking (number equality, physical equality) */
+    VectorRef /* Gets an element of a vector */
   = Value
 }
 import BinaryOperator._
@@ -42,9 +44,9 @@ import BinaryOperator._
 object UnsupportedLatticeElement extends Exception
 
 /**
- * Exception to be raised when two objects cannot be joined
+ * Exception to be raised when multiple values cannot be joined
  */
-case class CannotJoin[Abs](x: Abs, y: Abs) extends Exception
+case class CannotJoin[Abs : AbstractValue](values: Set[Abs]) extends Exception
 
 /** Abstract values are abstract representations of the possible values of a variable */
 trait AbstractValue[A] extends Semigroup[A] {
@@ -76,6 +78,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def car[Addr : Address](x: A): Set[Addr]
   /** Takes the cdr of a cons cell */
   def cdr[Addr : Address](x: A): Set[Addr]
+  /** Changes a value inside a vector */
+  def vectorSet[Addr : Address](vector: A, index: A, value: A): A
   /** Returns the string representation of this value */
   def toString[Addr : Address](x: A, store: Store[Addr, A]): String
 
@@ -85,6 +89,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def getPrimitives[Addr : Address, Abs : AbstractValue](x: A): Set[Primitive[Addr, Abs]]
   /** Extract thread ids contained in this value */
   def getTids[TID : ThreadIdentifier](x: A): Set[TID]
+  /** Extract vector addresses contained in this value */
+  def getVectors[Addr : Address](x: A): Set[Addr]
 
   /** Bottom element of the lattice */
   def bottom: A
@@ -110,8 +116,10 @@ trait AbstractValue[A] extends Semigroup[A] {
   def injectSymbol(x: String): A
   /** Creates a cons cell */
   def cons[Addr : Address](car: Addr, cdr: Addr): A
-  // /** Creates a vector */
-  // def vector(size: A, init: A): A
+  /** Creates a vector that resides at address @param addr, has size @param size
+    * and initial values set to @param init. Returns two values: one containing
+    * the address of the vector, and the other being the vector value itself. */
+  def vector[Addr : Address](addr: Addr, size: A, init: A): (A, A)
   /** Nil value */
   def nil: A
 }
@@ -130,6 +138,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   def isInteger = abs.unaryOp(UnaryOperator.IsInteger) _
   def isFloat = abs.unaryOp(UnaryOperator.IsFloat) _
   def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
+  def isVector = abs.unaryOp(UnaryOperator.IsVector) _
+  def vectorLength = abs.unaryOp(UnaryOperator.VectorLength) _
   def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
   def log = abs.unaryOp(UnaryOperator.Log) _
   def not = abs.unaryOp(UnaryOperator.Not) _
@@ -142,17 +152,52 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   def lt = abs.binaryOp(BinaryOperator.Lt) _
   def numEq = abs.binaryOp(BinaryOperator.NumEq) _
   def eq = abs.binaryOp(BinaryOperator.Eq) _
+  def vectorRef = abs.binaryOp(BinaryOperator.VectorRef) _
 
   /** This is how a primitive is defined by extending Primitive */
   object Cons extends Primitive[Addr, Abs] {
     val name = "cons"
-    def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (carexp, car) :: (cdrexp, cdr) :: Nil => {
         val cara = addr.cell(carexp, t)
         val cdra = addr.cell(cdrexp, t)
         Right((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr)))
       }
       case l => Left(s"cons: 2 operands expected, got ${l.size} instead")
+    }
+  }
+
+  object MakeVector extends Primitive[Addr, Abs] {
+    val name = "make-vector"
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
+      case (_, size) :: (_, init) :: Nil => {
+        val test = isInteger(size)
+        if (abs.isError(test))
+          Right((test, store))
+        else if (abs.isTrue(test)) {
+          val a = addr.cell(fexp, t)
+          val (va, vector) = abs.vector(a, size, init)
+          Right((va, store.extend(a, vector)))
+        } else {
+          Left(s"make-vector: first operand should be an integer (was $size)")
+        }
+      }
+      case l => Left(s"make-vector: 2 operands expected, got ${l.size} instead")
+    }
+  }
+
+  object VectorSet extends Primitive[Addr, Abs] {
+    val name = "vector-set!"
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
+      case (_, vector) :: (_, index) :: (_, value) :: Nil => {
+        val (store2, res) = abs.getVectors(vector).foldLeft((store, abs.bottom))((acc, addr) => {
+          val old = store.lookup(addr)
+          val vec = abs.vectorSet(old, index, value)
+          (acc._1.update(addr, vec), abs.join(acc._2, vec))
+        })
+        Right((res, store2))
+      }
+      case l => Left(s"vector-set!: 3 operands expected, got ${l.size} instead")
     }
   }
 
@@ -415,10 +460,13 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     BinaryOperation("eq?", eq),
     BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store)),
     UnaryStoreOperation("length", (v, store) => (length(v, store), store)),
-    UnaryOperation("abs", abs)
-    // BinaryStoreOperation("make-vector", makeVector _),
-    // UnaryOperation("vector?", isVector),
-    // BinaryOperation(
+    UnaryOperation("abs", abs),
+    MakeVector, VectorSet,
+    UnaryOperation("vector?", isVector),
+    UnaryOperation("vector-length", vectorLength),
+    BinaryStoreOperation("vector-ref", (v, i, store) =>
+      (abs.getVectors(v).foldLeft(abs.bottom)((acc, va) =>
+        abs.join(acc, vectorRef(store.lookup(va), i))), store))
   )
 
   private val allocated = all.map({ prim => (prim.name, addr.primitive(prim.name), abs.inject(prim)) })

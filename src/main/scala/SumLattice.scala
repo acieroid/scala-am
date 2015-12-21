@@ -171,5 +171,9 @@ class SumLattice[X : AbstractValue, Y : AbstractValue] {
       case UnsupportedLatticeElement =>
         Right(yabs.cons[Addr](car, cdr))
     }
+    /* TODO: implement vectors */
+    def vector[Addr : Address](addr: Addr, size: Sum, init: Sum) = ???
+    def vectorSet[Addr : Address](vector: Sum, index: Sum, value: Sum) = ???
+    def getVectors[Addr : Address](x: Sum) = ???
   }
 }

@@ -70,7 +70,7 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
       case _ => Set()
     }
     def getPrimitives[Addr : Address, Abs : AbstractValue](p: Product) = p match {
-      case Prod(x, y) => xabs.getPrimitives[Addr, Abs](x) ++ yabs.getPrimitives[Addr, Abs](y)
+      case Prod(x, y) => xabs.getPrimitives[Addr, Abs](x) ++ yabs.getPrimitives[Addr, Abs](y) 
       case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](p: Product) = p match {
@@ -93,5 +93,10 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     def injectSymbol(x: String) = Prod(xabs.injectSymbol(x), yabs.injectSymbol(x))
     def nil = Prod(xabs.nil, yabs.nil)
     def cons[Addr : Address](car: Addr, cdr: Addr) = Prod(xabs.cons[Addr](car, cdr), yabs.cons[Addr](car, cdr))
+    /* TODO: implement vectors */
+    def vector[Addr : Address](addr: Addr, size: Product, init: Product) = ???
+    def vectorSet[Addr : Address](vector: Product, index: Product, value: Product) = ???
+    def getVectors[Addr : Address](x: Product) = ???
+
   }
 }

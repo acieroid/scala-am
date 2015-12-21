@@ -1,8 +1,8 @@
 import UnaryOperator._
 import BinaryOperator._
 
-/** Type lattice without top element. It distinguishes #t and #f, but also has a
-  * bool element (it is therefore *not* a flat lattice) */
+/** Type lattice without top element. It distinguishes #t and #f, but has no
+  * bool element (this is handled by its powerset lattice) */
 object TypeLattice extends Lattice {
   trait Element {
     def unaryOp(op: UnaryOperator): L = op match {
@@ -11,7 +11,7 @@ object TypeLattice extends Lattice {
       case _ => Error
     }
     def binaryOp(op: BinaryOperator)(that: L): L = op match {
-      case Eq => throw CannotJoin[L](True, False)
+      case Eq => throw CannotJoin[L](Set(True, False))
       case _ => Error
     }
   }
@@ -32,12 +32,12 @@ object TypeLattice extends Lattice {
     override def binaryOp(op: BinaryOperator)(that: L) = that match {
       case Int => op match {
         case Plus | Minus | Times | Div | Modulo => Int
-        case Lt | NumEq => throw CannotJoin[L](True, False)
+        case Lt | NumEq => throw CannotJoin[L](Set(True, False))
         case _ => super.binaryOp(op)(that)
       }
       case Float => op match {
         case Plus | Minus | Times | Div => Float
-        case Lt | NumEq => throw CannotJoin[L](True, False)
+        case Lt | NumEq => throw CannotJoin[L](Set(True, False))
       }
       case _ => super.binaryOp(op)(that)
     }
@@ -52,12 +52,12 @@ object TypeLattice extends Lattice {
     override def binaryOp(op: BinaryOperator)(that: L) = that match {
       case Float => op match {
         case Plus | Minus | Times | Div => Float
-        case Lt | NumEq => throw CannotJoin[L](True, False)
+        case Lt | NumEq => throw CannotJoin[L](Set(True, False))
         case _ => super.binaryOp(op)(that)
       }
       case Int => op match {
         case Plus | Minus | Times | Div | Modulo => Float
-        case Lt | NumEq => throw CannotJoin[L](True, False)
+        case Lt | NumEq => throw CannotJoin[L](Set(True, False))
         case _ => super.binaryOp(op)(that)
       }
       case _ => super.binaryOp(op)(that)
@@ -67,6 +67,7 @@ object TypeLattice extends Lattice {
     override def toString = "String"
     override def unaryOp(op: UnaryOperator) = op match {
       case IsString => True
+      case StringLength => Int
       case _ => super.unaryOp(op)
     }
   }
@@ -143,8 +144,29 @@ object TypeLattice extends Lattice {
       case _ => super.unaryOp(op)
     }
   }
+  case class VectorAddress[Addr : Address](addr : Addr) extends L
+  /** Since ints are abstracted, all elements are joined together and access
+    * returns the join of all possible elements of the vector */
+  case class Vector(content: Set[L]) extends L {
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsVector => True
+      case VectorLength => Int
+      case _ => super.unaryOp(op)
+    }
+    override def binaryOp(op: BinaryOperator)(that: L) = op match {
+      case VectorRef => that match {
+        case Int => content.size match {
+          case 0 => Bottom
+          case 1 => content.head
+          case _ => throw CannotJoin[L](content)
+        }
+        case _ => Error
+      }
+      case _ => super.binaryOp(op)(that)
+    }
+  }
 
-  implicit val isAbstractValue = new AbstractValue[L] {
+  implicit val isAbstractValue: AbstractValue[L] = new AbstractValue[L] {
     def name = "Type"
     def isTrue(x: L) = x match {
       case False => false
@@ -159,7 +181,7 @@ object TypeLattice extends Lattice {
     def isError(x: L) = x == Error
     def unaryOp(op: UnaryOperator)(x: L) = x.unaryOp(op)
     def binaryOp(op: BinaryOperator)(x: L, y: L) = x.binaryOp(op)(y)
-    def join(x: L, y: L) = if (x == y || y == Bottom) { x } else if (x == Bottom) { y } else { throw CannotJoin[L](x, y) }
+    def join(x: L, y: L) = if (x == y || y == Bottom) { x } else if (x == Bottom) { y } else { throw CannotJoin[L](Set(x, y)) }
     def meet(x: L, y: L) = if (x == y) { x } else { bottom }
     def subsumes(x: L, y: L) = x == y || y == Bottom
     def and(x: L, y: => L) = x match {
@@ -177,6 +199,13 @@ object TypeLattice extends Lattice {
     def cdr[Addr : Address](x: L) = x match {
       case Cons(car: Addr, cdr: Addr) => Set(cdr)
       case _ => Set()
+    }
+    def vectorSet[Addr : Address](vector: L, index: L, value: L) = vector match {
+      case Vector(elements) => index match {
+        case Int => Vector(elements + value)
+        case _ => Error
+      }
+      case _ => Error
     }
 
     private def toString[Addr : Address](x: L, store: Store[Addr, L], inside: Boolean, visited: Set[L]): String = x match {
@@ -210,6 +239,10 @@ object TypeLattice extends Lattice {
       case Tid(t: TID) => Set(t)
       case _ => Set()
     }
+    def getVectors[Addr : Address](x: L) = x match {
+      case VectorAddress(a: Addr) => Set(a)
+      case _ => Set()
+    }
 
     def bottom = Bottom
     def error(x: L) = Error
@@ -224,6 +257,10 @@ object TypeLattice extends Lattice {
     def injectSymbol(x: String) = Symbol
     def nil = Nil
     def cons[Addr : Address](car: Addr, cdr: Addr) = Cons(car, cdr)
+    def vector[Addr : Address](addr: Addr, size: L, init: L) = size match {
+      case Int => (VectorAddress(addr), Vector(Set(init)))
+      case _ => (Error, Bottom)
+    }
   }
 }
 

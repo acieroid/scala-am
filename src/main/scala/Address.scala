@@ -11,10 +11,10 @@ trait ClassicalAddress
 
 object ClassicalAddress {
   case class VariableAddress[Time : Timestamp](name: String, t: Time) extends ClassicalAddress {
-    override def toString = s"@name"
+    override def toString = s"@$name"
   }
   case class PrimitiveAddress(name: String) extends ClassicalAddress {
-    override def toString = s"@name"
+    override def toString = s"@$name"
   }
   case class CellAddress[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) extends ClassicalAddress
 
