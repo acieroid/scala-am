@@ -6,12 +6,12 @@ import BinaryOperator._
 object TypeLattice extends Lattice {
   trait Element {
     def unaryOp(op: UnaryOperator): L = op match {
-      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsFloat | IsBoolean => False
+      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsFloat | IsBoolean | IsVector => False
       case Not => False
       case _ => Error
     }
     def binaryOp(op: BinaryOperator)(that: L): L = op match {
-      case Eq => throw CannotJoin[L](Set(True, False))
+      case Eq => if (this == that) { throw CannotJoin[L](Set(True, False)) } else { False }
       case _ => Error
     }
   }
@@ -144,7 +144,12 @@ object TypeLattice extends Lattice {
       case _ => super.unaryOp(op)
     }
   }
-  case class VectorAddress[Addr : Address](addr : Addr) extends L
+  case class VectorAddress[Addr : Address](addr : Addr) extends L {
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsVector => True
+      case _ => super.unaryOp(op)
+    }
+  }
   /** Since ints are abstracted, all elements are joined together and access
     * returns the join of all possible elements of the vector */
   case class Vector(content: Set[L]) extends L {

@@ -38,7 +38,7 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     ("(eq? '() '())", t),
     ("(eq? car car)", t),
     ("(let ((x '(a))) (eq? x x))", t),
-    // ("(let ((x (make-vector 0))) (eq? x x))", t), // vectors not implemented
+    ("(let ((x (make-vector 0 1))) (eq? x x))", t),
     ("(let ((p (lambda (x) x))) (eq? p p))", t)
   ))
 
@@ -48,8 +48,8 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     ("(equal? '(a) '(a))", t),
     ("(equal? '(a (b) c) '(a (b) c))", t),
     ("(equal? \"abc\" \"abc\")", t),
-    ("(equal? 2 2)", t)
-    // ("(equal? (make-vector 5 'a) (make-vector 5 'a))", t), // vectors not implemented
+    ("(equal? 2 2)", t),
+    ("(equal? (make-vector 5 'a) (make-vector 5 'a))", t)
   ))
 
   /* 6.2 Numbers */
@@ -139,7 +139,7 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     ("(pair? (cons 'a 'b))", t),
     ("(pair? '(a b c))", t),
     ("(pair? '())", f)
-    // ("(pair? '#(a b))", t) // vectors not supported
+    // ("(pair? '#(a b))", t) // # notation not supported
   ))
 
   r5rs("cons", Table(
@@ -211,7 +211,7 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
   // integer->char not implemented
   // char<=? not implemented
 
-  // 6.3.6: vectors are not supported
+  // 6.3.6: vector notation (#(1 2)) not supported
 
   /* 6.4 Control features */
   // procedure not implemented

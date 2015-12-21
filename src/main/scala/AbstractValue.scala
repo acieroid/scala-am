@@ -139,7 +139,6 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   def isFloat = abs.unaryOp(UnaryOperator.IsFloat) _
   def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
   def isVector = abs.unaryOp(UnaryOperator.IsVector) _
-  def vectorLength = abs.unaryOp(UnaryOperator.VectorLength) _
   def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
   def log = abs.unaryOp(UnaryOperator.Log) _
   def not = abs.unaryOp(UnaryOperator.Not) _
@@ -152,7 +151,6 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   def lt = abs.binaryOp(BinaryOperator.Lt) _
   def numEq = abs.binaryOp(BinaryOperator.NumEq) _
   def eq = abs.binaryOp(BinaryOperator.Eq) _
-  def vectorRef = abs.binaryOp(BinaryOperator.VectorRef) _
 
   /** This is how a primitive is defined by extending Primitive */
   object Cons extends Primitive[Addr, Abs] {
@@ -335,6 +333,15 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   private def cdr(v: Abs, store: Store[Addr, Abs]): Abs =
     abs.cdr(v).foldLeft(abs.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
 
+  def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): Abs =
+    abs.getVectors(v).foldLeft(abs.bottom)((acc, va) =>
+      abs.join(acc, abs.binaryOp(VectorRef)(store.lookup(va), index)))
+
+  def vectorLength(v: Abs, store: Store[Addr, Abs]): Abs =
+    abs.getVectors(v).foldLeft(abs.bottom)((acc, va) =>
+      abs.join(acc, abs.unaryOp(VectorLength)(store.lookup(va))))
+
+  /** (define (abs x) (if (< x 0) (- 0 x) x)) */
   private def abs(v: Abs): Abs = {
     val test = lt(v, abs.inject(0))
     if (abs.isError(test)) {
@@ -367,34 +374,99 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   }
   private def gcd(a: Abs, b: Abs): Abs = gcd(a, b, Set())
 
-  /** (define (equal? a b) (or (eq? a b) (and (null? a) (null? b)) (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b))))) */
-  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): Abs = {
-    if (visited.contains(a, b)) {
+  /** (define (equal? a b)
+        (or (eq? a b)
+          (and (null? a) (null? b))
+          (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
+          (and (vector? a) (vector? b)
+            (let ((n (vector-length a)))
+              (and (= (vector-length b) n)
+                (letrec ((loop (lambda (i)
+                                 (or (= i n)
+                                   (and (equal? (vector-ref a i) (vector-ref b i))
+                                     (loop (+ i 1)))))))
+                  (loop 0)))))))
+   */
+  private def equalVecLoop(a: Abs, b: Abs, i: Abs, n: Abs, store: Store[Addr, Abs], visitedEqual: Set[(Abs, Abs)], visited: Set[(Abs, Abs, Abs, Abs)]): Abs =
+    if (visited.contains((a, b, i, n)) || a == abs.bottom || b == abs.bottom || i == abs.bottom || n == abs.bottom) {
+      abs.bottom
+    } else {
+      val numtest = numEq(i, n)
+      val t = if (abs.isTrue(numtest)) { abs.inject(true) } else { abs.bottom }
+      val f = if (abs.isFalse(numtest)) {
+        val itemtest = equal(vectorRef(a, i, store), vectorRef(b, i, store), store, visitedEqual)
+        val tt = if (abs.isTrue(itemtest)) {
+          equalVecLoop(a, b, abs.binaryOp(BinaryOperator.Plus)(i, abs.inject(1)), n, store, visitedEqual, visited + ((a, b, i, n)))
+        } else { abs.bottom }
+        val tf = if (abs.isFalse(itemtest)) { abs.inject(false) } else { abs.bottom }
+        abs.join(tt, tf)
+      } else { abs.bottom }
+      abs.join(t, f)
+    }
+
+  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): Abs =
+    if (visited.contains(a, b) || a == abs.bottom || b == abs.bottom) {
       abs.bottom
     } else {
       val visited2 = visited + ((a, b))
-      abs.or(eq(a, b),
-        abs.or(abs.and(isNull(a), isNull(b)),
-          abs.and(isCons(a),
-            abs.and(isCons(b),
-              abs.and(equal(car(a, store), car(b, store), store, visited2),
-                equal(cdr(a, store), cdr(b, store), store, visited2))))))
+      val eqtest = eq(a, b)
+      val t = if (abs.isTrue(eqtest)) { eqtest } else { abs.bottom }
+      val f = if (abs.isFalse(eqtest)) {
+        val nulltest = abs.and(isNull(a), isNull(b))
+        val ft = if (abs.isTrue(nulltest)) { nulltest } else { abs.bottom }
+        val ff = if (abs.isFalse(nulltest)) {
+          val constest = abs.and(isCons(a), isCons(b))
+          val fft = if (abs.isTrue(constest)) {
+            val cartest = equal(car(a, store), car(b, store), store, visited2)
+            val fftt = if (abs.isTrue(cartest)) {
+              equal(cdr(a, store), cdr(b, store), store, visited2)
+            } else { abs.bottom }
+            val fftf = if (abs.isFalse(cartest)) { abs.inject(false) } else { abs.bottom }
+            abs.join(fftt, fftf)
+          } else { abs.bottom }
+          val fff = if (abs.isFalse(constest)) {
+            val vectest = abs.and(isVector(a), isVector(b))
+            val ffft = if (abs.isTrue(vectest)) {
+              val (alength, blength) = (vectorLength(a, store), vectorLength(b, store))
+              val lengthtest = numEq(alength, blength)
+              val ffftt = if (abs.isTrue(lengthtest)) {
+                equalVecLoop(a, b, abs.inject(0), alength, store, visited2, Set())
+              } else { abs.bottom }
+              val ffftf = if (abs.isFalse(lengthtest)) { abs.inject(false) } else { abs.bottom }
+              abs.join(ffftt, ffftf)
+            } else { abs.bottom }
+            val ffff = if (abs.isFalse(vectest)) { abs.inject(false) } else { abs.bottom }
+            abs.join(ffft, ffff)
+          } else { abs.bottom }
+          abs.join(fft, fff)
+        } else { abs.bottom }
+        abs.join(ft, ff)
+      } else { abs.bottom }
+      abs.join(t, f)
     }
-  }
   private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): Abs = equal(a, b, store, Set())
 
   /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
-  private def listp(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs = {
+  private def listp(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs =
     if (visited.contains(l)) {
       abs.inject(false) /* R5RS: "all lists have finite length", and the cases where this is reached include circular lists */
     } else {
-      abs.or(abs.and(isCons(l), listp(cdr(l, store), store, visited + l)), isNull(l))
+      val nulltest = isNull(l)
+      val t = if (abs.isTrue(nulltest)) { nulltest } else { abs.bottom }
+      val f = if (abs.isFalse(nulltest)) {
+        val constest = isCons(l)
+        val ft = if (abs.isTrue(constest)) {
+          listp(cdr(l, store), store, visited + l)
+        } else { abs.bottom }
+        val ff = if (abs.isFalse(constest)) { abs.inject(false) } else { abs.bottom }
+        abs.join(ft, ff)
+      } else { abs.bottom }
+      abs.join(t, f)
     }
-  }
   private def listp(l: Abs, store: Store[Addr, Abs]): Abs = listp(l, store, Set())
 
   /** (define (length l) (if (pair? l) (+ 1 (length (cdr l))) (if (null? l) 0 (error "length called with a non-list")))) */
-  private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs = {
+  private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs =
     if (visited.contains(l)) {
       abs.bottom
     } else {
@@ -411,7 +483,6 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       }
       abs.join(t, f)
     }
-  }
   private def length(l: Abs, store: Store[Addr, Abs]): Abs = length(l, store, Set())
 
   /** Bundles all the primitives together */
@@ -474,10 +545,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("abs", abs),
     MakeVector, VectorSet,
     UnaryOperation("vector?", isVector),
-    UnaryOperation("vector-length", vectorLength),
-    BinaryStoreOperation("vector-ref", (v, i, store) =>
-      (abs.getVectors(v).foldLeft(abs.bottom)((acc, va) =>
-        abs.join(acc, vectorRef(store.lookup(va), i))), store))
+    UnaryStoreOperation("vector-length", (v, store) => (vectorLength(v, store), store)),
+    BinaryStoreOperation("vector-ref", (v, i, store) => (vectorRef(v, i, store), store))
   )
 
   private val allocated = all.map({ prim => (prim.name, addr.primitive(prim.name), abs.inject(prim)) })

@@ -155,7 +155,12 @@ object ConcreteLattice extends Lattice {
       case _ => super.unaryOp(op)
     }
   }
-  case class VectorAddress[Addr : Address](addr: Addr) extends L
+  case class VectorAddress[Addr : Address](addr: Addr) extends L {
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsVector => True
+      case _ => super.unaryOp(op)
+    }
+  }
   case class Vector(size: Int, elements: Map[Int, L], init: L) extends L {
     override def unaryOp(op: UnaryOperator) = op match {
       case IsVector => True
