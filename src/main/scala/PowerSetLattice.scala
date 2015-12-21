@@ -34,11 +34,9 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
     }
     def isError(p: L) = p match {
       case Element(x) => abs.isError(x)
-      case Elements(xs) => {
-        val result = xs.exists(x => abs.isError(x))
-        require(!result || xs.forall(x => abs.isError(x)), s"Power set element combines error values with non-error values ($xs)")
-        result
-      }
+      case Elements(xs) =>
+        /* Considered an error only if it contains only errors */
+        xs.forall(x => abs.isError(x))
     }
     private def wrapped(x: => X): L = try {
       Element(x)
