@@ -201,8 +201,8 @@ object TypeLattice extends Lattice {
       case _ => Set()
     }
     def vectorSet[Addr : Address](vector: L, index: L, value: L) = vector match {
-      case Vector(elements) => index match {
-        case Int => Vector(elements + value)
+      case Vector(content) => index match {
+        case Int => Vector((content + value).filter(v => v != Bottom))
         case _ => Error
       }
       case _ => Error

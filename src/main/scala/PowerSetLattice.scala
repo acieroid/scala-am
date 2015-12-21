@@ -17,7 +17,7 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
     private[PowerSetLattice] def values = Set(x)
   }
   private case class Elements(xs: Set[X]) extends L {
-    require(xs.size > 1, s"Power set element created with less than two elements inside ($xs), Element class should be used instead")
+    require(xs.size > 0, s"Power set element created with no element inside, bottom should be used instead")
     override def toString = "{" + xs.mkString(", ") + "}"
     private[PowerSetLattice] def values = xs
   }
@@ -70,14 +70,21 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
       case (Elements(xs1), Elements(xs2)) =>
         xs1.foldLeft(bottom)((acc, x1) => xs2.foldLeft(acc)((acc, x2) => join(acc, wrapped(abs.or(x1, x2)))))
     }
-    def join(p1: L, p2: L): L = (p1, p2) match {
+    def join(p1: L, p2: L): L =  (p1, p2) match {
       case (Element(x1), Element(x2)) => wrapped(abs.join(x1, x2))
       case (Elements(xs), Element(x)) => join(p1, Elements(Set[X](x)))
       case (Element(x), Elements(xs)) => join(Elements(Set[X](x)), p2)
       case (Elements(xs1), Elements(xs2)) =>
         /* every element in the other set has to be joined in this set */
-        Elements(xs2.foldLeft(xs1)((acc, x2) =>
-          if (acc.exists(x1 => abs.subsumes(x1, x2))) { acc } else { acc + x2 }))
+        Elements(xs1.foldLeft(xs2)((acc, x2) =>
+          if (acc.exists(x1 => abs.subsumes(x1, x2))) {
+            /* the set already contains an element that subsumes x2, don't add it to the set */
+            acc
+          } else {
+            /* remove all elements subsumed by x2 and add x2 to the set */
+            val subsumed = acc.filter(x1 => abs.subsumes(x2, x1))
+            (acc -- subsumed) + x2
+          }))
     }
     def meet(p1: L, p2: L): L = (p1, p2) match {
       case (Element(x1), Element(x2)) => wrapped(abs.meet(x1, x2))
