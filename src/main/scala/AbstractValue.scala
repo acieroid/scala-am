@@ -383,6 +383,16 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   }
   private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): Abs = equal(a, b, store, Set())
 
+  /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
+  private def listp(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs = {
+    if (visited.contains(l)) {
+      abs.inject(false) /* R5RS: "all lists have finite length", and the cases where this is reached include circular lists */
+    } else {
+      abs.or(abs.and(isCons(l), listp(cdr(l, store), store, visited + l)), isNull(l))
+    }
+  }
+  private def listp(l: Abs, store: Store[Addr, Abs]): Abs = listp(l, store, Set())
+
   /** (define (length l) (if (pair? l) (+ 1 (length (cdr l))) (if (null? l) 0 (error "length called with a non-list")))) */
   private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs = {
     if (visited.contains(l)) {
@@ -450,6 +460,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("error", abs.error),
     UnaryOperation("null?", isNull),
     UnaryOperation("pair?", isCons),
+    UnaryStoreOperation("list?", (v, store) => (listp(v, store), store)),
     UnaryOperation("char?", isChar),
     UnaryOperation("symbol?", isSymbol),
     UnaryOperation("string?", isString),
