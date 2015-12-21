@@ -32,6 +32,7 @@
      (begin
        (grid-set! t '24 '((2 2 3)))
        (equal? (grid-ref t '((2 2 3))) 24))
+     (equal? (grid-ref t '(1 0)) (make-vector 6 0))
      (begin
        (grid-set! t #t '(1 0))
        (equal? (grid-ref t '(1 0)) #t)))
