@@ -15,7 +15,7 @@ abstract class LatticePropSpec[Abs : AbstractValue]
         if (b) assert(abs.isTrue(v)) else assert(abs.isFalse(v))
         if (b) assert(abs.isFalse(abs.unaryOp(Not)(v))) else assert(abs.isTrue(abs.unaryOp(Not)(v)))
       } catch {
-        case CannotJoin(_, _) => ()
+        case CannotJoin(_) => ()
       }
     }
   }
@@ -27,7 +27,7 @@ abstract class LatticePropSpec[Abs : AbstractValue]
         if (b1 && b2) assert(abs.isTrue(abs.and(v1, v2))) else assert(abs.isFalse(abs.and(v1, v2)))
         if (b1 || b2) assert(abs.isTrue(abs.or(v1, v2))) else assert(abs.isFalse(abs.and(v1, v2)))
       } catch {
-        case CannotJoin(_, _) => ()
+        case CannotJoin(_) => ()
       }
     }
   }
@@ -39,7 +39,7 @@ abstract class LatticePropSpec[Abs : AbstractValue]
         if (n1 < n2) assert(abs.isTrue(abs.binaryOp(Lt)(v1, v2))) else assert(abs.isFalse(abs.binaryOp(Lt)(v1, v2)))
         if (n1 == n2) assert(abs.isTrue(abs.binaryOp(NumEq)(v1, v2))) else assert(abs.isFalse(abs.binaryOp(NumEq)(v1, v2)))
       } catch {
-        case CannotJoin(_, _) => ()
+        case CannotJoin(_) => ()
       }
     }
   }
@@ -55,7 +55,7 @@ abstract class LatticePropSpec[Abs : AbstractValue]
       assert(abs.isError(abs.binaryOp(Lt)(v1, v2))); assert(abs.isError(abs.binaryOp(Lt)(v2, v1)))
       assert(abs.isError(abs.binaryOp(NumEq)(v1, v2))); assert(abs.isError(abs.binaryOp(NumEq)(v2, v1)))
     } catch {
-      case CannotJoin(_, _) => ()
+      case CannotJoin(_) => ()
     }
   }
   property("bottom should be subsumed by any other value") {
@@ -90,7 +90,7 @@ abstract class JoinLatticePropSpec[Abs : AbstractValue]
       assert(abs.isTrue(tf2)); assert(abs.isFalse(tf2));
       assert(abs.subsumes(tf, tf2)); assert(abs.subsumes(tf2, tf)); assert(tf.equals(tf2))
     } catch {
-      case CannotJoin(_, _) => ()
+      case CannotJoin(_) => ()
     }
   }
   property("{#t, #f} joined with {#f} should give {#t, #f}") {
@@ -101,7 +101,7 @@ abstract class JoinLatticePropSpec[Abs : AbstractValue]
       val tff = abs.join(f, tf)
       assert(abs.isTrue(tff)); assert(abs.isFalse(tff))
     } catch {
-      case CannotJoin(_, _) => ()
+      case CannotJoin(_) => ()
     }
   }
 }

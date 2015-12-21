@@ -166,9 +166,24 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     // TODO: (cdr '()) should raise an error
   ))
 
-  // list? not implemented
+  r5rs("list?", Table(
+    ("program", "answer"),
+    ("(list? '(a b c))", t),
+    ("(list? '((a b) c d))", t),
+    ("(list? '())", t),
+    ("(list? (cons 'a 'b))", f),
+    ("(list? 'a)", f),
+    ("(let ((x '(a))) (set-cdr! x x) (list? x))", f)
+  ))
+
   // list not implemented
-  // length not implemented
+  r5rs("length", Table(
+    ("program", "answer"),
+    ("(length '(a b c))", abs.inject(3)),
+    ("(length '(a (b) (c d e)))", abs.inject(3)),
+    ("(length '())", abs.inject(0))
+  ))
+
   // append not implemented
   // reverse not implemented
   // list-ref not implemented
