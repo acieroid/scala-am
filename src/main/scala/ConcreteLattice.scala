@@ -227,6 +227,15 @@ object ConcreteLattice extends Lattice {
             }
             if (inside) { content } else { s"($content)" }
           }
+          case VectorAddress(addr : Addr) => toString(store.lookup(addr), store, false, visited + x)
+          case Vector(size, elements, init) => {
+            val initstr = toString(init, store, false, visited + x)
+            val content = (0 until size).map(index => elements.get(index) match {
+              case Some(v) => toString(v, store, false, visited + x)
+              case None => initstr
+            }).mkString(" ")
+            s"#($content)"
+          }
           case _ => {
             x.toString
           }
