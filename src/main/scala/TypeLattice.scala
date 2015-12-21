@@ -166,7 +166,7 @@ object TypeLattice extends Lattice {
           case 1 => content.head
           case _ => throw CannotJoin[L](content)
         }
-        case _ => Error("Vector reference with non-integer: $that")
+        case _ => Error(s"Vector reference with non-integer: $that")
       }
       case _ => super.binaryOp(op)(that)
     }
