@@ -8,11 +8,11 @@ object TypeLattice extends Lattice {
     def unaryOp(op: UnaryOperator): L = op match {
       case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsFloat | IsBoolean | IsVector => False
       case Not => False
-      case _ => Error
+      case _ => Error(s"Unsupported unary operation $op on $this")
     }
     def binaryOp(op: BinaryOperator)(that: L): L = op match {
       case Eq => if (this == that) { throw CannotJoin[L](Set(True, False)) } else { False }
-      case _ => Error
+      case _ => Error(s"Unsupported binary operation $op on $this and $that")
     }
   }
   type L = Element
@@ -20,6 +20,7 @@ object TypeLattice extends Lattice {
     override def toString = "error"
     override def unaryOp(op: UnaryOperator) = this
     override def binaryOp(op: BinaryOperator)(that: L) = this
+    def apply(reason: String) = { println(reason); Error }
   }
   object Int extends L {
     override def toString = "Int"
@@ -165,7 +166,7 @@ object TypeLattice extends Lattice {
           case 1 => content.head
           case _ => throw CannotJoin[L](content)
         }
-        case _ => Error
+        case _ => Error("Vector reference with non-integer: $that")
       }
       case _ => super.binaryOp(op)(that)
     }
@@ -208,9 +209,9 @@ object TypeLattice extends Lattice {
     def vectorSet[Addr : Address](vector: L, index: L, value: L) = vector match {
       case Vector(content) => index match {
         case Int => Vector((content + value).filter(v => v != Bottom))
-        case _ => Error
+        case _ => Error(s"Vector set with non-integer index ($index)")
       }
-      case _ => Error
+      case _ => Error(s"Vector set on non-vector ($vector)")
     }
 
     private def toString[Addr : Address](x: L, store: Store[Addr, L], inside: Boolean, visited: Set[L]): String = x match {
@@ -264,7 +265,7 @@ object TypeLattice extends Lattice {
     def cons[Addr : Address](car: Addr, cdr: Addr) = Cons(car, cdr)
     def vector[Addr : Address](addr: Addr, size: L, init: L) = size match {
       case Int => (VectorAddress(addr), Vector(Set(init)))
-      case _ => (Error, Bottom)
+      case _ => (Error(s"Vector created with non-integer size ($size)"), Bottom)
     }
   }
 }
