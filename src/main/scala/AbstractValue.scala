@@ -218,7 +218,6 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     }
   }
 
-
   /* Other primitives are much simpler than cons and sometimes don't need access
    * to the store, or have a fixed amount of arguments, so we define a few
    * helper classes to define them */
@@ -568,7 +567,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("vector?", isVector),
     UnaryStoreOperation("vector-length", (v, store) => (vectorLength(v, store), store)),
     BinaryStoreOperation("vector-ref", (v, i, store) => (vectorRef(v, i, store), store)),
-    Lock
+    Lock,
+    NullaryOperation("bottom", abs.bottom)
   )
 
   private val allocated = all.map({ prim => (prim.name, addr.primitive(prim.name), abs.inject(prim)) })
