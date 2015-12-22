@@ -18,7 +18,8 @@ trait Primitive[Addr, Abs] {
 /** These are the unary operations that should be supported by lattices */
 object UnaryOperator extends Enumeration {
   type UnaryOperator = Value
-  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsFloat, IsBoolean, IsVector, /* Checks the type of a value */
+  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsFloat, IsBoolean, IsVector, IsLock, /* Checks the type of a value */
+    IsLocked, /* Checks if a lock is considered locked */
     Not, /* Negate a value */
     Ceiling, Log, Random, /* Unary arithmetic operations */
     VectorLength, StringLength /* Length operations */
@@ -91,6 +92,8 @@ trait AbstractValue[A] extends Semigroup[A] {
   def getTids[TID : ThreadIdentifier](x: A): Set[TID]
   /** Extract vector addresses contained in this value */
   def getVectors[Addr : Address](x: A): Set[Addr]
+  /** Extract lock addresses contained in this value */
+  def getLocks[Addr : Address](x: A): Set[Addr]
 
   /** Bottom element of the lattice */
   def bottom: A
@@ -120,6 +123,12 @@ trait AbstractValue[A] extends Semigroup[A] {
     * and initial values set to @param init. Returns two values: one containing
     * the address of the vector, and the other being the vector value itself. */
   def vector[Addr : Address](addr: Addr, size: A, init: A): (A, A)
+  /** Creates a lock wrapper (that contains the address of the lock) */
+  def lock[Addr : Address](addr: Addr): A
+  /** The locked value */
+  def lockedValue: A
+  /** The unlocked value */
+  def unlockedValue: A
   /** Nil value */
   def nil: A
 }
@@ -199,6 +208,17 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     }
   }
 
+  object Lock extends Primitive[Addr, Abs] {
+    val name = "lock"
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
+      case Nil =>
+        val a = addr.cell(fexp, t)
+        Right(abs.lock(a), store.extend(a, abs.unlockedValue))
+      case l => Left(s"lock: no operand expected, got ${l.size} instead")
+    }
+  }
+
+
   /* Other primitives are much simpler than cons and sometimes don't need access
    * to the store, or have a fixed amount of arguments, so we define a few
    * helper classes to define them */
@@ -213,6 +233,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   object NullaryOperation {
     def apply(name: String, f: => Abs) = new NullaryOperation(name, f)
   }
+
   /** A primitive taking a single argument, e.g., (random 1) */
   case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Addr, Abs] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
@@ -333,11 +354,11 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   private def cdr(v: Abs, store: Store[Addr, Abs]): Abs =
     abs.cdr(v).foldLeft(abs.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
 
-  def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): Abs =
+  private def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): Abs =
     abs.getVectors(v).foldLeft(abs.bottom)((acc, va) =>
       abs.join(acc, abs.binaryOp(VectorRef)(store.lookup(va), index)))
 
-  def vectorLength(v: Abs, store: Store[Addr, Abs]): Abs =
+  private def vectorLength(v: Abs, store: Store[Addr, Abs]): Abs =
     abs.getVectors(v).foldLeft(abs.bottom)((acc, va) =>
       abs.join(acc, abs.unaryOp(VectorLength)(store.lookup(va))))
 
@@ -546,7 +567,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     MakeVector, VectorSet,
     UnaryOperation("vector?", isVector),
     UnaryStoreOperation("vector-length", (v, store) => (vectorLength(v, store), store)),
-    BinaryStoreOperation("vector-ref", (v, i, store) => (vectorRef(v, i, store), store))
+    BinaryStoreOperation("vector-ref", (v, i, store) => (vectorRef(v, i, store), store)),
+    Lock
   )
 
   private val allocated = all.map({ prim => (prim.name, addr.primitive(prim.name), abs.inject(prim)) })

@@ -70,11 +70,15 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
       case _ => Set()
     }
     def getPrimitives[Addr : Address, Abs : AbstractValue](p: Product) = p match {
-      case Prod(x, y) => xabs.getPrimitives[Addr, Abs](x) ++ yabs.getPrimitives[Addr, Abs](y) 
+      case Prod(x, y) => xabs.getPrimitives[Addr, Abs](x) ++ yabs.getPrimitives[Addr, Abs](y)
       case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](p: Product) = p match {
       case Prod(x, y) => xabs.getTids[TID](x) ++ yabs.getTids[TID](y)
+      case _ => Set()
+    }
+    def getLocks[Addr: Address](p: Product) = p match {
+      case Prod(x, y) => xabs.getLocks[Addr](x) ++ yabs.getLocks[Addr](y)
       case _ => Set()
     }
 
@@ -97,6 +101,10 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     def vector[Addr : Address](addr: Addr, size: Product, init: Product) = ???
     def vectorSet[Addr : Address](vector: Product, index: Product, value: Product) = ???
     def getVectors[Addr : Address](x: Product) = ???
+
+    def lock[Addr : Address](addr: Addr) = Prod(xabs.lock(addr), yabs.lock(addr))
+    def lockedValue = Prod(xabs.lockedValue, yabs.lockedValue)
+    def unlockedValue = Prod(xabs.unlockedValue, yabs.unlockedValue)
 
   }
 }

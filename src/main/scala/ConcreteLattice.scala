@@ -9,7 +9,7 @@ object ConcreteLattice extends Lattice {
     def isFalse: Boolean = false
     def isError: Boolean = false
     def unaryOp(op: UnaryOperator): L = op match {
-      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsFloat | IsBoolean | IsVector => False
+      case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsFloat | IsBoolean | IsVector | IsLock => False
       case Not => False
       case _ => ConcreteError(s"$op not applicable with operand $this")
     }
@@ -182,6 +182,28 @@ object ConcreteLattice extends Lattice {
       case _ => super.binaryOp(op)(that)
     }
   }
+  case class LockAddress[Addr : Address](addr: Addr) extends L {
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsLock => True
+      case _ => super.unaryOp(op)
+    }
+  }
+  object Locked extends L {
+    override def toString = "#<locked>"
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsLock => True
+      case IsLocked => True
+      case _ => super.unaryOp(op)
+    }
+  }
+  object Unlocked extends L {
+    override def toString = "#<unlocked>"
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsLock => True
+      case IsLocked => False
+      case _ => super.unaryOp(op)
+    }
+  }
 
   implicit val isAbstractValue: AbstractValue[L] = new AbstractValue[L] {
     def name = "Concrete"
@@ -221,7 +243,7 @@ object ConcreteLattice extends Lattice {
         "#loop"
       } else {
         x match {
-          case Cons(car : Addr, cdr : Addr) => {
+          case Cons(car: Addr, cdr: Addr) =>
             val carstr =  toString(store.lookup(car), store, false, visited + x)
             val cdrval = store.lookup(cdr)
             val cdrstr =  toString(store.lookup(cdr), store, true, visited + x)
@@ -231,19 +253,16 @@ object ConcreteLattice extends Lattice {
               case _ => s"$carstr . $cdrstr"
             }
             if (inside) { content } else { s"($content)" }
-          }
-          case VectorAddress(addr : Addr) => toString(store.lookup(addr), store, false, visited + x)
-          case Vector(size, elements, init) => {
+          case VectorAddress(addr: Addr) => toString(store.lookup(addr), store, false, visited + x)
+          case Vector(size, elements, init) =>
             val initstr = toString(init, store, false, visited + x)
             val content = (0 until size).map(index => elements.get(index) match {
               case Some(v) => toString(v, store, false, visited + x)
               case None => initstr
             }).mkString(" ")
             s"#($content)"
-          }
-          case _ => {
-            x.toString
-          }
+          case LockAddress(addr: Addr) => toString(store.lookup(addr), store, false, visited + x)
+          case _ => x.toString
         }
     }
     def toString[Addr : Address](x: L, store: Store[Addr, L]) = toString(x, store, false, Set())
@@ -264,6 +283,10 @@ object ConcreteLattice extends Lattice {
       case VectorAddress(a: Addr) => Set(a)
       case _ => Set()
     }
+    def getLocks[Addr : Address](x: L) = x match {
+      case LockAddress(a: Addr) => Set(a)
+      case _ => Set()
+    }
 
     def bottom = Bottom
     def error(x: L): L = ConcreteError(x.toString)
@@ -282,6 +305,9 @@ object ConcreteLattice extends Lattice {
       case ConcreteInt(n) => (VectorAddress(addr), Vector(n, Map[Int, L](), init))
       case _ => (ConcreteError(s"vector creation expects an integer size, got $size instead"), Bottom)
     }
+    def lock[Addr : Address](addr: Addr) = LockAddress(addr)
+    def lockedValue = Locked
+    def unlockedValue = Unlocked
   }
 }
 

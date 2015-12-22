@@ -23,6 +23,8 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   case class FrameDefine(variable: String, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCasOld(variable: String, enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCasNew(variable: String, old: Abs, ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameAcquire(ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameRelease(ρ: Environment[Addr]) extends SchemeFrame
   object FrameHalt extends SchemeFrame {
     override def toString() = "FHalt"
   }
@@ -144,18 +146,8 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       case None => Set(ActionError(s"Unhandled value: $v"))
     }
     case SchemeCas(variable, eold, enew) => Set(ActionPush(eold, FrameCasOld(variable, enew, ρ), ρ, σ))
-    case SchemeAcquire(variable) => ρ.lookup(variable) match {
-      case Some(a) => {
-        val v = σ.lookup(a)
-        /* Only performs a step if the lock is possibly unlocked (true is unlocked, false is locked) */
-        if (abs.isTrue(v)) Set(ActionReachedValue(abs.inject(true), σ.update(a, abs.inject(false)))) else Set()
-      }
-      case None => Set(ActionError(s"Unbound variable: $variable"))
-    }
-    case SchemeRelease(variable) => ρ.lookup(variable) match {
-      case Some(a) => Set(ActionReachedValue(abs.inject(true), σ.update(a, abs.inject(true))))
-      case None => Set(ActionError(s"Unbound variable: $variable"))
-    }
+    case SchemeAcquire(exp) => Set(ActionPush(exp, FrameAcquire(ρ), ρ, σ))
+    case SchemeRelease(exp) => Set(ActionPush(exp, FrameRelease(ρ), ρ, σ))
   }
 
   def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
@@ -232,6 +224,32 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
           ActionReachedValue(abs.inject(false), σ))
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
+    case FrameAcquire(ρ) =>
+      abs.getLocks(v).flatMap(a => {
+        val v = σ.lookup(a)
+        if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
+          if (abs.isFalse(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
+            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.lockedValue)))
+          } else {
+            Set[Action[SchemeExp, Abs, Addr]]()
+          }
+        } else {
+          Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
+        }
+      })
+    case FrameRelease(ρ) =>
+      abs.getLocks(v).flatMap(a => {
+        val v = σ.lookup(a)
+        if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
+          if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
+            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.unlockedValue)))
+          } else {
+            Set[Action[SchemeExp, Abs, Addr]]()
+          }
+        } else {
+          Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
+        }
+      })
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)

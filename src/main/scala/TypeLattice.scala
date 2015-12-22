@@ -171,6 +171,28 @@ object TypeLattice extends Lattice {
       case _ => super.binaryOp(op)(that)
     }
   }
+  case class LockAddress[Addr : Address](addr: Addr) extends L {
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsLock => True
+      case _ => super.unaryOp(op)
+    }
+  }
+  object Locked extends L {
+    override def toString = "#<locked>"
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsLock => True
+      case IsLocked => True
+      case _ => super.unaryOp(op)
+    }
+  }
+  object Unlocked extends L {
+    override def toString = "#<unlocked>"
+    override def unaryOp(op: UnaryOperator) = op match {
+      case IsLock => True
+      case IsLocked => False
+      case _ => super.unaryOp(op)
+    }
+  }
 
   implicit val isAbstractValue: AbstractValue[L] = new AbstractValue[L] {
     def name = "Type"
@@ -215,7 +237,7 @@ object TypeLattice extends Lattice {
     }
 
     private def toString[Addr : Address](x: L, store: Store[Addr, L], inside: Boolean, visited: Set[L]): String = x match {
-      case Cons(car : Addr, cdr : Addr) =>
+      case Cons(car: Addr, cdr: Addr) =>
         if (visited.contains(x)) {
           "#loop"
         } else {
@@ -229,6 +251,8 @@ object TypeLattice extends Lattice {
           }
           if (inside) { content } else { s"($content)" }
         }
+      case VectorAddress(addr: Addr) => toString(store.lookup(addr), store, false, visited + x)
+      case LockAddress(addr: Addr) => toString(store.lookup(addr), store, false, visited + x)
       case _ => x.toString
     }
     def toString[Addr : Address](x: L, store: Store[Addr, L]) = toString(x, store, false, Set())
@@ -249,6 +273,10 @@ object TypeLattice extends Lattice {
       case VectorAddress(a: Addr) => Set(a)
       case _ => Set()
     }
+    def getLocks[Addr : Address](x: L) = x match {
+      case LockAddress(a: Addr) => Set(a)
+      case _ => Set()
+    }
 
     def bottom = Bottom
     def error(x: L) = Error
@@ -267,6 +295,9 @@ object TypeLattice extends Lattice {
       case Int => (VectorAddress(addr), Vector(Set(init)))
       case _ => (Error(s"Vector created with non-integer size ($size)"), Bottom)
     }
+    def lock[Addr : Address](addr: Addr) = LockAddress(addr)
+    def lockedValue = Locked
+    def unlockedValue = Unlocked
   }
 }
 

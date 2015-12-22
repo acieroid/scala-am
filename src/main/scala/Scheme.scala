@@ -197,17 +197,17 @@ case class SchemeCas(variable: String, eold: SchemeExp, enew: SchemeExp) extends
 /**
  * Acquire a lock
  */
-case class SchemeAcquire(variable: String) extends SchemeExp {
+case class SchemeAcquire(exp: SchemeExp) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeAcquire] && pos == that.asInstanceOf[SchemeAcquire].pos && super.equals(that)
-  override def toString() = s"(acquire $variable)"
+  override def toString() = s"(acquire $exp)"
 }
 
 /**
  * Release a lock
  */
-case class SchemeRelease(variable: String) extends SchemeExp {
+case class SchemeRelease(exp: SchemeExp) extends SchemeExp {
   override def equals(that: Any) = that.isInstanceOf[SchemeRelease] && pos == that.asInstanceOf[SchemeRelease].pos && super.equals(that)
-  override def toString() = s"(release $variable)"
+  override def toString() = s"(release $exp)"
 }
 
 /**
@@ -301,13 +301,13 @@ object SchemeCompiler {
       case SExpPair(SExpIdentifier("cas"), _) =>
         throw new Exception(s"Invalid Scheme cas: $exp")
       case SExpPair(SExpIdentifier("acquire"),
-        SExpPair(SExpIdentifier(variable), SExpValue(ValueNil))) =>
-        SchemeAcquire(variable)
+        SExpPair(exp, SExpValue(ValueNil))) =>
+        SchemeAcquire(compile(exp))
       case SExpPair(SExpIdentifier("acquire"), _) =>
         throw new Exception(s"Invalid Scheme acquire: $exp")
       case SExpPair(SExpIdentifier("release"),
-        SExpPair(SExpIdentifier(variable), SExpValue(ValueNil))) =>
-        SchemeRelease(variable)
+        SExpPair(exp, SExpValue(ValueNil))) =>
+        SchemeRelease(compile(exp))
       case SExpPair(SExpIdentifier("release"), _) =>
         throw new Exception(s"Invalid Scheme release: $exp")
       case SExpPair(SExpIdentifier("spawn"),

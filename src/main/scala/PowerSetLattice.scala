@@ -130,6 +130,10 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
       case Element(x) => abs.getVectors[Addr](x)
       case Elements(xs) => xs.flatMap(x => abs.getVectors[Addr](x))
     }
+    def getLocks[Addr : Address](p: L) = p match {
+      case Element(x) => abs.getLocks[Addr](x)
+      case Elements(xs) => xs.flatMap(x => abs.getLocks[Addr](x))
+    }
     def bottom: L = Element(abs.bottom)
     def error(p: L) = p match {
       case Element(x) => Element(abs.error(x))
@@ -155,5 +159,8 @@ class PowerSetLattice(lattice: Lattice) extends Lattice {
         val vs = size.values.flatMap(n => init.values.map(i => abs.vector(addr, n, i)))
         (Elements(vs.map(_._1)), Elements(vs.map(_._2)))
     }
+    def lock[Addr : Address](addr: Addr): L = Element(abs.lock(addr))
+    def lockedValue: L = Element(abs.lockedValue)
+    def unlockedValue: L = Element(abs.unlockedValue)
   }
 }
