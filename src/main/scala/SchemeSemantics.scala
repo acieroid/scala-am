@@ -21,8 +21,9 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   case class FrameAnd(rest: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
   case class FrameOr(rest: List[SchemeExp], ρ: Environment[Addr]) extends SchemeFrame
   case class FrameDefine(variable: String, ρ: Environment[Addr]) extends SchemeFrame
-  case class FrameCasOld(variable: String, enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
-  case class FrameCasNew(variable: String, old: Abs, ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameCasIndex(variable: String, eold: SchemeExp, enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameCasOld(variable: String, index: Option[Abs], enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameCasNew(variable: String, index: Option[Abs], old: Abs, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameAcquire(ρ: Environment[Addr]) extends SchemeFrame
   case class FrameRelease(ρ: Environment[Addr]) extends SchemeFrame
   object FrameHalt extends SchemeFrame {
@@ -145,7 +146,8 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       case Some(v) => Set(ActionReachedValue(v, σ))
       case None => Set(ActionError(s"Unhandled value: $v"))
     }
-    case SchemeCas(variable, eold, enew) => Set(ActionPush(eold, FrameCasOld(variable, enew, ρ), ρ, σ))
+    case SchemeCas(variable, eold, enew) => Set(ActionPush(eold, FrameCasOld(variable, None, enew, ρ), ρ, σ))
+    case SchemeCasVector(variable, index, eold, enew) => Set(ActionPush(index, FrameCasIndex(variable, eold, enew, ρ), ρ, σ))
     case SchemeAcquire(exp) => Set(ActionPush(exp, FrameAcquire(ρ), ρ, σ))
     case SchemeRelease(exp) => Set(ActionPush(exp, FrameRelease(ρ), ρ, σ))
   }
@@ -213,15 +215,32 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     case FrameOr(e :: rest, ρ) =>
       conditional(v, ActionReachedValue(v, σ), ActionPush(e, FrameOr(rest, ρ), ρ, σ))
     case FrameDefine(name, ρ) => throw new Exception(s"TODO: define not handled (no global environment)")
-    case FrameCasOld(variable, enew, ρ) =>
-      Set(ActionPush(enew, FrameCasNew(variable, v, ρ), ρ, σ))
-    case FrameCasNew(variable, old, ρ) =>
+    case FrameCasIndex(variable, eold, enew, ρ) =>
+      Set(ActionPush(eold, FrameCasOld(variable, Some(v), enew, ρ), ρ, σ))
+    case FrameCasOld(variable, index, enew, ρ) =>
+      Set(ActionPush(enew, FrameCasNew(variable, index, v, ρ), ρ, σ))
+    case FrameCasNew(variable, index, old, ρ) =>
       ρ.lookup(variable) match {
-        case Some(a) => conditional(abs.binaryOp(BinaryOperator.Eq)(σ.lookup(a), old),
-          /* Compare and swap succeeds */
-          ActionReachedValue(abs.inject(true), σ.update(a, v)),
-          /* Compare and swap fails */
-          ActionReachedValue(abs.inject(false), σ))
+        case Some(a) => index match {
+          case Some(i) =>
+            /* Compare and swap on vector element */
+            abs.getVectors(σ.lookup(a)).flatMap(va => {
+              val vec = σ.lookup(va)
+              val oldval = abs.binaryOp(BinaryOperator.VectorRef)(vec, i)
+              conditional(abs.binaryOp(BinaryOperator.Eq)(oldval, old),
+                /* Vector element matches old, success */
+                ActionReachedValue(abs.inject(true), σ.update(va, abs.vectorSet(vec, i, v))),
+                /* Vector element doesn't match, fail */
+                ActionReachedValue(abs.inject(false), σ))
+            })
+          case None =>
+            /* Compare and swap on variable value */
+            conditional(abs.binaryOp(BinaryOperator.Eq)(σ.lookup(a), old),
+            /* Compare and swap succeeds */
+            ActionReachedValue(abs.inject(true), σ.update(a, v)),
+            /* Compare and swap fails */
+              ActionReachedValue(abs.inject(false), σ))
+        }
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
     case FrameAcquire(ρ) =>
