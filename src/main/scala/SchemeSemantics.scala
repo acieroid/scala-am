@@ -136,7 +136,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       Set(ActionReachedValue(v, σ))
     }
     case SchemeIdentifier(name) => ρ.lookup(name) match {
-      case Some(a) => Set(ActionReachedValue(σ.lookup(a), σ, Set[Addr](a))) /* reads on a */
+      case Some(a) => Set(ActionReachedValue(σ.lookup(a), σ, Set(EffectReadVariable(a))))
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
     case SchemeQuoted(quoted) => evalQuoted(quoted, σ, t) match {
@@ -181,7 +181,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     case FrameLetrec(a, (a1, exp) :: rest, body, ρ) =>
       Set(ActionPush(exp, FrameLetrec(a1, rest, body, ρ), ρ, σ.update(a, v)))
     case FrameSet(name, ρ) => ρ.lookup(name) match {
-      case Some(a) => Set(ActionReachedValue(abs.inject(false), σ.update(a, v), Set[Addr](), Set[Addr](a))) /* writes on a */
+      case Some(a) => Set(ActionReachedValue(abs.inject(false), σ.update(a, v), Set(EffectWriteVariable(a))))
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
     case FrameBegin(body, ρ) => Set(evalBody(body, ρ, σ))
@@ -248,7 +248,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
         val v = σ.lookup(a)
         if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
           if (abs.isFalse(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
-            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.lockedValue)))
+            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.lockedValue), Set(EffectAcquire(a))))
           } else {
             Set[Action[SchemeExp, Abs, Addr]]()
           }
@@ -261,9 +261,10 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
         val v = σ.lookup(a)
         if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
           if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
-            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.unlockedValue)))
+            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.unlockedValue), Set(EffectRelease(a))))
           } else {
-            Set[Action[SchemeExp, Abs, Addr]]()
+            /* Lock is already released */
+            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ))
           }
         } else {
           Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
@@ -287,25 +288,25 @@ class SchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
 
   /** Tries to perform atomic evaluation of an expression. Returns the result of
     * the evaluation if it succeeded, otherwise returns None */
-  protected def atomicEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Option[(Abs, Set[Addr])] = e match {
-    case λ: SchemeLambda => Some((abs.inject[SchemeExp, Addr]((λ, ρ)), Set[Addr]()))
-    case SchemeIdentifier(name) => ρ.lookup(name).map(a => (σ.lookup(a), Set[Addr](a)))
-    case SchemeValue(v) => evalValue(v).map(value => (value, Set[Addr]()))
+  protected def atomicEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Option[(Abs, Set[Effect[Addr, Abs]])] = e match {
+    case λ: SchemeLambda => Some((abs.inject[SchemeExp, Addr]((λ, ρ)), Set()))
+    case SchemeIdentifier(name) => ρ.lookup(name).map(a => (σ.lookup(a), Set(EffectReadVariable(a))))
+    case SchemeValue(v) => evalValue(v).map(value => (value, Set()))
     case _ => None
   }
 
-  protected def addRead(action: Action[SchemeExp, Abs, Addr], read: Set[Addr]): Action[SchemeExp, Abs, Addr] = action match {
-    case ActionReachedValue(v, σ, read2, write) => ActionReachedValue(v, σ, read ++ read2, write)
-    case ActionPush(e, frame, ρ, σ, read2, write) => ActionPush(e, frame, ρ, σ, read ++ read2, write)
-    case ActionEval(e, ρ, σ, read2, write) => ActionEval(e, ρ, σ, read ++ read2, write)
-    case ActionStepIn(fexp, clo, e, ρ, σ, argsv, read2, write) => ActionStepIn(fexp, clo, e, ρ, σ, argsv, read ++ read2, write)
+  protected def addEffects(action: Action[SchemeExp, Abs, Addr], effects: Set[Effect[Addr, Abs]]): Action[SchemeExp, Abs, Addr] = action match {
+    case ActionReachedValue(v, σ, effs) => ActionReachedValue(v, σ, effs ++ effects)
+    case ActionPush(e, frame, ρ, σ, effs) => ActionPush(e, frame, ρ, σ, effs ++ effects)
+    case ActionEval(e, ρ, σ, effs) => ActionEval(e, ρ, σ, effs ++ effects)
+    case ActionStepIn(fexp, clo, e, ρ, σ, argsv, effs) => ActionStepIn(fexp, clo, e, ρ, σ, argsv, effs ++ effects)
     case ActionError(err) => action
   }
 
   override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
     case Nil => evalCall(f, fexp, args.reverse, ρ, σ, t)
     case e :: rest => atomicEval(e, ρ, σ) match {
-      case Some((v, as)) => funcallArgs(f, fexp, (e, v) :: args, rest, ρ, σ, t).map(addRead(_, as))
+      case Some((v, effs)) => funcallArgs(f, fexp, (e, v) :: args, rest, ρ, σ, t).map(addEffects(_, effs))
       case None => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
     }
   }
@@ -317,9 +318,9 @@ class SchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
    */
   protected def optimizeAtomic(actions: Set[Action[SchemeExp, Abs, Addr]], t: Time): Set[Action[SchemeExp, Abs, Addr]] = {
     actions.flatMap({
-      case ActionPush(exp, frame, ρ, σ, read, write) => atomicEval(exp, ρ, σ) match {
-        case Some((v, read2)) => stepKont(v, frame, σ, t).map(addRead(_, read ++ read2))
-        case None => Set[Action[SchemeExp, Abs, Addr]](ActionPush(exp, frame, ρ, σ, read, write))
+      case ActionPush(exp, frame, ρ, σ, effects) => atomicEval(exp, ρ, σ) match {
+        case Some((v, effs)) => stepKont(v, frame, σ, t).map(addEffects(_, effs ++ effects))
+        case None => Set[Action[SchemeExp, Abs, Addr]](ActionPush(exp, frame, ρ, σ, effects))
       }
       case action => Set[Action[SchemeExp, Abs, Addr]](action)
     })
@@ -338,10 +339,10 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
 
   case class FrameJoin(ρ: Environment[Addr]) extends SchemeFrame
 
-  override def addRead(action: Action[SchemeExp, Abs, Addr], read: Set[Addr]) = action match {
-    case ActionSpawn(t: TID, e, ρ, act, read2, write) => ActionSpawn(t, e, ρ, act, read ++ read2, write)
-    case ActionJoin(tid, σ, read2, write) => ActionJoin(tid, σ, read ++ read2, write)
-    case _ => super.addRead(action, read)
+  override def addEffects(action: Action[SchemeExp, Abs, Addr], effects: Set[Effect[Addr, Abs]]) = action match {
+    case ActionSpawn(t: TID, e, ρ, act, effs) => ActionSpawn(t, e, ρ, act, effs ++ effects)
+    case ActionJoin(tid, σ, effs) => ActionJoin(tid, σ, effs ++ effects)
+    case _ => super.addEffects(action, effects)
   }
 
 

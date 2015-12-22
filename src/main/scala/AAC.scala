@@ -223,10 +223,10 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
       actions.foldLeft((Set[State](), kstore, Set[Context]()))({ (acc, act) =>
         val (states, kstore, contexts) = acc
         act match {
-          case ActionReachedValue(v, σ, _, _) => (states + State(ControlKont(v), σ, ι, κ, time.tick(t)), kstore, contexts)
-          case ActionPush(e, frame, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, time.tick(t)), kstore, contexts)
-          case ActionEval(e, ρ, σ, _, _) => (states + State(ControlEval(e, ρ), σ, ι, κ, time.tick(t)), kstore, contexts)
-          case ActionStepIn(fexp, clo, e, ρ, σ, argsv, _, _) => {
+          case ActionReachedValue(v, σ, _) => (states + State(ControlKont(v), σ, ι, κ, time.tick(t)), kstore, contexts)
+          case ActionPush(e, frame, ρ, σ, _) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, time.tick(t)), kstore, contexts)
+          case ActionEval(e, ρ, σ, _) => (states + State(ControlEval(e, ρ), σ, ι, κ, time.tick(t)), kstore, contexts)
+          case ActionStepIn(fexp, clo, e, ρ, σ, argsv, _) => {
             val τ = Context(clo, argsv, σ, t)
             (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ), time.tick(t, fexp)),
              kstore.extend(τ, (ι, κ)), contexts + τ)

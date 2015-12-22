@@ -13,31 +13,34 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   import aam._
 
   type KontAddr = aam.KontAddr
-  type Effects = (Set[Addr], Set[Addr]) /* (read, write) */
 
-  private def effectsToString(eff: Effects) = eff match {
-    case (read, write) => (read.map(r => s"""<font color="forestgreen">R$r</font>""") ++ write.map(w => s"""<font color="red2">W$w</font>""")).mkString(", ")
-  }
+  private def effectsToString(effects: Set[Effect[Addr, Abs]]) = effects.map(eff => eff.kind match {
+    case EffectKind.ReadEffect => s"""<font color="forestgreen">$eff</font>"""
+    case EffectKind.WriteEffect => s"""<font color="red2">$eff</font>"""
+  }).mkString(", ")
+
+  type Effects = Set[Effect[Addr, Abs]]
+  val noEffect: Effects = Set[Effect[Addr, Abs]]()
 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, oldstore: Store[Addr, Abs], results: ThreadResults):
         Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)] = action match {
-      case ActionReachedValue(v, σ, read, write) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, time.tick(t))), results, σ, (read, write)))
-      case ActionPush(e, frame, ρ, σ, read, write) => {
+      case ActionReachedValue(v, σ, effs) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, time.tick(t))), results, σ, effs))
+      case ActionPush(e, frame, ρ, σ, effs) => {
         val next = NormalKontAddress(e, addr.variable("__kont__", t))
-        Set((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, time.tick(t))), results, σ, (read, write)))
+        Set((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, time.tick(t))), results, σ, effs))
       }
-      case ActionEval(e, ρ, σ, read, write) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t))), results, σ, (read, write)))
-      case ActionStepIn(fexp, _, e, ρ, σ, _, read, write) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ, (read, write)))
-      case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, time.tick(t))), results, oldstore, (Set[Addr](), Set[Addr]())))
-      case ActionSpawn(tid2: TID, e, ρ, act, read, write) => {
-        assert(read.isEmpty && write.isEmpty) /* TODO */
+      case ActionEval(e, ρ, σ, effs) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t))), results, σ, effs))
+      case ActionStepIn(fexp, _, e, ρ, σ, _, effs) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ, effs))
+      case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, time.tick(t))), results, oldstore, noEffect))
+      case ActionSpawn(tid2: TID, e, ρ, act, effs) => {
+        assert(effs.isEmpty) /* TODO */
         integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, time.tick(t))), oldstore, results)
       }
-      case ActionJoin(v, σ, read, write) => {
+      case ActionJoin(v, σ, effs) => {
         abs.getTids(v).flatMap(tid2 =>
         if (results.isDone(tid2)) {
-          Set((threads.update(tid, Context(ControlKont(results.get(tid2)), kstore, a, time.tick(t))), results, σ, (read, write)))
+          Set((threads.update(tid, Context(ControlKont(results.get(tid2)), kstore, a, time.tick(t))), results, σ, effs))
         } else {
           Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)]()
         })
@@ -54,7 +57,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case ControlKont(v) if halted && tid != thread.initial =>
         /* TODO: we could avoid distinguishing the initial thread, and just get the
          * final results at its location in results */
-        Set((threads.remove(tid), results.add(tid, v), store, (Set[Addr](), Set[Addr]())))
+        Set((threads.remove(tid), results.add(tid, v), store, noEffect))
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
         case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, frame, store, t), threads, store, results)
@@ -189,17 +192,19 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   private def noReduction: Ample = (sem, s, _) => s.threads.tids
 
   private def effectsOf(transitions: Set[(Effects, State)]): Effects =
-    transitions.map(_._1).foldLeft((Set[Addr](), Set[Addr]()))((acc, eff) => (acc._1 ++ eff._1, acc._2 ++ eff._2))
+    transitions.flatMap(_._1)
   private def dependent(eff1: Effects, eff2: Effects) = {
+    val groups1 = eff1.groupBy(_.kind)
+    val groups2 = eff2.groupBy(_.kind)
     /* This is our dependency relation. One effect is dependent on another if they
      * act on the same variable and at least one of them is a write. This is
      * extended to sets of effects, and to transitions */
-    eff1._2.foldLeft(false)((acc, a) =>
+    groups1(EffectKind.WriteEffect).foldLeft(false)((acc, a) =>
       /* Check write-write and read-write dependencies */
-      acc || eff2._2.contains(a) || eff2._1.contains(a)) ||
-    eff2._2.foldLeft(false)((acc, a) =>
+      acc || groups2(EffectKind.WriteEffect).contains(a) || groups2(EffectKind.ReadEffect).contains(a)) ||
+    groups2(EffectKind.WriteEffect).foldLeft(false)((acc, a) =>
       /* Check write-read dependencies */
-      acc || eff2._1.contains(a))
+      acc || groups1(EffectKind.ReadEffect).contains(a))
   }
 
   private def checkAmpleConditions(s: State, tid: TID, stepped: Set[(Effects, State)], sem: Semantics[Exp, Abs, Addr, Time], todo: Set[State]): Boolean = {

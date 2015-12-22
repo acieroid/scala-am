@@ -44,13 +44,13 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
     /** Integrate a set of action to compute the successor states */
     private def integrate(k: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.map({
-        case ActionReachedValue(v, σ, _, _) => State(ControlKont(v), σ, kstore, k, time.tick(t))
-        case ActionPush(e, frame, ρ, σ, _, _) => {
+        case ActionReachedValue(v, σ, _) => State(ControlKont(v), σ, kstore, k, time.tick(t))
+        case ActionPush(e, frame, ρ, σ, _) => {
           val next = new NormalKontAddress(e, ρ)
           State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, k)), next, time.tick(t))
         }
-        case ActionEval(e, ρ, σ, _, _) => State(ControlEval(e, ρ), σ, kstore, k, time.tick(t))
-        case ActionStepIn(fexp, _, e, ρ, σ, _, _, _) => State(ControlEval(e, ρ), σ, kstore, k, time.tick(t, fexp))
+        case ActionEval(e, ρ, σ, _) => State(ControlEval(e, ρ), σ, kstore, k, time.tick(t))
+        case ActionStepIn(fexp, _, e, ρ, σ, _, _) => State(ControlEval(e, ρ), σ, kstore, k, time.tick(t, fexp))
         case ActionError(err) => State(ControlError(err), σ, kstore, k, time.tick(t))
       })
 
