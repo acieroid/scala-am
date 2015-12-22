@@ -49,7 +49,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       actions.flatMap(action => integrate1(tid, a, action)(threads, store, results))
 
     def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID, store: Store[Addr, Abs], threads: ThreadMap, results: ThreadResults):
-        (Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)]) = { println(s"Stepping $control"); control match {
+        (Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)]) = control match {
       case ControlEval(e, ρ) => integrate(tid, a, sem.stepEval(e, ρ, store, t), threads, store, results)
       case ControlKont(v) if halted && tid != thread.initial =>
         /* TODO: we could avoid distinguishing the initial thread, and just get the
@@ -60,7 +60,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, frame, store, t), threads, store, results)
       })
       case ControlError(_) => Set()
-        }
     }
 
     def halted: Boolean = control match {
