@@ -22,7 +22,9 @@ case class KCFA(k: Int) {
 
 trait ConcreteTimestamp
 object ConcreteTimestamp {
-  case class Time(n: Int) extends ConcreteTimestamp
+  case class Time(n: Int) extends ConcreteTimestamp {
+    override def toString = n.toString
+  }
   implicit object ConcreteTimestampTimestamp extends Timestamp[ConcreteTimestamp] {
     def name = "Concrete"
     def initial = Time(0)
