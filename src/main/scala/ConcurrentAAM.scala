@@ -150,7 +150,13 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def time = t
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, node => HTMLString(HTMLString.escape(node.toString)),
-        (s) => if (halted.contains(s)) { HTMLString("#FFFFDD") } else { HTMLString("#FFFFFF") }, {
+        (s) => if (halted.contains(s)) {
+          HTMLString("#FFFFDD")
+        } else if (s.threads.content.values.exists(xs => xs.exists(x => x.control.isInstanceOf[ControlError] ))) {
+          HTMLString("#FFDDDD")
+        } else {
+          HTMLString("#FFFFFF")
+        }, {
           case (tid, eff) => HTMLString(s"$tid ${effectsToString(eff)}")
         })
       case None =>
