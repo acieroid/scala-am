@@ -229,17 +229,17 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
               val oldval = abs.binaryOp(BinaryOperator.VectorRef)(vec, i)
               conditional(abs.binaryOp(BinaryOperator.Eq)(oldval, old),
                 /* Vector element matches old, success */
-                ActionReachedValue(abs.inject(true), σ.update(va, abs.vectorSet(vec, i, v)), Set(EffectWriteVector(va, i))),
+                ActionReachedValue(abs.inject(true), σ.update(va, abs.vectorSet(vec, i, v)), Set(EffectWriteVector(va, i), EffectReadVector(va, i))),
                 /* Vector element doesn't match, fail */
-                ActionReachedValue(abs.inject(false), σ))
+                ActionReachedValue(abs.inject(false), σ, Set(EffectReadVector(va, i))))
             })
           case None =>
             /* Compare and swap on variable value */
             conditional(abs.binaryOp(BinaryOperator.Eq)(σ.lookup(a), old),
               /* Compare and swap succeeds */
-              ActionReachedValue(abs.inject(true), σ.update(a, v), Set(EffectWriteVariable(a))),
+              ActionReachedValue(abs.inject(true), σ.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
               /* Compare and swap fails */
-              ActionReachedValue(abs.inject(false), σ))
+              ActionReachedValue(abs.inject(false), σ, Set(EffectReadVariable(a))))
         }
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
