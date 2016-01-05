@@ -395,7 +395,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
             /* In case of loop, some states probably have to be visited again! (if the effectsMap changed) */
             pickTid(s, tid) match {
               case Some(tid2) => reducedLoop(((s, tid2)) :: todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
-              case None => reducedLoop(todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, graph, sem)
+              case None => reducedLoop(todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
             }
           } else {
             reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
