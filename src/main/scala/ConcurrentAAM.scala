@@ -370,7 +370,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     case None => -1
   }
 
-  def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap,
+  @scala.annotation.tailrec
+  private def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap,
     halted: Set[State], startingTime: Long, graph: Option[Graph[State, (TID, Effects)]],
     sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput = {
     // println("To visit: " + todo.map({ case (s, tid) => id(graph, s) + ": " + tid }))
