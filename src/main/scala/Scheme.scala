@@ -362,7 +362,11 @@ object SchemeCompiler {
   def compileBindings(bindings: SExp): List[(String, SchemeExp)] = bindings match {
     case SExpPair(SExpPair(SExpIdentifier(name),
       SExpPair(value, SExpValue(ValueNil))), rest) =>
-      (name, compile(value)) :: compileBindings(rest)
+      if (reserved.contains(name)) {
+        throw new Exception(s"Invalid Scheme identifier (reserved): $name")
+      } else {
+        (name, compile(value)) :: compileBindings(rest)
+      }
     case SExpValue(ValueNil) => Nil
     case _ => throw new Exception(s"Invalid Scheme bindings: $bindings")
   }
