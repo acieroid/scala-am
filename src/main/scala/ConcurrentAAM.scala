@@ -294,7 +294,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
     /** Find conflicts in this effect map. Returns the set of states in conflict,
       * along with the tid that needs to be explored */
-    def findConflicts: Set[(State, TID)] = {
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): Set[(State, TID)] = {
       /* Examples:
        @x -> [(Write, s2, tid2), (Write, s1, tid1)]
        ==> [(s1, tid2)]
@@ -312,18 +312,28 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
        ==> [(s1, tid4), (s1, tid3), (s2, tid4), (s2, tid3)]
        */
       /* for every write on s1, find subsequent effects on a different thread tid2, and explore from s1, tid2 */
-      m.flatMap({
-        case (_, effects) => effects.zipWithIndex.foldRight(Set[(State, TID)]())((eff, acc: Set[(State, TID)]) => eff match {
+      m.values.flatMap({
+        case effects => effects.zipWithIndex.foldRight(Set[(State, TID)]())((eff, acc: Set[(State, TID)]) => eff match {
           case ((effect1, tid1, state1), idx) if (effect1.kind == EffectKind.WriteEffect) =>
             effects.splitAt(idx)._1.foldLeft(acc)((acc: Set[(State, TID)], eff) => eff match {
               case (effect2, tid2, state2) if (tid1 != tid2) =>
-                val res: Set[(State, TID)] = acc + ((state1, tid2))
-                res
+                acc + ((state1, tid2))
               case _ => acc
             })
           case _ => acc
         })
       }).toSet
+    }
+    def print(graph: Option[Graph[State, (TID, Effects)]]): Unit = {
+      println("====")
+      graph match {
+        case Some(g) => m.foreach({ case (target, l) =>
+          val lstr = l.map({ case (eff, tid, s) => s"${id(graph, s)}: $tid, $eff" })
+          println(s"$target: $lstr")
+        })
+        case None => ()
+      }
+      println("====")
     }
   }
   object LocalEffectsMap {
@@ -349,19 +359,27 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     s.threads.tids.filter(_ != notthisone).headOption
   }
 
+  def id(graph: Option[Graph[State, (TID, Effects)]], s: State): Int = graph match {
+    case Some(g) => g.nodeId(s)
+    case None => -1
+  }
+
   def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap,
     halted: Set[State], startingTime: Long, graph: Option[Graph[State, (TID, Effects)]],
     sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput = {
+    // println("To visit: " + todo.map({ case (s, tid) => id(graph, s) + ": " + tid }))
     todo.headOption match {
       case Some((s, tid)) =>
-        println(s"Exploring $s, $tid")
+        // println(s"Exploring ${id(graph, s)}, $tid")
         if (visited.contains((s, tid))) {
-          println("Already visited")
+          // println("Already visited")
           reducedLoop(todo.tail, visited, effectsMap, halted, startingTime, graph, sem)
         } else if (s.halted) {
-          println("Halted")
-          val conflicts = effectsMap(s).findConflicts
-          println(s"Found conflicts: $conflicts")
+          // println("Halted")
+          val conflicts = effectsMap(s).findConflicts(graph)
+          // val conflictsstr = conflicts.map({ case (s, tid) => id(graph, s) + ": " + tid})
+          // println(s"Found conflicts: $conflictsstr")
+          // effectsMap(s).print(graph)
           reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, halted + s, startingTime, graph, sem)
         } else {
           val succs = s.stepTid(sem, tid)
@@ -370,7 +388,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
             case (effects, s2) => m.newTransition(s, s2, tid, effects)
           })
           if (succs.isEmpty || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) })) {
-            println("Changing tid")
+            // println("Changing tid")
             /* No successor, even though this is not a halt state: the current thread is blocked.
              All successors states already visited: the current thread is in a loop.
              In both cases, explore a different thread */
@@ -380,7 +398,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
               case None => reducedLoop(todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, graph, sem)
             }
           } else {
-            reducedLoop(todo.tail ++ succs.map(succ => (succ._2, tid)), visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
+            reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
           }
         }
       case None => ConcurrentAAMOutput(halted, visited.size,
