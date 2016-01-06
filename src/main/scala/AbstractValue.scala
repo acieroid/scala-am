@@ -211,7 +211,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   }
 
   object Lock extends Primitive[Addr, Abs] {
-    val name = "lock"
+    val name = "new-lock"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case Nil =>
         val a = addr.cell(fexp, t)
