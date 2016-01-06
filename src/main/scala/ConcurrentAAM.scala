@@ -184,9 +184,24 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         } else if (s.halted) {
           loop(todo.tail, visited + s, halted + s, startingTime, graph)(step)
         } else {
-          val succs = step(s, todo)
-          val newGraph = graph.map(_.addEdges(succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })))
-          loop(todo.tail ++ succs.map(_._3), visited + s, halted, startingTime, newGraph)(step)
+          val result: Either[String, Set[(TID, Effects, State)]] = try {
+            Right(step(s, todo))
+          } catch {
+            case err: Exception =>
+              println(s"Caught exception $err")
+              err.printStackTrace
+              Left(err.toString)
+          }
+          result match {
+            case Left(err) =>
+              ConcurrentAAMOutput(halted, visited.size,
+                (System.nanoTime - startingTime) / Math.pow(10, 9), graph.map(_.addEdge(s, (thread.initial, Set()),
+                  new State(ThreadMap(Map(thread.initial -> Set(Context(ControlError(err), new KontStore[KontAddr](), HaltKontAddress, time.initial("err"))))),
+                    s.results, s.store))))
+            case Right(succs) =>
+              val newGraph = graph.map(_.addEdges(succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })))
+              loop(todo.tail ++ succs.map(_._3), visited + s, halted, startingTime, newGraph)(step)
+          }
         }
       case None => ConcurrentAAMOutput(halted, visited.size,
         (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
