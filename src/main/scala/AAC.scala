@@ -96,9 +96,9 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
         })
       })
       graph.toDotFile(file, {
-        case KontCtx(τ) => HTMLString(HTMLString.escape(τ.toString.take(40)))
-        case KontEmpty => HTMLString("ε")
-      }, x => HTMLString("#FFFFFF"), x => HTMLString(HTMLString.escape(x.toString)))
+        case KontCtx(τ) => List(scala.xml.Text(τ.toString.take(40)))
+        case KontEmpty => List(scala.xml.Text("ε"))
+      }, x => Colors.White, x => List(scala.xml.Text(x.toString)))
     }
   }
 
@@ -271,12 +271,12 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
     def numberOfStates = count
     def time = t
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => HTMLString(HTMLString.escape(node.toString.take(40))),
-        (s) => if (halted.contains(s)) { HTMLString("#FFFFDD") } else { s.control match {
-          case ControlEval(_, _) => HTMLString("#DDFFDD")
-          case ControlKont(_) => HTMLString("#FFDDDD")
-          case ControlError(_) => HTMLString("#FF0000")
-        }}, _ => HTMLString(""))
+      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
+        (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
+          case ControlEval(_, _) => Colors.Green
+          case ControlKont(_) => Colors.Pink
+          case ControlError(_) => Colors.Red
+        }}, _ => List())
       case None =>
         println("Not generating graph because no graph was computed")
     }

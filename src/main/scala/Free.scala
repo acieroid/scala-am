@@ -112,12 +112,12 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
     def numberOfStates = count
     def time = t
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => HTMLString(HTMLString.escape(node.toString)),
-        (s) => if (halted.contains(s)) { HTMLString("#FFFFDD") } else { s.control match {
-          case ControlEval(_, _) => HTMLString("#DDFFDD")
-          case ControlKont(_) => HTMLString("#FFDDDD")
-          case ControlError(_) => HTMLString("#FF0000")
-        }}, _ => HTMLString(""))
+      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString)),
+        (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
+          case ControlEval(_, _) => Colors.Green
+          case ControlKont(_) => Colors.Pink
+          case ControlError(_) => Colors.Red
+        }}, _ => List())
       case None =>
         println("Not generating graph because no graph was computed")
     }

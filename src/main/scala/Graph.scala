@@ -1,18 +1,9 @@
-case class HTMLString(s: String) {
-  override def toString = HTMLString.unescape(s)
-}
-object HTMLString {
-  def escape(s: String): String =
-    /* From Graphviz's documentation: "As HTML strings are processed like HTML
-     * input, any use of the ", &, <, and > characters in literal text or in
-     * attribute values need to be replaced by the corresponding escape
-     * sequence. For example, if you want to use & in an href value, this should
-     * be represented as &amp;." Note that the order of replacements matters,
-     * the & should be replaced first. */
-    s.replaceAll("&", "&amp;").replaceAll("\"", "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\n", "<br/>")
-  def unescape(s: String): String =
-    /* TODO: font colors */
-    s.replaceAll("&amp;", "&").replaceAll("&quot;", "\"").replaceAll("&lt;", "<").replaceAll("&gt;", "<").replaceAll("<br/>", "\n")
+object Colors {
+  val Yellow = "#FFFFDD"
+  val Green = "#DDFFDD"
+  val Pink = "#FFDDDD"
+  val Red = "#FF0000"
+  val White = "#FFFFFF"
 }
 
 case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[Node], edges: Map[Node, Set[(Annotation, Node)]]) {
@@ -35,16 +26,19 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
   def foldNodes[B](init: B)(f: (B, Node) => B) = nodes.foldLeft(init)(f)
   def getNode(id: Int): Option[Node] = ids.find({ case (_, v) => id == v }).map(_._1)
   def nodeId(node: Node): Int = ids.getOrElse(node, -1)
-  def toDot(label: Node => HTMLString, color: Node => HTMLString, annotLabel: Annotation => HTMLString): String = {
-      val sb = new StringBuilder("digraph G {\n")
-      nodes.foreach((n) =>
-        sb.append(s"node_${ids(n)}[label=<${ids(n)}: ${label(n).s}>, fillcolor=<${color(n).s}> style=<filled>];\n")
-      )
-      edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) => sb.append(s"node_${ids(n1)} -> node_${ids(n2)} [label=<${annotLabel(annot).s}>]\n")})})
-      sb.append("}")
-      return sb.toString
-    }
-  def toDotFile(path: String, label: Node => HTMLString, color: Node => HTMLString, annotLabel: Annotation => HTMLString): Unit = {
+  def toDot(label: Node => List[scala.xml.Node], color: Node => String, annotLabel: Annotation => List[scala.xml.Node]): String = {
+    val sb = new StringBuilder("digraph G {\n")
+    nodes.foreach((n) => {
+      val labelstr = label(n).mkString(" ")
+      sb.append(s"node_${ids(n)}[label=<${ids(n)}: $labelstr>, fillcolor=<${color(n)}> style=<filled>];\n")
+    })
+    edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) =>
+      val annotstr = annotLabel(annot).mkString(" ")
+      sb.append(s"node_${ids(n1)} -> node_${ids(n2)} [label=<$annotstr>]\n")})})
+    sb.append("}")
+    return sb.toString
+  }
+  def toDotFile(path: String, label: Node => List[scala.xml.Node], color: Node => String, annotLabel: Annotation => List[scala.xml.Node]): Unit = {
     val f = new java.io.File(path)
     val bw = new java.io.BufferedWriter(new java.io.FileWriter(f))
     bw.write(toDot(label, color, annotLabel))

@@ -21,10 +21,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   type KontAddr = aam.KontAddr
 
-  private def effectsToString(effects: Set[Effect[Addr, Abs]]) = effects.map(eff => eff.kind match {
-    case EffectKind.ReadEffect => s"""<font color="forestgreen">${HTMLString.escape(eff.toString)}</font>"""
-    case EffectKind.WriteEffect => s"""<font color="red2">${HTMLString.escape(eff.toString)}</font>"""
-  }).mkString(", ")
+  private def effectsToXml(effects: Set[Effect[Addr, Abs]]): List[scala.xml.Node] = effects.toList.map(eff => eff.kind match {
+    case EffectKind.ReadEffect => <font color="forestgreen">{eff.toString}</font>
+    case EffectKind.WriteEffect => <font color="red2">{eff.toString}</font>
+  })
 
   type Effects = Set[Effect[Addr, Abs]]
   val noEffect: Effects = Set[Effect[Addr, Abs]]()
@@ -156,15 +156,15 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def numberOfStates = count
     def time = t
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => HTMLString(HTMLString.escape(node.toString)),
+      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString)),
         (s) => if (halted.contains(s)) {
-          HTMLString("#FFFFDD")
+          Colors.Yellow
         } else if (s.threads.content.values.exists(xs => xs.exists(x => x.control.isInstanceOf[ControlError] ))) {
-          HTMLString("#FFDDDD")
+          Colors.Red
         } else {
-          HTMLString("#FFFFFF")
+          Colors.White
         }, {
-          case (tid, eff) => HTMLString(s"$tid ${effectsToString(eff)}")
+          case (tid, eff) => scala.xml.Text(tid.toString) :: effectsToXml(eff)
         })
       case None =>
         println("Not generating graph because no graph was computed")
