@@ -86,7 +86,12 @@ object Config {
   }
   implicit val latticeRead: scopt.Read[Lattice.Value] = scopt.Read.reads(Lattice withName _)
 
-  case class Config(machine: Machine.Value = Machine.Free, lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false, file: Option[String] = None, dotfile: Option[String] = None, anf: Boolean = false, diff: Option[(Int, Int)] = None)
+  implicit val explorationTypeRead: scopt.Read[ExplorationType.Value] = scopt.Read.reads(ExplorationType withName _)
+
+  case class Config(machine: Machine.Value = Machine.Free,
+    lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
+    file: Option[String] = None, dotfile: Option[String] = None,
+    anf: Boolean = false, exploration: ExplorationType.Value = ExplorationType.InterferenceTracking)
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
     head("scala-ac", "0.0")
@@ -95,8 +100,8 @@ object Config {
     opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
     opt[Unit]("anf") action { (_, c) => c.copy(anf = true) } text("Desugar program into ANF")
-    // opt[(Int, Int)]("diff") action { (x, c) => c.copy(diff = Some(x)) } text("States to diff") /* TODO: take this into account */
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
+    opt[ExplorationType.Value]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exloration type for concurrent programs")
   }
 }
 
@@ -160,7 +165,7 @@ object Main {
           case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, ClassicalAddress, time.T]
           case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, ClassicalAddress, time.T]
           case Config.Machine.Free => new Free[SchemeExp, lattice.L, ClassicalAddress, time.T]
-          case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress, time.T, ContextSensitiveTID]
+          case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress, time.T, ContextSensitiveTID](config.exploration)
         }
 
         val sem = if (config.machine == Config.Machine.ConcurrentAAM) {

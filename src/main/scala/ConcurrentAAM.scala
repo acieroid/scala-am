@@ -1,6 +1,13 @@
 import scalaz.Scalaz._
 
-class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
+
+object ExplorationType extends Enumeration {
+  type ExplorationType = Value
+  val AllInterleavings, OneInterleaving, InterferenceTracking = Value
+}
+import ExplorationType._
+
+class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](exploration: ExplorationType)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
@@ -414,8 +421,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
-    reducedLoop(List((State.inject(exp), thread.initial)), Set(), EffectsMap(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
-/*    loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
-      if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(allInterleavings(sem)) */
+    exploration match {
+      case AllInterleavings => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
+        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(allInterleavings(sem))
+      case OneInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
+        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(oneInterleaving(sem))
+      case InterferenceTracking => reducedLoop(List((State.inject(exp), thread.initial)), Set(), EffectsMap(), Set(), System.nanoTime,
+        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
+    }
 }
