@@ -101,7 +101,7 @@ object Config {
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
     opt[Unit]("anf") action { (_, c) => c.copy(anf = true) } text("Desugar program into ANF")
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
-    opt[ExplorationType.Value]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exloration type for concurrent programs")
+    opt[ExplorationType.Value]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exloration type for concurrent programs (OneInterleaving, AllInterleavings, InterferenceTracking)")
   }
 }
 
