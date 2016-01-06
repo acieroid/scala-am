@@ -1,4 +1,5 @@
 ;; Example taken from Dynamic Partial Order Reduction, Figure 7
+;; Expected result: #t
 (letrec ((make-initialized-vector (lambda (n f)
                                     (letrec ((v (make-vector n (bottom)))
                                              (loop (lambda (i)
@@ -10,9 +11,9 @@
                                       (loop 0)))))
   (let* ((numblocks 26)
          (numinode 32)
-         (locki (make-initialized-vector numinode (lambda (x) (lock))))
+         (locki (make-initialized-vector numinode (lambda (x) (new-lock))))
          (inode (make-vector numinode 0))
-         (lockb (make-initialized-vector numblocks (lambda (x) (lock))))
+         (lockb (make-initialized-vector numblocks (lambda (x) (new-lock))))
          (busy (make-vector numblocks #f))
          (thread (lambda (tid)
                    (letrec ((i (modulo tid numinode))
@@ -22,6 +23,7 @@
                                            (begin
                                              (vector-set! busy b #t)
                                              (vector-set! inode i (+ b 1))
+                                             (display i) (display '->) (display (+ b 1)) (newline)
                                              (release (vector-ref lockb b)))
                                            (begin
                                              (release (vector-ref lockb b))
@@ -33,4 +35,7 @@
          (t1 (spawn (thread 1)))
          (t2 (spawn (thread 2))))
     (join t1)
-    (join t2)))
+    (join t2)
+    (and (= (vector-ref inode 1) 3)
+         (= (vector-ref inode 2) 5))))
+
