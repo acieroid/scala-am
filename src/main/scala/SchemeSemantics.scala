@@ -244,32 +244,43 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
     case FrameAcquire(ρ) =>
-      abs.getLocks(v).flatMap(a => {
-        val v = σ.lookup(a)
-        if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
-          if (abs.isFalse(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
-            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.lockedValue), Set(EffectAcquire(a))))
+      /* TODO: acquire and release also generate read effects */
+      val locks = abs.getLocks(v)
+      if (locks.isEmpty) {
+        Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
+      } else {
+        locks.flatMap(a => {
+          val v = σ.lookup(a)
+          if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
+            if (abs.isFalse(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
+              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.lockedValue), Set(EffectAcquire(a))))
+            } else {
+              Set[Action[SchemeExp, Abs, Addr]]()
+            }
           } else {
-            Set[Action[SchemeExp, Abs, Addr]]()
+            Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
           }
-        } else {
-          Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
-        }
-      })
+        })
+      }
     case FrameRelease(ρ) =>
-      abs.getLocks(v).flatMap(a => {
-        val v = σ.lookup(a)
-        if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
-          if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
-            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.unlockedValue), Set(EffectRelease(a))))
+      val locks = abs.getLocks(v)
+      if (locks.isEmpty) {
+        Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
+      } else {
+        abs.getLocks(v).flatMap(a => {
+          val v = σ.lookup(a)
+          if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
+            if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
+              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.unlockedValue), Set(EffectRelease(a))))
+            } else {
+              /* Lock is already released */
+              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ))
+            }
           } else {
-            /* Lock is already released */
-            Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ))
+            Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
           }
-        } else {
-          Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
-        }
-      })
+        })
+      }
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)
