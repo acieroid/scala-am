@@ -51,7 +51,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
      */
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
       Store.initial[Addr, Abs](primitives.forStore),
-      new KontStore[KontAddr](), HaltKontAddress, time.initial)
+      new KontStore[KontAddr](), HaltKontAddress, time.initial(""))
     override def toString() = control.toString(σ)
     /**
      * Checks whether a states subsumes another, i.e., if it is "bigger". This

@@ -42,7 +42,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, time.tick(t))), results, oldstore, noEffect))
       case ActionSpawn(tid2: TID, e, ρ, act, effs) => {
         assert(effs.isEmpty) /* TODO */
-        integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, time.tick(t))), oldstore, results)
+        integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, time.initial(tid2.toString))), oldstore, results)
       }
       case ActionJoin(v, σ, effs) => {
         abs.getTids(v).flatMap(tid2 =>

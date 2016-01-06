@@ -108,7 +108,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
    */
   case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont, t: Time) {
     def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-                               Store.initial[Addr, Abs](primitives.forStore), new LocalKont(), KontEmpty, time.initial)
+                               Store.initial[Addr, Abs](primitives.forStore), new LocalKont(), KontEmpty, time.initial(""))
     override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ) && t == that.t
 

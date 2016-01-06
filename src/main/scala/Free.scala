@@ -37,7 +37,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    */
   case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], k: KontAddr, t: Time) {
     def this(exp: Exp) = this(ControlEval(exp, initialEnv), initialStore,
-                              new KontStore[KontAddr](), HaltKontAddress, time.initial)
+                              new KontStore[KontAddr](), HaltKontAddress, time.initial(""))
     override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
@@ -86,7 +86,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    */
   case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
     def this(exp: Exp) = this(Set(Configuration(ControlEval(exp, initialEnv),
-                                                HaltKontAddress, time.initial)),
+                                                HaltKontAddress, time.initial(""))),
                               initialStore, new KontStore[KontAddr]())
     override def toString = R.toString
     /** Performs a step on all the contained states */
