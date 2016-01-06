@@ -23,7 +23,6 @@
                                            (begin
                                              (vector-set! busy b #t)
                                              (vector-set! inode i (+ b 1))
-                                             (display i) (display '->) (display (+ b 1)) (newline)
                                              (release (vector-ref lockb b)))
                                            (begin
                                              (release (vector-ref lockb b))

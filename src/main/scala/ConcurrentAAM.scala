@@ -22,8 +22,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   type KontAddr = aam.KontAddr
 
   private def effectsToString(effects: Set[Effect[Addr, Abs]]) = effects.map(eff => eff.kind match {
-    case EffectKind.ReadEffect => s"""<font color="forestgreen">$eff</font>"""
-    case EffectKind.WriteEffect => s"""<font color="red2">$eff</font>"""
+    case EffectKind.ReadEffect => s"""<font color="forestgreen">${HTMLString.escape(eff.toString)}</font>"""
+    case EffectKind.WriteEffect => s"""<font color="red2">${HTMLString.escape(eff.toString)}</font>"""
   }).mkString(", ")
 
   type Effects = Set[Effect[Addr, Abs]]
@@ -305,7 +305,9 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case EffectWriteVariable(a) => Variable(a)
       case EffectReadVector(a, idx) => Vector(a, idx)
       case EffectWriteVector(a, idx) => Vector(a, idx)
-      case _ => ???
+      /* TODO: handling locks should be done differently */
+      case EffectAcquire(a) => Variable(a)
+      case EffectRelease(a) => Variable(a)
     }
   }
 
@@ -322,7 +324,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
     /** Find conflicts in this effect map. Returns the set of states in conflict,
       * along with the tid that needs to be explored */
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): Set[(State, TID)] = {
+    def findConflicts: Set[(State, TID)] = {
       /* Examples:
        @x -> [(Write, s2, tid2), (Write, s1, tid1)]
        ==> [(s1, tid2)]
@@ -370,12 +372,13 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   class EffectsMap(m: Map[State, LocalEffectsMap]) {
     /** Called when a transition has been explored, from s1 to s2 by stepping tid, generating a set of effect */
-    def newTransition(s1: State, s2: State, tid: TID, effects: Set[Effect[Addr, Abs]]): EffectsMap = {
+    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effects: Set[Effect[Addr, Abs]]): Either[Set[(State, TID)], EffectsMap] = {
       val ms1 = m.getOrElse(s1, LocalEffectsMap())
       if (m.contains(s2)) {
-        println("TODO: m contains s2")
+        Left(effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff)).findConflicts)
+      } else {
+        Right(new EffectsMap(m + (s2 -> effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff)))))
       }
-      new EffectsMap(m + (s2 -> effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff))))
     }
     def apply(s: State): LocalEffectsMap = m(s)
   }
@@ -396,38 +399,33 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   private def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap,
     halted: Set[State], startingTime: Long, graph: Option[Graph[State, (TID, Effects)]],
     sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput = {
-    // println("To visit: " + todo.map({ case (s, tid) => id(graph, s) + ": " + tid }))
     todo.headOption match {
       case Some((s, tid)) =>
-        // println(s"Exploring ${id(graph, s)}, $tid")
         if (visited.contains((s, tid))) {
-          // println("Already visited")
           reducedLoop(todo.tail, visited, effectsMap, halted, startingTime, graph, sem)
         } else if (s.halted) {
-          // println("Halted")
-          val conflicts = effectsMap(s).findConflicts(graph)
-          // val conflictsstr = conflicts.map({ case (s, tid) => id(graph, s) + ": " + tid})
-          // println(s"Found conflicts: $conflictsstr")
-          // effectsMap(s).print(graph)
+          val conflicts = effectsMap(s).findConflicts
           reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, halted + s, startingTime, graph, sem)
         } else {
           val succs = s.stepTid(sem, tid)
           val newGraph = graph.map(_.addEdges(succs.map({ case (eff, s2) => (s, (tid, eff), s2) })))
-          val newEffectsMap = succs.foldLeft(effectsMap)((m, succ) => succ match {
-            case (effects, s2) => m.newTransition(s, s2, tid, effects)
+          val (newEffectsMap, conflicts) = succs.foldLeft((effectsMap, Set[(State, TID)]()))((acc, succ) => succ match {
+            case (effects, s2) => acc._1.newTransition(newGraph, s, s2, tid, effects) match {
+              case Left(conflicts2) => (acc._1, acc._2 ++ conflicts2)
+              case Right(m) => (m, acc._2)
+            }
           })
           if (succs.isEmpty || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) })) {
-            // println("Changing tid")
             /* No successor, even though this is not a halt state: the current thread is blocked.
              All successors states already visited: the current thread is in a loop.
              In both cases, explore a different thread */
             /* In case of loop, some states probably have to be visited again! (if the effectsMap changed) */
             pickTid(s, tid) match {
-              case Some(tid2) => reducedLoop(((s, tid2)) :: todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
-              case None => reducedLoop(todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
+              case Some(tid2) => reducedLoop(((s, tid2)) :: todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
+              case None => reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
             }
           } else {
-            reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
+            reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
           }
         }
       case None => ConcurrentAAMOutput(halted, visited.size,
