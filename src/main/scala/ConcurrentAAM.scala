@@ -146,15 +146,13 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
 
-  case class ConcurrentAAMOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, (TID, Effects)]])
+  case class ConcurrentAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, (TID, Effects)]], timedOut: Boolean)
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.threads.get(thread.initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     }))
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
-    def numberOfStates = count
-    def time = t
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString)),
         (s) => if (halted.contains(s)) {
@@ -175,36 +173,40 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State, (TID, Effects)]])
+    halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, (TID, Effects)]])
     (step: Exploration): ConcurrentAAMOutput =
-    todo.headOption match {
-      case Some(s) =>
-        if (visited.contains(s)) {
-          loop(todo.tail, visited, halted, startingTime, graph)(step)
-        } else if (s.halted) {
-          loop(todo.tail, visited + s, halted + s, startingTime, graph)(step)
-        } else {
-          val result: Either[String, Set[(TID, Effects, State)]] = try {
-            Right(step(s, todo))
-          } catch {
-            case err: Exception =>
-              println(s"Caught exception $err")
-              err.printStackTrace
-              Left(err.toString)
+    if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
+      ConcurrentAAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+    } else {
+      todo.headOption match {
+        case Some(s) =>
+          if (visited.contains(s)) {
+            loop(todo.tail, visited, halted, startingTime, timeout, graph)(step)
+          } else if (s.halted) {
+            loop(todo.tail, visited + s, halted + s, startingTime, timeout, graph)(step)
+          } else {
+            val result: Either[String, Set[(TID, Effects, State)]] = try {
+              Right(step(s, todo))
+            } catch {
+              case err: Exception =>
+                println(s"Caught exception $err")
+                err.printStackTrace
+                Left(err.toString)
+            }
+            result match {
+              case Left(err) =>
+                ConcurrentAAMOutput(halted, visited.size,
+                  (System.nanoTime - startingTime) / Math.pow(10, 9), graph.map(_.addEdge(s, (thread.initial, Set()),
+                    new State(ThreadMap(Map(thread.initial -> Set(Context(ControlError(err), new KontStore[KontAddr](), HaltKontAddress, time.initial("err"))))),
+                      s.results, s.store))), false)
+              case Right(succs) =>
+                val newGraph = graph.map(_.addEdges(succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })))
+                loop(todo.tail ++ succs.map(_._3), visited + s, halted, startingTime, timeout, newGraph)(step)
+            }
           }
-          result match {
-            case Left(err) =>
-              ConcurrentAAMOutput(halted, visited.size,
-                (System.nanoTime - startingTime) / Math.pow(10, 9), graph.map(_.addEdge(s, (thread.initial, Set()),
-                  new State(ThreadMap(Map(thread.initial -> Set(Context(ControlError(err), new KontStore[KontAddr](), HaltKontAddress, time.initial("err"))))),
-                    s.results, s.store))))
-            case Right(succs) =>
-              val newGraph = graph.map(_.addEdges(succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })))
-              loop(todo.tail ++ succs.map(_._3), visited + s, halted, startingTime, newGraph)(step)
-          }
-        }
-      case None => ConcurrentAAMOutput(halted, visited.size,
-        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
+        case None => ConcurrentAAMOutput(halted, visited.size,
+          (System.nanoTime - startingTime) / Math.pow(10, 9), graph, false)
+      }
     }
 
   private def allInterleavings(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAll(sem)
@@ -397,49 +399,52 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   @scala.annotation.tailrec
   private def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap,
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State, (TID, Effects)]],
-    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput = {
-    todo.headOption match {
-      case Some((s, tid)) =>
-        if (visited.contains((s, tid))) {
-          reducedLoop(todo.tail, visited, effectsMap, halted, startingTime, graph, sem)
-        } else if (s.halted) {
-          val conflicts = effectsMap(s).findConflicts
-          reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, halted + s, startingTime, graph, sem)
-        } else {
-          val succs = s.stepTid(sem, tid)
-          val newGraph = graph.map(_.addEdges(succs.map({ case (eff, s2) => (s, (tid, eff), s2) })))
-          val (newEffectsMap, conflicts) = succs.foldLeft((effectsMap, Set[(State, TID)]()))((acc, succ) => succ match {
-            case (effects, s2) => acc._1.newTransition(newGraph, s, s2, tid, effects) match {
-              case Left(conflicts2) => (acc._1, acc._2 ++ conflicts2)
-              case Right(m) => (m, acc._2)
-            }
-          })
-          if (succs.isEmpty || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) })) {
-            /* No successor, even though this is not a halt state: the current thread is blocked.
-             All successors states already visited: the current thread is in a loop.
-             In both cases, explore a different thread */
-            /* In case of loop, some states probably have to be visited again! (if the effectsMap changed) */
-            pickTid(s, tid) match {
-              case Some(tid2) => reducedLoop(((s, tid2)) :: todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
-              case None => reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
-            }
+    halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, (TID, Effects)]],
+    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
+    if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
+      ConcurrentAAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+    } else {
+      todo.headOption match {
+        case Some((s, tid)) =>
+          if (visited.contains((s, tid))) {
+            reducedLoop(todo.tail, visited, effectsMap, halted, startingTime, timeout, graph, sem)
+          } else if (s.halted) {
+            val conflicts = effectsMap(s).findConflicts
+            reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, halted + s, startingTime, timeout, graph, sem)
           } else {
-            reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, newGraph, sem)
+            val succs = s.stepTid(sem, tid)
+            val newGraph = graph.map(_.addEdges(succs.map({ case (eff, s2) => (s, (tid, eff), s2) })))
+            val (newEffectsMap, conflicts) = succs.foldLeft((effectsMap, Set[(State, TID)]()))((acc, succ) => succ match {
+              case (effects, s2) => acc._1.newTransition(newGraph, s, s2, tid, effects) match {
+                case Left(conflicts2) => (acc._1, acc._2 ++ conflicts2)
+                case Right(m) => (m, acc._2)
+              }
+            })
+            if (succs.isEmpty || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) })) {
+              /* No successor, even though this is not a halt state: the current thread is blocked.
+               All successors states already visited: the current thread is in a loop.
+               In both cases, explore a different thread */
+              /* In case of loop, some states probably have to be visited again! (if the effectsMap changed) */
+              pickTid(s, tid) match {
+                case Some(tid2) => reducedLoop(((s, tid2)) :: todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, timeout, newGraph, sem)
+                case None => reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, timeout, newGraph, sem)
+              }
+            } else {
+              reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, timeout, newGraph, sem)
+            }
           }
-        }
-      case None => ConcurrentAAMOutput(halted, visited.size,
-        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
+        case None => ConcurrentAAMOutput(halted, visited.size,
+          (System.nanoTime - startingTime) / Math.pow(10, 9), graph, false)
+      }
     }
-  }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
     exploration match {
-      case AllInterleavings => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
+      case AllInterleavings => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(allInterleavings(sem))
-      case OneInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime,
+      case OneInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(oneInterleaving(sem))
-      case InterferenceTracking => reducedLoop(List((State.inject(exp), thread.initial)), Set(), EffectsMap(), Set(), System.nanoTime,
+      case InterferenceTracking => reducedLoop(List((State.inject(exp), thread.initial)), Set(), EffectsMap(), Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
     }
 }

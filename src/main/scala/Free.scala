@@ -102,15 +102,13 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
   }
 
   /** The output of the machine */
-  case class FreeOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, Unit]])
+  case class FreeOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     })
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
-    def numberOfStates = count
-    def time = t
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString)),
         (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
@@ -131,37 +129,16 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    */
   @scala.annotation.tailrec
   private def loopWithLocalGraph(s: States, visited: Set[States],
-    halted: Set[State], startingTime: Long, graph: Graph[State, Unit],
+    halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Graph[State, Unit],
     sem: Semantics[Exp, Abs, Addr, Time]): Output[Abs] = {
     val s2 = s.step(sem)
     val h = halted ++ s.toStateSet.filter(_.halted)
-    if (s2.isEmpty || visited.contains(s2)) {
-      val g = graph
-      /*
-        println(s"There are ${g.nodes.size} states")
-        println(s"c: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control) }).size}")
-        println(s"σ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ) }).size}")
-        println(s"ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (ι) }).size}")
-        println(s"κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (κ) }).size}")
-
-        println(s"c, σ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ) }).size}")
-        println(s"c, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, ι) }).size}")
-        println(s"c, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, κ) }).size}")
-        println(s"σ, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, ι) }).size}")
-        println(s"σ, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, κ) }).size}")
-        println(s"ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (ι, κ) }).size}")
-
-        println(s"c, σ, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, ι) }).size}")
-        println(s"c, σ, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, κ) }).size}")
-        println(s"c, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, ι, κ) }).size}")
-        println(s"σ, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, ι, κ) }).size}")
-
-        println(s"c, σ, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, ι, κ) }).size}")
-       */
+    if (s2.isEmpty || visited.contains(s2) || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
       FreeOutput(h, visited.foldLeft(0)((acc, s) => acc + s.size),
-        (System.nanoTime - startingTime) / Math.pow(10, 9), Some(graph))
+        (System.nanoTime - startingTime) / Math.pow(10, 9), Some(graph),
+        timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
-      loopWithLocalGraph(s2, visited + s, h, startingTime,
+      loopWithLocalGraph(s2, visited + s, h, startingTime, timeout,
         graph.addEdges(s.toStateSet.flatMap(ς1 =>
           s2.toStateSet.map(ς2 => (ς1, (), ς2)))), sem)
     }
@@ -171,23 +148,23 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    * Performs state space exploration without building the graph
    */
   private def loop(s: States, visited: Set[States],
-    halted: Set[State], startingTime: Long,
+    halted: Set[State], startingTime: Long, timeout: Option[Long],
     sem: Semantics[Exp, Abs, Addr, Time]): Output[Abs] = {
     val s2 = s.step(sem)
     val h = halted ++ s.toStateSet.filter(_.halted)
-    if (s2.isEmpty || visited.contains(s2)) {
+    if (s2.isEmpty || visited.contains(s2) || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
       FreeOutput(h, visited.foldLeft(0)((acc, s) => acc + s.size),
         (System.nanoTime - startingTime) / Math.pow(10, 9),
-        None)
+        None, timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
-      loop(s2, visited + s, h, startingTime, sem)
+      loop(s2, visited + s, h, startingTime, timeout, sem)
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
     if (graph) {
-      loopWithLocalGraph(new States(exp), Set(), Set(), System.nanoTime, new Graph[State, Unit](), sem)
+      loopWithLocalGraph(new States(exp), Set(), Set(), System.nanoTime, timeout, new Graph[State, Unit](), sem)
     } else {
-      loop(new States(exp), Set(), Set(), System.nanoTime, sem)
+      loop(new States(exp), Set(), Set(), System.nanoTime, timeout, sem)
     }
 }

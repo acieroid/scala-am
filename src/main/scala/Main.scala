@@ -91,7 +91,8 @@ object Config {
   case class Config(machine: Machine.Value = Machine.Free,
     lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
     file: Option[String] = None, dotfile: Option[String] = None,
-    anf: Boolean = false, exploration: ExplorationType.Value = ExplorationType.InterferenceTracking)
+    anf: Boolean = false, exploration: ExplorationType.Value = ExplorationType.InterferenceTracking,
+    timeout: Option[Long] = None)
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
     head("scala-ac", "0.0")
@@ -102,6 +103,7 @@ object Config {
     opt[Unit]("anf") action { (_, c) => c.copy(anf = true) } text("Desugar program into ANF")
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
     opt[ExplorationType.Value]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exloration type for concurrent programs (OneInterleaving, AllInterleavings, InterferenceTracking)")
+    opt[Long]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x)) } text("Timeout in ns")
   }
 }
 
@@ -110,11 +112,11 @@ object Main {
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
     * file. */
-  def run[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, output: Option[String]): Unit = {
+  def run[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, output: Option[String], timeout: Option[Long]): Unit = {
     val abs = implicitly[AbstractValue[Abs]]
     val addr = implicitly[Address[Addr]]
     println(s"Running ${machine.name} with lattice ${abs.name} and address ${addr.name}")
-    val result = machine.eval(sem.parse(program), sem, !output.isEmpty)
+    val result = machine.eval(sem.parse(program), sem, !output.isEmpty, timeout)
     output match {
       case Some(f) => result.toDotFile(f)
       case None => ()
@@ -182,7 +184,7 @@ object Main {
             }
             if (program == null) throw Done
             if (program.size > 0)
-              run(machine, sem)(program, config.dotfile)
+              run(machine, sem)(program, config.dotfile, config.timeout)
           } while (config.file.isEmpty)
         } catch {
           case Done => ()

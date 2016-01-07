@@ -261,15 +261,13 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
   /**
    * Output of the machine
    */
-  case class AACOutput(halted: Set[State], count: Int, t: Double, graph: Option[Graph[State, Unit]])
+  case class AACOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
       extends Output[Abs] {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     })
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
-    def numberOfStates = count
-    def time = t
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
         (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
@@ -288,9 +286,9 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
    *   - Track which states use which contexts, and when contexts are modified, reexplore these states (not implemented) */
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, graph: Option[Graph[State, Unit]],
+    halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, Unit]],
     kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): AACOutput = {
-    if (todo.isEmpty) { // || (((System.nanoTime - startingTime) / Math.pow(10, 9)) > 2)) {
+    if (todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
       /*
       graph.map(g => {
         println(s"There are ${g.nodes.size} states")
@@ -316,7 +314,8 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
       }) */
       /* No more element to visit, outputs the result */
       AACOutput(halted, visited.size,
-        (System.nanoTime - startingTime) / Math.pow(10, 9), graph)
+        (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
+        timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
       /* Steps every state in the todo list, and merge all the resulting kstores
        * together */
@@ -331,7 +330,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
         loop(edges.map({ case (_, ς2) => ς2 }).diff(visited),
           visited ++ todo,
           halted ++ todo.filter((ς) => ς.halted(kstore)),
-          startingTime,
+          startingTime, timeout,
           graph.map(_.addEdges(edges.map({ case (n1, n2) => (n1, (), n2) }))),
           kstore2,
           sem)
@@ -340,7 +339,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
         loop(edges.map({ case (_, ς2) => ς2 }),
           Set(),
           halted ++ todo.filter((ς) => ς.halted(kstore)),
-          startingTime,
+          startingTime, timeout,
           graph.map(_.addEdges(edges.map({ case (n1, n2) => (n1, (), n2) }))),
           kstore2,
           sem)
@@ -348,8 +347,8 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean): Output[Abs] =
-    loop(Set(new State(exp)), Set(), Set(), System.nanoTime,
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
+    loop(Set(new State(exp)), Set(), Set(), System.nanoTime, timeout,
       if (graph) { Some(new Graph[State, Unit]()) } else { None },
       new KontStore(), sem)
 }
