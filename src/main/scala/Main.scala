@@ -88,6 +88,40 @@ object Config {
 
   implicit val explorationTypeRead: scopt.Read[ExplorationType.Value] = scopt.Read.reads(ExplorationType withName _)
 
+  trait Time {
+    def nanoSeconds: Long
+  }
+  case class Hours(n: Long) extends Time {
+    def nanoSeconds = n * 60 * 60 * Math.pow(10, 9).toLong
+  }
+  case class Minutes(n: Long) extends Time {
+    def nanoSeconds = n * 60 * Math.pow(10, 9).toLong
+  }
+  case class Seconds(n: Long) extends Time {
+    def nanoSeconds = n * Math.pow(10, 9).toLong
+  }
+  case class Milliseconds(n: Long) extends Time {
+    def nanoSeconds = n * Math.pow(10, 6).toLong
+  }
+  case class Nanoseconds(nanoSeconds: Long) extends Time
+
+  object TimeParser extends scala.util.parsing.combinator.RegexParsers {
+    val number = "[0-9]+".r
+    def hours: Parser[Time] = (number <~ "h") ^^ ((s) => Hours(s.toLong))
+    def minutes: Parser[Time] = (number <~ "min") ^^ ((s) => Minutes(s.toLong))
+    def seconds: Parser[Time] = (number <~ "s") ^^ ((s) => Seconds(s.toLong))
+    def milliseconds: Parser[Time] = (number <~ "ms") ^^ ((s) => Milliseconds(s.toLong))
+    def nanoseconds: Parser[Time] = (number <~ "ms") ^^ ((s) => Nanoseconds(s.toLong))
+    def time: Parser[Time] = hours | minutes | seconds | milliseconds | nanoseconds
+    def parse(s: String): Time = parseAll(time, s) match {
+      case Success(res, _) => res
+      case Failure(msg, _) => throw new Exception(s"cannot parse time: $msg")
+      case Error(msg, _) => throw new Exception(s"cannot parse time: $msg")
+    }
+  }
+
+  implicit val timeRead: scopt.Read[Time] = scopt.Read.reads(TimeParser.parse _)
+
   case class Config(machine: Machine.Value = Machine.Free,
     lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
     file: Option[String] = None, dotfile: Option[String] = None,
@@ -103,7 +137,7 @@ object Config {
     opt[Unit]("anf") action { (_, c) => c.copy(anf = true) } text("Desugar program into ANF")
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
     opt[ExplorationType.Value]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exloration type for concurrent programs (OneInterleaving, AllInterleavings, InterferenceTracking)")
-    opt[Long]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x)) } text("Timeout in ns")
+    opt[Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout in ns")
   }
 }
 
@@ -121,7 +155,9 @@ object Main {
       case Some(f) => result.toDotFile(f)
       case None => ()
     }
+    if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
     println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
+
   }
 
   object Done extends Exception
