@@ -81,7 +81,7 @@ class SExpLexer extends Lexical with SExpTokens {
   def eol: Parser[Any] = acceptIf(n => n == '\n')(n => "")
   def notEol: Parser[Char] = acceptIf(n => n != '\n')(n => "")
   def comment: Parser[String] = ';' ~> rep(notEol) <~ eol ^^ (_.mkString)
-  def nonRelevant: Parser[Unit] = (comment ~ nonRelevant | whitespace) ^^ (_ => ())
+  def nonRelevant: Parser[Unit] = rep(comment | whitespaceChar | eol) ^^ (_ => ())
 
   def any: Parser[Char] = chrExcept()
   def chr(c: Char): Parser[Char] = elem(s"character $c", _ == c)
@@ -129,9 +129,6 @@ class SExpLexer extends Lexical with SExpTokens {
     }) <~ nonRelevant
 }
 
-/* TODO: bug in the parser: it fails on multi-line comments separated by empty
- * lines. The lexer seems correct, because it correctly discards the comments
- * and empty lines before any token. I have no idea why the parser fails. */
 object SExpParser extends TokenParsers {
   type Tokens = SExpTokens
   override val lexical = new SExpLexer
@@ -173,7 +170,7 @@ object SExpParser extends TokenParsers {
 
   def parse(s: String): List[SExp] = expList(new lexical.Scanner(s)) match {
     case Success(res, _) => res
-    case Failure(msg, _) => throw new Exception("cannot parse expression: " + msg)
-    case Error(msg, _) => throw new Exception("cannot parse expression: " + msg)
+    case Failure(msg, _) => throw new Exception(s"cannot parse expression: $msg")
+    case Error(msg, _) => throw new Exception(s"cannot parse expression: $msg")
   }
 }
