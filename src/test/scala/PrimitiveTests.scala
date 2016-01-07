@@ -15,7 +15,7 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
   val machine: AbstractMachine[Exp, Abs, Addr, Time]
 
   def checkResult(program: String, answer: Abs) = {
-    val result = machine.eval(sem.parse(program), sem, false)
+    val result = machine.eval(sem.parse(program), sem, false, None)
     assert(result.containsFinalValue(answer))
   }
   def check(table: TableFor2[String, Abs]) =
@@ -249,7 +249,7 @@ abstract class FreePrimitiveTests[Abs : AbstractValue, Addr : Address, Time : Ti
 abstract class ConcurrentAAMPrimitiveTests[Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
     extends Tests[SchemeExp, Abs, Addr, Time] {
   val sem = new SchemeSemantics[Abs, Addr, Time]
-  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time, TID]
+  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time, TID](ExplorationType.AllInterleavings)
 }
 
 /* Since these tests are small, they can be performed in concrete mode */

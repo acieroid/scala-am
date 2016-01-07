@@ -8,7 +8,7 @@ abstract class Benchmarks[Exp : Expression, Abs : AbstractValue, Addr : Address,
   val machine: AbstractMachine[Exp, Abs, Addr, Time]
 
   def checkResult(file: String, expected: Abs): Unit = {
-    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
+    val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false, None)
     assert(result.containsFinalValue(expected))
     println(s"${machine.name}, $file: ${result.numberOfStates}, ${result.time}")
   }
@@ -53,7 +53,7 @@ abstract class OneResultTests[Exp : Expression, Abs : AbstractValue, Addr : Addr
 
   def check(file: String, expected: Abs): Unit =
     file should s"have only one final state in concrete mode and return $expected" in {
-      val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false)
+      val result = machine.eval(sem.parse(Main.fileContent(s"test/$file")), sem, false, None)
       result.finalValues.size should equal (1)
       result.finalValues.head should equal (expected)
     }
@@ -109,7 +109,7 @@ abstract class FreeBenchmarks[Abs : AbstractValue, Addr : Address, Time : Timest
 abstract class ConcurrentAAMBenchmarks[Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
     extends Benchmarks[SchemeExp, Abs, Addr, Time] {
   val sem = new SchemeSemantics[Abs, Addr, Time]
-  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time, TID]
+  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time, TID](ExplorationType.AllInterleavings)
 }
 
 /* Concrete tests are disabled because of cpstak takes too much time to compute since it requires more than 75k recursive calls */
@@ -145,5 +145,5 @@ class FreeOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, Cl
 
 class ConcurrentAAMOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp] {
   val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
-  val machine = new ConcurrentAAM[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp, ContextSensitiveTID]
+  val machine = new ConcurrentAAM[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp, ContextSensitiveTID](ExplorationType.AllInterleavings)
 }
