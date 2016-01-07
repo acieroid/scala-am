@@ -307,7 +307,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case EffectWriteVariable(a) => Variable(a)
       case EffectReadVector(a, idx) => Vector(a, idx)
       case EffectWriteVector(a, idx) => Vector(a, idx)
-      /* TODO: handling locks should be done differently */
       case EffectAcquire(a) => Variable(a)
       case EffectRelease(a) => Variable(a)
     }
@@ -349,13 +348,33 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           case ((effect1, tid1, state1), idx) if (effect1.kind == EffectKind.WriteEffect) =>
             effects.splitAt(idx)._1.foldLeft(acc)((acc: Set[(State, TID)], eff) => eff match {
               case (effect2, tid2, state2) if (tid1 != tid2) =>
-                acc + ((state1, tid2))
+                if ((effect1.isInstanceOf[EffectAcquire[Addr, Abs]] && effect2.isInstanceOf[EffectRelease[Addr, Abs]]) ||
+                  (effect1.isInstanceOf[EffectRelease[Addr, Abs]] && effect2.isInstanceOf[EffectAcquire[Addr, Abs]])) {
+                  /** Acquire and release are not dependent on each other */
+                  acc
+                } else {
+                  acc + ((state1, tid2))
+                }
               case _ => acc
             })
           case _ => acc
         })
       }).toSet
     }
+    /** If this is the local effects map of a deadlock state, find states from which
+      * another path could avoid the deadlock. Do so by looking at previous
+      * states that performed an acquire. TODO: results could be improved by
+      * taking into account which lock we are trying to acquire in this state,
+      * and only looking at these acquires. But this would require to reason
+      * about the semantics in the abstract machine. */
+    def findDeadlocks: Set[State] =
+      m.values.flatMap({
+        case effects => effects.foldRight(Set[State]())((eff, acc) => eff match {
+          case (effect, _, state) if (effect.isInstanceOf[EffectAcquire[Addr, Abs]]) =>
+            acc + state
+          case _ => acc
+        })
+      }).toSet
     def print(graph: Option[Graph[State, (TID, Effects)]]): Unit = {
       println("====")
       graph match {
@@ -388,17 +407,32 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def apply(): EffectsMap = new EffectsMap(Map[State, LocalEffectsMap]())
   }
 
-  def pickTid(s: State, notthisone: TID): Option[TID] = {
-    s.threads.tids.filter(_ != notthisone).headOption
-  }
-
   def id(graph: Option[Graph[State, (TID, Effects)]], s: State): Int = graph match {
     case Some(g) => g.nodeId(s)
     case None => -1
   }
 
+  class ThreadPickMap(m: Map[State, Set[TID]]) {
+    /** Pick a new tid to explore. If no more tid can be explored, return None (in
+      * which case, either the program is halted, or in a deadlock). */
+    def pick(s: State): Option[TID] = {
+      m.get(s) match {
+        case None => s.threads.tids.headOption
+        case Some(tids) => s.threads.tids.filter(tid => !tids.contains(tid)).headOption
+      }
+    }
+    def explored(s: State, tid: TID): ThreadPickMap = new ThreadPickMap(m + (s -> (m.getOrElse(s, Set()) + tid)))
+    def print(graph: Option[Graph[State, (TID, Effects)]]): Unit =
+      m.foreach({ case (k, v) =>
+        println(s"${id(graph, k)}: $v")
+      })
+  }
+  object ThreadPickMap {
+    def apply(): ThreadPickMap = new ThreadPickMap(Map[State, Set[TID]]())
+  }
+
   @scala.annotation.tailrec
-  private def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap,
+  private def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap, threadPickMap: ThreadPickMap,
     halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, (TID, Effects)]],
     sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
     if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
@@ -406,11 +440,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     } else {
       todo.headOption match {
         case Some((s, tid)) =>
+          val newThreadPickMap = threadPickMap.explored(s, tid)
           if (visited.contains((s, tid))) {
-            reducedLoop(todo.tail, visited, effectsMap, halted, startingTime, timeout, graph, sem)
+            reducedLoop(todo.tail, visited, effectsMap, newThreadPickMap, halted, startingTime, timeout, graph, sem)
           } else if (s.halted) {
             val conflicts = effectsMap(s).findConflicts
-            reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, halted + s, startingTime, timeout, graph, sem)
+            reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, newThreadPickMap, halted + s, startingTime, timeout, graph, sem)
           } else {
             val succs = s.stepTid(sem, tid)
             val newGraph = graph.map(_.addEdges(succs.map({ case (eff, s2) => (s, (tid, eff), s2) })))
@@ -425,12 +460,19 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                All successors states already visited: the current thread is in a loop.
                In both cases, explore a different thread */
               /* In case of loop, some states probably have to be visited again! (if the effectsMap changed) */
-              pickTid(s, tid) match {
-                case Some(tid2) => reducedLoop(((s, tid2)) :: todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, timeout, newGraph, sem)
-                case None => reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, timeout, newGraph, sem)
+              newThreadPickMap.pick(s) match {
+                case Some(tid2) =>
+                  reducedLoop(((s, tid2)) :: todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
+                    halted, startingTime, timeout, newGraph, sem)
+                case None => {
+                  val deadlocks: Set[(State, TID)] = newEffectsMap(s).findDeadlocks.flatMap(s => newThreadPickMap.pick(s).map(tid => (s, tid)))
+                  reducedLoop(todo.tail ++ conflicts ++ deadlocks, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
+                    halted, startingTime, timeout, newGraph, sem)
+                }
               }
             } else {
-              reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, halted, startingTime, timeout, newGraph, sem)
+              reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
+                halted, startingTime, timeout, newGraph, sem)
             }
           }
         case None => ConcurrentAAMOutput(halted, visited.size,
@@ -444,7 +486,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(allInterleavings(sem))
       case OneInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(oneInterleaving(sem))
-      case InterferenceTracking => reducedLoop(List((State.inject(exp), thread.initial)), Set(), EffectsMap(), Set(), System.nanoTime, timeout,
+      case InterferenceTracking => reducedLoop(List((State.inject(exp), thread.initial)), Set(), EffectsMap(), ThreadPickMap(),
+        Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
     }
 }
