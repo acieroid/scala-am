@@ -16,7 +16,9 @@ object ClassicalAddress {
   case class PrimitiveAddress(name: String) extends ClassicalAddress {
     override def toString = s"@$name"
   }
-  case class CellAddress[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) extends ClassicalAddress
+  case class CellAddress[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) extends ClassicalAddress {
+    override def toString = s"@$exp"
+  }
 
   implicit object ClassicalAddressAddress extends Address[ClassicalAddress] {
     def name = "Classical"
