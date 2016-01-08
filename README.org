@@ -26,3 +26,12 @@ run -f test/fact.scm -l Type # Use the type lattice (default one is TypeSet, whi
 run -f test/fact.scm -m AAM -d fact.dot # Output the state graph in fact.dot
 run # Launches a REPL that performs interpretation of the input
 #+END_SRC
+* Benchmarks
+To run benchmarks, do the following:
+
+#+BEGIN_SRC
+run-main Benchmarks
+#+END_SRC
+
+You can give a timeout parameter (=-t=, no timeout by default), and a number of
+workers (=-w=, 1 by default)
