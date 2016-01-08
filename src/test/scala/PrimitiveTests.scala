@@ -93,8 +93,8 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
   r5rs("modulo", Table(
     ("program", "answer"),
     ("(modulo 13 4)", abs.inject(1)),
-    //("(modulo -13 4)", abs.inject(3)), // modulo is Scala's modulo, which is different from Scheme's
-    //("(modulo 13 -4)", abs.inject(-3)), // modulo is Scala's modulo, which is different from Scheme's
+    ("(modulo -13 4)", abs.inject(3)),
+    ("(modulo 13 -4)", abs.inject(-3)),
     ("(modulo -13 -4)", abs.inject(-1))
   ))
 
