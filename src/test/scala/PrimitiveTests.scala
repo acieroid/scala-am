@@ -67,6 +67,13 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     ("(max 1)", abs.inject(1)),
     ("(max 1 2 3 4 5 4 3 2 1)", abs.inject(5))))
 
+  r5rs("min", Table(
+    ("program", "answer"),
+    ("(min 3 4)", abs.inject(3)),
+    ("(min 3 4.9)", abs.inject(3)), /* TODO: should be 3.0 */
+    ("(min 1)", abs.inject(1)),
+    ("(min 5 4 3 2 1 2 3 4 5)", abs.inject(1))))
+
   r5rs("+", Table(
     ("program", "answer"),
     ("(+ 3 4)", abs.inject(7)),

@@ -341,6 +341,28 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     }
   }
 
+  object Min extends VariadicOperation {
+    /* TODO: same remark as max */
+    val name = "min"
+     private def call(args: List[Abs], min: Abs): Abs = args match {
+      case Nil => min
+      case x :: rest => {
+        val test = lt(x, min)
+        if (abs.isError(test)) {
+          test
+        } else {
+          val t = if (abs.isTrue(test)) { call(rest, x) } else { abs.bottom }
+          val f = if (abs.isFalse(test)) { call(rest, min) } else { abs.bottom }
+          abs.join(t, f)
+        }
+      }
+    }
+    def call(args: List[Abs]) = args match {
+      case Nil => Left("min: at least 1 operand expected, got 0")
+      case x :: rest => Right(call(rest, x))
+    }
+  }
+
   /* Some primitives can be defined as just a function that we pass to one of the helper class' constructor */
 
   private def newline: Abs = {
@@ -509,7 +531,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
 
   /** Bundles all the primitives together */
   val all: List[Primitive[Addr, Abs]] = List(
-    Plus, Minus, Times, Div, Max,
+    Plus, Minus, Times, Div, Max, Min,
     BinaryOperation("quotient", div),
     BinaryOperation("<", lt), // TODO: <, <=, =, >, >= should accept any number of arguments
     BinaryOperation("<=", (x, y) => abs.or(lt(x, y), numEq(x, y))),
