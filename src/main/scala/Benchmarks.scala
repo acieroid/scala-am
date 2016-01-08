@@ -36,11 +36,11 @@ object Tabulator {
 }
 
 object Benchmarks {
-  case class MachineConfig(file: String, exploration: ExplorationType.Value, concrete: Boolean, timeout: Option[Long]) {
-    override def toString = s"[$file, $exploration, $concrete]"
+  case class MachineConfig(name: String, exploration: ExplorationType.Value, concrete: Boolean, timeout: Option[Long]) {
+    override def toString = s"[$name, $exploration, $concrete]"
   }
   case class MachineOutput(time: Double, states: Int, timedOut: Boolean) {
-    override def toString = s"$time, $states, $timedOut"
+    override def toString = if (timedOut) { s"/, ${states}+" } else { f"$time%.2f, $states" }
   }
 
   val programs = Set(
@@ -101,18 +101,29 @@ object Benchmarks {
   import scala.collection.mutable.{Queue, Map => MutableMap}
   class Dispatcher extends Actor {
     val work: Queue[MachineConfig] = Queue()
-    val result: MutableMap[MachineConfig, MachineOutput] = MutableMap[MachineConfig, MachineOutput]()
+    val concreteResults: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]] = MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]()
+    val abstractResults: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]] = MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]()
     var computing: Int = 0
 
-    private def printResults = {
-      println("Results: TODO")
+    private def printResults(results: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]) = {
+      println(Tabulator.format(List("program", "one", "all", "reduced") :: results.toList.map({
+        case (name, res) => name :: List(ExplorationType.OneInterleaving,
+          ExplorationType.AllInterleavings, ExplorationType.InterferenceTracking).map(expl =>
+          res.get(expl) match {
+          case Some(out) => out.toString
+          case None => "x"
+          })
+      })))
     }
     private def sendWork(actor: ActorRef) = if (!work.isEmpty) {
       actor ! Computation(work.dequeue)
       computing += 1
     } else if (computing == 0) {
       /* no more work to do, nothing is computing, stop */
-      printResults
+      println("Concrete: ")
+      printResults(concreteResults)
+      println("Abstract: ")
+      printResults(abstractResults)
       system.shutdown
     }
     def receive = {
@@ -120,7 +131,11 @@ object Benchmarks {
       case SendWork(actor) => sendWork(actor)
       case Result(in, out) =>
         computing -= 1
-        result += (in -> out)
+        val results = if (in.concrete) concreteResults else abstractResults
+        results.get(in.name) match {
+          case Some(m) => m += in.exploration -> out
+          case None => results += in.name -> MutableMap(in.exploration -> out)
+        }
         println(s"$in: $out")
         sendWork(sender)
     }
