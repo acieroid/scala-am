@@ -39,7 +39,7 @@ object Benchmarks {
   case class MachineConfig(name: String, exploration: ExplorationType.Value, concrete: Boolean, timeout: Option[Long]) {
     override def toString = s"[$name, $exploration, $concrete]"
   }
-  case class MachineOutput(time: Double, states: Int, timedOut: Boolean) {
+  case class MachineOutput(time: Double, states: Int, timedOut: Boolean, finalValues: Set[Any]) {
     override def toString = if (timedOut) { s"/, ${states}+" } else { f"$time%.2f, $states" }
   }
 
@@ -82,10 +82,12 @@ object Benchmarks {
         val sem = new ConcurrentSchemeSemantics[lattice.L, ClassicalAddress, time.T, ContextSensitiveTID]
         val program = Main.fileContent(s"concurrent/$name.scm")
         if (program != null || program.size > 0) {
-          val output = machine.eval(sem.parse(program), sem, false, timeout)
-          MachineOutput(output.time, output.numberOfStates, output.timedOut)
+          val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {
+            machine.eval(sem.parse(program), sem, false, timeout)
+          }
+          MachineOutput(output.time, output.numberOfStates, output.timedOut, output.finalValues.map(x => x))
         } else {
-          MachineOutput(0, 0, false) // TODO: error output
+          MachineOutput(0, 0, false, Set[Any]()) // TODO: error output
         }
     }
 
@@ -115,11 +117,98 @@ object Benchmarks {
           })
       })))
     }
+    private def subsumes(abs: Set[Any], conc: Set[Any]): Boolean = {
+      conc.forall(c => {
+        val a2 = c.asInstanceOf[ConcreteLattice.Element] match {
+          case ConcreteLattice.ConcreteInt(v) => TypeSetLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.ConcreteFloat(v) => TypeSetLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.ConcreteString(v) => TypeSetLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.ConcreteChar(v) => TypeSetLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.ConcreteSymbol(v) => TypeSetLattice.isAbstractValue.injectSymbol(v)
+          case ConcreteLattice.ConcreteBool(v) => TypeSetLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.Bottom => TypeSetLattice.isAbstractValue.bottom
+          case ConcreteLattice.ConcreteError(v) => TypeSetLattice.isAbstractValue.error(TypeSetLattice.isAbstractValue.inject(v))
+          /* Benchmarks shouldn't return closures, thread ids, locks, vectors, so we ignore these values */
+          case _ => { err(s"Cannot convert $c to abstract"); println(TypeSetLattice.isAbstractValue.bottom) }
+        }
+        abs.exists(a => TypeSetLattice.isAbstractValue.subsumes(a.asInstanceOf[TypeSetLattice.L], a2))
+      })
+    }
+
+    private def err(msg: String) = println(s"${scala.io.AnsiColor.RED}$msg${scala.io.AnsiColor.RESET}")
+
+    private def checkResults = {
+      /* invariants being checked, for programs that didn't time out
+       1. result from OneInterleaving is contained in AllInterleavings (for concrete and abstract)
+       2. result from InterferenceTracking completely matches results from AllInterleavings (for concrete and abstract)
+       3. result from InterferenceTracking contains result from OneInterleaving (for concrete and abstract)
+       For programs that did time out in AllInterleavings but not in InterferenceTracking, the following invariants are checked instead
+       4. results explored in AllInterleavings should be contained in InterferenceTracking (if InterferenceTracking didn't time out)
+       5. result exploed in OneInterleaving should be contained in InterferenceTracking
+       For programs where OneInterleaving did time out, nothing can be checked.
+       Also:
+       6. For programs where InterferenceTracking did time out, we check that AllInterleavings did time out as well.
+       7. result for some exploration in the abstract subsumes results for another exploration in the concrete
+       */
+      programs.foreach(name => {
+        println(s"Checking results for $name")
+        val conc = concreteResults(name)
+        val abs = abstractResults(name)
+        val oneconc = conc(ExplorationType.OneInterleaving)
+        val oneabs = abs(ExplorationType.OneInterleaving)
+        val allconc = conc(ExplorationType.AllInterleavings)
+        val allabs = abs(ExplorationType.AllInterleavings)
+        val redconc = conc(ExplorationType.InterferenceTracking)
+        val redabs = abs(ExplorationType.InterferenceTracking)
+        /* Concrete */
+        if (!oneconc.timedOut && !allconc.timedOut && !redconc.timedOut) {
+          if (!oneconc.finalValues.subsetOf(allconc.finalValues)) // 1
+            err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in all interleavings (${allconc.finalValues})")
+          if (!(redconc.finalValues == allconc.finalValues)) // 2
+            err(s"$name (concrete): reduced interleavings (${redconc.finalValues}) do not match all interleavings (${allconc.finalValues})")
+          if (!oneconc.finalValues.subsetOf(redconc.finalValues)) // 3
+            err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
+        } else if (allconc.timedOut && !oneconc.timedOut && !redconc.timedOut) {
+          if (!allconc.finalValues.subsetOf(redconc.finalValues)) // 4
+            err(s"$name (concrete): all explored interleavings (with timeout, ${allconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
+          if (!oneconc.finalValues.subsetOf(redconc.finalValues)) // 5
+            err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
+        } else if (redconc.timedOut) {
+          if (!allconc.timedOut)
+            err("s$name (concrete): reduced interleavings timed out, but all interleavings did not")
+        }
+        /* Abstract */
+        if (!oneabs.timedOut && !allabs.timedOut && !redabs.timedOut) {
+          if (!oneabs.finalValues.subsetOf(allabs.finalValues)) // 1
+            err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in all interleavings (${allabs.finalValues})")
+          if (!(redabs.finalValues == allabs.finalValues)) // 2
+            err(s"$name (abstract): reduced interleavings (${redabs.finalValues}) do not match all interleavings (${allabs.finalValues})")
+          if (!oneabs.finalValues.subsetOf(redabs.finalValues)) // 3
+            err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
+        } else if (allabs.timedOut && !oneabs.timedOut && !redabs.timedOut) {
+          if (!allabs.finalValues.subsetOf(redabs.finalValues)) // 4
+            err(s"$name (abstract): all explored interleavings (with timeout, ${allabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
+          if (!oneabs.finalValues.subsetOf(redabs.finalValues)) // 5
+            err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
+        } else if (redabs.timedOut) {
+          if (!allabs.timedOut)
+            err("s$name (abstract): reduced interleavings timed out, but all interleavings did not")
+        }
+        /* Concrete <-> Abstract */
+        if (!oneabs.timedOut && !oneconc.timedOut && !subsumes(oneabs.finalValues, oneconc.finalValues))
+          err("$name (one): abstract (${oneabs.finalValues}) does not subsume concrete (${oneconc.finalValues})")
+        if (!allabs.timedOut && !allconc.timedOut && !subsumes(allabs.finalValues, allconc.finalValues))
+          err("$name (all): abstract (${allabs.finalValues}) does not subsume concrete (${allconc.finalValues})")
+        if (!redabs.timedOut && !redconc.timedOut && !subsumes(redabs.finalValues, redconc.finalValues))
+          err("$name (red): abstract (${redabs.finalValues}) does not subsume concrete (${redconc.finalValues})")
+      })
+    }
     private def sendWork(actor: ActorRef) = if (!work.isEmpty) {
       actor ! Computation(work.dequeue)
       computing += 1
     } else if (computing == 0) {
       /* no more work to do, nothing is computing, stop */
+      checkResults
       println("Concrete: ")
       printResults(concreteResults)
       println("Abstract: ")
