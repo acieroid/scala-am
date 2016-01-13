@@ -129,7 +129,7 @@ object Benchmarks {
           case ConcreteLattice.Bottom => TypeSetLattice.isAbstractValue.bottom
           case ConcreteLattice.ConcreteError(v) => TypeSetLattice.isAbstractValue.error(TypeSetLattice.isAbstractValue.inject(v))
           /* Benchmarks shouldn't return closures, thread ids, locks, vectors, so we ignore these values */
-          case _ => { err(s"Cannot convert $c to abstract"); println(TypeSetLattice.isAbstractValue.bottom) }
+          case _ => { err(s"Cannot convert $c to abstract"); TypeSetLattice.isAbstractValue.bottom }
         }
         abs.exists(a => TypeSetLattice.isAbstractValue.subsumes(a.asInstanceOf[TypeSetLattice.L], a2))
       })

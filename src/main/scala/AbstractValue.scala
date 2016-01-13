@@ -12,7 +12,7 @@ trait Primitive[Addr, Abs] {
    * @param store: the store
    * @return either an error, or the value returned by the primitive along with the updated store
    */
-  def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time): Either[String, (Abs, Store[Addr, Abs])]
+  def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time): Either[String, (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]])]
 }
 
 /** These are the unary operations that should be supported by lattices */
@@ -170,7 +170,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       case (carexp, car) :: (cdrexp, cdr) :: Nil => {
         val cara = addr.cell(carexp, t)
         val cdra = addr.cell(cdrexp, t)
-        Right((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr)))
+        Right((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr), Set()))
       }
       case l => Left(s"cons: 2 operands expected, got ${l.size} instead")
     }
@@ -182,11 +182,11 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       case (_, size) :: (_, init) :: Nil => {
         val test = isInteger(size)
         if (abs.isError(test))
-          Right((test, store))
+          Right((test, store, Set()))
         else if (abs.isTrue(test)) {
           val a = addr.cell(fexp, t)
           val (va, vector) = abs.vector(a, size, init)
-          Right((va, store.extend(a, vector)))
+          Right((va, store.extend(a, vector), Set()))
         } else {
           Left(s"make-vector: first operand should be an integer (was $size)")
         }
@@ -199,12 +199,11 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     val name = "vector-set!"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, vector) :: (_, index) :: (_, value) :: Nil => {
-        val (store2, res) = abs.getVectors(vector).foldLeft((store, abs.bottom))((acc, addr) => {
+        Right(abs.getVectors(vector).foldLeft((abs.bottom, store, Set[Effect[Addr, Abs]]()))((acc, addr) => {
           val old = store.lookup(addr)
           val vec = abs.vectorSet(old, index, value)
-          (acc._1.update(addr, vec), abs.join(acc._2, vec))
-        })
-        Right((res, store2))
+          (abs.join(acc._1, vec), acc._2.update(addr, vec), acc._3 + EffectWriteVector(addr, index))
+        }))
       }
       case l => Left(s"vector-set!: 3 operands expected, got ${l.size} instead")
     }
@@ -215,7 +214,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case Nil =>
         val a = addr.cell(fexp, t)
-        Right(abs.lock(a), store.extend(a, abs.unlockedValue))
+        Right(abs.lock(a), store.extend(a, abs.unlockedValue), Set())
       case l => Left(s"lock: no operand expected, got ${l.size} instead")
     }
   }
@@ -227,7 +226,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   /** A primitive taking no argument, e.g., (newline) */
   class NullaryOperation(val name: String, f: => Abs) extends Primitive[Addr, Abs] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case Nil => Right((f, store))
+      case Nil => Right((f, store, Set()))
       case l => Left(s"${name}: no operand expected, got ${l.size} instead")
     }
   }
@@ -238,20 +237,21 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   /** A primitive taking a single argument, e.g., (random 1) */
   case class UnaryOperation(name: String, f: Abs => Abs) extends Primitive[Addr, Abs] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case (_, x) :: Nil => Right((f(x), store))
+      case (_, x) :: Nil => Right((f(x), store, Set()))
       case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
     }
   }
   /** A primitive taking two arguments, e.g., (modulo 5 1) */
   case class BinaryOperation(name: String, f: (Abs, Abs) => Abs) extends Primitive[Addr, Abs] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case (_, x) :: (_, y) :: Nil => Right((f(x, y), store))
+      case (_, x) :: (_, y) :: Nil => Right((f(x, y), store, Set()))
       case l => Left(s"${name}: 2 operands expected, got ${l.size} instead")
     }
   }
 
   /** A primitive taking a single argument and modifying the store */
-  case class UnaryStoreOperation(name: String, f: (Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs])) extends Primitive[Addr, Abs] {
+  case class UnaryStoreOperation(name: String, f: (Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]]))
+    extends Primitive[Addr, Abs] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: Nil => Right(f(x, store))
       case l => Left(s"${name}: 1 operand expected, got ${l.size} instead")
@@ -259,7 +259,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   }
 
   /** A primitive taking two arguments and modifying the store */
-  case class BinaryStoreOperation(name: String, f: (Abs, Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs])) extends Primitive[Addr, Abs] {
+  case class BinaryStoreOperation(name: String, f: (Abs, Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]]))
+      extends Primitive[Addr, Abs] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: (_, y) :: Nil => Right(f(x, y, store))
       case l => Left(s"${name}: 2 operand expected, got ${l.size} instead")
@@ -271,7 +272,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     def call(args: List[Abs]): Either[String, Abs]
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) =
       call(args.map({ case (_, v) => v })) match {
-        case Right(v) => Right((v, store))
+        case Right(v) => Right((v, store, Set()))
         case Left(err) => Left(err)
       }
   }
@@ -371,19 +372,22 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   }
   private def display(v: Abs): Abs = { print(v); abs.bottom }
 
-  private def car(v: Abs, store: Store[Addr, Abs]): Abs =
-    abs.car(v).foldLeft(abs.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
+  private def car(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
+    abs.car(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
+      (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadConsCar(a)))
 
-  private def cdr(v: Abs, store: Store[Addr, Abs]): Abs =
-    abs.cdr(v).foldLeft(abs.bottom)((acc, a) => abs.join(acc, store.lookup(a)))
+  private def cdr(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
+    abs.cdr(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
+      (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadConsCdr(a)))
 
-  private def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): Abs =
-    abs.getVectors(v).foldLeft(abs.bottom)((acc, va) =>
-      abs.join(acc, abs.binaryOp(VectorRef)(store.lookup(va), index)))
+  private def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
+    abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, va) =>
+      (abs.join(acc._1, abs.binaryOp(VectorRef)(store.lookup(va), index)), acc._2 + EffectReadVector(va, index)))
 
-  private def vectorLength(v: Abs, store: Store[Addr, Abs]): Abs =
-    abs.getVectors(v).foldLeft(abs.bottom)((acc, va) =>
-      abs.join(acc, abs.unaryOp(VectorLength)(store.lookup(va))))
+  private def vectorLength(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
+    abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, va) =>
+      (abs.join(acc._1, abs.unaryOp(VectorLength)(store.lookup(va))),
+        acc._2 + EffectReadVariable(va)))
 
   /** (define (abs x) (if (< x 0) (- 0 x) x)) */
   private def abs(v: Abs): Abs = {
@@ -431,92 +435,107 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
                                      (loop (+ i 1)))))))
                   (loop 0)))))))
    */
-  private def equalVecLoop(a: Abs, b: Abs, i: Abs, n: Abs, store: Store[Addr, Abs], visitedEqual: Set[(Abs, Abs)], visited: Set[(Abs, Abs, Abs, Abs)]): Abs =
+  private def equalVecLoop(a: Abs, b: Abs, i: Abs, n: Abs, store: Store[Addr, Abs], visitedEqual: Set[(Abs, Abs)], visited: Set[(Abs, Abs, Abs, Abs)]): (Abs, Set[Effect[Addr, Abs]]) =
     if (visited.contains((a, b, i, n)) || a == abs.bottom || b == abs.bottom || i == abs.bottom || n == abs.bottom) {
-      abs.bottom
+      (abs.bottom, Set[Effect[Addr, Abs]]())
     } else {
       val numtest = numEq(i, n)
       val t = if (abs.isTrue(numtest)) { abs.inject(true) } else { abs.bottom }
-      val f = if (abs.isFalse(numtest)) {
-        val itemtest = equal(vectorRef(a, i, store), vectorRef(b, i, store), store, visitedEqual)
-        val tt = if (abs.isTrue(itemtest)) {
+      val (f, effects) = if (abs.isFalse(numtest)) {
+        val (vai, effects1) = vectorRef(a, i, store)
+        val (vbi, effects2) = vectorRef(b, i, store)
+        val (itemtest, effects3) = equal(vai, vbi, store, visitedEqual)
+        val (tt, effects4) = if (abs.isTrue(itemtest)) {
           equalVecLoop(a, b, abs.binaryOp(BinaryOperator.Plus)(i, abs.inject(1)), n, store, visitedEqual, visited + ((a, b, i, n)))
-        } else { abs.bottom }
+        } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
         val tf = if (abs.isFalse(itemtest)) { abs.inject(false) } else { abs.bottom }
-        abs.join(tt, tf)
-      } else { abs.bottom }
-      abs.join(t, f)
+        (abs.join(tt, tf), effects1 ++ effects2 ++ effects3 ++ effects4)
+      } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+      (abs.join(t, f), effects)
     }
 
-  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): Abs =
+  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): (Abs, Set[Effect[Addr, Abs]]) =
     if (visited.contains(a, b) || a == abs.bottom || b == abs.bottom) {
-      abs.bottom
+      (abs.bottom, Set[Effect[Addr, Abs]]())
     } else {
       val visited2 = visited + ((a, b))
       val eqtest = eq(a, b)
       val t = if (abs.isTrue(eqtest)) { eqtest } else { abs.bottom }
-      val f = if (abs.isFalse(eqtest)) {
+      val (f, effects1) = if (abs.isFalse(eqtest)) {
         val nulltest = abs.and(isNull(a), isNull(b))
         val ft = if (abs.isTrue(nulltest)) { nulltest } else { abs.bottom }
-        val ff = if (abs.isFalse(nulltest)) {
+        val (ff, effects2) = if (abs.isFalse(nulltest)) {
           val constest = abs.and(isCons(a), isCons(b))
-          val fft = if (abs.isTrue(constest)) {
-            val cartest = equal(car(a, store), car(b, store), store, visited2)
-            val fftt = if (abs.isTrue(cartest)) {
-              equal(cdr(a, store), cdr(b, store), store, visited2)
-            } else { abs.bottom }
+          val (fft, effects3) = if (abs.isTrue(constest)) {
+            val (cara, effects4) = car(a, store)
+            val (carb, effects5) = car(b, store)
+            val (cartest, effects6) = equal(cara, carb, store, visited2)
+            val (fftt, effects7) = if (abs.isTrue(cartest)) {
+              val (cdra, effects8) = cdr(a, store)
+              val (cdrb, effects9) = cdr(b, store)
+              val (res, effects10) = equal(cdra, cdrb, store, visited2)
+              (res, effects8 ++ effects9 ++ effects10)
+            } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
             val fftf = if (abs.isFalse(cartest)) { abs.inject(false) } else { abs.bottom }
-            abs.join(fftt, fftf)
-          } else { abs.bottom }
-          val fff = if (abs.isFalse(constest)) {
+            (abs.join(fftt, fftf), effects4 ++ effects5 ++ effects6 ++ effects7)
+          } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+          val (fff, effects11) = if (abs.isFalse(constest)) {
             val vectest = abs.and(isVector(a), isVector(b))
-            val ffft = if (abs.isTrue(vectest)) {
-              val (alength, blength) = (vectorLength(a, store), vectorLength(b, store))
-              val lengthtest = numEq(alength, blength)
-              val ffftt = if (abs.isTrue(lengthtest)) {
-                equalVecLoop(a, b, abs.inject(0), alength, store, visited2, Set())
-              } else { abs.bottom }
+            val (ffft, effects12) = if (abs.isTrue(vectest)) {
+              val (lengtha, effects13) = vectorLength(a, store)
+              val (lengthb, effects14) = vectorLength(b, store)
+              val lengthtest = numEq(lengtha, lengthb)
+              val (ffftt, effects15) = if (abs.isTrue(lengthtest)) {
+                equalVecLoop(a, b, abs.inject(0), lengtha, store, visited2, Set())
+              } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
               val ffftf = if (abs.isFalse(lengthtest)) { abs.inject(false) } else { abs.bottom }
-              abs.join(ffftt, ffftf)
-            } else { abs.bottom }
+              (abs.join(ffftt, ffftf), effects13 ++ effects14 ++ effects15)
+            } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
             val ffff = if (abs.isFalse(vectest)) { abs.inject(false) } else { abs.bottom }
-            abs.join(ffft, ffff)
-          } else { abs.bottom }
-          abs.join(fft, fff)
-        } else { abs.bottom }
-        abs.join(ft, ff)
-      } else { abs.bottom }
-      abs.join(t, f)
+            (abs.join(ffft, ffff), effects12)
+          } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+          (abs.join(fft, fff), effects11)
+        } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+        (abs.join(ft, ff), effects2)
+      } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+      (abs.join(t, f), effects1)
     }
-  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): Abs = equal(a, b, store, Set())
+  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = equal(a, b, store, Set())
 
   /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
-  private def listp(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs =
+  private def listp(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): (Abs, Set[Effect[Addr, Abs]]) =
     if (visited.contains(l)) {
-      abs.inject(false) /* R5RS: "all lists have finite length", and the cases where this is reached include circular lists */
+      /* R5RS: "all lists have finite length", and the cases where this is reached include circular lists */
+      (abs.inject(false), Set[Effect[Addr, Abs]]())
     } else {
       val nulltest = isNull(l)
       val t = if (abs.isTrue(nulltest)) { nulltest } else { abs.bottom }
-      val f = if (abs.isFalse(nulltest)) {
+      val (f, effs) = if (abs.isFalse(nulltest)) {
         val constest = isCons(l)
-        val ft = if (abs.isTrue(constest)) {
-          listp(cdr(l, store), store, visited + l)
-        } else { abs.bottom }
+        val (ft, effs) = if (abs.isTrue(constest)) {
+          val (cdrl, effects1) = cdr(l, store)
+          val (res, effects2) = listp(cdrl, store, visited + l)
+          (res, effects1 ++ effects2)
+        } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
         val ff = if (abs.isFalse(constest)) { abs.inject(false) } else { abs.bottom }
-        abs.join(ft, ff)
-      } else { abs.bottom }
-      abs.join(t, f)
+        (abs.join(ft, ff), effs)
+      } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+      (abs.join(t, f), effs)
     }
-  private def listp(l: Abs, store: Store[Addr, Abs]): Abs = listp(l, store, Set())
+  private def listp(l: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = listp(l, store, Set())
 
   /** (define (length l) (if (pair? l) (+ 1 (length (cdr l))) (if (null? l) 0 (error "length called with a non-list")))) */
-  private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): Abs =
+  private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): (Abs, Set[Effect[Addr, Abs]]) =
     if (visited.contains(l)) {
-      abs.bottom
+      (abs.bottom, Set[Effect[Addr, Abs]]())
     } else {
       val visited2 = visited + l
       val cond = isCons(l)
-      val t = if (abs.isTrue(cond)) { plus(abs.inject(1), length(cdr(l, store), store, visited2)) } else { abs.bottom }
+      val (t, eff) = if (abs.isTrue(cond)) {
+        val (cdrl, effects1) = cdr(l, store)
+        val (lengthl, effects2) = length(cdrl, store, visited2)
+        (plus(abs.inject(1), lengthl), effects1 ++ effects2)
+      } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
       val f = if (abs.isFalse(cond)) {
         val fcond = isNull(l)
         val ft = if (abs.isTrue(fcond)) { abs.inject(0) } else { abs.bottom }
@@ -525,9 +544,18 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       } else {
         abs.bottom
       }
-      abs.join(t, f)
+      (abs.join(t, f), eff)
     }
-  private def length(l: Abs, store: Store[Addr, Abs]): Abs = length(l, store, Set())
+  private def length(l: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = length(l, store, Set())
+
+  private def toPrim(x: (Abs, Set[Effect[Addr, Abs]]), store: Store[Addr, Abs]): (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]]) =
+    (x._1, store, x._2)
+  private def chain(v: Abs, fs: (Abs => (Abs, Set[Effect[Addr, Abs]]))*): (Abs, Set[Effect[Addr, Abs]]) =
+    fs.foldLeft((v, Set[Effect[Addr, Abs]]()))((acc, f) => {
+      val (res, effects) = f(acc._1)
+      (res, acc._2 ++ effects)
+    })
+
 
   /** Bundles all the primitives together */
   val all: List[Primitive[Addr, Abs]] = List(
@@ -552,30 +580,37 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("display", display),
     NullaryOperation("newline", newline),
     Cons,
-    UnaryStoreOperation("car", (v, store) => (car(v, store), store)),
-    UnaryStoreOperation("cdr", (v, store) => (cdr(v, store), store)),
-    UnaryStoreOperation("caar", (v, store) => (car(car(v, store), store), store)),
-    UnaryStoreOperation("cadr", (v, store) => (car(cdr(v, store), store), store)),
-    UnaryStoreOperation("cddr", (v, store) => (cdr(cdr(v, store), store), store)),
-    UnaryStoreOperation("cdar", (v, store) => (cdr(car(v, store), store), store)),
-    UnaryStoreOperation("caaar", (v, store) => (car(car(car(v, store), store), store), store)),
-    UnaryStoreOperation("cdaar", (v, store) => (cdr(car(car(v, store), store), store), store)),
-    UnaryStoreOperation("caadr", (v, store) => (car(car(cdr(v, store), store), store), store)),
-    UnaryStoreOperation("cdadr", (v, store) => (cdr(car(cdr(v, store), store), store), store)),
-    UnaryStoreOperation("caddr", (v, store) => (car(cdr(cdr(v, store), store), store), store)),
-    UnaryStoreOperation("cdddr", (v, store) => (cdr(cdr(cdr(v, store), store), store), store)),
-    UnaryStoreOperation("cadar", (v, store) => (car(cdr(car(v, store), store), store), store)),
-    UnaryStoreOperation("cddar", (v, store) => (cdr(cdr(car(v, store), store), store), store)),
-    BinaryStoreOperation("set-car!", (cell, v, store) =>
-      (abs.bottom,
-        abs.car(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
-    BinaryStoreOperation("set-cdr!", (cell, v, store) =>
-      (abs.bottom,
-        abs.cdr(cell).foldLeft(store)((acc, a) => acc.update(a, v)))),
+    UnaryStoreOperation("car", (v, store) => toPrim(car(v, store), store)),
+    UnaryStoreOperation("cdr", (v, store) => toPrim(car(v, store), store)),
+    UnaryStoreOperation("caar", (v, store) => toPrim(chain(v, car(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cadr", (v, store) => toPrim(chain(v, cdr(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cdar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("caaar", (v, store) => toPrim(chain(v, car(_, store), car(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cdaar", (v, store) => toPrim(chain(v, car(_, store), car(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("caadr", (v, store) => toPrim(chain(v, cdr(_, store), car(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cdadr", (v, store) => toPrim(chain(v, cdr(_, store), car(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("caddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cdddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cadar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cddar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), cdr(_, store)), store)),
+    BinaryStoreOperation("set-car!", (cell, v, store) => {
+      val (store2, effects) = abs.car(cell).foldLeft((store, Set[Effect[Addr, Abs]]()))((acc, a) =>
+        (acc._1.update(a, v), acc._2 + EffectWriteConsCar(a)))
+      (abs.inject(false), store2, effects)
+    }),
+    BinaryStoreOperation("set-cdr!", (cell, v, store) => {
+      val (store2, effects) = abs.cdr(cell).foldLeft((store, Set[Effect[Addr, Abs]]()))((acc, a) =>
+        (acc._1.update(a, v), acc._2 + EffectWriteConsCar(a)))
+      (abs.inject(false), store2, effects)
+    }),
     UnaryOperation("error", abs.error),
     UnaryOperation("null?", isNull),
     UnaryOperation("pair?", isCons),
-    UnaryStoreOperation("list?", (v, store) => (listp(v, store), store)),
+    UnaryStoreOperation("list?", (v, store) => {
+      val (res, effs) = listp(v, store)
+      (res, store, effs)
+    }),
     UnaryOperation("char?", isChar),
     UnaryOperation("symbol?", isSymbol),
     UnaryOperation("string?", isString),
@@ -584,13 +619,25 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("real?", x => abs.or(isInteger(x), isFloat(x))),
     UnaryOperation("boolean?", isBoolean),
     BinaryOperation("eq?", eq),
-    BinaryStoreOperation("equal?", (a, b, store) => (equal(a, b, store), store)),
-    UnaryStoreOperation("length", (v, store) => (length(v, store), store)),
+    BinaryStoreOperation("equal?", (a, b, store) => {
+      val (res, eff) = equal(a, b, store)
+      (res, store, eff)
+    }),
+    UnaryStoreOperation("length", (v, store) => {
+      val (res, eff) = length(v, store)
+      (res, store, eff)
+    }),
     UnaryOperation("abs", abs),
     MakeVector, VectorSet,
     UnaryOperation("vector?", isVector),
-    UnaryStoreOperation("vector-length", (v, store) => (vectorLength(v, store), store)),
-    BinaryStoreOperation("vector-ref", (v, i, store) => (vectorRef(v, i, store), store)),
+    UnaryStoreOperation("vector-length", (v, store) => {
+      val (res, eff) = vectorLength(v, store)
+      (res, store, eff)
+    }),
+    BinaryStoreOperation("vector-ref", (v, i, store) => {
+      val (res, effects) = vectorRef(v, i, store)
+      (res, store, effects)
+    }),
     Lock,
     NullaryOperation("bottom", abs.bottom)
   )

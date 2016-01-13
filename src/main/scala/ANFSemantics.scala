@@ -1,5 +1,6 @@
 /**
  * Semantics for ANF Scheme (abstract grammar defined in ANF.scala)
+ * TODO: annotate with effects!
  */
 class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     extends BaseSemantics[ANFExp, Abs, Addr, Time] {
@@ -67,7 +68,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
               val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitives(fv).map(prim =>
                 /* To call a primitive, apply the call method with the given arguments and the store */
                 prim.call(f, argsv, σ, t) match {
-                  case Right((res, σ2)) => ActionReachedValue[ANFExp, Abs, Addr](res, σ2)
+                  case Right((res, σ2, effects)) => ActionReachedValue[ANFExp, Abs, Addr](res, σ2, effects)
                   case Left(err) => ActionError[ANFExp, Abs, Addr](err)
                 })
               if (fromClo.isEmpty && fromPrim.isEmpty) {

@@ -55,7 +55,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     })
     val fromPrim = abs.getPrimitives(function).map(prim =>
       prim.call(fexp, argsv, σ, t) match {
-        case Right((res, σ2)) => ActionReachedValue[SchemeExp, Abs, Addr](res, σ2)
+        case Right((res, σ2, effects)) => ActionReachedValue[SchemeExp, Abs, Addr](res, σ2, effects)
         case Left(err) => ActionError[SchemeExp, Abs, Addr](err)
       })
     if (fromClo.isEmpty && fromPrim.isEmpty) {
@@ -244,7 +244,6 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
     case FrameAcquire(ρ) =>
-      /* TODO: acquire and release also generate read effects */
       val locks = abs.getLocks(v)
       if (locks.isEmpty) {
         Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
