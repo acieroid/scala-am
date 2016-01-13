@@ -100,12 +100,8 @@ object Benchmarks {
 
   val system = ActorSystem("scala-am-benchmarks")
 
-  import scala.collection.mutable.{Queue, Map => MutableMap}
   class Dispatcher extends Actor {
-    val work: Queue[MachineConfig] = Queue()
-    val concreteResults: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]] = MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]()
-    val abstractResults: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]] = MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]()
-    var computing: Int = 0
+    import scala.collection.immutable.Queue
 
     val now = java.util.Calendar.getInstance.getTime
     val timeformat = new java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
@@ -113,17 +109,20 @@ object Benchmarks {
     val fileout = new java.io.FileOutputStream(new java.io.File(s"benchmarks-${timeformat.format(now)}.log"))
     val logging = new java.io.OutputStream { override def write(b: Int) { stdout.write(b); fileout.write(b) } }
 
-    import scala.math.Ordering.String._
-    private def printResults(results: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]) = {
+    private def printResults(results: Map[String, Map[ExplorationType.Value, MachineOutput]]) = {
+      import scala.math.Ordering.String._
       println(Tabulator.format(List("program", "one", "all", "reduced") :: results.toList.sortBy({ case (name, _) => name }).map({
         case (name, res) => name :: List(ExplorationType.OneInterleaving,
           ExplorationType.AllInterleavings, ExplorationType.InterferenceTracking).map(expl =>
           res.get(expl) match {
-          case Some(out) => out.toString
-          case None => "x"
+            case Some(out) => out.toString
+            case None => "x"
           })
       })))
     }
+
+    private def err(msg: String) = println(s"${scala.io.AnsiColor.RED}$msg${scala.io.AnsiColor.RESET}")
+
     private def subsumes(abs: Set[Any], conc: Set[Any]): Boolean = {
       conc.forall(c => {
         val a2 = c.asInstanceOf[ConcreteLattice.Element] match {
@@ -142,9 +141,7 @@ object Benchmarks {
       })
     }
 
-    private def err(msg: String) = println(s"${scala.io.AnsiColor.RED}$msg${scala.io.AnsiColor.RESET}")
-
-    private def checkResults = {
+    private def checkResults(state: State) = {
       /* invariants being checked, for programs that didn't time out
        1. result from OneInterleaving is contained in AllInterleavings (for concrete and abstract)
        2. result from InterferenceTracking completely matches results from AllInterleavings (for concrete and abstract)
@@ -159,8 +156,8 @@ object Benchmarks {
        */
       programs.foreach(name => {
         println(s"Checking results for $name")
-        val conc = concreteResults(name)
-        val abs = abstractResults(name)
+        val conc = state.concreteResults(name)
+        val abs = state.abstractResults(name)
         val oneconc = conc(ExplorationType.OneInterleaving)
         val oneabs = abs(ExplorationType.OneInterleaving)
         val allconc = conc(ExplorationType.AllInterleavings)
@@ -210,35 +207,45 @@ object Benchmarks {
           err("$name (red): abstract (${redabs.finalValues}) does not subsume concrete (${redconc.finalValues})")
       })
     }
-    private def sendWork(actor: ActorRef) = if (!work.isEmpty) {
-      actor ! Computation(work.dequeue)
-      computing += 1
-    } else if (computing == 0) {
-      scala.Console.withOut(logging) {
-        /* no more work to do, nothing is computing, stop */
-        checkResults
-        println("Concrete:")
-        printResults(concreteResults)
-        println("Abstract:")
-        printResults(abstractResults)
+
+    private type Results = Map[String, Map[ExplorationType.Value, MachineOutput]]
+    private case class State(computing: Int, work: Queue[MachineConfig], concreteResults: Results, abstractResults: Results)
+
+    private def updateResults(results: Results, in: MachineConfig, out: MachineOutput): Results = results.get(in.name) match {
+      case Some(m) => results + (in.name -> (m + (in.exploration -> out)))
+      case None => results + (in.name -> Map(in.exploration -> out))
+    }
+
+    private def sendWork(actor: ActorRef, state: State): Receive = state.work.dequeueOption match {
+      case Some((item, remainingWork)) =>
+        actor ! Computation(item)
+        val newState = state.copy(computing = state.computing + 1, work = remainingWork)
+        active(newState)
+      case None => {
+        if (state.computing == 0) {
+          scala.Console.withOut(logging) {
+            /* no more work to do, nothing is computing, stop */
+            checkResults(state)
+            printResults(state.concreteResults)
+            printResults(state.abstractResults)
+          }
+          system.shutdown
+        }
+        active(state)
       }
-      system.shutdown
     }
-    def receive = {
-      case AddWork(items) => work ++= items
-      case SendWork(actor) => sendWork(actor)
+    private def active(state: State): Receive = {
+      case AddWork(items) => context.become(active(state.copy(work = state.work ++ items)))
+      case SendWork(actor) => context.become(sendWork(actor, state))
       case Result(in, out) =>
-        computing -= 1
-        val results = if (in.concrete) concreteResults else abstractResults
-        results.get(in.name) match {
-          case Some(m) => m += in.exploration -> out
-          case None => results += in.name -> MutableMap(in.exploration -> out)
-        }
-        scala.Console.withOut(logging) {
-          println(s"$in: $out")
-        }
-        sendWork(sender)
+        scala.Console.withOut(logging) { println(s"$in: $out") }
+        context.become(sendWork(sender, state.copy(computing = state.computing-1,
+          concreteResults = if (in.concrete) updateResults(state.concreteResults, in, out) else state.concreteResults,
+          abstractResults = if (in.concrete) state.abstractResults else updateResults(state.abstractResults, in, out))))
     }
+
+    def receive = active(State(0, Queue[MachineConfig](),
+      Map[String, Map[ExplorationType.Value, MachineOutput]](), Map[String, Map[ExplorationType.Value, MachineOutput]]()))
   }
 
   def main(args: Array[String]) {
