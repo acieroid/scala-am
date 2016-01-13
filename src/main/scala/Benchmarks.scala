@@ -113,8 +113,9 @@ object Benchmarks {
     val fileout = new java.io.FileOutputStream(new java.io.File(s"benchmarks-${timeformat.format(now)}.log"))
     val logging = new java.io.OutputStream { override def write(b: Int) { stdout.write(b); fileout.write(b) } }
 
+    import scala.math.Ordering.String._
     private def printResults(results: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]) = {
-      println(Tabulator.format(List("program", "one", "all", "reduced") :: results.toList.map({
+      println(Tabulator.format(List("program", "one", "all", "reduced") :: results.toList.sortBy({ case (name, _) => name }).map({
         case (name, res) => name :: List(ExplorationType.OneInterleaving,
           ExplorationType.AllInterleavings, ExplorationType.InterferenceTracking).map(expl =>
           res.get(expl) match {
