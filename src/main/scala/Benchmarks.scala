@@ -107,6 +107,12 @@ object Benchmarks {
     val abstractResults: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]] = MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]()
     var computing: Int = 0
 
+    val now = java.util.Calendar.getInstance.getTime
+    val timeformat = new java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
+    val stdout = scala.Console.out
+    val fileout = new java.io.FileOutputStream(new java.io.File(s"benchmarks-${timeformat.format(now)}.log"))
+    val logging = new java.io.OutputStream { override def write(b: Int) { stdout.write(b); fileout.write(b) } }
+
     private def printResults(results: MutableMap[String, MutableMap[ExplorationType.Value, MachineOutput]]) = {
       println(Tabulator.format(List("program", "one", "all", "reduced") :: results.toList.map({
         case (name, res) => name :: List(ExplorationType.OneInterleaving,
@@ -207,12 +213,14 @@ object Benchmarks {
       actor ! Computation(work.dequeue)
       computing += 1
     } else if (computing == 0) {
-      /* no more work to do, nothing is computing, stop */
-      checkResults
-      println("Concrete: ")
-      printResults(concreteResults)
-      println("Abstract: ")
-      printResults(abstractResults)
+      scala.Console.withOut(logging) {
+        /* no more work to do, nothing is computing, stop */
+        checkResults
+        println("Concrete:")
+        printResults(concreteResults)
+        println("Abstract:")
+        printResults(abstractResults)
+      }
       system.shutdown
     }
     def receive = {
@@ -225,7 +233,9 @@ object Benchmarks {
           case Some(m) => m += in.exploration -> out
           case None => results += in.name -> MutableMap(in.exploration -> out)
         }
-        println(s"$in: $out")
+        scala.Console.withOut(logging) {
+          println(s"$in: $out")
+        }
         sendWork(sender)
     }
   }
@@ -233,7 +243,6 @@ object Benchmarks {
   def main(args: Array[String]) {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) =>
-        println(config)
         val work = programs.flatMap(name =>
           Set(ExplorationType.AllInterleavings, ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking).flatMap(expl =>
             Set(true, false).map(concrete =>
