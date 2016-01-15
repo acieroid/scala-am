@@ -1,0 +1,27 @@
+(letrec ((make-initialized-vector (lambda (n f)
+                                    (letrec ((v (make-vector n (bottom)))
+                                             (loop (lambda (i)
+                                                     (if (= i n)
+                                                         v
+                                                         (begin
+                                                           (vector-set! v i (f i))
+                                                           (loop (+ i 1)))))))
+                                      (loop 0))))
+         (join-all (lambda (v)
+                     (letrec ((loop (lambda (i)
+                                      (if (= i (vector-length v))
+                                          #t
+                                          (begin (join (vector-ref v i))
+                                                 (loop (+ i 1)))))))
+                       (loop 0)))))
+  (letrec ((counter 0)
+           (n 4)
+           (f (lambda ()
+                (letrec ((old counter)
+                         (new (+ old 1)))
+                  (if (cas counter old new)
+                      #t
+                      (f)))))
+           (threads (make-initialized-vector n (lambda (i) (spawn (f))))))
+    (join-all threads)
+    (= counter n)))

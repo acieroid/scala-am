@@ -44,7 +44,14 @@ object Benchmarks {
   }
 
   val programs = Set(
-    "counter-race", "fs", "incdec", "indexer", "mutex-cas", "pcounter", "philosophers", "producer", "simple"
+    "race2", "race3", "race4", "race5", "race6",
+    "fs2", "fs3", "fs4", "fs5", "fs6",
+    "incdec2", "incdec3", "incdec4", "incdec5", "incdec6",
+    "indexer2", "indexer3", "indexer4", "indexer5", "indexer6",
+    "mutex2", "mutex3", "mutex4", "mutex5", "mutex6",
+    "pcounter2", "pcounter3", "pcounter4", "pcounter5", "pcounter6",
+    "philosophers2", "philosophers3", "philosophers4", "philosophers5", "philosophers6",
+    "producer", "simple"
   )
 
   import akka.actor.{ActorRef, ActorSystem, Props, Actor, Inbox }
