@@ -365,7 +365,13 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
   }
 
   override def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
-    case FrameJoin(ρ) => Set(ActionJoin(v, σ))
+    case FrameJoin(ρ) =>
+      val tids = abs.getTids(v)
+      if (tids.isEmpty) {
+        Set(ActionError(s"join performed on a non-tid value: $v"))
+      } else {
+        Set(ActionJoin(v, σ))
+      }
     case _ => super.stepKont(v, frame, σ, t)
   }
 }
