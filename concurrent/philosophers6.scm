@@ -7,14 +7,7 @@
                                                          (begin
                                                            (vector-set! v i (f i))
                                                            (loop (+ i 1)))))))
-                                      (loop 0))))
-         (join-all (lambda (v)
-                     (letrec ((loop (lambda (i)
-                                      (if (= i (vector-length v))
-                                          #t
-                                          (begin (join (vector-ref v i))
-                                                 (loop (+ i 1)))))))
-                       (loop 0)))))
+                                      (loop 0)))))
   (letrec ((n 6) ; number of philosophers
            (turns 5) ; number of turns to run
            (forks (make-initialized-vector n (lambda (x) (new-lock))))
@@ -36,5 +29,15 @@
                                                     (putdown left right)
                                                     (process (+ turn 1)))))))
                             (process 0))))
-           (threads (make-initialized-vector n (lambda (i) (spawn (philosopher i))))))
-    (join-all threads)))
+           (t1 (spawn (philosopher 0)))
+           (t2 (spawn (philosopher 1)))
+           (t3 (spawn (philosopher 2)))
+           (t4 (spawn (philosopher 3)))
+           (t5 (spawn (philosopher 4)))
+           (t6 (spawn (philosopher 5))))
+    (join t1)
+    (join t2)
+    (join t3)
+    (join t4)
+    (join t5)
+    (join t6)))
