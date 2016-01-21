@@ -187,6 +187,9 @@ object Benchmarks {
         } else if (redconc.timedOut) {
           if (!allconc.timedOut)
             err("s$name (concrete): reduced interleavings timed out, but all interleavings did not")
+        } else if (allconc.timedOut && !redconc.timedOut) {
+          if (!allconc.finalValues.subseOf(redconc.finalValues)) // 2
+            err(s"$name (concrete): reduced interleavings (${redconc.finalValues}) do not contain timed-out all interleavings (${allconc.finalValues})")
         }
         /* Abstract */
         if (!oneabs.timedOut && !allabs.timedOut && !redabs.timedOut) {
@@ -204,6 +207,9 @@ object Benchmarks {
         } else if (redabs.timedOut) {
           if (!allabs.timedOut)
             err("s$name (abstract): reduced interleavings timed out, but all interleavings did not")
+        } else if (allabs.timedOut && !redabs.timedOut) {
+          if (!allabs.finalValues.subseOf(redabs.finalValues)) // 2
+            err(s"$name (abstract): reduced interleavings (${redabs.finalValues}) do not contain timed-out all interleavings (${allabs.finalValues})")
         }
         /* Concrete <-> Abstract */
         if (!oneabs.timedOut && !oneconc.timedOut && !subsumes(oneabs.finalValues, oneconc.finalValues))
