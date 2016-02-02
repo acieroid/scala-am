@@ -171,6 +171,7 @@ object Benchmarks {
         val allabs = abs(ExplorationType.AllInterleavings)
         val redconc = conc(ExplorationType.InterferenceTracking)
         val redabs = abs(ExplorationType.InterferenceTracking)
+        println(s"Number of final values: allconc: ${allconc.finalValues.size}, redconc: ${redconc.finalValues.size}, allabs: ${allabs.finalValues.size}, redabs: ${redabs.finalValues.size}")
         /* Concrete */
         if (!oneconc.timedOut && !allconc.timedOut && !redconc.timedOut) {
           if (!oneconc.finalValues.subsetOf(allconc.finalValues)) // 1
