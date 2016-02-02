@@ -3,7 +3,7 @@ import scalaz.Scalaz._
 
 object ExplorationType extends Enumeration {
   type ExplorationType = Value
-  val AllInterleavings, OneInterleaving, InterferenceTracking = Value
+  val AllInterleavings, OneInterleaving, RandomInterleaving, InterferenceTracking = Value
 }
 import ExplorationType._
 
@@ -123,6 +123,19 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         case Some(_) => acc
       })
     }
+    def stepAnyRandom(sem: Semantics[Exp, Abs, Addr, Time]): Option[(TID, Set[(Effects, State)])] = {
+      val init: Option[(TID, Set[(Effects, State)])] = None
+      scala.util.Random.shuffle(threads.tids.toList).foldLeft(init)((acc, tid) => acc match {
+        case None =>
+          val stepped = step(sem, tid)
+          if (stepped.isEmpty) {
+            None
+          } else {
+            Some((tid, stepped))
+          }
+        case Some(_) => acc
+      })
+    }
     def hasEnabledTransitions(sem: Semantics[Exp, Abs, Addr, Time]): Boolean = stepAny(sem) match {
       case Some(_) => true
       case None => false
@@ -211,6 +224,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   private def allInterleavings(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAll(sem)
   private def oneInterleaving(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAny(sem) match {
+    case Some((tid, succs)) => succs.map(s2 => (tid, s2._1, s2._2))
+    case None => Set()
+  }
+  private def randomInterleaving(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, _) => s.stepAnyRandom(sem) match {
     case Some((tid, succs)) => succs.map(s2 => (tid, s2._1, s2._2))
     case None => Set()
   }
@@ -486,6 +503,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(allInterleavings(sem))
       case OneInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(oneInterleaving(sem))
+      case RandomInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
+        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(randomInterleaving(sem))
       case InterferenceTracking => reducedLoop(List((State.inject(exp), thread.initial)), Set(), EffectsMap(), ThreadPickMap(),
         Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
