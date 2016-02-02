@@ -1,9 +1,10 @@
 object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Long] = None)
+  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
     opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers to run the benchmarks on (1 by default)")
+    opt[Int]('r', "random") action { (x, c) => c.copy(random = x) } text("Number of random interleavings explored (10 by default)")
     opt[Config.Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
   }
 }
@@ -160,6 +161,7 @@ object Benchmarks {
        Also:
        6. For programs where InterferenceTracking did time out, we check that AllInterleavings did time out as well.
        7. result for some exploration in the abstract subsumes results for another exploration in the concrete
+       8. results from every RandomInterleaving run are contained in InterferenceTracking
        */
       programs.foreach(name => {
         println(s"Checking results for $name")
@@ -171,6 +173,8 @@ object Benchmarks {
         val allabs = abs(ExplorationType.AllInterleavings)
         val redconc = conc(ExplorationType.InterferenceTracking)
         val redabs = abs(ExplorationType.InterferenceTracking)
+        val randconc = conc(ExplorationType.RandomInterleaving)
+        val randabs = abs(ExplorationType.RandomInterleaving)
         println(s"Number of final values: allconc: ${allconc.finalValues.size}, redconc: ${redconc.finalValues.size}, allabs: ${allabs.finalValues.size}, redabs: ${redabs.finalValues.size}")
         /* Concrete */
         if (!oneconc.timedOut && !allconc.timedOut && !redconc.timedOut) {
@@ -213,6 +217,11 @@ object Benchmarks {
           err("$name (all): abstract (${allabs.finalValues}) does not subsume concrete (${allconc.finalValues})")
         if (!redabs.timedOut && !redconc.timedOut && !subsumes(redabs.finalValues, redconc.finalValues))
           err("$name (red): abstract (${redabs.finalValues}) does not subsume concrete (${redconc.finalValues})")
+        /* Random (8) */
+        if (!redabs.timedOut && !randabs.finalValues.subsetOf(redabs.finalValues))
+          err("$name (abstract): randomly explored paths explored values (${randabs.finalValues}) that weren't explored in reduced interleavings (${redabs.finalValues})")
+        if (!redconc.timedOut && !randconc.finalValues.subsetOf(redconc.finalValues))
+          err("$name (concrete): randomly explored paths explored values (${randconc.finalValues}) that weren't explored in reduced interleavings (${redconc.finalValues})")
       })
     }
 
@@ -220,7 +229,13 @@ object Benchmarks {
     private case class State(computing: Int, work: Queue[MachineConfig], concreteResults: Results, abstractResults: Results)
 
     private def updateResults(results: Results, in: MachineConfig, out: MachineOutput): Results = results.get(in.name) match {
-      case Some(m) => results + (in.name -> (m + (in.exploration -> out)))
+      case Some(m) => results + (in.name -> (m + (in.exploration -> (in.exploration match {
+        case ExplorationType.RandomInterleaving => m.get(ExplorationType.RandomInterleaving) match {
+          case Some(res) => res.copy(finalValues = res.finalValues ++ out.finalValues)
+          case None => out
+        }
+        case _ => out
+      }))))
       case None => results + (in.name -> Map(in.exploration -> out))
     }
 
@@ -259,10 +274,12 @@ object Benchmarks {
   def main(args: Array[String]) {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) =>
-        val work = programs.flatMap(name =>
-          Set(ExplorationType.AllInterleavings, ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking).flatMap(expl =>
+        val work = programs.toList.flatMap(name =>
+          (List(ExplorationType.AllInterleavings, ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking) ++
+            List.fill(config.random)(ExplorationType.RandomInterleaving)).flatMap(expl =>
             Set(true, false).map(concrete =>
               MachineConfig(name, expl, concrete, config.timeout))))
+        println(s"Scheduling ${work.size} items of work")
         val workers = (1 to config.workers).map(i => system.actorOf(Props[Worker], s"worker-$i"))
         val dispatcher = system.actorOf(Props[Dispatcher], "dispatcher")
         dispatcher ! AddWork(work)

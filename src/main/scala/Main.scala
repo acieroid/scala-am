@@ -93,17 +93,23 @@ object Config {
   }
   case class Hours(n: Long) extends Time {
     def nanoSeconds = n * 60 * 60 * Math.pow(10, 9).toLong
+    override def toString = if (n == 1) "1 hour" else s"$n hours"
   }
   case class Minutes(n: Long) extends Time {
     def nanoSeconds = n * 60 * Math.pow(10, 9).toLong
+    override def toString = if (n == 1) "1 minute" else s"$n minutes"
   }
   case class Seconds(n: Long) extends Time {
     def nanoSeconds = n * Math.pow(10, 9).toLong
+    override def toString = if (n == 1) "1 second" else s"$n seconds"
   }
   case class Milliseconds(n: Long) extends Time {
     def nanoSeconds = n * Math.pow(10, 6).toLong
+    override def toString = if (n == 1) "1 millisecond" else s"$n milliseconds"
   }
-  case class Nanoseconds(nanoSeconds: Long) extends Time
+  case class Nanoseconds(nanoSeconds: Long) extends Time {
+    override def toString = if (nanoSeconds == 1) "1 nanosecond" else s"$nanoSeconds nanoseconds"
+  }
 
   object TimeParser extends scala.util.parsing.combinator.RegexParsers {
     val number = "[0-9]+".r
