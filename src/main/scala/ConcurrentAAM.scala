@@ -1,6 +1,5 @@
 import scalaz.Scalaz._
 
-
 object ExplorationType extends Enumeration {
   type ExplorationType = Value
   val AllInterleavings, OneInterleaving, RandomInterleaving, InterferenceTracking = Value

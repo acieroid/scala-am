@@ -170,52 +170,54 @@ object Benchmarks {
         val abs = state.abstractResults(name)
         val oneconc = conc(ExplorationType.OneInterleaving)
         val oneabs = abs(ExplorationType.OneInterleaving)
-        val allconc = conc(ExplorationType.AllInterleavings)
-        val allabs = abs(ExplorationType.AllInterleavings)
         val redconc = conc(ExplorationType.InterferenceTracking)
         val redabs = abs(ExplorationType.InterferenceTracking)
         val randconc = conc(ExplorationType.RandomInterleaving)
         val randabs = abs(ExplorationType.RandomInterleaving)
-        println(s"Number of final values: allconc: ${allconc.finalValues.size}, redconc: ${redconc.finalValues.size}, allabs: ${allabs.finalValues.size}, redabs: ${redabs.finalValues.size}")
+
+        (conc.get(ExplorationType.AllInterleavings), abs.get(ExplorationType.AllInterleavings)) match {
+          case (Some(allconc), Some(allabs)) =>
+            println(s"Number of final values: allconc: ${allconc.finalValues.size}, redconc: ${redconc.finalValues.size}, allabs: ${allabs.finalValues.size}, redabs: ${redabs.finalValues.size}")
+            /* Concrete */
+            if (!oneconc.timedOut && !allconc.timedOut && !redconc.timedOut) {
+              if (!oneconc.finalValues.subsetOf(allconc.finalValues)) // 1
+                err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in all interleavings (${allconc.finalValues})")
+              if (!(redconc.finalValues == allconc.finalValues)) // 2
+                err(s"$name (concrete): reduced interleavings (${redconc.finalValues}) do not match all interleavings (${allconc.finalValues})")
+            } else if (allconc.timedOut && !oneconc.timedOut && !redconc.timedOut) {
+              if (!allconc.finalValues.subsetOf(redconc.finalValues)) // 4
+                err(s"$name (concrete): all explored interleavings (with timeout, ${allconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
+            } else if (redconc.timedOut && !allconc.timedOut) {
+              err("s$name (concrete): reduced interleavings timed out, but all interleavings did not")
+            }
+            /* Abstract */
+            if (!oneabs.timedOut && !allabs.timedOut && !redabs.timedOut) {
+              if (!oneabs.finalValues.subsetOf(allabs.finalValues)) // 1
+                err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in all interleavings (${allabs.finalValues})")
+              if (!(redabs.finalValues == allabs.finalValues)) // 2
+                err(s"$name (abstract): reduced interleavings (${redabs.finalValues}) do not match all interleavings (${allabs.finalValues})")
+            } else if (allabs.timedOut && !oneabs.timedOut && !redabs.timedOut) {
+              if (!allabs.finalValues.subsetOf(redabs.finalValues)) // 4
+                err(s"$name (abstract): all explored interleavings (with timeout, ${allabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
+            } else if (redabs.timedOut && !allabs.timedOut) {
+              err("s$name (abstract): reduced interleavings timed out, but all interleavings did not")
+            }
+            /* Concrete <-> Abstract */
+            if (!allabs.timedOut && !allconc.timedOut && !subsumes(allabs.finalValues, allconc.finalValues))
+              err("$name (all): abstract (${allabs.finalValues}) does not subsume concrete (${allconc.finalValues})")
+          case _ => println("All interleavings were skipped")
+        }
         /* Concrete */
-        if (!oneconc.timedOut && !allconc.timedOut && !redconc.timedOut) {
-          if (!oneconc.finalValues.subsetOf(allconc.finalValues)) // 1
-            err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in all interleavings (${allconc.finalValues})")
-          if (!(redconc.finalValues == allconc.finalValues)) // 2
-            err(s"$name (concrete): reduced interleavings (${redconc.finalValues}) do not match all interleavings (${allconc.finalValues})")
-          if (!oneconc.finalValues.subsetOf(redconc.finalValues)) // 3
+        if (!oneconc.timedOut && !redconc.timedOut)
+          if (!oneconc.finalValues.subsetOf(redconc.finalValues)) // 3 & 5
             err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
-        } else if (allconc.timedOut && !oneconc.timedOut && !redconc.timedOut) {
-          if (!allconc.finalValues.subsetOf(redconc.finalValues)) // 4
-            err(s"$name (concrete): all explored interleavings (with timeout, ${allconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
-          if (!oneconc.finalValues.subsetOf(redconc.finalValues)) // 5
-            err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
-        } else if (redconc.timedOut) {
-          if (!allconc.timedOut)
-            err("s$name (concrete): reduced interleavings timed out, but all interleavings did not")
-        }
         /* Abstract */
-        if (!oneabs.timedOut && !allabs.timedOut && !redabs.timedOut) {
-          if (!oneabs.finalValues.subsetOf(allabs.finalValues)) // 1
-            err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in all interleavings (${allabs.finalValues})")
-          if (!(redabs.finalValues == allabs.finalValues)) // 2
-            err(s"$name (abstract): reduced interleavings (${redabs.finalValues}) do not match all interleavings (${allabs.finalValues})")
-          if (!oneabs.finalValues.subsetOf(redabs.finalValues)) // 3
+        if (!oneabs.timedOut && !redabs.timedOut)
+          if (!oneabs.finalValues.subsetOf(redabs.finalValues)) // 3 & 5
             err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
-        } else if (allabs.timedOut && !oneabs.timedOut && !redabs.timedOut) {
-          if (!allabs.finalValues.subsetOf(redabs.finalValues)) // 4
-            err(s"$name (abstract): all explored interleavings (with timeout, ${allabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
-          if (!oneabs.finalValues.subsetOf(redabs.finalValues)) // 5
-            err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
-        } else if (redabs.timedOut) {
-          if (!allabs.timedOut)
-            err("s$name (abstract): reduced interleavings timed out, but all interleavings did not")
-        }
         /* Concrete <-> Abstract */
         if (!oneabs.timedOut && !oneconc.timedOut && !subsumes(oneabs.finalValues, oneconc.finalValues))
           err("$name (one): abstract (${oneabs.finalValues}) does not subsume concrete (${oneconc.finalValues})")
-        if (!allabs.timedOut && !allconc.timedOut && !subsumes(allabs.finalValues, allconc.finalValues))
-          err("$name (all): abstract (${allabs.finalValues}) does not subsume concrete (${allconc.finalValues})")
         if (!redabs.timedOut && !redconc.timedOut && !subsumes(redabs.finalValues, redconc.finalValues))
           err("$name (red): abstract (${redabs.finalValues}) does not subsume concrete (${redconc.finalValues})")
         /* Random (8) */
@@ -262,7 +264,7 @@ object Benchmarks {
       case AddWork(items) => context.become(active(state.copy(work = state.work ++ items)))
       case SendWork(actor) => context.become(sendWork(actor, state))
       case Result(in, out) =>
-        scala.Console.withOut(logging) { println(s"$in: $out") }
+        scala.Console.withOut(logging) { println(s"$in: $out (${state.work.size + state.computing} remaining)") }
         context.become(sendWork(sender, state.copy(computing = state.computing-1,
           concreteResults = if (in.concrete) updateResults(state.concreteResults, in, out) else state.concreteResults,
           abstractResults = if (in.concrete) state.abstractResults else updateResults(state.abstractResults, in, out))))
