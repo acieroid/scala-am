@@ -1,10 +1,11 @@
 object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10)
+  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
     opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers to run the benchmarks on (1 by default)")
     opt[Int]('r', "random") action { (x, c) => c.copy(random = x) } text("Number of random interleavings explored (10 by default)")
+    opt[Unit]('s', "skip-all") action { (x, c) => c.copy(skipAll = true) } text("Skip computing all interleavings")
     opt[Config.Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
   }
 }
@@ -274,11 +275,12 @@ object Benchmarks {
   def main(args: Array[String]) {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) =>
+        val explorations = ((if (config.skipAll) { List() } else { List(ExplorationType.AllInterleavings) }) ++
+          List(ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking) ++
+          List.fill(config.random)(ExplorationType.RandomInterleaving))
         val work = programs.toList.flatMap(name =>
-          (List(ExplorationType.AllInterleavings, ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking) ++
-            List.fill(config.random)(ExplorationType.RandomInterleaving)).flatMap(expl =>
-            Set(true, false).map(concrete =>
-              MachineConfig(name, expl, concrete, config.timeout))))
+          explorations.flatMap(expl => Set(true, false).map(concrete =>
+            MachineConfig(name, expl, concrete, config.timeout))))
         println(s"Scheduling ${work.size} items of work")
         val workers = (1 to config.workers).map(i => system.actorOf(Props[Worker], s"worker-$i"))
         val dispatcher = system.actorOf(Props[Dispatcher], "dispatcher")
