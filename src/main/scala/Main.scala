@@ -117,7 +117,7 @@ object Config {
     def minutes: Parser[Time] = (number <~ "min") ^^ ((s) => Minutes(s.toLong))
     def seconds: Parser[Time] = (number <~ "s") ^^ ((s) => Seconds(s.toLong))
     def milliseconds: Parser[Time] = (number <~ "ms") ^^ ((s) => Milliseconds(s.toLong))
-    def nanoseconds: Parser[Time] = (number <~ "ms") ^^ ((s) => Nanoseconds(s.toLong))
+    def nanoseconds: Parser[Time] = (number <~ "ns") ^^ ((s) => Nanoseconds(s.toLong))
     def time: Parser[Time] = hours | minutes | seconds | milliseconds | nanoseconds
     def parse(s: String): Time = parseAll(time, s) match {
       case Success(res, _) => res
