@@ -75,16 +75,19 @@ import scala.io.StdIn
  */
 object Config {
   object Machine extends Enumeration {
-    type Machine = Value
     val AAC, AAM, Free, ConcurrentAAM = Value
   }
   implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
 
   object Lattice extends Enumeration {
-    type Lattice = Value
     val Concrete, Type, TypeSet = Value
   }
   implicit val latticeRead: scopt.Read[Lattice.Value] = scopt.Read.reads(Lattice withName _)
+
+  object Language extends Enumeration {
+    val Scheme, ANF, ParSimple = Value
+  }
+  implicit val languageRead: scopt.Read[Language.Value] = scopt.Read.reads(Language withName _)
 
   implicit val explorationTypeRead: scopt.Read[ExplorationType.Value] = scopt.Read.reads(ExplorationType withName _)
 
@@ -131,7 +134,8 @@ object Config {
   case class Config(machine: Machine.Value = Machine.Free,
     lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
     file: Option[String] = None, dotfile: Option[String] = None,
-    anf: Boolean = false, exploration: ExplorationType.Value = ExplorationType.InterferenceTracking,
+    language: Language.Value = Language.Scheme,
+    exploration: ExplorationType.Value = ExplorationType.InterferenceTracking,
     timeout: Option[Long] = None)
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
@@ -140,7 +144,7 @@ object Config {
     opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text("Lattice to use (Concrete, Type, TypeSet)")
     opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
-    opt[Unit]("anf") action { (_, c) => c.copy(anf = true) } text("Desugar program into ANF")
+    opt[Language.Value]("language") action { (x, c) => c.copy(language = x) } text("The language to analyze")
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
     opt[ExplorationType.Value]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exloration type for concurrent programs (OneInterleaving, RandomInterleaving, AllInterleavings, InterferenceTracking)")
     opt[Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
@@ -148,7 +152,6 @@ object Config {
 }
 
 object Main {
-
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
     * file. */
@@ -163,7 +166,6 @@ object Main {
     }
     if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
     println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
-
   }
 
   object Done extends Exception
@@ -179,12 +181,15 @@ object Main {
     type T
     val isTimestamp: Timestamp[T]
   }
+  trait ExpressionWrapper {
+    type T
+    val isExpression: Expression[T]
+  }
 
   def main(args: Array[String]) {
     import scala.util.control.Breaks._
     Config.parser.parse(args, Config.Config()) match {
-      case Some(config) => {
-        if (config.anf) { throw new Error("ANF not supported to keep Main.main readable") }
+      case Some(config) if (config.language == Config.Language.Scheme) => {
         val lattice: Lattice = config.lattice match {
           case Config.Lattice.Concrete => ConcreteLattice
           case Config.Lattice.Type => TypeLattice
@@ -227,7 +232,24 @@ object Main {
             if (program == null) throw Done
             if (program.size > 0)
               run(machine, sem)(program, config.dotfile, config.timeout)
-          } while (config.file.isEmpty)
+          } while (config.file.isEmpty);
+        } catch {
+          case Done => ()
+        }
+      }
+      case Some(config) if (config.language == Config.Language.ParSimple) => {
+        try {
+          do {
+            val machine = new ConcurrentAAM[ParSimpleExp, ConcreteLattice.L, ClassicalAddress, CFA.ZeroCFA, ContextSensitiveTID](config.exploration)
+            val sem = new ParSimpleSemantics[ConcreteLattice.L, ClassicalAddress, CFA.ZeroCFA, ContextSensitiveTID]
+            val program = config.file match {
+              case Some(file) => fileContent(file)
+              case None => StdIn.readLine(">>> ")
+            }
+            if (program == null) throw Done
+            if (program.size > 0)
+              run(machine, sem)(program, config.dotfile, config.timeout)
+          } while (config.file.isEmpty);
         } catch {
           case Done => ()
         }
