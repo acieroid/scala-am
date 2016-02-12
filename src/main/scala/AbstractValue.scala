@@ -581,7 +581,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     NullaryOperation("newline", newline),
     Cons,
     UnaryStoreOperation("car", (v, store) => toPrim(car(v, store), store)),
-    UnaryStoreOperation("cdr", (v, store) => toPrim(car(v, store), store)),
+    UnaryStoreOperation("cdr", (v, store) => toPrim(cdr(v, store), store)),
     UnaryStoreOperation("caar", (v, store) => toPrim(chain(v, car(_, store), car(_, store)), store)),
     UnaryStoreOperation("cadr", (v, store) => toPrim(chain(v, cdr(_, store), car(_, store)), store)),
     UnaryStoreOperation("cddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store)), store)),
