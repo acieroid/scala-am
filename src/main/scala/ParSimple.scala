@@ -23,7 +23,6 @@ trait ParSimpleExp {
   val pos: Position
 }
 
-
 case class ParSimpleProgram(vars: List[(String, Value)],
   threads: List[(String, ParSimpleThreadCode)], variable: ParSimpleVariable,
   pos: Position) extends ParSimpleExp {

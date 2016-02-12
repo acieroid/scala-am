@@ -1,49 +1,43 @@
 /**
   * Abstract syntax of ANF programs
   */
+import scala.util.parsing.input.Position
 
-trait ANFExp extends scala.util.parsing.input.Positional
+trait ANFExp {
+  val pos: Position
+}
 trait ANFAtomicExp extends ANFExp
-case class ANFLambda(args: List[String], body: ANFExp) extends ANFAtomicExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFLambda] && pos == that.asInstanceOf[ANFLambda].pos && super.equals(that)
+case class ANFLambda(args: List[String], body: ANFExp, pos: Position) extends ANFAtomicExp {
   override def toString() = {
     val a = args.mkString(" ")
     s"(lambda ($a) $body)"
   }
 }
-case class ANFIf(cond: ANFAtomicExp, cons: ANFExp, alt: ANFExp) extends ANFExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFIf] && pos == that.asInstanceOf[ANFIf].pos && super.equals(that)
+case class ANFIf(cond: ANFAtomicExp, cons: ANFExp, alt: ANFExp, pos: Position) extends ANFExp {
   override def toString() = s"(if $cond $cons $alt)"
 }
-case class ANFFuncall(f: ANFAtomicExp, args: List[ANFAtomicExp]) extends ANFExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFFuncall] && pos == that.asInstanceOf[ANFFuncall].pos && super.equals(that)
+case class ANFFuncall(f: ANFAtomicExp, args: List[ANFAtomicExp], pos: Position) extends ANFExp {
   override def toString() = {
     val a = args.mkString(" ")
     s"($f $a)"
   }
 }
-case class ANFLet(variable: String, value: ANFExp, body: ANFExp) extends ANFExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFLet] && pos == that.asInstanceOf[ANFLet].pos && super.equals(that)
+case class ANFLet(variable: String, value: ANFExp, body: ANFExp, pos: Position) extends ANFExp {
   override def toString() = s"(let (($variable $value)) $body)"
 }
-case class ANFLetrec(variable: String, value: ANFExp, body: ANFExp) extends ANFExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFLetrec] && pos == that.asInstanceOf[ANFLetrec].pos && super.equals(that)
+case class ANFLetrec(variable: String, value: ANFExp, body: ANFExp, pos: Position) extends ANFExp {
   override def toString() = s"(letrec (($variable $value)) $body)"
 }
-case class ANFSet(variable: String, value: ANFAtomicExp) extends ANFExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFSet] && pos == that.asInstanceOf[ANFSet].pos && super.equals(that)
+case class ANFSet(variable: String, value: ANFAtomicExp, pos: Position) extends ANFExp {
   override def toString() = s"(set! $variable $value)"
 }
-case class ANFQuoted(quoted: SExp) extends ANFExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFQuoted] && pos == that.asInstanceOf[ANFQuoted].pos && super.equals(that)
+case class ANFQuoted(quoted: SExp, pos: Position) extends ANFExp {
   override def toString() = s"'$quoted"
 }
-case class ANFIdentifier(name: String) extends ANFAtomicExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFIdentifier] && pos == that.asInstanceOf[ANFIdentifier].pos && super.equals(that)
+case class ANFIdentifier(name: String, pos: Position) extends ANFAtomicExp {
   override def toString() = name
 }
-case class ANFValue(value: Value) extends ANFAtomicExp {
-  override def equals(that: Any) = that.isInstanceOf[ANFValue] && pos == that.asInstanceOf[ANFValue].pos && super.equals(that)
+case class ANFValue(value: Value, pos: Position) extends ANFAtomicExp {
   override def toString() = value.toString
 }
 
@@ -58,54 +52,54 @@ object ANFCompiler {
   def compile(exp: SchemeExp): ANFExp = compile(exp, true, e => e)
 
   def compile(exp: SchemeExp, tail: Boolean, k: ANFAtomicExp => ANFExp): ANFExp = exp match {
-    case SchemeLambda(args, body) =>
-      k(ANFLambda(args, compileBody(body, a => a)).setPos(exp.pos))
-    case SchemeFuncall(f, args) =>
-      compile(f, false, a => compileList(args, as => ret(ANFFuncall(a, as).setPos(exp.pos), tail, k)))
-    case SchemeIf(cond, cons, alt) =>
-      compile(cond, false, a => ret(ANFIf(a, compile(cons), compile(alt)).setPos(exp.pos), tail, k))
-    case SchemeLet(bindings, body) =>
-      bindings.reverse.foldLeft(compileBody(body, a => a))(
+    case SchemeLambda(args, body, pos) =>
+      k(ANFLambda(args, compileBody(body, pos, a => a), pos))
+    case SchemeFuncall(f, args, pos) =>
+      compile(f, false, a => compileList(args, as => ret(ANFFuncall(a, as, pos), tail, k)))
+    case SchemeIf(cond, cons, alt, pos) =>
+      compile(cond, false, a => ret(ANFIf(a, compile(cons), compile(alt), pos), tail, k))
+    case SchemeLet(bindings, body, pos) =>
+      bindings.reverse.foldLeft(compileBody(body, pos, a => a))(
         (e: ANFExp, binding: (String, SchemeExp)) =>
-        ANFLet(binding._1, compile(binding._2), e).setPos(exp.pos))
-    case SchemeLetStar(bindings, body) =>
-      bindings.reverse.foldLeft(compileBody(body, a => a))(
+        ANFLet(binding._1, compile(binding._2), e, pos))
+    case SchemeLetStar(bindings, body, pos) =>
+      bindings.reverse.foldLeft(compileBody(body, pos, a => a))(
         (e: ANFExp, binding: (String, SchemeExp)) =>
-        ANFLet(binding._1, compile(binding._2), e).setPos(exp.pos))
-    case SchemeLetrec(bindings, body) =>
+        ANFLet(binding._1, compile(binding._2), e, pos))
+    case SchemeLetrec(bindings, body, pos) =>
       /* TODO: we should at least warn when desugaring mutually-recursive functions,
        * as they are not supported. The best solution would be to desugar them
        * using set! to support them */
-      bindings.reverse.foldLeft(compileBody(body, a => a))(
+      bindings.reverse.foldLeft(compileBody(body, pos, a => a))(
         (e: ANFExp, binding: (String, SchemeExp)) =>
-        ANFLetrec(binding._1, compile(binding._2), e).setPos(exp.pos))
-    case SchemeSet(variable, value) =>
-      compile(value, false, a => ret(ANFSet(variable, a).setPos(exp.pos), tail, k))
-    case SchemeBegin(body) =>
-      compileBody(body, a => k(a))
-    case SchemeDefineFunction(name, args, body) =>
-      compile(SchemeDefineVariable(name, SchemeLambda(args, body)).setPos(exp.pos), tail, k)
-    case SchemeDefineVariable(name, value) =>
+        ANFLetrec(binding._1, compile(binding._2), e, pos))
+    case SchemeSet(variable, value, pos) =>
+      compile(value, false, a => ret(ANFSet(variable, a, pos), tail, k))
+    case SchemeBegin(body, pos) =>
+      compileBody(body, pos, a => k(a))
+    case SchemeDefineFunction(name, args, body, pos) =>
+      compile(SchemeDefineVariable(name, SchemeLambda(args, body, pos), pos), tail, k)
+    case SchemeDefineVariable(name, value, pos) =>
       throw new Exception("define not supported")
-    case SchemeAnd(List()) =>
-      k(ANFValue(ValueBoolean(true)).setPos(exp.pos))
-    case SchemeAnd(List(e)) =>
+    case SchemeAnd(List(), pos) =>
+      k(ANFValue(ValueBoolean(true), pos))
+    case SchemeAnd(List(e), _) =>
       compile(e, tail, k)
-    case SchemeAnd(e :: es) =>
-      compile(e, false, a => ret(ANFIf(a, compile(SchemeAnd(es).setPos(exp.pos)), ANFValue(ValueBoolean(false)).setPos(exp.pos)), tail, k))
-    case SchemeOr(List()) =>
-      k(ANFValue(ValueBoolean(false)).setPos(exp.pos))
-    case SchemeOr(List(e)) =>
+    case SchemeAnd(e :: es, pos) =>
+      compile(e, false, a => ret(ANFIf(a, compile(SchemeAnd(es, pos)), ANFValue(ValueBoolean(false), pos), pos), tail, k))
+    case SchemeOr(List(), pos) =>
+      k(ANFValue(ValueBoolean(false), pos))
+    case SchemeOr(List(e), _) =>
       compile(e, tail, k)
-    case SchemeOr(e :: es) =>
-      compile(e, false, a => ret(ANFIf(a, ANFValue(ValueBoolean(true)).setPos(exp.pos), compile(SchemeOr(es).setPos(exp.pos))).setPos(exp.pos), tail, k))
-    case SchemeIdentifier(name) =>
-      k(ANFIdentifier(name).setPos(exp.pos))
-    case SchemeQuoted(quoted) =>
+    case SchemeOr(e :: es, pos) =>
+      compile(e, false, a => ret(ANFIf(a, ANFValue(ValueBoolean(true), pos), compile(SchemeOr(es, pos)), pos), tail, k))
+    case SchemeIdentifier(name, pos) =>
+      k(ANFIdentifier(name, pos))
+    case SchemeQuoted(quoted, pos) =>
       /* a quoted value is not atomic, as it may require an allocation to be evaluated */
-      ret(ANFQuoted(quoted).setPos(exp.pos), tail, k)
-    case SchemeValue(value) =>
-      k(ANFValue(value).setPos(exp.pos))
+      ret(ANFQuoted(quoted, pos), tail, k)
+    case SchemeValue(value, pos) =>
+      k(ANFValue(value, pos))
     case _ =>
       throw new Exception(s"Unhandled expression in ANF compiler: $exp")
   }
@@ -117,16 +111,16 @@ object ANFCompiler {
       e
     } else {
       val v = newVar
-      ANFLet(v, e, k(ANFIdentifier(v)))
+      ANFLet(v, e, k(ANFIdentifier(v, e.pos)), e.pos)
     }
   }
 
-  def compileBody(body: List[SchemeExp], k: ANFAtomicExp => ANFExp): ANFExp = body match {
+  def compileBody(body: List[SchemeExp], pos: Position, k: ANFAtomicExp => ANFExp): ANFExp = body match {
     case Nil => throw new Exception("Cannot compile empty body")
     case e :: Nil => compile(e, true, a => a)
     case e :: rest => compile(e, false, a => {
       val v = newVar
-      ANFLet(v, a, compileBody(rest, a => a))
+      ANFLet(v, a, compileBody(rest, pos, a => a), pos)
     })
   }
 
