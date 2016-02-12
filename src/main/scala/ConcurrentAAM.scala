@@ -179,6 +179,55 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case None =>
         println("Not generating graph because no graph was computed")
     }
+
+    import scala.util.{Try,Success,Failure}
+    override def inspect(stateNumber: Int, query: String) = graph.flatMap(_.getNode(stateNumber)) match {
+      case Some(state) => query.split('.') match {
+        case Array("store") => println(state.store)
+        case Array("hashCode") => println(state.hashCode)
+        case Array("equals", s) => Try(s.toInt) match {
+          case Success(state2Number) => graph.flatMap(_.getNode(state2Number)) match {
+            case Some(state2) => {
+              println(s"$stateNumber == $state2Number is ${state == state2}")
+              if (state != state2) {
+                println(s"$stateNumber.store == $state2Number.store is ${state.store == state2.store}")
+                println(s"$stateNumber.threads == $state2Number.threads is ${state.threads == state2.threads}")
+                if (state.threads != state2.threads) {
+                  println(s"$stateNumber.threads.keys == $state2Number.threads.keys is ${state.threads.content.keys == state2.threads.content.keys}")
+                  println(s"$stateNumber.threads.values == $state2Number.threads.values is ${state.threads.content.values == state2.threads.content.values}")
+                  println(s"$stateNumber.threads - $state2Number.threads == ${state.threads.content.toSet.diff(state2.threads.content.toSet).toMap}")
+                  println(s"$state2Number.threads - $stateNumber.threads == ${state2.threads.content.toSet.diff(state.threads.content.toSet).toMap}")
+                  val diff1 = state.threads.content.toSet.diff(state2.threads.content.toSet).toMap
+                  val diff2 = state2.threads.content.toSet.diff(state.threads.content.toSet).toMap
+                  val ctx1 = diff1.values.head.head
+                  val ctx2 = diff2.values.head.head
+                  println(s"ctx1 == ctx2 is ${ctx1 == ctx2}")
+                  println(s"ctx1.control == ctx2.control is ${ctx1.control == ctx2.control}")
+                  println(s"ctx1.kstore == ctx2.kstore is ${ctx1.kstore == ctx2.kstore}")
+                  println(s"ctx1.a == ctx2.a is ${ctx1.a == ctx2.a}")
+                  println(s"ctx1.t == ctx2.t is ${ctx1.t == ctx2.t}")
+                  val c1 = ctx1.control.asInstanceOf[ControlEval]
+                  val c2 = ctx2.control.asInstanceOf[ControlEval]
+                  println(s"c1.exp == c2.exp is ${c1.exp == c2.exp}")
+                  println(s"${c1.exp} -- ${c2.exp}")
+                  val e1 = c1.exp.asInstanceOf[ParSimpleThreadCode]
+                  val e2 = c2.exp.asInstanceOf[ParSimpleThreadCode]
+                  println(s"e1 == e2 is ${e1 == e2}")
+                  println(s"e1.pos == e2.pos is ${e1.pos == e2.pos}")
+                  println(s"e1.code == e2.code is ${e1.code == e2.code}")
+                }
+                println(s"$stateNumber.results == $state2Number.results is ${state.results == state2.results}")
+              }
+            }
+            case None => println(s"Graph doesn't contain state ${state2Number}")
+          }
+          case Failure(e) => println(s"Cannot parse state number ($s): $e")
+        }
+        case v => println(s"Unknown inspection query on state $stateNumber: $query")
+      }
+      case None =>
+        println(s"Graph was either not generated, or doesn't contain state $stateNumber. I cannot query it.")
+    }
   }
 
   type Exploration = (State, Set[State]) => Set[(TID, Effects, State)]
@@ -449,7 +498,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   @scala.annotation.tailrec
   private def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap, threadPickMap: ThreadPickMap,
-    halted: Set[State], startingTime: Long, timeout: Option[Long], reallyVisited: Set[(State, TID)], graph: Option[Graph[State, (TID, Effects)]],
+    halted: Set[State], startingTime: Long, timeout: Option[Long], reallyVisited: Set[State], graph: Option[Graph[State, (TID, Effects)]],
     sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
     if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
       ConcurrentAAMOutput(halted, reallyVisited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
@@ -463,7 +512,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           } else if (s.halted) {
             val conflicts = effectsMap(s).findConflicts
             reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, newThreadPickMap,
-              halted + s, startingTime, timeout, reallyVisited + ((s, tid)), graph, sem)
+              halted + s, startingTime, timeout, reallyVisited + s, graph, sem)
           } else {
             val succs = s.stepTid(sem, tid)
             val newGraph = graph.map(_.addEdges(succs.map({ case (eff, s2) => (s, (tid, eff), s2) })))
@@ -485,7 +534,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                     } else {
                       Set()
                     }, newEffectsMap, newThreadPickMap,
-                    halted, startingTime, timeout, reallyVisited + ((s, tid)), newGraph, sem)
+                    halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
                 case None => {
                   val deadlocks: Set[(State, TID)] = newEffectsMap(s).findDeadlocks.flatMap(s => newThreadPickMap.pick(s).map(tid => (s, tid)))
                   reducedLoop(todo.tail ++ conflicts ++ deadlocks,
@@ -494,7 +543,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                     } else {
                       Set()
                     }, newEffectsMap, newThreadPickMap,
-                    halted, startingTime, timeout, reallyVisited + ((s, tid)), newGraph, sem)
+                    halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
                 }
               }
             } else {
@@ -504,7 +553,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                 } else {
                   Set()
                 }, newEffectsMap, newThreadPickMap,
-                halted, startingTime, timeout, reallyVisited + ((s, tid)), newGraph, sem)
+                halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
             }
           }
         case None => {

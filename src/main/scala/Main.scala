@@ -136,6 +136,7 @@ object Config {
     file: Option[String] = None, dotfile: Option[String] = None,
     language: Language.Value = Language.Scheme,
     exploration: ExplorationType.Value = ExplorationType.InterferenceTracking,
+    inspect: Boolean = false,
     timeout: Option[Long] = None)
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
@@ -148,6 +149,7 @@ object Config {
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
     opt[ExplorationType.Value]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exloration type for concurrent programs (OneInterleaving, RandomInterleaving, AllInterleavings, InterferenceTracking)")
     opt[Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
+    opt[Unit]('i', "inspect") action { (x, c) => c.copy(inspect = true) } text("Launch inspection REPL (disabled by default)")
   }
 }
 
@@ -155,7 +157,7 @@ object Main {
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
     * file. */
-  def run[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, output: Option[String], timeout: Option[Long]): Unit = {
+  def run[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, output: Option[String], timeout: Option[Long], inspect: Boolean): Unit = {
     val abs = implicitly[AbstractValue[Abs]]
     val addr = implicitly[Address[Addr]]
     println(s"Running ${machine.name} with lattice ${abs.name} and address ${addr.name}")
@@ -166,6 +168,26 @@ object Main {
     }
     if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
     println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
+    if (inspect) {
+      try {
+        do {
+          import scala.util.{Try,Success,Failure}
+          val input = StdIn.readLine(">>> ")
+          if (input == null) throw Done
+          if (input.size > 0) {
+            input.indexOf(".") match {
+              case -1 => println(s"Unknown inspection query: $input")
+              case n => Try(input.subSequence(0, n).toString.toInt) match {
+                case Success(state) => result.inspect(state, input.subSequence(n+1, input.size).toString)
+                case Failure(e) => println(s"Cannot parse state number (${input.subSequence(0, n)}): $e")
+              }
+            }
+          }
+        } while (true);
+      } catch {
+        case Done => ()
+      }
+    }
   }
 
   object Done extends Exception
@@ -231,7 +253,7 @@ object Main {
             }
             if (program == null) throw Done
             if (program.size > 0)
-              run(machine, sem)(program, config.dotfile, config.timeout)
+              run(machine, sem)(program, config.dotfile, config.timeout, config.inspect)
           } while (config.file.isEmpty);
         } catch {
           case Done => ()
@@ -248,7 +270,7 @@ object Main {
             }
             if (program == null) throw Done
             if (program.size > 0)
-              run(machine, sem)(program, config.dotfile, config.timeout)
+              run(machine, sem)(program, config.dotfile, config.timeout, config.inspect)
           } while (config.file.isEmpty);
         } catch {
           case Done => ()

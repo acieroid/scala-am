@@ -38,6 +38,12 @@ trait Output[Abs] {
    * Outputs the graph computed by the machine in a dot file
    */
   def toDotFile(path: String): Unit
+
+  /**
+   * Inspects a specific state
+   */
+  def inspect(state: Int, query: String): Unit =
+    println("TODO: Inspection not implemented for this machine")
 }
 
 /**
