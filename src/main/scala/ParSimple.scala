@@ -17,40 +17,42 @@
  * threads, and is another example of how to support a new language in this
  * framework.
  */
+import scala.util.parsing.input.Position
 
-trait ParSimpleExp extends scala.util.parsing.input.Positional
+trait ParSimpleExp {
+  val pos: Position
+}
 
-case class ParSimpleProgram(vars: List[(String, Value)], threads: List[(String, ParSimpleThreadCode)], variable: ParSimpleVariable) extends ParSimpleExp {
-  override def equals(that: Any) = that.isInstanceOf[ParSimpleProgram] && pos == that.asInstanceOf[ParSimpleProgram].pos && super.equals(that)
+
+case class ParSimpleProgram(vars: List[(String, Value)],
+  threads: List[(String, ParSimpleThreadCode)], variable: ParSimpleVariable,
+  pos: Position) extends ParSimpleExp {
   override def toString = {
     val varsstr = vars.map({ case (variable, value) => s"($variable $value)"}).mkString(" ")
     val threadsstr = threads.map({ case (name, code) => s"($name $code)" }).mkString(" ")
-    s"(threads ($varsstr) ($threadsstr) $variable)"
+    s"(threads ($varsstr) ($threadsstr) $variable)@$pos"
   }
 }
 
-case class ParSimpleThreadCode(code: List[ParSimpleAssignment]) extends ParSimpleExp {
-  override def equals(that: Any) = that.isInstanceOf[ParSimpleThreadCode] && pos == that.asInstanceOf[ParSimpleThreadCode].pos && super.equals(that)
+case class ParSimpleThreadCode(code: List[ParSimpleAssignment],
+  pos: Position) extends ParSimpleExp {
   override def toString = "(" + code.mkString(" ") + ")"
 }
-case class ParSimpleAssignment(variable: String, value: Value) extends ParSimpleExp {
-  override def equals(that: Any) = that.isInstanceOf[ParSimpleAssignment] && pos == that.asInstanceOf[ParSimpleAssignment].pos && super.equals(that)
+case class ParSimpleAssignment(variable: String, value: Value,
+  pos: Position) extends ParSimpleExp {
   override def toString = s"(= $variable $value)"
 }
 
-case class ParSimpleVariable(variable: String) extends ParSimpleExp {
-  override def equals(that: Any) = that.isInstanceOf[ParSimpleVariable] && pos == that.asInstanceOf[ParSimpleVariable].pos && super.equals(that)
+case class ParSimpleVariable(variable: String,
+  pos: Position) extends ParSimpleExp {
   override def toString = variable
 }
 
 object ParSimpleCompiler {
-  def compile(exp: SExp): ParSimpleProgram = {
-    val exp2 = exp match {
-      case SExpPair(SExpIdentifier("threads"), SExpPair(vars, SExpPair(threads, SExpPair(SExpIdentifier(variable), SExpValue(ValueNil))))) =>
-        ParSimpleProgram(compileVars(vars), compileThreads(threads), ParSimpleVariable(variable))
-      case _ => throw new Exception(s"Invalid ParSimple program: $exp (${exp.pos})")
-    }
-    exp2.setPos(exp.pos)
+  def compile(exp: SExp): ParSimpleProgram = exp match {
+    case SExpPair(SExpIdentifier("threads"), SExpPair(vars, SExpPair(threads, SExpPair(vexp @ SExpIdentifier(variable), SExpValue(ValueNil))))) =>
+      ParSimpleProgram(compileVars(vars), compileThreads(threads), ParSimpleVariable(variable, vexp.pos), exp.pos)
+    case _ => throw new Exception(s"Invalid ParSimple program: $exp (${exp.pos})")
   }
   def compileVars(exp: SExp): List[(String, Value)] = exp match {
     case SExpPair(variable, rest) => compileVar(variable) :: compileVars(rest)
@@ -66,17 +68,13 @@ object ParSimpleCompiler {
     case SExpValue(ValueNil) => List()
     case _ => throw new Exception(s"Invalid ParSimple threads: $exp (${exp.pos})")
   }
-  def compileThread(exp: SExp): (String, ParSimpleThreadCode) = {
-    val (name, exp2) = exp match {
-      case SExpPair(SExpIdentifier(name), SExpPair(code, SExpValue(ValueNil))) => (name, ParSimpleThreadCode(compileThreadCode(code)))
-      case _ => throw new Exception(s"Invalid ParSimple thread binding: $exp (${exp.pos})")
-    }
-    (name, exp2.setPos(exp.pos))
+  def compileThread(exp: SExp): (String, ParSimpleThreadCode) = exp match {
+    case SExpPair(SExpIdentifier(name), codeexp @ SExpPair(code, SExpValue(ValueNil))) => (name, ParSimpleThreadCode(compileThreadCode(code), codeexp.pos))
+    case _ => throw new Exception(s"Invalid ParSimple thread binding: $exp (${exp.pos})")
   }
   def compileThreadCode(exp: SExp): List[ParSimpleAssignment] = exp match {
-    case SExpPair(SExpPair(SExpIdentifier("="), SExpPair(SExpIdentifier(variable), SExpPair(SExpValue(value), SExpValue(ValueNil)))), rest) => {
-      val assignment = ParSimpleAssignment(variable, value)
-      assignment.setPos(exp.pos) :: compileThreadCode(rest)
+    case SExpPair(aexp @ SExpPair(SExpIdentifier("="), SExpPair(SExpIdentifier(variable), SExpPair(SExpValue(value), SExpValue(ValueNil)))), rest) => {
+      ParSimpleAssignment(variable, value, aexp.pos) :: compileThreadCode(rest)
     }
     case SExpValue(ValueNil) => List()
     case _ => throw new Exception(s"Invalid ParSimple assignment: $exp (${exp.pos})")
