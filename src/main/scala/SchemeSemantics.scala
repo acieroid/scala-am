@@ -26,9 +26,6 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   case class FrameCasNew(variable: String, index: Option[Abs], old: Abs, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameAcquire(ρ: Environment[Addr]) extends SchemeFrame
   case class FrameRelease(ρ: Environment[Addr]) extends SchemeFrame
-  object FrameHalt extends SchemeFrame {
-    override def toString() = "FHalt"
-  }
 
   protected def evalBody(body: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs]): Action[SchemeExp, Abs, Addr] = body match {
     case Nil => ActionReachedValue(abs.inject(false), σ)
@@ -153,7 +150,6 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   }
 
   def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
-    case FrameHalt => Set()
     case FrameFuncallOperator(fexp, args, ρ) => funcallArgs(v, fexp, args, ρ, σ, t)
     case FrameFuncallOperands(f, fexp, exp, args, toeval, ρ) => funcallArgs(f, fexp, (exp, v) :: args, toeval, ρ, σ, t)
     case FrameIf(cons, alt, ρ) =>

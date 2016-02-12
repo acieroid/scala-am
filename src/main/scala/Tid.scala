@@ -1,5 +1,5 @@
 trait ThreadIdentifier[TID] {
- def name: String
+  def name: String
   def initial: TID
   def thread[Exp : Expression, Time : Timestamp](exp: Exp, t: Time): TID
 }
