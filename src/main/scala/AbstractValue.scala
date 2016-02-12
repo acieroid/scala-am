@@ -368,9 +368,9 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
 
   private def newline: Abs = {
     println("")
-    abs.bottom
+    abs.inject(false)
   }
-  private def display(v: Abs): Abs = { print(v); abs.bottom }
+  private def display(v: Abs): Abs = { print(v); abs.inject(false) }
 
   private def car(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
     abs.car(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
