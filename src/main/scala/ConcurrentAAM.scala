@@ -144,7 +144,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case (_, ctxs) => ctxs.forall(_.halted)
     })
 
-    /* TODO: have a different type for HTML-like strings */
     override def toString = threads.tids.map(tid =>
       s"$tid: " + threads.get(tid).map(ctx => ctx.control.toString().take(40)).mkString(", ")
     ).mkString("\n")
@@ -497,7 +496,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   }
 
   @scala.annotation.tailrec
-  private def reducedLoop(todo: List[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap, threadPickMap: ThreadPickMap,
+  private def reducedLoop(todo: scala.collection.immutable.Vector[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap, threadPickMap: ThreadPickMap,
     halted: Set[State], startingTime: Long, timeout: Option[Long], reallyVisited: Set[State], graph: Option[Graph[State, (TID, Effects)]],
     sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
     if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
@@ -521,33 +520,24 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                 case (conflicts, m) => (m, acc._2 ++ conflicts)
               }
             })
-            if (succs.isEmpty || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) })) {
+            if (succs.isEmpty /* || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) }) */) {
               /* No successor, even though this is not a halt state: the current thread is blocked.
                All successors states already visited: the current thread is in a loop.
                In both cases, explore a different thread */
               /* In case of loop, some states probably have to be visited again! (if the effectsMap changed) */
+              // require(conflicts.isEmpty)
               newThreadPickMap.pick(s) match {
                 case Some(tid2) =>
-                  reducedLoop(((s, tid2)) :: todo.tail ++ conflicts,
-                    if (conflicts.isEmpty) {
-                      visited + ((s, tid))
-                    } else {
-                      Set()
-                    }, newEffectsMap, newThreadPickMap,
+                  reducedLoop(((s, tid2)) +: todo.tail, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
                     halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
                 case None => {
                   val deadlocks: Set[(State, TID)] = newEffectsMap(s).findDeadlocks.flatMap(s => newThreadPickMap.pick(s).map(tid => (s, tid)))
-                  reducedLoop(todo.tail ++ conflicts ++ deadlocks,
-                    if (conflicts.isEmpty) {
-                      visited + ((s, tid))
-                    } else {
-                      Set()
-                    }, newEffectsMap, newThreadPickMap,
+                  reducedLoop(todo.tail ++ deadlocks, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
                     halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
                 }
               }
             } else {
-              reducedLoop(succs.map(succ => (succ._2, tid)).toList ++ todo.tail ++ conflicts,
+              reducedLoop(succs.map(succ => (succ._2, tid)).toVector ++ todo.tail ++ conflicts,
                 if (conflicts.isEmpty) {
                   visited + ((s, tid))
                 } else {
@@ -571,7 +561,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(oneInterleaving(sem))
       case RandomInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(randomInterleaving(sem))
-      case InterferenceTracking => reducedLoop(List((State.inject(exp), thread.initial)), Set(), EffectsMap(), ThreadPickMap(),
+      case InterferenceTracking => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), EffectsMap(), ThreadPickMap(),
         Set(), System.nanoTime, timeout, Set(),
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
     }
