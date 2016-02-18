@@ -19,19 +19,19 @@ extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
   property("lookup after extend yields same object") { forAll(abstractValues) { v =>
     val a = addr.primitive("foo")
     val store = Store.empty[Addr, Abs].extend(a, v)
-    assert(v == store.lookup(a))
+    store.lookup(a) should equal (v)
   }}
 
   property("lookupBot returns bot for unbound values") {
     val a = addr.primitive("foo")
     val store = Store.empty[Addr, Abs]
-    assert(abs.bottom == store.lookupBot(a))
+    store.lookupBot(a) should equal (abs.bottom)
   }
 
   property("store with abstract counting extended twice or more remains the same") { forAll(abstractValues) { v =>
     val a = addr.primitive("foo")
     val store = Store.empty[Addr, Abs](true).extend(a, v).extend(a, v)
-    assert(store == store.extend(a, v))
+    store.extend(a, v) should equal (store)
   }}
 }
 
