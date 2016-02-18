@@ -1,6 +1,23 @@
 import scalaz.Scalaz._
+import scalaz.Semigroup
 
-case class Store[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Int, Abs)], counting: Boolean) {
+trait Count {
+  def inc: Count
+}
+case object CountOne extends Count {
+  def inc = CountInfinity
+}
+case object CountInfinity extends Count {
+  def inc = CountInfinity
+}
+
+object Count {
+  implicit val isSemigroup  = new Semigroup[Count] {
+    def append(x: Count, y: => Count) = CountInfinity
+  }
+}
+
+case class Store[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Count, Abs)], counting: Boolean) {
   val abs = implicitly[AbstractValue[Abs]]
   val addr = implicitly[Address[Addr]]
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
@@ -14,24 +31,25 @@ case class Store[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Int, A
     case Some(v) => v._2
   }
   /** Looks up a value in the store (returning bottom if value not present) */
-  def lookupBot(a: Addr): Abs = content.getOrElse(a, (0, abs.bottom))._2
+  def lookupBot(a: Addr): Abs = content.get(a).map(_._2).getOrElse(abs.bottom)
   /** Adds a new element to the store */
   def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
-    case None => Store(content + (a -> (0, v)), counting)
-    case Some((n, v2)) => Store(content + (a -> (if (counting) { n+1 } else { n }, abs.join(v2, v))), counting)
+    case None => Store(content + (a -> (CountOne, v)), counting)
+    case Some((n, v2)) => Store(content + (a -> (if (counting) { n.inc } else { n }, abs.join(v2, v))), counting)
   }
   /** Updates an element in the store. Might perform a strong update if this store supports strong updates */
   def update(a: Addr, v: Abs): Store[Addr, Abs] =
     if (counting) {
       content.get(a) match {
         case None => throw new RuntimeException("Updating store at an adress not used")
-        case Some((0, _)) => Store(content + (a -> (0, v)), counting)
+        case Some((CountOne, _)) => Store(content + (a -> (CountOne, v)), counting)
         case _ => extend(a, v)
       }
     } else {
       extend(a, v)
     }
   /** Joins two stores */
+  /* TODO: is it correct with abstract counting? How should counts behave? */
   def join(that: Store[Addr, Abs]): Store[Addr, Abs] = Store(this.content |+| that.content, counting)
   /** Checks whether this store subsumes another store */
   def subsumes(that: Store[Addr, Abs]): Boolean =
@@ -50,7 +68,9 @@ object Store {
    * turned on, it prevents AAC and Free from converging. For now, it's only
    * enabled with the AbstractConcrete lattice. */
   def empty[Addr : Address, Abs : AbstractValue] =
-    Store(Map[Addr, (Int, Abs)](), implicitly[AbstractValue[Abs]].name == "Concrete")
+    Store(Map(), implicitly[AbstractValue[Abs]].name == "Concrete")
+  def empty[Addr : Address, Abs : AbstractValue](counting: Boolean) =
+    Store(Map(), counting)
   def initial[Addr : Address, Abs : AbstractValue](values: List[(Addr, Abs)]): Store[Addr, Abs] =
-    Store(values.map({ case (a, v) => (a, (0, v)) }).toMap, implicitly[AbstractValue[Abs]].name == "Concrete")
+    Store(values.map({ case (a, v) => (a, (CountOne, v)) }).toMap, implicitly[AbstractValue[Abs]].name == "Concrete")
 }
