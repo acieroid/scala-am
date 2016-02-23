@@ -390,61 +390,43 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     println(s"$k: ${v / Math.pow(10, 9)}s")
   })
 
-  case class LocalEffectsMap(val m: Map[EffectTarget, Set[(Effect[Addr, Abs], TID, State)]]) {
+  case class LocalEffectsMap(val reads: Map[EffectTarget, Set[(TID, State)]],
+    val writes: Map[EffectTarget, Set[(TID, State)]]) {
     def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]): LocalEffectsMap = {
       val target: EffectTarget = EffectTarget(effect)
-      time("LocalEffectsMap.newTransition"){ new LocalEffectsMap(m.get(target) match {
-        case None => m + (target -> (Set((effect, tid, s1))))
-        case Some(s) => m + (target -> (s + ((effect, tid, s1))))
-      })
+      time("LocalEffectsMap.newTransition"){ effect.kind match {
+        case EffectKind.ReadEffect => new LocalEffectsMap(reads.get(target) match {
+          case None => reads + (target -> (Set((tid, s1))))
+          case Some(s) => reads + (target -> (s + ((tid, s1))))
+        }, writes)
+        case EffectKind.WriteEffect => new LocalEffectsMap(reads, writes.get(target) match {
+          case None => writes + (target -> Set((tid, s1)))
+          case Some(s) => writes + (target -> (s + ((tid, s1))))
+        })
+      }
       }
     }
-    def join(that: LocalEffectsMap) = time("LocalEffectsMap.join") { new LocalEffectsMap(m |+| that.m) }
+    def join(that: LocalEffectsMap) = time("LocalEffectsMap.join") { new LocalEffectsMap(reads |+| that.reads, writes |+| that.writes) }
     /** Find conflicts in this effect map. Returns the set of states in conflict,
       * along with the tid that needs to be explored */
     def findConflicts: Set[(State, TID)] = time("LocalEffectsMap.findConflicts") {
-      /* Examples:
-       @x -> [(Write, s2, tid2), (Write, s1, tid1)]
-       ==> [(s1, tid2), (s2, tid1)]
-       @x -> [(Write, s2, tid2), (Read, s1, tid1)]
-       ==> [(s1, tid2), (s2, tid1)]
-       @x -> [(Read, s2, tid2), (Write, s1, tid1)]
-       ==> [(s1, tid2), (s2, tid1)]
-       @x -> [(Read, s1, tid1), (Read, s2, tid2)]
-       ==> []
-       @x -> [(Write, s3, tid3), (Read, s2, tid2), (Read, s1, tid1)]
-       ==> [(s1, tid3), (s2, tid3), (s3, tid2), (s3, tid1)]
-       @x -> [(Write, s4, tid4), (Write, s3, tid3), (Read, s2, tid2), (Read, s1, tid1)]
-       ==> [(s1, tid4), (s2, tid4), (s1, tid3), (s2, tid3), ...]
-       @x -> [(Read, s4, tid4), (Read, s3, tid3), (Write, s2, tid2), (Write, s1, tid1)]
-       ==> [(s1, tid4), (s1, tid3), (s2, tid4), (s2, tid3), ...]
-       */
-      /* for every write on s1, tid1, find conflicting effects from state s2 on a
-       * different thread tid2, and explore from s1, tid2, and from s2, tid1 */
-      m.values.flatMap({
-        case effects => effects.flatMap({
-          case (effect1, tid1, state1) if (effect1.kind == EffectKind.WriteEffect) =>
-            effects.flatMap({
-              case (effect2, tid2, state2) if (tid1 != tid2 && state1 != state2) =>
-                if ((effect1.isInstanceOf[EffectAcquire[Addr, Abs]] && effect2.isInstanceOf[EffectRelease[Addr, Abs]]) ||
-                  (effect1.isInstanceOf[EffectRelease[Addr, Abs]] && effect2.isInstanceOf[EffectAcquire[Addr, Abs]])) {
-                  Set[(State, TID)]()
-                } else {
-                  Set[(State, TID)]((state1, tid2), (state2, tid1))
-                }
-              case _ => Set[(State, TID)]()
-            })
-          case _ => Set[(State, TID)]()
+      writes.keySet.flatMap({
+        case target => writes(target).flatMap({
+          case (tid1, state1) => (reads.getOrElse(target, Set()) ++ writes.getOrElse(target, Set())).flatMap({
+            case (tid2, state2) if (tid1 != tid2 && state1 != state2) =>
+              Set[(State, TID)]((state1, tid2), (state2, tid1))
+            case _ =>
+              Set[(State, TID)]()
+          })
         })
-      }).toSet
+      })
     }
     def dependent(eff1: Effect[Addr, Abs], eff2: Effect[Addr, Abs]) = {
       (eff1.kind == EffectKind.WriteEffect || eff2.kind == EffectKind.WriteEffect) && /* there should at least be one write */
       !((eff1.isInstanceOf[EffectAcquire[Addr, Abs]] && eff2.isInstanceOf[EffectRelease[Addr, Abs]]) ||
         (eff1.isInstanceOf[EffectRelease[Addr, Abs]] && eff2.isInstanceOf[EffectAcquire[Addr, Abs]]))
     }
-    def findConflicts(changes: LocalEffectsMap): Set[(State, TID)] = time("LocalEffectsMap.findConflicts2") {
-      println(s"${changes.size} vs. ${this.size}")
+/*    def findConflicts(changes: LocalEffectsMap): Set[(State, TID)] = time("LocalEffectsMap.findConflicts2") {
       changes.m.keySet.flatMap({
         case target => changes.m(target).flatMap({
           case (effect1, tid1, state1) =>
@@ -457,6 +439,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         })
       })
     }
+ */
     /** If this is the local effects map of a deadlock state, find states from which
       * another path could avoid the deadlock. Do so by looking at previous
       * states that performed an acquire. TODO: results could be improved by
@@ -464,14 +447,15 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       * and only looking at these acquires. But this would require to reason
       * about the semantics in the abstract machine. */
     def findDeadlocks: Set[State] =
-      time("LocalEffectsMap.findDeadlocks") { m.values.flatMap({
+      time("LocalEffectsMap.findDeadlocks") { Set() /* writes.values.flatMap({
         case effects => effects.foldRight(Set[State]())((eff, acc) => eff match {
           case (effect, _, state) if (effect.isInstanceOf[EffectAcquire[Addr, Abs]]) =>
             acc + state
           case _ => acc
         })
-      }).toSet
+      }).toSet */
       }
+    /*
     def print(graph: Option[Graph[State, (TID, Effects)]]): Unit = {
       println("====")
       graph match {
@@ -500,9 +484,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
     def size: Int =
       m.foldLeft(0)((acc, kv) => acc + kv._2.size)
+     */
   }
   object LocalEffectsMap {
-    val empty: LocalEffectsMap = new LocalEffectsMap(Map[EffectTarget, Set[(Effect[Addr, Abs], TID, State)]]())
+    val empty: LocalEffectsMap = new LocalEffectsMap(Map[EffectTarget, Set[(TID, State)]](), Map[EffectTarget, Set[(TID, State)]]())
     def apply(): LocalEffectsMap = empty
   }
 
@@ -517,8 +502,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       val joinedLocal = oldLocal.join(newLocal)
       val newEffectsMap = new EffectsMap(m + (s2 -> joinedLocal))
       (if (m.contains(s2) && oldLocal != joinedLocal) {
-        println(s"Effects: ${effects.size} -- New: ${newLocal.size} -- Old: ${oldLocal.size} -- Join: ${joinedLocal.size}")
-        joinedLocal.findConflicts(newLocal)
+        // println(s"Effects: ${effects.size} -- New: ${newLocal.size} -- Old: ${oldLocal.size} -- Join: ${joinedLocal.size}")
+        joinedLocal.findConflicts
       } else Set(), newEffectsMap)
     }
     def apply(s: State): LocalEffectsMap = m(s)
