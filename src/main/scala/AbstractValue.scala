@@ -209,6 +209,18 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     }
   }
 
+  object Vector extends Primitive[Addr, Abs] {
+    val name = "vector"
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
+      val a = addr.cell(fexp, t)
+      val (va, emptyVector) = abs.vector(a, abs.inject(args.size), abs.bottom)
+      val vector = args.zipWithIndex.foldLeft(emptyVector)((acc, arg) => arg match {
+        case ((_, value), index) => abs.vectorSet(acc, abs.inject(index), value)
+      })
+      Right((va, store.extend(a, vector), Set()))
+    }
+  }
+
   object Lock extends Primitive[Addr, Abs] {
     val name = "new-lock"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
@@ -628,7 +640,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       (res, store, eff)
     }),
     UnaryOperation("abs", abs),
-    MakeVector, VectorSet,
+    MakeVector, VectorSet, Vector,
     UnaryOperation("vector?", isVector),
     UnaryStoreOperation("vector-length", (v, store) => {
       val (res, eff) = vectorLength(v, store)

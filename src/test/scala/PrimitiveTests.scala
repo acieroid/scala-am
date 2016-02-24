@@ -219,6 +219,11 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
   // char<=? not implemented
 
   // 6.3.6: vector notation (#(1 2)) not supported
+  r5rs("vector", Table(
+    ("program", "answer"),
+    ("(let ((vec (vector 'a 'b 'c))) (and (equal? (vector-ref vec 0) 'a) (equal? (vector-ref vec 1) 'b) (equal? (vector-ref vec 2) 'c)))", t),
+    ("(let ((vec (vector 0 '(2 2 2 2) \"Anna\"))) (vector-set! vec 1 '(\"Sue\" \"Sue\")) (and (equal? (vector-ref vec 0) 0) (equal? (vector-ref vec 1) '(\"Sue\" \"Sue\")) (equal? (vector-ref vec 2) \"Anna\")))", t)
+  ))
 
   /* 6.4 Control features */
   // procedure not implemented
