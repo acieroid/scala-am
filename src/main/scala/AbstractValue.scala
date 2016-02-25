@@ -47,7 +47,7 @@ object UnsupportedLatticeElement extends Exception
 /**
  * Exception to be raised when multiple values cannot be joined
  */
-case class CannotJoin[Abs : AbstractValue](values: Set[Abs]) extends Exception {
+case class CannotJoin[Abs](values: Set[Abs]) extends Exception {
   override def toString = "CannotJoin(" + values.mkString(", ") + ")"
 }
 
