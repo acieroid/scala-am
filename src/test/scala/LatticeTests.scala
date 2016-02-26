@@ -109,3 +109,6 @@ abstract class JoinLatticePropSpec[Abs : AbstractValue]
 class ConcreteTest extends LatticePropSpec[ConcreteLattice.L]
 class TypeTest extends JoinLatticePropSpec[TypeLattice.L]
 class TypeSetTest extends JoinLatticePropSpec[TypeSetLattice.L]
+
+import ConcreteLatticeNew.isAbstractValue
+class ConcreteNewTest extends JoinLatticePropSpec[ConcreteLatticeNew.L]

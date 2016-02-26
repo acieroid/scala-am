@@ -109,7 +109,7 @@ abstract class EvalKontMachine[Exp : Expression, Abs : AbstractValue, Addr : Add
    */
   case class ControlKont(v: Abs) extends Control {
     override def toString() = s"ko(${v})"
-    override def toString(store: Store[Addr, Abs]) = s"ko(${abs.toString(v, store)})"
+    override def toString(store: Store[Addr, Abs]) = s"ko(${abs.shows(v, store)})"
     def subsumes(that: Control) = that match {
       case ControlKont(v2) => abs.subsumes(v, v2)
       case _ => false

@@ -51,10 +51,16 @@ case class CannotJoin[Abs](values: Set[Abs]) extends Exception {
   override def toString = "CannotJoin(" + values.mkString(", ") + ")"
 }
 
+trait StoreShow[A] {
+  def shows[Addr : Address, Abs : AbstractValue](v: A, store: Store[Addr, Abs]): String
+}
+
 /** Abstract values are abstract representations of the possible values of a variable */
-trait AbstractValue[A] extends Semigroup[A] {
+trait AbstractValue[A] extends Semigroup[A] with StoreShow[A] {
   /** Name of this lattice */
   def name: String
+
+  def shows[Addr : Address, Abs : AbstractValue](v: A, store: Store[Addr, Abs]) = v.toString
 
   /** Can this abstract value be considered true for conditionals? */
   def isTrue(x: A): Boolean

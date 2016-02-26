@@ -96,6 +96,7 @@ object BenchmarkGenerator {
             }
           case None => println(s"Benchmark '${config.name}' doesn't exist")
         }
+      case None => println("Invalid configuration")
     }
   }
 }

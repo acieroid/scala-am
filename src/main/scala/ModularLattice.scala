@@ -1,22 +1,20 @@
 import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
+import OrderDerive._
 
 import UnaryOperator._
 import BinaryOperator._
-
-/* TODO: */
-trait StoreShow[L] {
-  def shows[Addr : Address, Abs : AbstractValue](l: L, store: Store[Addr, Abs]): String
-}
 
 /**
  * A lattice element should define its name, the bottom value, how to join two
  * elements, if an element subsumes another, as well as total order (not linked
  * to the subsumption).
  */
-trait LatticeElement[L] extends Order[L] with Show[L] with Monoid[L] {
+trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
   def name: String
   def bot: L
+  /* TODO */
+  // def top: L
   def join(x: L, y: L): L
   def subsumes(x: L, y: L): Boolean
 
@@ -48,6 +46,7 @@ trait IsInteger[I] extends LatticeElement[I] {
   def minus(n1: I, n2: I): I
   def times(n1: I, n2: I): I
   def div(n1: I, n2: I): I
+  def modulo(n1: I, n2: I): I
   def lt[B : IsBoolean](n1: I, n2: I): B
   def eql[B : IsBoolean](n1: I, n2: I): B
 }
@@ -75,44 +74,90 @@ trait IsSymbol[Sym] extends LatticeElement[Sym] {
   def eql[B : IsBoolean](sym1: Sym, sym2: Sym): B
 }
 
-trait IsVector[V] extends LatticeElement[V] {
-  def inject[I : IsInteger, A : AbstractValue](size: I, init: A): V
-  def length[I : IsInteger](v: V): I
-  def ref[I : IsInteger, A : AbstractValue](v: V, index: I): A
-  def set[I : IsInteger, A : AbstractValue](v: V, index: I): V
-}
-
-class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
+class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
   bool: IsBoolean[B], int: IsInteger[I], float: IsFloat[F], char: IsChar[C],
-  sym: IsSymbol[Sym], vec: IsVector[V]) {
-  trait Value
-  case object Bot extends Value
-  case class Str(s: S) extends Value
-  case class Bool(b: B) extends Value
-  case class Int(i: I) extends Value
-  case class Float(f: F) extends Value
-  case class Char(c: C) extends Value
-  case class Vec(v: V) extends Value
-  case class Symbol(s: Sym) extends Value
+  sym: IsSymbol[Sym]) {
+  sealed trait Value
+  case object Bot extends Value {
+    override def toString = "⊥"
+  }
+  case class Str(s: S) extends Value {
+    override def toString = str.shows(s)
+  }
+  case class Bool(b: B) extends Value {
+    override def toString = bool.shows(b)
+  }
+  case class Int(i: I) extends Value {
+    override def toString = int.shows(i)
+  }
+  case class Float(f: F) extends Value {
+    override def toString = float.shows(f)
+  }
+  case class Char(c: C) extends Value {
+    override def toString = char.shows(c)
+  }
+  case class Symbol(s: Sym) extends Value {
+    override def toString = sym.shows(s)
+  }
   case class Err(message: String) extends Value
-  case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Value
-  case class Closure[Exp : Expression, Addr : Address](lambda: Exp, env: Environment[Addr]) extends Value
-  case object Nil extends Value
+  case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Value {
+    override def toString = s"#<prim ${prim.name}>"
+  }
+  case class Closure[Exp : Expression, Addr : Address](lambda: Exp, env: Environment[Addr]) extends Value {
+    override def toString = "#<clo>"
+  }
   case class Cons[Addr : Address](car: Addr, cdr: Addr) extends Value
+  case object Nil extends Value {
+    override def toString = "()"
+  }
+  case class Vec(size: I, elements: Map[I, L], init: L) extends Value {
+    override def toString = {
+      val els = elements.toList.map({ case (k, v) => s"${int.shows(k)}: $v" }).mkString(", ")
+      s"Vec(${int.shows(size)}, {$els}, $init)"
+    }
+  }
   case class VectorAddress[Addr : Address](a: Addr) extends Value
-  case class Tid[TID : ThreadIdentifier](t: TID) extends Value
+  case class Tid[TID : ThreadIdentifier](t: TID) extends Value {
+    override def toString = s"#<thread $t>"
+  }
   case class LockAddress[Addr : Address](addr: Addr) extends Value
-  object Locked extends Value
-  object Unlocked extends Value
+  case object Locked extends Value
+  case object Unlocked extends Value
 
   val True = Bool(bool.inject(true))
   val False = Bool(bool.inject(false))
 
   type L = Value
-  implicit val isOrder: Order[L] = ???
-  implicit val isMonoid: Monoid[L] = ???
+
   val isAbstractValue = new AbstractValue[L] {
-    def name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name}, ${vec.name})"
+    def name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    override def shows[Addr : Address, Abs : AbstractValue](x: L, store: Store[Addr, Abs]) = x match {
+      case Bot => "⊥"
+      case Str(s) => str.shows(s)
+      case Bool(b) => bool.shows(b)
+      case Int(i) => int.shows(i)
+      case Float(f) => float.shows(f)
+      case Char(c) => char.shows(c)
+      case Symbol(s) => sym.shows(s)
+      case Err(msg) => s"Error($msg)"
+      case Nil => "()"
+      case Cons(car: Addr, cdr: Addr) => ???
+      case VectorAddress(a: Addr) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
+      case Vec(size, elements, init) => {
+        val initstr = shows(init, store)
+        val content = elements.toList.map({ case (k, v)  => s"${int.shows(k)}: ${shows(v, store)}"}).mkString(", ")
+        if (content.isEmpty) {
+          s"#(default: $initstr)"
+        } else {
+          s"#($content, default: $initstr)"
+        }
+      }
+      case LockAddress(a: Addr) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
+      case Unlocked => "#unlocked"
+      case Locked => "#locked"
+      case _ => x.toString
+    }
+
     def isTrue(x: L): Boolean = x match {
       case Bool(b) => bool.isTrue(b)
       case Bot => false
@@ -166,7 +211,7 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
         case _ => False
       }
       case IsVector => x match {
-        case Vec(_) => True
+        case Vec(_, _, _) => True
         case VectorAddress(_) => True
         case _ => False
       }
@@ -196,7 +241,7 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
         case _ => Err(s"Random not applicable to $x")
       }
       case VectorLength => x match {
-        case Vec(v) => Int(vec.length(v))
+        case Vec(size, _, _) => Int(size)
         case _ => Err(s"VectorLength not applicable to $x")
       }
       case StringLength => x match {
@@ -235,6 +280,10 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
         case (Float(n1), Float(n2)) => Float(float.div(n1, n2))
         case _ => Err(s"Div not applicable to $x and $y")
       }
+      case Modulo => (x, y) match {
+        case (Int(n1), Int(n2)) => Int(int.modulo(n1, n2))
+        case _ => Err(s"Modulo not applicable to $x and $y")
+      }
       case Lt => (x, y) match {
         case (Int(n1), Int(n2)) => Bool(int.lt(n1, n2))
         case (Int(n1), Float(n2)) => Bool(float.lt(int.toFloat(n1), n2))
@@ -250,18 +299,27 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
         case _ => Err(s"NumEq not applicable to $x and $y")
       }
       case Eq => (x, y) match {
-        /* TODO: this isn't physical equality (for strings only) */
-        case (Str(s1), Str(s2)) => Bool(str.eql(s1, s2))
+        case (Str(s1), Str(s2)) => Bool(str.eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
         case (Bool(b1), Bool(b2)) => Bool(bool.eql(b1, b2))
         case (Int(n1), Int(n2)) => Bool(int.eql(n1, n2))
         case (Float(n1), Float(n2)) => Bool(float.eql(n1, n2))
         case (Char(c1), Char(c2)) => Bool(char.eql(c1, c2))
         case (Symbol(s1), Symbol(s2)) => Bool(sym.eql(s1, s2))
-        /* TODO: Could be implemented in other cases as well */
+        case (Nil, Nil) => True
+        case (Prim(_), Prim(_)) => Bool(bool.inject(x == y))
+        case (Closure(_, _), Closure(_, _)) => Bool(bool.inject(x == y))
+        case (Cons(_, _), Cons(_, _)) => Bool(bool.inject(x == y))
+        case (VectorAddress(_), VectorAddress(_)) => Bool(bool.inject(x == y))
+        case (LockAddress(_), LockAddress(_)) => Bool(bool.inject(x == y))
         case _ => False
       }
       case VectorRef => (x, y) match {
-        case (Vec(v), Int(index)) => vec.ref[I, L](v, index)(int, this)
+        case (Vec(size, content, init), Int(index)) => {
+          val comp = int.lt(index, size)
+          val t = if (bool.isTrue(comp)) { content.getOrElse(index, init) } else { Bot }
+          val f = if (bool.isFalse(comp)) { Err(s"Vector access out of bound: accessed element $index of vector of size $size") } else { Bot }
+          join(t, f)
+        }
         case _ => Err(s"VectorRef not applicable to $x and $y")
       }
     }
@@ -291,26 +349,27 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
         x
       } else {
         (x, y) match {
+          case (Bot, _) => y
+          case (_, Bot) => x
           case (Str(s1), Str(s2)) => Str(str.join(s1, s2))
           case (Bool(b1), Bool(b2)) => Bool(bool.join(b1, b2))
           case (Int(i1), Int(i2)) => Int(int.join(i1, i2))
           case (Float(f1), Float(f2)) => Float(float.join(f1, f2))
           case (Char(c1), Char(c2)) => Char(char.join(c1, c2))
-          case (Vec(v1), Vec(v2)) => Vec(vec.join(v1, v2))
           case _ => throw new CannotJoin[L](Set(x, y))
         }
       }
 
-    def meet(x: L, y: L): L = ???
+    def meet(x: L, y: L): L = ??? // TODO: remove meet, we don't use it
 
     def subsumes(x: L, y: L): Boolean = if (x == y) { true } else {
       (x, y) match {
+        case (_, Bot) => true
         case (Str(s1), Str(s2)) => str.subsumes(s1, s2)
         case (Bool(b1), Bool(b2)) => bool.subsumes(b1, b2)
         case (Int(i1), Int(i2)) => int.subsumes(i1, i2)
         case (Float(f1), Float(f2)) => float.subsumes(f1, f2)
         case (Char(c1), Char(c2)) => char.subsumes(c1, c2)
-        case (Vec(v1), Vec(v2)) => vec.subsumes(v1, v2)
         case _ => false
       }
     }
@@ -325,7 +384,16 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
       case _ => Set()
     }
 
-    def vectorSet[Addr : Address](x: L, index: L, value: L): L = ???
+    def vectorSet[Addr : Address](x: L, index: L, value: L): L = (x, index) match {
+      case (Vec(size, content, init), Int(index)) => {
+        val comp = int.lt(index, size)
+        val t = if (bool.isTrue(comp)) { Vec(size, content + (index -> value), init) } else { Bot }
+        val f = if (bool.isFalse(comp)) { Err(s"Vector set out of bound: setting element $index of vector of size $size") } else { Bot }
+        join(t, f)
+      }
+      case (Vec(size, content, init), _) => Err(s"Vector set with non-integer index: $index")
+      case (_, _) => Err(s"Vector set on non-vector: $x")
+    }
 
     def toString[Addr : Address](x: L, store: Store[Addr, L]) = ???
 
@@ -363,13 +431,16 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
     def injectSymbol(x: String): L = Symbol(sym.inject(x))
     def nil: L = Nil
     def cons[Addr : Address](car: Addr, cdr: Addr): L = Cons(car, cdr)
-    def vector[Addr : Address](addr: Addr, size: L, init: L) = ???
+    def vector[Addr : Address](addr: Addr, size: L, init: L) = size match {
+      case Int(size) => (VectorAddress(addr), Vec(size, Map[I, L](), init))
+      case _ => (Err(s"vector creation expects an integer size, got $size instead"), Bot)
+    }
     def lock[Addr : Address](addr: Addr) = LockAddress(addr)
     def lockedValue = Locked
     def unlockedValue = Unlocked
   }
 
-  type LSet = Value \/ ISet[Value]
+  type LSet = Value \/ Set[Value]
   val boolOrMonoid = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x || y
     def zero: Boolean = false
@@ -378,87 +449,70 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
     def append(x: Boolean, y: => Boolean): Boolean = x && y
     def zero: Boolean = true
   }
-  implicit val isOrderSet: Order[LSet] = ???
-  implicit val isMonoidSet: Monoid[LSet] = ???
+  private def wrap(x: => Value): LSet = try { -\/(x) } catch {
+    case err: CannotJoin[Value] => \/-(err.values)
+  }
+  implicit val lsetMonoid = new Monoid[LSet] {
+    def append(x: LSet, y: => LSet): LSet = (x, y) match {
+      case (-\/(Bot), _) => y
+      case (_, -\/(Bot)) => x
+      case (-\/(x), -\/(y)) => wrap(isAbstractValue.join(x, y))
+      case (-\/(x), \/-(_)) => append(\/-(Set(x)), y)
+      case (\/-(_), -\/(y)) => append(x, \/-(Set(y)))
+      case (\/-(xs1), \/-(xs2)) =>
+        /* every element in the other set has to be joined in this set */
+        \/-(xs1.foldLeft(xs2)((acc, x2) =>
+          if (acc.exists(x1 => isAbstractValue.subsumes(x1, x2))) {
+            /* the set already contains an element that subsumes x2, don't add it to the set */
+            acc
+          } else {
+            /* remove all elements subsumed by x2 and add x2 to the set */
+            val subsumed = acc.filter(x1 => isAbstractValue.subsumes(x2, x1))
+            (acc -- subsumed) + x2
+          }))
+    }
+    def zero: LSet = -\/(Bot)
+  }
+  private def foldMapLSet[B](x: LSet, f: L => B)(implicit b: Monoid[B]): B = x match {
+    case -\/(x) => f(x)
+    case \/-(xs) => xs.foldMap(x => f(x))(b)
+  }
   val isAbstractValueSet = new AbstractValue[LSet] {
-    def name = s"SetLattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name}, ${vec.name})"
-    def isTrue(x: LSet): Boolean = x match {
-      case -\/(x) => isAbstractValue.isTrue(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.isTrue(x))(boolOrMonoid)
+    def name = s"SetLattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    override def shows[Addr : Address, Abs : AbstractValue](x: LSet, store: Store[Addr, Abs]) = x match {
+      case -\/(x) => isAbstractValue.shows(x, store)
+      case \/-(xs) => "{" + xs.map(x => isAbstractValue.shows(x, store)).mkString(",") + "}"
     }
-    def isFalse(x: LSet): Boolean = x match {
-      case -\/(x) => isAbstractValue.isFalse(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.isFalse(x))(boolOrMonoid)
-    }
-    def isError(x: LSet): Boolean = x match {
-      case -\/(x) => isAbstractValue.isError(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.isError(x))(boolOrMonoid)
-    }
+
+    def isTrue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isTrue(_))(boolOrMonoid)
+    def isFalse(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isFalse(_))(boolOrMonoid)
+    def isError(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isError(_))(boolOrMonoid)
     /* TODO
     def isNotError(x: LSet): Boolean = x match {
       case -\/(x) => isAbstractValue.isNotError(x)
       case \/-(xs) => xs.foldMap(x => isAbstractValue.isNotError(x))(boolAndMonoid)
     } */
-    private def wrap(x: => Value): LSet = try { -\/(x) } catch {
-      case err: CannotJoin[Value] => \/-(ISet.fromList(err.values.toList))
-    }
-    def unaryOp(op: UnaryOperator)(x: LSet): LSet = x match {
-      case -\/(x) => -\/(isAbstractValue.unaryOp(op)(x))
-      case \/-(xs) => xs.foldMap(x => wrap(isAbstractValue.unaryOp(op)(x)))
-    }
-    def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): LSet = (x, y) match {
-      case (-\/(x), -\/(y)) => -\/(isAbstractValue.binaryOp(op)(x, y))
-      case (-\/(x), \/-(ys)) => ys.foldMap(y => wrap(isAbstractValue.binaryOp(op)(x, y)))
-      case (\/-(xs), -\/(y)) => xs.foldMap(x => wrap(isAbstractValue.binaryOp(op)(x, y)))
-      case (\/-(xs), \/-(ys)) => xs.foldMap(x => ys.foldMap(y => wrap(isAbstractValue.binaryOp(op)(x, y))))
-    }
-    def join(x: LSet, y: LSet): LSet = (x, y) match {
-      case (-\/(x), -\/(y)) => wrap(isAbstractValue.join(x, y))
-      case (-\/(x), \/-(ys)) => ???
-      case (\/-(xs), -\/(y)) => ???
-      case (\/-(xs), \/-(ys)) => ???
-    }
+    def unaryOp(op: UnaryOperator)(x: LSet): LSet = foldMapLSet(x, x => wrap(isAbstractValue.unaryOp(op)(x)))
+    def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.binaryOp(op)(x, y))))
+    def join(x: LSet, y: LSet): LSet = implicitly[Monoid[LSet]].append(x, y)
     def meet(x: LSet, y: LSet): LSet = ???
-    def subsumes(x: LSet, y: LSet): Boolean = (x, y) match {
-      case (-\/(x), -\/(y)) => isAbstractValue.subsumes(x, y)
-      case (-\/(x), \/-(ys)) => ys.foldMap(y => isAbstractValue.subsumes(x, y))(boolAndMonoid)
-      case (\/-(xs), -\/(y)) => xs.foldMap(x => isAbstractValue.subsumes(x, y))(boolOrMonoid)
-      case (\/-(xs), \/-(ys)) => ys.foldMap(y => xs.foldMap(x => isAbstractValue.subsumes(x, y))(boolOrMonoid))(boolAndMonoid)
+    def subsumes(x: LSet, y: LSet): Boolean = foldMapLSet(x, x => foldMapLSet(y, y => isAbstractValue.subsumes(x, y))(boolOrMonoid))(boolAndMonoid)
+    def and(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.and(x, y))))
+    def or(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.or(x, y))))
+    def car[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.car(x))
+    def cdr[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.cdr(x))
+    def vectorSet[Addr : Address](vector: LSet, index: LSet, value: LSet): LSet = foldMapLSet(vector, vector => foldMapLSet(index, index => foldMapLSet(value, value =>
+      wrap(isAbstractValue.vectorSet(vector, index, value)))))
+
+    def toString[Addr : Address](x: LSet, store: Store[Addr, LSet]): String = x match {
+      case -\/(x) => x.toString
+      case \/-(xs) => "{" + xs.mkString(",") + "}"
     }
-    def and(x: LSet, y: => LSet): LSet = ???
-    def or(x: LSet, y: => LSet): LSet = ???
-    def car[Addr : Address](x: LSet): Set[Addr] = x match {
-      case -\/(x) => isAbstractValue.car(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.car(x))
-    }
-    def cdr[Addr : Address](x: LSet): Set[Addr] = x match {
-      case -\/(x) => isAbstractValue.cdr(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.cdr(x))
-    }
-    def vectorSet[Addr : Address](vector: LSet, index: LSet, value: LSet): LSet = ???
-    def toString[Addr : Address](x: LSet, store: Store[Addr, LSet]): String = ???
-    /* TODO: instead:
-     def toString[Addr : Address, Abs : AbstractValue](x: LSet, store: Store[Addr, AbstractValue]) */
-    def getClosures[Exp : Expression, Addr : Address](x: LSet): Set[(Exp, Environment[Addr])] = x match {
-      case -\/(x) => isAbstractValue.getClosures(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.getClosures(x))
-    }
-    def getPrimitives[Addr : Address, Abs : AbstractValue](x: LSet): Set[Primitive[Addr, Abs]] = x match {
-      case -\/(x) => isAbstractValue.getPrimitives(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.getPrimitives(x))
-    }
-    def getTids[TID : ThreadIdentifier](x: LSet): Set[TID] = x match {
-      case -\/(x) => isAbstractValue.getTids(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.getTids(x))
-    }
-    def getVectors[Addr : Address](x: LSet): Set[Addr] = x match {
-      case -\/(x) => isAbstractValue.getVectors(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.getVectors(x))
-    }
-    def getLocks[Addr : Address](x: LSet): Set[Addr] = x match {
-      case -\/(x) => isAbstractValue.getLocks(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.getLocks(x))
-    }
+    def getClosures[Exp : Expression, Addr : Address](x: LSet): Set[(Exp, Environment[Addr])] = foldMapLSet(x, x => isAbstractValue.getClosures(x))
+    def getPrimitives[Addr : Address, Abs : AbstractValue](x: LSet): Set[Primitive[Addr, Abs]] = foldMapLSet(x, x => isAbstractValue.getPrimitives(x))
+    def getTids[TID : ThreadIdentifier](x: LSet): Set[TID] = foldMapLSet(x, x => isAbstractValue.getTids(x))
+    def getVectors[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.getVectors(x))
+    def getLocks[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.getLocks(x))
 
     def bottom: LSet = -\/(isAbstractValue.bottom)
     def error(x: LSet): LSet = -\/(isAbstractValue.error(isAbstractValue.inject(x.toString))) // TODO: could be improved
@@ -472,11 +526,11 @@ class MakeLattice[S, B, I, F, C, Sym, V](implicit str: IsString[S],
     def injectTid[TID : ThreadIdentifier](tid: TID): LSet = -\/(isAbstractValue.injectTid(tid))
     def injectSymbol(x: String): LSet = -\/(isAbstractValue.injectSymbol(x))
     def cons[Addr : Address](car: Addr, cdr: Addr): LSet = -\/(isAbstractValue.cons(car, cdr))
-    def vector[Addr : Address](addr: Addr, size: LSet, init: LSet): (LSet, LSet) = ???
+    def vector[Addr : Address](addr: Addr, size: LSet, init: LSet): (LSet, LSet) = foldMapLSet(size, size => foldMapLSet(init, init =>
+      isAbstractValue.vector(addr, size, init) match { case (a, v) => (-\/(a), -\/(v)) }))
     def lock[Addr : Address](addr: Addr): LSet = -\/(isAbstractValue.lock(addr))
     def lockedValue: LSet = -\/(isAbstractValue.lockedValue)
     def unlockedValue: LSet = -\/(isAbstractValue.unlockedValue)
     def nil: LSet = -\/(isAbstractValue.nil)
   }
 }
-

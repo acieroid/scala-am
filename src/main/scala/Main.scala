@@ -80,7 +80,7 @@ object Config {
   implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
 
   object Lattice extends Enumeration {
-    val Concrete, Type, TypeSet = Value
+    val Concrete, ConcreteNew, Type, TypeSet = Value
   }
   implicit val latticeRead: scopt.Read[Lattice.Value] = scopt.Read.reads(Lattice withName _)
 
@@ -214,6 +214,7 @@ object Main {
       case Some(config) if (config.language == Config.Language.Scheme) => {
         val lattice: Lattice = config.lattice match {
           case Config.Lattice.Concrete => ConcreteLattice
+          case Config.Lattice.ConcreteNew => ConcreteLatticeNew
           case Config.Lattice.Type => TypeLattice
           case Config.Lattice.TypeSet => TypeSetLattice
         }

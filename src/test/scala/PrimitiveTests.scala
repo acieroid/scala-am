@@ -273,3 +273,10 @@ class FreeConcretePrimitiveTests extends FreePrimitiveTests[ConcreteLattice.L, C
 class FreeTypeSetPrimitiveTests extends FreePrimitiveTests[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA]
 class ConcurrentAAMConcretePrimitiveTests extends ConcurrentAAMPrimitiveTests[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp, ContextSensitiveTID]
 class ConcurrentAAMTypeSetPrimitiveTests extends ConcurrentAAMPrimitiveTests[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA, ContextSensitiveTID]
+
+
+import ConcreteLatticeNew.isAbstractValue
+class AAMConcreteNewPrimitiveTests extends AAMPrimitiveTests[ConcreteLatticeNew.L, ClassicalAddress, ConcreteTimestamp]
+class AACConcreteNewPrimitiveTests extends AACPrimitiveTests[ConcreteLatticeNew.L, ClassicalAddress, ConcreteTimestamp]
+class FreeConcreteNewPrimitiveTests extends FreePrimitiveTests[ConcreteLatticeNew.L, ClassicalAddress, ConcreteTimestamp]
+class ConcurrentAAMConcreteNewPrimitiveTests extends ConcurrentAAMPrimitiveTests[ConcreteLatticeNew.L, ClassicalAddress, ConcreteTimestamp, ContextSensitiveTID]

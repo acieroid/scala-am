@@ -1,4 +1,4 @@
-trait Expression[A]
+trait Expression[E]
 
 object Expression {
   implicit object ANFExpExpression extends Expression[ANFExp]
