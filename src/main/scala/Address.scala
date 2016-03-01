@@ -24,7 +24,7 @@ object ClassicalAddress extends AddressWrapper {
     override def toString = s"@$exp"
   }
 
-  val isAddress = new Address[A] {
+  implicit val isAddress = new Address[A] {
     def name = "Classical"
     def isPrimitive(x: A) = x match {
       case PrimitiveAddress(_) => true
@@ -48,7 +48,7 @@ object ValueSensitiveAddress extends AddressWrapper {
     override def toString = s"@$exp"
   }
 
-  val isAddress = new Address[A] {
+  implicit val isAddress = new Address[A] {
     def name = "ValueSensitive"
     def isPrimitive(x: A) = x match {
       case PrimitiveAddress(_) => true

@@ -116,34 +116,34 @@ abstract class ConcurrentAAMBenchmarks[Abs : AbstractValue, Addr : Address, Time
 /* Type tests are disabled because they fail due to their inability to support a join between a closure and other abstract values */
 //class AACConcreteBenchmarks extends AACBenchmarks[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
 //class AACTypeBenchmarks extends AACBenchmarks[TypeLattice.L, ClassicalAddress, CFA.ZeroCFA]
-class AACTypeSetBenchmarks extends AACBenchmarks[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA]
+class AACTypeSetBenchmarks extends AACBenchmarks[TypeSetLattice.L, ClassicalAddress.A, ZeroCFA.T]
 
 //class AAMConcreteBenchmarks extends AAMBenchmarks[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
 //class AAMTypeBenchmarks extends AAMBenchmarks[TypeLattice.L, ClassicalAddress, CFA.ZeroCFA]
-class AAMTypeSetBenchmarks extends AAMBenchmarks[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA]
+class AAMTypeSetBenchmarks extends AAMBenchmarks[TypeSetLattice.L, ClassicalAddress.A, ZeroCFA.T]
 
 //class FreeConcreteBenchmarks extends FreeBenchmarks[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
 //class FreeTypeBenchmarks extends FreeBenchmarks[TypeLattice.L, ClassicalAddress, CFA.ZeroCFA]
-class FreeTypeSetBenchmarks extends FreeBenchmarks[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA]
+class FreeTypeSetBenchmarks extends FreeBenchmarks[TypeSetLattice.L, ClassicalAddress.A, ZeroCFA.T]
 
-class ConcurrentAAMTypeSetBenchmarks extends ConcurrentAAMBenchmarks[TypeSetLattice.L, ClassicalAddress, CFA.ZeroCFA, ContextSensitiveTID]
+class ConcurrentAAMTypeSetBenchmarks extends ConcurrentAAMBenchmarks[TypeSetLattice.L, ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID]
 
-class AACOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp] {
-  val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
-  val machine = new AAC[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
+class AACOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T] {
+  val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
+  val machine = new AAC[SchemeExp, ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
 }
 
-class AAMOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp] {
-  val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
-  val machine = new AAM[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
+class AAMOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T] {
+  val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
+  val machine = new AAM[SchemeExp, ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
 }
 
-class FreeOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp] {
-  val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
-  val machine = new Free[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
+class FreeOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T] {
+  val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
+  val machine = new Free[SchemeExp, ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
 }
 
-class ConcurrentAAMOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp] {
-  val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp]
-  val machine = new ConcurrentAAM[SchemeExp, ConcreteLattice.L, ClassicalAddress, ConcreteTimestamp, ContextSensitiveTID](ExplorationType.AllInterleavings)
+class ConcurrentAAMOneResultTests extends OneResultTests[SchemeExp, ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T] {
+  val sem = new SchemeSemantics[ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
+  val machine = new ConcurrentAAM[SchemeExp, ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](ExplorationType.AllInterleavings)
 }

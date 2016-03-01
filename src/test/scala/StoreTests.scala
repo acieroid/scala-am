@@ -35,6 +35,6 @@ extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
   }}
 }
 
-class ConcreteStoreTest extends StorePropSpec[ClassicalAddress, ConcreteLattice.L]
-class TypeStoreTest extends StorePropSpec[ClassicalAddress, TypeLattice.L]
-class TypeSetStoreTest extends StorePropSpec[ClassicalAddress, TypeSetLattice.L]
+class ConcreteStoreTest extends StorePropSpec[ClassicalAddress.A, ConcreteLattice.L]
+class TypeStoreTest extends StorePropSpec[ClassicalAddress.A, TypeLattice.L]
+class TypeSetStoreTest extends StorePropSpec[ClassicalAddress.A, TypeSetLattice.L]

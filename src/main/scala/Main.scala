@@ -218,7 +218,7 @@ object Main {
         }
         implicit val isAbstractValue = lattice.isAbstractValue
 
-        val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else KCFA(0)
+        val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
         implicit val isTimestamp = time.isTimestamp
 
         val address: AddressWrapper = config.address match {
@@ -259,7 +259,7 @@ object Main {
           do {
             val address = ClassicalAddress
             implicit val isAddress = address.isAddress
-            val time = KCFA(0)
+            val time = ZeroCFA
             implicit val isTimestamp = time.isTimestamp
             val machine = new ConcurrentAAM[ParSimpleExp, ConcreteLattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
             val sem = new ParSimpleSemantics[ConcreteLattice.L, address.A, time.T, ContextSensitiveTID]
