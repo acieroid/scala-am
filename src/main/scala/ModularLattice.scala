@@ -13,10 +13,9 @@ import BinaryOperator._
 trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
   def name: String
   def bot: L
-  /* TODO */
-  // def top: L
-  def join(x: L, y: L): L
-  def subsumes(x: L, y: L): Boolean
+  def top: L
+  def join(x: L, y: => L): L
+  def subsumes(x: L, y: => L): Boolean
 
   /* For Monoid[L] */
   final def zero: L = bot
@@ -178,7 +177,7 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     }
     def isPrimitiveValue(x: L): Boolean = x match {
       case Bot | Str(_) | Bool(_) | Int(_) | Float(_) | Char(_) | Symbol(_) | Err(_) | Nil | Locked | Unlocked => true
-      case Cons(_, _) | VectorAddress(_) | Vec(_, _, _) | LockAddress(_) => false
+      case Closure(_, _) | Prim(_) | Tid(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) | LockAddress(_) => false
     }
 
     def unaryOp(op: UnaryOperator)(x: L): L = if (x == Bot) { Bot } else { op match {
