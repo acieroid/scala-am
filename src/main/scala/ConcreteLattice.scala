@@ -8,6 +8,7 @@ object ConcreteLattice extends Lattice {
     def isTrue: Boolean = true
     def isFalse: Boolean = false
     def isError: Boolean = false
+    def isNotError: Boolean = !isError
     def unaryOp(op: UnaryOperator): L = op match {
       case IsNull | IsCons | IsChar | IsSymbol | IsString | IsInteger | IsFloat | IsBoolean | IsVector | IsLock => False
       case Not => False
@@ -217,6 +218,7 @@ object ConcreteLattice extends Lattice {
     def isTrue(x: L) = x.isTrue
     def isFalse(x: L) = x.isFalse
     def isError(x: L) = x.isError
+    def isNotError(x: L) = x.isNotError
     def unaryOp(op: UnaryOperator)(x: L) = x.unaryOp(op)
     def binaryOp(op: BinaryOperator)(x: L, y: L) = x.binaryOp(op)(y)
     def join(x: L, y: L) = x.join(y)
@@ -292,6 +294,12 @@ object ConcreteLattice extends Lattice {
     def getLocks[Addr : Address](x: L) = x match {
       case LockAddress(a: Addr) => Set(a)
       case _ => Set()
+    }
+
+    def isPrimitiveValue(x: L) = x match {
+      case Prim(_) | Tid(_) | VectorAddress(_) | Vector(_, _, _) | LockAddress(_) | Closure(_, _) |  Cons(_, _) => false
+      case ConcreteError(_) | ConcreteInt(_) | ConcreteFloat(_) | ConcreteString(_) | ConcreteChar(_) | ConcreteBool(_) | ConcreteSymbol(_)
+         | Nil | Bottom | Locked | Unlocked => true
     }
 
     def bottom = Bottom

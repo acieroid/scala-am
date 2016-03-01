@@ -95,7 +95,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       Set(ActionPush(exp, FrameLet(variable, body, ρ), ρ, σ))
     /* Same for letrec, but we need to bind the variable to an undefined value first */
     case ANFLetrec(variable, exp, body, pos) => {
-      val vara = addr.variable(variable, t)
+      val vara = addr.variable(variable, abs.bottom, t)
       val ρ1 = ρ.extend(variable, vara)
       val σ1 = σ.extend(vara, abs.bottom)
       Set(ActionPush(exp, FrameLetrec(variable, vara, body, ρ1), ρ1, σ1))
@@ -119,7 +119,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time) = frame match {
     /* Allocate the variable and bind it to the reached value */
     case FrameLet(variable, body, ρ) => {
-      val vara = addr.variable(variable, t)
+      val vara = addr.variable(variable, v, t)
       Set(ActionEval(body, ρ.extend(variable, vara), σ.extend(vara, v)))
     }
     /* Just bind the variable to the reached value, since it has already been allocated */

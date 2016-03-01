@@ -66,8 +66,12 @@ trait AbstractValue[A] extends Semigroup[A] with StoreShow[A] {
   def isTrue(x: A): Boolean
   /** Can this abstract value be considered false for conditionals? */
   def isFalse(x: A): Boolean
-  /** Is this an erroneous value? (and only an erroneous value) */
+  /** Is this an erroneous value? (might contain other values as well) */
   def isError(x: A): Boolean
+  /** Is this an error-free value? */
+  def isNotError(x: A): Boolean
+  /** Is this a primitive value, i.e. a value that contains no address? */
+  def isPrimitiveValue(x: A): Boolean
   /** Performs an unary operation on the abstract value x */
   def unaryOp(op: UnaryOperator.UnaryOperator)(x: A): A
   /** Performs a binary operation on abstract values x and y */

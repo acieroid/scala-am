@@ -33,7 +33,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         Set[(ThreadMap, ThreadResults, Store[Addr, Abs], Effects)] = action match {
       case ActionReachedValue(v, σ, effs) => Set((threads.update(tid, Context(ControlKont(v), kstore, a, time.tick(t))), results, σ, effs))
       case ActionPush(e, frame, ρ, σ, effs) => {
-        val next = NormalKontAddress(e, addr.variable("__kont__", t))
+        val next = NormalKontAddress(e, addr.variable("__kont__", abs.bottom, t))
         Set((threads.update(tid, Context(ControlEval(e, ρ), kstore.extend(next, Kont(frame, a)), next, time.tick(t))), results, σ, effs))
       }
       case ActionEval(e, ρ, σ, effs) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t))), results, σ, effs))

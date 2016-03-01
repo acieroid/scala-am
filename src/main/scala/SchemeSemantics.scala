@@ -111,7 +111,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     case SchemeLetrec(Nil, body, _) => Set(evalBody(body, ρ, σ))
     case SchemeLetrec((v, exp) :: bindings, body, _) => {
       val variables = v :: bindings.map(_._1)
-      val addresses = variables.map(v => addr.variable(v, t))
+      val addresses = variables.map(v => addr.variable(v, abs.bottom, t))
       val (ρ1, σ1) = variables.zip(addresses).foldLeft((ρ, σ))({ case ((ρ, σ), (v, a)) => (ρ.extend(v, a), σ.extend(a, abs.bottom)) })
       Set(ActionPush(exp, FrameLetrec(addresses.head, addresses.tail.zip(bindings.map(_._2)), body, ρ1), ρ1, σ1))
     }
@@ -126,7 +126,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     case SchemeOr(exp :: exps, _) => Set(ActionPush(exp, FrameOr(exps, ρ), ρ, σ))
     case SchemeDefineVariable(name, exp, _) => Set(ActionPush(exp, FrameDefine(name, ρ), ρ, σ))
     case SchemeDefineFunction(name, args, body, pos) => {
-      val a = addr.variable(name, t)
+      val a = addr.variable(name, abs.bottom, t)
       val v = abs.inject[SchemeExp, Addr]((SchemeLambda(args, body, pos), ρ))
       val ρ1 = ρ.extend(name, a)
       val σ1 = σ.extend(a, v)
@@ -156,7 +156,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       conditional(v, ActionEval(cons, ρ, σ), ActionEval(alt, ρ, σ))
     case FrameLet(name, bindings, Nil, body, ρ) => {
       val variables = name :: bindings.reverse.map(_._1)
-      val addresses = variables.map(v => addr.variable(v, t))
+      val addresses = variables.map(variable => addr.variable(variable, v, t))
       val (ρ1, σ1) = ((name, v) :: bindings).zip(addresses).foldLeft((ρ, σ))({
         case ((ρ, σ), ((variable, value), a)) => (ρ.extend(variable, a), σ.extend(a, value))
       })
@@ -165,7 +165,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     case FrameLet(name, bindings, (variable, e) :: toeval, body, ρ) =>
       Set(ActionPush(e, FrameLet(variable, (name, v) :: bindings, toeval, body, ρ), ρ, σ))
     case FrameLetStar(name, bindings, body, ρ) => {
-      val a = addr.variable(name, t)
+      val a = addr.variable(name, abs.bottom, t)
       val ρ1 = ρ.extend(name, a)
       val σ1 = σ.extend(a, v)
       bindings match {

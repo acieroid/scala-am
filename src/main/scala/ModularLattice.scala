@@ -176,6 +176,10 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
       case Err(_) => false
       case _ => true
     }
+    def isPrimitiveValue(x: L): Boolean = x match {
+      case Bot | Str(_) | Bool(_) | Int(_) | Float(_) | Char(_) | Symbol(_) | Err(_) | Nil | Locked | Unlocked => true
+      case Cons(_, _) | VectorAddress(_) | Vec(_, _, _) | LockAddress(_) => false
+    }
 
     def unaryOp(op: UnaryOperator)(x: L): L = if (x == Bot) { Bot } else { op match {
       case IsNull => x match {
@@ -487,11 +491,8 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     def isTrue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isTrue(_))(boolOrMonoid)
     def isFalse(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isFalse(_))(boolOrMonoid)
     def isError(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isError(_))(boolOrMonoid)
-    /* TODO
-    def isNotError(x: LSet): Boolean = x match {
-      case -\/(x) => isAbstractValue.isNotError(x)
-      case \/-(xs) => xs.foldMap(x => isAbstractValue.isNotError(x))(boolAndMonoid)
-    } */
+    def isNotError(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isNotError(_))(boolAndMonoid)
+    def isPrimitiveValue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isPrimitiveValue(_))(boolAndMonoid)
     def unaryOp(op: UnaryOperator)(x: LSet): LSet = foldMapLSet(x, x => wrap(isAbstractValue.unaryOp(op)(x)))
     def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.binaryOp(op)(x, y))))
     def join(x: LSet, y: LSet): LSet = implicitly[Monoid[LSet]].append(x, y)

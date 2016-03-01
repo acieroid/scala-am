@@ -74,21 +74,13 @@ object Benchmarks {
       case MachineConfig(name, exploration, concrete, timeout) =>
         val lattice = if (concrete) { ConcreteLattice } else { TypeSetLattice }
         implicit val isAbstractValue = lattice.isAbstractValue
-        val time = if (concrete) {
-          new TimestampWrapper {
-            type T = ConcreteTimestamp
-            val isTimestamp = implicitly[Timestamp[T]]
-          }
-        } else {
-          new TimestampWrapper {
-            type T = CFA.ZeroCFA
-            val isTimestamp = implicitly[Timestamp[T]]
-          }
-        }
+        val time = if (concrete) { ConcreteTimestamp } else { KCFA(0) }
         implicit val isTimestamp = time.isTimestamp
+        val address = ClassicalAddress
+        implicit val isAddress = address.isAddress
 
-        val machine = new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress, time.T, ContextSensitiveTID](exploration)
-        val sem = new ConcurrentSchemeSemantics[lattice.L, ClassicalAddress, time.T, ContextSensitiveTID]
+        val machine = new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](exploration)
+        val sem = new ConcurrentSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID]
         val program = Main.fileContent(s"concurrent/$name.scm")
         if (program != null || program.size > 0) {
           val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {

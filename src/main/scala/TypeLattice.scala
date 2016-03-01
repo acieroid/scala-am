@@ -207,6 +207,11 @@ object TypeLattice extends Lattice {
       case _ => false
     }
     def isError(x: L) = x == Error
+    def isNotError(x: L) = !isError(x)
+    def isPrimitiveValue(x: L) = x match {
+      case Error | Int | Float | String | Char | Symbol | True | False | Bottom | Nil | Locked | Unlocked => true
+      case Prim(_) | Clo(_) | Tid(_) | Cons(_, _) | VectorAddress(_) | Vector(_) | LockAddress(_) => false
+    }
     def unaryOp(op: UnaryOperator)(x: L) = x.unaryOp(op)
     def binaryOp(op: BinaryOperator)(x: L, y: L) = x.binaryOp(op)(y)
     def join(x: L, y: L) = if (x == y || y == Bottom) { x } else if (x == Bottom) { y } else { throw CannotJoin[L](Set(x, y)) }

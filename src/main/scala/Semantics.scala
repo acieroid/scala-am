@@ -180,7 +180,7 @@ abstract class BaseSemantics[Exp : Expression, Abs : AbstractValue, Addr : Addre
    */
   protected def bindArgs(l: List[(String, (Exp, Abs))], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
     l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, (exp, value))) => {
-      val a = addr.variable(name, t)
+      val a = addr.variable(name, value, t)
       (ρ.extend(name, a), σ.extend(a, value))
     }})
 }

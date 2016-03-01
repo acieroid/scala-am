@@ -29,6 +29,12 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     def isError(p: Product) = p match {
       case Prod(x, y) => xabs.isError(x) || yabs.isError(y)
     }
+    def isNotError(p: Product) = p match {
+      case Prod(x, y) => xabs.isNotError(x) && yabs.isNotError(y)
+    }
+    def isPrimitiveValue(p: Product) = p match {
+      case Prod(x, y) => xabs.isPrimitiveValue(x) && yabs.isPrimitiveValue(y)
+    }
     def unaryOp(op: UnaryOperator)(p: Product) = p match {
       case Prod(x, y) => Prod(xabs.unaryOp(op)(x), yabs.unaryOp(op)(y))
     }

@@ -84,6 +84,11 @@ object Config {
   }
   implicit val latticeRead: scopt.Read[Lattice.Value] = scopt.Read.reads(Lattice withName _)
 
+  object Address extends Enumeration {
+    val Classical, ValueSensitive = Value
+  }
+  implicit val addressRead: scopt.Read[Address.Value] = scopt.Read.reads(Address withName _)
+
   object Language extends Enumeration {
     val Scheme, ANF, ParSimple = Value
   }
@@ -135,6 +140,7 @@ object Config {
     lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
     file: Option[String] = None, dotfile: Option[String] = None,
     language: Language.Value = Language.Scheme,
+    address: Address.Value = Address.Classical,
     exploration: ExplorationType.Value = ExplorationType.InterferenceTracking,
     inspect: Boolean = false,
     timeout: Option[Long] = None)
@@ -150,6 +156,7 @@ object Config {
     opt[ExplorationType.Value]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exloration type for concurrent programs (OneInterleaving, RandomInterleaving, AllInterleavings, InterferenceTracking)")
     opt[Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
     opt[Unit]('i', "inspect") action { (x, c) => c.copy(inspect = true) } text("Launch inspection REPL (disabled by default)")
+    opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text("Addresses to use (Classical, ValueSensitive)")
   }
 }
 
@@ -199,15 +206,6 @@ object Main {
     content
   }
 
-  trait TimestampWrapper {
-    type T
-    val isTimestamp: Timestamp[T]
-  }
-  trait ExpressionWrapper {
-    type T
-    val isExpression: Expression[T]
-  }
-
   def main(args: Array[String]) {
     import scala.util.control.Breaks._
     Config.parser.parse(args, Config.Config()) match {
@@ -220,30 +218,26 @@ object Main {
         }
         implicit val isAbstractValue = lattice.isAbstractValue
 
-        val time: TimestampWrapper = if (config.concrete) {
-          new TimestampWrapper {
-            type T = ConcreteTimestamp
-            val isTimestamp = implicitly[Timestamp[T]]
-          }
-        } else {
-          new TimestampWrapper {
-            type T = CFA.ZeroCFA
-            val isTimestamp = implicitly[Timestamp[T]]
-          }
-        }
+        val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else KCFA(0)
         implicit val isTimestamp = time.isTimestamp
 
+        val address: AddressWrapper = config.address match {
+          case Config.Address.Classical => ClassicalAddress
+          case Config.Address.ValueSensitive => ValueSensitiveAddress
+        }
+        implicit val isAddress = address.isAddress
+
         val machine = config.machine match {
-          case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, ClassicalAddress, time.T]
-          case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, ClassicalAddress, time.T]
-          case Config.Machine.Free => new Free[SchemeExp, lattice.L, ClassicalAddress, time.T]
-          case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress, time.T, ContextSensitiveTID](config.exploration)
+          case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, address.A, time.T]
+          case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
+          case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
+          case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
         }
 
         val sem = if (config.machine == Config.Machine.ConcurrentAAM) {
-          new ConcurrentSchemeSemantics[lattice.L, ClassicalAddress, time.T, ContextSensitiveTID]
+          new ConcurrentSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID]
         } else {
-          new SchemeSemantics[lattice.L, ClassicalAddress, time.T]
+          new SchemeSemantics[lattice.L, address.A, time.T]
         }
 
         try {
@@ -263,8 +257,12 @@ object Main {
       case Some(config) if (config.language == Config.Language.ParSimple) => {
         try {
           do {
-            val machine = new ConcurrentAAM[ParSimpleExp, ConcreteLattice.L, ClassicalAddress, CFA.ZeroCFA, ContextSensitiveTID](config.exploration)
-            val sem = new ParSimpleSemantics[ConcreteLattice.L, ClassicalAddress, CFA.ZeroCFA, ContextSensitiveTID]
+            val address = ClassicalAddress
+            implicit val isAddress = address.isAddress
+            val time = KCFA(0)
+            implicit val isTimestamp = time.isTimestamp
+            val machine = new ConcurrentAAM[ParSimpleExp, ConcreteLattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
+            val sem = new ParSimpleSemantics[ConcreteLattice.L, address.A, time.T, ContextSensitiveTID]
             val program = config.file match {
               case Some(file) => fileContent(file)
               case None => StdIn.readLine(">>> ")

@@ -36,7 +36,7 @@ class ParSimpleSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp, 
     case ParSimpleProgram(vars, threads, variable, pos) => {
       val (env2, store2) = vars.foldLeft((env, store))((acc, binding) => binding match {
         case (variable, value) =>
-          val vara = addr.variable(variable, t)
+          val vara = addr.variable(variable, abs.bottom, t)
           (acc._1.extend(variable, vara), acc._2.extend(vara, inject(value)))
       })
       Set(ActionEval(ParSimpleSpawn(threads, variable, pos), env2, store2))
@@ -44,7 +44,8 @@ class ParSimpleSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp, 
     case ParSimpleSpawn(threads, variable, pos) => {
       val tidlist = threads.map({ case (name, _) => name -> thread.thread[ParSimpleExp, Time](ParSimpleVariable(name, pos), t)})
       val tids = tidlist.toMap
-      val finalAction: Action[ParSimpleExp, Abs, Addr] = ActionPush(ParSimpleJoin(tids.values.head, pos), FrameJoin(tids.values.drop(1).toList, variable, pos, env), env, store)
+      // val finalAction: Action[ParSimpleExp, Abs, Addr] = ActionPush(ParSimpleJoin(tids.values.head, pos), FrameJoin(tids.values.drop(1).toList, variable, pos, env), env, store)
+      val finalAction: Action[ParSimpleExp, Abs, Addr] = ActionEval(variable, env, store)
       val spawnAction = threads.foldLeft(finalAction)((acc, th) => th match {
         case (name, code) =>
           ActionSpawn(tids(name), code, env, acc)
