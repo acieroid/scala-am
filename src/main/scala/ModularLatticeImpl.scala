@@ -12,7 +12,7 @@ object SchemeOps {
     }
 }
 
-object Concrete {
+object ConcreteString {
   type S = ISet[String]
   implicit val isString = new IsString[S] {
     def name = "ConcreteString"
@@ -29,7 +29,9 @@ object Concrete {
 
     def order(x: S, y: S): Ordering = implicitly[Order[ISet[String]]].order(x, y)
   }
+}
 
+object ConcreteBoolean {
   type B = ISet[Boolean]
   implicit val isBoolean = new IsBoolean[B] {
     def name = "ConcreteBoolean"
@@ -48,7 +50,9 @@ object Concrete {
 
     def order(x: B, y: B): Ordering = implicitly[Order[ISet[Boolean]]].order(x, y)
   }
+}
 
+object ConcreteInteger {
   type I = ISet[Int]
   implicit val isInteger = new IsInteger[I] {
     def name = "ConcreteInteger"
@@ -72,7 +76,9 @@ object Concrete {
 
     def order(x: I, y: I): Ordering = implicitly[Order[ISet[Int]]].order(x, y)
   }
+}
 
+object ConcreteFloat {
   type F = ISet[Float]
   implicit val isFloat = new IsFloat[F] {
     def name = "ConcreteFloat"
@@ -95,7 +101,9 @@ object Concrete {
 
     def order(x: F, y: F): Ordering = implicitly[Order[ISet[Float]]].order(x, y)
   }
+}
 
+object ConcreteChar {
   type C = ISet[Char]
   implicit val isChar = new IsChar[C] {
     def name = "ConcreteChar"
@@ -112,7 +120,9 @@ object Concrete {
 
     def order(x: C, y: C): Ordering = implicitly[Order[ISet[Char]]].order(x, y)
   }
+}
 
+object ConcreteSymbol {
   sealed trait Symbol
   type Sym = ISet[String @@ Symbol]
   implicit val symOrder = new Order[String @@ Symbol] {
@@ -167,8 +177,11 @@ class BoundedInteger(bound: Int) {
       case \/-(_) => true
     }
     private def promote(x: ISet[Int]): I = x.findMax match {
-      case Some(i) if i > bound => \/-(Top)
-      case _ => -\/(x)
+      case Some(i) if Math.abs(i) > bound => \/-(Top)
+      case _ => x.findMin match {
+        case Some(i) if Math.abs(i) > bound => \/-(Top)
+        case _ => -\/(x)
+      }
     }
     private def fold[L](x: I, f: Int => L)(implicit b: LatticeElement[L]): L = x match {
       case -\/(xs) => xs.foldMap(f)
@@ -190,6 +203,8 @@ class BoundedInteger(bound: Int) {
     def lt[B](n1: I, n2: I)(implicit bool: IsBoolean[B]): B = fold(n1, n1 => fold(n2, n2 => bool.inject(n1 < n2)))
     def eql[B](n1: I, n2: I)(implicit bool: IsBoolean[B]): B = fold(n1, n1 => fold(n2, n2 => bool.inject(n1 == n2)))
 
+    //import OrderDerive._
+    //def order(x: I, y: I): Ordering = implicitly[Order[ISet[Int] \/ Top]].order(x, y)
     def order(x: I, y: I): Ordering = (x, y) match {
       case (-\/(xs), -\/(ys)) => implicitly[Order[ISet[Int]]].order(xs, ys)
       case (\/-(_), -\/(_)) => Ordering.GT
@@ -199,9 +214,14 @@ class BoundedInteger(bound: Int) {
   }
 }
 
-
 object ConcreteLatticeNew extends Lattice {
-  import Concrete._
+  import ConcreteString._
+  import ConcreteBoolean._
+  import ConcreteInteger._
+  import ConcreteFloat._
+  import ConcreteChar._
+  import ConcreteSymbol._
+
   val lattice = new MakeLattice[S, B, I, F, C, Sym]
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
