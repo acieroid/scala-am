@@ -5,9 +5,10 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
 import UnaryOperator._
 import BinaryOperator._
 
-abstract class LatticePropSpec[Abs : AbstractValue]
+abstract class LatticePropSpec(val lattice: Lattice)
     extends PropSpec with GeneratorDrivenPropertyChecks with Matchers with TableDrivenPropertyChecks {
-  val abs = implicitly[AbstractValue[Abs]]
+  type Abs = lattice.L
+  val abs = lattice.isAbstractValue
   property("lattice should preserve boolean value and correctly implement not") {
     forAll { (b: Boolean) =>
       try {
@@ -77,8 +78,8 @@ abstract class LatticePropSpec[Abs : AbstractValue]
   }
 }
 
-abstract class JoinLatticePropSpec[Abs : AbstractValue]
-    extends LatticePropSpec[Abs] {
+abstract class JoinLatticePropSpec(lattice: Lattice)
+    extends LatticePropSpec(lattice) {
   property("lattice should join values correctly or raise a CannotJoin error") {
     try {
       val bot = abs.bottom
@@ -104,11 +105,23 @@ abstract class JoinLatticePropSpec[Abs : AbstractValue]
       case CannotJoin(_) => ()
     }
   }
+  property("{#t, Str, Int} should subsume Str") {
+    try {
+      /* bug detected on commit 7546a519 */
+      val str = abs.inject("foo")
+      val t = abs.inject(true)
+      val int = abs.inject(1000)
+      val joined = abs.join(int, abs.join(t, str))
+      assert(abs.subsumes(joined, str))
+    } catch {
+      case CannotJoin(_) => ()
+    }
+  }
 }
 
-class ConcreteTest extends LatticePropSpec[ConcreteLattice.L]
-class TypeTest extends JoinLatticePropSpec[TypeLattice.L]
-class TypeSetTest extends JoinLatticePropSpec[TypeSetLattice.L]
-
-import ConcreteLatticeNew.isAbstractValue
-class ConcreteNewTest extends JoinLatticePropSpec[ConcreteLatticeNew.L]
+class ConcreteTest extends LatticePropSpec(ConcreteLattice)
+class TypeTest extends JoinLatticePropSpec(TypeLattice)
+class TypeSetTest extends JoinLatticePropSpec(TypeSetLattice)
+class ConcreteNewTest extends JoinLatticePropSpec(ConcreteLatticeNew)
+class TypeSetNewTest extends JoinLatticePropSpec(TypeSetLatticeNew)
+class BoundedIntTest extends JoinLatticePropSpec(BoundedIntLattice)

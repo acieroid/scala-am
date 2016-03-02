@@ -502,7 +502,9 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.binaryOp(op)(x, y))))
     def join(x: LSet, y: LSet): LSet = implicitly[Monoid[LSet]].append(x, y)
     def meet(x: LSet, y: LSet): LSet = ???
-    def subsumes(x: LSet, y: LSet): Boolean = foldMapLSet(x, x => foldMapLSet(y, y => isAbstractValue.subsumes(x, y))(boolOrMonoid))(boolAndMonoid)
+    def subsumes(x: LSet, y: LSet): Boolean = foldMapLSet(y, y =>
+      /* For every element in y, there exists an element of x that subsumes it */
+      foldMapLSet(x, x => isAbstractValue.subsumes(x, y))(boolOrMonoid))(boolAndMonoid)
     def and(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.and(x, y))))
     def or(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.or(x, y))))
     def car[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.car(x))
