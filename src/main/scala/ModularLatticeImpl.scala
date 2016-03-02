@@ -38,7 +38,7 @@ object ConcreteBoolean {
     private def showBool(b: Boolean) = if (b) "#t" else "#f"
     override def shows(x: B): String = if (x.size == 1) { showBool(x.elems.head) } else { "{" + x.elems.map(showBool _).mkString(",") + "}" }
     val bot: B = ISet.empty
-    def top: B = throw new Error("Concrete lattice has no top value")
+    val top: B = ISet.fromList(List(true, false))
     def join(x: B, y: => B) = x.union(y)
     def subsumes(x: B, y: => B) = y.isSubsetOf(x)
 
@@ -194,7 +194,7 @@ class BoundedInteger(bound: Int) {
     def inject(x: Int): I = promote(ISet.singleton(x))
     def ceiling(n: I): I = n
     def toFloat[F](n: I)(implicit float: IsFloat[F]): F = fold(n, n => float.inject(n))
-    def random(n: I): I = foldI(n, n => inject(scala.util.Random.nextInt % n))
+    def random(n: I): I = Top
     def plus(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 + n2)))
     def minus(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 - n2)))
     def times(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 * n2)))
@@ -227,7 +227,7 @@ object Type {
     }
   }
   abstract class BaseInstance(typeName: String) extends LatticeElement[T] {
-    def name = "Type$typeName"
+    def name = s"Type$typeName"
     override def shows(x: T): String = x match {
       case Top => typeName
       case Bottom => "⊥"

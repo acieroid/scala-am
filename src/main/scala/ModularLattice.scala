@@ -438,7 +438,13 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     def unlockedValue = Unlocked
   }
 
-  type LSet = Value \/ Set[Value]
+  sealed trait LSet
+  case class Element(v: Value) extends LSet {
+    override def toString = v.toString
+  }
+  case class Elements(vs: Set[Value]) extends LSet {
+    override def toString = "{" + vs.mkString(",") + "}"
+  }
   val boolOrMonoid = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x || y
     def zero: Boolean = false
@@ -447,39 +453,44 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     def append(x: Boolean, y: => Boolean): Boolean = x && y
     def zero: Boolean = true
   }
-  private def wrap(x: => Value): LSet = try { -\/(x) } catch {
-    case err: CannotJoin[Value] => \/-(err.values)
+  private def wrap(x: => Value): LSet = try { Element(x) } catch {
+    case err: CannotJoin[Value] => Elements(err.values)
   }
   implicit val lsetMonoid = new Monoid[LSet] {
-    def append(x: LSet, y: => LSet): LSet = (x, y) match {
-      case (-\/(Bot), _) => y
-      case (_, -\/(Bot)) => x
-      case (-\/(x), -\/(y)) => wrap(isAbstractValue.join(x, y))
-      case (-\/(x), \/-(_)) => append(\/-(Set(x)), y)
-      case (\/-(_), -\/(y)) => append(x, \/-(Set(y)))
-      case (\/-(xs1), \/-(xs2)) =>
-        /* every element in the other set has to be joined in this set */
-        \/-(xs1.foldLeft(xs2)((acc, x2) =>
-          if (acc.exists(x1 => isAbstractValue.subsumes(x1, x2))) {
-            /* the set already contains an element that subsumes x2, don't add it to the set */
-            acc
-          } else {
-            /* remove all elements subsumed by x2 and add x2 to the set */
-            val subsumed = acc.filter(x1 => isAbstractValue.subsumes(x2, x1))
-            (acc -- subsumed) + x2
-          }))
+    def append(x: LSet, y: => LSet): LSet = x match {
+      case Element(Bot) => y
+      case Element(a) => y match {
+        case Element(Bot) => x
+        case Element(b) => wrap(isAbstractValue.join(a, b))
+        case _: Elements => append(Elements(Set(a)), y)
+      }
+      case Elements(as) => y match {
+        case Element(Bot) => x
+        case Element(b) => append(x, Elements(Set(b)))
+        case Elements(bs) =>
+          /* every element in the other set has to be joined in this set */
+          Elements(as.foldLeft(bs)((acc, x2) =>
+            if (acc.exists(x1 => isAbstractValue.subsumes(x1, x2))) {
+              /* the set already contains an element that subsumes x2, don't add it to the set */
+              acc
+            } else {
+              /* remove all elements subsumed by x2 and add x2 to the set */
+              val subsumed = acc.filter(x1 => isAbstractValue.subsumes(x2, x1))
+              (acc -- subsumed) + x2
+            }))
+      }
     }
-    def zero: LSet = -\/(Bot)
+    def zero: LSet = Element(Bot)
   }
   private def foldMapLSet[B](x: LSet, f: L => B)(implicit b: Monoid[B]): B = x match {
-    case -\/(x) => f(x)
-    case \/-(xs) => xs.foldMap(x => f(x))(b)
+    case Element(x) => f(x)
+    case Elements(xs) => xs.foldMap(x => f(x))(b)
   }
   val isAbstractValueSet = new AbstractValue[LSet] {
     def name = s"SetLattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
     override def shows[Addr : Address, Abs : AbstractValue](x: LSet, store: Store[Addr, Abs]) = x match {
-      case -\/(x) => isAbstractValue.shows(x, store)
-      case \/-(xs) => "{" + xs.map(x => isAbstractValue.shows(x, store)).mkString(",") + "}"
+      case Element(x) => isAbstractValue.shows(x, store)
+      case Elements(xs) => "{" + xs.map(x => isAbstractValue.shows(x, store)).mkString(",") + "}"
     }
 
     def isTrue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isTrue(_))(boolOrMonoid)
@@ -500,8 +511,8 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
       wrap(isAbstractValue.vectorSet(vector, index, value)))))
 
     def toString[Addr : Address](x: LSet, store: Store[Addr, LSet]): String = x match {
-      case -\/(x) => x.toString
-      case \/-(xs) => "{" + xs.mkString(",") + "}"
+      case Element(x) => x.toString
+      case Elements(xs) => "{" + xs.mkString(",") + "}"
     }
     def getClosures[Exp : Expression, Addr : Address](x: LSet): Set[(Exp, Environment[Addr])] = foldMapLSet(x, x => isAbstractValue.getClosures(x))
     def getPrimitives[Addr : Address, Abs : AbstractValue](x: LSet): Set[Primitive[Addr, Abs]] = foldMapLSet(x, x => isAbstractValue.getPrimitives(x))
@@ -509,23 +520,23 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     def getVectors[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.getVectors(x))
     def getLocks[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.getLocks(x))
 
-    def bottom: LSet = -\/(isAbstractValue.bottom)
-    def error(x: LSet): LSet = -\/(isAbstractValue.error(isAbstractValue.inject(x.toString))) // TODO: could be improved
-    def inject(x: scala.Int): LSet = -\/(isAbstractValue.inject(x))
-    def inject(x: scala.Float): LSet = -\/(isAbstractValue.inject(x))
-    def inject(x: String): LSet = -\/(isAbstractValue.inject(x))
-    def inject(x: scala.Char): LSet = -\/(isAbstractValue.inject(x))
-    def inject(x: Boolean): LSet = -\/(isAbstractValue.inject(x))
-    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): LSet = -\/(isAbstractValue.inject(x))
-    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): LSet = -\/(isAbstractValue.inject(x))
-    def injectTid[TID : ThreadIdentifier](tid: TID): LSet = -\/(isAbstractValue.injectTid(tid))
-    def injectSymbol(x: String): LSet = -\/(isAbstractValue.injectSymbol(x))
-    def cons[Addr : Address](car: Addr, cdr: Addr): LSet = -\/(isAbstractValue.cons(car, cdr))
+    def bottom: LSet = Element(isAbstractValue.bottom)
+    def error(x: LSet): LSet = Element(isAbstractValue.error(isAbstractValue.inject(x.toString))) // TODO: could be improved
+    def inject(x: scala.Int): LSet = Element(isAbstractValue.inject(x))
+    def inject(x: scala.Float): LSet = Element(isAbstractValue.inject(x))
+    def inject(x: String): LSet = Element(isAbstractValue.inject(x))
+    def inject(x: scala.Char): LSet = Element(isAbstractValue.inject(x))
+    def inject(x: Boolean): LSet = Element(isAbstractValue.inject(x))
+    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): LSet = Element(isAbstractValue.inject(x))
+    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): LSet = Element(isAbstractValue.inject(x))
+    def injectTid[TID : ThreadIdentifier](tid: TID): LSet = Element(isAbstractValue.injectTid(tid))
+    def injectSymbol(x: String): LSet = Element(isAbstractValue.injectSymbol(x))
+    def cons[Addr : Address](car: Addr, cdr: Addr): LSet = Element(isAbstractValue.cons(car, cdr))
     def vector[Addr : Address](addr: Addr, size: LSet, init: LSet): (LSet, LSet) = foldMapLSet(size, size => foldMapLSet(init, init =>
-      isAbstractValue.vector(addr, size, init) match { case (a, v) => (-\/(a), -\/(v)) }))
-    def lock[Addr : Address](addr: Addr): LSet = -\/(isAbstractValue.lock(addr))
-    def lockedValue: LSet = -\/(isAbstractValue.lockedValue)
-    def unlockedValue: LSet = -\/(isAbstractValue.unlockedValue)
-    def nil: LSet = -\/(isAbstractValue.nil)
+      isAbstractValue.vector(addr, size, init) match { case (a, v) => (Element(a), Element(v)) }))
+    def lock[Addr : Address](addr: Addr): LSet = Element(isAbstractValue.lock(addr))
+    def lockedValue: LSet = Element(isAbstractValue.lockedValue)
+    def unlockedValue: LSet = Element(isAbstractValue.unlockedValue)
+    def nil: LSet = Element(isAbstractValue.nil)
   }
 }
