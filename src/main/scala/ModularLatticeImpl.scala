@@ -33,7 +33,7 @@ object ConcreteString {
 
 object ConcreteBoolean {
   type B = ISet[Boolean]
-  implicit val isBoolean = new IsBoolean[B] {
+  implicit val isBoolean: IsBoolean[B] = new IsBoolean[B] {
     def name = "ConcreteBoolean"
     private def showBool(b: Boolean) = if (b) "#t" else "#f"
     override def shows(x: B): String = if (x.size == 1) { showBool(x.elems.head) } else { "{" + x.elems.map(showBool _).mkString(",") + "}" }
@@ -46,7 +46,7 @@ object ConcreteBoolean {
     def isTrue(b: B): Boolean = b.contains(true)
     def isFalse(b: B): Boolean = b.contains(false)
     def not(b: B): B = b.map(x => !x)
-    def eql(b1: B, b2: B): B = b1.foldMap(b1 => b2.map(b2 => b1 == b2))
+    def eql[B1](b1: B, b2: B)(implicit bool: IsBoolean[B1]): B1 = b1.foldMap(b1 => b2.foldMap(b2 => bool.inject(b1 == b2)))
 
     def order(x: B, y: B): Ordering = implicitly[Order[ISet[Boolean]]].order(x, y)
   }
@@ -146,50 +146,50 @@ object ConcreteSymbol {
 }
 
 class BoundedInteger(bound: Int) {
-  sealed trait Top
-  object Top extends Top
-  type I = ISet[Int] \/ Top
+  sealed trait I
+  case object Top extends I
+  case class Set(content: ISet[Int]) extends I
   implicit val isMonoid = new Monoid[I] {
-    def zero: I = -\/(ISet.empty)
+    def zero: I = Set(ISet.empty)
     def append(x: I, y: => I) = x match {
-      case -\/(xs) => y match {
-        case -\/(ys) => -\/(xs.union(ys))
-        case \/-(_) => y
+      case Set(xs) => y match {
+        case Set(ys) => Set(xs.union(ys))
+        case Top => y
       }
-      case \/-(_) => x
+      case Top => x
     }
   }
   implicit val isInteger = new IsInteger[I] {
     def name = s"BoundedInteger($bound)"
     override def shows(x: I): String = x match {
-      case -\/(xs) if xs.size == 1 => xs.elems.head.toString
-      case -\/(xs) => "{" + xs.elems.mkString(",") + "}"
-      case \/-(_) => "Int"
+      case Set(xs) if xs.size == 1 => xs.elems.head.toString
+      case Set(xs) => "{" + xs.elems.mkString(",") + "}"
+      case Top => "Int"
     }
     val bot: I = implicitly[Monoid[I]].zero
-    val top: I = \/-(Top)
+    val top: I = Top
     def join(x: I, y: => I) = implicitly[Monoid[I]].append(x, y)
     def subsumes(x: I, y: => I) = x match {
-      case -\/(xs) => y match {
-        case -\/(ys) => ys.isSubsetOf(xs)
-        case \/-(_) => false
+      case Set(xs) => y match {
+        case Set(ys) => ys.isSubsetOf(xs)
+        case Top => false
       }
-      case \/-(_) => true
+      case Top => true
     }
     private def promote(x: ISet[Int]): I = x.findMax match {
-      case Some(i) if Math.abs(i) > bound => \/-(Top)
+      case Some(i) if Math.abs(i) > bound => Top
       case _ => x.findMin match {
-        case Some(i) if Math.abs(i) > bound => \/-(Top)
-        case _ => -\/(x)
+        case Some(i) if Math.abs(i) > bound => Top
+        case _ => Set(x)
       }
     }
     private def fold[L](x: I, f: Int => L)(implicit b: LatticeElement[L]): L = x match {
-      case -\/(xs) => xs.foldMap(f)
-      case \/-(_) => b.top
+      case Set(xs) => xs.foldMap(f)
+      case Top => b.top
     }
     private def foldI(x: I, f: Int => I) = x match {
-      case -\/(xs) => xs.foldMap(f)(isMonoid)
-      case \/-(_) => x
+      case Set(xs) => xs.foldMap(f)(isMonoid)
+      case Top => Top
     }
     def inject(x: Int): I = promote(ISet.singleton(x))
     def ceiling(n: I): I = n
@@ -204,13 +204,110 @@ class BoundedInteger(bound: Int) {
     def eql[B](n1: I, n2: I)(implicit bool: IsBoolean[B]): B = fold(n1, n1 => fold(n2, n2 => bool.inject(n1 == n2)))
 
     //import OrderDerive._
-    //def order(x: I, y: I): Ordering = implicitly[Order[ISet[Int] \/ Top]].order(x, y)
+    //def order(x: I, y: I): Ordering = implicitly[Order[I]].order(x, y)
     def order(x: I, y: I): Ordering = (x, y) match {
-      case (-\/(xs), -\/(ys)) => implicitly[Order[ISet[Int]]].order(xs, ys)
-      case (\/-(_), -\/(_)) => Ordering.GT
-      case (-\/(_), \/-(_)) => Ordering.LT
-      case (\/-(_), \/-(_)) => Ordering.EQ
+      case (Set(xs), Set(ys)) => implicitly[Order[ISet[Int]]].order(xs, ys)
+      case (Top, _: Set) => Ordering.GT
+      case (_: Set, Top) => Ordering.LT
+      case (Top, Top) => Ordering.EQ
     }
+  }
+}
+
+object Type {
+  sealed trait T
+  case object Top extends T
+  case object Bottom extends T
+
+  implicit val typeIsMonoid = new Monoid[T] {
+    def zero: T = Bottom
+    def append(x: T, y: => T): T = x match {
+      case Top => Top
+      case Bottom => y
+    }
+  }
+  abstract class BaseInstance(typeName: String) extends LatticeElement[T] {
+    def name = "Type$typeName"
+    override def shows(x: T): String = x match {
+      case Top => typeName
+      case Bottom => "⊥"
+    }
+    val bot: T = Bottom
+    val top: T = Top
+    def join(x: T, y: => T) = typeIsMonoid.append(x, y)
+    def meet(x: T, y: => T): T = x match {
+      case Bottom => Bottom
+      case Top => y
+    }
+    def subsumes(x: T, y: => T) = x match {
+      case Top => true
+      case Bottom => y match {
+        case Top => false
+        case Bottom => true
+      }
+    }
+    def eql[B](n1: T, n2: T)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
+      case (Top, Top) => bool.top
+      case _ => bool.bot
+    }
+    // def order(x: T, y: T): Ordering = implicitly[Order[T]].order(x, y)
+    def order(x: T, y: T): Ordering = (x, y) match {
+      case (Top, Top) => Ordering.EQ
+      case (Top, Bottom) => Ordering.GT
+      case (Bottom, Top) => Ordering.LT
+      case (Bottom, Bottom) => Ordering.EQ
+    }
+  }
+  implicit val typeIsString: IsString[T] = new BaseInstance("Str") with IsString[T] {
+    def inject(x: String): T = Top
+    def length[I](s: T)(implicit int: IsInteger[I]) = s match {
+      case Top => int.top
+      case Bottom => int.bot
+    }
+  }
+  implicit val typeIsBoolean: IsBoolean[T] = new BaseInstance("Bool") with IsBoolean[T] {
+    def inject(x: Boolean): T = Top
+    def isTrue(b: T) = b == Top
+    def isFalse(b: T) = b == Top
+    def not(b: T) = b
+  }
+  implicit val typeIsInteger: IsInteger[T] = new BaseInstance("Int") with IsInteger[T] {
+    def inject(x: Int): T = Top
+    def ceiling(n: T): T = n
+    def toFloat[F](n: T)(implicit float: IsFloat[F]): F = n match {
+      case Top => float.top
+      case Bottom => float.bot
+    }
+    def random(n: T): T = n
+    def plus(n1: T, n2: T): T = meet(n1, n2)
+    def minus(n1: T, n2: T): T = meet(n1, n2)
+    def times(n1: T, n2: T): T = meet(n1, n2)
+    def div(n1: T, n2: T): T = meet(n1, n2)
+    def modulo(n1: T, n2: T): T = meet(n1, n2)
+    def lt[B](n1: T, n2: T)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
+      case (Top, Top) => bool.top
+      case _ => bool.bot
+    }
+  }
+  implicit val typeIsFloat: IsFloat[T] = new BaseInstance("Float") with IsFloat[T] {
+    def inject(x: Float): T = Top
+    def ceiling(n: T): T = n
+    def log(n: T): T = n
+    def random(n: T): T = n
+    def plus(n1: T, n2: T): T = meet(n1, n2)
+    def minus(n1: T, n2: T): T = meet(n1, n2)
+    def times(n1: T, n2: T): T = meet(n1, n2)
+    def div(n1: T, n2: T): T = meet(n1, n2)
+    def lt[B](n1: T, n2: T)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
+      case (Top, Top) => bool.top
+      case _ => bool.bot
+    }
+  }
+  implicit val typeIsChar: IsChar[T] = new BaseInstance("Char") with IsChar[T] {
+    def inject(c: Char): T = Top
+  }
+  implicit val typeIsSymbol: IsSymbol[T] = new BaseInstance("Sym") with IsSymbol[T] {
+    def inject(sym: String): T = Top
   }
 }
 
@@ -223,6 +320,24 @@ object ConcreteLatticeNew extends Lattice {
   import ConcreteSymbol._
 
   val lattice = new MakeLattice[S, B, I, F, C, Sym]
+  type L = lattice.LSet
+  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+}
+
+object TypeSetLatticeNew extends Lattice {
+  import Type._
+  import ConcreteBoolean._
+  val lattice = new MakeLattice[T, B, T, T, T, T]
+  type L = lattice.LSet
+  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+}
+
+object BoundedIntLattice extends Lattice {
+  import Type._
+  import ConcreteBoolean._
+  val bounded = new BoundedInteger(100)
+  import bounded._
+  val lattice = new MakeLattice[T, B, I, T, T, T]
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }

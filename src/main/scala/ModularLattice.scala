@@ -16,6 +16,7 @@ trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
   def top: L
   def join(x: L, y: => L): L
   def subsumes(x: L, y: => L): Boolean
+  def eql[B : IsBoolean](s1: L, s2: L): B
 
   /* For Monoid[L] */
   final def zero: L = bot
@@ -25,7 +26,6 @@ trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
 trait IsString[S] extends LatticeElement[S] {
   def inject(s: String): S
   def length[I : IsInteger](s: S): I
-  def eql[B : IsBoolean](s1: S, s2: S): B
 }
 
 trait IsBoolean[B] extends LatticeElement[B] {
@@ -33,7 +33,6 @@ trait IsBoolean[B] extends LatticeElement[B] {
   def isTrue(b: B): Boolean
   def isFalse(b: B): Boolean
   def not(b: B): B
-  def eql(b1: B, b2: B): B
 }
 
 trait IsInteger[I] extends LatticeElement[I] {
@@ -47,7 +46,6 @@ trait IsInteger[I] extends LatticeElement[I] {
   def div(n1: I, n2: I): I
   def modulo(n1: I, n2: I): I
   def lt[B : IsBoolean](n1: I, n2: I): B
-  def eql[B : IsBoolean](n1: I, n2: I): B
 }
 
 trait IsFloat[F] extends LatticeElement[F] {
@@ -60,17 +58,14 @@ trait IsFloat[F] extends LatticeElement[F] {
   def times(n1: F, n2: F): F
   def div(n1: F, n2: F): F
   def lt[B : IsBoolean](n1: F, n2: F): B
-  def eql[B : IsBoolean](n1: F, n2: F): B
 }
 
 trait IsChar[C] extends LatticeElement[C] {
   def inject(c: Char): C
-  def eql[B : IsBoolean](c1: C, c2: C): B
 }
 
 trait IsSymbol[Sym] extends LatticeElement[Sym] {
   def inject(sym: String): Sym
-  def eql[B : IsBoolean](sym1: Sym, sym2: Sym): B
 }
 
 class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
