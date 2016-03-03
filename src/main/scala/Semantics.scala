@@ -67,10 +67,10 @@ case class EffectReadConsCdr[Addr : Address, Abs : AbstractValue](a: Addr)
   val kind = ReadEffect
   override def toString = s"Rcdr($a)"
 }
-case class EffectReadVector[Addr : Address, Abs : AbstractValue](a: Addr, index: Abs)
+case class EffectReadVector[Addr : Address, Abs : AbstractValue](a: Addr)
     extends Effect[Addr, Abs] {
   val kind = ReadEffect
-  override def toString = s"R$a[$index]"
+  override def toString = s"Rvec($a)"
 }
 case class EffectWriteVariable[Addr : Address, Abs : AbstractValue](a: Addr)
     extends Effect[Addr, Abs] {
@@ -87,10 +87,10 @@ case class EffectWriteConsCdr[Addr : Address, Abs : AbstractValue](a: Addr)
   val kind = WriteEffect
   override def toString = s"Wcdr($a)"
 }
-case class EffectWriteVector[Addr : Address, Abs : AbstractValue](a: Addr, index: Abs)
+case class EffectWriteVector[Addr : Address, Abs : AbstractValue](a: Addr)
     extends Effect[Addr, Abs] {
   val kind = WriteEffect
-  override def toString = s"W$a[$index]"
+  override def toString = s"Wvec($a)"
 }
 case class EffectAcquire[Addr : Address, Abs : AbstractValue](a: Addr)
     extends Effect[Addr, Abs] {

@@ -117,11 +117,25 @@ abstract class JoinLatticePropSpec(lattice: Lattice)
       case CannotJoin(_) => ()
     }
   }
+  property("isError and isNotError are correct") {
+    try {
+      val err = abs.error(abs.inject("Error"))
+      val noterr = abs.inject(true)
+      val joined = abs.join(err, noterr)
+      /* isError is true for values that contain errors only */
+      assert(abs.isError(err))
+      /* isNotError is true for values that do not contain any error */
+      assert(abs.isNotError(noterr))
+      /* For values that contain errors and non-errors, both are false */
+      assert(!abs.isError(joined))
+      assert(!abs.isNotError(joined))
+    } catch {
+      case CannotJoin(_) => ()
+    }
+  }
 }
 
 class ConcreteTest extends LatticePropSpec(ConcreteLattice)
-class TypeTest extends JoinLatticePropSpec(TypeLattice)
-class TypeSetTest extends JoinLatticePropSpec(TypeSetLattice)
 class ConcreteNewTest extends JoinLatticePropSpec(ConcreteLatticeNew)
-class TypeSetNewTest extends JoinLatticePropSpec(TypeSetLatticeNew)
+class TypeSetTest extends JoinLatticePropSpec(TypeSetLattice)
 class BoundedIntTest extends JoinLatticePropSpec(BoundedIntLattice)

@@ -104,8 +104,9 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     def nil = Prod(xabs.nil, yabs.nil)
     def cons[Addr : Address](car: Addr, cdr: Addr) = Prod(xabs.cons[Addr](car, cdr), yabs.cons[Addr](car, cdr))
     /* TODO: implement vectors */
-    def vector[Addr : Address](addr: Addr, size: Product, init: Product) = ???
-    def vectorSet[Addr : Address](vector: Product, index: Product, value: Product) = ???
+    def vector[Addr : Address](addr: Addr, size: Product, init: Addr) = ???
+    def vectorRef[Addr : Address](vector: Product, index: Product) = ???
+    def vectorSet[Addr : Address](vector: Product, index: Product, addr: Addr) = ???
     def getVectors[Addr : Address](x: Product) = ???
 
     def lock[Addr : Address](addr: Addr) = Prod(xabs.lock(addr), yabs.lock(addr))

@@ -38,16 +38,20 @@ case class Store[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Count,
     case Some((n, v2)) => Store(content + (a -> (if (counting) { n.inc } else { n }, abs.join(v2, v))), counting)
   }
   /** Updates an element in the store. Might perform a strong update if this store supports strong updates */
-  def update(a: Addr, v: Abs): Store[Addr, Abs] =
-    if (counting) {
-      content.get(a) match {
-        case None => throw new RuntimeException("Updating store at an adress not used")
-        case Some((CountOne, _)) => Store(content + (a -> (CountOne, v)), counting)
-        case _ => extend(a, v)
-      }
-    } else {
-      extend(a, v)
+  def update(a: Addr, v: Abs): Store[Addr, Abs] = if (counting) {
+    content.get(a) match {
+      case None => throw new RuntimeException("Updating store at an adress not used")
+      case Some((CountOne, _)) => Store(content + (a -> (CountOne, v)), counting)
+      case _ => extend(a, v)
     }
+  } else {
+    extend(a, v)
+  }
+  /** Tries to update an address if it's already mapped into the store. If it's not, extend the store. */
+  def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
+    case None => extend(a, v)
+    case Some(_) => update(a, v)
+  }
   /** Joins two stores */
   /* TODO: is it correct with abstract counting? How should counts behave? */
   def join(that: Store[Addr, Abs]): Store[Addr, Abs] = Store(this.content |+| that.content, counting)
@@ -66,9 +70,9 @@ case class Store[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Count,
 object Store {
   /* TODO: have abstract counting as a parameter of the analysis. Also, when it is
    * turned on, it prevents AAC and Free from converging. For now, it's only
-   * enabled with the AbstractConcrete lattice. */
+   * enabled with the concrete lattice. */
   def empty[Addr : Address, Abs : AbstractValue] =
-    Store(Map(), implicitly[AbstractValue[Abs]].name == "Concrete")
+    Store(Map(), implicitly[AbstractValue[Abs]].name.startsWith("Concrete"))
   def empty[Addr : Address, Abs : AbstractValue](counting: Boolean) =
     Store(Map(), counting)
   def initial[Addr : Address, Abs : AbstractValue](values: List[(Addr, Abs)]): Store[Addr, Abs] =

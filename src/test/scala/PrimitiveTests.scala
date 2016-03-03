@@ -8,9 +8,10 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
   * not tested (because they aren't given any test case in R5RS). Unsupported
   * primitives with test cases defined in R5RS are explicitely stated in
   * comments. If you're bored, you can implement some of them. */
-abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: Lattice)
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
-  val abs = implicitly[AbstractValue[Abs]]
+  type Abs = lattice.L
+  implicit val abs = lattice.isAbstractValue
   val sem: Semantics[Exp, Abs, Addr, Time]
   val machine: AbstractMachine[Exp, Abs, Addr, Time]
 
@@ -240,43 +241,44 @@ abstract class Tests[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
   /* 6.6 Input and output */
 }
 
-abstract class AAMPrimitiveTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
-    extends Tests[SchemeExp, Abs, Addr, Time] {
-  val sem = new SchemeSemantics[Abs, Addr, Time]
-  val machine = new AAM[SchemeExp, Abs, Addr, Time]
+abstract class AAMPrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+    extends Tests[SchemeExp, Addr, Time](lattice) {
+  val sem = new SchemeSemantics[lattice.L, Addr, Time]
+  val machine = new AAM[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class AACPrimitiveTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
-    extends Tests[SchemeExp, Abs, Addr, Time] {
-  val sem = new SchemeSemantics[Abs, Addr, Time]
-  val machine = new AAC[SchemeExp, Abs, Addr, Time]
+abstract class AACPrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+    extends Tests[SchemeExp, Addr, Time](lattice) {
+  val sem = new SchemeSemantics[lattice.L, Addr, Time]
+  val machine = new AAC[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class FreePrimitiveTests[Abs : AbstractValue, Addr : Address, Time : Timestamp]
-    extends Tests[SchemeExp, Abs, Addr, Time] {
-  val sem = new SchemeSemantics[Abs, Addr, Time]
-  val machine = new Free[SchemeExp, Abs, Addr, Time]
+abstract class FreePrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+    extends Tests[SchemeExp, Addr, Time](lattice) {
+  val sem = new SchemeSemantics[lattice.L, Addr, Time]
+  val machine = new Free[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class ConcurrentAAMPrimitiveTests[Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
-    extends Tests[SchemeExp, Abs, Addr, Time] {
-  val sem = new SchemeSemantics[Abs, Addr, Time]
-  val machine = new ConcurrentAAM[SchemeExp, Abs, Addr, Time, TID](ExplorationType.AllInterleavings)
+abstract class ConcurrentAAMPrimitiveTests[Addr : Address, Time : Timestamp, TID : ThreadIdentifier](override val lattice: Lattice)
+    extends Tests[SchemeExp, Addr, Time](lattice) {
+  val sem = new SchemeSemantics[lattice.L, Addr, Time]
+  val machine = new ConcurrentAAM[SchemeExp, lattice.L, Addr, Time, TID](ExplorationType.AllInterleavings)
 }
 
 /* Since these tests are small, they can be performed in concrete mode */
-class AAMConcretePrimitiveTests extends AAMPrimitiveTests[ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-class AAMTypeSetPrimitiveTests extends AAMPrimitiveTests[TypeSetLattice.L, ClassicalAddress.A, ZeroCFA.T]
-class AACConcretePrimitiveTests extends AACPrimitiveTests[ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-class AACTypeSetPrimitiveTests extends AACPrimitiveTests[TypeSetLattice.L, ClassicalAddress.A, ZeroCFA.T]
-class FreeConcretePrimitiveTests extends FreePrimitiveTests[ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-class FreeTypeSetPrimitiveTests extends FreePrimitiveTests[TypeSetLattice.L, ClassicalAddress.A, ZeroCFA.T]
-class ConcurrentAAMConcretePrimitiveTests extends ConcurrentAAMPrimitiveTests[ConcreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID]
-class ConcurrentAAMTypeSetPrimitiveTests extends ConcurrentAAMPrimitiveTests[TypeSetLattice.L, ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID]
-
-
-import ConcreteLatticeNew.isAbstractValue
-class AAMConcreteNewPrimitiveTests extends AAMPrimitiveTests[ConcreteLatticeNew.L, ClassicalAddress.A, ConcreteTimestamp.T]
-class AACConcreteNewPrimitiveTests extends AACPrimitiveTests[ConcreteLatticeNew.L, ClassicalAddress.A, ConcreteTimestamp.T]
-class FreeConcreteNewPrimitiveTests extends FreePrimitiveTests[ConcreteLatticeNew.L, ClassicalAddress.A, ConcreteTimestamp.T]
-class ConcurrentAAMConcreteNewPrimitiveTests extends ConcurrentAAMPrimitiveTests[ConcreteLatticeNew.L, ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID]
+class AAMConcretePrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
+class AAMConcreteNewPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLatticeNew)
+class AAMTypeSetPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](TypeSetLattice)
+class AAMBoundedIntPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](BoundedIntLattice)
+class AACConcretePrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
+class AACConcreteNewPrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLatticeNew)
+class AACTypeSetPrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](TypeSetLattice)
+class AACBoundedIntPrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](BoundedIntLattice)
+class FreeConcretePrimitiveTests extends FreePrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
+class FreeConcreteNewPrimitiveTests extends FreePrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLatticeNew)
+class FreeTypeSetPrimitiveTests extends FreePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](TypeSetLattice)
+class FreeBoundedIntPrimitiveTests extends FreePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](BoundedIntLattice)
+class ConcurrentAAMConcretePrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](ConcreteLattice)
+class ConcurrentAAMConcreteNewPrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](ConcreteLatticeNew)
+class ConcurrentAAMTypeSetPrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID](TypeSetLattice)
+class ConcurrentAAMBoundedIntPrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID](BoundedIntLattice)

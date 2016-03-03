@@ -104,7 +104,7 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
   case object Nil extends Value {
     override def toString = "()"
   }
-  case class Vec(size: I, elements: Map[I, L], init: L) extends Value {
+  case class Vec[Addr : Address](size: I, elements: Map[I, Addr], init: Addr) extends Value {
     override def toString = {
       val els = elements.toList.map({ case (k, v) => s"${int.shows(k)}: $v" }).mkString(", ")
       s"Vec(${int.shows(size)}, {$els}, $init)"
@@ -125,6 +125,7 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
 
   val isAbstractValue = new AbstractValue[L] {
     def name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    /* This doesn't deal with circular structures (vectors and cons cells) */
     override def shows[Addr : Address, Abs : AbstractValue](x: L, store: Store[Addr, Abs]) = x match {
       case Bot => "⊥"
       case Str(s) => str.shows(s)
@@ -135,11 +136,15 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
       case Symbol(s) => sym.shows(s)
       case Err(msg) => s"Error($msg)"
       case Nil => "()"
-      case Cons(car: Addr, cdr: Addr) => ???
+      case Cons(car: Addr, cdr: Addr) => {
+        val carstr = implicitly[AbstractValue[Abs]].shows(store.lookup(car), store)
+        val cdrstr = implicitly[AbstractValue[Abs]].shows(store.lookup(cdr), store)
+        s"($carstr . $cdrstr)"
+      }
       case VectorAddress(a: Addr) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
-      case Vec(size, elements, init) => {
-        val initstr = shows(init, store)
-        val content = elements.toList.map({ case (k, v)  => s"${int.shows(k)}: ${shows(v, store)}"}).mkString(", ")
+      case Vec(size, elements: Map[I, Addr], init: Addr) => {
+        val initstr = implicitly[AbstractValue[Abs]].shows(store.lookup(init), store)
+        val content = elements.toList.map({ case (k, a)  => s"${int.shows(k)}: ${implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)}"}).mkString(", ")
         if (content.isEmpty) {
           s"#(default: $initstr)"
         } else {
@@ -226,25 +231,25 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
       case Ceiling => x match {
         case Int(n) => Int(int.ceiling(n))
         case Float(n) => Float(float.ceiling(n))
-        case _ => Err(s"Ceiling not applicable to $x")
+        case _ => Err(s"Ceiling not applicable")
       }
       case Log => x match {
         case Int(n) => Float(float.log(int.toFloat(n)))
         case Float(n) => Float(float.log(n))
-        case _ => Err(s"Log not applicable to $x")
+        case _ => Err(s"Log not applicable")
       }
       case Random => x match {
         case Int(n) => Int(int.random(n))
         case Float(n) => Float(float.random(n))
-        case _ => Err(s"Random not applicable to $x")
+        case _ => Err(s"Random not applicable")
       }
       case VectorLength => x match {
         case Vec(size, _, _) => Int(size)
-        case _ => Err(s"VectorLength not applicable to $x")
+        case _ => Err(s"VectorLength not applicable")
       }
       case StringLength => x match {
         case Str(s) => Int(str.length(s))
-        case _ => Err(s"StringLength not applicable to $x")
+        case _ => Err(s"StringLength not applicable")
       }
     }}
 
@@ -254,21 +259,21 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
         case (Int(n1), Float(n2)) => Float(float.plus(int.toFloat(n1), n2))
         case (Float(n1), Int(n2)) => Float(float.plus(n1, int.toFloat(n2)))
         case (Float(n1), Float(n2)) => Float(float.plus(n1, n2))
-        case _ => Err(s"Plus not applicable to $x and $y")
+        case _ => Err(s"Plus not applicable")
       }
       case Minus => (x, y) match {
         case (Int(n1), Int(n2)) => Int(int.minus(n1, n2))
         case (Int(n1), Float(n2)) => Float(float.minus(int.toFloat(n1), n2))
         case (Float(n1), Int(n2)) => Float(float.minus(n1, int.toFloat(n2)))
         case (Float(n1), Float(n2)) => Float(float.minus(n1, n2))
-        case _ => Err(s"Minus not applicable to $x and $y")
+        case _ => Err(s"Minus not applicable")
       }
       case Times => (x, y) match {
         case (Int(n1), Int(n2)) => Int(int.times(n1, n2))
         case (Int(n1), Float(n2)) => Float(float.times(int.toFloat(n1), n2))
         case (Float(n1), Int(n2)) => Float(float.times(n1, int.toFloat(n2)))
         case (Float(n1), Float(n2)) => Float(float.times(n1, n2))
-        case _ => Err(s"Times not applicable to $x and $y")
+        case _ => Err(s"Times not applicable")
       }
       /* TODO: have a div for integer division (i.e., Scheme's quotient), and one for real division (/)) */
       case Div => (x, y) match {
@@ -276,25 +281,25 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
         case (Int(n1), Float(n2)) => Float(float.div(int.toFloat(n1), n2))
         case (Float(n1), Int(n2)) => Float(float.div(n1, int.toFloat(n2)))
         case (Float(n1), Float(n2)) => Float(float.div(n1, n2))
-        case _ => Err(s"Div not applicable to $x and $y")
+        case _ => Err(s"Div not applicable")
       }
       case Modulo => (x, y) match {
         case (Int(n1), Int(n2)) => Int(int.modulo(n1, n2))
-        case _ => Err(s"Modulo not applicable to $x and $y")
+        case _ => Err(s"Modulo not applicable")
       }
       case Lt => (x, y) match {
         case (Int(n1), Int(n2)) => Bool(int.lt(n1, n2))
         case (Int(n1), Float(n2)) => Bool(float.lt(int.toFloat(n1), n2))
         case (Float(n1), Int(n2)) => Bool(float.lt(n1, int.toFloat(n2)))
         case (Float(n1), Float(n2)) => Bool(float.lt(n1, n2))
-        case _ => Err(s"Lt not applicable to $x and $y")
+        case _ => Err(s"Lt not applicable")
       }
       case NumEq => (x, y) match {
         case (Int(n1), Int(n2)) => Bool(int.eql(n1, n2))
         case (Int(n1), Float(n2)) => Bool(float.eql(int.toFloat(n1), n2))
         case (Float(n1), Int(n2)) => Bool(float.eql(n1, int.toFloat(n2)))
         case (Float(n1), Float(n2)) => Bool(float.eql(n1, n2))
-        case _ => Err(s"NumEq not applicable to $x and $y")
+        case _ => Err(s"NumEq not applicable")
       }
       case Eq => (x, y) match {
         case (Str(s1), Str(s2)) => Bool(str.eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
@@ -310,15 +315,6 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
         case (VectorAddress(_), VectorAddress(_)) => Bool(bool.inject(x == y))
         case (LockAddress(_), LockAddress(_)) => Bool(bool.inject(x == y))
         case _ => False
-      }
-      case VectorRef => (x, y) match {
-        case (Vec(size, content, init), Int(index)) => {
-          val comp = int.lt(index, size)
-          val t = if (bool.isTrue(comp)) { content.getOrElse(index, init) } else { Bot }
-          val f = if (bool.isFalse(comp)) { Err(s"Vector access out of bound: accessed element $index of vector of size $size") } else { Bot }
-          join(t, f)
-        }
-        case _ => Err(s"VectorRef not applicable to $x and $y")
       }
     }
 
@@ -382,15 +378,44 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
       case _ => Set()
     }
 
-    def vectorSet[Addr : Address](x: L, index: L, value: L): L = (x, index) match {
-      case (Vec(size, content, init), Int(index)) => {
+    def vectorRef[Addr : Address](x: L, index: L): Set[Either[L, Addr]] = (x, index) match {
+      case (Vec(size, content: Map[I, Addr], init: Addr), Int(index)) => {
         val comp = int.lt(index, size)
-        val t = if (bool.isTrue(comp)) { Vec(size, content + (index -> value), init) } else { Bot }
-        val f = if (bool.isFalse(comp)) { Err(s"Vector set out of bound: setting element $index of vector of size $size") } else { Bot }
-        join(t, f)
+        val t: Set[Either[L, Addr]] = if (bool.isTrue(comp)) {
+          content.get(index) match {
+            case Some(a: Addr) =>
+              if (bool.isTrue(int.eql(index, index)) && !bool.isFalse(int.eql(index, index))) {
+                /* we know index represents a concrete integer, we can return only one address */
+                Set(Right(a))
+              } else {
+                /* otherwise, init should be returned as well for soundness */
+                Set(Right(a), Right(init))
+              }
+            case None => Set(Right(init))
+          }
+        } else { Set() }
+        /* Don't perform bound checks here because we would get too many spurious flows */
+        val f: Set[Either[L, Addr]] = Set()
+        t ++ f
       }
-      case (Vec(size, content, init), _) => Err(s"Vector set with non-integer index: $index")
-      case (_, _) => Err(s"Vector set on non-vector: $x")
+      case (_: Vec[Addr], _) => Set(Left(Err(s"Vector ref with non-integer index")))
+      case _ => Set(Left(Err(s"Vector ref on non-vector")))
+    }
+
+    def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): (L, Set[Addr]) = (vector, index) match {
+      case (Vec(size, content: Map[I, Addr], init: Addr), Int(index)) => {
+        val comp = int.lt(index, size)
+        val t: (L, Set[Addr]) = if (bool.isTrue(comp)) {
+          content.get(index) match {
+            case Some(a: Addr) => (vector, Set(a))
+            case None => (Vec(size, content + (index -> addr), init), Set(addr))
+          }
+        } else { (Bot, Set()) }
+        val f: (L, Set[Addr]) = (Bot, Set())
+        (join(t._1, f._1), t._2 ++ f._2)
+      }
+      case (_: Vec[Addr], _) => (Err(s"Vector set with non-integer index"), Set())
+      case _ => (Err(s"Vector set on non-vector"), Set())
     }
 
     def toString[Addr : Address](x: L, store: Store[Addr, L]) = ???
@@ -429,9 +454,9 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     def injectSymbol(x: String): L = Symbol(sym.inject(x))
     def nil: L = Nil
     def cons[Addr : Address](car: Addr, cdr: Addr): L = Cons(car, cdr)
-    def vector[Addr : Address](addr: Addr, size: L, init: L) = size match {
-      case Int(size) => (VectorAddress(addr), Vec(size, Map[I, L](), init))
-      case _ => (Err(s"vector creation expects an integer size, got $size instead"), Bot)
+    def vector[Addr : Address](addr: Addr, size: L, init: Addr) = size match {
+      case Int(size) => (VectorAddress(addr), Vec(size, Map[I, Addr](), init))
+      case _ => (Err(s"vector creation expects an integer size"), Bot)
     }
     def lock[Addr : Address](addr: Addr) = LockAddress(addr)
     def lockedValue = Locked
@@ -482,6 +507,7 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     }
     def zero: LSet = Element(Bot)
   }
+
   private def foldMapLSet[B](x: LSet, f: L => B)(implicit b: Monoid[B]): B = x match {
     case Element(x) => f(x)
     case Elements(xs) => xs.foldMap(x => f(x))(b)
@@ -495,7 +521,7 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
 
     def isTrue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isTrue(_))(boolOrMonoid)
     def isFalse(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isFalse(_))(boolOrMonoid)
-    def isError(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isError(_))(boolOrMonoid)
+    def isError(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isError(_))(boolAndMonoid)
     def isNotError(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isNotError(_))(boolAndMonoid)
     def isPrimitiveValue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isPrimitiveValue(_))(boolAndMonoid)
     def unaryOp(op: UnaryOperator)(x: LSet): LSet = foldMapLSet(x, x => wrap(isAbstractValue.unaryOp(op)(x)))
@@ -509,8 +535,13 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     def or(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.or(x, y))))
     def car[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.car(x))
     def cdr[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.cdr(x))
-    def vectorSet[Addr : Address](vector: LSet, index: LSet, value: LSet): LSet = foldMapLSet(vector, vector => foldMapLSet(index, index => foldMapLSet(value, value =>
-      wrap(isAbstractValue.vectorSet(vector, index, value)))))
+
+    def vectorRef[Addr : Address](vector: LSet, index: LSet): Set[Either[LSet, Addr]] = foldMapLSet(vector, vector => foldMapLSet(index, index =>
+      isAbstractValue.vectorRef(vector, index).map(_.left.map((v: L) => wrap(v)))))
+    def vectorSet[Addr : Address](vector: LSet, index: LSet, addr: Addr): (LSet, Set[Addr]) = foldMapLSet(vector, vector => foldMapLSet(index, index =>
+      isAbstractValue.vectorSet(vector, index, addr) match {
+        case (v, addrs) => (wrap(v), addrs)
+      }))
 
     def toString[Addr : Address](x: LSet, store: Store[Addr, LSet]): String = x match {
       case Element(x) => x.toString
@@ -534,8 +565,8 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     def injectTid[TID : ThreadIdentifier](tid: TID): LSet = Element(isAbstractValue.injectTid(tid))
     def injectSymbol(x: String): LSet = Element(isAbstractValue.injectSymbol(x))
     def cons[Addr : Address](car: Addr, cdr: Addr): LSet = Element(isAbstractValue.cons(car, cdr))
-    def vector[Addr : Address](addr: Addr, size: LSet, init: LSet): (LSet, LSet) = foldMapLSet(size, size => foldMapLSet(init, init =>
-      isAbstractValue.vector(addr, size, init) match { case (a, v) => (Element(a), Element(v)) }))
+    def vector[Addr : Address](addr: Addr, size: LSet, init: Addr): (LSet, LSet) = foldMapLSet(size, size =>
+      isAbstractValue.vector(addr, size, init) match { case (a, v) => (Element(a), Element(v)) })
     def lock[Addr : Address](addr: Addr): LSet = Element(isAbstractValue.lock(addr))
     def lockedValue: LSet = Element(isAbstractValue.lockedValue)
     def unlockedValue: LSet = Element(isAbstractValue.unlockedValue)

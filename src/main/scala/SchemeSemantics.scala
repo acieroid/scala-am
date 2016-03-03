@@ -216,7 +216,8 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     case FrameCasOld(variable, index, enew, ρ) =>
       Set(ActionPush(enew, FrameCasNew(variable, index, v, ρ), ρ, σ))
     case FrameCasNew(variable, index, old, ρ) =>
-      ρ.lookup(variable) match {
+      ??? // TODO
+      /*ρ.lookup(variable) match {
         case Some(a) => index match {
           case Some(i) =>
             /* Compare and swap on vector element */
@@ -238,7 +239,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
               ActionReachedValue(abs.inject(false), σ, Set(EffectReadVariable(a))))
         }
         case None => Set(ActionError(s"Unbound variable: $variable"))
-      }
+      }*/
     case FrameAcquire(ρ) =>
       val locks = abs.getLocks(v)
       if (locks.isEmpty) {

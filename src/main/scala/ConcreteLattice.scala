@@ -168,25 +168,11 @@ object ConcreteLattice extends Lattice {
       case _ => super.unaryOp(op)
     }
   }
-  case class Vector(size: Int, elements: Map[Int, L], init: L) extends L {
+  case class Vector[Addr : Address](size: Int, elements: Map[Int, Addr], init: Addr) extends L {
     override def unaryOp(op: UnaryOperator) = op match {
       case IsVector => True
       case VectorLength => ConcreteInt(size)
       case _ => super.unaryOp(op)
-    }
-    override def binaryOp(op: BinaryOperator)(that: L) = op match {
-      case VectorRef => that match {
-        case ConcreteInt(index) => if (index >= size) {
-          ConcreteError(s"vector access out of bound: accessed element $index of vector of size $size")
-        } else {
-          elements.get(index) match {
-            case None => init
-            case Some(v) => v
-          }
-        }
-        case _ => ConcreteError(s"vector access with a non-integer index: $that")
-      }
-      case _ => super.binaryOp(op)(that)
     }
   }
   case class LockAddress[Addr : Address](addr: Addr) extends L {
@@ -234,16 +220,34 @@ object ConcreteLattice extends Lattice {
       case Cons(car : Addr, cdr : Addr) => Set(cdr)
       case _ => Set()
     }
-    def vectorSet[Addr : Address](vector: L, index: L, value: L) = vector match {
-      case Vector(size, elements, init) => index match {
+    def vectorRef[Addr : Address](vector: L, index: L): Set[Either[L, Addr]] = vector match {
+      case Vector(size, elements, init: Addr) => index match {
         case ConcreteInt(index) => if (index >= size) {
-          ConcreteError(s"vector write out of bound: modified element $index of vector of size $size")
+          Set(Left(ConcreteError(s"vector access out of bound: accessed element $index of vector of size $size")))
         } else {
-          Vector(size, elements + (index -> value), init)
+          elements.get(index) match {
+            case None => Set(Right(init))
+            case Some(a: Addr) => Set(Right(a))
+          }
         }
-        case _ => ConcreteError(s"vector modified with a non-integer index: $index")
+        case _ => Set(Left(ConcreteError(s"vector access with a non-integer index: $index")))
       }
-      case _ => ConcreteError(s"non-vector modified as a vector: $vector")
+      case _ => Set(Left(ConcreteError(s"vector access on a non-vector: $vector")))
+    }
+
+    def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): (L, Set[Addr]) = vector match {
+      case Vector(size, elements: Map[Int, Addr], init: Addr) => index match {
+        case ConcreteInt(index) => if (index >= size) {
+          (ConcreteError(s"vector write out of bound: modified element $index of vector of size $size"), Set())
+        } else {
+          elements.get(index) match {
+            case Some(a: Addr) => (vector, Set(a))
+            case None => (Vector[Addr](size, elements + (index -> addr), init), Set(addr))
+          }
+        }
+        case _ => (ConcreteError(s"vector modified with a non-integer index: $index"), Set())
+      }
+      case _ => (ConcreteError(s"non-vector modified as a vector: $vector"), Set())
     }
 
     private def toString[Addr : Address](x: L, store: Store[Addr, L], inside: Boolean, visited: Set[L]): String =
@@ -262,10 +266,10 @@ object ConcreteLattice extends Lattice {
             }
             if (inside) { content } else { s"($content)" }
           case VectorAddress(addr: Addr) => toString(store.lookup(addr), store, false, visited + x)
-          case Vector(size, elements, init) =>
-            val initstr = toString(init, store, false, visited + x)
+          case Vector(size, elements, init: Addr) =>
+            val initstr = toString(store.lookup(init), store, false, visited + x)
             val content = (0 until size).map(index => elements.get(index) match {
-              case Some(v) => toString(v, store, false, visited + x)
+              case Some(a: Addr) => toString(store.lookup(a), store, false, visited + x)
               case None => initstr
             }).mkString(" ")
             s"#($content)"
@@ -315,8 +319,8 @@ object ConcreteLattice extends Lattice {
     def injectSymbol(x: String): L = ConcreteSymbol(x)
     def nil: L = Nil
     def cons[Addr : Address](car: Addr, cdr: Addr): L = Cons(car, cdr)
-    def vector[Addr : Address](addr: Addr, size: L, init: L) = size match {
-      case ConcreteInt(n) => (VectorAddress(addr), Vector(n, Map[Int, L](), init))
+    def vector[Addr : Address](addr: Addr, size: L, init: Addr) = size match {
+      case ConcreteInt(n) => (VectorAddress(addr), Vector(n, Map[Int, Addr](), init))
       case _ => (ConcreteError(s"vector creation expects an integer size, got $size instead"), Bottom)
     }
     def lock[Addr : Address](addr: Addr) = LockAddress(addr)
@@ -324,5 +328,3 @@ object ConcreteLattice extends Lattice {
     def unlockedValue = Unlocked
   }
 }
-
-object ConcreteSetLattice extends PowerSetLattice(ConcreteLattice)

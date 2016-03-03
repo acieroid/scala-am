@@ -2,9 +2,10 @@ import org.scalatest._
 import org.scalatest.prop._
 import org.scalacheck.Gen
 
-abstract class StorePropSpec[Addr : Address, Abs : AbstractValue]
-extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
-  val abs = implicitly[AbstractValue[Abs]]
+abstract class StorePropSpec[Addr : Address](val lattice: Lattice)
+    extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
+  type Abs = lattice.L
+  implicit val abs = lattice.isAbstractValue
   val addr = implicitly[Address[Addr]]
 
   val absint: Gen[Abs] = for { n: Int <- Gen.choose(-100, 100) } yield abs.inject(n)
@@ -35,6 +36,6 @@ extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
   }}
 }
 
-class ConcreteStoreTest extends StorePropSpec[ClassicalAddress.A, ConcreteLattice.L]
-class TypeStoreTest extends StorePropSpec[ClassicalAddress.A, TypeLattice.L]
-class TypeSetStoreTest extends StorePropSpec[ClassicalAddress.A, TypeSetLattice.L]
+class ConcreteStoreTest extends StorePropSpec[ClassicalAddress.A](ConcreteLattice)
+class ConcreteNewStoreTest extends StorePropSpec[ClassicalAddress.A](ConcreteLatticeNew)
+class TypeSetStoreTest extends StorePropSpec[ClassicalAddress.A](TypeSetLattice)

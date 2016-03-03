@@ -324,7 +324,7 @@ object ConcreteLatticeNew extends Lattice {
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }
 
-object TypeSetLatticeNew extends Lattice {
+object TypeSetLattice extends Lattice {
   import Type._
   import ConcreteBoolean._
   val lattice = new MakeLattice[T, B, T, T, T, T]

@@ -364,13 +364,13 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   trait EffectTarget
   case class Variable(addr: Addr) extends EffectTarget
-  case class Vector(addr: Addr, index: Abs) extends EffectTarget
+  case class Vector(addr: Addr) extends EffectTarget
   object EffectTarget {
     def apply(eff: Effect[Addr, Abs]): EffectTarget = eff match {
       case EffectReadVariable(a) => Variable(a)
       case EffectWriteVariable(a) => Variable(a)
-      case EffectReadVector(a, idx) => Vector(a, idx)
-      case EffectWriteVector(a, idx) => Vector(a, idx)
+      case EffectReadVector(a) => Vector(a)
+      case EffectWriteVector(a) => Vector(a)
       case EffectAcquire(a) => Variable(a)
       case EffectRelease(a) => Variable(a)
     }
@@ -387,7 +387,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def join(that: LocalEffectsMap) = new LocalEffectsMap(m |+| that.m)
     /** Find conflicts in this effect map. Returns the set of states in conflict,
       * along with the tid that needs to be explored */
-    def findConflicts: Set[(State, TID)] = {
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): Set[(State, TID)] = {
       /* Examples:
        @x -> [(Write, s2, tid2), (Write, s1, tid1)]
        ==> [(s1, tid2), (s2, tid1)]
@@ -406,7 +406,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
        */
       /* for every write on s1, tid1, find conflicting effects from state s2 on a
        * different thread tid2, and explore from s1, tid2, and from s2, tid1 */
-      m.values.flatMap({
+      m.keySet.flatMap({ case target => m(target) match {
         case effects => effects.flatMap({
           case (effect1, tid1, state1) if (effect1.kind == EffectKind.WriteEffect) =>
             effects.flatMap({
@@ -415,13 +415,14 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                   (effect1.isInstanceOf[EffectRelease[Addr, Abs]] && effect2.isInstanceOf[EffectAcquire[Addr, Abs]])) {
                   Set[(State, TID)]()
                 } else {
+                  println(s"Conflict between ${id(graph, state1)}, $tid1, and ${id(graph, state2)}, $tid2 on target: $target")
                   Set[(State, TID)]((state1, tid2), (state2, tid1))
                 }
               case _ => Set[(State, TID)]()
             })
           case _ => Set[(State, TID)]()
         })
-      }).toSet
+      }})
     }
     /** If this is the local effects map of a deadlock state, find states from which
       * another path could avoid the deadlock. Do so by looking at previous
@@ -463,7 +464,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       val oldLocal = m.getOrElse(s2, LocalEffectsMap())
       val newLocal = oldLocal.join(effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff)))
       val newEffectsMap = new EffectsMap(m + (s2 -> newLocal))
-      (if (m.contains(s2) && oldLocal != newLocal) newLocal.findConflicts else Set(), newEffectsMap)
+      (if (m.contains(s2) && oldLocal != newLocal) newLocal.findConflicts(graph) else Set(), newEffectsMap)
     }
     def apply(s: State): LocalEffectsMap = m(s)
   }
@@ -509,7 +510,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
             reducedLoop(todo.tail, visited, effectsMap, newThreadPickMap,
               halted, startingTime, timeout, reallyVisited, graph, sem)
           } else if (s.halted) {
-            val conflicts = effectsMap(s).findConflicts
+            val conflicts = effectsMap(s).findConflicts(graph)
             reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, newThreadPickMap,
               halted + s, startingTime, timeout, reallyVisited + s, graph, sem)
           } else {
