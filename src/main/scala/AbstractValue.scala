@@ -41,8 +41,11 @@ trait StoreShow[A] {
 trait AbstractValue[A] extends Semigroup[A] with StoreShow[A] {
   /** Name of this lattice */
   def name: String
+  /** Does this lattice support abstract counting? */
+  def counting: Boolean
 
   def shows[Addr : Address, Abs : AbstractValue](v: A, store: Store[Addr, Abs]) = v.toString
+
 
   /** Can this abstract value be considered true for conditionals? */
   def isTrue(x: A): Boolean

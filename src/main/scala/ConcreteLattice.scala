@@ -199,7 +199,8 @@ object ConcreteLattice extends Lattice {
   }
 
   implicit val isAbstractValue: AbstractValue[L] = new AbstractValue[L] {
-    def name = "Concrete"
+    val name = "Concrete"
+    val counting = true
 
     def isTrue(x: L) = x.isTrue
     def isFalse(x: L) = x.isFalse

@@ -16,7 +16,8 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
   case class Prod(x: X, y: Y) extends Product
 
   implicit object ProductAbstractValue extends AbstractValue[Product] {
-    def name = s"(${xabs.name}, ${yabs.name})"
+    val name = s"(${xabs.name}, ${yabs.name})"
+    val counting = xabs.counting && yabs.counting
 
     private def err(reason: String) = error(inject(reason))
 

@@ -72,9 +72,9 @@ object Store {
    * turned on, it prevents AAC and Free from converging. For now, it's only
    * enabled with the concrete lattice. */
   def empty[Addr : Address, Abs : AbstractValue] =
-    Store(Map(), implicitly[AbstractValue[Abs]].name.startsWith("Concrete"))
+    Store(Map(), implicitly[AbstractValue[Abs]].counting)
   def empty[Addr : Address, Abs : AbstractValue](counting: Boolean) =
     Store(Map(), counting)
   def initial[Addr : Address, Abs : AbstractValue](values: List[(Addr, Abs)]): Store[Addr, Abs] =
-    Store(values.map({ case (a, v) => (a, (CountOne, v)) }).toMap, implicitly[AbstractValue[Abs]].name == "Concrete")
+    Store(values.map({ case (a, v) => (a, (CountOne, v)) }).toMap, implicitly[AbstractValue[Abs]].counting)
 }

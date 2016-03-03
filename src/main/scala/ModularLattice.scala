@@ -68,7 +68,7 @@ trait IsSymbol[Sym] extends LatticeElement[Sym] {
   def inject(sym: String): Sym
 }
 
-class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
+class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: IsString[S],
   bool: IsBoolean[B], int: IsInteger[I], float: IsFloat[F], char: IsChar[C],
   sym: IsSymbol[Sym]) {
   sealed trait Value
@@ -124,7 +124,8 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
   type L = Value
 
   val isAbstractValue = new AbstractValue[L] {
-    def name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    val name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    val counting = supportsCounting
     /* This doesn't deal with circular structures (vectors and cons cells) */
     override def shows[Addr : Address, Abs : AbstractValue](x: L, store: Store[Addr, Abs]) = x match {
       case Bot => "⊥"
@@ -513,7 +514,8 @@ class MakeLattice[S, B, I, F, C, Sym](implicit str: IsString[S],
     case Elements(xs) => xs.foldMap(x => f(x))(b)
   }
   val isAbstractValueSet = new AbstractValue[LSet] {
-    def name = s"SetLattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    val name = s"SetLattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    val counting = supportsCounting
     override def shows[Addr : Address, Abs : AbstractValue](x: LSet, store: Store[Addr, Abs]) = x match {
       case Element(x) => isAbstractValue.shows(x, store)
       case Elements(xs) => "{" + xs.map(x => isAbstractValue.shows(x, store)).mkString(",") + "}"

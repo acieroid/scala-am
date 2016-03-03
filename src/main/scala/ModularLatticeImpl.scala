@@ -319,7 +319,7 @@ object ConcreteLatticeNew extends Lattice {
   import ConcreteChar._
   import ConcreteSymbol._
 
-  val lattice = new MakeLattice[S, B, I, F, C, Sym]
+  val lattice = new MakeLattice[S, B, I, F, C, Sym](true)
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }
@@ -327,7 +327,7 @@ object ConcreteLatticeNew extends Lattice {
 object TypeSetLattice extends Lattice {
   import Type._
   import ConcreteBoolean._
-  val lattice = new MakeLattice[T, B, T, T, T, T]
+  val lattice = new MakeLattice[T, B, T, T, T, T](false)
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }
@@ -337,7 +337,7 @@ object BoundedIntLattice extends Lattice {
   import ConcreteBoolean._
   val bounded = new BoundedInteger(100)
   import bounded._
-  val lattice = new MakeLattice[T, B, I, T, T, T]
+  val lattice = new MakeLattice[T, B, I, T, T, T](true)
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }
