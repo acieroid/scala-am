@@ -540,10 +540,10 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("real?", x => abs.or(isInteger(x), isFloat(x))),
     UnaryOperation("boolean?", isBoolean),
     BinaryOperation("eq?", eq),
-    traced(BinaryStoreOperation("equal?", (a, b, store) => {
+    BinaryStoreOperation("equal?", (a, b, store) => {
       val (res, eff) = equal(a, b, store)
       (res, store, eff)
-    })),
+    }),
     UnaryStoreOperation("length", (v, store) => {
       val (res, eff) = length(v, store)
       (res, store, eff)
