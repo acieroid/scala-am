@@ -15,8 +15,21 @@ trait Primitive[Addr, Abs] {
   def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time): Either[String, (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]])]
 }
 
+
 /** This is where we define (Scheme) primitives */
 class Primitives[Addr : Address, Abs : AbstractValue] {
+  def traced(prim: Primitive[Addr, Abs]): Primitive[Addr, Abs] = new Primitive[Addr, Abs] {
+    val name = prim.name
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
+      val argsstr = args.map({ case (_, v) => abs.shows(v, store) }).mkString(" ")
+      val res = prim.call(fexp, args, store, t)
+      res match {
+        case Left(err) => println(s"($name $argsstr) -> ERROR: $err")
+        case Right((v, store, effs)) => println(s"($name $argsstr) -> ${abs.shows(v, store)}")
+      }
+      res
+    }
+  }
   val abs = implicitly[AbstractValue[Abs]]
   val addr = implicitly[Address[Addr]]
 
@@ -553,4 +566,3 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
   val forStore: List[(Addr, Abs)] =  allocated.map({ case (_, a, v) => (a, v) })
 }
-
