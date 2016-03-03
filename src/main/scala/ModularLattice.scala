@@ -225,6 +225,10 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
         case Unlocked => True
         case _ => False
       }
+      case IsLocked => x match {
+        case Locked => True
+        case _ => False
+      }
       case Not => x match {
         case Bool(b) => Bool(bool.not(b))
         case _ => False /* any value is true */
