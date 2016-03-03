@@ -37,7 +37,7 @@ object ConcreteLattice extends Lattice {
       case IsInteger => True
       case Ceiling => ConcreteFloat(v)
       case Log => ConcreteFloat(scala.math.log(v).toFloat)
-      case Random => ConcreteInt(Math.abs(scala.util.Random.nextInt % v))
+      case Random => ConcreteInt(SchemeOps.random(v))
       case _ => super.unaryOp(op)
     }
     override def binaryOp(op: BinaryOperator)(that: L) = that match {
@@ -46,13 +46,7 @@ object ConcreteLattice extends Lattice {
         case Minus => ConcreteInt(v - v2)
         case Times => ConcreteInt(v * v2)
         case Div => ConcreteInt(v / v2)
-        case Modulo => ConcreteInt(if (v * v2 < 0) {
-          /* different sign, behaviour not the same between Scheme and Scala, adjust it */
-          (Math.abs(v2) - Math.abs(v) % Math.abs(v2)) % Math.abs(v2) * (if (v2 < 0) -1 else 1)
-        } else {
-          /* same sign, same behaviour */
-          v % v2
-        })
+        case Modulo => ConcreteInt(SchemeOps.modulo(v, v2))
         case Lt => ConcreteBool(v < v2)
         case NumEq => ConcreteBool(v == v2)
         case _ => super.binaryOp(op)(that)
@@ -66,7 +60,7 @@ object ConcreteLattice extends Lattice {
       case IsFloat => True
       case Ceiling => ConcreteFloat(scala.math.ceil(v).toFloat)
       case Log => ConcreteFloat(scala.math.log(v).toFloat)
-      case Random => ConcreteFloat(Math.abs(scala.util.Random.nextFloat % v))
+      case Random => ConcreteFloat(SchemeOps.random(v))
       case _ => super.unaryOp(op)
     }
     override def binaryOp(op: BinaryOperator)(that: L) = that match {

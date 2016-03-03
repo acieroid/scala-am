@@ -1,17 +1,6 @@
 import scalaz._
 import scalaz.Scalaz._
 
-object SchemeOps {
-  def modulo(n1: Int, n2: Int) =
-    if (n1 * n2 < 0) {
-      /* different sign, behaviour not the same between Scheme and Scala, adjust it */
-      (Math.abs(n2) - Math.abs(n1) % Math.abs(n2)) % Math.abs(n2) * (if (n2 < 0) -1 else 1)
-    } else {
-      /* same sign, same behaviour */
-      n1 % n2
-    }
-}
-
 object ConcreteString {
   type S = ISet[String]
   implicit val isString = new IsString[S] {
@@ -65,7 +54,7 @@ object ConcreteInteger {
     def inject(x: Int): I = ISet.singleton(x)
     def ceiling(n: I): I = n
     def toFloat[F](n: I)(implicit float: IsFloat[F]): F = n.foldMap(n => float.inject(n))
-    def random(n: I): I = n.map(n => scala.util.Random.nextInt % n)
+    def random(n: I): I = n.map(n => SchemeOps.random(n))
     def plus(n1: I, n2: I): I = n1.foldMap(n1 => n2.map(n2 => n1 + n2))
     def minus(n1: I, n2: I): I = n1.foldMap(n1 => n2.map(n2 => n1 - n2))
     def times(n1: I, n2: I): I = n1.foldMap(n1 => n2.map(n2 => n1 * n2))
@@ -91,7 +80,7 @@ object ConcreteFloat {
     def inject(x: Float): F = ISet.singleton(x)
     def ceiling(n: F): F = n.map(_.ceil)
     def log(n: F): F = n.map(n => scala.math.log(n.toDouble).toFloat)
-    def random(n: F): F = n.map(n => scala.util.Random.nextFloat % n)
+    def random(n: F): F = n.map(n => SchemeOps.random(n))
     def plus(n1: F, n2: F): F = n1.foldMap(n1 => n2.map(n2 => n1 + n2))
     def minus(n1: F, n2: F): F = n1.foldMap(n1 => n2.map(n2 => n1 - n2))
     def times(n1: F, n2: F): F = n1.foldMap(n1 => n2.map(n2 => n1 * n2))
