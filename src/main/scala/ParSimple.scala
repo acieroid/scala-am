@@ -49,33 +49,33 @@ case class ParSimpleVariable(variable: String,
 
 object ParSimpleCompiler {
   def compile(exp: SExp): ParSimpleProgram = exp match {
-    case SExpPair(SExpIdentifier("threads"), SExpPair(vars, SExpPair(threads, SExpPair(vexp @ SExpIdentifier(variable), SExpValue(ValueNil))))) =>
+    case SExpPair(SExpIdentifier("threads", _), SExpPair(vars, SExpPair(threads, SExpPair(vexp @ SExpIdentifier(variable, _), SExpValue(ValueNil, _), _), _), _), _) =>
       ParSimpleProgram(compileVars(vars), compileThreads(threads), ParSimpleVariable(variable, vexp.pos), exp.pos)
     case _ => throw new Exception(s"Invalid ParSimple program: $exp (${exp.pos})")
   }
   def compileVars(exp: SExp): List[(String, Value)] = exp match {
-    case SExpPair(variable, rest) => compileVar(variable) :: compileVars(rest)
-    case SExpValue(ValueNil) => List()
+    case SExpPair(variable, rest, _) => compileVar(variable) :: compileVars(rest)
+    case SExpValue(ValueNil, _) => List()
     case _ => throw new Exception(s"Invalid ParSimple bindings: $exp (${exp.pos})")
   }
   def compileVar(exp: SExp): (String, Value) = exp match {
-    case SExpPair(SExpIdentifier(variable), SExpPair(SExpValue(value), SExpValue(ValueNil))) => (variable, value)
+    case SExpPair(SExpIdentifier(variable, _), SExpPair(SExpValue(value, _), SExpValue(ValueNil, _), _), _) => (variable, value)
     case _ => throw new Exception(s"Invalid ParSimple variable binding: $exp (${exp.pos})")
   }
   def compileThreads(exp: SExp): List[(String, ParSimpleThreadCode)] = exp match {
-    case SExpPair(thread, rest) => compileThread(thread) :: compileThreads(rest)
-    case SExpValue(ValueNil) => List()
+    case SExpPair(thread, rest, _) => compileThread(thread) :: compileThreads(rest)
+    case SExpValue(ValueNil, _) => List()
     case _ => throw new Exception(s"Invalid ParSimple threads: $exp (${exp.pos})")
   }
   def compileThread(exp: SExp): (String, ParSimpleThreadCode) = exp match {
-    case SExpPair(SExpIdentifier(name), codeexp @ SExpPair(code, SExpValue(ValueNil))) => (name, ParSimpleThreadCode(compileThreadCode(code), codeexp.pos))
+    case SExpPair(SExpIdentifier(name, _), codeexp @ SExpPair(code, SExpValue(ValueNil, _), _), _) => (name, ParSimpleThreadCode(compileThreadCode(code), codeexp.pos))
     case _ => throw new Exception(s"Invalid ParSimple thread binding: $exp (${exp.pos})")
   }
   def compileThreadCode(exp: SExp): List[ParSimpleAssignment] = exp match {
-    case SExpPair(aexp @ SExpPair(SExpIdentifier("="), SExpPair(SExpIdentifier(variable), SExpPair(SExpValue(value), SExpValue(ValueNil)))), rest) => {
+    case SExpPair(aexp @ SExpPair(SExpIdentifier("=", _), SExpPair(SExpIdentifier(variable, _), SExpPair(SExpValue(value, _), SExpValue(ValueNil, _), _), _), _), rest, _) => {
       ParSimpleAssignment(variable, value, aexp.pos) :: compileThreadCode(rest)
     }
-    case SExpValue(ValueNil) => List()
+    case SExpValue(ValueNil, _) => List()
     case _ => throw new Exception(s"Invalid ParSimple assignment: $exp (${exp.pos})")
   }
 }

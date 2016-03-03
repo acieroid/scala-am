@@ -34,7 +34,10 @@ object ValueNil extends Value {
  * resides in the input file, and as tagging information for the abstract
  * machine.
  */
-trait SExp extends scala.util.parsing.input.Positional
+import scala.util.parsing.input.Position
+trait SExp extends {
+  val pos: Position
+}
 /**
  * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair
  * with identifier foo as car and another pair -- with identifier bar as car and
@@ -42,7 +45,7 @@ trait SExp extends scala.util.parsing.input.Positional
  * string. i.e., (foo bar) is stringified as (foo bar) and not (foo . (bar
  * . ()))
  */
-case class SExpPair(car: SExp, cdr: SExp) extends SExp {
+case class SExpPair(car: SExp, cdr: SExp, pos: Position) extends SExp {
   override def toString() = {
     val content = toStringRest
     s"($content)"
@@ -52,35 +55,39 @@ case class SExpPair(car: SExp, cdr: SExp) extends SExp {
       case pair: SExpPair =>
         val rest = pair.toStringRest
         s"$car $rest"
-      case SExpValue(ValueNil) => s"$car"
+      case SExpValue(ValueNil, _) => s"$car"
       case _ => s"$car . $cdr"
     }
 }
-object SExpPair {
+
+object SExpList {
   /* Alternative constructor to automatically construct a bunch of pair from a
    * list of expressions */
-  def apply(content: List[SExp]) = fromList(content)
+  def apply(content: List[SExp], pos: Position) = fromList(content, pos)
 
-  def fromList(content: List[SExp]): SExp = content match {
-    case Nil => SExpValue(ValueNil)
-    case head :: tail => SExpPair(head, SExpPair(tail))
+  def fromList(content: List[SExp], pos: Position): SExp = content match {
+    case Nil => SExpValue(ValueNil, pos)
+    case head :: tail => SExpPair(head, SExpList(tail, pos), head.pos)
   }
 }
+
 /**
  * An identifier, such as foo, bar, etc.
  */
-case class SExpIdentifier(name: String) extends SExp {
+case class SExpIdentifier(name: String, pos: Position) extends SExp {
   override def toString() = name
 }
+
 /**
  * A literal value, such as 1, "foo", 'foo, etc.
  */
-case class SExpValue(value: Value) extends SExp {
+case class SExpValue(value: Value, pos: Position) extends SExp {
   override def toString = value.toString
 }
+
 /**
  * A quoted element, such as 'foo, '(foo (bar)), etc.
  */
-case class SExpQuoted(content: SExp) extends SExp {
+case class SExpQuoted(content: SExp, pos: Position) extends SExp {
   override def toString() = s"'$content"
 }

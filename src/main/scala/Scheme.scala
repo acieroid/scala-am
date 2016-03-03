@@ -224,160 +224,160 @@ object SchemeCompiler {
   val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "cas", "acquire", "release", "cas-vector")
 
   def compile(exp: SExp): SchemeExp = exp match {
-    case SExpPair(SExpIdentifier("quote"), SExpPair(quoted, SExpValue(ValueNil))) =>
-      compile(SExpQuoted(quoted).setPos(exp.pos))
-    case SExpPair(SExpIdentifier("quote"), _) =>
+    case SExpPair(SExpIdentifier("quote", _), SExpPair(quoted, SExpValue(ValueNil, _), _), _) =>
+      compile(SExpQuoted(quoted, exp.pos))
+    case SExpPair(SExpIdentifier("quote", _), _, _) =>
       throw new Exception(s"Invalid Scheme quote: $exp (${exp.pos})")
-    case SExpPair(SExpIdentifier("lambda"),
-      SExpPair(args, SExpPair(first, rest))) =>
+    case SExpPair(SExpIdentifier("lambda", _),
+      SExpPair(args, SExpPair(first, rest, _), _), _) =>
       SchemeLambda(compileArgs(args), compile(first) :: compileBody(rest), exp.pos)
-    case SExpPair(SExpIdentifier("lambda"), _) =>
+    case SExpPair(SExpIdentifier("lambda", _), _, _) =>
       throw new Exception(s"Invalid Scheme lambda: $exp (${exp.pos})")
-    case SExpPair(SExpIdentifier("if"),
-      SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil))))) =>
+    case SExpPair(SExpIdentifier("if", _),
+      SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil, _), _), _), _), _) =>
       SchemeIf(compile(cond), compile(cons), compile(alt), exp.pos)
-    case SExpPair(SExpIdentifier("if"),
-      SExpPair(cond, SExpPair(cons, SExpValue(ValueNil)))) =>
+    case SExpPair(SExpIdentifier("if", _),
+      SExpPair(cond, SExpPair(cons, SExpValue(ValueNil, _), _), _), _) =>
       /* Empty else branch is replaced by #f (R5RS states it's unspecified) */
       SchemeIf(compile(cond), compile(cons), SchemeValue(ValueBoolean(false), exp.pos), exp.pos)
-    case SExpPair(SExpIdentifier("if"), _) =>
+    case SExpPair(SExpIdentifier("if", _), _, _) =>
         throw new Exception(s"Invalid Scheme if: $exp (${exp.pos})")
-    case SExpPair(SExpIdentifier("let"),
-      SExpPair(bindings, SExpPair(first, rest))) =>
+    case SExpPair(SExpIdentifier("let", _),
+      SExpPair(bindings, SExpPair(first, rest, _), _), _) =>
       SchemeLet(compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
-    case SExpPair(SExpIdentifier("let"), _) =>
+    case SExpPair(SExpIdentifier("let", _), _, _) =>
       throw new Exception(s"Invalid Scheme let: $exp")
-    case SExpPair(SExpIdentifier("let*"),
-      SExpPair(bindings, SExpPair(first, rest))) =>
+    case SExpPair(SExpIdentifier("let*", _),
+      SExpPair(bindings, SExpPair(first, rest, _), _), _) =>
       SchemeLetStar(compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
-    case SExpPair(SExpIdentifier("let*"), _) =>
+    case SExpPair(SExpIdentifier("let*", _), _, _) =>
       throw new Exception(s"Invalid Scheme let*: $exp")
-    case SExpPair(SExpIdentifier("letrec"),
-      SExpPair(bindings, SExpPair(first, rest))) =>
+    case SExpPair(SExpIdentifier("letrec", _),
+      SExpPair(bindings, SExpPair(first, rest, _), _), _) =>
       SchemeLetrec(compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
-    case SExpPair(SExpIdentifier("letrec"), _) =>
+    case SExpPair(SExpIdentifier("letrec", _), _, _) =>
       throw new Exception(s"Invalid Scheme letrec: $exp")
-    case SExpPair(SExpIdentifier("set!"),
-      SExpPair(SExpIdentifier(variable), SExpPair(value, SExpValue(ValueNil)))) =>
+    case SExpPair(SExpIdentifier("set!", _),
+      SExpPair(SExpIdentifier(variable, _), SExpPair(value, SExpValue(ValueNil, _), _), _), _) =>
       SchemeSet(variable, compile(value), exp.pos)
-    case SExpPair(SExpIdentifier("set!"), _) =>
+    case SExpPair(SExpIdentifier("set!", _), _, _) =>
       throw new Exception(s"Invalid Scheme set!: $exp")
-    case SExpPair(SExpIdentifier("begin"), body) =>
+    case SExpPair(SExpIdentifier("begin", _), body, _) =>
       SchemeBegin(compileBody(body), exp.pos)
-    case SExpPair(SExpIdentifier("cond"), clauses) =>
+    case SExpPair(SExpIdentifier("cond", _), clauses, _) =>
       SchemeCond(compileCondClauses(clauses), exp.pos)
-    case SExpPair(SExpIdentifier("case"), SExpPair(exp, clauses)) => {
+    case SExpPair(SExpIdentifier("case", _), SExpPair(exp, clauses, _), _) => {
       val (c, d) = compileCaseClauses(clauses)
       SchemeCase(compile(exp), c, d, exp.pos)
       }
-    case SExpPair(SExpIdentifier("and"), args) =>
+    case SExpPair(SExpIdentifier("and", _), args, _) =>
       SchemeAnd(compileBody(args), exp.pos)
-      case SExpPair(SExpIdentifier("or"), args) =>
+      case SExpPair(SExpIdentifier("or", _), args, _) =>
       SchemeOr(compileBody(args), exp.pos)
-    case SExpPair(SExpIdentifier("define"),
-      SExpPair(SExpIdentifier(name), SExpPair(value, SExpValue(ValueNil)))) =>
+    case SExpPair(SExpIdentifier("define", _),
+      SExpPair(SExpIdentifier(name, _), SExpPair(value, SExpValue(ValueNil, _), _), _), _) =>
       SchemeDefineVariable(name, compile(value), exp.pos)
-    case SExpPair(SExpIdentifier("define"),
-      SExpPair(SExpPair(SExpIdentifier(name), args),
-        SExpPair(first, rest))) =>
+    case SExpPair(SExpIdentifier("define", _),
+      SExpPair(SExpPair(SExpIdentifier(name, _), args, _),
+        SExpPair(first, rest, _), _), _) =>
       SchemeDefineFunction(name, compileArgs(args), compile(first) :: compileBody(rest), exp.pos)
-    case SExpPair(SExpIdentifier("cas"),
-      SExpPair(SExpIdentifier(variable),
-        SExpPair(eold, SExpPair(enew, SExpValue(ValueNil))))) =>
+    case SExpPair(SExpIdentifier("cas", _),
+      SExpPair(SExpIdentifier(variable, _),
+        SExpPair(eold, SExpPair(enew, SExpValue(ValueNil, _), _), _), _), _) =>
       SchemeCas(variable, compile(eold), compile(enew), exp.pos)
-      case SExpPair(SExpIdentifier("cas"), _) =>
+    case SExpPair(SExpIdentifier("cas", _), _, _) =>
       throw new Exception(s"Invalid Scheme cas: $exp")
-    case SExpPair(SExpIdentifier("cas-vector"),
-      SExpPair(SExpIdentifier(variable),
-        SExpPair(index, SExpPair(eold, SExpPair(enew, SExpValue(ValueNil)))))) =>
+    case SExpPair(SExpIdentifier("cas-vector", _),
+      SExpPair(SExpIdentifier(variable, _),
+        SExpPair(index, SExpPair(eold, SExpPair(enew, SExpValue(ValueNil, _), _), _), _), _), _) =>
       SchemeCasVector(variable, compile(index), compile(eold), compile(enew), exp.pos)
-    case SExpPair(SExpIdentifier("cas-vector"), _) =>
+    case SExpPair(SExpIdentifier("cas-vector", _), _, _) =>
       throw new Exception(s"Indavil Scheme cas-vector: $exp")
-    case SExpPair(SExpIdentifier("acquire"),
-      SExpPair(exp, SExpValue(ValueNil))) =>
+    case SExpPair(SExpIdentifier("acquire", _),
+      SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
       SchemeAcquire(compile(exp), exp.pos)
-    case SExpPair(SExpIdentifier("acquire"), _) =>
+    case SExpPair(SExpIdentifier("acquire", _), _, _) =>
       throw new Exception(s"Invalid Scheme acquire: $exp")
-    case SExpPair(SExpIdentifier("release"),
-      SExpPair(exp, SExpValue(ValueNil))) =>
+    case SExpPair(SExpIdentifier("release", _),
+      SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
       SchemeRelease(compile(exp), exp.pos)
-      case SExpPair(SExpIdentifier("release"), _) =>
+      case SExpPair(SExpIdentifier("release", _), _, _) =>
       throw new Exception(s"Invalid Scheme release: $exp")
-    case SExpPair(SExpIdentifier("spawn"),
-      SExpPair(exp, SExpValue(ValueNil))) =>
+    case SExpPair(SExpIdentifier("spawn", _),
+      SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
       SchemeSpawn(compile(exp), exp.pos)
-    case SExpPair(SExpIdentifier("spawn"), _) =>
+    case SExpPair(SExpIdentifier("spawn", _), _, _) =>
       throw new Exception(s"Invalid Scheme spawn: $exp")
-    case SExpPair(SExpIdentifier("join"),
-      SExpPair(exp, SExpValue(ValueNil))) =>
+    case SExpPair(SExpIdentifier("join", _),
+      SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
       SchemeJoin(compile(exp), exp.pos)
-    case SExpPair(SExpIdentifier("join"), _) =>
+    case SExpPair(SExpIdentifier("join", _), _, _) =>
       throw new Exception(s"Invalid Scheme join: $exp")
-    case SExpPair(f, args) =>
+    case SExpPair(f, args, _) =>
       SchemeFuncall(compile(f), compileBody(args), exp.pos)
-    case SExpIdentifier(name) => if (reserved.contains(name)) {
+    case SExpIdentifier(name, _) => if (reserved.contains(name)) {
       throw new Exception(s"Invalid Scheme identifier (reserved): $exp")
     } else {
       SchemeIdentifier(name, exp.pos)
     }
-    case SExpValue(value) => SchemeValue(value, exp.pos)
-    case SExpQuoted(quoted) => SchemeQuoted(quoted, exp.pos)
+    case SExpValue(value, _) => SchemeValue(value, exp.pos)
+    case SExpQuoted(quoted, _) => SchemeQuoted(quoted, exp.pos)
   }
 
   def compileArgs(args: SExp): List[String] = args match {
-    case SExpPair(SExpIdentifier(id), rest) => id :: compileArgs(rest)
-    case SExpValue(ValueNil) => Nil
+    case SExpPair(SExpIdentifier(id, _), rest, _) => id :: compileArgs(rest)
+    case SExpValue(ValueNil, _) => Nil
     case _ => throw new Exception(s"Invalid Scheme argument list: $args")
   }
 
   def compileBody(body: SExp): List[SchemeExp] = body match {
-    case SExpPair(exp, rest) => compile(exp) :: compileBody(rest)
-    case SExpValue(ValueNil) => Nil
+    case SExpPair(exp, rest, _) => compile(exp) :: compileBody(rest)
+    case SExpValue(ValueNil, _) => Nil
     case _ => throw new Exception(s"Invalid Scheme body: $body")
   }
 
   def compileBindings(bindings: SExp): List[(String, SchemeExp)] = bindings match {
-    case SExpPair(SExpPair(SExpIdentifier(name),
-      SExpPair(value, SExpValue(ValueNil))), rest) =>
+    case SExpPair(SExpPair(SExpIdentifier(name, _),
+      SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
       if (reserved.contains(name)) {
         throw new Exception(s"Invalid Scheme identifier (reserved): $name")
       } else {
         (name, compile(value)) :: compileBindings(rest)
       }
-    case SExpValue(ValueNil) => Nil
+    case SExpValue(ValueNil, _) => Nil
     case _ => throw new Exception(s"Invalid Scheme bindings: $bindings")
   }
 
   def compileCondClauses(clauses: SExp): List[(SchemeExp, List[SchemeExp])] = clauses match {
-    case SExpPair(SExpPair(SExpIdentifier("else"), SExpPair(first, rest)),
-                  SExpValue(ValueNil)) =>
+    case SExpPair(SExpPair(SExpIdentifier("else", _), SExpPair(first, rest, _), _),
+                  SExpValue(ValueNil, _), _) =>
       List((SchemeValue(ValueBoolean(true), clauses.pos), compile(first) :: compileBody(rest)))
-    case SExpPair(SExpPair(cond, SExpPair(first, rest)), restClauses) =>
+    case SExpPair(SExpPair(cond, SExpPair(first, rest, _), _), restClauses, _) =>
       (compile(cond), compile(first) :: compileBody(rest)) :: compileCondClauses(restClauses)
-    case SExpPair(SExpPair(cond, SExpValue(ValueNil)), restClauses) =>
+    case SExpPair(SExpPair(cond, SExpValue(ValueNil, _), _), restClauses, _) =>
       (compile(cond), Nil) :: compileCondClauses(restClauses)
-    case SExpValue(ValueNil) => Nil
+    case SExpValue(ValueNil, _) => Nil
     case _ => throw new Exception(s"Invalid Scheme cond clauses: $clauses")
   }
 
   def compileCaseClauses(clauses: SExp): (List[(List[SchemeValue], List[SchemeExp])], List[SchemeExp]) = clauses match {
-    case SExpPair(SExpPair(SExpIdentifier("else"), SExpPair(first, rest)),
-                  SExpValue(ValueNil)) =>
+    case SExpPair(SExpPair(SExpIdentifier("else", _), SExpPair(first, rest, _), _),
+                  SExpValue(ValueNil, _), _) =>
       (List(), compile(first) :: compileBody(rest))
-    case SExpPair(SExpPair(objects, body), restClauses) =>
+    case SExpPair(SExpPair(objects, body, _), restClauses, _) =>
       val (compiled, default) = compileCaseClauses(restClauses)
       ((compileCaseObjects(objects), compileBody(body)) :: compiled, default)
-    case SExpValue(ValueNil) => (Nil, Nil)
+    case SExpValue(ValueNil, _) => (Nil, Nil)
     case _ => throw new Exception(s"Invalid Scheme case clauses: $clauses")
   }
 
   def compileCaseObjects(objects: SExp): List[SchemeValue] = objects match {
-    case SExpPair(SExpValue(v), rest) =>
+    case SExpPair(SExpValue(v, _), rest, _) =>
       SchemeValue(v, objects.pos) :: compileCaseObjects(rest)
-    case SExpPair(SExpIdentifier(id), rest) =>
+    case SExpPair(SExpIdentifier(id, _), rest, _) =>
       /* identifiers in case expressions are treated as symbols */
       SchemeValue(ValueSymbol(id), objects.pos) :: compileCaseObjects(rest)
-    case SExpValue(ValueNil) => Nil
+    case SExpValue(ValueNil, _) => Nil
     case _ => throw new Exception(s"Invalid Scheme case objects: $objects")
   }
 }

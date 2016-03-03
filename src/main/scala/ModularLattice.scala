@@ -339,23 +339,29 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
       case _ => x
     }
 
-    def join(x: L, y: L): L =
-      if (x == y) {
-        x
-      } else {
-        (x, y) match {
-          case (Bot, _) => y
-          case (_, Bot) => x
-          case (Str(s1), Str(s2)) => Str(str.join(s1, s2))
-          case (Bool(b1), Bool(b2)) => Bool(bool.join(b1, b2))
-          case (Int(i1), Int(i2)) => Int(int.join(i1, i2))
-          case (Float(f1), Float(f2)) => Float(float.join(f1, f2))
-          case (Char(c1), Char(c2)) => Char(char.join(c1, c2))
-          case _ => throw new CannotJoin[L](Set(x, y))
-        }
+    def join(x: L, y: L): L = if (x == y) { x } else {
+      (x, y) match {
+        case (Bot, _) => y
+        case (_, Bot) => x
+        case (Str(s1), Str(s2)) => Str(str.join(s1, s2))
+        case (Bool(b1), Bool(b2)) => Bool(bool.join(b1, b2))
+        case (Int(i1), Int(i2)) => Int(int.join(i1, i2))
+        case (Float(f1), Float(f2)) => Float(float.join(f1, f2))
+        case (Char(c1), Char(c2)) => Char(char.join(c1, c2))
+        case _ => throw new CannotJoin[L](Set(x, y))
       }
+    }
 
-    def meet(x: L, y: L): L = ??? // TODO: remove meet, we don't use it
+    def meet(x: L, y: L): L = ??? /*if (x == y) { x } else {
+      (x, y) match {
+        case (Str(s1), Str(s2)) => Str(str.meet(s1, s2))
+        case (Bool(b1), Bool(b2)) => Bool(bool.meet(b1, b2))
+        case (Int(i1), Int(i2)) => Int(int.meet(i1, i2))
+        case (Float(f1), Float(f2)) => Float(float.meet(f1, f2))
+        case (Char(c1), Char(c2)) => Char(char.join(c1, c2))
+        case _ => Bot
+      }
+    }*/
 
     def subsumes(x: L, y: L): Boolean = if (x == y) { true } else {
       (x, y) match {

@@ -151,21 +151,38 @@ object SExpParser extends TokenParsers {
   }
   def nil: Parser[Value] = leftParen ~ rightParen ^^ (_ => ValueNil)
 
-  def value: Parser[SExp] =
-    (bool | float | integer | character | string | nil) ^^ (v => SExpValue(v))
+  def value: Parser[SExp] = Parser { in =>
+    (bool | float | integer | character | string | nil)(in) match {
+      case Success(t, in1) => Success(SExpValue(t, in.pos), in1)
+      case ns: NoSuccess => ns
+    }
+  }
 
-  def identifier: Parser[SExp] = elem("identifier", _.isInstanceOf[TIdentifier]) ^^ {
-    case TIdentifier(s) => SExpIdentifier(s)
+  def identifier: Parser[SExp] = Parser { in =>
+    elem("identifier", _.isInstanceOf[TIdentifier])(in) match {
+      case Success(TIdentifier(s), in1) => Success(SExpIdentifier(s, in.pos), in1)
+      case Success(v, in1) => Failure(s"Expected identifier, got $v", in1)
+      case ns: NoSuccess => ns
+    }
   }
 
   def leftParen = elem("left parenthesis", _.isInstanceOf[TLeftParen])
   def rightParen = elem("right parenthesis", _.isInstanceOf[TRightParen])
   def quote = elem("quote", _.isInstanceOf[TQuote])
-  def list: Parser[SExp] =
-    leftParen ~> rep1(exp) <~ rightParen ^^ (e => SExpPair(e))
-  def quoted: Parser[SExp] = quote ~> exp ^^ (e => SExpQuoted(e))
+  def list: Parser[SExp] = Parser { in =>
+    (leftParen ~> rep1(exp) <~ rightParen)(in) match {
+      case Success(es, in1) => Success(SExpList(es, in.pos), in1)
+      case ns: NoSuccess => ns
+    }
+  }
+  def quoted: Parser[SExp] = Parser { in =>
+    (quote ~> exp)(in) match {
+      case Success(e, in1) => Success(SExpQuoted(e, in.pos), in1)
+      case ns: NoSuccess => ns
+    }
+  }
 
-  def exp: Parser[SExp] = positioned(value | identifier | list | quoted)
+  def exp: Parser[SExp] = value | identifier | list | quoted
   def expList: Parser[List[SExp]] = rep1(exp)
 
   def parse(s: String): List[SExp] = expList(new lexical.Scanner(s)) match {

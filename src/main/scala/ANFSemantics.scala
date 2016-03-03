@@ -1,6 +1,5 @@
 /**
  * Semantics for ANF Scheme (abstract grammar defined in ANF.scala)
- * TODO: annotate with effects!
  */
 class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     extends BaseSemantics[ANFExp, Abs, Addr, Time] {
@@ -109,7 +108,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       case None => Set(ActionError(s"Unbound variable: ${variable}"))
     }
     /* A quoted identifier is a value */
-    case ANFQuoted(SExpIdentifier(sym), _) => Set(ActionReachedValue(abs.injectSymbol(sym), σ))
+    case ANFQuoted(SExpIdentifier(sym, _), _) => Set(ActionReachedValue(abs.injectSymbol(sym), σ))
     /* A quoted s-expression is more complicated to evaluate, as it may require
      * store allocation and is therefore not atomic. We don't deal with them in
      * ANF (they can always be converted into calls to cons). */

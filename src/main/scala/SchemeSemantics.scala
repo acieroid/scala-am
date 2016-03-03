@@ -23,7 +23,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   case class FrameDefine(variable: String, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCasIndex(variable: String, eold: SchemeExp, enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameCasOld(variable: String, index: Option[Abs], enew: SchemeExp, ρ: Environment[Addr]) extends SchemeFrame
-  case class FrameCasNew(variable: String, index: Option[Abs], old: Abs, ρ: Environment[Addr]) extends SchemeFrame
+  case class FrameCasNew(variable: String, index: Option[Abs], enew: SchemeExp, old: Abs, ρ: Environment[Addr]) extends SchemeFrame
   case class FrameAcquire(ρ: Environment[Addr]) extends SchemeFrame
   case class FrameRelease(ρ: Environment[Addr]) extends SchemeFrame
 
@@ -33,7 +33,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     case exp :: rest => ActionPush(exp, FrameBegin(rest, ρ), ρ, σ)
   }
 
-  def conditional(v: Abs, t: Action[SchemeExp, Abs, Addr], f: Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
+  def conditional(v: Abs, t: => Action[SchemeExp, Abs, Addr], f: => Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
     (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
 
   def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = {
@@ -78,8 +78,8 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     funcallArgs(f, fexp, List(), args, ρ, σ, t)
 
   protected def evalQuoted(exp: SExp, σ: Store[Addr, Abs], t: Time): (Abs, Store[Addr, Abs]) = exp match {
-    case SExpIdentifier(sym) => (abs.injectSymbol(sym), σ)
-    case SExpPair(car, cdr) => {
+    case SExpIdentifier(sym, _) => (abs.injectSymbol(sym), σ)
+    case SExpPair(car, cdr, _) => {
       val care: SchemeExp = SchemeIdentifier(car.toString, car.pos)
       val cdre: SchemeExp = SchemeIdentifier(cdr.toString, cdr.pos)
       val cara = addr.cell(care, t)
@@ -88,16 +88,16 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       val (cdrv, σ3) = evalQuoted(cdr, σ2, t)
       (abs.cons(cara, cdra), σ3.extend(cara, carv).extend(cdra, cdrv))
     }
-    case SExpValue(v) => (v match {
+    case SExpValue(v, _) => (v match {
       case ValueString(str) => abs.inject(str)
-      case ValueCharacter(c) => throw new Exception("character not yet supported")
+      case ValueCharacter(c) => abs.inject(c)
       case ValueSymbol(sym) => abs.injectSymbol(sym) /* shouldn't happen */
       case ValueInteger(n) => abs.inject(n)
       case ValueFloat(n) => abs.inject(n)
       case ValueBoolean(b) => abs.inject(b)
       case ValueNil => abs.nil
     }, σ)
-    case SExpQuoted(q) => evalQuoted(SExpPair(SExpIdentifier("quote"), SExpPair(q, SExpValue(ValueNil))), σ, t)
+    case SExpQuoted(q, pos) => evalQuoted(SExpPair(SExpIdentifier("quote", pos), SExpPair(q, SExpValue(ValueNil, pos), pos), pos), σ, t)
   }
 
   def stepEval(e: SchemeExp, ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time) = e match {
@@ -214,22 +214,28 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     case FrameCasIndex(variable, eold, enew, ρ) =>
       Set(ActionPush(eold, FrameCasOld(variable, Some(v), enew, ρ), ρ, σ))
     case FrameCasOld(variable, index, enew, ρ) =>
-      Set(ActionPush(enew, FrameCasNew(variable, index, v, ρ), ρ, σ))
-    case FrameCasNew(variable, index, old, ρ) =>
-      ??? // TODO
-      /*ρ.lookup(variable) match {
+      Set(ActionPush(enew, FrameCasNew(variable, index, enew, v, ρ), ρ, σ))
+    case FrameCasNew(variable, index, enew, old, ρ) =>
+      ρ.lookup(variable) match {
         case Some(a) => index match {
           case Some(i) =>
             /* Compare and swap on vector element */
             abs.getVectors(σ.lookup(a)).flatMap(va => {
               val vec = σ.lookup(va)
-              val oldval = abs.binaryOp(BinaryOperator.VectorRef)(vec, i)
-              conditional(abs.binaryOp(BinaryOperator.Eq)(oldval, old),
-                /* Vector element matches old, success */
-                ActionReachedValue(abs.inject(true), σ.update(va, abs.vectorSet(vec, i, v)), Set(EffectWriteVector(va, i), EffectReadVector(va, i))),
-                /* Vector element doesn't match, fail */
-                ActionReachedValue(abs.inject(false), σ, Set(EffectReadVector(va, i))))
-            })
+              val oldvals = abs.vectorRef(vec, i)
+              oldvals.flatMap({
+                case Left(_) => /* ignoring error values */ Set[Action[SchemeExp, Abs, Addr]]()
+                case Right(a) => {
+                  val oldval = σ.lookup(a)
+                  val success: Action[SchemeExp, Abs, Addr] = {
+                    /* Vector element matches old, success */
+                    val (newvec, addrs) = abs.vectorSet(vec, i, addr.cell(enew, t))
+                    ActionReachedValue(abs.inject(true), addrs.foldLeft(σ.update(va, newvec))((acc, a) => acc.updateOrExtend(a, v)),
+                      addrs.flatMap(a => Set(EffectWriteVector(a), EffectReadVector(a))))
+                  }
+                  val fail: Action[SchemeExp, Abs, Addr] = ActionReachedValue(abs.inject(false), σ, Set(EffectReadVector(a))) /* Vector element doesn't match, fail */
+                  conditional(abs.binaryOp(BinaryOperator.Eq)(oldval, old), success, fail)
+                }})})
           case None =>
             /* Compare and swap on variable value */
             conditional(abs.binaryOp(BinaryOperator.Eq)(σ.lookup(a), old),
@@ -239,7 +245,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
               ActionReachedValue(abs.inject(false), σ, Set(EffectReadVariable(a))))
         }
         case None => Set(ActionError(s"Unbound variable: $variable"))
-      }*/
+      }
     case FrameAcquire(ρ) =>
       val locks = abs.getLocks(v)
       if (locks.isEmpty) {
