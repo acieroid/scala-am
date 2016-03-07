@@ -49,7 +49,7 @@ object Benchmarks {
     "race2", "race3", "race4", "race5", "race6",
     "fs2", "fs3", "fs4", "fs5", "fs6", "fs7", "fs8", "fs9", "fs10", "fs11", "fs12", "fs13", "fs14", "fs15",
     "incdec2", "incdec3", "incdec4", "incdec5", "incdec6",
-    "indexer2", "indexer3", "indexer4", "indexer5", "indexer6", "indexer7", "indexer8", "indexer9", "indexer10", "indexer11", "indexer12", "indexer13", "indexer14", "indexer15",
+    "indexer2", "indexer3", "indexer4", "indexer5", "indexer6", "indexer7", "indexer8", "indexer9", "indexer10", "indexer11", "indexer12", "indexer13", "indexer14", "indexer15"
     "mutex2", "mutex3", "mutex4", "mutex5", "mutex6",
     "pcounter2", "pcounter3", "pcounter4", "pcounter5", "pcounter6",
     "philosophers2", "philosophers3", "philosophers4", "philosophers5", "philosophers6",
@@ -83,10 +83,17 @@ object Benchmarks {
         val sem = new ConcurrentSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID]
         val program = Main.fileContent(s"concurrent/$name.scm")
         if (program != null || program.size > 0) {
-          val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {
-            machine.eval(sem.parse(program), sem, false, timeout)
+          try {
+            val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {
+              machine.eval(sem.parse(program), sem, false, timeout)
+            }
+            MachineOutput(output.time, output.numberOfStates, output.timedOut, output.finalValues.map(x => x))
+          } catch {
+            case e: Throwable => {
+              println("Benchmark $name failed!")
+              MachineOutput(0, 0, false, Set[Any]())
+            }
           }
-          MachineOutput(output.time, output.numberOfStates, output.timedOut, output.finalValues.map(x => x))
         } else {
           MachineOutput(0, 0, false, Set[Any]()) // TODO: error output
         }
@@ -112,9 +119,9 @@ object Benchmarks {
 
     private def printResults(results: Map[String, Map[ExplorationType.Value, MachineOutput]]) = {
       import scala.math.Ordering.String._
-      println(Tabulator.format(List("program", "one", "all", "reduced") :: results.toList.sortBy({ case (name, _) => name }).map({
+      println(Tabulator.format(List("program", "one", "all", "reduced", "dpor") :: results.toList.sortBy({ case (name, _) => name }).map({
         case (name, res) => name :: List(ExplorationType.OneInterleaving,
-          ExplorationType.AllInterleavings, ExplorationType.InterferenceTracking).map(expl =>
+          ExplorationType.AllInterleavings, ExplorationType.InterferenceTracking, ExplorationType.DPOR).map(expl =>
           res.get(expl) match {
             case Some(out) => out.toString
             case None => "x"
@@ -164,8 +171,6 @@ object Benchmarks {
         val oneabs = abs(ExplorationType.OneInterleaving)
         val redconc = conc(ExplorationType.InterferenceTracking)
         val redabs = abs(ExplorationType.InterferenceTracking)
-        val randconc = conc(ExplorationType.RandomInterleaving)
-        val randabs = abs(ExplorationType.RandomInterleaving)
 
         (conc.get(ExplorationType.AllInterleavings), abs.get(ExplorationType.AllInterleavings)) match {
           case (Some(allconc), Some(allabs)) =>
@@ -212,11 +217,16 @@ object Benchmarks {
           err("$name (one): abstract (${oneabs.finalValues}) does not subsume concrete (${oneconc.finalValues})")
         if (!redabs.timedOut && !redconc.timedOut && !subsumes(redabs.finalValues, redconc.finalValues))
           err("$name (red): abstract (${redabs.finalValues}) does not subsume concrete (${redconc.finalValues})")
-        /* Random (8) */
-        if (!redabs.timedOut && !randabs.finalValues.subsetOf(redabs.finalValues))
-          err("$name (abstract): randomly explored paths explored values (${randabs.finalValues}) that weren't explored in reduced interleavings (${redabs.finalValues})")
-        if (!redconc.timedOut && !randconc.finalValues.subsetOf(redconc.finalValues))
-          err("$name (concrete): randomly explored paths explored values (${randconc.finalValues}) that weren't explored in reduced interleavings (${redconc.finalValues})")
+
+        (conc.get(ExplorationType.RandomInterleaving), abs.get(ExplorationType.RandomInterleaving)) match {
+          case (Some(randconc), Some(randabs)) =>
+            /* Random (8) */
+            if (!redabs.timedOut && !randabs.finalValues.subsetOf(redabs.finalValues))
+              err("$name (abstract): randomly explored paths explored values (${randabs.finalValues}) that weren't explored in reduced interleavings (${redabs.finalValues})")
+            if (!redconc.timedOut && !randconc.finalValues.subsetOf(redconc.finalValues))
+              err("$name (concrete): randomly explored paths explored values (${randconc.finalValues}) that weren't explored in reduced interleavings (${redconc.finalValues})")
+          case _ => ()
+        }
       })
     }
 
@@ -270,7 +280,7 @@ object Benchmarks {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) =>
         val explorations = ((if (config.skipAll) { List() } else { List(ExplorationType.AllInterleavings) }) ++
-          List(ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking) ++
+          List(ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking, ExplorationType.DPOR) ++
           List.fill(config.random)(ExplorationType.RandomInterleaving))
         val work = programs.toList.flatMap(name =>
           explorations.flatMap(expl => Set(true, false).map(concrete =>
@@ -280,7 +290,7 @@ object Benchmarks {
         val dispatcher = system.actorOf(Props[Dispatcher], "dispatcher")
         dispatcher ! AddWork(work)
         workers.foreach(dispatcher ! SendWork(_))
-      case None => ()
+      case None => system.shutdown
     }
   }
 }
