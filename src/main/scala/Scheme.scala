@@ -392,10 +392,10 @@ object SchemeRenamer {
   /** Maps each variables to their alpha-renamed version (eg. x -> _x0) */
   type NameMap = Map[String, String]
   /** Map each variables to the number of times it is bound */
-  type CountMap = Map[String, Integer]
+  type CountMap = Map[String, Int]
 
   def rename(exp: SchemeExp): SchemeExp =
-    rename(exp, Map[String, String](), Map[String, Integer]()) match {
+    rename(exp, Map[String, String](), Map[String, Int]()) match {
       case (e, _) => e
     }
 

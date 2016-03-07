@@ -9,7 +9,7 @@ case class ValueString(value: String) extends Value {
 case class ValueSymbol(sym: String) extends Value {
   override def toString() = sym
 }
-case class ValueInteger(value: Integer) extends Value {
+case class ValueInteger(value: Int) extends Value {
   override def toString() = value.toString
 }
 case class ValueFloat(value: Float) extends Value {

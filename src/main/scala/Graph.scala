@@ -22,8 +22,8 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
       val existing: Set[(Annotation, Node)] = edges.getOrElse(node1, Set[(Annotation, Node)]())
       Graph(ids, next, nodes, edges + (node1 -> (existing ++ Set((annot, node2)))))
     }
-  def size: Integer = nodes.size
-  def transitions: Integer = edges.size
+  def size: Int = nodes.size
+  def transitions: Int = edges.size
   def foldNodes[B](init: B)(f: (B, Node) => B) = nodes.foldLeft(init)(f)
   def getNode(id: Int): Option[Node] = ids.find({ case (_, v) => id == v }).map(_._1)
   def nodeId(node: Node): Int = ids.getOrElse(node, -1)
