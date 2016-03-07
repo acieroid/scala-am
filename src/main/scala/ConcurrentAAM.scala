@@ -581,6 +581,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     var halted: Set[State] = Set[State]()
     var timedOut: Boolean = false
     var g: Option[Graph[State, (TID, Effects)]] = graph
+    var visited: Set[State] = Set[State]()
     def explore(stack: Stack, clocks: ClockVectors): Unit = {
       if (timeout.map(System.nanoTime - start > _).getOrElse(false)) {
         timedOut = true
@@ -629,6 +630,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                         done = done + p
                         s.stepTid(sem, p).headOption match {
                           case Some(t @ (effs: Effects, next: State)) =>
+                            visited += next
                             g = g.map(_.addEdge(s, (p, effs), next))
                             val stack2: Stack = append(stack, s, p, effs, next)
                             val cv: ClockVector = (0 to (stack._1.size - 1)).filter(i => isDependent(t, stack, i)).map(i => clocks(Right(i))).foldLeft(emptyClockVector)((l, r) => maxClockVector(l, r))
@@ -647,10 +649,11 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       }
     }
     try {
+      visited += s0
       explore((scala.collection.immutable.Vector[Transition](), s0), emptyClockVectors)
-      ConcurrentAAMOutput(halted, g.map(_.size).getOrElse[Int](0), (System.nanoTime - start) / Math.pow(10, 9), g, timedOut)
+      ConcurrentAAMOutput(halted, visited.size, (System.nanoTime - start) / Math.pow(10, 9), g, timedOut)
     } catch {
-      case CannotHandle => ConcurrentAAMOutput(halted, g.map(_.size).getOrElse(0), 0, None, true)
+      case CannotHandle => ConcurrentAAMOutput(halted, visited.size, 0, None, true)
     }
   }
 
