@@ -49,7 +49,7 @@ object Benchmarks {
     "race2", "race3", "race4", "race5", "race6",
     "fs2", "fs3", "fs4", "fs5", "fs6", "fs7", "fs8", "fs9", "fs10", "fs11", "fs12", "fs13", "fs14", "fs15",
     "incdec2", "incdec3", "incdec4", "incdec5", "incdec6",
-    "indexer2", "indexer3", "indexer4", "indexer5", "indexer6", "indexer7", "indexer8", "indexer9", "indexer10", "indexer11", "indexer12", "indexer13", "indexer14", "indexer15"
+    "indexer2", "indexer3", "indexer4", "indexer5", "indexer6", "indexer7", "indexer8", "indexer9", "indexer10", "indexer11", "indexer12", "indexer13", "indexer14", "indexer15",
     "mutex2", "mutex3", "mutex4", "mutex5", "mutex6",
     "pcounter2", "pcounter3", "pcounter4", "pcounter5", "pcounter6",
     "philosophers2", "philosophers3", "philosophers4", "philosophers5", "philosophers6",
