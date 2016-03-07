@@ -2,7 +2,7 @@ import scalaz.Scalaz._
 
 object ExplorationType extends Enumeration {
   type ExplorationType = Value
-  val AllInterleavings, OneInterleaving, RandomInterleaving, InterferenceTracking = Value
+  val AllInterleavings, OneInterleaving, RandomInterleaving, InterferenceTracking, DPOR = Value
 }
 import ExplorationType._
 
@@ -554,6 +554,84 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       }
     }
 
+  case object CannotHandle extends Exception
+  private def dporExplore(s0: State, start: Long, timeout: Option[Long], graph: Option[Graph[State, (TID, Effects)]], sem: Semantics[Exp, Abs, Addr, Time]) = {
+    import scala.util.control.Breaks._
+    type Transition = (State, TID, Effects)
+    type Stack = (scala.collection.immutable.Vector[Transition], State)
+    def last(stack: Stack): State = stack._2
+    def dom(stack: Stack): List[Int] = (0 to (stack._1.size-1)).toList
+    def proc(stack: Stack, i: Int): TID = stack._1(i)._2
+    def pre(stack: Stack, i: Int): State = stack._1(i)._1
+    def enabled(state: State): Set[TID] = state.stepAll(sem).map(_._1)
+    val backtrack = scala.collection.mutable.Map[State, Set[TID]]().withDefaultValue(Set[TID]())
+    def happensBefore(stack: Stack, i: Int, p: TID): Boolean = ??? // TODO
+    def dependentAndCoEnabled(tr1: (Effects, State), stack: Stack, i: Int) = {
+      dependent(tr1._1, stack._1(i)._3) && true /* TODO: co-enabledness can be improved */
+    }
+    var halted: Set[State] = Set[State]()
+    var timedOut: Boolean = false
+    var g: Option[Graph[State, (TID, Effects)]] = graph
+    def explore(stack: Stack): Unit = {
+      if (timeout.map(System.nanoTime - start > _).getOrElse(false)) {
+        timedOut = true
+      } else {
+        val s: State = last(stack)
+        for (p <- s.threads.tids) {
+          val succs = s.stepTid(sem, p)
+          succs.size match {
+            case 0 => () /* do nothing (no existing i) */
+            case 1 => {
+              val next: (Effects, State) = succs.head
+              dom(stack).sortWith(_ > _).find(i => dependentAndCoEnabled(next, stack, i) && !happensBefore(stack, i, p)) match {
+                case Some(i: Int) =>
+                  val preSi: State = pre(stack, i)
+                  val enabledTr: Set[TID] = enabled(preSi)
+                  val e: Set[TID] = enabledTr.filter(q => q == p || dom(stack).contains((j: Int) => j > i && q == proc(stack, j) && happensBefore(stack, j, p)))
+                  if (!e.isEmpty) {
+                    backtrack += preSi -> (backtrack(preSi) + e.head)
+                  } else {
+                  backtrack += preSi -> (backtrack(preSi) ++ enabledTr)
+                  }
+                case None => () /* do nothing (no existing i) */
+              }
+            }
+            case _ => throw CannotHandle /* more than one successor */
+          }
+        }
+        s.stepAny(sem) match {
+          case None => () /* no enabled transition */
+          case Some((p: TID, results: Set[(Effects, State)])) =>
+            if (results.size > 1) {
+              throw CannotHandle /* more than one successor */
+          } else {
+              results.headOption match {
+                case Some(_) =>
+                backtrack += s -> (backtrack(s) + p)
+                  var done: Set[TID] = Set[TID]()
+                  breakable { while(true) {
+                    (backtrack(s) -- done).headOption match {
+                      case Some(p: TID) =>
+                        done = done + p
+                        s.stepTid(sem, p).headOption match {
+                          case Some((effs: Effects, next: State)) =>
+                            g = g.map(_.addEdge(s, (p, effs), next))
+                            explore((stack._1 :+ (s, p, effs), next))
+                          case None => () /* no successor */
+                        }
+                      case None => break
+                    }
+                  }}
+                case None => () /* no successor */
+              }
+            }
+        }
+      }
+    }
+    explore(scala.collection.immutable.Vector[Transition](), s0)
+    ConcurrentAAMOutput(halted, g.map(_.size).getOrElse[Int](0), (System.nanoTime - start) / Math.pow(10, 9), g, timedOut)
+  }
+
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
     exploration match {
       case AllInterleavings => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
@@ -565,5 +643,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case InterferenceTracking => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), EffectsMap(), ThreadPickMap(),
         Set(), System.nanoTime, timeout, Set(),
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
+      case DPOR => dporExplore(State.inject(exp), System.nanoTime, timeout, if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
     }
 }
