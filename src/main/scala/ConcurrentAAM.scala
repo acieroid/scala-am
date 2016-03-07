@@ -288,8 +288,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   private def effectsOf(transitions: Set[(Effects, State)]): Effects =
     transitions.flatMap(_._1)
   private def dependent(eff1: Effects, eff2: Effects) = {
-    val groups1 = eff1.groupBy(_.kind)
-    val groups2 = eff2.groupBy(_.kind)
+    val groups1 = eff1.groupBy(_.kind).withDefaultValue(Set())
+    val groups2 = eff2.groupBy(_.kind).withDefaultValue(Set())
     /* This is our dependency relation. One effect is dependent on another if they
      * act on the same variable and at least one of them is a write. This is
      * extended to sets of effects, and to transitions */
@@ -564,15 +564,24 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def proc(stack: Stack, i: Int): TID = stack._1(i)._2
     def pre(stack: Stack, i: Int): State = stack._1(i)._1
     def enabled(state: State): Set[TID] = state.stepAll(sem).map(_._1)
+    def append(stack: Stack, s: State, p: TID, effs: Effects, next: State): Stack = (stack._1 :+ (s, p, effs), next)
     val backtrack = scala.collection.mutable.Map[State, Set[TID]]().withDefaultValue(Set[TID]())
-    def happensBefore(stack: Stack, i: Int, p: TID): Boolean = ??? // TODO
-    def dependentAndCoEnabled(tr1: (Effects, State), stack: Stack, i: Int) = {
-      dependent(tr1._1, stack._1(i)._3) && true /* TODO: co-enabledness can be improved */
+    def isDependent(tr: (Effects, State), stack: Stack, i: Int): Boolean = dependent(tr._1, stack._1(i)._3)
+    def isDependentAndCoEnabled(tr: (Effects, State), stack: Stack, i: Int) = {
+      isDependent(tr, stack, i) && true /* TODO: co-enabledness can be improved */
     }
+
+    type ClockVector = Map[TID, Int]
+    def emptyClockVector: ClockVector = Map[TID, Int]().withDefaultValue(0)
+    type ClockVectors = Map[Either[TID, Int], ClockVector]
+    def emptyClockVectors: ClockVectors = Map[Either[TID, Int], ClockVector]().withDefaultValue(emptyClockVector)
+    def maxClockVector(c1: ClockVector, c2: ClockVector): ClockVector = c1.keySet.union(c2.keySet).map(k =>
+      (k, scala.math.max(c1(k), c2(k)))).toMap
+    def happensBefore(clocks: ClockVectors, stack: Stack, i: Int, p: TID): Boolean = i <= clocks(Left(p))(proc(stack, i))
     var halted: Set[State] = Set[State]()
     var timedOut: Boolean = false
     var g: Option[Graph[State, (TID, Effects)]] = graph
-    def explore(stack: Stack): Unit = {
+    def explore(stack: Stack, clocks: ClockVectors): Unit = {
       if (timeout.map(System.nanoTime - start > _).getOrElse(false)) {
         timedOut = true
       } else {
@@ -583,16 +592,21 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
             case 0 => () /* do nothing (no existing i) */
             case 1 => {
               val next: (Effects, State) = succs.head
-              dom(stack).sortWith(_ > _).find(i => dependentAndCoEnabled(next, stack, i) && !happensBefore(stack, i, p)) match {
+              dom(stack).sortWith(_ > _).find(i => isDependentAndCoEnabled(next, stack, i) && !happensBefore(clocks, stack, i, p)) match {
                 case Some(i: Int) =>
                   val preSi: State = pre(stack, i)
                   val enabledTr: Set[TID] = enabled(preSi)
-                  val e: Set[TID] = enabledTr.filter(q => q == p || dom(stack).contains((j: Int) => j > i && q == proc(stack, j) && happensBefore(stack, j, p)))
+                  if (enabledTr.contains(p)) {
+                    backtrack += preSi -> (backtrack(preSi) + p)
+                  } else {
+                    backtrack += preSi -> (backtrack(preSi) ++ enabledTr)
+                  }
+                  /*val e: Set[TID] = enabledTr.filter(q => q == p || dom(stack).contains((j: Int) => j > i && q == proc(stack, j) && happensBefore(stack, j, p)))
                   if (!e.isEmpty) {
                     backtrack += preSi -> (backtrack(preSi) + e.head)
                   } else {
-                  backtrack += preSi -> (backtrack(preSi) ++ enabledTr)
-                  }
+                    backtrack += preSi -> (backtrack(preSi) ++ enabledTr)
+                  }*/
                 case None => () /* do nothing (no existing i) */
               }
             }
@@ -600,7 +614,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           }
         }
         s.stepAny(sem) match {
-          case None => () /* no enabled transition */
+          case None => halted += s /* no enabled transition */
           case Some((p: TID, results: Set[(Effects, State)])) =>
             if (results.size > 1) {
               throw CannotHandle /* more than one successor */
@@ -614,22 +628,30 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                       case Some(p: TID) =>
                         done = done + p
                         s.stepTid(sem, p).headOption match {
-                          case Some((effs: Effects, next: State)) =>
+                          case Some(t @ (effs: Effects, next: State)) =>
                             g = g.map(_.addEdge(s, (p, effs), next))
-                            explore((stack._1 :+ (s, p, effs), next))
-                          case None => () /* no successor */
+                            val stack2: Stack = append(stack, s, p, effs, next)
+                            val cv: ClockVector = (0 to (stack._1.size - 1)).filter(i => isDependent(t, stack, i)).map(i => clocks(Right(i))).foldLeft(emptyClockVector)((l, r) => maxClockVector(l, r))
+                            val cv2: ClockVector = cv + (p -> (stack2._1.size - 1))
+                            val clocks2: ClockVectors = clocks + (Left(p) -> cv2) + (Right((stack2._1.size - 1)) -> cv2)
+                            explore(stack2, clocks2)
+                          case None => halted += s /* no successor */
                         }
                       case None => break
                     }
                   }}
-                case None => () /* no successor */
+                case None => halted += s /* no successor */
               }
             }
         }
       }
     }
-    explore(scala.collection.immutable.Vector[Transition](), s0)
-    ConcurrentAAMOutput(halted, g.map(_.size).getOrElse[Int](0), (System.nanoTime - start) / Math.pow(10, 9), g, timedOut)
+    try {
+      explore((scala.collection.immutable.Vector[Transition](), s0), emptyClockVectors)
+      ConcurrentAAMOutput(halted, g.map(_.size).getOrElse[Int](0), (System.nanoTime - start) / Math.pow(10, 9), g, timedOut)
+    } catch {
+      case CannotHandle => ConcurrentAAMOutput(halted, g.map(_.size).getOrElse(0), 0, None, true)
+    }
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
