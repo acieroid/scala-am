@@ -1,11 +1,12 @@
 object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false)
+  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
     opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers to run the benchmarks on (1 by default)")
     opt[Int]('r', "random") action { (x, c) => c.copy(random = x) } text("Number of random interleavings explored (10 by default)")
     opt[Unit]('s', "skip-all") action { (x, c) => c.copy(skipAll = true) } text("Skip computing all interleavings")
+    opt[Unit]('a', "skip-abstract") action { (x, c) => c.copy(skipAbstract = true) } text("Skip computing in the abstract")
     opt[Config.Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
   }
 }
@@ -165,66 +166,68 @@ object Benchmarks {
        */
       programs.foreach(name => {
         println(s"Checking results for $name")
-        val conc = state.concreteResults(name)
-        val abs = state.abstractResults(name)
-        val oneconc = conc(ExplorationType.OneInterleaving)
-        val oneabs = abs(ExplorationType.OneInterleaving)
-        val redconc = conc(ExplorationType.InterferenceTracking)
-        val redabs = abs(ExplorationType.InterferenceTracking)
+        (state.concreteResults.get(name), state.abstractResults.get(name)) match {
+          case (Some(conc), Some(abs)) =>
+            val oneconc = conc(ExplorationType.OneInterleaving)
+            val oneabs = abs(ExplorationType.OneInterleaving)
+            val redconc = conc(ExplorationType.InterferenceTracking)
+            val redabs = abs(ExplorationType.InterferenceTracking)
 
-        (conc.get(ExplorationType.AllInterleavings), abs.get(ExplorationType.AllInterleavings)) match {
-          case (Some(allconc), Some(allabs)) =>
-            println(s"Number of final values: allconc: ${allconc.finalValues.size}, redconc: ${redconc.finalValues.size}, allabs: ${allabs.finalValues.size}, redabs: ${redabs.finalValues.size}")
+            (conc.get(ExplorationType.AllInterleavings), abs.get(ExplorationType.AllInterleavings)) match {
+              case (Some(allconc), Some(allabs)) =>
+                println(s"Number of final values: allconc: ${allconc.finalValues.size}, redconc: ${redconc.finalValues.size}, allabs: ${allabs.finalValues.size}, redabs: ${redabs.finalValues.size}")
+                /* Concrete */
+                if (!oneconc.timedOut && !allconc.timedOut && !redconc.timedOut) {
+                  if (!oneconc.finalValues.subsetOf(allconc.finalValues)) // 1
+                    err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in all interleavings (${allconc.finalValues})")
+                  if (!(redconc.finalValues == allconc.finalValues)) // 2
+                    err(s"$name (concrete): reduced interleavings (${redconc.finalValues}) do not match all interleavings (${allconc.finalValues})")
+                } else if (allconc.timedOut && !oneconc.timedOut && !redconc.timedOut) {
+                  if (!allconc.finalValues.subsetOf(redconc.finalValues)) // 4
+                    err(s"$name (concrete): all explored interleavings (with timeout, ${allconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
+                } else if (redconc.timedOut && !allconc.timedOut) {
+                  err("s$name (concrete): reduced interleavings timed out, but all interleavings did not")
+                }
+                /* Abstract */
+                if (!oneabs.timedOut && !allabs.timedOut && !redabs.timedOut) {
+                  if (!oneabs.finalValues.subsetOf(allabs.finalValues)) // 1
+                    err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in all interleavings (${allabs.finalValues})")
+                  if (!(redabs.finalValues == allabs.finalValues)) // 2
+                    err(s"$name (abstract): reduced interleavings (${redabs.finalValues}) do not match all interleavings (${allabs.finalValues})")
+                } else if (allabs.timedOut && !oneabs.timedOut && !redabs.timedOut) {
+                  if (!allabs.finalValues.subsetOf(redabs.finalValues)) // 4
+                    err(s"$name (abstract): all explored interleavings (with timeout, ${allabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
+                } else if (redabs.timedOut && !allabs.timedOut) {
+                  err("s$name (abstract): reduced interleavings timed out, but all interleavings did not")
+            }
+                /* Concrete <-> Abstract */
+                if (!allabs.timedOut && !allconc.timedOut && !subsumes(allabs.finalValues, allconc.finalValues))
+                  err("$name (all): abstract (${allabs.finalValues}) does not subsume concrete (${allconc.finalValues})")
+              case _ => println("All interleavings were skipped")
+            }
             /* Concrete */
-            if (!oneconc.timedOut && !allconc.timedOut && !redconc.timedOut) {
-              if (!oneconc.finalValues.subsetOf(allconc.finalValues)) // 1
-                err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in all interleavings (${allconc.finalValues})")
-              if (!(redconc.finalValues == allconc.finalValues)) // 2
-                err(s"$name (concrete): reduced interleavings (${redconc.finalValues}) do not match all interleavings (${allconc.finalValues})")
-            } else if (allconc.timedOut && !oneconc.timedOut && !redconc.timedOut) {
-              if (!allconc.finalValues.subsetOf(redconc.finalValues)) // 4
-                err(s"$name (concrete): all explored interleavings (with timeout, ${allconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
-            } else if (redconc.timedOut && !allconc.timedOut) {
-              err("s$name (concrete): reduced interleavings timed out, but all interleavings did not")
-            }
+            if (!oneconc.timedOut && !redconc.timedOut)
+              if (!oneconc.finalValues.subsetOf(redconc.finalValues)) // 3 & 5
+                err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
             /* Abstract */
-            if (!oneabs.timedOut && !allabs.timedOut && !redabs.timedOut) {
-              if (!oneabs.finalValues.subsetOf(allabs.finalValues)) // 1
-                err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in all interleavings (${allabs.finalValues})")
-              if (!(redabs.finalValues == allabs.finalValues)) // 2
-                err(s"$name (abstract): reduced interleavings (${redabs.finalValues}) do not match all interleavings (${allabs.finalValues})")
-            } else if (allabs.timedOut && !oneabs.timedOut && !redabs.timedOut) {
-              if (!allabs.finalValues.subsetOf(redabs.finalValues)) // 4
-                err(s"$name (abstract): all explored interleavings (with timeout, ${allabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
-            } else if (redabs.timedOut && !allabs.timedOut) {
-              err("s$name (abstract): reduced interleavings timed out, but all interleavings did not")
-            }
+            if (!oneabs.timedOut && !redabs.timedOut)
+              if (!oneabs.finalValues.subsetOf(redabs.finalValues)) // 3 & 5
+                err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
             /* Concrete <-> Abstract */
-            if (!allabs.timedOut && !allconc.timedOut && !subsumes(allabs.finalValues, allconc.finalValues))
-              err("$name (all): abstract (${allabs.finalValues}) does not subsume concrete (${allconc.finalValues})")
-          case _ => println("All interleavings were skipped")
-        }
-        /* Concrete */
-        if (!oneconc.timedOut && !redconc.timedOut)
-          if (!oneconc.finalValues.subsetOf(redconc.finalValues)) // 3 & 5
-            err(s"$name (concrete): one interleaving (${oneconc.finalValues}) not contained in reduced interleavings (${redconc.finalValues})")
-        /* Abstract */
-        if (!oneabs.timedOut && !redabs.timedOut)
-          if (!oneabs.finalValues.subsetOf(redabs.finalValues)) // 3 & 5
-            err(s"$name (abstract): one interleaving (${oneabs.finalValues}) not contained in reduced interleavings (${redabs.finalValues})")
-        /* Concrete <-> Abstract */
-        if (!oneabs.timedOut && !oneconc.timedOut && !subsumes(oneabs.finalValues, oneconc.finalValues))
-          err("$name (one): abstract (${oneabs.finalValues}) does not subsume concrete (${oneconc.finalValues})")
-        if (!redabs.timedOut && !redconc.timedOut && !subsumes(redabs.finalValues, redconc.finalValues))
-          err("$name (red): abstract (${redabs.finalValues}) does not subsume concrete (${redconc.finalValues})")
+            if (!oneabs.timedOut && !oneconc.timedOut && !subsumes(oneabs.finalValues, oneconc.finalValues))
+              err("$name (one): abstract (${oneabs.finalValues}) does not subsume concrete (${oneconc.finalValues})")
+            if (!redabs.timedOut && !redconc.timedOut && !subsumes(redabs.finalValues, redconc.finalValues))
+              err("$name (red): abstract (${redabs.finalValues}) does not subsume concrete (${redconc.finalValues})")
 
-        (conc.get(ExplorationType.RandomInterleaving), abs.get(ExplorationType.RandomInterleaving)) match {
-          case (Some(randconc), Some(randabs)) =>
-            /* Random (8) */
-            if (!redabs.timedOut && !randabs.finalValues.subsetOf(redabs.finalValues))
-              err("$name (abstract): randomly explored paths explored values (${randabs.finalValues}) that weren't explored in reduced interleavings (${redabs.finalValues})")
-            if (!redconc.timedOut && !randconc.finalValues.subsetOf(redconc.finalValues))
-              err("$name (concrete): randomly explored paths explored values (${randconc.finalValues}) that weren't explored in reduced interleavings (${redconc.finalValues})")
+            (conc.get(ExplorationType.RandomInterleaving), abs.get(ExplorationType.RandomInterleaving)) match {
+              case (Some(randconc), Some(randabs)) =>
+                /* Random (8) */
+                if (!redabs.timedOut && !randabs.finalValues.subsetOf(redabs.finalValues))
+                  err("$name (abstract): randomly explored paths explored values (${randabs.finalValues}) that weren't explored in reduced interleavings (${redabs.finalValues})")
+                if (!redconc.timedOut && !randconc.finalValues.subsetOf(redconc.finalValues))
+                  err("$name (concrete): randomly explored paths explored values (${randconc.finalValues}) that weren't explored in reduced interleavings (${redconc.finalValues})")
+              case _ => ()
+            }
           case _ => ()
         }
       })
@@ -283,7 +286,7 @@ object Benchmarks {
           List(ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking, ExplorationType.DPOR) ++
           List.fill(config.random)(ExplorationType.RandomInterleaving))
         val work = programs.toList.flatMap(name =>
-          explorations.flatMap(expl => Set(true, false).map(concrete =>
+          explorations.flatMap(expl => (if (config.skipAbstract) { Set(true) } else { Set(true, false) }).map(concrete =>
             MachineConfig(name, expl, concrete, config.timeout))))
         println(s"Scheduling ${work.size} items of work")
         val workers = (1 to config.workers).map(i => system.actorOf(Props[Worker], s"worker-$i"))
