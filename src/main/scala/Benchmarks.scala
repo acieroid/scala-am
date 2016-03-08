@@ -91,7 +91,7 @@ object Benchmarks {
             MachineOutput(output.time, output.numberOfStates, output.timedOut, output.finalValues.map(x => x))
           } catch {
             case e: Throwable => {
-              println(s"Benchmark $name failed! (config: $config)")
+              println(s"Benchmark $name failed! (config: $config, error: $e)")
               MachineOutput(0, 0, false, Set[Any]())
             }
           }
