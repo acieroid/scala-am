@@ -576,7 +576,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     type ClockVectors = Map[Either[TID, Int], ClockVector]
     def emptyClockVectors: ClockVectors = Map[Either[TID, Int], ClockVector]().withDefaultValue(emptyClockVector)
     def maxClockVector(c1: ClockVector, c2: ClockVector): ClockVector = c1.keySet.union(c2.keySet).map(k =>
-      (k, scala.math.max(c1(k), c2(k)))).toMap
+      (k, scala.math.max(c1(k), c2(k)))).toMap.withDefaultValue(0)
     def happensBefore(clocks: ClockVectors, stack: Stack, i: Int, p: TID): Boolean = i <= clocks(Left(p))(proc(stack, i))
     var halted: Set[State] = Set[State]()
     var timedOut: Boolean = false
