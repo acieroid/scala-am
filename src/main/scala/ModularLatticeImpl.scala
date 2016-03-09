@@ -300,7 +300,7 @@ object Type {
   }
 }
 
-object ConcreteLatticeNew extends Lattice {
+class ConcreteLatticeNew(counting: Boolean) extends Lattice {
   import ConcreteString._
   import ConcreteBoolean._
   import ConcreteInteger._
@@ -313,20 +313,20 @@ object ConcreteLatticeNew extends Lattice {
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }
 
-object TypeSetLattice extends Lattice {
+class TypeSetLattice(counting: Boolean) extends Lattice {
   import Type._
   import ConcreteBoolean._
-  val lattice = new MakeLattice[T, B, T, T, T, T](false)
+  val lattice = new MakeLattice[T, B, T, T, T, T](counting)
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }
 
-object BoundedIntLattice extends Lattice {
+class BoundedIntLattice(bound: Int, counting: Boolean) extends Lattice {
   import Type._
   import ConcreteBoolean._
-  val bounded = new BoundedInteger(100)
+  val bounded = new BoundedInteger(bound)
   import bounded._
-  val lattice = new MakeLattice[T, B, I, T, T, T](true)
+  val lattice = new MakeLattice[T, B, I, T, T, T](counting)
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }

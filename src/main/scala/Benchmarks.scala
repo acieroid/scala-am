@@ -11,6 +11,8 @@ object BenchmarksConfig {
   }
 }
 
+object AbstractLattice extends TypeSetLattice(false)
+
 /* From http://stackoverflow.com/questions/7539831/scala-draw-table-to-console */
 object Tabulator {
   def format(table: Seq[Seq[Any]]) = table match {
@@ -73,7 +75,7 @@ object Benchmarks {
   class Worker extends Actor {
     def compute(config: MachineConfig): MachineOutput = config match {
       case MachineConfig(name, exploration, concrete, timeout) =>
-        val lattice = if (concrete) { ConcreteLattice } else { TypeSetLattice }
+        val lattice = if (concrete) { ConcreteLattice } else { AbstractLattice }
         implicit val isAbstractValue = lattice.isAbstractValue
         val time = if (concrete) { ConcreteTimestamp } else { KCFA(0) }
         implicit val isTimestamp = time.isTimestamp
@@ -135,18 +137,18 @@ object Benchmarks {
     private def subsumes(abs: Set[Any], conc: Set[Any]): Boolean = {
       conc.forall(c => {
         val a2 = c.asInstanceOf[ConcreteLattice.Element] match {
-          case ConcreteLattice.ConcreteInt(v) => TypeSetLattice.isAbstractValue.inject(v)
-          case ConcreteLattice.ConcreteFloat(v) => TypeSetLattice.isAbstractValue.inject(v)
-          case ConcreteLattice.ConcreteString(v) => TypeSetLattice.isAbstractValue.inject(v)
-          case ConcreteLattice.ConcreteChar(v) => TypeSetLattice.isAbstractValue.inject(v)
-          case ConcreteLattice.ConcreteSymbol(v) => TypeSetLattice.isAbstractValue.injectSymbol(v)
-          case ConcreteLattice.ConcreteBool(v) => TypeSetLattice.isAbstractValue.inject(v)
-          case ConcreteLattice.Bottom => TypeSetLattice.isAbstractValue.bottom
-          case ConcreteLattice.ConcreteError(v) => TypeSetLattice.isAbstractValue.error(TypeSetLattice.isAbstractValue.inject(v))
+          case ConcreteLattice.ConcreteInt(v) => AbstractLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.ConcreteFloat(v) => AbstractLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.ConcreteString(v) => AbstractLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.ConcreteChar(v) => AbstractLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.ConcreteSymbol(v) => AbstractLattice.isAbstractValue.injectSymbol(v)
+          case ConcreteLattice.ConcreteBool(v) => AbstractLattice.isAbstractValue.inject(v)
+          case ConcreteLattice.Bottom => AbstractLattice.isAbstractValue.bottom
+          case ConcreteLattice.ConcreteError(v) => AbstractLattice.isAbstractValue.error(AbstractLattice.isAbstractValue.inject(v))
           /* Benchmarks shouldn't return closures, thread ids, locks, vectors, so we ignore these values */
-          case _ => { err(s"Cannot convert $c to abstract"); TypeSetLattice.isAbstractValue.bottom }
+          case _ => { err(s"Cannot convert $c to abstract"); AbstractLattice.isAbstractValue.bottom }
         }
-        abs.exists(a => TypeSetLattice.isAbstractValue.subsumes(a.asInstanceOf[TypeSetLattice.L], a2))
+        abs.exists(a => AbstractLattice.isAbstractValue.subsumes(a.asInstanceOf[AbstractLattice.L], a2))
       })
     }
 

@@ -136,6 +136,9 @@ abstract class JoinLatticePropSpec(lattice: Lattice)
 }
 
 class ConcreteTest extends LatticePropSpec(ConcreteLattice)
-class ConcreteNewTest extends JoinLatticePropSpec(ConcreteLatticeNew)
-class TypeSetTest extends JoinLatticePropSpec(TypeSetLattice)
-class BoundedIntTest extends JoinLatticePropSpec(BoundedIntLattice)
+class ConcreteNewCountingTest extends JoinLatticePropSpec(new ConcreteLatticeNew(true))
+class ConcreteNewNoCountingTest extends JoinLatticePropSpec(new ConcreteLatticeNew(false))
+class TypeSetCountingTest extends JoinLatticePropSpec(new TypeSetLattice(true))
+class TypeSetNoCountingTest extends JoinLatticePropSpec(new TypeSetLattice(false))
+class BoundedIntCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(100, true))
+class BoundedIntNoCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(100, false))

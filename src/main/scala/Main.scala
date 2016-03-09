@@ -143,6 +143,8 @@ object Config {
     address: Address.Value = Address.Classical,
     exploration: ExplorationType.Value = ExplorationType.InterferenceTracking,
     inspect: Boolean = false,
+    counting: Boolean = false,
+    bound: Int = 100,
     timeout: Option[Long] = None)
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
@@ -157,6 +159,8 @@ object Config {
     opt[Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
     opt[Unit]('i', "inspect") action { (x, c) => c.copy(inspect = true) } text("Launch inspection REPL (disabled by default)")
     opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text("Addresses to use (Classical, ValueSensitive)")
+    opt[Unit]("counting") action { (x, c) => c.copy(counting = true) } text("Use abstract counting (on for concrete lattices)")
+    opt[Int]('b', "bound") action { (x, c) => c.copy(bound = x) } text("Bound for bounded lattice (default to 100)")
   }
 }
 
@@ -212,9 +216,9 @@ object Main {
       case Some(config) if (config.language == Config.Language.Scheme) => {
         val lattice: Lattice = config.lattice match {
           case Config.Lattice.Concrete => ConcreteLattice
-          case Config.Lattice.ConcreteNew => ConcreteLatticeNew
-          case Config.Lattice.TypeSet => TypeSetLattice
-          case Config.Lattice.BoundedInt => BoundedIntLattice
+          case Config.Lattice.ConcreteNew => new ConcreteLatticeNew(true)
+          case Config.Lattice.TypeSet => new TypeSetLattice(config.counting)
+          case Config.Lattice.BoundedInt => new BoundedIntLattice(config.bound, config.counting)
         }
         implicit val isAbstractValue = lattice.isAbstractValue
 
