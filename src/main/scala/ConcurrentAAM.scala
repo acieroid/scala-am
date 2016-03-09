@@ -362,28 +362,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     case Some(tid) => Set[TID](tid) /* ample set found */
   }
 
-  trait EffectTarget
-  case class Variable(addr: Addr) extends EffectTarget
-  case class Vector(addr: Addr) extends EffectTarget
-  object EffectTarget {
-    def apply(eff: Effect[Addr, Abs]): EffectTarget = eff match {
-      case EffectReadVariable(a) => Variable(a)
-      case EffectWriteVariable(a) => Variable(a)
-      case EffectReadVector(a) => Vector(a)
-      case EffectWriteVector(a) => Vector(a)
-      case EffectAcquire(a) => Variable(a)
-      case EffectRelease(a) => Variable(a)
-    }
-  }
-
-  case class LocalEffectsMap(val m: Map[EffectTarget, Set[(Effect[Addr, Abs], TID, State)]]) {
-    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]): LocalEffectsMap = {
-      val target: EffectTarget = EffectTarget(effect)
-      new LocalEffectsMap(m.get(target) match {
-        case None => m + (target -> (Set((effect, tid, s1))))
-        case Some(s) => m + (target -> (s + ((effect, tid, s1))))
+  case class LocalEffectsMap(val m: Map[Addr, Set[(Effect[Addr, Abs], TID, State)]]) {
+    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]): LocalEffectsMap =
+      new LocalEffectsMap(m.get(effect.target) match {
+        case None => m + (effect.target -> (Set((effect, tid, s1))))
+        case Some(s) => m + (effect.target -> (s + ((effect, tid, s1))))
       })
-    }
     def join(that: LocalEffectsMap) = new LocalEffectsMap(m |+| that.m)
     /** Find conflicts in this effect map. Returns the set of states in conflict,
       * along with the tid that needs to be explored */
@@ -451,7 +435,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
   object LocalEffectsMap {
-    val empty: LocalEffectsMap = new LocalEffectsMap(Map[EffectTarget, Set[(Effect[Addr, Abs], TID, State)]]())
+    val empty: LocalEffectsMap = new LocalEffectsMap(Map[Addr, Set[(Effect[Addr, Abs], TID, State)]]())
     def apply(): LocalEffectsMap = empty
   }
 
@@ -521,20 +505,29 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                 case (conflicts, m) => (m, acc._2 ++ conflicts)
               }
             })
-            if (succs.isEmpty /* || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) }) */) {
+            if (succs.isEmpty || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) })) {
               /* No successor, even though this is not a halt state: the current thread is blocked.
                All successors states already visited: the current thread is in a loop.
                In both cases, explore a different thread */
               /* In case of loop, some states probably have to be visited again! (if the effectsMap changed) */
-              // require(conflicts.isEmpty)
               newThreadPickMap.pick(s) match {
                 case Some(tid2) =>
-                  reducedLoop(((s, tid2)) +: todo.tail, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
+                  reducedLoop((((s, tid2)) +: todo.tail) ++ conflicts,
+                    if (conflicts.isEmpty) {
+                      visited + ((s, tid))
+                    } else {
+                      Set()
+                    }, newEffectsMap, newThreadPickMap,
                     halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
                 case None => {
                   val deadlocks: Set[(State, TID)] = newEffectsMap(s).findDeadlocks.flatMap(s => newThreadPickMap.pick(s).map(tid => (s, tid)))
-                  reducedLoop(todo.tail ++ deadlocks, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
-                    halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
+                  reducedLoop(todo.tail ++ deadlocks ++ conflicts,
+                    if (conflicts.isEmpty) {
+                      visited + ((s, tid))
+                    } else {
+                      Set()
+                    }, newEffectsMap, newThreadPickMap,
+                      halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
                 }
               }
             } else {
