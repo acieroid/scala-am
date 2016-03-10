@@ -362,13 +362,84 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     case Some(tid) => Set[TID](tid) /* ample set found */
   }
 
-  case class LocalEffectsMap(val m: Map[Addr, Set[(Effect[Addr, Abs], TID, State)]]) {
+  trait LocalEffectsMap {
+    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]): LocalEffectsMap
+    def join(that: LocalEffectsMap): LocalEffectsMap
+    def containsState(state: State): Boolean
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): Set[(State, TID)]
+    def findDeadlocks: Set[State]
+  }
+  object LocalEffectsMap {
+    def apply() = EmptyLocalEffectsMap
+  }
+  case object EmptyLocalEffectsMap extends LocalEffectsMap {
+    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]) =
+      (new ListLocalEffectsMap(Map[Addr, List[(Effect[Addr, Abs], TID, State)]]().withDefaultValue(Nil))).newTransition(s1, s2, tid, effect)
+    def join(that: LocalEffectsMap) = that match {
+      case EmptyLocalEffectsMap => this
+      case _ => that
+    }
+    def containsState(state: State) = false
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]) = Set[(State, TID)]()
+    def findDeadlocks = Set[State]()
+  }
+  case class ListLocalEffectsMap(val m: Map[Addr, List[(Effect[Addr, Abs], TID, State)]]) extends LocalEffectsMap {
+    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]) =
+      new ListLocalEffectsMap(m + (effect.target -> ((effect, tid, s1) :: m(effect.target))))
+    def join(that: LocalEffectsMap) = toSetLocalEffectsMap.join(that)
+    def containsState(state: State) = m.values.toSet.find(s => s.find(v => v._3 == state) match {
+      case Some(_) => true
+      case None => false
+    }) match {
+      case Some(_) => true
+      case None => false
+    }
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]) =
+      m.values.flatMap({
+        case effects => effects.zipWithIndex.foldRight(Set[(State, TID)]())((eff, acc: Set[(State, TID)]) => eff match {
+          case ((effect1, tid1, state1), idx) if (effect1.kind == EffectKind.WriteEffect) =>
+            effects.splitAt(idx)._1.foldLeft(acc)((acc: Set[(State, TID)], eff) => eff match {
+              case (effect2, tid2, state2) if (tid1 != tid2) =>
+                if ((effect1.isInstanceOf[EffectAcquire[Addr, Abs]] && effect2.isInstanceOf[EffectRelease[Addr, Abs]]) ||
+                  (effect1.isInstanceOf[EffectRelease[Addr, Abs]] && effect2.isInstanceOf[EffectAcquire[Addr, Abs]])) {
+                  /** Acquire and release are not dependent on each other */
+                  acc
+                } else {
+                  acc + ((state1, tid2))
+                }
+              case _ => acc
+            })
+          case _ => acc
+        })
+            }).toSet
+    def findDeadlocks =
+      m.values.flatMap({
+        case effects => effects.foldRight(Set[State]())((eff, acc) => eff match {
+          case (effect, _, state) if (effect.isInstanceOf[EffectAcquire[Addr, Abs]]) =>
+            acc + state
+          case _ => acc
+        })
+      }).toSet
+    def toSetLocalEffectsMap = {
+      println("Converting to set")
+      SetLocalEffectsMap(m.keySet.map(k => (k, m(k).toSet)).toMap.withDefaultValue(Set()))
+    }
+  }
+  case class SetLocalEffectsMap(val m: Map[Addr, Set[(Effect[Addr, Abs], TID, State)]]) extends LocalEffectsMap {
     def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]): LocalEffectsMap =
-      new LocalEffectsMap(m.get(effect.target) match {
-        case None => m + (effect.target -> (Set((effect, tid, s1))))
-        case Some(s) => m + (effect.target -> (s + ((effect, tid, s1))))
-      })
-    def join(that: LocalEffectsMap) = new LocalEffectsMap(m |+| that.m)
+      new SetLocalEffectsMap(m + (effect.target -> (m(effect.target) + ((effect, tid, s1)))))
+    def join(that: LocalEffectsMap): LocalEffectsMap = that match {
+      case EmptyLocalEffectsMap => this
+      case l: ListLocalEffectsMap => join(l.toSetLocalEffectsMap)
+      case SetLocalEffectsMap(thatm) => new SetLocalEffectsMap(m |+| thatm)
+    }
+    def containsState(state: State): Boolean = m.values.toSet.find(s => s.find(v => v._3 == state) match {
+      case Some(_) => true
+      case None => false
+    }) match {
+      case Some(_) => true
+      case None => false
+    }
     /** Find conflicts in this effect map. Returns the set of states in conflict,
       * along with the tid that needs to be explored */
     def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): Set[(State, TID)] = {
@@ -390,6 +461,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
        */
       /* for every write on s1, tid1, find conflicting effects from state s2 on a
        * different thread tid2, and explore from s1, tid2, and from s2, tid1 */
+      println("================")
       m.keySet.flatMap({ case target => m(target) match {
         case effects => effects.flatMap({
           case (effect1, tid1, state1) if (effect1.kind == EffectKind.WriteEffect) =>
@@ -422,6 +494,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           case _ => acc
         })
       }).toSet
+    def toSetLocalEffectsMap = this
     def print(graph: Option[Graph[State, (TID, Effects)]]): Unit = {
       println("====")
       graph match {
@@ -434,10 +507,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       println("====")
     }
   }
-  object LocalEffectsMap {
-    val empty: LocalEffectsMap = new LocalEffectsMap(Map[Addr, Set[(Effect[Addr, Abs], TID, State)]]())
-    def apply(): LocalEffectsMap = empty
-  }
 
   case class EffectsMap(m: Map[State, LocalEffectsMap]) {
     /** Called when a transition has been explored, from s1 to s2 by stepping tid,
@@ -445,10 +514,15 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       * explored again, as well as the new effects map. */
     def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effects: Set[Effect[Addr, Abs]]): (Set[(State, TID)], EffectsMap) = {
       val ms1 = m.getOrElse(s1, LocalEffectsMap())
-      val oldLocal = m.getOrElse(s2, LocalEffectsMap())
-      val newLocal = oldLocal.join(effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff)))
-      val newEffectsMap = new EffectsMap(m + (s2 -> newLocal))
-      (if (m.contains(s2) && oldLocal != newLocal) newLocal.findConflicts(graph) else Set(), newEffectsMap)
+      if (m.contains(s2) && !ms1.containsState(s2)) {
+        // merge node not within a loop
+        (Set(), this)
+      } else {
+        val oldLocal = m.getOrElse(s2, LocalEffectsMap())
+        val newLocal = oldLocal.join(effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff)))
+        val newEffectsMap = new EffectsMap(m + (s2 -> newLocal))
+        (if (m.contains(s2) && oldLocal != newLocal) newLocal.findConflicts(graph) else Set(), newEffectsMap)
+      }
     }
     def apply(s: State): LocalEffectsMap = m(s)
   }
