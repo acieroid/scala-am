@@ -514,14 +514,23 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       * explored again, as well as the new effects map. */
     def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effects: Set[Effect[Addr, Abs]]): (Set[(State, TID)], EffectsMap) = {
       val ms1 = m.getOrElse(s1, LocalEffectsMap())
-      if (m.contains(s2) && !ms1.containsState(s2)) {
-        // merge node not within a loop
-        (Set(), this)
-      } else {
+      if (ms1.containsState(s2)) {
+        /* loop: need to join */
         val oldLocal = m.getOrElse(s2, LocalEffectsMap())
         val newLocal = oldLocal.join(effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff)))
         val newEffectsMap = new EffectsMap(m + (s2 -> newLocal))
-        (if (m.contains(s2) && oldLocal != newLocal) newLocal.findConflicts(graph) else Set(), newEffectsMap)
+        (if (m.contains(s2) && newLocal != oldLocal) { newLocal.findConflicts(graph) } else { Set() }, newEffectsMap)
+      } else if (m.contains(s2)) {
+        /* merge: can erase -> TODO: not really the case, if there is a loop afterwards */
+        val oldLocal = m.getOrElse(s2, LocalEffectsMap())
+        val newLocal = effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff))
+        val newEffectsMap = new EffectsMap(m + (s2 -> newLocal))
+        (if (newLocal != oldLocal) newLocal.findConflicts(graph) else Set(), newEffectsMap)
+      } else {
+        // unencountered state
+        val local = effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff))
+        val newEffectsMap = new EffectsMap(m + (s2 -> local))
+        (Set(), newEffectsMap)
       }
     }
     def apply(s: State): LocalEffectsMap = m(s)
