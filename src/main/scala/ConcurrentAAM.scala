@@ -393,7 +393,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case None => false
     }
     def findConflicts(graph: Option[Graph[State, (TID, Effects)]]) = {
-      println("-------------")
+      //println("-------------")
       m.values.flatMap({
         case effects => effects.zipWithIndex.foldRight(Set[(State, TID)]())((eff, acc: Set[(State, TID)]) => eff match {
           case ((effect1, tid1, state1), idx) =>
@@ -404,7 +404,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                   /** Acquire and release are not dependent on each other */
                   acc
                 } else {
-                  println(s"Conflict between ${id(graph, state1)}, $tid1, and ${id(graph, state2)}, $tid2")
+                  //println(s"Conflict between ${id(graph, state1)}, $tid1, and ${id(graph, state2)}, $tid2")
                   acc + ((state1, tid2))
                 }
               case _ => acc
@@ -461,7 +461,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
        */
       /* for every write on s1, tid1, find conflicting effects from state s2 on a
        * different thread tid2, and explore from s1, tid2, and from s2, tid1 */
-      println("================")
+      //println("================")
       m.keySet.flatMap({ case target => m(target) match {
         case effects => effects.flatMap({
           case (effect1, tid1, state1) if (effect1.kind == WriteEffect) =>
@@ -471,7 +471,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                   (effect1.isInstanceOf[EffectRelease[Addr, Abs]] && effect2.isInstanceOf[EffectAcquire[Addr, Abs]])) {
                   Set[(State, TID)]()
                 } else {
-                  println(s"Conflict between ${id(graph, state1)}, $tid1, and ${id(graph, state2)}, $tid2 on target: $target")
+                  //println(s"Conflict between ${id(graph, state1)}, $tid1, and ${id(graph, state2)}, $tid2 on target: $target")
                   Set[(State, TID)]((state1, tid2), (state2, tid1))
                 }
               case _ => Set[(State, TID)]()
