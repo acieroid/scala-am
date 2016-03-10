@@ -21,8 +21,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   type KontAddr = aam.KontAddr
 
   private def effectsToXml(effects: Set[Effect[Addr, Abs]]): List[scala.xml.Node] = effects.toList.map(eff => eff.kind match {
-    case EffectKind.ReadEffect => <font color="forestgreen">{eff.toString}</font>
-    case EffectKind.WriteEffect => <font color="red2">{eff.toString}</font>
+    case ReadEffect => <font color="forestgreen">{eff.toString}</font>
+    case WriteEffect => <font color="red2">{eff.toString}</font>
   })
 
   type Effects = Set[Effect[Addr, Abs]]
@@ -140,9 +140,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case None => false
     }
 
-    def halted: Boolean = threads.forall({
-      case (_, ctxs) => ctxs.forall(_.halted)
-    })
+    def halted: Boolean = threads.tids == Set(thread.initial) && threads.get(thread.initial).forall(_.halted)
 
     override def toString = threads.tids.map(tid =>
       s"$tid: " + threads.get(tid).map(ctx => ctx.control.toString().take(40)).mkString(", ")
@@ -293,12 +291,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     /* This is our dependency relation. One effect is dependent on another if they
      * act on the same variable and at least one of them is a write. This is
      * extended to sets of effects, and to transitions */
-    groups1(EffectKind.WriteEffect).foldLeft(false)((acc, a) =>
+    groups1(WriteEffect).foldLeft(false)((acc, a) =>
       /* Check write-write and read-write dependencies */
-      acc || groups2(EffectKind.WriteEffect).contains(a) || groups2(EffectKind.ReadEffect).contains(a)) ||
-    groups2(EffectKind.WriteEffect).foldLeft(false)((acc, a) =>
+      acc || groups2(WriteEffect).contains(a) || groups2(ReadEffect).contains(a)) ||
+    groups2(WriteEffect).foldLeft(false)((acc, a) =>
       /* Check write-read dependencies */
-      acc || groups1(EffectKind.ReadEffect).contains(a))
+      acc || groups1(ReadEffect).contains(a))
   }
 
   private def checkAmpleConditions(s: State, tid: TID, stepped: Set[(Effects, State)], sem: Semantics[Exp, Abs, Addr, Time], todo: Set[State]): Boolean = {
@@ -394,24 +392,27 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case Some(_) => true
       case None => false
     }
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]) =
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]) = {
+      println("-------------")
       m.values.flatMap({
         case effects => effects.zipWithIndex.foldRight(Set[(State, TID)]())((eff, acc: Set[(State, TID)]) => eff match {
-          case ((effect1, tid1, state1), idx) if (effect1.kind == EffectKind.WriteEffect) =>
+          case ((effect1, tid1, state1), idx) =>
             effects.splitAt(idx)._1.foldLeft(acc)((acc: Set[(State, TID)], eff) => eff match {
-              case (effect2, tid2, state2) if (tid1 != tid2) =>
+              case (effect2, tid2, state2) if (tid1 != tid2 && (effect1.kind |+| effect2.kind) == WriteEffect) =>
                 if ((effect1.isInstanceOf[EffectAcquire[Addr, Abs]] && effect2.isInstanceOf[EffectRelease[Addr, Abs]]) ||
                   (effect1.isInstanceOf[EffectRelease[Addr, Abs]] && effect2.isInstanceOf[EffectAcquire[Addr, Abs]])) {
                   /** Acquire and release are not dependent on each other */
                   acc
                 } else {
+                  println(s"Conflict between ${id(graph, state1)}, $tid1, and ${id(graph, state2)}, $tid2")
                   acc + ((state1, tid2))
                 }
               case _ => acc
             })
           case _ => acc
         })
-            }).toSet
+      }).toSet
+    }
     def findDeadlocks =
       m.values.flatMap({
         case effects => effects.foldRight(Set[State]())((eff, acc) => eff match {
@@ -421,7 +422,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         })
       }).toSet
     def toSetLocalEffectsMap = {
-      println("Converting to set")
       SetLocalEffectsMap(m.keySet.map(k => (k, m(k).toSet)).toMap.withDefaultValue(Set()))
     }
   }
@@ -464,7 +464,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       println("================")
       m.keySet.flatMap({ case target => m(target) match {
         case effects => effects.flatMap({
-          case (effect1, tid1, state1) if (effect1.kind == EffectKind.WriteEffect) =>
+          case (effect1, tid1, state1) if (effect1.kind == WriteEffect) =>
             effects.flatMap({
               case (effect2, tid2, state2) if (tid1 != tid2) =>
                 if ((effect1.isInstanceOf[EffectAcquire[Addr, Abs]] && effect2.isInstanceOf[EffectRelease[Addr, Abs]]) ||
