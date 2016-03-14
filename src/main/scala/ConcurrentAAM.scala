@@ -361,7 +361,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   }
 
   trait LocalEffectsMap {
-    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]): LocalEffectsMap
+    def newTransition(s1: State, s2: State, tid: TID, effects: Set[Effect[Addr, Abs]]): LocalEffectsMap
     def join(that: LocalEffectsMap): LocalEffectsMap
     def containsState(state: State): Boolean
     def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): Set[(State, TID)]
@@ -371,8 +371,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def apply() = EmptyLocalEffectsMap
   }
   case object EmptyLocalEffectsMap extends LocalEffectsMap {
-    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]) =
-      (new ListLocalEffectsMap(Map[Addr, List[(Effect[Addr, Abs], TID, State)]]().withDefaultValue(Nil))).newTransition(s1, s2, tid, effect)
+    def newTransition(s1: State, s2: State, tid: TID, effects: Set[Effect[Addr, Abs]]) =
+      (ListLocalEffectsMap(Map[Addr, List[(Effect[Addr, Abs], TID, State)]]().withDefaultValue(Nil))).newTransition(s1, s2, tid, effects)
     def join(that: LocalEffectsMap) = that match {
       case EmptyLocalEffectsMap => this
       case _ => that
@@ -382,8 +382,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def findDeadlocks = Set[State]()
   }
   case class ListLocalEffectsMap(val m: Map[Addr, List[(Effect[Addr, Abs], TID, State)]]) extends LocalEffectsMap {
-    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]) =
-      new ListLocalEffectsMap(m + (effect.target -> ((effect, tid, s1) :: m(effect.target))))
+    def newTransition(s1: State, s2: State, tid: TID, effects: Set[Effect[Addr, Abs]]) =
+      ListLocalEffectsMap(effects.foldLeft(m)((acc, effect) => acc + (effect.target -> ((effect, tid, s1) :: acc(effect.target)))))
     def join(that: LocalEffectsMap) = toSetLocalEffectsMap.join(that)
     def containsState(state: State) = m.values.toSet.find(s => s.find(v => v._3 == state) match {
       case Some(_) => true
@@ -426,8 +426,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
   case class SetLocalEffectsMap(val m: Map[Addr, Set[(Effect[Addr, Abs], TID, State)]]) extends LocalEffectsMap {
-    def newTransition(s1: State, s2: State, tid: TID, effect: Effect[Addr, Abs]): LocalEffectsMap =
-      new SetLocalEffectsMap(m + (effect.target -> (m(effect.target) + ((effect, tid, s1)))))
+    def newTransition(s1: State, s2: State, tid: TID, effects: Set[Effect[Addr, Abs]]): LocalEffectsMap =
+      SetLocalEffectsMap(effects.foldLeft(m)((acc, effect) => acc + (effect.target -> ((acc(effect.target) + ((effect, tid, s1)))))))
     def join(that: LocalEffectsMap): LocalEffectsMap = that match {
       case EmptyLocalEffectsMap => this
       case l: ListLocalEffectsMap => join(l.toSetLocalEffectsMap)
@@ -517,18 +517,18 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       if (ms1.containsState(s2)) {
         /* loop: need to join */
         val oldLocal = m.getOrElse(s2, LocalEffectsMap())
-        val newLocal = oldLocal.join(effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff)))
+        val newLocal = oldLocal.join(ms1.newTransition(s1, s2, tid, effects))
         val newEffectsMap = new EffectsMap(m + (s2 -> newLocal))
         (if (m.contains(s2) && newLocal != oldLocal) { newLocal.findConflicts(graph) } else { Set() }, newEffectsMap)
       } else if (m.contains(s2)) {
         /* merge: can erase -> TODO: not really the case, if there is a loop afterwards */
         val oldLocal = m.getOrElse(s2, LocalEffectsMap())
-        val newLocal = effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff))
+        val newLocal = ms1.newTransition(s1, s2, tid, effects)
         val newEffectsMap = new EffectsMap(m + (s2 -> newLocal))
         (if (newLocal != oldLocal) newLocal.findConflicts(graph) else Set(), newEffectsMap)
       } else {
         // unencountered state
-        val local = effects.foldLeft(ms1)((acc, eff) => acc.newTransition(s1, s2, tid, eff))
+        val local = ms1.newTransition(s1, s2, tid, effects)
         val newEffectsMap = new EffectsMap(m + (s2 -> local))
         (Set(), newEffectsMap)
       }
