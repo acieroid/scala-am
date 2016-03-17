@@ -47,7 +47,8 @@ trait EffectKind
 case object WriteEffect extends EffectKind
 case object ReadEffect extends EffectKind
 object EffectKind {
-  implicit val isSemigroup: Semigroup[EffectKind] = new Semigroup[EffectKind] {
+  implicit val isMonoid: Monoid[EffectKind] = new Monoid[EffectKind] {
+    def zero: EffectKind = ReadEffect
     def append(x: EffectKind, y: => EffectKind): EffectKind = x match {
       case ReadEffect => y
       case WriteEffect => WriteEffect
