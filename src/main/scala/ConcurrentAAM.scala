@@ -28,6 +28,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   type Effects = Set[Effect[Addr, Abs]]
   val noEffect: Effects = Set[Effect[Addr, Abs]]()
+  def effectsToStr(effs: Effects): String = effs.map(_.toString).mkString(", ")
 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     def integrate1(tid: TID, a: KontAddr, action: Action[Exp, Abs, Addr])(threads: ThreadMap, oldstore: Store[Addr, Abs], results: ThreadResults):
@@ -562,9 +563,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     private def containsLoop(s: State, path: List[(State, TID, Effects)]): Option[List[(State, TID, Effects)]] =
       path.indexWhere({ case (s2, _, _) => s2 == s }) match {
         case -1 => None
+        case 0 => None
         case n => Some(path.take(n + 1))
       }
-    private def findPossibleEffects(todo: Set[(State, List[(State, TID, Effects)])], loops: Map[State, Set[List[(State, TID, Effects)]]], results: Set[List[(State, TID, Effects)]]): Set[List[(State, TID, Effects)]] =
+    private def findPossibleEffects(graph: Option[Graph[State, (TID, Effects)]], todo: Set[(State, List[(State, TID, Effects)])], loops: Map[State, Set[List[(State, TID, Effects)]]], results: Set[List[(State, TID, Effects)]]): Set[List[(State, TID, Effects)]] =
       todo.headOption match {
         case None => {
           /* Done exploring the graph, replace states that contain a loop by the effects on the loop. If more than one possible loops can happen, concatenate them. */
@@ -576,14 +578,15 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           }))
         }
         case Some((s, path)) => {
+          //println(s"Find possible effects at state ${id(graph, s)}, path is ${pathToStr(graph, path)}")
           containsLoop(s, path) match {
-            case Some(loop) => findPossibleEffects(todo.tail, loops + (s -> (loops(s) + loop)), results)
+            case Some(loop) => findPossibleEffects(graph, todo.tail, loops + (s -> (loops(s) + loop)), results)
             case None =>
               if (m(s).isEmpty) {
                 /* reached a start state */
-                findPossibleEffects(todo.tail, loops, results + path)
+                findPossibleEffects(graph, todo.tail, loops, results + path)
               } else {
-                findPossibleEffects(todo.tail ++ m(s).toList.map({ case (pred, (tid, effs)) => (pred, (s, tid, effs) :: path) }), loops, results)
+                findPossibleEffects(graph, todo.tail ++ m(s).toList.map({ case (pred, (tid, effs)) => (pred, (pred, tid, effs) :: path) }), loops, results)
               }
           }
         }
@@ -601,18 +604,24 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       )
     }
 
-    private def detectConflicts(effects: List[(State, TID, Effects)]): Set[(State, TID)] =
-      effects.foldLeft(Set[(State, TID)]())((acc, x) => x match {
+    private def detectConflicts(graph: Option[Graph[State, (TID, Effects)]], effects: List[(State, TID, Effects)]): Set[(State, TID)] =
+      // TODO: first group by target to avoid O(n²) over the entire sequence. Also, skip part of the list?
+      effects.zipWithIndex.foldLeft(Set[(State, TID)]())((acc, x) => x match {
         /* for each effect */
-        case (s1, t1, effs1) => effects.foldLeft(acc)((acc, y) => y match {
+        case ((s1, t1, effs1), idx) => effects.drop(idx + 1).foldLeft(acc)((acc, y) => y match {
           /* find an effect from a different state, with a different tid, which is dependent on the first effect */
-          case (s2, t2, effs2) if (s1 != s2 && t1 != t2 && dependent(effs1, effs2)) =>
+          case (s2, t2, effs2) if (s1 != s2 && t1 != t2 && dependent(effs1, effs2)) => {
+            //println(s"Conflict between state ${id(graph, s1)}, ${id(graph, s2)}")
             acc + ((s1, t2))
+          }
           case _ => acc
         }
         )})
+    private def pathToStr(graph: Option[Graph[State, (TID, Effects)]], path: List[(State, TID, Effects)]): String =
+      path.collect({ case (s, tid, effs) if (!effs.isEmpty) => s"${id(graph, s)}:$tid ${effectsToStr(effs)}" }).mkString(" -- ")
+
     /* TODO: cache cycles that have been detected */
-    def findConflicts(s: State): Set[(State, TID)] = {
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]], s: State): Set[(State, TID)] = {
       /* step 1: compute the possible effects that happen to reach this state. It is a
        * set of list of (set of) effects. Each element of the set correspond to
        * a path through the graph. Sets of effects correspond to the multiple
@@ -620,11 +629,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
        * because effects on a variable made during the same transition are not
        * dependent (they are atomic, e.g. a cas reads and writes to a variable
        * at the same time) */
-      println("Computing effects")
-      val possibleEffects: Set[List[(State, TID, Effects)]] = findPossibleEffects(Set((s, List[(State, TID, Effects)]())), Map[State, Set[List[(State, TID, Effects)]]]().withDefaultValue(Set[List[(State, TID, Effects)]]()), Set())
+      //println(s"Computing effects at state ${id(graph, s)}")
+      val possibleEffects: Set[List[(State, TID, Effects)]] = findPossibleEffects(graph, Set((s, List[(State, TID, Effects)]())), Map[State, Set[List[(State, TID, Effects)]]]().withDefaultValue(Set[List[(State, TID, Effects)]]()), Set())
+      //possibleEffects.foreach(effs => println(pathToStr(graph, effs)))
       /* step 2: for each possible list of effects, find conflicts */
-      println("Detecting conflicts")
-      possibleEffects.flatMap(effs => detectConflicts(effs))
+      //println("Detecting conflicts")
+      possibleEffects.flatMap(effs => detectConflicts(graph, effs))
     }
   }
   object EffectsMap {
@@ -659,20 +669,19 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     } else {
       todo.headOption match {
         case Some((s, tid)) =>
-          println(s)
           val newThreadPickMap = threadPickMap.explored(s, tid)
           if (visited.contains((s, tid))) {
-            println("Already visited")
+            //println("Already visited")
             reducedLoop(todo.tail, visited, effectsMap, newThreadPickMap,
               halted, startingTime, timeout, reallyVisited, graph, sem)
           } else if (s.halted) {
-            println("Halted")
-            val conflicts = effectsMap.findConflicts(s)
-            println("Computed conflicts")
+            //println("Halted")
+            val conflicts = effectsMap.findConflicts(graph, s)
+            //println("Computed conflicts")
             reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), effectsMap, newThreadPickMap,
               halted + s, startingTime, timeout, reallyVisited + s, graph, sem)
           } else {
-            println("New state")
+            //println("New state")
             val succs = s.stepTid(sem, tid)
             val newGraph = graph.map(_.addEdges(succs.map({ case (eff, s2) => (s, (tid, eff), s2) })))
             val (newEffectsMap, detection) = succs.foldLeft((effectsMap, false))((acc, succ) => succ match {
@@ -680,10 +689,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                 case (m, detection) => (m, acc._2 && detection)
               }
             })
-            println("Added new transitions")
-            val conflicts = if (detection) { halted.flatMap(s => newEffectsMap.findConflicts(s)) } else { Set() }
-            println("Computed conflicts")
-            if (succs.isEmpty || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) })) {
+            //println("Added new transitions")
+            val conflicts = if (detection) { halted.flatMap(s => newEffectsMap.findConflicts(graph, s)) } else { Set() }
+            //println("Computed conflicts")
+            if (succs.isEmpty) {
               /* No successor, even though this is not a halt state: the current thread is blocked.
                All successors states already visited: the current thread is in a loop.
                In both cases, explore a different thread */
