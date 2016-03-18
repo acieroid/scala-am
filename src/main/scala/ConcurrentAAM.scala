@@ -592,17 +592,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         }
       }
 
-    private def dependent(effs1: Effects, effs2: Effects): Boolean = {
-      val (effs1kind, effs1addrs) = effs1.foldLeft((implicitly[Monoid[EffectKind]].zero, Set[Addr]()))((acc, eff) => (acc._1 |+| eff.kind, acc._2 + eff.target))
-      val (effs2kind, effs2addrs) = effs2.foldLeft((implicitly[Monoid[EffectKind]].zero, Set[Addr]()))((acc, eff) => (acc._1 |+| eff.kind, acc._2 + eff.target))
-      ((effs1kind |+| effs2kind) == WriteEffect /* at least one write */ &&
-        /* TODO: this could be improved but in practice is precise enough. If we have
-         * effs1 containing a read on a, a write on b, and effs2 containing a
-         * read on a, and no write, then they will be detected as dependent even
-         * though they aren't */
-        !effs1addrs.intersect(effs2addrs).isEmpty /* act on the the same address */
-      )
-    }
+    private def dependent(eff1: Effect[Addr, Abs], eff2: Effect[Addr, Abs]): Boolean =
+      (eff1.target == eff2.target && (eff1.kind |+| eff2.kind) == WriteEffect)
+    private def dependent(effs1: Effects, effs2: Effects): Boolean =
+      (effs1.foldLeft(false)((acc, eff1) => effs2.foldLeft(acc)((acc, eff2) => acc || dependent(eff1, eff2))))
 
     private def detectConflicts(graph: Option[Graph[State, (TID, Effects)]], effects: List[(State, TID, Effects)]): Set[(State, TID)] =
       // TODO: first group by target to avoid O(n²) over the entire sequence. Also, skip part of the list?
@@ -611,7 +604,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         case ((s1, t1, effs1), idx) => effects.drop(idx + 1).foldLeft(acc)((acc, y) => y match {
           /* find an effect from a different state, with a different tid, which is dependent on the first effect */
           case (s2, t2, effs2) if (s1 != s2 && t1 != t2 && dependent(effs1, effs2)) => {
-            //println(s"Conflict between state ${id(graph, s1)}, ${id(graph, s2)}")
             acc + ((s1, t2))
           }
           case _ => acc
