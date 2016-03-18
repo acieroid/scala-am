@@ -9,6 +9,7 @@ import ExplorationType._
 
 class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](exploration: ExplorationType)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
+  val bound: Option[Int] = Some(4) // TODO as parameter
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
@@ -566,10 +567,18 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         case 0 => None
         case n => Some(path.take(n + 1))
       }
+
+    private def reachedBound(path: List[(State, TID, Effects)]): Boolean = bound match {
+      case Some(bound) => path.filter({ case (_, _, effs) => !effs.isEmpty }).size >= bound
+      case None => false
+    }
+
+    @scala.annotation.tailrec
     private def findPossibleEffects(graph: Option[Graph[State, (TID, Effects)]], todo: Set[(State, List[(State, TID, Effects)])], loops: Map[State, Set[List[(State, TID, Effects)]]], results: Set[List[(State, TID, Effects)]]): Set[List[(State, TID, Effects)]] =
       todo.headOption match {
         case None => {
           /* Done exploring the graph, replace states that contain a loop by the effects on the loop. If more than one possible loops can happen, concatenate them. */
+          //println("Done...")
           results.map(seq => seq.flatMap({ case (s, tid, eff) =>
             loops.get(s) match {
               case Some(loops) =>  (s, tid, eff) :: loops.foldLeft(List[(State, TID, Effects)]())(_ ++ _)
@@ -578,15 +587,18 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           }))
         }
         case Some((s, path)) => {
-          //println(s"Find possible effects at state ${id(graph, s)}, path is ${pathToStr(graph, path)}")
+          //println(s"Find possible effects at state ${id(graph, s)}, ${pathToStr(graph, path)}")
           containsLoop(s, path) match {
             case Some(loop) => findPossibleEffects(graph, todo.tail, loops + (s -> (loops(s) + loop)), results)
             case None =>
-              if (m(s).isEmpty) {
-                /* reached a start state */
+              if (reachedBound(path) || m(s).isEmpty) {
+                /* reached a start state or reached bound */
                 findPossibleEffects(graph, todo.tail, loops, results + path)
               } else {
-                findPossibleEffects(graph, todo.tail ++ m(s).toList.map({ case (pred, (tid, effs)) => (pred, (pred, tid, effs) :: path) }), loops, results)
+                findPossibleEffects(graph, todo.tail ++ m(s).toList.map({ case (pred, (tid, effs)) => {
+                  if (pred == s) { println("pred == s !!!! ${id(s)}") }
+                  (pred, (pred, tid, effs) :: path)
+                }}), loops, results)
               }
           }
         }
@@ -610,7 +622,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         }
         )})
     private def pathToStr(graph: Option[Graph[State, (TID, Effects)]], path: List[(State, TID, Effects)]): String =
-      path.collect({ case (s, tid, effs) if (!effs.isEmpty) => s"${id(graph, s)}:$tid ${effectsToStr(effs)}" }).mkString(" -- ")
+      path.collect({ case (s, tid, effs) if (!effs.isEmpty) => s"${id(graph, s)}" }).mkString(":")
 
     /* TODO: cache cycles that have been detected */
     def findConflicts(graph: Option[Graph[State, (TID, Effects)]], s: State): Set[(State, TID)] = {
@@ -661,6 +673,9 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     } else {
       todo.headOption match {
         case Some((s, tid)) =>
+          if (false && id(graph, s) > 456) {
+            ConcurrentAAMOutput(halted, reallyVisited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+          } else {
           val newThreadPickMap = threadPickMap.explored(s, tid)
           if (visited.contains((s, tid))) {
             //println("Already visited")
@@ -716,6 +731,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
               reducedLoop(succs.map(succ => (succ._2, tid)).toVector ++ todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
                 halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
             }
+          }
           }
         case None => {
           ConcurrentAAMOutput(halted, reallyVisited.size,
