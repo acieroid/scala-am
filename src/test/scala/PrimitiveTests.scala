@@ -262,7 +262,7 @@ abstract class FreePrimitiveTests[Addr : Address, Time : Timestamp](override val
 abstract class ConcurrentAAMPrimitiveTests[Addr : Address, Time : Timestamp, TID : ThreadIdentifier](override val lattice: Lattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time]
-  val machine = new ConcurrentAAM[SchemeExp, lattice.L, Addr, Time, TID](ExplorationType.AllInterleavings)
+  val machine = new ConcurrentAAM[SchemeExp, lattice.L, Addr, Time, TID](AllInterleavings)
 }
 
 /* Since these tests are small, they can be performed in concrete mode */

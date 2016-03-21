@@ -1,15 +1,30 @@
 import scalaz.Scalaz._
 import scalaz._
 
-object ExplorationType extends Enumeration {
-  type ExplorationType = Value
-  val AllInterleavings, OneInterleaving, RandomInterleaving, InterferenceTracking, DPOR = Value
+trait ExplorationType
+case object AllInterleavings extends ExplorationType
+case object OneInterleaving extends ExplorationType
+case object RandomInterleaving extends ExplorationType
+case object DPOR extends ExplorationType
+case class InterferenceTracking(bound: Option[Int]) extends ExplorationType
+object ExplorationTypeParser extends scala.util.parsing.combinator.RegexParsers {
+  val all = "AllInterleavings".r ^^ (_ => AllInterleavings)
+  val one = "OneInterleaving".r ^^ (_ => OneInterleaving)
+  val random = "RandomInterleaving".r ^^ (_ => RandomInterleaving)
+  val dpor = "DPOR".r ^^ (_ => DPOR)
+  def interference: Parser[ExplorationType] =
+    (("InterferenceTracking(" ~> "[0-9]+".r <~ ")") ^^ ((s => InterferenceTracking(Some(s.toInt)))) |
+      "InterferenceTracking" ^^ (_ => InterferenceTracking(None)))
+  def expl: Parser[ExplorationType] = all | one | random | dpor | interference
+  def parse(s: String): ExplorationType = parseAll(expl, s) match {
+    case Success(res, _) => res
+    case Failure(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")
+    case Error(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")
+  }
 }
-import ExplorationType._
 
 class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](exploration: ExplorationType)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
-  val bound: Option[Int] = Some(4) // TODO as parameter
   def abs = implicitly[AbstractValue[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
@@ -568,9 +583,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         case n => Some(path.take(n + 1))
       }
 
-    private def reachedBound(path: List[(State, TID, Effects)]): Boolean = bound match {
-      case Some(bound) => path.filter({ case (_, _, effs) => !effs.isEmpty }).size >= bound
-      case None => false
+    private def reachedBound(path: List[(State, TID, Effects)]): Boolean = exploration match {
+      case InterferenceTracking(bound) => bound match {
+        case Some(bound) => path.filter({ case (_, _, effs) => !effs.isEmpty }).size >= bound
+        case None => false
+      }
+      case _ => false
     }
 
     @scala.annotation.tailrec
@@ -851,7 +869,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(oneInterleaving(sem))
       case RandomInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(randomInterleaving(sem))
-      case InterferenceTracking => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), EffectsMap(), ThreadPickMap(),
+      case _: InterferenceTracking => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), EffectsMap(), ThreadPickMap(),
         Set(), System.nanoTime, timeout, Set(),
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
       case DPOR => dporExplore(State.inject(exp), System.nanoTime, timeout, if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)

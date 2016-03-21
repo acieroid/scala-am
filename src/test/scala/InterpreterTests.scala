@@ -117,7 +117,7 @@ abstract class FreeBenchmarks[Addr : Address, Time : Timestamp](override val lat
 abstract class ConcurrentAAMBenchmarks[Addr : Address, Time : Timestamp, TID : ThreadIdentifier](override val lattice: Lattice)
     extends Benchmarks[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time]
-  val machine = new ConcurrentAAM[SchemeExp, lattice.L, Addr, Time, TID](ExplorationType.AllInterleavings)
+  val machine = new ConcurrentAAM[SchemeExp, lattice.L, Addr, Time, TID](AllInterleavings)
 }
 
 class AACConcreteBenchmarks extends AACBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
@@ -173,10 +173,10 @@ class FreeOneResultTestsNew extends OneResultTests[SchemeExp, ClassicalAddress.A
 
 class ConcurrentAAMOneResultTests extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice) {
   val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-  val machine = new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](ExplorationType.AllInterleavings)
+  val machine = new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](AllInterleavings)
 }
 
 class ConcurrentAAMOneResultTestsNew extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true)) {
   val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-  val machine = new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](ExplorationType.AllInterleavings)
+  val machine = new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](AllInterleavings)
 }

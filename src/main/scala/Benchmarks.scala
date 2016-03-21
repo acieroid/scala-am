@@ -1,10 +1,11 @@
 object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false)
+  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false, bound: Option[Int] = None)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
     opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers to run the benchmarks on (1 by default)")
     opt[Int]('r', "random") action { (x, c) => c.copy(random = x) } text("Number of random interleavings explored (10 by default)")
+    opt[Int]('b', "bound") action { (x, c) => c.copy(bound = Some(x)) } text("Bound for interference tracking (none by default))")
     opt[Unit]('s', "skip-all") action { (x, c) => c.copy(skipAll = true) } text("Skip computing all interleavings")
     opt[Unit]('a', "skip-abstract") action { (x, c) => c.copy(skipAbstract = true) } text("Skip computing in the abstract")
     opt[Config.Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
@@ -41,7 +42,7 @@ object Tabulator {
 }
 
 object Benchmarks {
-  case class MachineConfig(name: String, exploration: ExplorationType.Value, concrete: Boolean, timeout: Option[Long]) {
+  case class MachineConfig(name: String, exploration: ExplorationType, concrete: Boolean, timeout: Option[Long]) {
     override def toString = s"[$name, $exploration, $concrete]"
   }
   case class MachineOutput(time: Double, states: Int, timedOut: Boolean, finalValues: Set[Any]) {
@@ -111,7 +112,7 @@ object Benchmarks {
 
   val system = ActorSystem("scala-am-benchmarks")
 
-  class Dispatcher extends Actor {
+  class Dispatcher(bound: Option[Int]) extends Actor {
     import scala.collection.immutable.Queue
 
     val now = java.util.Calendar.getInstance.getTime
@@ -120,11 +121,11 @@ object Benchmarks {
     val fileout = new java.io.FileOutputStream(new java.io.File(s"benchmarks-${timeformat.format(now)}.log"))
     val logging = new java.io.OutputStream { override def write(b: Int) { stdout.write(b); fileout.write(b) } }
 
-    private def printResults(results: Map[String, Map[ExplorationType.Value, MachineOutput]]) = {
+    private def printResults(results: Map[String, Map[ExplorationType, MachineOutput]]) = {
       import scala.math.Ordering.String._
       println(Tabulator.format(List("program", "one", "all", "reduced", "dpor") :: results.toList.sortBy({ case (name, _) => name }).map({
-        case (name, res) => name :: List(ExplorationType.OneInterleaving,
-          ExplorationType.AllInterleavings, ExplorationType.InterferenceTracking, ExplorationType.DPOR).map(expl =>
+        case (name, res) => name :: List[ExplorationType](OneInterleaving,
+          AllInterleavings, InterferenceTracking(bound), DPOR).map(expl =>
           res.get(expl) match {
             case Some(out) => out.toString
             case None => "x"
@@ -170,12 +171,12 @@ object Benchmarks {
         println(s"Checking results for $name")
         (state.concreteResults.get(name), state.abstractResults.get(name)) match {
           case (Some(conc), Some(abs)) =>
-            val oneconc = conc(ExplorationType.OneInterleaving)
-            val oneabs = abs(ExplorationType.OneInterleaving)
-            val redconc = conc(ExplorationType.InterferenceTracking)
-            val redabs = abs(ExplorationType.InterferenceTracking)
+            val oneconc = conc(OneInterleaving)
+            val oneabs = abs(OneInterleaving)
+            val redconc = conc(InterferenceTracking(bound))
+            val redabs = abs(InterferenceTracking(bound))
 
-            (conc.get(ExplorationType.AllInterleavings), abs.get(ExplorationType.AllInterleavings)) match {
+            (conc.get(AllInterleavings), abs.get(AllInterleavings)) match {
               case (Some(allconc), Some(allabs)) =>
                 println(s"Number of final values: allconc: ${allconc.finalValues.size}, redconc: ${redconc.finalValues.size}, allabs: ${allabs.finalValues.size}, redabs: ${redabs.finalValues.size}")
                 /* Concrete */
@@ -221,7 +222,7 @@ object Benchmarks {
             if (!redabs.timedOut && !redconc.timedOut && !subsumes(redabs.finalValues, redconc.finalValues))
               err("$name (red): abstract (${redabs.finalValues}) does not subsume concrete (${redconc.finalValues})")
 
-            (conc.get(ExplorationType.RandomInterleaving), abs.get(ExplorationType.RandomInterleaving)) match {
+            (conc.get(RandomInterleaving), abs.get(RandomInterleaving)) match {
               case (Some(randconc), Some(randabs)) =>
                 /* Random (8) */
                 if (!redabs.timedOut && !randabs.finalValues.subsetOf(redabs.finalValues))
@@ -235,12 +236,12 @@ object Benchmarks {
       })
     }
 
-    private type Results = Map[String, Map[ExplorationType.Value, MachineOutput]]
+    private type Results = Map[String, Map[ExplorationType, MachineOutput]]
     private case class State(computing: Int, work: Queue[MachineConfig], concreteResults: Results, abstractResults: Results)
 
     private def updateResults(results: Results, in: MachineConfig, out: MachineOutput): Results = results.get(in.name) match {
       case Some(m) => results + (in.name -> (m + (in.exploration -> (in.exploration match {
-        case ExplorationType.RandomInterleaving => m.get(ExplorationType.RandomInterleaving) match {
+        case RandomInterleaving => m.get(RandomInterleaving) match {
           case Some(res) => res.copy(finalValues = res.finalValues ++ out.finalValues)
           case None => out
         }
@@ -278,21 +279,21 @@ object Benchmarks {
     }
 
     def receive = active(State(0, Queue[MachineConfig](),
-      Map[String, Map[ExplorationType.Value, MachineOutput]](), Map[String, Map[ExplorationType.Value, MachineOutput]]()))
+      Map[String, Map[ExplorationType, MachineOutput]](), Map[String, Map[ExplorationType, MachineOutput]]()))
   }
 
   def main(args: Array[String]) {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) =>
-        val explorations = ((if (config.skipAll) { List() } else { List(ExplorationType.AllInterleavings) }) ++
-          List(ExplorationType.OneInterleaving, ExplorationType.InterferenceTracking, ExplorationType.DPOR) ++
-          List.fill(config.random)(ExplorationType.RandomInterleaving))
+        val explorations = ((if (config.skipAll) { List() } else { List(AllInterleavings) }) ++
+          List(OneInterleaving, InterferenceTracking(config.bound), DPOR) ++
+          List.fill(config.random)(RandomInterleaving))
         val work = programs.toList.flatMap(name =>
           explorations.flatMap(expl => (if (config.skipAbstract) { Set(true) } else { Set(true, false) }).map(concrete =>
             MachineConfig(name, expl, concrete, config.timeout))))
         println(s"Scheduling ${work.size} items of work")
         val workers = (1 to config.workers).map(i => system.actorOf(Props[Worker], s"worker-$i"))
-        val dispatcher = system.actorOf(Props[Dispatcher], "dispatcher")
+        val dispatcher = system.actorOf(Props(new Dispatcher(config.bound)), "dispatcher")
         dispatcher ! AddWork(work)
         workers.foreach(dispatcher ! SendWork(_))
       case None => system.shutdown
