@@ -303,19 +303,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   private def effectsOf(transitions: Set[(Effects, State)]): Effects =
     transitions.flatMap(_._1)
-  private def dependent(eff1: Effects, eff2: Effects) = {
-    val groups1 = eff1.groupBy(_.kind).withDefaultValue(Set())
-    val groups2 = eff2.groupBy(_.kind).withDefaultValue(Set())
-    /* This is our dependency relation. One effect is dependent on another if they
-     * act on the same variable and at least one of them is a write. This is
-     * extended to sets of effects, and to transitions */
-    groups1(WriteEffect).foldLeft(false)((acc, a) =>
-      /* Check write-write and read-write dependencies */
-      acc || groups2(WriteEffect).contains(a) || groups2(ReadEffect).contains(a)) ||
-    groups2(WriteEffect).foldLeft(false)((acc, a) =>
-      /* Check write-read dependencies */
-      acc || groups1(ReadEffect).contains(a))
-  }
+  private def dependent(eff1: Effect[Addr, Abs], eff2: Effect[Addr, Abs]): Boolean =
+      (eff1.target == eff2.target && (eff1.kind |+| eff2.kind) == WriteEffect)
+  private def dependent(effs1: Effects, effs2: Effects): Boolean =
+    (effs1.foldLeft(false)((acc, eff1) => effs2.foldLeft(acc)((acc, eff2) => acc || dependent(eff1, eff2))))
 
   private def checkAmpleConditions(s: State, tid: TID, stepped: Set[(Effects, State)], sem: Semantics[Exp, Abs, Addr, Time], todo: Set[State]): Boolean = {
     /* C0: ample(s) is empty iff enabled(s) is empty: discard empty ample to satisfy this */
@@ -622,11 +613,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         }
       }
 
-    private def dependent(eff1: Effect[Addr, Abs], eff2: Effect[Addr, Abs]): Boolean =
-      (eff1.target == eff2.target && (eff1.kind |+| eff2.kind) == WriteEffect)
-    private def dependent(effs1: Effects, effs2: Effects): Boolean =
-      (effs1.foldLeft(false)((acc, eff1) => effs2.foldLeft(acc)((acc, eff2) => acc || dependent(eff1, eff2))))
-
     private def detectConflicts(graph: Option[Graph[State, (TID, Effects)]], effects: List[(State, TID, Effects)]): Set[(State, TID)] =
       // TODO: first group by target to avoid O(n²) over the entire sequence. Also, skip part of the list?
       effects.zipWithIndex.foldLeft(Set[(State, TID)]())((acc, x) => x match {
@@ -767,6 +753,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def dom(stack: Stack): List[Int] = (0 to (stack._1.size-1)).toList
     def proc(stack: Stack, i: Int): TID = stack._1(i)._2
     def pre(stack: Stack, i: Int): State = stack._1(i)._1
+    def size(stack: Stack): Int = stack._1.size - 1
     def enabled(state: State): Set[TID] = state.stepAll(sem).map(_._1)
     def append(stack: Stack, s: State, p: TID, effs: Effects, next: State): Stack = (stack._1 :+ (s, p, effs), next)
     val backtrack = scala.collection.mutable.Map[State, Set[TID]]().withDefaultValue(Set[TID]())
@@ -786,67 +773,85 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     var timedOut: Boolean = false
     var g: Option[Graph[State, (TID, Effects)]] = graph
     var visited: Set[State] = Set[State]()
+    /* DPOR: Explore(S, C) { */
     def explore(stack: Stack, clocks: ClockVectors): Unit = {
       if (timeout.map(System.nanoTime - start > _).getOrElse(false)) {
         timedOut = true
       } else {
+        /* DPOR: let s = last(S) */
         val s: State = last(stack)
+        /* DPOR: for all precesses p { */
         for (p <- s.threads.tids) {
+          /* dpor makes use of next(s, p), it might be empty so we compute next(s, p) first, giving 'succs' */
           val succs = s.stepTid(sem, p)
           succs.size match {
             case 0 => () /* do nothing (no existing i) */
-            case 1 => {
-              val next: (Effects, State) = succs.head
+            case 1 => { /* at least one successor */
+              val next: (Effects, State) = succs.head /* we only handle one successor, so take it */
+              /* DPOR: \exists i = max({i \in dom(S) | S_i is dependent and may be co-enabled with next(s, p) and i \not\happensBefore p}) */
               dom(stack).sortWith(_ > _).find(i => isDependentAndCoEnabled(next, stack, i) && !happensBefore(clocks, stack, i, p)) match {
-                case Some(i: Int) =>
-                  val preSi: State = pre(stack, i)
-                  val enabledTr: Set[TID] = enabled(preSi)
+                case Some(i: Int) => /* found an exesting i */
+                  val preSi: State = pre(stack, i) /* computes pre(S,i) in 'preSi' */
+                  val enabledTr: Set[TID] = enabled(preSi) /* computes enabled(pre(S,i)) in 'enabledTr' */
+                  /* DPOR: if (p \in enabled(pre(S,i))) { */
                   if (enabledTr.contains(p)) {
+                    /* DPOR: then add p to backtrack(pre(S,i)); */
                     backtrack += preSi -> (backtrack(preSi) + p)
                   } else {
+                    /* DPOR: else add enabled(pre(S,i)) to backtrack(pre(S,i)) */
                     backtrack += preSi -> (backtrack(preSi) ++ enabledTr)
                   }
-                  /*val e: Set[TID] = enabledTr.filter(q => q == p || dom(stack).contains((j: Int) => j > i && q == proc(stack, j) && happensBefore(stack, j, p)))
-                  if (!e.isEmpty) {
-                    backtrack += preSi -> (backtrack(preSi) + e.head)
-                  } else {
-                    backtrack += preSi -> (backtrack(preSi) ++ enabledTr)
-                  }*/
                 case None => () /* do nothing (no existing i) */
               }
             }
             case _ => throw CannotHandle /* more than one successor */
           }
         }
+        /* DPOR: if (\exists p \in enabled(s)) */
+        /* a transition is enabled if it can perform a step */
         s.stepAny(sem) match {
-          case None => halted += s /* no enabled transition */
-          case Some((p: TID, results: Set[(Effects, State)])) =>
+          case None => halted += s /* no enabled transition, we reached a halted state */
+          case Some((p: TID, results: Set[(Effects, State)])) => /* at least one transition enabled */
             if (results.size > 1) {
               throw CannotHandle /* more than one successor */
           } else {
               results.headOption match {
-                case Some(_) =>
-                backtrack += s -> (backtrack(s) + p)
+                case Some(_) => {
+                  /* DPOR: backtrack(s) := {p}; */
+                  backtrack += s -> Set(p)
+                  /* DPOR: let done = \emptyset; */
                   var done: Set[TID] = Set[TID]()
+                  /* DPOR: while (\exists p \in (backtrack(s) \ done)) { */
                   breakable { while(true) {
                     (backtrack(s) -- done).headOption match {
                       case Some(p: TID) =>
+                        /* DPOR: add p to done */
                         done = done + p
+                        /* DPOR: let t = next(s,p); */
                         s.stepTid(sem, p).headOption match {
                           case Some(t @ (effs: Effects, next: State)) =>
                             visited += next
                             g = g.map(_.addEdge(s, (p, effs), next))
+                            /* DPOR: let S' = S.t */
+                            /* in our case, a transition is described by the predecessor state (s), the tid
+                             * (p), and the effects (effs). 'next' is needed to
+                             * compute last(S) */
                             val stack2: Stack = append(stack, s, p, effs, next)
-                            val cv: ClockVector = (0 to (stack._1.size - 1)).filter(i => isDependent(t, stack, i)).map(i => clocks(Right(i))).foldLeft(emptyClockVector)((l, r) => maxClockVector(l, r))
-                            val cv2: ClockVector = cv + (p -> (stack2._1.size - 1))
-                            val clocks2: ClockVectors = clocks + (Left(p) -> cv2) + (Right((stack2._1.size - 1)) -> cv2)
+                            /* DPOR: let cv = max{C(i) | i \in 1..|S| and S_i dependent with t}; */
+                            val cv: ClockVector = (0 to size(stack)).filter(i => isDependent(t, stack, i)).map(i => clocks(Right(i))).foldLeft(emptyClockVector)((l, r) => maxClockVector(l, r))
+                            /* DPOR: let cv2 = cv[p := |S'|]; */
+                            val cv2: ClockVector = cv + (p -> size(stack2))
+                            /* DPOR: let C' = C[p := cv2, |S'| := cv2]; */
+                            val clocks2: ClockVectors = clocks + (Left(p) -> cv2) + (Right(size(stack2)) -> cv2)
+                            /* DPOR: Explore(S', C') */
                             explore(stack2, clocks2)
                           case None => halted += s /* no successor */
                         }
-                      case None => break
+                      case None => break /* stops while loop */
                     }
                   }}
-                case None => halted += s /* no successor */
+                }
+                case None => halted += s /* no successor (should not happen) */
               }
             }
         }
@@ -854,6 +859,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
     try {
       visited += s0
+      /* DPOR: Initially: Explore(\emptyset, \lambda x. \bottom) */
       explore((scala.collection.immutable.Vector[Transition](), s0), emptyClockVectors)
       ConcurrentAAMOutput(halted, visited.size, (System.nanoTime - start) / Math.pow(10, 9), g, timedOut)
     } catch {
