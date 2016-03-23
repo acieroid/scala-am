@@ -446,9 +446,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     } else {
       todo.headOption match {
         case Some((s, tid)) =>
-          if (false && id(graph, s) > 456) {
-            ConcurrentAAMOutput(halted, reallyVisited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
-          } else {
           val newThreadPickMap = threadPickMap.explored(s, tid)
           if (visited.contains((s, tid))) {
             //println("Already visited")
@@ -493,7 +490,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
               reducedLoop(succs.map(succ => (succ._2, tid)).toVector ++ todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
                 halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
             }
-          }
           }
         case None => {
           ConcurrentAAMOutput(halted, reallyVisited.size,
