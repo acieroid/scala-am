@@ -281,5 +281,6 @@ object Main {
       }
       case None => ()
     }
+    Profiler.print
   }
 }

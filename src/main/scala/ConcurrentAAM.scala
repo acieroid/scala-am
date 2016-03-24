@@ -308,31 +308,24 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   }
 
   val caching: Boolean = true
-  case class EffectsMap(m: Map[State, Map[State, (TID, Effects)]], changes: Set[State], cache: Map[State, Set[List[(State, TID, Effects)]]]) {
+  case class EffectsMap(m: Map[State, Map[State, (TID, Effects)]], cache: Map[State, Set[List[(State, TID, Effects)]]]) {
     def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effects: Effects): (EffectsMap, Boolean) = {
+      //println(s"New transition: ${id(graph, s1)} -> ${id(graph, s2)} ${m.contains(s2)}")
+      /* If s2 is an unencountered state, m(s2) is empty and we just add the new
+       information. If s2 was previously encountered, this is a merge point
+       (and might be a cycle), then either s1 is not present in m(s2) and can
+       be safely added, or s1 is already present in m(s2) and contains the
+       same information as the one we get here (because a transition does not
+       change) */
       val local = m(s2) + (s1 -> (tid, effects))
+      /* if s2 was previously encountered, we have to perform conflict detection due to possible new conflicts */
+      if (m(s2) == local) println("Remains the same")
       (EffectsMap(m + (s2 -> local),
-        changes + s2, // s2 changed TODO: needed?
-        cache.filterNot({ case (k, vs) => vs.exists(v => v.exists({ case (s, _, _) => s == s2 }))
-          })), // invalidate entries depending on s2
+        /* invalidate entries depending on s2 */
+        cache.filterNot({ case (k, vs) => vs.exists(v => v.exists({ case (s, _, _) => s == s2 })) })),
         m.contains(s2))
     }
 
-  //   def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effects: Effects): (EffectsMap, Boolean) = {
-  //     //println(s"New transition: ${id(graph, s1)} -> ${id(graph, s2)} ${m.contains(s2)}")
-  //     /* If s2 is an unencountered state, m(s2) is empty and we just add the new
-  //        information. If s2 was previously encountered, this is a merge point
-  //        (and might be a cycle), then either s1 is not present in m(s2) and can
-  //        be safely added, or s1 is already present in m(s2) and contains the
-  //        same information as the one we get here (because a transition does not
-  //        change) */
-  //     val local = m(s2) + (s1 -> (tid, effects))
-  //     /* if s2 was previously encountered, we have to perform conflict detection due to possible new conflicts */
-  //     /* TODO: Conflict detection will be done at halted states, but what if we have a
-  //      * cycle with no corresponding final state? We need to perform conflict
-  //      * detection at the cycle */
-  //     (EffectsMap(m + (s2 -> local)), m.contains(s2))
-  //   }
     private def containsLoop(graph: Option[Graph[State, (TID, Effects)]], s: State, path: List[(State, TID, Effects)]): Option[List[(State, TID, Effects)]] =
       if (path.isEmpty) { None } else {
         path.tail.indexWhere({ case (s2, _, _) => s2 == s }) match {
@@ -398,7 +391,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     private def findPossibleEffects(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[List[(State, TID, Effects)]]) =
       cache.get(s) match {
         case Some(effs) =>
-          println("Cache hit")
+          // println("Cache hit")
           (this, effs)
         case None =>
           //println(s"No hit for state ${id(graph, s)}")
@@ -438,17 +431,17 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
        * because effects on a variable made during the same transition are not
        * dependent (they are atomic, e.g. a cas reads and writes to a variable
        * at the same time) */
-      println(s"Computing effects at state ${id(graph, s)}")
+      //println(s"Computing effects at state ${id(graph, s)}")
       val (newEffectsMap, possibleEffects) = Profiler.profile("computing effects") { findPossibleEffects(graph, s) }
       //possibleEffects.foreach(effs => println(pathToStr(graph, effs)))
       /* step 2: for each possible list of effects, find conflicts */
-      println("Detecting conflicts")
+      //println("Detecting conflicts")
       (newEffectsMap, Profiler.profile("detecting conflicts") { possibleEffects.flatMap(effs => detectConflicts(graph, effs)) })
     }
   }
   object EffectsMap {
     def apply(): EffectsMap = EffectsMap(Map[State, Map[State, (TID, Effects)]]().withDefaultValue(Map[State, (TID, Effects)]()),
-      Set[State](), Map[State, Set[List[(State, TID, Effects)]]]())
+      Map[State, Set[List[(State, TID, Effects)]]]())
   }
 
   class ThreadPickMap(m: Map[State, Set[TID]]) {
@@ -505,7 +498,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
               (halted ++ succs.map({ case (_, s2) => s2 })).foldLeft((newEffectsMap, Set[(State, TID)]()))((acc, s) => acc._1.findConflicts(graph, s) match {
                 case (em, confls) => (em, acc._2 ++ confls)
               })
-            } else { (newEffectsMap, Set()) }
+            } else { (newEffectsMap, Set[(State, TID)]()) }
             // println("Computed conflicts")
             if (succs.isEmpty || succs.forall({ case (_, s2) => visited.exists(_ == (s2, tid)) })) {
               /* No successor, even though this is not a halt state: the current thread is blocked.
