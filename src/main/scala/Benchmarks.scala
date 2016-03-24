@@ -57,7 +57,9 @@ object Benchmarks {
     "mutex2", "mutex3", "mutex4", "mutex5", "mutex6",
     "pcounter2", "pcounter3", "pcounter4", "pcounter5", "pcounter6",
     "philosophers2", "philosophers3", "philosophers4", "philosophers5", "philosophers6",
-    "producer", "simple"
+    "producer", "simple",
+    "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "witewriteorderviolation",
+    "dekker", "peterson"
   )
 
   import akka.actor.{ActorRef, ActorSystem, Props, Actor, Inbox }
