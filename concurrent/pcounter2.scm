@@ -9,4 +9,4 @@
          (t2 (spawn (f))))
   (join t1)
   (join t2)
-  (= counter 2))
+  #t)
