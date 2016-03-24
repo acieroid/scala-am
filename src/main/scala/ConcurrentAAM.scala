@@ -423,7 +423,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       (this.copy(cache = cache + (s -> possibleEffects)), possibleEffects.flatMap(effs => detectAcquires(graph, effs)))
     }
 
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[(State, TID)]) = {
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]], s: State, inpath: Option[State]): (EffectsMap, Set[(State, TID)]) = {
       /* step 1: compute the possible effects that happen to reach this state. It is a
        * set of list of (set of) effects. Each element of the set correspond to
        * a path through the graph. Sets of effects correspond to the multiple
@@ -436,7 +436,13 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       //possibleEffects.foreach(effs => println(pathToStr(graph, effs)))
       /* step 2: for each possible list of effects, find conflicts */
       //println("Detecting conflicts")
-      (newEffectsMap, Profiler.profile("detecting conflicts") { possibleEffects.flatMap(effs => detectConflicts(graph, effs)) })
+      (newEffectsMap, Profiler.profile("detecting conflicts") { possibleEffects.flatMap(effs => inpath match {
+        case None => detectConflicts(graph, effs)
+        case Some(s) => if (effs.exists({ case (s2, _, _) => s == s2 })) {
+          detectConflicts(graph, effs)
+        } else {
+          Set[(State, TID)]()
+        }})})
     }
   }
   object EffectsMap {
@@ -479,7 +485,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
               halted, startingTime, timeout, reallyVisited, graph, sem)
           } else if (s.halted) {
             // println("Halted")
-            val (newEffectsMap, conflicts) = effectsMap.findConflicts(graph, s)
+            val (newEffectsMap, conflicts) = effectsMap.findConflicts(graph, s, None)
             //println("Computed conflicts")
             reducedLoop(todo.tail ++ conflicts, visited + ((s, tid)), newEffectsMap, newThreadPickMap,
               halted + s, startingTime, timeout, reallyVisited + s, graph, sem)
@@ -495,7 +501,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
             //println("Added new transitions")
             val (newEffectsMap2, conflicts) = if (detection) {
               //println(s"Detecting conflicts because of state ${id(graph, s)}")
-              (halted ++ succs.map({ case (_, s2) => s2 })).foldLeft((newEffectsMap, Set[(State, TID)]()))((acc, s) => acc._1.findConflicts(graph, s) match {
+              (halted ++ succs.map({ case (_, s2) => s2 })).foldLeft((newEffectsMap, Set[(State, TID)]()))((acc, st) => acc._1.findConflicts(graph, st, Some(s)) match {
                 case (em, confls) => (em, acc._2 ++ confls)
               })
             } else { (newEffectsMap, Set[(State, TID)]()) }
