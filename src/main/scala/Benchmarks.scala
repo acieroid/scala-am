@@ -12,7 +12,7 @@ object BenchmarksConfig {
   }
 }
 
-object AbstractLattice extends TypeSetLattice(false)
+object AbstractLattice extends BoundedIntLattice(1000, false)
 
 /* From http://stackoverflow.com/questions/7539831/scala-draw-table-to-console */
 object Tabulator {

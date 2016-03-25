@@ -4,3 +4,4 @@
 .ensime_cache
 *.dot
 target
+*.log
