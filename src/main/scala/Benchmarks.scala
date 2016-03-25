@@ -58,7 +58,7 @@ object Benchmarks {
     "pcounter2", "pcounter3", "pcounter4", "pcounter5", "pcounter6",
     "philosophers2", "philosophers3", "philosophers4", "philosophers5", "philosophers6",
     "producer", "simple",
-    "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "witewriteorderviolation",
+    "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "writewriteorderviolation",
     "dekker", "peterson"
   )
 
