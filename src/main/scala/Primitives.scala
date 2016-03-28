@@ -285,25 +285,49 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     abs.inject(false)
   }
 
-  private def car(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
-    abs.car(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
+  private def car(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = {
+    val (res, effs) = abs.car(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
       (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadConsCar(a)))
+    if (res == abs.bottom) {
+      (abs.error(abs.inject(s"Cannot take car of $v")), effs)
+    } else {
+      (res, effs)
+    }
+  }
 
-  private def cdr(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
-    abs.cdr(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
+  private def cdr(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = {
+    val (res, effs) = abs.cdr(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
       (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadConsCdr(a)))
+    if (res == abs.bottom) {
+      (abs.error(abs.inject(s"Cannot take cdr of $v")), effs)
+    } else {
+      (res, effs)
+    }
+  }
 
-  private def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
-    abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, va) =>
+  private def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = {
+    val (res, effs) = abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, va) =>
       abs.vectorRef(store.lookup(va), index).foldLeft(acc)((acc, res) => res match {
         case Left(v) => (abs.join(acc._1, v), acc._2)
         case Right(a) => (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadVector(a))
       }))
+    if (res == abs.bottom) {
+      (abs.error(abs.inject(s"Cannot access vector $v")), effs)
+    } else {
+      (res, effs)
+    }
+  }
 
-  private def vectorLength(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) =
-    abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, va) =>
+  private def vectorLength(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = {
+    val (res, effs) = abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, va) =>
       (abs.join(acc._1, abs.unaryOp(VectorLength)(store.lookup(va))),
         acc._2 + EffectReadVariable(va)))
+    if (res == abs.bottom) {
+      (abs.error(abs.inject(s"Cannot access vector $v")), effs)
+    } else {
+      (res, effs)
+    }
+  }
 
   /** (define (abs x) (if (< x 0) (- 0 x) x)) */
   private def abs(v: Abs): Abs = {
