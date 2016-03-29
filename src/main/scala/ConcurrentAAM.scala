@@ -341,7 +341,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     /* Tracks whether an acquire effect has been encountered. TODO: could this be done per-state? Also, could do the same for write effects (if no write, no conflict detection needed). */
     acquire: Boolean
   ) {
-    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): (EffectsMap, Boolean) = Profiler.log(s"addTransition(${id(graph, s1)}, ${id(graph, s2)})") {
+    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): (EffectsMap, Boolean) = /* Profiler.log(s"addTransition(${id(graph, s1)}, ${id(graph, s2)})") */ {
       /* Simply add the effects to the effects map: going from s1 to s2 on 'tid' has 'effects' */
       def addEffects: Map[State, Map[State, (TID, Effects)]] = { effects + (s1 -> (effects(s1) + (s2 -> (tid, effs)))) }
       /* Simply add the dependency: s2 now depends on s1 */
@@ -396,7 +396,12 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
             })
             ))
             rec(todo.tail ++ updated, updated.foldLeft(paths)((acc, v) => v match {
-              case (s2, s3, ps) => paths + (s3 -> (paths(s3) + (s2 -> ps.tail)))
+              case (s2, s3, ps) => {
+                val str1 = paths(s3)(s2).map(p => p.map(s => id(graph, s)).mkString(":")).mkString(", ")
+                val str2 = ps.map(p => p.tail.map(s => id(graph, s)).mkString(":")).mkString(", ")
+                // println(s"Modifying paths for ${id(graph, s3)}, already present: $str1, adding: $str2")
+                paths + (s3 -> (paths(s3) + (s2 -> (paths(s3)(s2) ++ ps.map(p => p.tail)))))
+              }
             }))
           }
           case None => paths
@@ -411,18 +416,18 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           /* TODO: loops! */
       ), false)
     }
-    private def findEffects(graph: Option[Graph[State, (TID, Effects)]], s: State): Set[List[(State, TID, Effects)]] = Profiler.log("findEffects") {
+    private def findEffects(graph: Option[Graph[State, (TID, Effects)]], s: State): Set[List[(State, TID, Effects)]] = /* Profiler.log("findEffects") */ {
       /* Goes from s3 -> [s2 -> [s0], s1 -> [s0]] to [s3:s2:s0, s3:s1:s0] */
-      def constructPaths: Set[List[State]] = Profiler.logRes("constructPaths") {
-        // println(s"Looking at state ${id(graph, s)}")
+      def constructPaths: Set[List[State]] = /* Profiler.logRes("constructPaths") */ {
+        println(s"Looking at state ${id(graph, s)}")
         paths(s).toSet.flatMap((x: (State, Set[List[State]])) => x match {
           case (s2, ps) => {
             val str = ps.map(p => p.map(s => id(graph, s)).mkString(":")).mkString(", ")
-            // println(s"Have kv: ${id(graph, s2)}, $str")
+            println(s"Have kv: ${id(graph, s2)}, $str")
             ps.map(p => (s :: s2 :: p).reverse)
           }
         })
-      } (ps => ps.map(p => p.map(s => id(graph, s)).mkString(":")).mkString(", "))
+      } // (ps => ps.map(p => p.map(s => id(graph, s)).mkString(":")).mkString(", "))
       def addEffects(paths: Set[List[State]]): Set[List[(State, TID, Effects)]] = Profiler.logRes("addEffects") { paths.map(p => {
         val init: Option[State] = None
         p.foldLeft((init, List[(State, TID, Effects)]()))((acc, s2) => acc match {
@@ -533,7 +538,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                   reducedLoop((((s, tid2)) +: todo.tail), visited + ((s, tid)), newEffectsMap, newThreadPickMap, conflictDetection ++ detection, finalConflictDetection,
                     halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
                 case None => {
-                  println(s"Detecting deadlocks at state ${id(graph, s)}")
+                  // println(s"Detecting deadlocks at state ${id(graph, s)}")
                   val dls = newEffectsMap.findDeadlocks(graph, s)
                   // println("Done")
                   val deadlocks: Set[(State, TID)] = dls.flatMap(s => newThreadPickMap.pick(s).map(tid => (s, tid)))
