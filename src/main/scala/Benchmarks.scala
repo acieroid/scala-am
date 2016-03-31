@@ -275,10 +275,11 @@ object Benchmarks {
       case SendWork(actor) => context.become(sendWork(actor, state))
       case Result(in, out) =>
         scala.Console.withOut(logging) { println(s"$in: $out (${state.work.size + state.computing} remaining)") }
-        scala.Console.withOut(logging) { printResults(state.concreteResults); printResults(state.abstractResults) }
-        context.become(sendWork(sender, state.copy(computing = state.computing-1,
+        val newState = state.copy(computing = state.computing-1,
           concreteResults = if (in.concrete) updateResults(state.concreteResults, in, out) else state.concreteResults,
-          abstractResults = if (in.concrete) state.abstractResults else updateResults(state.abstractResults, in, out))))
+          abstractResults = if (in.concrete) state.abstractResults else updateResults(state.abstractResults, in, out))
+        scala.Console.withOut(logging) { printResults(newState.concreteResults); printResults(newState.abstractResults) }
+        context.become(sendWork(sender, newState))
     }
 
     def receive = active(State(0, Queue[MachineConfig](),
