@@ -312,7 +312,9 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       EffectsMap(Map[Addr, (Set[(State, TID, Effect[Addr, Abs])], Set[(State, TID, Effect[Addr, Abs])])]().withDefaultValue((Set[(State, TID, Effect[Addr, Abs])](), Set[(State, TID, Effect[Addr, Abs])]())),
         Map[State, Set[(TID, State)]]().withDefaultValue(Set[(TID, State)]()),
         Map[(State, TID), Set[(State, TID)]]().withDefaultValue(Set[(State, TID)]()),
-        false)
+        Set[(State, TID)](),
+        Set[State]()
+      )
   }
   case class EffectsMap(
     /* Maps an address to the effects that affect it, separated as read effects and write effect */
@@ -321,8 +323,11 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     trans: Map[State, Set[(TID, State)]],
     /* Records conflicts that have been already detected to avoid detecting them again */
     conflicts: Map[(State, TID), Set[(State, TID)]],
-    /* Track acquires */
-    acquire: Boolean) {
+    /* Track states performing an acquire */
+    acquires: Set[(State, TID)],
+    /* Records deadlocks that have already been detected to avoid detecting them again */
+    deadlocks: Set[State]
+  ) {
     def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): (EffectsMap, Boolean) = {
       (this.copy(
         /* Records effects */
@@ -332,10 +337,11 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         }))),
         /* record transition */
         trans = trans + (s1 -> (trans(s1) + ((tid, s2)))),
-        acquire = acquire || effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])
+        acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + ((s1, tid)) } else { acquires }
       ), false)
     }
     def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.log("findConflicts") {
+      /* Find elements of dests for which there is a path from s */
       def findPaths(s: State, tid: TID, dests: Set[(State, TID)]): Set[(State, TID)] = {
         //println(s"Finding path between: ${id(graph, s)} and ${dests.map({ case (s, _) => id(graph, s) })}")
         val alreadySeen: Set[(State, TID)] = conflicts((s, tid)) /* conflicts that we already detected and don't need to detect again */
@@ -392,7 +398,31 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       (this.copy(conflicts = newConflicts), confls)
     }
 
-    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = (this, Set()) /* TODO: maintain information about where acquires are, then search a path from an acquire to s (or a reverse path from s to an acquire) */
+    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = Profiler.log(s"findDeadlocks(${id(graph, s)})") {
+      def existsPath(source: State, tid: TID, dest: State): Boolean = {
+        def rec(todo: Set[State], visited: Set[State]): Boolean = todo.headOption match {
+          case Some(s) if (visited.contains(s)) =>
+            /* already visited, discard it and continue exploration */
+            rec(todo.tail, visited)
+          case Some(s) if (s == dest) =>
+            /* found path */
+            true
+          case Some(s) =>
+            /* continue exploring with the successors of s */
+            rec(todo.tail ++ trans(s).map({ case (tid, s2) => s2 }), visited + s)
+          case None =>
+            /* explored every successor, no path to dest */
+            false
+        }
+        val res = rec(Set(source), Set[State]())
+        res
+      }
+      val (newDeadlocks, dls) = acquires.foldLeft((deadlocks, Set[State]()))((acc, x) => x match {
+        case (s1, tid) if (!acc._1.contains(s1) && existsPath(s1, tid, s)) => (acc._1 + s1, acc._2 + s1)
+        case _ => acc
+      })
+      (this.copy(deadlocks = newDeadlocks), dls)
+    }
   }
 
   /*
