@@ -799,7 +799,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       explore((scala.collection.immutable.Vector[Transition](), s0), emptyClockVectors)
       ConcurrentAAMOutput(halted, visited.size, (System.nanoTime - start) / Math.pow(10, 9), g, timedOut)
     } catch {
-      case CannotHandle => ConcurrentAAMOutput(Set(), Set(), 0, None, true)
+      case CannotHandle => ConcurrentAAMOutput(Set(), 0, 0, None, true)
     }
   }
 
