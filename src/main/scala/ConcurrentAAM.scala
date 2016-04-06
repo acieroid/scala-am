@@ -385,18 +385,38 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       def findPaths(s: State, tid: TID, dests: Set[(State, TID)]): Set[(State, TID)] = {
         //println(s"Finding path between: ${id(graph, s)} and ${dests.map({ case (s, _) => id(graph, s) })}")
         val alreadySeen: Set[(State, TID)] = conflicts((s, tid)) /* conflicts that we already detected and don't need to detect again */
-        def rec(todo: Set[(State, TID, State)], visited: Set[(State, TID, State)], results: Set[(State, TID)]): Set[(State, TID)] = todo.headOption match {
+        def recNoBound(todo: Set[(State, TID, State)], visited: Set[(State, TID, State)], results: Set[(State, TID)]): Set[(State, TID)] = todo.headOption match {
           case Some(tr) if (visited.contains(tr)) => /* Already visited this state, discard it and continue exploring */
             //println("Already visited")
-            rec(todo.tail, visited, results)
-          case Some((s1, tid, s2)) if (s1 != s && !alreadySeen.contains((s1, tid)) && dests.contains((s1, tid))) =>
+            recNoBound(todo.tail, visited, results)
+          case Some((s1, tid1, s2)) if (s1 != s && !alreadySeen.contains((s1, tid)) && dests.contains((s1, tid))) =>
             //println(s"Conflict detected at ${id(graph, s1)}")
             /* This is a conflict that we haven't seen yet, add it and continue exploring */
-            rec(todo.tail ++ trans(s2).map({ case (tid, s3) => (s2, tid, s3) }), visited + ((s1, tid, s2)), results + ((s1, tid)))
+            recNoBound(todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3)}), visited + ((s1, tid, s2)), results + ((s1, tid)))
           case Some((s1, tid, s2)) =>
             //println(s"Continue exploring from ${id(graph, s1)}")
             /* No conflict, continue exploring */
-            rec(todo.tail ++ trans(s2).map({ case (tid, s3) => (s2, tid, s3) }), visited + ((s1, tid, s2)), results)
+            recNoBound(todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3) }), visited + ((s1, tid, s2)), results)
+          case None =>
+            //println("Done.")
+            /* Explored all successor states, return detected conflicts */
+            results
+        }
+        def recBound(bound: Int, todo: Set[(State, TID, State, Int)], visited: Set[(State, TID, State, Int)], results: Set[(State, TID)]): Set[(State, TID)] = todo.headOption match {
+          case Some(tr) if (visited.contains(tr)) => /* Already visited this state, discard it and continue exploring */
+            //println("Already visited")
+            recBound(bound, todo.tail, visited, results)
+          case Some((_, _, _, n)) if (n > bound) =>
+            /* exceeded bound, discard */
+            recBound(bound, todo.tail, visited, results)
+          case Some((s1, tid1, s2, n)) if (s1 != s && !alreadySeen.contains((s1, tid1)) && dests.contains((s1, tid1))) =>
+            //println(s"Conflict detected at ${id(graph, s1)}")
+            /* This is a conflict that we haven't seen yet, add it and continue exploring */
+            recBound(bound, todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3, if (tid1 == tid2) { n } else { n + 1 }) }), visited + ((s1, tid1, s2, n)), results + ((s1, tid1)))
+          case Some((s1, tid1, s2, n)) =>
+            //println(s"Continue exploring from ${id(graph, s1)}")
+            /* No conflict, continue exploring */
+            recBound(bound, todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3, if (tid1 == tid2) { n } else { n + 1 }) }), visited + ((s1, tid1, s2, n)), results)
           case None =>
             //println("Done.")
             /* Explored all successor states, return detected conflicts */
@@ -405,9 +425,16 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         if (dests.isEmpty) {
           Set()
         } else {
-          rec(trans(s).collect({ case (tid1, s2) if (tid == tid1) => (s, tid, s2) }).flatMap({ case (s1, tid, s2) => trans(s2).map({ case (tid, s3) => (s2, tid, s3) }) }),
-            Set[(State, TID, State)](),
-            Set[(State, TID)]())
+          exploration match {
+            case InterferenceTrackingPath(None) =>
+              recNoBound(trans(s).collect({ case (tid1, s2) if (tid == tid1) => (s, tid, s2) }).flatMap({ case (s1, tid1, s2) => trans(s2).map({ case (tid2, s3) => (s2, tid2, s3) }) }),
+                Set[(State, TID, State)](),
+                Set[(State, TID)]())
+            case InterferenceTrackingPath(Some(bound)) =>
+              recBound(bound, trans(s).collect({ case (tid1, s2) if (tid == tid1) => (s, tid, s2) }).flatMap({ case (s1, tid1, s2) => trans(s2).map({ case (tid2, s3) => (s2, tid2, s3, if (tid1 == tid2) { 0 } else { 1 }) }) }),
+                Set[(State, TID, State, Int)](),
+                Set[(State, TID)]())
+          }
         }
       }
       val (newConflicts, confls) = effects.keySet.foldLeft((conflicts, Set[(State, TID)]()))((acc, a) => /* Profiler.log(s"findConflicts on address $a")*/ {
@@ -440,22 +467,41 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
     def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = Profiler.log(s"findDeadlocks(${id(graph, s)})") {
       def existsPath(source: State, tid: TID, dest: State): Boolean = {
-        def rec(todo: Set[State], visited: Set[State]): Boolean = todo.headOption match {
+        def recNoBound(todo: Set[State], visited: Set[State]): Boolean = todo.headOption match {
           case Some(s) if (visited.contains(s)) =>
             /* already visited, discard it and continue exploration */
-            rec(todo.tail, visited)
+            recNoBound(todo.tail, visited)
           case Some(s) if (s == dest) =>
             /* found path */
             true
           case Some(s) =>
             /* continue exploring with the successors of s */
-            rec(todo.tail ++ trans(s).map({ case (tid, s2) => s2 }), visited + s)
+            recNoBound(todo.tail ++ trans(s).map({ case (tid, s2) => s2 }), visited + s)
           case None =>
             /* explored every successor, no path to dest */
             false
         }
-        val res = rec(Set(source), Set[State]())
-        res
+        def recBound(bound: Int, todo: Set[(State, TID, State, Int)], visited: Set[(State, TID, State, Int)]): Boolean = todo.headOption match {
+          case Some(tr) if (visited.contains(tr)) => /* Already visited this state, discard it and continue exploring */
+            recBound(bound, todo.tail, visited)
+          case Some((s1, tid1, s2, n)) if (s1 == dest) =>
+            /* found path */
+            true
+          case Some((_, _, _, n)) if (n > bound) =>
+            /* exceeded bound, discard */
+            recBound(bound, todo.tail, visited)
+          case Some((s1, tid1, s2, n)) =>
+            /* Continue exploring */
+            recBound(bound, todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3, if (tid1 == tid2) { n } else { n + 1 }) }), visited + ((s1, tid1, s2, n)))
+          case None =>
+            /* Explored all successor states, no path to dest */
+            false
+        }
+        exploration match {
+          case InterferenceTrackingPath(None) => recNoBound(Set(source), Set[State]())
+          case InterferenceTrackingPath(Some(bound)) =>
+            recBound(bound, trans(s).collect({ case (tid1, s2) if (tid == tid1) => (s, tid, s2, 0) }), Set[(State, TID, State, Int)]())
+        }
       }
       val (newDeadlocks, dls) = acquires.foldLeft((deadlocks, Set[State]()))((acc, x) => x match {
         case (s1, tid) if (!acc._1.contains(s1) && existsPath(s1, tid, s)) => (acc._1 + s1, acc._2 + s1)
