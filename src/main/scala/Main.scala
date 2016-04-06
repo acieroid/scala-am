@@ -141,7 +141,7 @@ object Config {
     file: Option[String] = None, dotfile: Option[String] = None,
     language: Language.Value = Language.Scheme,
     address: Address.Value = Address.Classical,
-    exploration: ExplorationType = InterferenceTracking(Some(4)),
+    exploration: ExplorationType = InterferenceTrackingPath(Some(4)),
     inspect: Boolean = false,
     counting: Boolean = false,
     bound: Int = 100,
@@ -155,7 +155,7 @@ object Config {
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
     opt[Language.Value]("language") action { (x, c) => c.copy(language = x) } text("The language to analyze")
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
-    opt[ExplorationType]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exploration type for concurrent programs (OneInterleaving, RandomInterleaving, AllInterleavings, InterferenceTracking, InterferenceTracking(bound))")
+    opt[ExplorationType]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exploration type for concurrent programs (OneInterleaving, RandomInterleaving, AllInterleavings, InterferenceTrackingSet, InterferenceTrackingPath, InterferenceTrackingPath(bound))")
     opt[Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
     opt[Unit]('i', "inspect") action { (x, c) => c.copy(inspect = true) } text("Launch inspection REPL (disabled by default)")
     opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text("Addresses to use (Classical, ValueSensitive)")

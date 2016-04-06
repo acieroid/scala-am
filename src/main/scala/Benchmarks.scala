@@ -127,7 +127,7 @@ object Benchmarks {
       import scala.math.Ordering.String._
       println(Tabulator.format(List("program", "one", "all", "reduced", "dpor") :: results.toList.sortBy({ case (name, _) => name }).map({
         case (name, res) => name :: List[ExplorationType](OneInterleaving,
-          AllInterleavings, InterferenceTracking(bound), DPOR).map(expl =>
+          AllInterleavings, InterferenceTrackingPath(bound), DPOR).map(expl =>
           res.get(expl) match {
             case Some(out) => out.toString
             case None => "x"
@@ -175,8 +175,8 @@ object Benchmarks {
           case (Some(conc), Some(abs)) =>
             val oneconc = conc(OneInterleaving)
             val oneabs = abs(OneInterleaving)
-            val redconc = conc(InterferenceTracking(bound))
-            val redabs = abs(InterferenceTracking(bound))
+            val redconc = conc(InterferenceTrackingPath(bound))
+            val redabs = abs(InterferenceTrackingPath(bound))
 
             (conc.get(AllInterleavings), abs.get(AllInterleavings)) match {
               case (Some(allconc), Some(allabs)) =>
@@ -290,7 +290,7 @@ object Benchmarks {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) =>
         val explorations = ((if (config.skipAll) { List() } else { List(AllInterleavings) }) ++
-          List(OneInterleaving, InterferenceTracking(config.bound), DPOR) ++
+          List(OneInterleaving, InterferenceTrackingPath(config.bound), DPOR) ++
           List.fill(config.random)(RandomInterleaving))
         val work = programs.toList.flatMap(name =>
           explorations.flatMap(expl => (if (config.skipAbstract) { Set(true) } else { Set(true, false) }).map(concrete =>

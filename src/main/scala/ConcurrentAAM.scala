@@ -6,16 +6,18 @@ case object AllInterleavings extends ExplorationType
 case object OneInterleaving extends ExplorationType
 case object RandomInterleaving extends ExplorationType
 case object DPOR extends ExplorationType
-case class InterferenceTracking(bound: Option[Int]) extends ExplorationType
+case object InterferenceTrackingSet extends ExplorationType
+case class InterferenceTrackingPath(bound: Option[Int]) extends ExplorationType
 object ExplorationTypeParser extends scala.util.parsing.combinator.RegexParsers {
   val all = "AllInterleavings".r ^^ (_ => AllInterleavings)
   val one = "OneInterleaving".r ^^ (_ => OneInterleaving)
   val random = "RandomInterleaving".r ^^ (_ => RandomInterleaving)
   val dpor = "DPOR".r ^^ (_ => DPOR)
-  def interference: Parser[ExplorationType] =
-    (("InterferenceTracking(" ~> "[0-9]+".r <~ ")") ^^ ((s => InterferenceTracking(Some(s.toInt)))) |
-      "InterferenceTracking" ^^ (_ => InterferenceTracking(None)))
-  def expl: Parser[ExplorationType] = all | one | random | dpor | interference
+  val interferenceset = "InterferenceTrackingSet".r ^^ (_ => InterferenceTrackingSet)
+  def interferencepath: Parser[ExplorationType] =
+    (("InterferenceTrackingPath(" ~> "[0-9]+".r <~ ")") ^^ ((s => InterferenceTrackingPath(Some(s.toInt)))) |
+      "InterferenceTrackingPath" ^^ (_ => InterferenceTrackingPath(None)))
+  def expl: Parser[ExplorationType] = all | one | random | dpor | interferenceset | interferencepath
   def parse(s: String): ExplorationType = parseAll(expl, s) match {
     case Success(res, _) => res
     case Failure(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")
@@ -314,7 +316,37 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State])
   }
 
-  object EffectsMap {
+  object SetEffectsMap {
+    def apply(): EffectsMap =
+      SetEffectsMap(Map[State, Map[Addr, Set[(State, TID, Effects)]]]().withDefaultValue(Map[Addr, Set[(State, TID, Effects)]]().withDefaultValue(Set[(State, TID, Effects)]())),
+        Map[State, Set[(TID, State)]]().withDefaultValue(Set[(TID, State)]()),
+        Set[State](),
+        Set[State](),
+        Set[(State, TID)](),
+        Set[State]()
+      )
+  }
+  case class SetEffectsMap(
+    /* For each state, keeps track of the effects that might have happened before the state, grouped by address */
+    effects: Map[State, Map[Addr, Set[(State, TID, Effects)]]],
+    /* Keeps track of the transitions explored */
+    trans: Map[State, Set[(TID, State)]],
+    /* Keeps track of the halted states */
+    halted: Set[State],
+    /* Keeps track of the cycles */
+    cycles: Set[State],
+    /* Keeps track of the conflicts already deteted */
+    conflicts: Set[(State, TID)],
+    /* Keeps track of the deadlocks already detected */
+    deadlocks: Set[State]
+  ) extends EffectsMap {
+    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = ???
+    def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State): EffectsMap = ???
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = ???
+    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = ???
+  }
+
+  object PathEffectsMap {
     def apply(): EffectsMap =
       PathEffectsMap(Map[Addr, (Set[(State, TID, Effect[Addr, Abs])], Set[(State, TID, Effect[Addr, Abs])])]().withDefaultValue((Set[(State, TID, Effect[Addr, Abs])](), Set[(State, TID, Effect[Addr, Abs])]())),
         Map[State, Set[(TID, State)]]().withDefaultValue(Set[(TID, State)]()),
@@ -433,168 +465,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
 
-  /*
-  val caching: Boolean = true
-  case class EffectsMap(m: Map[State, Map[State, (TID, Effects)]], cache: Map[State, Set[List[(State, TID, Effects)]]], acquire: Boolean) {
-    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effects: Effects): (EffectsMap, Boolean) = {
-      //println(s"New transition: ${id(graph, s1)} -> ${id(graph, s2)} ${m.contains(s2)}")
-      /* If s2 is an unencountered state, m(s2) is empty and we just add the new
-       information. If s2 was previously encountered, this is a merge point
-       (and might be a cycle), then either s1 is not present in m(s2) and can
-       be safely added, or s1 is already present in m(s2) and contains the
-       same information as the one we get here (because a transition does not
-       change) */
-      val local = m(s2) + (s1 -> (tid, effects))
-      /* if s2 was previously encountered, we have to perform conflict detection due to possible new conflicts */
-      // if (m(s2) == local) println("Remains the same")
-      (EffectsMap(m + (s2 -> local),
-        /* invalidate entries depending on s2 */
-        cache.filterNot({ case (k, vs) => vs.exists(v => v.exists({ case (s, _, _) => s == s2 })) }),
-        acquire || effects.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])),
-        m.contains(s2))
-    }
-
-    private def containsLoop(graph: Option[Graph[State, (TID, Effects)]], s: State, path: List[(State, TID, Effects)]): Option[List[(State, TID, Effects)]] =
-      if (path.isEmpty) { None } else {
-        path.tail.indexWhere({ case (s2, _, _) => s2 == s }) match {
-          case -1 => None
-          case n => Some(path.take(n + 2))
-        }
-      }
-
-    private def reachedBound(path: List[(State, TID, Effects)]): Boolean = exploration match {
-      case InterferenceTracking(bound) => bound match {
-        case Some(bound) => path.filter({ case (_, _, effs) => !effs.isEmpty }).size >= bound
-        case None => false
-      }
-      case _ => false
-    }
-
-    @scala.annotation.tailrec
-    private def findPossibleEffects(graph: Option[Graph[State, (TID, Effects)]], todo: Set[(State, List[(State, TID, Effects)])], loops: Map[State, Set[List[(State, TID, Effects)]]], results: Set[List[(State, TID, Effects)]]): Set[List[(State, TID, Effects)]] =
-      todo.headOption match {
-        case None => {
-          /* Done exploring the graph, replace states that contain a loop by the effects on the loop. If more than one possible loops can happen, concatenate them. */
-          //println("Done...")
-          results.map(seq => seq.flatMap({ case (s, tid, eff) =>
-            loops.get(s) match {
-              case Some(loops) =>  (s, tid, eff) :: loops.foldLeft(List[(State, TID, Effects)]())(_ ++ _)
-              case None => List((s, tid, eff))
-            }
-          }))
-        }
-        case Some((s, path)) => {
-          // println(s"Find possible effects at state ${id(graph, s)}, ${pathToStr(graph, path)}")
-          containsLoop(graph, s, path) match {
-            case Some(loop) => {
-              //println("There is a loop")
-              findPossibleEffects(graph, todo.tail, loops + (s -> (loops(s) + loop)), results)
-            }
-            case None => {
-              //println("No loop, checking bound or start state")
-              if (reachedBound(path) || m(s).isEmpty) {
-                //println("Yup, add the result and continue")
-                /* reached a start state or reached bound */
-                findPossibleEffects(graph, todo.tail, loops, results + path)
-              } else {
-                // println("Nope, check the cache")
-                cache.get(s) match {
-                  case Some(pres) => {
-                    //println("Present in the cache, get it")
-                    findPossibleEffects(graph, todo.tail, loops, results ++ (pres.map(pre => pre ++ path)))
-                  }
-                  case None => {
-                    //println("Not present, compute it")
-                    //println(s"There are ${m(s).toList.map({ case (pred, (tid, effs)) => (pred, (pred, tid, effs) :: path) }).size} elements")
-                    findPossibleEffects(graph, todo.tail ++ m(s).toList.map({ case (pred, (tid, effs)) =>
-                      (pred, (pred, tid, effs) :: path) }), loops, results)
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-    private def fillCache(graph: Option[Graph[State, (TID, Effects)]], s: State, effs: Set[List[(State, TID, Effects)]]): EffectsMap =
-      if (caching) {
-        this.copy(cache = cache ++ effs.foldLeft(Map[State, Set[List[(State, TID, Effects)]]]().withDefaultValue(Set[List[(State, TID, Effects)]]()))((acc, path) =>
-          path.foldLeft((acc, List[(State, TID, Effects)]()))((acc: (Map[State, Set[List[(State, TID, Effects)]]], List[(State, TID, Effects)]), el) => el match {
-            case (s, _, _) if cache.isDefinedAt(s) => (acc._1, el :: acc._2)
-            case (s, _, _) =>
-              //println(s"Caching: ${id(graph, s)} -> ${pathToStr(graph, acc._2.reverse)}")
-              (acc._1 + (s -> (acc._1(s) + acc._2.reverse)), el :: acc._2)
-          })._1) + (s -> effs))
-      } else {
-        this
-      }
-
-    private def findPossibleEffects(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[List[(State, TID, Effects)]]) =
-      cache.get(s) match {
-        case Some(effs) =>
-          // println("Cache hit")
-          (this, effs)
-        case None =>
-          //println(s"No hit for state ${id(graph, s)}")
-          val effs = findPossibleEffects(graph, Set((s, List[(State, TID, Effects)]())),
-            Map[State, Set[List[(State, TID, Effects)]]]().withDefaultValue(Set[List[(State, TID, Effects)]]()), Set())
-          (fillCache(graph, s, effs), effs)
-      }
-
-    private def detectConflicts(graph: Option[Graph[State, (TID, Effects)]], effects: List[(State, TID, Effects)]): Set[(State, TID)] =
-      // TODO: first group by target to avoid O(n²) over the entire sequence. Also, skip part of the list?
-      effects.zipWithIndex.foldLeft(Set[(State, TID)]())((acc, x) => x match {
-        /* for each effect */
-        case ((s1, t1, effs1), idx) => effects.drop(idx + 1).foldLeft(acc)((acc, y) => y match {
-          /* find an effect from a different state, with a different tid, which is dependent on the first effect */
-          case (s2, t2, effs2) if (s1 != s2 && t1 != t2 && dependent(effs1, effs2)) => {
-            acc + ((s1, t2))
-          }
-          case _ => acc
-        }
-        )})
-    private def pathToStr(graph: Option[Graph[State, (TID, Effects)]], path: List[(State, TID, Effects)]): String =
-      path.collect({ case (s, tid, effs) if (!effs.isEmpty) => s"${id(graph, s)}"  }).mkString(":")
-
-    def detectAcquires(graph: Option[Graph[State, (TID, Effects)]], effects: List[(State, TID, Effects)]): Set[State] =
-      effects.collect({ case (s, _, effs) if effs.exists(_.isInstanceOf[EffectAcquire[Addr, Abs]]) => s }).toSet
-
-    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = {
-      if (acquire) {
-        val (newEffectsMap, possibleEffects) = Profiler.profile("computing effects") { findPossibleEffects(graph, s) }
-        (newEffectsMap, possibleEffects.flatMap(effs => detectAcquires(graph, effs)))
-      } else {
-        (this, Set())
-      }
-    }
-
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]], s: State, inpath: Option[State]): (EffectsMap, Set[(State, TID)]) = {
-      /* step 1: compute the possible effects that happen to reach this state. It is a
-       * set of list of (set of) effects. Each element of the set correspond to
-       * a path through the graph. Sets of effects correspond to the multiple
-       * effects that are generated by one transition. They are grouped together
-       * because effects on a variable made during the same transition are not
-       * dependent (they are atomic, e.g. a cas reads and writes to a variable
-       * at the same time) */
-      // println(s"Computing effects at state ${id(graph, s)}")
-      val (newEffectsMap, possibleEffects) = Profiler.profile("computing effects") { findPossibleEffects(graph, s) }
-      // possibleEffects.foreach(effs => println(pathToStr(graph, effs)))
-      /* step 2: for each possible list of effects, find conflicts */
-      // println("Detecting conflicts")
-      (newEffectsMap, Profiler.profile("detecting conflicts") { possibleEffects.flatMap(effs => inpath match {
-        case None => detectConflicts(graph, effs)
-        case Some(s) => if (effs.exists({ case (s2, _, _) => s == s2 })) {
-          detectConflicts(graph, effs)
-        } else {
-          Set[(State, TID)]()
-        }})})
-    }
-  }
-  object EffectsMap {
-    def apply(): EffectsMap = EffectsMap(Map[State, Map[State, (TID, Effects)]]().withDefaultValue(Map[State, (TID, Effects)]()),
-      Map[State, Set[List[(State, TID, Effects)]]](), false)
-  }
-   */
   class ThreadPickMap(m: Map[State, Set[TID]]) {
     /** Pick a new tid to explore. If no more tid can be explored, return None (in
       * which case, either the program is halted, or in a deadlock). */
@@ -808,7 +678,10 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(oneInterleaving(sem))
       case RandomInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(randomInterleaving(sem))
-      case _: InterferenceTracking => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), EffectsMap(), ThreadPickMap(),
+      case InterferenceTrackingSet => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), SetEffectsMap(), ThreadPickMap(),
+        Set(), System.nanoTime, timeout, Set(),
+        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
+      case _: InterferenceTrackingPath => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), PathEffectsMap(), ThreadPickMap(),
         Set(), System.nanoTime, timeout, Set(),
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
       case DPOR => dporExplore(State.inject(exp), System.nanoTime, timeout, if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
