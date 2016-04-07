@@ -318,7 +318,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   object SetEffectsMap {
     def apply(): EffectsMap =
-      SetEffectsMap(Map[State, Map[Addr, Set[(State, TID, Effects)]]]().withDefaultValue(Map[Addr, Set[(State, TID, Effects)]]().withDefaultValue(Set[(State, TID, Effects)]())),
+      SetEffectsMap(Map[State, Set[(State, TID, Effects)]]().withDefaultValue(Set()),
         Map[State, Set[(TID, State)]]().withDefaultValue(Set[(TID, State)]()),
         Set[State](),
         Set[State](),
@@ -328,7 +328,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   }
   case class SetEffectsMap(
     /* For each state, keeps track of the effects that might have happened before the state, grouped by address */
-    effects: Map[State, Map[Addr, Set[(State, TID, Effects)]]],
+    effects: Map[State, Set[(State, TID, Effects)]],
     /* Keeps track of the transitions explored */
     trans: Map[State, Set[(TID, State)]],
     /* Keeps track of the halted states */
@@ -340,10 +340,50 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     /* Keeps track of the deadlocks already detected */
     deadlocks: Set[State]
   ) extends EffectsMap {
-    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = ???
-    def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State): EffectsMap = ???
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = ???
-    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = ???
+    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = {
+      /* propagate the given set of effects to all successors of s, computing a new effects map */
+      def propagate(): (Map[State, Set[(State, TID, Effects)]], Set[State]) = {
+        def rec(todo: Set[(State, TID, State)], visited: Set[(State, TID, State)], effects: Map[State, Set[(State, TID, Effects)]], cycles: Set[State]): (Map[State, Set[(State, TID, Effects)]], Set[State]) = todo.headOption match {
+          case Some((s1, tid, s2)) if (visited.contains((s1, tid, s2))) =>
+            /* detected a cycle, keep track of the cycle for conflict detection*/
+            rec(todo.tail, visited, effects, cycles + s2)
+          case Some((s1, tid, s2)) => /* effs needs to be propagated from s1 to s2 */
+            val newEffs = effects(s2) ++ effects(s1)
+            rec(todo.tail ++ trans(s2).map({ case (tid, s3) => (s2, tid, s3) }), visited + ((s1, tid, s2)),
+              effects + (s2 -> newEffs),
+              cycles)
+          case None => /* propagation done */
+            (effects, cycles)
+        }
+        rec(Set((s1, tid, s2)), Set(), effects + (s2 -> (effects(s2) ++ effects(s1) + ((s1, tid, effs)))), cycles)
+      }
+      val (newEffects, newCycles) = propagate
+      this.copy(
+        effects = newEffects,
+        cycles = newCycles,
+        trans = trans + (s1 -> (trans(s1) + ((tid, s2))))
+      )
+    }
+    def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State): EffectsMap = {
+      this.copy(halted = halted + s)
+    }
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = {
+      def findConflictsAt(s: State): Set[(State, TID)] = {
+        effects(s).flatMap({
+          case (s1, tid1, effs1) => effects(s).flatMap({
+            case (s2, tid2, effs2) if (s1 != s2 && tid1 != tid2 && dependent(effs1, effs2)) =>
+              Set((s1, tid2), (s2, tid1))
+          })
+        })
+      }
+      val confls = (halted ++ cycles).flatMap(s => findConflictsAt(s))
+      (this.copy(conflicts = conflicts ++ confls), confls)
+    }
+    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = {
+      val dls: Set[State] = effects(s).collect({
+        case (s, tid, effs) if (!deadlocks.contains(s) && effs.exists(eff => eff.isInstanceOf[EffectAcquire[Addr, Abs]])) => s })
+      (this.copy(deadlocks = deadlocks ++ dls), dls)
+    }
   }
 
   object PathEffectsMap {
