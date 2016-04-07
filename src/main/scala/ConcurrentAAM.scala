@@ -367,18 +367,19 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State): EffectsMap = {
       this.copy(halted = halted + s)
     }
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = {
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.logRes("findConflicts") {
       def findConflictsAt(s: State): Set[(State, TID)] = {
         effects(s).flatMap({
           case (s1, tid1, effs1) => effects(s).flatMap({
             case (s2, tid2, effs2) if (s1 != s2 && tid1 != tid2 && dependent(effs1, effs2)) =>
-              Set((s1, tid2), (s2, tid1))
+              (if (conflicts.contains((s1, tid2))) { Set() } else { Set((s1, tid2)) }) ++ (if (conflicts.contains((s2, tid1))) { Set() } else { Set((s2, tid1)) })
+            case _ => Set[(State, TID)]()
           })
         })
       }
       val confls = (halted ++ cycles).flatMap(s => findConflictsAt(s))
       (this.copy(conflicts = conflicts ++ confls), confls)
-    }
+    } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).mkString(", ") }
     def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = {
       val dls: Set[State] = effects(s).collect({
         case (s, tid, effs) if (!deadlocks.contains(s) && effs.exists(eff => eff.isInstanceOf[EffectAcquire[Addr, Abs]])) => s })
