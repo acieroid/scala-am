@@ -430,14 +430,14 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
           case Some(tr) if (visited.contains(tr)) => /* Already visited this state, discard it and continue exploring */
             //println("Already visited")
             recNoBound(todo.tail, visited, results)
-          case Some((s1, tid1, s2)) if (s1 != s && !alreadySeen.contains((s1, tid)) && dests.contains((s1, tid))) =>
+          case Some((s1, tid1, s2)) if (s1 != s && !alreadySeen.contains((s1, tid1)) && dests.contains((s1, tid1))) =>
             //println(s"Conflict detected at ${id(graph, s1)}")
             /* This is a conflict that we haven't seen yet, add it and continue exploring */
-            recNoBound(todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3)}), visited + ((s1, tid, s2)), results + ((s1, tid)))
-          case Some((s1, tid, s2)) =>
+            recNoBound(todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3) }), visited + ((s1, tid1, s2)), results + ((s1, tid1)))
+          case Some((s1, tid1, s2)) =>
             //println(s"Continue exploring from ${id(graph, s1)}")
             /* No conflict, continue exploring */
-            recNoBound(todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3) }), visited + ((s1, tid, s2)), results)
+            recNoBound(todo.tail ++ trans(s2).map({ case (tid2, s3) => (s2, tid2, s3) }), visited + ((s1, tid1, s2)), results)
           case None =>
             //println("Done.")
             /* Explored all successor states, return detected conflicts */
