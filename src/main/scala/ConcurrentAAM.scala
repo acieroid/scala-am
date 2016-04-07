@@ -506,7 +506,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       (this.copy(conflicts = newConflicts), confls)
     } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).mkString(", ") }
 
-    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = Profiler.log(s"findDeadlocks(${id(graph, s)})") {
+    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = /* Profiler.log(s"findDeadlocks(${id(graph, s)})") */ {
       def existsPath(source: State, tid: TID, dest: State): Boolean = {
         def recNoBound(todo: Set[State], visited: Set[State]): Boolean = todo.headOption match {
           case Some(s) if (visited.contains(s)) =>
