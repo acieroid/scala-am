@@ -24,4 +24,4 @@
          (t1 (spawn (p1))))
   (join t0)
   (join t1)
-  counter)
+  #t)

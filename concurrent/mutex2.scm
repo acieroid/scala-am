@@ -14,4 +14,4 @@
          (t2 (spawn (inc))))
   (join t1)
   (join t2)
-  (= counter 2))
+  #t)

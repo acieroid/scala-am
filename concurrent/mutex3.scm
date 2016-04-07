@@ -16,4 +16,4 @@
   (join t1)
   (join t2)
   (join t3)
-  (= counter 3))
+  #t)
