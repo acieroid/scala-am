@@ -1,5 +1,5 @@
 object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false, bound: Option[Int] = None)
+  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false, skipConcrete: Boolean = false, skipOne: Boolean = false, bound: Option[Int] = None)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
@@ -8,6 +8,8 @@ object BenchmarksConfig {
     opt[Int]('b', "bound") action { (x, c) => c.copy(bound = Some(x)) } text("Bound for interference tracking (none by default))")
     opt[Unit]('s', "skip-all") action { (x, c) => c.copy(skipAll = true) } text("Skip computing all interleavings")
     opt[Unit]('a', "skip-abstract") action { (x, c) => c.copy(skipAbstract = true) } text("Skip computing in the abstract")
+    opt[Unit]('c', "skip-concrete") action { (x, c) => c.copy(skipConcrete = true) }
+    opt[Unit]('o', "skip-one") action { (x, c) => c.copy(skipOne = true) }
     opt[Config.Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
   }
 }
@@ -290,10 +292,11 @@ object Benchmarks {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) =>
         val explorations = ((if (config.skipAll) { List() } else { List(AllInterleavings) }) ++
-          List(OneInterleaving, InterferenceTrackingPath(config.bound), DPOR) ++
+          (if (config.skipOne) { List() } else { List(OneInterleaving) }) ++
+          List(InterferenceTrackingPath(config.bound), DPOR) ++
           List.fill(config.random)(RandomInterleaving))
         val work = programs.toList.flatMap(name =>
-          explorations.flatMap(expl => (if (config.skipAbstract) { Set(true) } else { Set(true, false) }).map(concrete =>
+          explorations.flatMap(expl => ((if (config.skipAbstract) { Set() } else { Set(false) }) ++ (if (config.skipConcrete) { Set() } else { Set(true) })).map(concrete =>
             MachineConfig(name, expl, concrete, config.timeout))))
         println(s"Scheduling ${work.size} items of work")
         val workers = (1 to config.workers).map(i => system.actorOf(Props[Worker], s"worker-$i"))
