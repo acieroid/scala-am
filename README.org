@@ -22,10 +22,10 @@ run -f test/fact.scm # Performs abstract interpretation on fact.scm
 run -f test/fact.scm -l Concrete -c # Performs concrete interpretation on fact.scm
 run -f test/fact.scm -m AAM # Use the AAM approach (default one is Free)
 run -f test/fact.scm -m AAC # Use the AAC approach
-run -f test/fact.scm -l Type # Use the type lattice (default one is TypeSet, which is more precise than Type)
 run -f test/fact.scm -m AAM -d fact.dot # Output the state graph in fact.dot
 run # Launches a REPL that performs interpretation of the input
 #+END_SRC
+
 * Benchmarks
 To run benchmarks, do the following:
 
@@ -34,4 +34,5 @@ run-main Benchmarks
 #+END_SRC
 
 You can give a timeout parameter (=-t=, no timeout by default), and a number of
-workers (=-w=, 1 by default)
+workers (=-w=, 1 by default), as well as many other options that you can play
+with. They are explained when the =-h= option is given.
