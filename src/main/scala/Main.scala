@@ -32,22 +32,20 @@ import scala.io.StdIn
  *      Three abstract machine implementations are available:
  *      - The classical Abstracting Abstract Machine of Might and Van Horn (AAM.scala)
  *      - Johnson's Abstracting Abstract Control (AAC.scala)
- *      - Gilrey's Pushdown Control-Flow Analysis for Free (Free.scala) Every
- *      abstract machine implementation has to implement the AbstractMachine
+ *      - Gilrey's Pushdown Control-Flow Analysis for Free (Free.scala)
+ *      Every abstract machine implementation has to implement the AbstractMachine
  *      interface (AbstractMachine.scala).
  *
  *      The abstract machine also uses a lattice to represent values. Lattices
- *      should implement some traits that can be found in
+ *      should implement the AbstractValue trait that can be found in
  *      AbstractValue.scala. The following lattices are available:
- *      - A concrete lattice, ConcreteLattice.scala
- *      - A type lattice, representing each value by its type, TypeLattice.scala
- *      Other lattices are made available by combining existing lattices, using:
- *      - A powerset lattice, representing elements as sets of values. Example:
- *        the type lattice can represent Int, or String, but not join the two
- *        elements together (and raises a CannotJoin exception). The powerset
- *        lattice of the type lattice will join them together in a set,
- *        representing the result as {Int, String}. The TypeSet lattice is in
- *        fact the lattice PowerSet(Type).
+ *      - A concrete lattice (ConcreteLattice.scala) that represents every value with full precision.
+ *      - A modular lattice (ModularLattice.scala, ModularLatticeImpl.scala)
+ *        where every component (numbers, strings, ...) can be specified
+ *        independently of each other. It can then automatically transform a
+ *        lattice into a powerset lattice. There are implementations for
+ *        concrete values, type representations of a value, and bounded
+ *        integers.
  *      - A product lattice, combining two lattices together as a cartesian
  *        product. Example: one could combine the type lattice with a sign
  *        lattice, getting abstract values such as (Int, +), (String, bottom),
@@ -57,12 +55,12 @@ import scala.io.StdIn
  *  - Support a new language: you will need:
  *    - A parser, you can look into SExpParser.scala as an inspiration. If your
  *      language is s-expression based, you can use this parser and compile
- *      s-expressions into your abstract grammar. To do so, look at Scheme.scala
- *    - An abstract grammar, look at SExp.scala or the SchemeExp class in Scheme.scala
- *    - A semantics, look at ANFSemantics.scala for a simple example
+ *      s-expressions into your abstract grammar. To do so, look at Scheme.scala.
+ *    - An abstract grammar, look at SExp.scala or the SchemeExp class in Scheme.scala.
+ *    - A semantics, look at ANFSemantics.scala for a simple example.
  *    - Support for your language operations at the lattice level. For this,
  *      you'll probably need to extend the lattices (AbstractValue.scala,
- *      ConcreteLattice.scala, TypeLattice.scala)
+ *      ConcreteLattice.scala, ...)
  *  - Play with abstract machines, you can look into AAM.scala, AAC.scala or
  *    Free.scala (AAM is the simplest machine).
  *  - Implement some kind of analysis, you'll probably need to design a lattice
