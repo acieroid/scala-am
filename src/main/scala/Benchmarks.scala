@@ -1,5 +1,5 @@
 object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false, skipConcrete: Boolean = false, skipOne: Boolean = false, bound: Option[Int] = None)
+  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false, skipConcrete: Boolean = false, skipOne: Boolean = false, skipDPOR: Boolean = false, bound: Option[Int] = None)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
@@ -10,6 +10,7 @@ object BenchmarksConfig {
     opt[Unit]('a', "skip-abstract") action { (x, c) => c.copy(skipAbstract = true) } text("Skip computing in the abstract")
     opt[Unit]('c', "skip-concrete") action { (x, c) => c.copy(skipConcrete = true) }
     opt[Unit]('o', "skip-one") action { (x, c) => c.copy(skipOne = true) }
+    opt[Unit]('d', "skip-dpor") action { (x, c) => c.copy(skipDPOR = true) }
     opt[Config.Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
   }
 }
@@ -127,9 +128,9 @@ object Benchmarks {
 
     private def printResults(results: Map[String, Map[ExplorationType, MachineOutput]]) = {
       import scala.math.Ordering.String._
-      println(Tabulator.format(List("program", "one", "all", "reduced", "dpor") :: results.toList.sortBy({ case (name, _) => name }).map({
+      println(Tabulator.format(List("program", "one", "all", "path", "set", "dpor") :: results.toList.sortBy({ case (name, _) => name }).map({
         case (name, res) => name :: List[ExplorationType](OneInterleaving,
-          AllInterleavings, InterferenceTrackingPath(bound), DPOR).map(expl =>
+          AllInterleavings, InterferenceTrackingPath(bound), InterferenceTrackingSet, DPOR).map(expl =>
           res.get(expl) match {
             case Some(out) => out.toString
             case None => "x"
@@ -293,7 +294,8 @@ object Benchmarks {
       case Some(config) =>
         val explorations = ((if (config.skipAll) { List() } else { List(AllInterleavings) }) ++
           (if (config.skipOne) { List() } else { List(OneInterleaving) }) ++
-          List(InterferenceTrackingPath(config.bound), DPOR) ++
+          (if (config.skipDPOR) { List() } else { List(DPOR) }) ++
+          List(InterferenceTrackingPath(config.bound), InterferenceTrackingSet) ++
           List.fill(config.random)(RandomInterleaving))
         val work = programs.toList.flatMap(name =>
           explorations.flatMap(expl => ((if (config.skipAbstract) { Set() } else { Set(false) }) ++ (if (config.skipConcrete) { Set() } else { Set(true) })).map(concrete =>
