@@ -539,6 +539,22 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryStoreOperation("cdddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store), cdr(_, store)), store)),
     UnaryStoreOperation("cadar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), car(_, store)), store)),
     UnaryStoreOperation("cddar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("caaaar", (v, store) => toPrim(chain(v, car(_, store), car(_, store), car(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cadaar", (v, store) => toPrim(chain(v, car(_, store), car(_, store), cdr(_, store), car(_, store)), store)),
+    UnaryStoreOperation("caaadr", (v, store) => toPrim(chain(v, cdr(_, store), car(_, store), car(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cadadr", (v, store) => toPrim(chain(v, cdr(_, store), car(_, store), cdr(_, store), car(_, store)), store)),
+    UnaryStoreOperation("caaddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store), car(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cadddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store), cdr(_, store), car(_, store)), store)),
+    UnaryStoreOperation("caadar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), car(_, store), car(_, store)), store)),
+    UnaryStoreOperation("caddar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), cdr(_, store), car(_, store)), store)),
+    UnaryStoreOperation("cdaaar", (v, store) => toPrim(chain(v, car(_, store), car(_, store), car(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cddaar", (v, store) => toPrim(chain(v, car(_, store), car(_, store), cdr(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cdaadr", (v, store) => toPrim(chain(v, cdr(_, store), car(_, store), car(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cddadr", (v, store) => toPrim(chain(v, cdr(_, store), car(_, store), cdr(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cdaddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store), car(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cddddr", (v, store) => toPrim(chain(v, cdr(_, store), cdr(_, store), cdr(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cdadar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), car(_, store), cdr(_, store)), store)),
+    UnaryStoreOperation("cdddar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), cdr(_, store), cdr(_, store)), store)),
     BinaryStoreOperation("set-car!", (cell, v, store) => {
       val (store2, effects) = abs.car(cell).foldLeft((store, Set[Effect[Addr, Abs]]()))((acc, a) =>
         (acc._1.update(a, v), acc._2 + EffectWriteConsCar(a)))
