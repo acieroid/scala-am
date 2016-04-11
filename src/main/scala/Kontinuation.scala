@@ -24,3 +24,8 @@ case class KontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kont[Kon
       ks.forall((k1) => lookup(a).exists(k2 => k2.subsumes(k1)))
     })
 }
+
+object KontStore {
+  def empty[KontAddr : KontAddress] =
+    new KontStore[KontAddr]()
+}

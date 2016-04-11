@@ -247,6 +247,12 @@ abstract class AAMPrimitiveTests[Addr : Address, Time : Timestamp](override val 
   val machine = new AAM[SchemeExp, lattice.L, Addr, Time]
 }
 
+abstract class AAMGlobalStorePrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+    extends Tests[SchemeExp, Addr, Time](lattice) {
+  val sem = new SchemeSemantics[lattice.L, Addr, Time]
+  val machine = new AAMGlobalStore[SchemeExp, lattice.L, Addr, Time](true)
+}
+
 abstract class AACPrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time]
@@ -270,6 +276,10 @@ class AAMConcretePrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, Co
 class AAMConcreteNewPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true))
 class AAMTypeSetPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 class AAMBoundedIntPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
+class AAMGlobalStoreConcretePrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
+class AAMGlobalStoreConcreteNewPrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true))
+class AAMGlobalStoreTypeSetPrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
+class AAMGlobalStoreBoundedIntPrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
 class AACConcretePrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
 class AACConcreteNewPrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true))
 class AACTypeSetPrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
