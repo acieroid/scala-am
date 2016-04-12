@@ -276,13 +276,7 @@ class AAMConcretePrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, Co
 class AAMConcreteNewPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true))
 class AAMTypeSetPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 class AAMBoundedIntPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
-/* No AAMGlobalStoreConcretePrimitiveTests because Concrete lattice does not
- * support joins, and we need it for the global store.
- * For example, with (let ((x 1)) (set! x 2) x), with a single global store, x
- * will be bound to 1, then modified to 2, and the stores will be joined, giving
- * {1,2}.
- * class AAMGlobalStoreConcretePrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
- */
+class AAMGlobalStoreConcretePrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
 class AAMGlobalStoreConcreteNewPrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true))
 class AAMGlobalStoreTypeSetPrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 class AAMGlobalStoreBoundedIntPrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))

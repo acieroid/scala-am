@@ -18,6 +18,9 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
   }
 
   val primitives = new Primitives[Addr, Abs]()
+  val emptyStore = Store.empty[Addr, Abs]
+  val emptyKStore = KontStore.empty[KontAddr]
+
 
   case class State(control: Control, a: KontAddr, t: Time) {
     override def toString = control.toString
@@ -27,7 +30,7 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     def subsumes(that: State): Boolean = control.subsumes(that.control) && a == that.a && t == that.t
 
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], store: Store[Addr, Abs], kstore: KontStore[KontAddr]): (Set[State], Store[Addr, Abs], KontStore[KontAddr]) =
-      actions.foldLeft((Set[State](), store, kstore))((acc, action) => action match {
+      actions.foldLeft((Set[State](), emptyStore, kstore))((acc, action) => action match {
         case ActionReachedValue(v, store2, _) => (acc._1 + State(ControlKont(v), a, time.tick(t)), acc._2.join(store2), acc._3)
         case ActionPush(e, frame, env, store2, _) =>
           val next = NormalKontAddress(e, addr.variable("__kont__", abs.bottom, t))
@@ -49,7 +52,7 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
       /* In a continuation state, if the value reached is not an error, call the
        * semantic's continuation method */
       case ControlKont(v) if abs.isError(v) => (Set(), store, kstore)
-      case ControlKont(v) => kstore.lookup(a).foldLeft((Set[State](), store, kstore))((acc, kont) => kont match {
+      case ControlKont(v) => kstore.lookup(a).foldLeft((Set[State](), emptyStore, kstore))((acc, kont) => kont match {
         case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, store, t), store, kstore) match {
           case (states, store2, kstore2) => (acc._1 ++ states, acc._2.join(store2), acc._3.join(kstore2))
         }
@@ -93,8 +96,6 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     }
   }
 
-  val emptyStore = Store.empty[Addr, Abs]
-  val emptyKStore = KontStore.empty[KontAddr]
   /* Explore state graph when a monotonically growing store is present */
   @scala.annotation.tailrec
   private def loopMono(todo: Set[State], visited: Set[State], store: Store[Addr, Abs], kstore: KontStore[KontAddr],
