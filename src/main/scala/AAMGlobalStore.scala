@@ -101,7 +101,7 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, Unit]],
     sem: Semantics[Exp, Abs, Addr, Time]): AAMOutput =
     if (todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-      AAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
+      AAMOutput(halted, graph.map(g => g.nodes.size).getOrElse(0), (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
         timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
       val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), emptyStore, emptyKStore)({ (acc, state) =>
