@@ -15,21 +15,14 @@
 
 (define gensym-count 0)
 
-(define gensym (lambda params
-                 (if (null? params)
-                     (begin
-                       (set! gensym-count (+ gensym-count 1))
-                       (string->symbol (string-append
-                                        "$"
-                                        (number->string gensym-count))))
-                     (begin
-                       (set! gensym-count (+ gensym-count 1))
-                       (string->symbol (string-append
-                                        (if (symbol? (car params))
-                                            (symbol->string (car params))
-                                            (car params))
-                                        "$"
-                                        (number->string gensym-count)))))))
+(define gensym (lambda (param)
+                 (set! gensym-count (+ gensym-count 1))
+                 (string->symbol (string-append
+                                  (if (symbol? param)
+                                      (symbol->string param)
+                                      param)
+                                  "$"
+                                  (number->string gensym-count)))))
 
 (define (member sym S)
   (if (not (pair? S))
