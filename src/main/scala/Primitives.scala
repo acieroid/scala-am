@@ -55,6 +55,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   def lt = abs.binaryOp(BinaryOperator.Lt) _
   def numEq = abs.binaryOp(BinaryOperator.NumEq) _
   def eq = abs.binaryOp(BinaryOperator.Eq) _
+  def stringAppend = abs.binaryOp(BinaryOperator.StringAppend) _
+  def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
 
   /** This is how a primitive is defined by extending Primitive */
   object Cons extends Primitive[Addr, Abs] {
@@ -580,6 +582,8 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("real?", x => abs.or(isInteger(x), isFloat(x))),
     UnaryOperation("boolean?", isBoolean),
     BinaryOperation("eq?", eq),
+    BinaryOperation("string-append", (x, y) => stringAppend(x, y)),
+    UnaryOperation("string-length", x => stringLength(x)),
     BinaryStoreOperation("equal?", (a, b, store) => {
       val (res, eff) = equal(a, b, store)
       (res, store, eff)

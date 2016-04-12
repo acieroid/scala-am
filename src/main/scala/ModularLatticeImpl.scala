@@ -14,6 +14,7 @@ object ConcreteString {
 
     def inject(x: String): S = ISet.singleton(x)
     def length[I](s: S)(implicit int: IsInteger[I]): I = s.foldMap(s => int.inject(s.size))
+    def append(s1: S, s2: S): S = s1.foldMap(s1 => s2.map(s2 => s1 + s2))
     def eql[B](s1: S, s2: S)(implicit bool: IsBoolean[B]): B = s1.foldMap(s1 => s2.foldMap(s2 => bool.inject(s1 == s2)))
 
     def order(x: S, y: S): Ordering = implicitly[Order[ISet[String]]].order(x, y)
@@ -252,6 +253,11 @@ object Type {
     def length[I](s: T)(implicit int: IsInteger[I]) = s match {
       case Top => int.top
       case Bottom => int.bot
+    }
+    def append(s1: T, s2: T) = (s1, s2) match {
+      case (Top, _) => Top
+      case (_, Top) => Top
+      case _ => Bottom
     }
   }
   implicit val typeIsBoolean: IsBoolean[T] = new BaseInstance("Bool") with IsBoolean[T] {

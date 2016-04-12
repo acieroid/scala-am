@@ -26,6 +26,7 @@ trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
 trait IsString[S] extends LatticeElement[S] {
   def inject(s: String): S
   def length[I : IsInteger](s: S): I
+  def append(s1: S, s2: S): S
 }
 
 trait IsBoolean[B] extends LatticeElement[B] {
@@ -320,6 +321,10 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
         case (VectorAddress(_), VectorAddress(_)) => Bool(bool.inject(x == y))
         case (LockAddress(_), LockAddress(_)) => Bool(bool.inject(x == y))
         case _ => False
+      }
+      case StringAppend => (x, y) match {
+        case (Str(s1), Str(s2)) => Str(str.append(s1, s2))
+        case _ => Err(s"StringAppend not applicable")
       }
     }
 

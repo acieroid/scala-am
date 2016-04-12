@@ -16,7 +16,8 @@ object BinaryOperator extends Enumeration {
   type BinaryOperator = Value
   val Plus, Minus, Times, Div, Modulo, /* Arithmetic operations */
     Lt, /* Arithmetic comparison */
-    NumEq, Eq /* Equality checking (number equality, physical equality) */
+    NumEq, Eq, /* Equality checking (number equality, physical equality) */
+    StringAppend /* string operations */
   = Value
 }
 

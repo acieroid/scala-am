@@ -93,6 +93,13 @@ object ConcreteLattice extends Lattice {
       case StringLength => ConcreteInt(v.size)
       case _ => super.unaryOp(op)
     }
+    override def binaryOp(op: BinaryOperator)(that: L) = that match {
+      case ConcreteString(v2) => op match {
+        case StringAppend => ConcreteString(v + v2)
+        case _ => super.binaryOp(op)(that)
+      }
+      case _ => super.binaryOp(op)(that)
+    }
   }
   case class ConcreteChar(v: Char) extends L {
     override def toString = s"#\\$v"
