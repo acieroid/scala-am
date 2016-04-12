@@ -271,6 +271,12 @@ abstract class ConcurrentAAMPrimitiveTests[Addr : Address, Time : Timestamp, TID
   val machine = new ConcurrentAAM[SchemeExp, lattice.L, Addr, Time, TID](AllInterleavings)
 }
 
+abstract class ConcreteMachinePrimitiveTests(override val lattice: Lattice)
+    extends Tests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](lattice) {
+  val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
+  val machine = new ConcreteMachine[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
+}
+
 /* Since these tests are small, they can be performed in concrete mode */
 class AAMConcretePrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
 class AAMConcreteNewPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true))
@@ -292,3 +298,5 @@ class ConcurrentAAMConcretePrimitiveTests extends ConcurrentAAMPrimitiveTests[Cl
 class ConcurrentAAMConcreteNewPrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](new ConcreteLatticeNew(true))
 class ConcurrentAAMTypeSetPrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID](new TypeSetLattice(false))
 class ConcurrentAAMBoundedIntPrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID](new BoundedIntLattice(100, false))
+class ConcreteMachineConcretePrimitiveTests extends ConcreteMachinePrimitiveTests(ConcreteLattice)
+class ConcreteMachineConcreteNewPrimitiveTests extends ConcreteMachinePrimitiveTests(new ConcreteLatticeNew(true))
