@@ -38,6 +38,7 @@ object ConcreteLattice extends Lattice {
       case Ceiling => ConcreteFloat(v)
       case Log => ConcreteFloat(scala.math.log(v).toFloat)
       case Random => ConcreteInt(SchemeOps.random(v))
+      case NumberToString => ConcreteString(v.toString)
       case _ => super.unaryOp(op)
     }
     override def binaryOp(op: BinaryOperator)(that: L) = that match {
@@ -61,6 +62,7 @@ object ConcreteLattice extends Lattice {
       case Ceiling => ConcreteFloat(scala.math.ceil(v).toFloat)
       case Log => ConcreteFloat(scala.math.log(v).toFloat)
       case Random => ConcreteFloat(SchemeOps.random(v))
+      case NumberToString => ConcreteString(v.toString)
       case _ => super.unaryOp(op)
     }
     override def binaryOp(op: BinaryOperator)(that: L) = that match {

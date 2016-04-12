@@ -47,6 +47,7 @@ trait IsInteger[I] extends LatticeElement[I] {
   def div(n1: I, n2: I): I
   def modulo(n1: I, n2: I): I
   def lt[B : IsBoolean](n1: I, n2: I): B
+  def toString[S : IsString](n: I): S
 }
 
 trait IsFloat[F] extends LatticeElement[F] {
@@ -59,6 +60,7 @@ trait IsFloat[F] extends LatticeElement[F] {
   def times(n1: F, n2: F): F
   def div(n1: F, n2: F): F
   def lt[B : IsBoolean](n1: F, n2: F): B
+  def toString[S : IsString](n: F): S
 }
 
 trait IsChar[C] extends LatticeElement[C] {
@@ -256,6 +258,11 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
       case StringLength => x match {
         case Str(s) => Int(str.length(s))
         case _ => Err(s"StringLength not applicable")
+      }
+      case NumberToString => x match {
+        case Int(n) => Str(int.toString(n))
+        case Float(n) => Str(float.toString(n))
+        case _ => Err(s"NumberToString not applicable")
       }
     }}
 

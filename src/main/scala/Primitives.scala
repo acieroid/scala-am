@@ -57,6 +57,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   def eq = abs.binaryOp(BinaryOperator.Eq) _
   def stringAppend = abs.binaryOp(BinaryOperator.StringAppend) _
   def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
+  def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
 
   /** This is how a primitive is defined by extending Primitive */
   object Cons extends Primitive[Addr, Abs] {
@@ -279,6 +280,17 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
       case x :: rest => Right(call(rest, x))
     }
   }
+  object StringAppend extends VariadicOperation {
+    val name = "string-append"
+    def call(args: List[Abs]) = args match {
+      case Nil => Right(abs.inject(""))
+      case x :: rest => call(rest) match {
+        case Right(y) => Right(stringAppend(x, y))
+        case Left(err) => Left(err)
+      }
+    }
+  }
+
 
   /* Some primitives can be defined as just a function that we pass to one of the helper class' constructor */
 
@@ -582,8 +594,9 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
     UnaryOperation("real?", x => abs.or(isInteger(x), isFloat(x))),
     UnaryOperation("boolean?", isBoolean),
     BinaryOperation("eq?", eq),
-    BinaryOperation("string-append", (x, y) => stringAppend(x, y)),
-    UnaryOperation("string-length", x => stringLength(x)),
+    StringAppend,
+    UnaryOperation("string-length", stringLength),
+    UnaryOperation("number->string", numberToString),
     BinaryStoreOperation("equal?", (a, b, store) => {
       val (res, eff) = equal(a, b, store)
       (res, store, eff)

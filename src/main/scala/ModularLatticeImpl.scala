@@ -63,6 +63,7 @@ object ConcreteInteger {
     def modulo(n1: I, n2: I): I = n1.foldMap(n1 => n2.map(n2 => SchemeOps.modulo(n1, n2)))
     def lt[B](n1: I, n2: I)(implicit bool: IsBoolean[B]): B = n1.foldMap(n1 => n2.foldMap(n2 => bool.inject(n1 < n2)))
     def eql[B](n1: I, n2: I)(implicit bool: IsBoolean[B]): B = n1.foldMap(n1 => n2.foldMap(n2 => bool.inject(n1 == n2)))
+    def toString[S](n: I)(implicit str: IsString[S]): S = n.foldMap(n => str.inject(n.toString))
 
     def order(x: I, y: I): Ordering = implicitly[Order[ISet[Int]]].order(x, y)
   }
@@ -88,6 +89,7 @@ object ConcreteFloat {
     def div(n1: F, n2: F): F = n1.foldMap(n1 => n2.map(n2 => n1 / n2))
     def lt[B](n1: F, n2: F)(implicit bool: IsBoolean[B]): B = n1.foldMap(n1 => n2.foldMap(n2 => bool.inject(n1 < n2)))
     def eql[B](n1: F, n2: F)(implicit bool: IsBoolean[B]): B = n1.foldMap(n1 => n2.foldMap(n2 => bool.inject(n1 == n2)))
+    def toString[S](n: F)(implicit str: IsString[S]): S = n.foldMap(n => str.inject(n.toString))
 
     def order(x: F, y: F): Ordering = implicitly[Order[ISet[Float]]].order(x, y)
   }
@@ -192,6 +194,7 @@ class BoundedInteger(bound: Int) {
     def modulo(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(SchemeOps.modulo(n1, n2))))
     def lt[B](n1: I, n2: I)(implicit bool: IsBoolean[B]): B = fold(n1, n1 => fold(n2, n2 => bool.inject(n1 < n2)))
     def eql[B](n1: I, n2: I)(implicit bool: IsBoolean[B]): B = fold(n1, n1 => fold(n2, n2 => bool.inject(n1 == n2)))
+    def toString[S](n: I)(implicit str: IsString[S]): S = fold(n, n => str.inject(n.toString))
 
     //import OrderDerive._
     //def order(x: I, y: I): Ordering = implicitly[Order[I]].order(x, y)
@@ -283,6 +286,10 @@ object Type {
       case (Top, Top) => bool.top
       case _ => bool.bot
     }
+    def toString[S](n: T)(implicit str: IsString[S]): S = n match {
+      case Top => str.top
+      case Bottom => str.bot
+    }
   }
   implicit val typeIsFloat: IsFloat[T] = new BaseInstance("Float") with IsFloat[T] {
     def inject(x: Float): T = Top
@@ -296,6 +303,10 @@ object Type {
     def lt[B](n1: T, n2: T)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
       case (Top, Top) => bool.top
       case _ => bool.bot
+    }
+    def toString[S](n: T)(implicit str: IsString[S]): S = n match {
+      case Top => str.top
+      case Bottom => str.bot
     }
   }
   implicit val typeIsChar: IsChar[T] = new BaseInstance("Char") with IsChar[T] {

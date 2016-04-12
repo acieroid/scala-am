@@ -7,7 +7,8 @@ object UnaryOperator extends Enumeration {
     IsLocked, /* Checks if a lock is considered locked */
     Not, /* Negate a value */
     Ceiling, Log, Random, /* Unary arithmetic operations */
-    VectorLength, StringLength /* Length operations */
+    VectorLength, StringLength, /* Length operations */
+    NumberToString /* Conversions */
   = Value
 }
 
