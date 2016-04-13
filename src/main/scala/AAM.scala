@@ -129,7 +129,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
      * Outputs the graph in a dot file
      */
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString)),
+      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
         (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
           case ControlEval(_, _) => Colors.Green
           case ControlKont(_) => Colors.Pink
