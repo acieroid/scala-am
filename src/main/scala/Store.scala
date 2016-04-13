@@ -70,15 +70,18 @@ case class TimestampedStore[Addr : Address, Abs : AbstractValue](content: Map[Ad
   }
   def update(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
   def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
-  def join(that: Store[Addr, Abs]): Store[Addr, Abs] =
-    if (that.isInstanceOf[TimestampedStore[Addr, Abs]]) {
-      val other = that.asInstanceOf[TimestampedStore[Addr, Abs]]
-      this.copy(content = content |+| other.content, timestamp = Math.max(timestamp, other.timestamp))
-    } else {
-      throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
-    }
-  def subsumes(that: Store[Addr, Abs]): Boolean =
+  def join(that: Store[Addr, Abs]): Store[Addr, Abs] = if (that.isInstanceOf[TimestampedStore[Addr, Abs]]) {
+    val other = that.asInstanceOf[TimestampedStore[Addr, Abs]]
+    this.copy(content = content |+| other.content, timestamp = Math.max(timestamp, other.timestamp))
+  } else {
+    throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
+  }
+  def subsumes(that: Store[Addr, Abs]): Boolean = if (that.isInstanceOf[TimestampedStore[Addr, Abs]]) {
+    /* This store can only grow monotonically so it's sufficient to compare timestamps */
+    timestamp >= that.asInstanceOf[TimestampedStore[Addr, Abs]].timestamp
+  } else {
     that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
+  }
   def diff(that: Store[Addr, Abs]): Store[Addr, Abs] =
     this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
 }
