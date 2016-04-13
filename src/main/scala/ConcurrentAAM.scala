@@ -61,7 +61,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, time.tick(t))), results, oldstore, noEffect))
       case ActionSpawn(tid2: TID, e, ρ, act, effs) => {
         assert(effs.isEmpty) /* TODO */
-        integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), new KontStore[KontAddr](), HaltKontAddress, time.initial(tid2.toString))), oldstore, results)
+        integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), KontStore.empty[KontAddr], HaltKontAddress, time.initial(tid2.toString))), oldstore, results)
       }
       case ActionJoin(v, σ, effs) => {
         abs.getTids(v).flatMap(tid2 =>
@@ -275,7 +275,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
               case Left(err) =>
                 ConcurrentAAMOutput(halted, visited.size,
                   (System.nanoTime - startingTime) / Math.pow(10, 9), graph.map(_.addEdge(s, (thread.initial, Set()),
-                    new State(ThreadMap(Map(thread.initial -> Set(Context(ControlError(err), new KontStore[KontAddr](), HaltKontAddress, time.initial("err"))))),
+                    new State(ThreadMap(Map(thread.initial -> Set(Context(ControlError(err), KontStore.empty[KontAddr], HaltKontAddress, time.initial("err"))))),
                       s.results, s.store))), false)
               case Right(succs) =>
                 val newGraph = graph.map(_.addEdges(succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })))

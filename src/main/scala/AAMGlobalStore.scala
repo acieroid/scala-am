@@ -74,7 +74,7 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     def inject(exp: Exp): (State, Store[Addr, Abs], KontStore[KontAddr]) =
       (State(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)), HaltKontAddress, time.initial("")),
         Store.initial[Addr, Abs](primitives.forStore),
-        new KontStore[KontAddr]())
+        KontStore.empty[KontAddr])
   }
 
   case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)

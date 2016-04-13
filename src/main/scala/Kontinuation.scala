@@ -12,20 +12,32 @@ case class Kont[KontAddr: KontAddress](frame: Frame, next: KontAddr) {
   }
 }
 
-case class KontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kont[KontAddr]]]) {
+abstract class KontStore[KontAddr : KontAddress] {
+  def lookup(a: KontAddr): Set[Kont[KontAddr]]
+  def extend(a: KontAddr, kont: Kont[KontAddr]): KontStore[KontAddr]
+  def join(that: KontStore[KontAddr]): KontStore[KontAddr]
+  def forall(p: ((KontAddr, Set[Kont[KontAddr]])) => Boolean): Boolean
+  def subsumes(that: KontStore[KontAddr]): Boolean
+}
+
+case class BasicKontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kont[KontAddr]]]) extends KontStore[KontAddr] {
   def this() = this(Map())
-  def lookup(a: KontAddr): Set[Kont[KontAddr]] = content.getOrElse(a, Set())
-  def extend(a: KontAddr, κ: Kont[KontAddr]): KontStore[KontAddr] =
-    KontStore[KontAddr](content + (a -> (lookup(a) + κ)))
-  def join(that: KontStore[KontAddr]): KontStore[KontAddr] = KontStore[KontAddr](content |+| that.content)
+  def lookup(a: KontAddr) = content.getOrElse(a, Set())
+  def extend(a: KontAddr, kont: Kont[KontAddr]) =
+    this.copy(content = content + (a -> (lookup(a) + kont)))
+  def join(that: KontStore[KontAddr]) = if (that.isInstanceOf[BasicKontStore[KontAddr]]) {
+    this.copy(content = content |+| that.asInstanceOf[BasicKontStore[KontAddr]].content)
+  } else {
+    throw new Exception(s"Incompatible continuation stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
+  }
   def forall(p: ((KontAddr, Set[Kont[KontAddr]])) => Boolean) = content.forall(p)
-  def subsumes(that: KontStore[KontAddr]): Boolean =
+  def subsumes(that: KontStore[KontAddr]) =
     that.forall({ case (a, ks) =>
       ks.forall((k1) => lookup(a).exists(k2 => k2.subsumes(k1)))
     })
 }
 
 object KontStore {
-  def empty[KontAddr : KontAddress] =
-    new KontStore[KontAddr]()
+  def empty[KontAddr : KontAddress]: KontStore[KontAddr] =
+    new BasicKontStore[KontAddr]()
 }

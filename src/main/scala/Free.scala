@@ -37,7 +37,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    */
   case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], k: KontAddr, t: Time) {
     def this(exp: Exp) = this(ControlEval(exp, initialEnv), initialStore,
-                              new KontStore[KontAddr](), HaltKontAddress, time.initial(""))
+                              KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
     override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
@@ -87,13 +87,13 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
   case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
     def this(exp: Exp) = this(Set(Configuration(ControlEval(exp, initialEnv),
                                                 HaltKontAddress, time.initial(""))),
-                              initialStore, new KontStore[KontAddr]())
+                              initialStore, KontStore.empty[KontAddr])
     override def toString = R.toString
     /** Performs a step on all the contained states */
     def step(sem: Semantics[Exp, Abs, Addr, Time]): States = {
       val states = R.map(conf => State(conf.control, σ, kstore, conf.k, conf.t))
       val succs = states.flatMap(ς => ς.step(sem))
-      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs], new KontStore[KontAddr]()))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
+      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs], KontStore.empty[KontAddr]))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
       States(succs.map(ς => Configuration(ς.control, ς.k, ς.t)), σ1, kstore1)
     }
     def isEmpty = R.isEmpty

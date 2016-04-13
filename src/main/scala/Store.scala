@@ -29,10 +29,8 @@ abstract class Store[Addr : Address, Abs : AbstractValue] {
 /* Basic store with no fancy feature, just a map from addresses to values */
 case class BasicStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Abs]) extends Store[Addr, Abs] {
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
-  def keys: collection.Iterable[Addr] = content.keys
-  def forall(p: ((Addr, Abs)) => Boolean) = content.forall({
-    case (a, v) => p(a, v)
-  })
+  def keys = content.keys
+  def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
   def lookup(a: Addr): Abs = content.get(a) match {
     case None => throw new Exception(s"Unbound address (should not happen): $a")
     case Some(v) => v
@@ -56,6 +54,34 @@ case class BasicStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Ab
     this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
 }
 
+case class TimestampedStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Abs], timestamp: Int) extends Store[Addr, Abs] {
+  override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
+  def keys = content.keys
+  def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
+  def lookup(a: Addr): Abs = content.get(a) match {
+    case None => throw new Exception(s"Unbound address (should not happen): $a")
+    case Some(v) => v
+  }
+  def lookupBot(a: Addr): Abs = content.get(a).getOrElse(abs.bottom)
+  def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
+    case None => this.copy(content = content + (a -> v), timestamp = timestamp + 1)
+    case Some(v2) if v2 == v => this
+    case Some(v2) => this.copy(content = content + (a -> abs.join(v2, v)), timestamp = timestamp + 1)
+  }
+  def update(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
+  def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
+  def join(that: Store[Addr, Abs]): Store[Addr, Abs] =
+    if (that.isInstanceOf[TimestampedStore[Addr, Abs]]) {
+      val other = that.asInstanceOf[TimestampedStore[Addr, Abs]]
+      this.copy(content = content |+| other.content, timestamp = Math.max(timestamp, other.timestamp))
+    } else {
+      throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
+    }
+  def subsumes(that: Store[Addr, Abs]): Boolean =
+    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
+  def diff(that: Store[Addr, Abs]): Store[Addr, Abs] =
+    this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
+}
 
 /* Count values for counting store */
 trait Count {
@@ -77,10 +103,8 @@ object Count {
 
 case class CountingStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Count, Abs)]) extends Store[Addr, Abs] {
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
-  def keys: collection.Iterable[Addr] = content.keys
-  def forall(p: ((Addr, Abs)) => Boolean) = content.forall({
-    case (a, (_, v)) => p(a, v)
-  })
+  def keys = content.keys
+  def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, (_, v)) => p(a, v) })
   def lookup(a: Addr): Abs = content.get(a) match {
     case None => throw new Exception(s"Unbound address (should not happen): $a")
     case Some(v) => v._2
