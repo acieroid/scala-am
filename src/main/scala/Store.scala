@@ -1,6 +1,63 @@
 import scalaz.Scalaz._
 import scalaz.Semigroup
 
+abstract class Store[Addr : Address, Abs : AbstractValue] {
+  val abs = implicitly[AbstractValue[Abs]]
+  val addr = implicitly[Address[Addr]]
+  /** Gets all the keys of the store */
+  def keys: Iterable[Addr]
+  /** Checks if a predicate is true for all elements of the store */
+  def forall(p: ((Addr, Abs)) => Boolean): Boolean
+  /** Looks up a value in the store, raising an error if it's not there */
+  def lookup(a: Addr): Abs
+  /** Looks up a  value in the store, or return bottom if it's not there */
+  def lookupBot(a: Addr): Abs
+  /** Add a new entry in the store */
+  def extend(a: Addr, v: Abs): Store[Addr, Abs]
+  /** Update an entry in the store */
+  def update(a: Addr, v: Abs): Store[Addr, Abs]
+  /** Tries to update an address if it's already mapped into the store. Otherwise, extend the store */
+  def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs]
+  /** Joins two stores together */
+  def join(that: Store[Addr, Abs]): Store[Addr, Abs]
+  /** Checks whether this store subsumes another store */
+  def subsumes(that: Store[Addr, Abs]): Boolean
+  /** Returns a store containing items that differ between the two stores */
+  def diff(that: Store[Addr, Abs]): Store[Addr, Abs]
+}
+
+/* Basic store with no fancy feature, just a map from addresses to values */
+case class BasicStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Abs]) extends Store[Addr, Abs] {
+  override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
+  def keys: collection.Iterable[Addr] = content.keys
+  def forall(p: ((Addr, Abs)) => Boolean) = content.forall({
+    case (a, v) => p(a, v)
+  })
+  def lookup(a: Addr): Abs = content.get(a) match {
+    case None => throw new Exception(s"Unbound address (should not happen): $a")
+    case Some(v) => v
+  }
+  def lookupBot(a: Addr): Abs = content.get(a).getOrElse(abs.bottom)
+  def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
+    case None => this.copy(content = content + (a -> v))
+    case Some(v2) => this.copy(content = content + (a -> abs.join(v2, v)))
+  }
+  def update(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
+  def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
+  def join(that: Store[Addr, Abs]): Store[Addr, Abs] =
+    if (that.isInstanceOf[BasicStore[Addr, Abs]]) {
+      this.copy(content = content |+| that.asInstanceOf[BasicStore[Addr, Abs]].content)
+    } else {
+      throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
+    }
+  def subsumes(that: Store[Addr, Abs]): Boolean =
+    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
+  def diff(that: Store[Addr, Abs]): Store[Addr, Abs] =
+    this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
+}
+
+
+/* Count values for counting store */
 trait Count {
   def inc: Count
 }
@@ -12,17 +69,15 @@ case object CountInfinity extends Count {
 }
 
 object Count {
+  /* We need it to form a semigroup to use |+| to join stores */
   implicit val isSemigroup  = new Semigroup[Count] {
     def append(x: Count, y: => Count) = CountInfinity
   }
 }
 
-case class Store[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Count, Abs)], counting: Boolean) {
-  val abs = implicitly[AbstractValue[Abs]]
-  val addr = implicitly[Address[Addr]]
+case class CountingStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Count, Abs)]) extends Store[Addr, Abs] {
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys: collection.Iterable[Addr] = content.keys
-  /** Checks if a predicate is true for all elements of the store */
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({
     case (a, (_, v)) => p(a, v)
   })
@@ -30,51 +85,50 @@ case class Store[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Count,
     case None => throw new Exception(s"Unbound address (should not happen): $a")
     case Some(v) => v._2
   }
-  /** Looks up a value in the store (returning bottom if value not present) */
   def lookupBot(a: Addr): Abs = content.get(a).map(_._2).getOrElse(abs.bottom)
-  /** Adds a new element to the store */
   def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
-    case None => Store(content + (a -> (CountOne, v)), counting)
-    case Some((n, v2)) => Store(content + (a -> (if (counting) { n.inc } else { n }, abs.join(v2, v))), counting)
+    case None => this.copy(content = content + (a -> (CountOne, v)))
+    case Some((n, v2)) => this.copy(content = content + (a -> (n.inc, abs.join(v2, v))))
   }
-  /** Updates an element in the store. Might perform a strong update if this store supports strong updates */
-  def update(a: Addr, v: Abs): Store[Addr, Abs] = if (counting) {
-    content.get(a) match {
-      case None => throw new RuntimeException("Updating store at an adress not used")
-      case Some((CountOne, _)) => Store(content + (a -> (CountOne, v)), counting)
-      case _ => extend(a, v)
-    }
-  } else {
-    extend(a, v)
+  def update(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
+    case None => throw new RuntimeException("Updating store at an adress not used")
+    case Some((CountOne, _)) => this.copy(content = content + (a -> (CountOne, v)))
+    case _ => extend(a, v)
   }
-  /** Tries to update an address if it's already mapped into the store. If it's not, extend the store. */
   def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
     case None => extend(a, v)
     case Some(_) => update(a, v)
   }
-  /** Joins two stores */
-  /* TODO: is it correct with abstract counting? How should counts behave? */
-  def join(that: Store[Addr, Abs]): Store[Addr, Abs] = Store(this.content |+| that.content, counting)
-  /** Checks whether this store subsumes another store */
+  def join(that: Store[Addr, Abs]): Store[Addr, Abs] =
+    if (that.isInstanceOf[CountingStore[Addr, Abs]]) {
+      this.copy(content = content |+| that.asInstanceOf[CountingStore[Addr, Abs]].content)
+    } else {
+      throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
+    }
   def subsumes(that: Store[Addr, Abs]): Boolean =
     that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
-  /** Returns a store containing items that are not equal with the other store */
-  def diff(that: Store[Addr, Abs]): Store[Addr, Abs] = {
-    Store(content.filter({ case (a, (n, v)) => that.content.get(a) match {
-      case Some((n2, v2)) => n != n2 && v != v2
-      case None => true
-    }}), counting)
-  }
+  def diff(that: Store[Addr, Abs]): Store[Addr, Abs] =
+    if (that.isInstanceOf[CountingStore[Addr, Abs]]) {
+      val other = that.asInstanceOf[CountingStore[Addr, Abs]]
+      this.copy(content = content.filter({ case (a, (n, v)) => other.content.get(a) match {
+        case Some((n2, v2)) => n != n2 && v != v2
+        case None => true
+      }}))
+    } else {
+      this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
+    }
 }
 
 object Store {
-  /* TODO: have abstract counting as a parameter of the analysis. Also, when it is
-   * turned on, it prevents AAC and Free from converging. For now, it's only
-   * enabled with the concrete lattice. */
-  def empty[Addr : Address, Abs : AbstractValue] =
-    Store(Map(), implicitly[AbstractValue[Abs]].counting)
-  def empty[Addr : Address, Abs : AbstractValue](counting: Boolean) =
-    Store(Map(), counting)
-  def initial[Addr : Address, Abs : AbstractValue](values: List[(Addr, Abs)]): Store[Addr, Abs] =
-    Store(values.map({ case (a, v) => (a, (CountOne, v)) }).toMap, implicitly[AbstractValue[Abs]].counting)
+  def empty[Addr : Address, Abs : AbstractValue]: Store[Addr, Abs] = empty[Addr, Abs](implicitly[AbstractValue[Abs]].counting)
+  def empty[Addr : Address, Abs : AbstractValue](counting: Boolean): Store[Addr, Abs] = if (counting) {
+    CountingStore(Map())
+  } else {
+    BasicStore(Map())
+  }
+  def initial[Addr : Address, Abs : AbstractValue](values: List[(Addr, Abs)]): Store[Addr, Abs] = if (implicitly[AbstractValue[Abs]].counting) {
+    CountingStore(values.map({ case (a, v) => (a, (CountOne, v)) }).toMap)
+  } else {
+    BasicStore(values.toMap)
+  }
 }
