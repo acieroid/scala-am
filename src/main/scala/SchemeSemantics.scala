@@ -36,7 +36,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   def conditional(v: Abs, t: => Action[SchemeExp, Abs, Addr], f: => Action[SchemeExp, Abs, Addr]): Set[Action[SchemeExp, Abs, Addr]] =
     (if (abs.isTrue(v)) Set(t) else Set()) ++ (if (abs.isFalse(v)) Set(f) else Set())
 
-  def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = {
+  def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = {
     val fromClo: Set[Action[SchemeExp, Abs, Addr]] = abs.getClosures[SchemeExp, Addr](function).map({
       case (SchemeLambda(args, body, pos), ρ1) =>
         if (args.length == argsv.length) {
@@ -71,7 +71,7 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   }
 
   protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
-    case Nil => evalCall(f, fexp, args.reverse, ρ, σ, t)
+    case Nil => evalCall(f, fexp, args.reverse, σ, t)
     case e :: rest => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
   }
   protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] =
@@ -317,7 +317,7 @@ class SchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   }
 
   override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[SchemeExp, Abs, Addr]] = toeval match {
-    case Nil => evalCall(f, fexp, args.reverse, ρ, σ, t)
+    case Nil => evalCall(f, fexp, args.reverse, σ, t)
     case e :: rest => atomicEval(e, ρ, σ) match {
       case Some((v, effs)) => funcallArgs(f, fexp, (e, v) :: args, rest, ρ, σ, t).map(addEffects(_, effs))
       case None => Set(ActionPush(e, FrameFuncallOperands(f, fexp, e, args, rest, ρ), ρ, σ))
