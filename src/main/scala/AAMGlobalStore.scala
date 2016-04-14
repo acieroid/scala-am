@@ -19,9 +19,14 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
 
   val timestampedStore = true
   val primitives = new Primitives[Addr, Abs]()
-  val emptyStore: Store[Addr, Abs] = if (false && timestampedStore) { TimestampedStore(Map(), 0) } else { Store.empty[Addr, Abs] }
-  val initialStore: Store[Addr, Abs] = if (false && timestampedStore) { TimestampedStore(primitives.forStore.toMap, 1) } else { Store.initial[Addr, Abs](primitives.forStore) }
+  val emptyStore: Store[Addr, Abs] = Store.empty[Addr, Abs]
+  val initialStore: Store[Addr, Abs] = Store.initial[Addr, Abs](primitives.forStore)
   val emptyKStore: KontStore[KontAddr] = if (timestampedStore) { TimestampedKontStore[KontAddr](Map(), 0) } else { KontStore.empty[KontAddr] }
+
+  //case class GlobalStore(val store: Store[Addr, Abs], delta: Map[Addr, Abs], timestamp: Int) {
+  //  def includeDelta(d: Map[Addr, Abs]): GlobalStore = this.copy(delta = delta |+| d)
+  //  def commit = if (delta.isEmpty) { this } else { this.copy(store = store |+| delta, delta = Map(), timestamp = timestamp + 1) }
+  //}
 
   case class State(control: Control, a: KontAddr, t: Time) {
     override def toString = control.toString
@@ -107,14 +112,14 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     } else {
       count += 1
       //println(s"Iteration $count, exploring: $todo with kstore $kstore")
-      val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), emptyStore, emptyKStore)({ (acc, state) =>
-        state.step(sem, store, kstore) match {
+      val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), emptyStore, kstore)({ (acc, state) =>
+        state.step(sem, store, acc._3) match {
           case (next, store2, kstore2) =>
-            (acc._1 ++ next.map(state2 => (state, state2)), acc._2.join(store2), acc._3.join(kstore2))
+            (acc._1 ++ next.map(state2 => (state, state2)), acc._2.join(store2), kstore2)
         }
       })
       //println(s"New kstore is $kstore2")
-      if (store == store2 && kstore == kstore2) {
+      if (store == store2 && kstore.fastEq(kstore2)) {
         //println("Stores are equal")
         loopMono(edges.map({ case (s1, s2) => s2 }).diff(visited),
           visited ++ todo,
@@ -134,45 +139,7 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
           sem)
       }
     }
-/*
-  @scala.annotation.tailrec
-  private def loopMono2(todo: Set[State], visited: Set[State], store: Store[Addr, Abs], kstore: KontStore[KontAddr],
-    halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, Unit]],
-    sem: Semantics[Exp, Abs, Addr, Time]): AAMOutput =
-    if (todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-      AAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
-        timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
-    } else {
-      val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), emptyStore, emptyKStore)({ (acc, state) =>
-        state.step(sem, store, kstore) match {
-          case (next, store2, kstore2) =>
-            (acc._1 ++ next.map(state2 => (state, state2)), acc._2.join(store2), acc._3.join(kstore2))
-        }
-      })
-      if (store == store2 && kstore == kstore2) {
-        loopMono(edges.map({ case (s1, s2) => s2 }).diff(visited),
-          visited ++ todo,
-          store2, kstore2,
-          halted ++ todo.filter(_.halted),
-          startingTime, timeout,
-          graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
-          sem)
-      } else {
-        loopMono(edges.map({ case (s1, s2) => s2 }),
-          Set(),
-          store2, kstore2,
-          halted ++ todo.filter(_.halted),
-          startingTime, timeout,
-          graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
-          sem)
-      }
-    }
- */
 
-  /**
-   * Performs the evaluation of an expression, possibly writing the output graph
-   * in a file, and returns the set of final states reached
-   */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = monostore match {
     case true =>
       val (state, store, kstore) = State.inject(exp)

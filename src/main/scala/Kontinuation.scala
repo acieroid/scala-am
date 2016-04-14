@@ -18,6 +18,7 @@ abstract class KontStore[KontAddr : KontAddress] {
   def join(that: KontStore[KontAddr]): KontStore[KontAddr]
   def forall(p: ((KontAddr, Set[Kont[KontAddr]])) => Boolean): Boolean
   def subsumes(that: KontStore[KontAddr]): Boolean
+  def fastEq(that: KontStore[KontAddr]): Boolean = this == that
 }
 
 case class BasicKontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kont[KontAddr]]]) extends KontStore[KontAddr] {
@@ -71,6 +72,11 @@ case class TimestampedKontStore[KontAddr : KontAddress](content: Map[KontAddr, S
     that.forall({ case (a, ks) =>
       ks.forall((k1) => lookup(a).exists(k2 => k2.subsumes(k1)))
     })
+  }
+  override def fastEq(that: KontStore[KontAddr]) = if (that.isInstanceOf[TimestampedKontStore[KontAddr]]) {
+    timestamp == that.asInstanceOf[TimestampedKontStore[KontAddr]].timestamp
+  } else {
+    false
   }
 }
 
