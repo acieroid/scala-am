@@ -108,10 +108,10 @@ abstract class AAMBenchmarks[Addr : Address, Time : Timestamp](override val latt
   val machine = new AAM[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class AAMGlobalStoreBenchmarks[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class AAMMonoGlobalStoreBenchmarks[Addr : Address, Time : Timestamp](override val lattice: Lattice)
     extends Benchmarks[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time]
-  val machine = new AAMGlobalStore[SchemeExp, lattice.L, Addr, Time](true)
+  val machine = new AAMMonoGlobalStore[SchemeExp, lattice.L, Addr, Time]
 }
 
 abstract class FreeBenchmarks[Addr : Address, Time : Timestamp](override val lattice: Lattice)
@@ -142,9 +142,8 @@ class AAMConcreteNewBenchmarks extends AAMBenchmarks[ClassicalAddress.A, Concret
 class AAMTypeSetBenchmarks extends AAMBenchmarks[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 //class AAMBoundedIntBenchmarks extends AACBenchmarks[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
 
-class AAMGlobalStoreConcreteBenchmarks extends AAMGlobalStoreBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
-class AAMGlobalStoreConcreteNewBenchmarks extends AAMGlobalStoreBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true))
-class AAMGlobalStoreTypeSetBenchmarks extends AAMGlobalStoreBenchmarks[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
+class AAMMonoGlobalStoreConcreteNewBenchmarks extends AAMMonoGlobalStoreBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true))
+class AAMMonoGlobalStoreTypeSetBenchmarks extends AAMMonoGlobalStoreBenchmarks[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 //class AAMBoundedIntBenchmarks extends AACBenchmarks[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
 
 class FreeConcreteBenchmarks extends FreeBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice)
@@ -178,16 +177,6 @@ class AAMOneResultTests extends OneResultTests[SchemeExp, ClassicalAddress.A, Co
 class AAMOneResultTestsNew extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true)) {
   val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
   val machine = new AAM[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-}
-
-class AAMGlobalStoreOneResultTests extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice) {
-  val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-  val machine = new AAMGlobalStore[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T](true)
-}
-
-class AAMGlobalStoreOneResultTestsNew extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLatticeNew(true)) {
-  val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-  val machine = new AAMGlobalStore[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T](true)
 }
 
 class FreeOneResultTests extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](ConcreteLattice) {

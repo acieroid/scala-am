@@ -1,11 +1,11 @@
 import scalaz._
 import scalaz.Scalaz._
 /**
- * AAM with a global store.
+ * AAM with a monotonically growing global store.
  */
-class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp](monostore: Boolean)
+class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
-  def name = "AAM"
+  def name = "AAMMonoGlobalStore"
 
   trait KontAddr
   case class NormalKontAddress(exp: Exp, addr: Addr) extends KontAddr {
@@ -103,30 +103,24 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     }
   }
 
-  var count = 0
   /* Explore state graph when a monotonically growing store is present */
   @scala.annotation.tailrec
-  private def loopMono(todo: Set[State], visited: Set[State], store: GlobalStore, kstore: KontStore[KontAddr],
+  private def loop(todo: Set[State], visited: Set[State], store: GlobalStore, kstore: KontStore[KontAddr],
     halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, Unit]],
     sem: Semantics[Exp, Abs, Addr, Time]): AAMOutput =
-    if (count > 1000 || todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-      println(s"Done $count iterations")
+    if (todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
       AAMOutput(halted, graph.map(g => g.nodes.size).getOrElse(0), (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
         timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
-      count += 1
       val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), store, kstore)({ (acc, state) =>
         state.step(sem, acc._2, acc._3) match {
           case (next, store2, kstore2) =>
             (acc._1 ++ next.map(state2 => (state, state2)), store2, kstore2)
         }
       })
-      //println(s"Store remains unchanged? ${store2.isUnchanged} -> delta is of size ${store2.delta.size}")
-      //println(s"New kstore is $kstore2")
       if (store2.isUnchanged && kstore.fastEq(kstore2)) {
         //assert(store2.commit.store == store2.store)
-        //println("Stores are equal")
-        loopMono(edges.map({ case (s1, s2) => s2 }).diff(visited),
+        loop(edges.map({ case (s1, s2) => s2 }).diff(visited),
           visited ++ todo,
           store2, kstore2,
           halted ++ todo.filter(_.halted),
@@ -135,8 +129,7 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
           sem)
       } else {
         //assert(!(!store2.isUnchanged && store2.commit.store == store2.store))
-        //println(s"Stores are different: store: ${store == store2}, kstore: ${kstore == kstore2}")
-        loopMono(edges.map({ case (s1, s2) => s2 }),
+        loop(edges.map({ case (s1, s2) => s2 }),
           Set(),
           store2.commit, kstore2,
           halted ++ todo.filter(_.halted),
@@ -146,12 +139,10 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
       }
     }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = monostore match {
-    case true =>
-      val (state, store, kstore) = State.inject(exp)
-      loopMono(Set(state), Set(), store, kstore, Set(), System.nanoTime, timeout,
-        if (graph) { Some(new Graph[State, Unit]()) } else { None },
-        sem)
-    case false => ???
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
+    val (state, store, kstore) = State.inject(exp)
+    loop(Set(state), Set(), store, kstore, Set(), System.nanoTime, timeout,
+      if (graph) { Some(new Graph[State, Unit]()) } else { None },
+      sem)
   }
 }
