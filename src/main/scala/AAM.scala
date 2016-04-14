@@ -29,7 +29,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
   case class NormalKontAddress(exp: Exp, addr: Addr) extends KontAddr {
     override def toString = s"NormalKontAddress($exp)"
   }
-  object HaltKontAddress extends KontAddr {
+  case object HaltKontAddress extends KontAddr {
     override def toString = "HaltKontAddress"
   }
 

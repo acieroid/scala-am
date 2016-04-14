@@ -11,7 +11,7 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
   case class NormalKontAddress(exp: Exp, addr: Addr) extends KontAddr {
     override def toString = s"NormalKontAddress($exp)"
   }
-  object HaltKontAddress extends KontAddr {
+  case object HaltKontAddress extends KontAddr {
     override def toString = "HaltKontAddress"
   }
 
@@ -92,7 +92,7 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
     })
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString)),
+      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
         (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
           case ControlEval(_, _) => Colors.Green
           case ControlKont(_) => Colors.Pink
