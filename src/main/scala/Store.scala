@@ -24,6 +24,10 @@ abstract class Store[Addr : Address, Abs : AbstractValue] {
   def subsumes(that: Store[Addr, Abs]): Boolean
   /** Returns a store containing items that differ between the two stores */
   def diff(that: Store[Addr, Abs]): Store[Addr, Abs]
+  /** Return a delta of the changes made on this store. None if the store doesn't support store deltas */
+  def delta: Option[Map[Addr, Abs]] = None
+  /** Add a delta to the store. This clears the current delta */
+  def addDelta(delta: Map[Addr, Abs]): Store[Addr, Abs] = throw new Exception("Store doesn't support deltas")
 }
 
 /* Basic store with no fancy feature, just a map from addresses to values */
@@ -36,14 +40,18 @@ case class BasicStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Ab
     case Some(v) => v
   }
   def lookupBot(a: Addr): Abs = content.get(a).getOrElse(abs.bottom)
-  def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
+  def extend(a: Addr, v: Abs): Store[Addr, Abs] = {
+    //println(s"$this.extend($a, $v)")
+    content.get(a) match {
     case None => this.copy(content = content + (a -> v))
     case Some(v2) => this.copy(content = content + (a -> abs.join(v2, v)))
+    }
   }
   def update(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
   def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
   def join(that: Store[Addr, Abs]): Store[Addr, Abs] =
     if (that.isInstanceOf[BasicStore[Addr, Abs]]) {
+      //println(s"$this.join($that)")
       this.copy(content = content |+| that.asInstanceOf[BasicStore[Addr, Abs]].content)
     } else {
       throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
@@ -54,36 +62,42 @@ case class BasicStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Ab
     this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
 }
 
-case class TimestampedStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Abs], timestamp: Int) extends Store[Addr, Abs] {
+/** A store that supports store deltas. Many operations are not implemented because they are not needed. */
+case class DeltaStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Abs], d: Map[Addr, Abs]) extends Store[Addr, Abs] {
+  def this() = this(Map(), Map())
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys = content.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
-  def lookup(a: Addr): Abs = content.get(a) match {
-    case None => throw new Exception(s"Unbound address (should not happen): $a")
+  def lookup(a: Addr): Abs = d.get(a) match {
+    case None => content.get(a) match {
+      case None => throw new Exception(s"Unbound address (should not happen): $a")
+      case Some(v) => v
+    }
+    case Some(v) => v /* information in the delta should always be as broad as the information in the store itself */
+  }
+  def lookupBot(a: Addr): Abs = d.get(a) match {
+    case None => content.get(a).getOrElse(abs.bottom)
     case Some(v) => v
   }
-  def lookupBot(a: Addr): Abs = content.get(a).getOrElse(abs.bottom)
-  def extend(a: Addr, v: Abs): Store[Addr, Abs] = content.get(a) match {
-    case None => this.copy(content = content + (a -> v), timestamp = timestamp + 1)
-    case Some(v2) if v2 == v => this
-    case Some(v2) => this.copy(content = content + (a -> abs.join(v2, v)), timestamp = timestamp + 1)
+  def extend(a: Addr, v: Abs): Store[Addr, Abs] = d.get(a) match {
+    case Some(v2) => this.copy(d = d + (a -> abs.join(v2, v)))
+    case None => content.get(a) match {
+      case None => this.copy(d = d + (a -> v))
+      case Some(v2) if v2 == v || abs.subsumes(v2, v) => this
+      case Some(v2) => this.copy(d = d + (a -> abs.join(v2, v)))
+    }
   }
   def update(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
   def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
-  def join(that: Store[Addr, Abs]): Store[Addr, Abs] = if (that.isInstanceOf[TimestampedStore[Addr, Abs]]) {
-    val other = that.asInstanceOf[TimestampedStore[Addr, Abs]]
-    this.copy(content = content |+| other.content, timestamp = Math.max(timestamp, other.timestamp))
+  def join(that: Store[Addr, Abs]): Store[Addr, Abs] = if (that.isInstanceOf[DeltaStore[Addr, Abs]]) {
+    throw new Exception("DeltaStore does not support join")
   } else {
     throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
   }
-  def subsumes(that: Store[Addr, Abs]): Boolean = if (that.isInstanceOf[TimestampedStore[Addr, Abs]]) {
-    /* This store can only grow monotonically so it's sufficient to compare timestamps */
-    timestamp >= that.asInstanceOf[TimestampedStore[Addr, Abs]].timestamp
-  } else {
-    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
-  }
-  def diff(that: Store[Addr, Abs]): Store[Addr, Abs] =
-    this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
+  def subsumes(that: Store[Addr, Abs]): Boolean = throw new Exception("DeltaStore does not support subsumes")
+  def diff(that: Store[Addr, Abs]): Store[Addr, Abs] = throw new Exception("DeltaStore does not support diff")
+  override def delta = Some(d)
+  override def addDelta(delta: Map[Addr, Abs]) = this.copy(content = content |+| delta, d = Map())
 }
 
 /* Count values for counting store */
