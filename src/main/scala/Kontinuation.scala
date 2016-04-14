@@ -22,13 +22,17 @@ abstract class KontStore[KontAddr : KontAddress] {
 
 case class BasicKontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kont[KontAddr]]]) extends KontStore[KontAddr] {
   def lookup(a: KontAddr) = content.getOrElse(a, Set())
-  def extend(a: KontAddr, kont: Kont[KontAddr]) =
+  override def toString = content.toString
+  def extend(a: KontAddr, kont: Kont[KontAddr]) = /* Profiler.logRes(s"$this.extend($a, $kont)") */{
     this.copy(content = content + (a -> (lookup(a) + kont)))
-  def join(that: KontStore[KontAddr]) = if (that.isInstanceOf[BasicKontStore[KontAddr]]) {
-    this.copy(content = content |+| that.asInstanceOf[BasicKontStore[KontAddr]].content)
-  } else {
-    throw new Exception(s"Incompatible continuation stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
-  }
+  } /* { x => x.toString } */
+  def join(that: KontStore[KontAddr]) = /* Profiler.logRes(s"$this.join($that)") */ {
+    if (that.isInstanceOf[BasicKontStore[KontAddr]]) {
+      this.copy(content = content |+| that.asInstanceOf[BasicKontStore[KontAddr]].content)
+    } else {
+      throw new Exception(s"Incompatible continuation stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
+    }
+  } /* { x => x.toString } */
   def forall(p: ((KontAddr, Set[Kont[KontAddr]])) => Boolean) = content.forall(p)
   def subsumes(that: KontStore[KontAddr]) =
     that.forall({ case (a, ks) =>
@@ -38,17 +42,28 @@ case class BasicKontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kon
 
 case class TimestampedKontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kont[KontAddr]]], timestamp: Int) extends KontStore[KontAddr] {
   def lookup(a: KontAddr) = content.getOrElse(a, Set())
-  def extend(a: KontAddr, kont: Kont[KontAddr]) = content.get(a) match {
+  override def toString = content.toString
+  def extend(a: KontAddr, kont: Kont[KontAddr]) = /* Profiler.logRes(s"$this.extend($a, $kont)") */ {
+    content.get(a) match {
     case Some(konts) if konts.contains(kont) => this
-    case Some(konts) => this.copy(content = content + (a -> (konts + kont)), timestamp = timestamp + 1)
+    case Some(konts) => {
+      // println(s"Joining $kont with $konts, increasing timestamp to ${timestamp + 1}")
+      this.copy(content = content + (a -> (konts + kont)), timestamp = timestamp + 1)
+    }
     case None => this.copy(content = content + (a -> Set(kont)), timestamp = timestamp + 1)
-  }
-  def join(that: KontStore[KontAddr]) = if (that.isInstanceOf[TimestampedKontStore[KontAddr]]) {
-    val other = that.asInstanceOf[TimestampedKontStore[KontAddr]]
-    this.copy(content = content |+| other.content, timestamp = Math.max(timestamp, other.timestamp))
-  } else {
-    throw new Exception(s"Incompatible continuation stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
-  }
+    }
+  } /* { x => x.toString } */
+  def join(that: KontStore[KontAddr]) = /* Profiler.logRes(s"$this.join($that)") */ {
+    if (that.isInstanceOf[TimestampedKontStore[KontAddr]]) {
+      if (that.asInstanceOf[TimestampedKontStore[KontAddr]].timestamp >= timestamp) {
+        that
+      } else {
+        this
+      }
+    } else {
+      throw new Exception(s"Incompatible continuation stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
+    }
+  } /* { x => x.toString } */
   def forall(p: ((KontAddr, Set[Kont[KontAddr]])) => Boolean) = content.forall(p)
   def subsumes(that: KontStore[KontAddr]) = if (that.isInstanceOf[TimestampedKontStore[KontAddr]]) {
     timestamp >= that.asInstanceOf[TimestampedKontStore[KontAddr]].timestamp

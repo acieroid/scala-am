@@ -17,16 +17,14 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     implicit object KontAddrKontAddress extends KontAddress[KontAddr]
   }
 
+  val timestampedStore = true
   val primitives = new Primitives[Addr, Abs]()
-  val emptyStore = Store.empty[Addr, Abs]
-  val emptyKStore = KontStore.empty[KontAddr]
-
+  val emptyStore: Store[Addr, Abs] = if (false && timestampedStore) { TimestampedStore(Map(), 0) } else { Store.empty[Addr, Abs] }
+  val initialStore: Store[Addr, Abs] = if (false && timestampedStore) { TimestampedStore(primitives.forStore.toMap, 1) } else { Store.initial[Addr, Abs](primitives.forStore) }
+  val emptyKStore: KontStore[KontAddr] = if (timestampedStore) { TimestampedKontStore[KontAddr](Map(), 0) } else { KontStore.empty[KontAddr] }
 
   case class State(control: Control, a: KontAddr, t: Time) {
     override def toString = control.toString
-    /**
-     * A state subsumes another if they have the same store. Could be improved by checking for store subsumption.
-     */
     def subsumes(that: State): Boolean = control.subsumes(that.control) && a == that.a && t == that.t
 
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], store: Store[Addr, Abs], kstore: KontStore[KontAddr]): (Set[State], Store[Addr, Abs], KontStore[KontAddr]) =
@@ -53,8 +51,8 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
        * semantic's continuation method */
       case ControlKont(v) if abs.isError(v) => (Set(), store, kstore)
       case ControlKont(v) => kstore.lookup(a).foldLeft((Set[State](), emptyStore, kstore))((acc, kont) => kont match {
-        case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, store, t), store, kstore) match {
-          case (states, store2, kstore2) => (acc._1 ++ states, acc._2.join(store2), acc._3.join(kstore2))
+        case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, store, t), store, acc._3) match {
+          case (states, store2, kstore2) => (acc._1 ++ states, acc._2.join(store2), kstore2)
         }
       })
       /* In an error state, the state is not able to make a step */
@@ -73,8 +71,8 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
   object State {
     def inject(exp: Exp): (State, Store[Addr, Abs], KontStore[KontAddr]) =
       (State(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)), HaltKontAddress, time.initial("")),
-        Store.initial[Addr, Abs](primitives.forStore),
-        KontStore.empty[KontAddr])
+        initialStore,
+        emptyKStore)
   }
 
   case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
@@ -96,22 +94,28 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
     }
   }
 
+  var count = 0
   /* Explore state graph when a monotonically growing store is present */
   @scala.annotation.tailrec
   private def loopMono(todo: Set[State], visited: Set[State], store: Store[Addr, Abs], kstore: KontStore[KontAddr],
     halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, Unit]],
     sem: Semantics[Exp, Abs, Addr, Time]): AAMOutput =
     if (todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
+      println(s"Done $count iterations")
       AAMOutput(halted, graph.map(g => g.nodes.size).getOrElse(0), (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
         timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
+      count += 1
+      //println(s"Iteration $count, exploring: $todo with kstore $kstore")
       val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), emptyStore, emptyKStore)({ (acc, state) =>
         state.step(sem, store, kstore) match {
           case (next, store2, kstore2) =>
             (acc._1 ++ next.map(state2 => (state, state2)), acc._2.join(store2), acc._3.join(kstore2))
         }
       })
+      //println(s"New kstore is $kstore2")
       if (store == store2 && kstore == kstore2) {
+        //println("Stores are equal")
         loopMono(edges.map({ case (s1, s2) => s2 }).diff(visited),
           visited ++ todo,
           store2, kstore2,
@@ -120,6 +124,7 @@ class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time
           graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
           sem)
       } else {
+        //println(s"Stores are different: store: ${store == store2}, kstore: ${kstore == kstore2}")
         loopMono(edges.map({ case (s1, s2) => s2 }),
           Set(),
           store2, kstore2,
