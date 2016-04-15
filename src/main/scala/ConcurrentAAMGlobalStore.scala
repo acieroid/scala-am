@@ -160,7 +160,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     })
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString)),
+      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
         (s) => if (halted.contains(s)) {
           Colors.Yellow
         } else if (s.threads.content.values.exists(_.control.isInstanceOf[ControlError])) {
