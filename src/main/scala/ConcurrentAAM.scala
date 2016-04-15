@@ -155,10 +155,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         case Some(_) => acc
       })
     }
-    def hasEnabledTransitions(sem: Semantics[Exp, Abs, Addr, Time]): Boolean = stepAny(sem) match {
-      case Some(_) => true
-      case None => false
-    }
 
     def halted: Boolean = threads.tids == Set(thread.initial) && threads.get(thread.initial).forall(_.halted)
 

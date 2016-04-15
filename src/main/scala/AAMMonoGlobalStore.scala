@@ -112,12 +112,11 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
       AAMOutput(halted, graph.map(g => g.nodes.size).getOrElse(0), (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
         timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
-      val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), store, kstore)({ (acc, state) =>
+      val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), store, kstore)((acc, state) =>
         state.step(sem, acc._2, acc._3) match {
           case (next, store2, kstore2) =>
             (acc._1 ++ next.map(state2 => (state, state2)), store2, kstore2)
-        }
-      })
+        })
       if (store2.isUnchanged && kstore.fastEq(kstore2)) {
         //assert(store2.commit.store == store2.store)
         loop(edges.map({ case (s1, s2) => s2 }).diff(visited),

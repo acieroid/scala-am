@@ -73,7 +73,7 @@ import scala.io.StdIn
  */
 object Config {
   object Machine extends Enumeration {
-    val AAC, AAM, AAMMonoGlobalStore, Free, ConcurrentAAM, ConcreteMachine = Value
+    val AAC, AAM, AAMMonoGlobalStore, Free, ConcurrentAAM, ConcurrentAAMGlobalStore, ConcreteMachine = Value
   }
   implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
 
@@ -236,6 +236,7 @@ object Main {
           case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
+          case Config.Machine.ConcurrentAAMGlobalStore => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
         }
 
         val sem = if (config.machine == Config.Machine.ConcurrentAAM) {
