@@ -73,6 +73,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
         case ActionPush(e, frame, env, store2, effs) =>
           val next = NormalKontAddress(e, addr.variable("__kont__", abs.bottom, t))
           (acc._1 + ((threads.update(tid, Context(ControlEval(e, env), next, time.tick(t))), results, effs)), acc._2.includeDelta(store2.delta), acc._3.extend(next, Kont(frame, a)))
+        case ActionEval(e, env, store2, effs) => (acc._1 + ((threads.update(tid, Context(ControlEval(e, env), a, time.tick(t))), results, effs)), acc._2.includeDelta(store2.delta), acc._3)
         case ActionStepIn(fexp, _, e, env, store2, _, effs) => (acc._1 + ((threads.update(tid, Context(ControlEval(e, env), a, time.tick(t, fexp))), results, effs)), acc._2.includeDelta(store2.delta), acc._3)
         case ActionError(err) => (acc._1 + ((threads.update(tid, Context(ControlError(err), a, time.tick(t))), results, noEffect)), acc._2, acc._3)
         case ActionSpawn(tid2: TID @unchecked, e, env, act, effs) =>
@@ -204,9 +205,10 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
   @scala.annotation.tailrec
   private def loopFrontier(todo: Set[State], visited: Set[State], store: GlobalStore, kstore: KontStore[KontAddr],
     halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, (TID, Effects)]])
-    (step: Exploration): ConcurrentAAMOutput =
-    if (todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-      ConcurrentAAMOutput(halted, graph.map(g => g.nodes.size).getOrElse(-1), (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+    (step: Exploration): ConcurrentAAMOutput = {
+    val timedOut = timeout.map(System.nanoTime - startingTime > _).getOrElse(false)
+    if (todo.isEmpty || timedOut) {
+      ConcurrentAAMOutput(halted, graph.map(g => g.nodes.size).getOrElse(-1), (System.nanoTime - startingTime) / Math.pow(10, 9), graph, timedOut)
     } else {
       val (edges, store2, kstore2) = todo.foldLeft((Set[(State, (TID, Effects), State)](), store, kstore))((acc, s) =>
         step(s, acc._2, acc._3) match {
@@ -221,6 +223,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
           halted ++ todo.filter(_.halted), startingTime, timeout, graph.map(_.addEdges(edges)))(step)
       }
     }
+  }
   private def allInterleavings(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, store, kstore) => s.stepAll(sem, store, kstore)
   private def oneInterleaving(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, store, kstore) => s.stepAny(sem, store, kstore)
   private def randomInterleaving(sem: Semantics[Exp, Abs, Addr, Time]): Exploration = (s, store, kstore) => s.stepAnyRandom(sem, store, kstore)

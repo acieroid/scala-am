@@ -236,7 +236,7 @@ object Main {
           case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
-          case Config.Machine.ConcurrentAAMGlobalStore => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
+          case Config.Machine.ConcurrentAAMGlobalStore => new ConcurrentAAMGlobalStore[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
         }
 
         val sem = if (config.machine == Config.Machine.ConcurrentAAM || config.machine == Config.Machine.ConcurrentAAMGlobalStore) {
