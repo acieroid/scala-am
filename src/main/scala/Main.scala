@@ -147,7 +147,7 @@ object Config {
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
     head("scala-am", "0.0")
-    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAMMonoGlobalStore, AAC, Free, ConcurrentAAM, ConcreteMachine)")
+    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAMMonoGlobalStore, AAC, Free, ConcurrentAAM, ConcurrentAAMGlobalStore, ConcreteMachine)")
     opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text("Lattice to use (Concrete, Type, TypeSet)")
     opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
@@ -239,7 +239,7 @@ object Main {
           case Config.Machine.ConcurrentAAMGlobalStore => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
         }
 
-        val sem = if (config.machine == Config.Machine.ConcurrentAAM) {
+        val sem = if (config.machine == Config.Machine.ConcurrentAAM || config.machine == Config.Machine.ConcurrentAAMGlobalStore) {
           new ConcurrentSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID]
         } else {
           new SchemeSemantics[lattice.L, address.A, time.T]
