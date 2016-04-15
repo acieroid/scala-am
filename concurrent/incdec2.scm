@@ -11,5 +11,4 @@
          (t1 (spawn (inc)))
          (t2 (spawn (dec))))
   (join t1)
-  (join t2)
-  (= counter 0))
+  (join t2))

@@ -13,5 +13,4 @@
          (t3 (spawn (inc))))
   (join t1)
   (join t2)
-  (join t3)
-  (= counter 1))
+  (join t3))

@@ -17,5 +17,4 @@
   (join t2)
   (join t3)
   (join t4)
-  (join t5)
-  (= counter 1))
+  (join t5))

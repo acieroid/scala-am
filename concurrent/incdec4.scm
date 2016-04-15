@@ -15,5 +15,4 @@
   (join t1)
   (join t2)
   (join t3)
-  (join t4)
-  (= counter 0))
+  (join t4))
