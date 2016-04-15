@@ -1,0 +1,11 @@
+(letrec ((i 100)
+         (thread (lambda (n)
+                 (if (<= i 0)
+                     #t
+                     (begin (set! i (- i 1)) (thread n)))))
+(t1 (spawn (thread 1)))
+(t2 (spawn (thread 2)))
+(t3 (spawn (thread 3))))
+(join t1)
+(join t2)
+(join t3))

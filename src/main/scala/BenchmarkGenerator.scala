@@ -10,19 +10,18 @@ object BenchmarkGeneratorConfig {
 
 object BenchmarkGenerator {
   trait Generator {
+    val name: String
     def generate(threads: Int): String
   }
-  abstract class SimpleGenerator extends Generator {
-    val definitions: String
-    val threadName: String
+  abstract class SimpleGenerator(val name: String, val threadName: String, val definitions: String) extends Generator {
     def generate(threads: Int) = {
       definitions +
         (1 to threads).map(i => s"(t$i (spawn ($threadName $i)))").mkString("\n") + ")\n" +
         (1 to threads).map(i => s"(join t$i)").mkString("\n") + ")"
     }
   }
-  object Indexer extends SimpleGenerator {
-    val definitions = """(let* ((size 128)
+  object Indexer extends SimpleGenerator("indexer", "thread",
+    """(let* ((size 128)
        (max 4)
        (table (make-vector size 0))
        (thread (lambda (tid)
@@ -38,11 +37,10 @@ object BenchmarkGenerator {
                                            (process (+ m 1)))
                                          #t))))
                    (process 0))))
-"""
-    val threadName = "thread"
-  }
-  object Fs extends SimpleGenerator {
-    val definitions = """(let* ((numblocks 26)
+""")
+
+  object Fs extends SimpleGenerator("fs", "thread",
+    """(let* ((numblocks 26)
        (numinode 32)
        (locki (vector (new-lock) (new-lock) (new-lock) (new-lock) (new-lock)
                       (new-lock) (new-lock) (new-lock) (new-lock) (new-lock)
@@ -75,10 +73,27 @@ object BenchmarkGenerator {
                    (if (= (vector-ref inode i) 0)
                        (process (modulo (* i 2) numblocks)))
                    (release (vector-ref locki i)))))
-"""
-    val threadName = "thread"
-  }
-  val benchmarks: Map[String, Generator] = Map("fs" -> Fs, "indexer" -> Indexer)
+""")
+  object Count extends SimpleGenerator("count", "thread",
+    """(letrec ((i 100)
+         (thread (lambda (n)
+                 (if (<= i 0)
+                     #t
+                     (begin (set! i (- i 1)) (thread n)))))
+""")
+  object PCounter extends SimpleGenerator("pcounter", "thread",
+    """(letrec ((counter 0)
+         (thread (lambda (n)
+                   (letrec ((old counter)
+                            (new (+ old 1)))
+                     (if (cas counter old new)
+                         #t
+                         (thread n)))))
+""")
+
+
+  val generators: Set[Generator] = Set(Fs, Indexer, Count, PCounter)
+  val benchmarks: Map[String, Generator] = generators.map(g => (g.name, g)).toMap
 
   def main(args: Array[String]) {
     BenchmarkGeneratorConfig.parser.parse(args, BenchmarkGeneratorConfig.Configuration()) match {
