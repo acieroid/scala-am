@@ -75,7 +75,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
           (acc._1 + ((threads.update(tid, Context(ControlEval(e, env), next, time.tick(t))), results, effs)), acc._2.includeDelta(store2.delta), acc._3.extend(next, Kont(frame, a)))
         case ActionStepIn(fexp, _, e, env, store2, _, effs) => (acc._1 + ((threads.update(tid, Context(ControlEval(e, env), a, time.tick(t, fexp))), results, effs)), acc._2.includeDelta(store2.delta), acc._3)
         case ActionError(err) => (acc._1 + ((threads.update(tid, Context(ControlError(err), a, time.tick(t))), results, noEffect)), acc._2, acc._3)
-        case ActionSpawn(tid2: TID, e, env, act, effs) =>
+        case ActionSpawn(tid2: TID @unchecked, e, env, act, effs) =>
           integrate1(acc)(act, threads.add(tid2, Context(ControlEval(e, env), HaltKontAddress, time.initial(tid2.toString))), results)
         case ActionJoin(v, store2, effs) =>
           (acc._1 ++ (abs.getTids(v).flatMap(tid2 =>
@@ -111,6 +111,34 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     def halted: Boolean = threads.tids == Set(thread.initial) && (threads.get(thread.initial).get.halted)
     override def toString = threads.tids.map(tid =>
       s"$tid: " + (threads.get(tid).get.control.toString())).mkString("\n")
+
+    def stepTid(sem: Semantics[Exp, Abs, Addr, Time], tid: TID, store: GlobalStore, kstore: KontStore[KontAddr]): (Set[(Effects, State)], GlobalStore, KontStore[KontAddr]) = threads.get(tid) match {
+      case Some(ctx) => ctx.step(sem, tid, store, kstore, threads, results) match {
+        case (res, store2, kstore2) => (res.map({ case (tm, tr, effs) => (effs, State(tm, tr)) }), store2, kstore2)
+      }
+      case None => (Set(), store, kstore)
+    }
+    def stepTids(sem: Semantics[Exp, Abs, Addr, Time], tids: Set[TID], store: GlobalStore, kstore: KontStore[KontAddr]): (Set[(TID, Effects, State)], GlobalStore, KontStore[KontAddr]) =
+      tids.foldLeft((Set[(TID, Effects, State)](), store, kstore))((acc, tid) =>
+        stepTid(sem, tid, acc._2, acc._3) match {
+          case (res, store2, kstore2) => (acc._1 ++ res.map(r => (tid, r._1, r._2)), store2, kstore2)
+        })
+    def stepAll(sem: Semantics[Exp, Abs, Addr, Time], store: GlobalStore, kstore: KontStore[KontAddr]): (Set[(TID, Effects, State)], GlobalStore, KontStore[KontAddr]) =
+      stepTids(sem, threads.tids, store, kstore)
+    def stepAnyFrom(sem: Semantics[Exp, Abs, Addr, Time], tids: List[TID], store: GlobalStore, kstore: KontStore[KontAddr]): Option[(TID, Set[(Effects, State)], GlobalStore, KontStore[KontAddr])] = {
+      val init: Option[(TID, Set[(Effects, State)], GlobalStore, KontStore[KontAddr])] = None
+      tids.foldLeft(init)((acc, tid) => acc match {
+        case None => stepTid(sem, tid, store, kstore) match {
+          case (stepped, _, _) if stepped.isEmpty => None
+          case (stepped, store2, kstore2) => Some((tid, stepped, store2, kstore2))
+        }
+        case Some(_) => acc
+      })
+    }
+    def stepAny(sem: Semantics[Exp, Abs, Addr, Time], store: GlobalStore, kstore: KontStore[KontAddr]): Option[(TID, Set[(Effects, State)], GlobalStore, KontStore[KontAddr])] =
+      stepAnyFrom(sem, threads.tids.toList, store, kstore)
+    def stepAnyRandom(sem: Semantics[Exp, Abs, Addr, Time], store: GlobalStore, kstore: KontStore[KontAddr]): Option[(TID, Set[(Effects, State)], GlobalStore, KontStore[KontAddr])] =
+      stepAnyFrom(sem, scala.util.Random.shuffle(threads.tids.toList), store, kstore)
   }
 
   object State {
