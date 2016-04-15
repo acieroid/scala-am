@@ -117,14 +117,14 @@ object Benchmarks {
 
   val system = ActorSystem("scala-am-benchmarks")
 
+  val now = java.util.Calendar.getInstance.getTime
+  val timeformat = new java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
+  val stdout = scala.Console.out
+  val fileout = new java.io.FileOutputStream(new java.io.File(s"benchmarks-${timeformat.format(now)}.log"))
+  val logging = new java.io.OutputStream { override def write(b: Int) { stdout.write(b); fileout.write(b) } }
+
   class Dispatcher(bound: Option[Int]) extends Actor {
     import scala.collection.immutable.Queue
-
-    val now = java.util.Calendar.getInstance.getTime
-    val timeformat = new java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
-    val stdout = scala.Console.out
-    val fileout = new java.io.FileOutputStream(new java.io.File(s"benchmarks-${timeformat.format(now)}.log"))
-    val logging = new java.io.OutputStream { override def write(b: Int) { stdout.write(b); fileout.write(b) } }
 
     private def printResults(results: Map[String, Map[ExplorationType, MachineOutput]]) = {
       import scala.math.Ordering.String._
@@ -292,6 +292,12 @@ object Benchmarks {
   def main(args: Array[String]) {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) =>
+        import sys.process._
+        import scala.util.{Try, Success, Failure}
+        import scala.language.postfixOps
+
+        val commit = Try(("git log -1" !!).split('\n').head.split(' ')(1)).getOrElse("unknown")
+        scala.Console.withOut(logging) { println(s"Running benchmarks for commit $commit, with timeout ${config.timeout}") }
         val explorations = ((if (config.skipAll) { List() } else { List(AllInterleavings) }) ++
           (if (config.skipOne) { List() } else { List(OneInterleaving) }) ++
           (if (config.skipDPOR) { List() } else { List(DPOR) }) ++
