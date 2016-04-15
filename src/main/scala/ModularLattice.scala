@@ -140,13 +140,13 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
       case Symbol(s) => sym.shows(s)
       case Err(msg) => s"Error($msg)"
       case Nil => "()"
-      case Cons(car: Addr, cdr: Addr) => {
-        val carstr = implicitly[AbstractValue[Abs]].shows(store.lookup(car), store)
-        val cdrstr = implicitly[AbstractValue[Abs]].shows(store.lookup(cdr), store)
+      case Cons(car: Addr @unchecked, cdr: Addr @unchecked) => {
+        val carstr = car.toString//implicitly[AbstractValue[Abs]].shows(store.lookup(car), store) // TODO: handle circularity
+        val cdrstr = cdr.toString//implicitly[AbstractValue[Abs]].shows(store.lookup(cdr), store)
         s"($carstr . $cdrstr)"
       }
-      case VectorAddress(a: Addr) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
-      case Vec(size, elements: Map[I, Addr], init: Addr) => {
+      case VectorAddress(a: Addr @unchecked) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
+      case Vec(size, elements: Map[I, Addr] @unchecked, init: Addr @unchecked) => {
         val initstr = implicitly[AbstractValue[Abs]].shows(store.lookup(init), store)
         val content = elements.toList.map({ case (k, a)  => s"${int.shows(k)}: ${implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)}"}).mkString(", ")
         if (content.isEmpty) {
@@ -155,7 +155,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
           s"#($content, default: $initstr)"
         }
       }
-      case LockAddress(a: Addr) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
+      case LockAddress(a: Addr @unchecked) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
       case Unlocked => "#unlocked"
       case Locked => "#locked"
       case _ => x.toString
@@ -392,21 +392,21 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
     }
 
     def car[Addr : Address](x: L): Set[Addr] = x match {
-      case Cons(car: Addr, cdr: Addr) => Set(car)
+      case Cons(car: Addr @unchecked, cdr: Addr @unchecked) => Set(car)
       case _ => Set()
     }
 
     def cdr[Addr : Address](x: L): Set[Addr] = x match {
-      case Cons(car: Addr, cdr: Addr) => Set(cdr)
+      case Cons(car: Addr @unchecked, cdr: Addr @unchecked) => Set(cdr)
       case _ => Set()
     }
 
     def vectorRef[Addr : Address](x: L, index: L): Set[Either[L, Addr]] = (x, index) match {
-      case (Vec(size, content: Map[I, Addr], init: Addr), Int(index)) => {
+      case (Vec(size, content: Map[I, Addr] @unchecked, init: Addr @unchecked), Int(index)) => {
         val comp = int.lt(index, size)
         val t: Set[Either[L, Addr]] = if (bool.isTrue(comp)) {
           content.get(index) match {
-            case Some(a: Addr) =>
+            case Some(a: Addr @unchecked) =>
               if (bool.isTrue(int.eql(index, index)) && !bool.isFalse(int.eql(index, index))) {
                 /* we know index represents a concrete integer, we can return only one address */
                 Set(Right(a))
@@ -421,46 +421,46 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
         val f: Set[Either[L, Addr]] = Set()
         t ++ f
       }
-      case (_: Vec[Addr], _) => Set(Left(Err(s"Vector ref with non-integer index")))
+      case (_: Vec[Addr] @unchecked, _) => Set(Left(Err(s"Vector ref with non-integer index")))
       case _ => Set(Left(Err(s"Vector ref on non-vector")))
     }
 
     def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): (L, Set[Addr]) = (vector, index) match {
-      case (Vec(size, content: Map[I, Addr], init: Addr), Int(index)) => {
+      case (Vec(size, content: Map[I, Addr] @unchecked, init: Addr @unchecked), Int(index)) => {
         val comp = int.lt(index, size)
         val t: (L, Set[Addr]) = if (bool.isTrue(comp)) {
           content.get(index) match {
-            case Some(a: Addr) => (vector, Set(a))
+            case Some(a: Addr @unchecked) => (vector, Set(a))
             case None => (Vec(size, content + (index -> addr), init), Set(addr))
           }
         } else { (Bot, Set()) }
         val f: (L, Set[Addr]) = (Bot, Set())
         (join(t._1, f._1), t._2 ++ f._2)
       }
-      case (_: Vec[Addr], _) => (Err(s"Vector set with non-integer index"), Set())
+      case (_: Vec[Addr] @unchecked, _) => (Err(s"Vector set with non-integer index"), Set())
       case _ => (Err(s"Vector set on non-vector"), Set())
     }
 
     def toString[Addr : Address](x: L, store: Store[Addr, L]) = ???
 
     def getClosures[Exp : Expression, Addr : Address](x: L) = x match {
-      case Closure(lam: Exp, env: Environment[Addr]) => Set((lam, env))
+      case Closure(lam: Exp @unchecked, env: Environment[Addr] @unchecked) => Set((lam, env))
       case _ => Set()
     }
     def getPrimitives[Addr : Address, Abs : AbstractValue](x: L) = x match {
-      case Prim(p: Primitive[Addr, Abs]) => Set(p)
+      case Prim(p: Primitive[Addr, Abs] @unchecked) => Set(p)
       case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](x: L) = x match {
-      case Tid(t: TID) => Set(t)
+      case Tid(t: TID @unchecked) => Set(t)
       case _ => Set()
     }
     def getVectors[Addr : Address](x: L) = x match {
-      case VectorAddress(a: Addr) => Set(a)
+      case VectorAddress(a: Addr @unchecked) => Set(a)
       case _ => Set()
     }
     def getLocks[Addr : Address](x: L) = x match {
-      case LockAddress(a: Addr) => Set(a)
+      case LockAddress(a: Addr @unchecked) => Set(a)
       case _ => Set()
     }
 
@@ -502,7 +502,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
     def zero: Boolean = true
   }
   private def wrap(x: => Value): LSet = try { Element(x) } catch {
-    case err: CannotJoin[Value] => Elements(err.values)
+    case err: CannotJoin[Value] @unchecked => Elements(err.values)
   }
   implicit val lsetMonoid = new Monoid[LSet] {
     def append(x: LSet, y: => LSet): LSet = x match {

@@ -19,7 +19,7 @@ case class KCFA(k: Int) extends TimestampWrapper {
     def initial(seed: String) = Time(seed, List())
     def tick(t: T) = t
     def tick[Exp](t: T, e: Exp) = t match {
-      case t : Time[Exp] => Time[Exp](t.seed, (e :: t.history).take(k))
+      case (t : Time[Exp] @unchecked) => Time[Exp](t.seed, (e :: t.history).take(k))
     }
   }
 }

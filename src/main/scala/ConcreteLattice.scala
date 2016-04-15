@@ -217,21 +217,21 @@ object ConcreteLattice extends Lattice {
     def and(x: L, y: => L) = x.and(y)
     def or(x: L, y: => L) = x.or(y)
     def car[Addr : Address](x: L) = x match {
-      case Cons(car : Addr, cdr : Addr) => Set(car)
+      case Cons(car : Addr @unchecked, cdr : Addr @unchecked) => Set(car)
       case _ => Set()
     }
     def cdr[Addr : Address](x: L) = x match {
-      case Cons(car : Addr, cdr : Addr) => Set(cdr)
+      case Cons(car : Addr @unchecked, cdr : Addr @unchecked) => Set(cdr)
       case _ => Set()
     }
     def vectorRef[Addr : Address](vector: L, index: L): Set[Either[L, Addr]] = vector match {
-      case Vector(size, elements, init: Addr) => index match {
+      case Vector(size, elements, init: Addr @unchecked) => index match {
         case ConcreteInt(index) => if (index >= size) {
           Set(Left(ConcreteError(s"vector access out of bound: accessed element $index of vector of size $size")))
         } else {
           elements.get(index) match {
             case None => Set(Right(init))
-            case Some(a: Addr) => Set(Right(a))
+            case Some(a: Addr @unchecked) => Set(Right(a))
           }
         }
         case _ => Set(Left(ConcreteError(s"vector access with a non-integer index: $index")))
@@ -240,12 +240,12 @@ object ConcreteLattice extends Lattice {
     }
 
     def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): (L, Set[Addr]) = vector match {
-      case Vector(size, elements: Map[Int, Addr], init: Addr) => index match {
+      case Vector(size, elements: Map[Int, Addr] @unchecked, init: Addr @unchecked) => index match {
         case ConcreteInt(index) => if (index >= size) {
           (ConcreteError(s"vector write out of bound: modified element $index of vector of size $size"), Set())
         } else {
           elements.get(index) match {
-            case Some(a: Addr) => (vector, Set(a))
+            case Some(a: Addr @unchecked) => (vector, Set(a))
             case None => (Vector[Addr](size, elements + (index -> addr), init), Set(addr))
           }
         }
@@ -259,7 +259,7 @@ object ConcreteLattice extends Lattice {
         "#loop"
       } else {
         x match {
-          case Cons(car: Addr, cdr: Addr) =>
+          case Cons(car: Addr @unchecked, cdr: Addr @unchecked) =>
             val carstr =  toString(store.lookup(car), store, false, visited + x)
             val cdrval = store.lookup(cdr)
             val cdrstr =  toString(store.lookup(cdr), store, true, visited + x)
@@ -269,38 +269,38 @@ object ConcreteLattice extends Lattice {
               case _ => s"$carstr . $cdrstr"
             }
             if (inside) { content } else { s"($content)" }
-          case VectorAddress(addr: Addr) => toString(store.lookup(addr), store, false, visited + x)
-          case Vector(size, elements, init: Addr) =>
+          case VectorAddress(addr: Addr @unchecked) => toString(store.lookup(addr), store, false, visited + x)
+          case Vector(size, elements, init: Addr @unchecked) =>
             val initstr = toString(store.lookup(init), store, false, visited + x)
             val content = (0 until size).map(index => elements.get(index) match {
-              case Some(a: Addr) => toString(store.lookup(a), store, false, visited + x)
+              case Some(a: Addr @unchecked) => toString(store.lookup(a), store, false, visited + x)
               case None => initstr
             }).mkString(" ")
             s"#($content)"
-          case LockAddress(addr: Addr) => toString(store.lookup(addr), store, false, visited + x)
+          case LockAddress(addr: Addr @unchecked) => toString(store.lookup(addr), store, false, visited + x)
           case _ => x.toString
         }
     }
     def toString[Addr : Address](x: L, store: Store[Addr, L]) = toString(x, store, false, Set())
 
     def getClosures[Exp : Expression, Addr : Address](x: L) = x match {
-      case Closure(λ: Exp, ρ: Environment[Addr]) => Set((λ, ρ))
+      case Closure(λ: Exp @unchecked, ρ: Environment[Addr] @unchecked) => Set((λ, ρ))
       case _ => Set()
     }
     def getPrimitives[Addr : Address, Abs : AbstractValue](x: L) = x match {
-      case Prim(prim: Primitive[Addr, Abs]) => Set(prim)
+      case Prim(prim: Primitive[Addr, Abs] @unchecked) => Set(prim)
       case _ => Set()
     }
     def getTids[TID : ThreadIdentifier](x: L) = x match {
-      case Tid(t: TID) => Set(t)
+      case Tid(t: TID @unchecked) => Set(t)
       case _ => Set()
     }
     def getVectors[Addr : Address](x: L) = x match {
-      case VectorAddress(a: Addr) => Set(a)
+      case VectorAddress(a: Addr @unchecked) => Set(a)
       case _ => Set()
     }
     def getLocks[Addr : Address](x: L) = x match {
-      case LockAddress(a: Addr) => Set(a)
+      case LockAddress(a: Addr @unchecked) => Set(a)
       case _ => Set()
     }
 

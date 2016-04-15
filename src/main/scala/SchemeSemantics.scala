@@ -353,7 +353,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
   case class FrameJoin(ρ: Environment[Addr]) extends SchemeFrame
 
   override def addEffects(action: Action[SchemeExp, Abs, Addr], effects: Set[Effect[Addr, Abs]]) = action match {
-    case ActionSpawn(t: TID, e, ρ, act, effs) => ActionSpawn(t, e, ρ, act, effs ++ effects)
+    case ActionSpawn(t: TID @unchecked, e, ρ, act, effs) => ActionSpawn(t, e, ρ, act, effs ++ effects)
     case ActionJoin(tid, σ, effs) => ActionJoin(tid, σ, effs ++ effects)
     case _ => super.addEffects(action, effects)
   }

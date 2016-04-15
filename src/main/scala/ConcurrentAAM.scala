@@ -59,7 +59,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
       case ActionEval(e, ρ, σ, effs) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t))), results, σ, effs))
       case ActionStepIn(fexp, _, e, ρ, σ, _, effs) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, σ, effs))
       case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, time.tick(t))), results, oldstore, noEffect))
-      case ActionSpawn(tid2: TID, e, ρ, act, effs) => {
+      case ActionSpawn(tid2: TID @unchecked, e, ρ, act, effs) => {
         assert(effs.isEmpty) /* TODO */
         integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), KontStore.empty[KontAddr], HaltKontAddress, time.initial(tid2.toString))), oldstore, results)
       }
@@ -701,7 +701,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         /* a transition is enabled if it can perform a step */
         s.stepAny(sem) match {
           case None => halted += s /* no enabled transition, we reached a halted state */
-          case Some((p: TID, results: Set[(Effects, State)])) => /* at least one transition enabled */
+          case Some((p: TID @unchecked, results)) => /* at least one transition enabled */
             if (results.size > 1) {
               throw CannotHandle /* more than one successor */
           } else {
@@ -714,7 +714,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                   /* DPOR: while (\exists p \in (backtrack(s) \ done)) { */
                   breakable { while(true) {
                     (backtrack(s) -- done).headOption match {
-                      case Some(p: TID) =>
+                      case Some(p: TID @unchecked) =>
                         /* DPOR: add p to done */
                         done = done + p
                         /* DPOR: let t = next(s,p); */
