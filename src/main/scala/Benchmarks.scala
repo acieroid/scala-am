@@ -44,7 +44,7 @@ object Tabulator {
   def rowSeparator(colSizes: Seq[Int]) = colSizes map { "-" * _ } mkString("+", "+", "+")
 }
 
-case class MachineConfig(program: String, machine: Config.Machine.Value, address: Config.Address.Value, lattice: Config.Lattice.Value, concrete: Boolean, exploration: ExplorationType, timeout: Option[Long]) {
+case class MachineConfig(program: String, machine: Config.Machine.Value = Config.Machine.AAM, address: Config.Address.Value = Config.Address.Classical, lattice: Config.Lattice.Value = Config.Lattice.TypeSet, concrete: Boolean = false, exploration: ExplorationType = OneInterleaving, timeout: Option[Long] = None) {
   override def toString = s"[$program, $machine, $exploration, $address, $lattice]"
 }
 
@@ -203,14 +203,26 @@ abstract class Benchmarks(dir: String, inputs: Set[MachineConfig], classify: Mac
   def main(args: Array[String]) = run()
 }
 
-object MonoBenchmarks extends Benchmarks("test/", {
+object MonoBenchmarks extends Benchmarks("test", {
   val programs = Set("ack", "blur", "church", "collatz", "count", "cpstak", "dderiv", "divrec", "eta", "fact", "fib", "gcipd", "grid", "inc", "kcfa2", "kcfa3", "loop2", "mceval", "mut-rec", "mj09", "nqueens", "primtest", "regex", "rotate", "rsa", "scm2java", "sq", "takl", "widen")
   import Config._
   val timeout = Some(TimeParser.parse("10s").nanoSeconds)
   programs.flatMap(p =>
-    Set(MachineConfig(p, Machine.AAM, Address.Classical, Lattice.TypeSet, false, OneInterleaving, timeout),
-      MachineConfig(p, Machine.AAMMonoGlobalStore, Address.Classical, Lattice.TypeSet, false, OneInterleaving, timeout)))
-  }, (config => config.machine match {
-    case Config.Machine.AAM => "AAM"
-    case Config.Machine.AAMMonoGlobalStore => "AAM+GS"
-  }), 2)
+    Set(MachineConfig(p, machine = Machine.AAM, timeout = timeout),
+      MachineConfig(p, machine = Machine.AAMMonoGlobalStore, timeout = timeout)))
+}, (config => config.machine match {
+  case Config.Machine.AAM => "AAM"
+  case Config.Machine.AAMMonoGlobalStore => "AAM+GS"
+}), 2) // TODO: workers & timeout should be parsed from command line
+
+object ConcurrentMonoBenchmarks extends Benchmarks("concurrent", {
+  val programs = Set("count2", "count3", "count4")
+  import Config._
+  val timeout = Some(TimeParser.parse("10s").nanoSeconds)
+  programs.flatMap(p =>
+    Set(MachineConfig(p, machine = Machine.ConcurrentAAM, timeout = timeout),
+      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, timeout = timeout)))
+}, (config => config.machine match {
+  case Config.Machine.ConcurrentAAM => "base"
+  case Config.Machine.ConcurrentAAMGlobalStore => "base+GS"
+}), 2)
