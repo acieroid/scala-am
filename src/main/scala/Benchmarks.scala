@@ -4,18 +4,9 @@ object BenchmarksConfig {
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
     opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers to run the benchmarks on (1 by default)")
-    opt[Int]('r', "random") action { (x, c) => c.copy(random = x) } text("Number of random interleavings explored (10 by default)")
-    opt[Int]('b', "bound") action { (x, c) => c.copy(bound = Some(x)) } text("Bound for interference tracking (none by default))")
-    opt[Unit]('s', "skip-all") action { (x, c) => c.copy(skipAll = true) } text("Skip computing all interleavings")
-    opt[Unit]('a', "skip-abstract") action { (x, c) => c.copy(skipAbstract = true) } text("Skip computing in the abstract")
-    opt[Unit]('c', "skip-concrete") action { (x, c) => c.copy(skipConcrete = true) }
-    opt[Unit]('o', "skip-one") action { (x, c) => c.copy(skipOne = true) }
-    opt[Unit]('d', "skip-dpor") action { (x, c) => c.copy(skipDPOR = true) }
     opt[Config.Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
   }
 }
-
-object AbstractLattice extends BoundedIntLattice(1000, false)
 
 /* From http://stackoverflow.com/questions/7539831/scala-draw-table-to-console */
 object Tabulator {
@@ -44,11 +35,11 @@ object Tabulator {
   def rowSeparator(colSizes: Seq[Int]) = colSizes map { "-" * _ } mkString("+", "+", "+")
 }
 
-case class MachineConfig(program: String, machine: Config.Machine.Value = Config.Machine.AAM, address: Config.Address.Value = Config.Address.Classical, lattice: Config.Lattice.Value = Config.Lattice.TypeSet, concrete: Boolean = false, exploration: ExplorationType = OneInterleaving, timeout: Option[Long] = None) {
+case class MachineConfig(program: String, machine: Config.Machine.Value = Config.Machine.AAM, address: Config.Address.Value = Config.Address.Classical, lattice: Config.Lattice.Value = Config.Lattice.TypeSet, concrete: Boolean = false, exploration: ExplorationType = OneInterleaving) {
   override def toString = s"[$program, $machine, $exploration, $address, $lattice]"
 }
 
-abstract class Benchmarks(dir: String, inputs: Set[MachineConfig], classify: MachineConfig => String, nworkers: Int) {
+abstract class Benchmarks(dir: String, inputs: Set[MachineConfig], classify: MachineConfig => String) {
   val now = java.util.Calendar.getInstance.getTime
   val timeformat = new java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
   val stdout = scala.Console.out
@@ -67,7 +58,7 @@ abstract class Benchmarks(dir: String, inputs: Set[MachineConfig], classify: Mac
   case class AddWork(items: Iterable[MachineConfig])
   case class SendWork(actor: ActorRef)
 
-  class Worker extends Actor {
+  class Worker(timeout: Option[Long]) extends Actor {
     def compute(config: MachineConfig): MachineOutput =  {
       val lattice: Lattice = config.lattice match {
         case Config.Lattice.Concrete => ConcreteLattice
@@ -105,7 +96,7 @@ abstract class Benchmarks(dir: String, inputs: Set[MachineConfig], classify: Mac
       if (program != null || program.size > 0) {
         try {
           val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {
-            machine.eval(sem.parse(program), sem, false, config.timeout)
+            machine.eval(sem.parse(program), sem, false, timeout)
           }
           MachineOutput(output.time, output.numberOfStates, output.timedOut)
         } catch {
@@ -186,43 +177,59 @@ abstract class Benchmarks(dir: String, inputs: Set[MachineConfig], classify: Mac
     def receive = active(State(0, Queue[MachineConfig](), Results()))
   }
 
-  def run() {
+  def run(nworkers: Int, timeout: Option[Long]) {
     import sys.process._
     import scala.util.{Try, Success, Failure}
     import scala.language.postfixOps
 
     val work = inputs
     val commit = Try(("git log -1" !!).split('\n').head.split(' ')(1)).getOrElse("unknown")
-    scala.Console.withOut(logging) { println(s"Running benchmarks for commit $commit") }
+    scala.Console.withOut(logging) { println(s"Running benchmarks for commit $commit with timeout $timeout") }
     println(s"Scheduling ${work.size} items of work")
-    val workers = (1 to nworkers).map(i => system.actorOf(Props(new Worker), s"worker-$i"))
+    val workers = (1 to nworkers).map(i => system.actorOf(Props(new Worker(timeout)), s"worker-$i"))
     val dispatcher = system.actorOf(Props(new Dispatcher(None)), "dispatcher")
     dispatcher ! AddWork(work)
     workers.foreach(dispatcher ! SendWork(_))
   }
-  def main(args: Array[String]) = run()
+  def main(args: Array[String]) {
+    BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
+      case Some(config) => run(config.workers, config.timeout)
+      case None => ()
+    }
+  }
 }
 
 object MonoBenchmarks extends Benchmarks("test", {
   val programs = Set("ack", "blur", "church", "collatz", "count", "cpstak", "dderiv", "divrec", "eta", "fact", "fib", "gcipd", "grid", "inc", "kcfa2", "kcfa3", "loop2", "mceval", "mut-rec", "mj09", "nqueens", "primtest", "regex", "rotate", "rsa", "scm2java", "sq", "takl", "widen")
   import Config._
-  val timeout = Some(TimeParser.parse("10s").nanoSeconds)
   programs.flatMap(p =>
-    Set(MachineConfig(p, machine = Machine.AAM, timeout = timeout),
-      MachineConfig(p, machine = Machine.AAMMonoGlobalStore, timeout = timeout)))
+    Set(MachineConfig(p, machine = Machine.AAM),
+      MachineConfig(p, machine = Machine.AAMMonoGlobalStore)))
 }, (config => config.machine match {
   case Config.Machine.AAM => "AAM"
   case Config.Machine.AAMMonoGlobalStore => "AAM+GS"
-}), 2) // TODO: workers & timeout should be parsed from command line
+}))
 
 object ConcurrentMonoBenchmarks extends Benchmarks("concurrent", {
-  val programs = Set("count2", "count3", "count4")
+  val programs = Set("count2", "count3", "count4", "count5", "count6", "count7", "count8", "count9", "count10", "count11", "count12", "count13", "count14", "count15",
+    "dekker", "fact2",
+    "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "writewriteorderviolation",
+    "fs2", "fs3", "fs4", "fs5", "fs6", "fs7", "fs8", "fs9", "fs10", "fs11", "fs12", "fs13", "fs14", "fs15",
+    "incdec2", "incdec3", "incdec4", "incdec5", "incdec6",
+    "indexer2", "indexer3", "indexer4", "indexer5", "indexer6", "indexer7", "indexer8", "indexer9", "indexer10", "indexer11", "indexer12", "indexer13", "indexer14", "indexer15",
+    "mutex2", "mutex3", "mutex4", "mutex5", "mutex6",
+    "pcounter2", "pcounter3", "pcounter4", "pcounter5", "pcounter6", "pcounter7", "pcounter8", "pcounter9", "pcounter10", "pcounter11", "pcounter12", "pcounter13", "pcounter14", "pcounter15",
+    "philosophers2", "philosophers3", "philosophers4", "philosophers5", "philosophers6",
+    "producer",
+    "race2", "race3", "race4", "race5", "race6",
+    "readers2",
+    "lastzero2"
+  )
   import Config._
-  val timeout = Some(TimeParser.parse("10s").nanoSeconds)
   programs.flatMap(p =>
-    Set(MachineConfig(p, machine = Machine.ConcurrentAAM, timeout = timeout),
-      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, timeout = timeout)))
+    Set(MachineConfig(p, machine = Machine.ConcurrentAAM),
+      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore)))
 }, (config => config.machine match {
   case Config.Machine.ConcurrentAAM => "base"
   case Config.Machine.ConcurrentAAMGlobalStore => "base+GS"
-}), 2)
+}))
