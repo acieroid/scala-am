@@ -216,7 +216,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
             (acc._1 ++ next.map({ case (tid, eff, s2) => (s, (tid, eff), s2) }), store2, kstore2)
         })
       if (store2.isUnchanged && kstore.fastEq(kstore2)) {
-        loopFrontier(edges.map(_._3).diff(visited), visited ++ todo, reallyVisited ++ todo,store2, kstore2,
+        loopFrontier(edges.map(_._3).diff(visited), visited ++ todo, reallyVisited ++ todo, store2, kstore2,
           halted ++ todo.filter(_.halted), startingTime, timeout, graph.map(_.addEdges(edges)))(step)
       } else {
         loopFrontier(edges.map(_._3), Set(), reallyVisited ++ todo, store2.commit, kstore2,
@@ -310,7 +310,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
       }
       val confls = (halted ++ cycles).flatMap(s => findConflictsAt(s))
       (this.copy(conflicts = conflicts ++ confls), confls)
-    } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).mkString(", ") }
+    } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
     def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = {
       val dls: Set[State] = effects(s).collect({
         case (s, tid, effs) if (!deadlocks.contains(s) && effs.exists(eff => eff.isInstanceOf[EffectAcquire[Addr, Abs]])) => s })
@@ -435,7 +435,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
         })
       })
       (this.copy(conflicts = newConflicts), confls)
-    } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).mkString(", ") }
+    } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
 
     def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = /* Profiler.log(s"findDeadlocks(${id(graph, s)})") */ {
       def existsPath(source: State, tid: TID, dest: State): Boolean = {
@@ -502,6 +502,139 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     def apply(): ThreadPickMap = new ThreadPickMap(Map[State, Set[TID]]())
   }
 
+  @scala.annotation.tailrec
+  private def reducedLoopOneByOne(todo: scala.collection.immutable.Vector[(State, TID)], visited: Set[(State, TID)], effectsMap: EffectsMap, threadPickMap: ThreadPickMap,
+    store: GlobalStore, kstore: KontStore[KontAddr],
+    halted: Set[State], startingTime: Long, timeout: Option[Long], reallyVisited: Set[State], graph: Option[Graph[State, (TID, Effects)]],
+    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
+    if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
+      ConcurrentAAMOutput(halted, reallyVisited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+    } else {
+      todo.headOption match {
+        case Some((s, tid)) =>
+          val newThreadPickMap = threadPickMap.explored(s, tid)
+          if (visited.contains((s, tid))) {
+            reducedLoopOneByOne(todo.tail, visited, effectsMap, newThreadPickMap, store, kstore,
+              halted, startingTime, timeout, reallyVisited, graph, sem)
+          } else if (s.halted) {
+            val newEffectsMap = effectsMap.newHaltedState(graph, s)
+            reducedLoopOneByOne(todo.tail, visited + ((s, tid)), newEffectsMap, newThreadPickMap, store, kstore,
+              halted + s, startingTime, timeout, reallyVisited + s, graph, sem)
+          } else {
+            val (succs, store2, kstore2) = s.stepTid(sem, tid, store, kstore)
+            val newGraph = graph.map(_.addEdges(succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })))
+            val newEffectsMap = succs.foldLeft(effectsMap)((em, succ) => succ match {
+              case (tid, effects, s2) => em.newTransition(newGraph, s, s2, tid, effects)
+            })
+            if (store2.isUnchanged && kstore.fastEq(kstore2)) {
+              if (succs.isEmpty || succs.forall({ case (_, _, s2) => visited.exists(_ == (s2, tid)) })) {
+                newThreadPickMap.pick(s) match {
+                  case Some(tid2) =>
+                    reducedLoopOneByOne((((s, tid2)) +: todo.tail), visited + ((s, tid)), newEffectsMap, newThreadPickMap, store2, kstore2,
+                      halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
+                  case None => {
+                    val (newEffectsMap2, dls) = newEffectsMap.findDeadlocks(graph, s)
+                    val deadlocks: Set[(State, TID)] = dls.flatMap(s => newThreadPickMap.pick(s).map(tid => (s, tid)))
+                    reducedLoopOneByOne(todo.tail ++ deadlocks, visited + ((s, tid)), newEffectsMap2, newThreadPickMap, store2, kstore2,
+                      halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
+                  }
+                }
+              } else {
+                reducedLoopOneByOne(succs.map(succ => (succ._3, tid)).toVector ++ todo.tail, visited + ((s, tid)), newEffectsMap, newThreadPickMap, store2, kstore2,
+                  halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
+              }
+            } else {
+              if (succs.isEmpty || succs.forall({ case (_, _, s2) => visited.exists(_ == (s2, tid)) })) {
+                newThreadPickMap.pick(s) match {
+                  case Some(tid2) =>
+                    reducedLoopOneByOne((((s, tid2)) +: todo.tail), Set(), newEffectsMap, newThreadPickMap, store2.commit, kstore2,
+                      halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
+                  case None => {
+                    val (newEffectsMap2, dls) = newEffectsMap.findDeadlocks(graph, s)
+                    val deadlocks: Set[(State, TID)] = dls.flatMap(s => newThreadPickMap.pick(s).map(tid => (s, tid)))
+                    reducedLoopOneByOne(todo.tail ++ deadlocks, Set(), newEffectsMap2, newThreadPickMap, store2.commit, kstore2,
+                      halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
+                  }
+                }
+              } else {
+                reducedLoopOneByOne(succs.map(succ => (succ._3, tid)).toVector ++ todo.tail, Set(), newEffectsMap, newThreadPickMap, store2.commit, kstore2,
+                  halted, startingTime, timeout, reallyVisited + s, newGraph, sem)
+              }
+            }
+          }
+        case None =>
+          val (newEffectsMap, conflicts) = effectsMap.findConflicts(graph)
+          if (conflicts.isEmpty) {
+            /* exploration finished */
+            ConcurrentAAMOutput(halted, reallyVisited.size,
+              (System.nanoTime - startingTime) / Math.pow(10, 9), graph, false)
+          } else {
+            /* Still have to explore conflicts */
+            reducedLoopOneByOne(conflicts.toVector, visited, newEffectsMap, threadPickMap, store, kstore,
+              halted, startingTime, timeout, reallyVisited, graph, sem)
+          }
+      }
+    }
+
+  @scala.annotation.tailrec
+  private def reducedLoopFrontier(todo: Set[(State, TID)], visited: Set[(State, TID)], reallyVisited: Set[State], effectsMap: EffectsMap, threadPickMap: ThreadPickMap,
+    store: GlobalStore, kstore: KontStore[KontAddr],
+    halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, (TID, Effects)]],
+    sem: Semantics[Exp, Abs, Addr, Time]): ConcurrentAAMOutput =
+    if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
+      ConcurrentAAMOutput(halted, reallyVisited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+    } else if (todo.isEmpty) {
+      val (newEffectsMap, conflicts) = effectsMap.findConflicts(graph)
+      if (conflicts.isEmpty) {
+        ConcurrentAAMOutput(halted, reallyVisited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, false)
+      } else {
+        reducedLoopFrontier(conflicts, visited, reallyVisited, newEffectsMap, threadPickMap, store, kstore, halted, startingTime, timeout, graph, sem)
+      }
+    } else {
+      println(s"todo: ${todo.size} states, visited: ${visited.size} states")
+      val (newTodo, edges, newHalted, store2, kstore2, newEffectsMap, newThreadPickMap) = todo.foldLeft((Set[(State, TID)](), Set[(State, (TID, Effects), State)](), halted, store, kstore, effectsMap, threadPickMap))((acc, s) => (acc, s) match {
+        case ((newTodo, edges, newHalted, store, kstore, effectsMap, threadPickMap), (s, tid)) => {
+          val newThreadPickMap = threadPickMap.explored(s, tid)
+          if (visited.contains((s, tid))) {
+            (newTodo, edges, newHalted, store, kstore, effectsMap, newThreadPickMap)
+          } else if (s.halted) {
+            (newTodo, edges, newHalted + s, store, kstore, effectsMap.newHaltedState(graph, s), newThreadPickMap)
+          } else {
+            s.stepTid(sem, tid, store, kstore) match {
+              case (succs, store2, kstore2) => {
+                val newEdges = edges ++ succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })
+                val newEffectsMap = succs.foldLeft(effectsMap)((em, succ) => succ match {
+                  case (tid, effects, s2) => em.newTransition(None, s, s2, tid, effects)
+                })
+                if (succs.isEmpty || succs.forall({ case(_, _, s2) => visited.contains((s2, tid)) })) {
+                  newThreadPickMap.pick(s) match {
+                    case Some(tid2) =>
+                      (newTodo + ((s, tid2)), newEdges, newHalted, store2, kstore2, newEffectsMap, newThreadPickMap)
+                    case None =>
+                      val (newEffectsMap2, dls) = newEffectsMap.findDeadlocks(graph, s)
+                      val deadlocks: Set[(State, TID)] = dls.flatMap(s => newThreadPickMap.pick(s).map(tid => (s, tid)))
+                      println(s"${deadlocks.size} deadlocks to investigate")
+                      (newTodo ++ deadlocks, newEdges, newHalted, store2, kstore2, newEffectsMap, newThreadPickMap)
+                  }
+                } else {
+                  (newTodo ++ succs.map({ case (tid, _, s2) => (s2, tid) }), newEdges, newHalted, store2, kstore2,
+                    newEffectsMap, newThreadPickMap)
+                }
+              }
+            }
+          }
+        }
+      })
+      println(s"new todo: ${newTodo.size} states")
+      val newGraph = graph.map(_.addEdges(edges))
+      if (store2.isUnchanged && kstore.fastEq(kstore2)) {
+        //println("store unchanged")
+        reducedLoopFrontier(newTodo, visited ++ todo, reallyVisited ++ todo.map(_._1), newEffectsMap, newThreadPickMap, store2, kstore2, newHalted, startingTime, timeout, newGraph, sem)
+      } else {
+        //println("store changed")
+        reducedLoopFrontier(newTodo, Set(), reallyVisited ++ todo.map(_._1), newEffectsMap, newThreadPickMap, store2.commit, kstore2, newHalted, startingTime, timeout, newGraph, sem)
+      }
+    }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
     def classicalLoop(exp: Exp, exploration: Exploration): Output[Abs] = {
@@ -509,10 +642,17 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
       loopFrontier(Set(state), Set(), Set(), store, kstore, Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(exploration)
     }
+    def reducedLoop(exp: Exp, effectsMap: EffectsMap): Output[Abs] = {
+      val (state, store, kstore) = State.inject(exp)
+      reducedLoopFrontier(Set((state, thread.initial)), Set(), Set(), effectsMap, ThreadPickMap(), store, kstore, Set(), System.nanoTime, timeout,
+        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
+    }
     exploration match {
       case AllInterleavings => classicalLoop(exp, allInterleavings(sem))
       case OneInterleaving => classicalLoop(exp, oneInterleaving(sem))
       case RandomInterleaving => classicalLoop(exp, randomInterleaving(sem))
+      case InterferenceTrackingPath(_) => reducedLoop(exp, PathEffectsMap())
+      case InterferenceTrackingSet => reducedLoop(exp, SetEffectsMap())
       case _ => throw new Exception(s"Exploration not yet implemented: $exploration (TODO)")
     }
   }
