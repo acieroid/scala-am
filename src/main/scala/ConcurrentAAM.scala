@@ -8,16 +8,18 @@ case object RandomInterleaving extends ExplorationType
 case object DPOR extends ExplorationType
 case object InterferenceTrackingSet extends ExplorationType
 case class InterferenceTrackingPath(bound: Option[Int]) extends ExplorationType
+case object InterferenceTrackingNaive extends ExplorationType
 object ExplorationTypeParser extends scala.util.parsing.combinator.RegexParsers {
   val all = "AllInterleavings".r ^^ (_ => AllInterleavings)
   val one = "OneInterleaving".r ^^ (_ => OneInterleaving)
   val random = "RandomInterleaving".r ^^ (_ => RandomInterleaving)
   val dpor = "DPOR".r ^^ (_ => DPOR)
   val interferenceset = "InterferenceTrackingSet".r ^^ (_ => InterferenceTrackingSet)
+  val interferencenaive = "InterferenceTrackingNaive".r ^^ (_ => InterferenceTrackingNaive)
   def interferencepath: Parser[ExplorationType] =
     (("InterferenceTrackingPath(" ~> "[0-9]+".r <~ ")") ^^ ((s => InterferenceTrackingPath(Some(s.toInt)))) |
       "InterferenceTrackingPath" ^^ (_ => InterferenceTrackingPath(None)))
-  def expl: Parser[ExplorationType] = all | one | random | dpor | interferenceset | interferencepath
+  def expl: Parser[ExplorationType] = all | one | random | dpor | interferenceset | interferencenaive | interferencepath
   def parse(s: String): ExplorationType = parseAll(expl, s) match {
     case Success(res, _) => res
     case Failure(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")

@@ -233,3 +233,32 @@ object ConcurrentMonoBenchmarks extends Benchmarks("concurrent", {
   case Config.Machine.ConcurrentAAM => "base"
   case Config.Machine.ConcurrentAAMGlobalStore => "base+GS"
 }))
+
+object ConcurrentExplorationBenchmarks extends Benchmarks("concurrent", {
+  val programs = Set("count2", "count3", "count4",
+    "dekker", "fact2",
+    "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "writewriteorderviolation",
+    "fs2", "indexer2",
+    "incdec2", "incdec3",
+    "mutex2", "mutex3", "mutex4",
+    "pcounter2", "pcounter3", "pcounter4",
+    "philosophers2", "producer", "race2", "race3", "race4",
+    "readers2", "lastzero2"
+  )
+  import Config._
+  programs.flatMap(p =>
+    Set(MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = OneInterleaving),
+      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = AllInterleavings),
+      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingNaive),
+      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingSet),
+      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingPath(Some(2))),
+      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingPath(None)))
+  )},
+  (config => config.exploration match {
+    case OneInterleaving => "one"
+    case AllInterleavings => "all"
+    case InterferenceTrackingNaive => "naive"
+    case InterferenceTrackingSet => "set"
+    case InterferenceTrackingPath(Some(n)) => s"path($n)"
+    case InterferenceTrackingPath(None) => "path"
+  }))
