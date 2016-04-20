@@ -238,11 +238,11 @@ object ConcurrentExplorationBenchmarks extends Benchmarks("concurrent", {
   val programs = Set("count2", "count3", "count4",
     "dekker", "fact2",
     "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "writewriteorderviolation",
-    "fs2", "fs3", "fs4", "indexer2", "indexer3", "indexer4"
-    "incdec2", "incdec3", "incdec3", "incdec4"
+    "fs2", "fs3", "fs4", "indexer2", "indexer3", "indexer4",
+    "incdec2", "incdec3", "incdec3", "incdec4",
     "mutex2", "mutex3", "mutex4",
     "pcounter2", "pcounter3", "pcounter4",
-    "philosophers2", "philosophers3", "producer", "race2", "race3", "race4", "race5"
+    "philosophers2", "philosophers3", "producer", "race2", "race3", "race4", "race5",
     "readers2", "lastzero2"
   )
   import Config._
@@ -250,9 +250,7 @@ object ConcurrentExplorationBenchmarks extends Benchmarks("concurrent", {
     Set(MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = OneInterleaving),
       MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = AllInterleavings),
       MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingNaive),
-      //MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingSet),
-      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingPath(Some(2)))
-      //MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingPath(None)))
+      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingPath(Some(2))))
   )},
   (config => config.exploration match {
     case OneInterleaving => "one"
