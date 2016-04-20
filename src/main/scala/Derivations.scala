@@ -1,4 +1,4 @@
-import scalaz.{Order, Ordering, Show}
+/*import scalaz.{Order, Ordering, Show}
 import scalaz.Scalaz._
 import shapeless._
 
@@ -25,3 +25,4 @@ object OrderDerive {
     def order(x: F, y: F): Ordering = reprOrder.value.order(gen.to(x), gen.to(y))
   }
 }
+ */

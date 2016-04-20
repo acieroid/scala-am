@@ -1,6 +1,6 @@
 import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
-import OrderDerive._
+// import OrderDerive._
 
 import UnaryOperator._
 import BinaryOperator._
