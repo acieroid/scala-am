@@ -249,121 +249,100 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
 
   object SetEffectsMap {
     def apply(): EffectsMap =
-      SetEffectsMap(Map[State, Set[(State, TID, Effects)]]().withDefaultValue(Set()),
-        Map[State, Set[(TID, State)]]().withDefaultValue(Set[(TID, State)]()),
-        Set[State](),
-        Set[State](),
-        Set[(State, TID)](),
-        Set[State]()
+      SetEffectsMap(Map[Int, Set[(Int, TID, Effects)]]().withDefaultValue(Set()),
+        Map[Int, Set[(TID, Int)]]().withDefaultValue(Set[(TID, Int)]()),
+        Set[Int](),
+        Set[Int](),
+        Set[(Int, TID)](),
+        Set[Int](),
+        Vector[State](),
+        Map[State, Int](),
+        0
       )
   }
   case class SetEffectsMap(
     /* For each state, keeps track of the effects that might have happened before the state, grouped by address */
-    effects: Map[State, Set[(State, TID, Effects)]],
+    effects: Map[Int, Set[(Int, TID, Effects)]],
     /* Keeps track of the transitions explored */
-    trans: Map[State, Set[(TID, State)]],
+    trans: Map[Int, Set[(TID, Int)]],
     /* Keeps track of the halted states */
-    halted: Set[State],
+    halted: Set[Int],
     /* Keeps track of the cycles */
-    cycles: Set[State],
+    cycles: Set[Int],
     /* Keeps track of the conflicts already deteted */
-    conflicts: Set[(State, TID)],
+    conflicts: Set[(Int, TID)],
     /* Keeps track of the deadlocks already detected */
-    deadlocks: Set[State]
+    deadlocks: Set[Int],
+    statesid: Vector[State],
+    states: Map[State, Int],
+    next: Int
   ) extends EffectsMap {
     def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = {
-      /* propagate the given set of effects to all successors of s, computing a new effects map */
-      def propagate(): (Map[State, Set[(State, TID, Effects)]], Set[State]) = {
-        def rec(todo: Set[(State, TID, State)], visited: Set[(State, TID, State)], effects: Map[State, Set[(State, TID, Effects)]], cycles: Set[State]): (Map[State, Set[(State, TID, Effects)]], Set[State]) = todo.headOption match {
-          case Some((s1, tid, s2)) if (visited.contains((s1, tid, s2))) =>
-            /* detected a cycle, keep track of the cycle for conflict detection*/
-            rec(todo.tail, visited, effects, cycles + s2)
-          case Some((s1, tid, s2)) => /* effs needs to be propagated from s1 to s2 */
-            val newEffs = effects(s2) ++ effects(s1)
-            rec(todo.tail ++ trans(s2).map({ case (tid, s3) => (s2, tid, s3) }), visited + ((s1, tid, s2)),
-              effects + (s2 -> newEffs),
-              cycles)
-          case None => /* propagation done */
-            (effects, cycles)
+      (states.get(s1), states.get(s2)) match {
+        case (Some(s1id), Some(s2id)) => {
+          /* propagate the given set of effects to all successors of s, computing a new effects map */
+          def propagate(): (Map[Int, Set[(Int, TID, Effects)]], Set[Int]) = {
+            def rec(todo: Set[(Int, TID, Int)], visited: Set[(Int, TID, Int)], effects: Map[Int, Set[(Int, TID, Effects)]], cycles: Set[Int]): (Map[Int, Set[(Int, TID, Effects)]], Set[Int]) = todo.headOption match {
+              case Some((s1, tid, s2)) if (visited.contains((s1, tid, s2))) =>
+                /* detected a cycle, keep track of the cycle for conflict detection*/
+                rec(todo.tail, visited, effects, cycles + s2)
+              case Some((s1, tid, s2)) => /* effs needs to be propagated from s1 to s2 */
+                val newEffs = effects(s2) ++ effects(s1)
+                rec(todo.tail ++ trans(s2).map({ case (tid, s3) => (s2, tid, s3) }), visited + ((s1, tid, s2)),
+                  effects + (s2 -> newEffs),
+                  cycles)
+              case None => /* propagation done */
+                (effects, cycles)
+            }
+            rec(Set((s1id, tid, s2id)), Set(), effects + (s2id -> (effects(s2id) ++ effects(s1id) + ((s1id, tid, effs)))), cycles)
+          }
+          val (newEffects, newCycles) = propagate
+          this.copy(
+            effects = newEffects,
+            cycles = newCycles,
+            trans = trans + (s1id -> (trans(s1id) + ((tid, s2id))))
+          )
         }
-        rec(Set((s1, tid, s2)), Set(), effects + (s2 -> (effects(s2) ++ effects(s1) + ((s1, tid, effs)))), cycles)
+        case (Some(_), None) =>
+          this.copy(statesid = statesid :+ s2, states = states + (s2 -> next), next = next + 1).newTransition(graph, s1, s2, tid, effs)
+        case (None, Some(_)) =>
+          this.copy(statesid = statesid :+ s1, states = states + (s1 -> next), next = next + 1).newTransition(graph, s1, s2, tid, effs)
+        case (None, None) =>
+          this.copy(statesid = statesid :+ s1, states = states + (s1 -> next) + (s2 -> (next + 1)), next = next + 2).newTransition(graph, s1, s2, tid, effs)
       }
-      val (newEffects, newCycles) = propagate
-      this.copy(
-        effects = newEffects,
-        cycles = newCycles,
-        trans = trans + (s1 -> (trans(s1) + ((tid, s2))))
-      )
+
     }
     def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State): EffectsMap = {
-      this.copy(halted = halted + s)
+      states.get(s) match {
+        case Some(sid) => this.copy(halted = halted + sid)
+        case None => this.copy(halted = halted + next, statesid = statesid :+ s, states = states + (s -> next), next = next + 1)
+      }
     }
     def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.logRes("findConflicts") {
-      def findConflictsAt(s: State): Set[(State, TID)] = {
+      def findConflictsAt(s: Int): Set[(Int, TID)] = {
         effects(s).flatMap({
           case (s1, tid1, effs1) => effects(s).flatMap({
             case (s2, tid2, effs2) if (s1 != s2 && tid1 != tid2 && dependent(effs1, effs2)) =>
               (if (conflicts.contains((s1, tid2))) { Set() } else { Set((s1, tid2)) }) ++ (if (conflicts.contains((s2, tid1))) { Set() } else { Set((s2, tid1)) })
-            case _ => Set[(State, TID)]()
+            case _ => Set[(Int, TID)]()
           })
         })
       }
       val confls = (halted ++ cycles).flatMap(s => findConflictsAt(s))
-      (this.copy(conflicts = conflicts ++ confls), confls)
+      (this.copy(conflicts = conflicts ++ confls), confls.map({ case (sid, tid) => (statesid(sid), tid) }))
     } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
     def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = {
-      val dls: Set[State] = effects(s).collect({
+      val dls: Set[Int] = effects(states(s)).collect({
         case (s, tid, effs) if (!deadlocks.contains(s) && effs.exists(eff => eff.isInstanceOf[EffectAcquire[Addr, Abs]])) => s })
-      (this.copy(deadlocks = deadlocks ++ dls), dls)
+      (this.copy(deadlocks = deadlocks ++ dls), dls.map(s => statesid(s)))
     }
   }
 
   object NaiveEffectsMap {
-    def apply(): EffectsMap = NaiveEffectsMapHashing()
-    //NaiveEffectsMap(Map[Addr, Set[(State, TID, Effects)]]().withDefaultValue(Set[(State, TID, Effects)]()),
-      //  Set[(State, TID)](), Set[State](), Set[State]())
-  }
-  case class NaiveEffectsMap(
-    /* Maps an address to the effects that affect it */
-    effects: Map[Addr, Set[(State, TID, Effects)]],
-    /* Records conflicts that have been already detected to avoid detecting them again */
-    conflicts: Set[(State, TID)],
-    acquires: Set[State],
-    deadlocks: Set[State]
-  ) extends EffectsMap {
-    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = {
-      val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr, Abs]] || x.isInstanceOf[EffectRelease[Addr, Abs]])
-      this.copy(
-        /* Records effects */
-        effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> (acc(eff.target) + ((s1, tid, effs2))))),
-        acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + s1 } else { acquires }
-      )
-    }
-    def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State) = this
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.profile("findConflicts") {
-      val confls = effects.keySet.foldLeft(Set[(State, TID)]())((acc, a) => {
-        Profiler.count("effectKeys")
-        println(s"number of effects for key $a: ${effects(a).size}, squared: ${effects(a).size * effects(a).size}")
-        acc ++ (effects(a).flatMap({ case (s1, tid1, effs1) => effects(a).flatMap({
-          case (s2, tid2, effs2) if (Profiler.profile("tid1 != tid2") { tid1 != tid2 } && Profiler.profile("s1 != s2") { s1 != s2 } && Profiler.profile("dependent") { dependent(effs1, effs2) } && Profiler.profile("conflicts.contains") { !(conflicts.contains((s1, tid2)) && conflicts.contains(s2, tid1)) }) =>
-            { Profiler.count("effect")
-            Set((s1, tid2), (s2, tid1)) }
-          case _ => { Profiler.count("effect")
-            Set[(State, TID)]() }
-      })}))})
-      (this.copy(conflicts = conflicts ++ confls), confls -- conflicts)
-    } // { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
-
-    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) =  Profiler.profile(s"findDeadlocks") {
-      (this.copy(deadlocks = acquires), acquires -- deadlocks)
-    } // { case (_, dls) => dls.map(x => id(graph, x)).toList.sorted.mkString(", ") }
-  }
-
-  object NaiveEffectsMapHashing {
-    def apply(): EffectsMap = NaiveEffectsMapHashing(Map[Addr, Set[(Int, TID, Effects)]]().withDefaultValue(Set[(Int, TID, Effects)]()),
+    def apply(): EffectsMap = NaiveEffectsMap(Map[Addr, Set[(Int, TID, Effects)]]().withDefaultValue(Set[(Int, TID, Effects)]()),
       Vector[State](), Map[State, Int](),  0, Set[(Int, TID)](), Set[Int](), Set[Int]())
   }
-  case class NaiveEffectsMapHashing(
+  case class NaiveEffectsMap(
     effects: Map[Addr, Set[(Int, TID, Effects)]],
     statesid: Vector[State], states: Map[State, Int], next: Int,
     conflicts: Set[(Int, TID)], acquires: Set[Int], deadlocks: Set[Int]) extends EffectsMap {
@@ -393,45 +372,60 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
 
   object PathEffectsMap {
     def apply(): EffectsMap =
-      PathEffectsMap(Map[Addr, (Set[(State, TID, Effect[Addr, Abs])], Set[(State, TID, Effect[Addr, Abs])])]().withDefaultValue((Set[(State, TID, Effect[Addr, Abs])](), Set[(State, TID, Effect[Addr, Abs])]())),
-        Map[State, Set[(TID, State)]]().withDefaultValue(Set[(TID, State)]()),
-        Map[(State, TID), Set[(State, TID)]]().withDefaultValue(Set[(State, TID)]()),
-        Set[(State, TID)](),
-        Set[State]()
+      PathEffectsMap(Map[Addr, (Set[(Int, TID, Effect[Addr, Abs])], Set[(Int, TID, Effect[Addr, Abs])])]().withDefaultValue((Set[(Int, TID, Effect[Addr, Abs])](), Set[(Int, TID, Effect[Addr, Abs])]())),
+        Map[Int, Set[(TID, Int)]]().withDefaultValue(Set[(TID, Int)]()),
+        Map[(Int, TID), Set[(Int, TID)]]().withDefaultValue(Set[(Int, TID)]()),
+        Set[(Int, TID)](),
+        Set[Int](),
+        Vector[State](), Map[State, Int](),
+        0
       )
   }
   case class PathEffectsMap(
     /* Maps an address to the effects that affect it, separated as read effects and write effect */
-    effects: Map[Addr, (Set[(State, TID, Effect[Addr, Abs])], Set[(State, TID, Effect[Addr, Abs])])],
+    effects: Map[Addr, (Set[(Int, TID, Effect[Addr, Abs])], Set[(Int, TID, Effect[Addr, Abs])])],
     /* Records the transition to be able to compute paths between two transitions. From source state to destinations states */
-    trans: Map[State, Set[(TID, State)]],
+    trans: Map[Int, Set[(TID, Int)]],
     /* Records conflicts that have been already detected to avoid detecting them again */
-    conflicts: Map[(State, TID), Set[(State, TID)]],
+    conflicts: Map[(Int, TID), Set[(Int, TID)]],
     /* Track states performing an acquire */
-    acquires: Set[(State, TID)],
+    acquires: Set[(Int, TID)],
     /* Records deadlocks that have already been detected to avoid detecting them again */
-    deadlocks: Set[State]
+    deadlocks: Set[Int],
+    /* id -> state */
+    statesid: Vector[State],
+    /* state -> id */
+    states: Map[State, Int],
+    next: Int
   ) extends EffectsMap {
     def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = {
-      val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr, Abs]] || x.isInstanceOf[EffectRelease[Addr, Abs]])
-      this.copy(
-        /* Records effects */
-        effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> ((eff.kind, acc(eff.target)) match {
-          case (WriteEffect, (reads, writes)) => (reads, writes + ((s1, tid, eff)))
-          case (ReadEffect, (reads, writes)) => (reads + ((s1, tid, eff)), writes)
-        }))),
-        /* record transition */
-        trans = trans + (s1 -> (trans(s1) + ((tid, s2)))),
-        acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + ((s1, tid)) } else { acquires }
-      )
+      (states.get(s1), states.get(s2)) match {
+        case (Some(s1id), Some(s2id)) => {
+          val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr, Abs]] || x.isInstanceOf[EffectRelease[Addr, Abs]])
+          this.copy(
+            effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> ((eff.kind, acc(eff.target)) match {
+              case (WriteEffect, (reads, writes)) => (reads, writes + ((s1id, tid, eff)))
+              case (ReadEffect, (reads, writes)) => (reads + ((s1id, tid, eff)), writes)
+            }))),
+            /* record transition */
+            trans = trans + (s1id -> (trans(s1id) + ((tid, s2id)))),
+            acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + ((s1id, tid)) } else { acquires })
+        }
+        case (Some(s1id), None) =>
+          this.copy(statesid = statesid :+ s2, states = states + (s2 -> next), next = next + 1).newTransition(graph, s1, s2, tid, effs)
+        case (None, Some(s2id)) =>
+          this.copy(statesid = statesid :+ s1, states = states + (s1 -> next), next = next + 1).newTransition(graph, s1, s2, tid, effs)
+        case (None, None) =>
+          this.copy(statesid = statesid :+ s1 :+ s2, states = states + (s1 -> next) + (s2 -> (next + 1)), next = next + 2).newTransition(graph, s1, s2, tid, effs)
+      }
     }
     def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State) = this /* no need to keep track of halted states */
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.logRes("findConflicts") {
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.log("findConflicts") {
       /* Find elements of dests for which there is a path from s */
-      def findPaths(s: State, tid: TID, dests: Set[(State, TID)]): Set[(State, TID)] = {
+      def findPaths(s: Int, tid: TID, dests: Set[(Int, TID)]): Set[(Int, TID)] = {
         //println(s"Finding path between: ${id(graph, s)} and ${dests.map({ case (s, _) => id(graph, s) })}")
-        val alreadySeen: Set[(State, TID)] = conflicts((s, tid)) /* conflicts that we already detected and don't need to detect again */
-        def recNoBound(todo: Set[(State, TID, State)], visited: Set[(State, TID, State)], results: Set[(State, TID)]): Set[(State, TID)] = todo.headOption match {
+        val alreadySeen: Set[(Int, TID)] = conflicts((s, tid)) /* conflicts that we already detected and don't need to detect again */
+        def recNoBound(todo: Set[(Int, TID, Int)], visited: Set[(Int, TID, Int)], results: Set[(Int, TID)]): Set[(Int, TID)] = todo.headOption match {
           case Some(tr) if (visited.contains(tr)) => /* Already visited this state, discard it and continue exploring */
             //println("Already visited")
             recNoBound(todo.tail, visited, results)
@@ -448,7 +442,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
             /* Explored all successor states, return detected conflicts */
             results
         }
-        def recBound(bound: Int, todo: Set[(State, TID, State, Int)], visited: Set[(State, TID, State, Int)], results: Set[(State, TID)]): Set[(State, TID)] = todo.headOption match {
+        def recBound(bound: Int, todo: Set[(Int, TID, Int, Int)], visited: Set[(Int, TID, Int, Int)], results: Set[(Int, TID)]): Set[(Int, TID)] = todo.headOption match {
           case Some(tr) if (visited.contains(tr)) => /* Already visited this state, discard it and continue exploring */
             //println("Already visited")
             recBound(bound, todo.tail, visited, results)
@@ -474,16 +468,16 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
           exploration match {
             case InterferenceTrackingPath(None) =>
               recNoBound(trans(s).collect({ case (tid1, s2) if (tid == tid1) => (s, tid, s2) }).flatMap({ case (s1, tid1, s2) => trans(s2).map({ case (tid2, s3) => (s2, tid2, s3) }) }),
-                Set[(State, TID, State)](),
-                Set[(State, TID)]())
+                Set[(Int, TID, Int)](),
+                Set[(Int, TID)]())
             case InterferenceTrackingPath(Some(bound)) =>
               recBound(bound, trans(s).collect({ case (tid1, s2) if (tid == tid1) => (s, tid, s2) }).flatMap({ case (s1, tid1, s2) => trans(s2).map({ case (tid2, s3) => (s2, tid2, s3, if (tid1 == tid2) { 0 } else { 1 }) }) }),
-                Set[(State, TID, State, Int)](),
-                Set[(State, TID)]())
+                Set[(Int, TID, Int, Int)](),
+                Set[(Int, TID)]())
           }
         }
       }
-      val (newConflicts, confls) = effects.keySet.foldLeft((conflicts, Set[(State, TID)]()))((acc, a) => /* Profiler.log(s"findConflicts on address $a")*/ {
+      val (newConflicts, confls) = effects.keySet.foldLeft((conflicts, Set[(Int, TID)]()))((acc, a) => /* Profiler.log(s"findConflicts on address $a")*/ {
         val (reads, writes) = effects(a)
         /* Find ww and wr conflicts */
         val newAcc = writes.foldLeft(acc)((acc, w) => w match {
@@ -510,12 +504,13 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
               acc._2 ++ confls.map({ case (s2, tid2) => (s1, tid2) }))
         })
       })
-      (this.copy(conflicts = newConflicts), confls)
-    } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
+      (this.copy(conflicts = newConflicts), confls.map({ case (sid, tid) => (statesid(sid), tid) }))
+    } //{ case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
 
-    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = Profiler.logRes(s"findDeadlocks(${id(graph, s)})") {
-      def existsPath(source: State, tid: TID, dest: State): Boolean = {
-        def recNoBound(todo: Set[State], visited: Set[State]): Boolean = todo.headOption match {
+    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = Profiler.log(s"findDeadlocks(${id(graph, s)})") {
+      val sid = states(s)
+      def existsPath(source: Int, tid: TID, dest: Int): Boolean = {
+        def recNoBound(todo: Set[Int], visited: Set[Int]): Boolean = todo.headOption match {
           case Some(s) if (visited.contains(s)) =>
             /* already visited, discard it and continue exploration */
             recNoBound(todo.tail, visited)
@@ -529,7 +524,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
             /* explored every successor, no path to dest */
             false
         }
-        def recBound(bound: Int, todo: Set[(State, TID, State, Int)], visited: Set[(State, TID, State, Int)]): Boolean = todo.headOption match {
+        def recBound(bound: Int, todo: Set[(Int, TID, Int, Int)], visited: Set[(Int, TID, Int, Int)]): Boolean = todo.headOption match {
           case Some(tr) if (visited.contains(tr)) => /* Already visited this state, discard it and continue exploring */
             recBound(bound, todo.tail, visited)
           case Some((s1, tid1, s2, n)) if (s1 == dest) =>
@@ -546,17 +541,17 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
             false
         }
         exploration match {
-          case InterferenceTrackingPath(None) => recNoBound(Set(source), Set[State]())
+          case InterferenceTrackingPath(None) => recNoBound(Set(source), Set[Int]())
           case InterferenceTrackingPath(Some(bound)) =>
-            recBound(bound, trans(s).collect({ case (tid1, s2) if (tid == tid1) => (s, tid, s2, 0) }), Set[(State, TID, State, Int)]())
+            recBound(bound, trans(sid).collect({ case (tid1, s2) if (tid == tid1) => (sid, tid, s2, 0) }), Set[(Int, TID, Int, Int)]())
         }
       }
-      val (newDeadlocks, dls) = acquires.foldLeft((deadlocks, Set[State]()))((acc, x) => x match {
-        case (s1, tid) if (!acc._1.contains(s1) && existsPath(s1, tid, s)) => (acc._1 + s1, acc._2 + s1)
+      val (newDeadlocks, dls) = acquires.foldLeft((deadlocks, Set[Int]()))((acc, x) => x match {
+        case (s1, tid) if (!acc._1.contains(s1) && existsPath(s1, tid, sid)) => (acc._1 + s1, acc._2 + s1)
         case _ => acc
       })
-      (this.copy(deadlocks = newDeadlocks), dls)
-    } { case (_, dls) => dls.map(x => id(graph, x)).toList.sorted.mkString(", ") }
+      (this.copy(deadlocks = newDeadlocks), dls.map(sid => statesid(sid)))
+    } //{ case (_, dls) => dls.map(x => id(graph, x)).toList.sorted.mkString(", ") }
   }
 
   trait PickResult
