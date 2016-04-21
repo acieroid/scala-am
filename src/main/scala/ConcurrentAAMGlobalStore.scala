@@ -231,7 +231,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
   private def effectsOf(transitions: Set[(Effects, State)]): Effects =
     transitions.flatMap(_._1)
   private def dependent(eff1: Effect[Addr, Abs], eff2: Effect[Addr, Abs]): Boolean =
-      (eff1.target == eff2.target && (eff1.kind |+| eff2.kind) == WriteEffect)
+    (eff1.target == eff2.target && (eff1.kind |+| eff2.kind) == WriteEffect)
   private def dependent(effs1: Effects, effs2: Effects): Boolean =
     (effs1.foldLeft(false)((acc, eff1) => effs2.foldLeft(acc)((acc, eff2) => acc || dependent(eff1, eff2))))
 
@@ -319,9 +319,9 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
   }
 
   object NaiveEffectsMap {
-    def apply(): EffectsMap =
-      NaiveEffectsMap(Map[Addr, Set[(State, TID, Effects)]]().withDefaultValue(Set[(State, TID, Effects)]()),
-        Set[(State, TID)](), Set[State](), Set[State]())
+    def apply(): EffectsMap = NaiveEffectsMapHashing()
+    //NaiveEffectsMap(Map[Addr, Set[(State, TID, Effects)]]().withDefaultValue(Set[(State, TID, Effects)]()),
+      //  Set[(State, TID)](), Set[State](), Set[State]())
   }
   case class NaiveEffectsMap(
     /* Maps an address to the effects that affect it */
@@ -340,19 +340,55 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
       )
     }
     def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State) = this
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.logRes("findConflicts") {
-      val confls = effects.keySet.foldLeft(Set[(State, TID)]())((acc, a) =>
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.profile("findConflicts") {
+      val confls = effects.keySet.foldLeft(Set[(State, TID)]())((acc, a) => {
+        Profiler.count("effectKeys")
+        println(s"number of effects for key $a: ${effects(a).size}, squared: ${effects(a).size * effects(a).size}")
         acc ++ (effects(a).flatMap({ case (s1, tid1, effs1) => effects(a).flatMap({
-          case (s2, tid2, effs2) if (tid1 != tid2 && s1 != s2 && dependent(effs1, effs2) && !(conflicts.contains((s1, tid2)) && /* TODO: should be && */ conflicts.contains(s2, tid1))) =>
-            Set((s1, tid2), (s2, tid1))
-          case _ => Set[(State, TID)]()
-      })})))
+          case (s2, tid2, effs2) if (Profiler.profile("tid1 != tid2") { tid1 != tid2 } && Profiler.profile("s1 != s2") { s1 != s2 } && Profiler.profile("dependent") { dependent(effs1, effs2) } && Profiler.profile("conflicts.contains") { !(conflicts.contains((s1, tid2)) && conflicts.contains(s2, tid1)) }) =>
+            { Profiler.count("effect")
+            Set((s1, tid2), (s2, tid1)) }
+          case _ => { Profiler.count("effect")
+            Set[(State, TID)]() }
+      })}))})
       (this.copy(conflicts = conflicts ++ confls), confls -- conflicts)
-    } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
+    } // { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
 
-    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) =  Profiler.logRes(s"findDeadlocks(${id(graph, s)})") {
+    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) =  Profiler.profile(s"findDeadlocks") {
       (this.copy(deadlocks = acquires), acquires -- deadlocks)
-    } { case (_, dls) => dls.map(x => id(graph, x)).toList.sorted.mkString(", ") }
+    } // { case (_, dls) => dls.map(x => id(graph, x)).toList.sorted.mkString(", ") }
+  }
+
+  object NaiveEffectsMapHashing {
+    def apply(): EffectsMap = NaiveEffectsMapHashing(Map[Addr, Set[(Int, TID, Effects)]]().withDefaultValue(Set[(Int, TID, Effects)]()),
+      Vector[State](), Map[State, Int](),  0, Set[(Int, TID)](), Set[Int](), Set[Int]())
+  }
+  case class NaiveEffectsMapHashing(
+    effects: Map[Addr, Set[(Int, TID, Effects)]],
+    statesid: Vector[State], states: Map[State, Int], next: Int,
+    conflicts: Set[(Int, TID)], acquires: Set[Int], deadlocks: Set[Int]) extends EffectsMap {
+    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = {
+      val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr, Abs]] || x.isInstanceOf[EffectRelease[Addr, Abs]])
+      states.get(s1) match {
+        case Some(s1id) => this.copy(effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> (acc(eff.target) + ((s1id, tid, effs2))))),
+          acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + s1id } else { acquires })
+        case None => this.copy(statesid = statesid :+ s1, states = states + (s1 -> next), next = next + 1,
+          effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> (acc(eff.target) + ((next, tid, effs2))))),
+          acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + next } else { acquires })
+      }
+    }
+    def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State) = this
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = {
+      val confls = effects.keySet.foldLeft(Set[(Int, TID)]())((acc, a) =>
+        acc ++ (effects(a).flatMap({ case (s1id, tid1, effs1) => effects(a).flatMap({
+          case (s2id, tid2, effs2) if (tid1 != tid2 && s1id != s2id && dependent(effs1, effs2) && !(conflicts.contains((s1id, tid2)) && conflicts.contains(s2id, tid1))) =>
+            Set((s1id, tid2), (s2id, tid1))
+          case _ => Set[(Int, TID)]()
+        })})))
+      (this.copy(conflicts = conflicts ++ confls), (confls -- conflicts).map({ case (sid, tid) => (statesid(sid), tid) }))
+    }
+    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) =
+      (this.copy(deadlocks = acquires), (acquires -- deadlocks).map(sid => statesid(sid)))
   }
 
   object PathEffectsMap {

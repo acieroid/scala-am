@@ -1,15 +1,24 @@
 import scala.collection.mutable.{Map => MutableMap}
 object Profiler {
-  val data: MutableMap[String, Long] = MutableMap.empty.withDefaultValue(0)
+  val timedata: MutableMap[String, Long] = MutableMap.empty.withDefaultValue(0)
   def profile[A](name: String)(block: => A): A = {
     val start = System.nanoTime
     val res = block
-    data += (name -> (data(name) + (System.nanoTime - start)))
+    timedata += (name -> (timedata(name) + (System.nanoTime - start)))
     res
   }
+  val countdata: MutableMap[String, Int] = MutableMap.empty.withDefaultValue(0)
+  def count(name: String, n: Int = 1): Unit = {
+    countdata += (name -> (countdata(name) + n))
+  }
   def print: Unit = {
-    data.foreach({ case (k, v) =>
+    timedata.keySet.toList.sorted.foreach(k => {
+      val v = timedata(k)
       println(s"$k: ${v / Math.pow(10, 9)}")
+    })
+    countdata.keySet.toList.sorted.foreach(k => {
+      val v = countdata(k)
+      println(s"$k: $v")
     })
   }
   def log[A](message: String)(block: => A): A = {
