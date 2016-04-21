@@ -39,7 +39,7 @@ case class MachineConfig(program: String, machine: Config.Machine.Value = Config
   override def toString = s"[$program, $machine, $exploration, $address, $lattice]"
 }
 
-abstract class Benchmarks(dir: String, inputs: Set[MachineConfig], classify: MachineConfig => String) {
+abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify: MachineConfig => String) {
   val now = java.util.Calendar.getInstance.getTime
   val timeformat = new java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
   val stdout = scala.Console.out
@@ -200,7 +200,7 @@ abstract class Benchmarks(dir: String, inputs: Set[MachineConfig], classify: Mac
 }
 
 object MonoBenchmarks extends Benchmarks("test", {
-  val programs = Set("ack", "blur", "church", "collatz", "count", "cpstak", "dderiv", "divrec", "eta", "fact", "fib", "gcipd", "grid", "inc", "kcfa2", "kcfa3", "loop2", "mceval", "mut-rec", "mj09", "nqueens", "primtest", "regex", "rotate", "rsa", "scm2java", "sq", "takl", "widen")
+  val programs = List("ack", "blur", "church", "collatz", "count", "cpstak", "dderiv", "divrec", "eta", "fact", "fib", "gcipd", "grid", "inc", "kcfa2", "kcfa3", "loop2", "mceval", "mut-rec", "mj09", "nqueens", "primtest", "regex", "rotate", "rsa", "scm2java", "sq", "takl", "widen")
   import Config._
   programs.flatMap(p =>
     Set(MachineConfig(p, machine = Machine.AAM),
@@ -211,7 +211,7 @@ object MonoBenchmarks extends Benchmarks("test", {
 }))
 
 object ConcurrentMonoBenchmarks extends Benchmarks("concurrent", {
-  val programs = Set("count2", "count3", "count4", "count5", "count6", "count7", "count8", "count9", "count10", "count11", "count12", "count13", "count14", "count15",
+  val programs = List("count2", "count3", "count4", "count5", "count6", "count7", "count8", "count9", "count10", "count11", "count12", "count13", "count14", "count15",
     "dekker", "fact2",
     "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "writewriteorderviolation",
     "fs2", "fs3", "fs4", "fs5", "fs6", "fs7", "fs8", "fs9", "fs10", "fs11", "fs12", "fs13", "fs14", "fs15",
@@ -235,7 +235,7 @@ object ConcurrentMonoBenchmarks extends Benchmarks("concurrent", {
 }))
 
 object ConcurrentExplorationBenchmarks extends Benchmarks("concurrent", {
-  val programs = Set("count2", "count3", "count4",
+  val programs = List("count2", "count3", "count4",
     "dekker", "fact2",
     "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "writewriteorderviolation",
     "fs2", "fs3", "fs4", "indexer2", "indexer3", "indexer4",
