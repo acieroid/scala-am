@@ -308,7 +308,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
         case (None, Some(_)) =>
           this.copy(statesid = statesid :+ s1, states = states + (s1 -> next), next = next + 1).newTransition(graph, s1, s2, tid, effs)
         case (None, None) =>
-          this.copy(statesid = statesid :+ s1, states = states + (s1 -> next) + (s2 -> (next + 1)), next = next + 2).newTransition(graph, s1, s2, tid, effs)
+          this.copy(statesid = statesid :+ s1 :+ s2, states = states + (s1 -> next) + (s2 -> (next + 1)), next = next + 2).newTransition(graph, s1, s2, tid, effs)
       }
 
     }
