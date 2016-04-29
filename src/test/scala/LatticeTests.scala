@@ -2,8 +2,7 @@ import org.scalatest._
 import org.scalatest.prop._
 import org.scalatest.prop.TableDrivenPropertyChecks._
 
-import UnaryOperator._
-import BinaryOperator._
+import SchemeOps._
 
 abstract class LatticePropSpec(val lattice: Lattice)
     extends PropSpec with GeneratorDrivenPropertyChecks with Matchers with TableDrivenPropertyChecks {
@@ -117,27 +116,23 @@ abstract class JoinLatticePropSpec(lattice: Lattice)
       case CannotJoin(_) => ()
     }
   }
-  property("isError and isNotError are correct") {
+  property("isError is correct") {
     try {
       val err = abs.error(abs.inject("Error"))
       val noterr = abs.inject(true)
       val joined = abs.join(err, noterr)
       /* isError is true for values that contain errors only */
       assert(abs.isError(err))
-      /* isNotError is true for values that do not contain any error */
-      assert(abs.isNotError(noterr))
-      /* For values that contain errors and non-errors, both are false */
+      /* For values that contain errors and non-errors, isError is false */
       assert(!abs.isError(joined))
-      assert(!abs.isNotError(joined))
     } catch {
       case CannotJoin(_) => ()
     }
   }
 }
 
-class ConcreteTest extends LatticePropSpec(ConcreteLattice)
-class ConcreteNewCountingTest extends JoinLatticePropSpec(new ConcreteLatticeNew(true))
-class ConcreteNewNoCountingTest extends JoinLatticePropSpec(new ConcreteLatticeNew(false))
+class ConcreteCountingTest extends LatticePropSpec(new ConcreteLattice(true))
+class ConcreteNoCountingTest extends JoinLatticePropSpec(new ConcreteLattice(false))
 class TypeSetCountingTest extends JoinLatticePropSpec(new TypeSetLattice(true))
 class TypeSetNoCountingTest extends JoinLatticePropSpec(new TypeSetLattice(false))
 class BoundedIntCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(100, true))

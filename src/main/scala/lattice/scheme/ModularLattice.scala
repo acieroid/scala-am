@@ -2,73 +2,7 @@ import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
 import SchemeOps._
 
-/**
- * A lattice element should define its name, the bottom value, how to join two
- * elements, if an element subsumes another, as well as total order (not linked
- * to the subsumption).
- */
-trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
-  def name: String
-  def bot: L
-  def top: L
-  def join(x: L, y: => L): L
-  def subsumes(x: L, y: => L): Boolean
-  def eql[B : IsBoolean](s1: L, s2: L): B
-
-  /* For Monoid[L] */
-  final def zero: L = bot
-  final def append(x: L, y: => L): L = join(x, y)
-}
-
-trait IsString[S] extends LatticeElement[S] {
-  def inject(s: String): S
-  def length[I : IsInteger](s: S): I
-  def append(s1: S, s2: S): S
-}
-
-trait IsBoolean[B] extends LatticeElement[B] {
-  def inject(b: Boolean): B
-  def isTrue(b: B): Boolean
-  def isFalse(b: B): Boolean
-  def not(b: B): B
-}
-
-trait IsInteger[I] extends LatticeElement[I] {
-  def inject(n: Int): I
-  def ceiling(n: I): I
-  def toFloat[F : IsFloat](n: I): F
-  def random(n: I): I
-  def plus(n1: I, n2: I): I
-  def minus(n1: I, n2: I): I
-  def times(n1: I, n2: I): I
-  def div(n1: I, n2: I): I
-  def modulo(n1: I, n2: I): I
-  def lt[B : IsBoolean](n1: I, n2: I): B
-  def toString[S : IsString](n: I): S
-}
-
-trait IsFloat[F] extends LatticeElement[F] {
-  def inject(n: Float): F
-  def ceiling(n: F): F
-  def log(n: F): F
-  def random(n: F): F
-  def plus(n1: F, n2: F): F
-  def minus(n1: F, n2: F): F
-  def times(n1: F, n2: F): F
-  def div(n1: F, n2: F): F
-  def lt[B : IsBoolean](n1: F, n2: F): B
-  def toString[S : IsString](n: F): S
-}
-
-trait IsChar[C] extends LatticeElement[C] {
-  def inject(c: Char): C
-}
-
-trait IsSymbol[Sym] extends LatticeElement[Sym] {
-  def inject(sym: String): Sym
-}
-
-class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: IsString[S],
+class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: IsString[S],
   bool: IsBoolean[B], int: IsInteger[I], float: IsFloat[F], char: IsChar[C],
   sym: IsSymbol[Sym]) {
   sealed trait Value
@@ -543,4 +477,35 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
     def unlockedValue: LSet = Element(isAbstractValue.unlockedValue)
     def nil: LSet = Element(isAbstractValue.nil)
   }
+}
+
+class ConcreteLattice(counting: Boolean) extends Lattice {
+  import ConcreteString._
+  import ConcreteBoolean._
+  import ConcreteInteger._
+  import ConcreteFloat._
+  import ConcreteChar._
+  import ConcreteSymbol._
+
+  val lattice = new MakeSchemeLattice[S, B, I, F, C, Sym](true)
+  type L = lattice.LSet
+  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+}
+
+class TypeSetLattice(counting: Boolean) extends Lattice {
+  import Type._
+  import ConcreteBoolean._
+  val lattice = new MakeSchemeLattice[T, B, T, T, T, T](counting)
+  type L = lattice.LSet
+  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+}
+
+class BoundedIntLattice(bound: Int, counting: Boolean) extends Lattice {
+  import Type._
+  import ConcreteBoolean._
+  val bounded = new BoundedInteger(bound)
+  import bounded._
+  val lattice = new MakeSchemeLattice[T, B, I, T, T, T](counting)
+  type L = lattice.LSet
+  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }

@@ -36,6 +36,6 @@ abstract class StorePropSpec[Addr : Address](val lattice: Lattice)
   }}
 }
 
-class ConcreteStoreTest extends StorePropSpec[ClassicalAddress.A](ConcreteLattice)
-class ConcreteNewStoreTest extends StorePropSpec[ClassicalAddress.A](new ConcreteLatticeNew(true))
+class ConcreteCountingStoreTest extends StorePropSpec[ClassicalAddress.A](new ConcreteLattice(true))
+class ConcreteNoCountingStoreTest extends StorePropSpec[ClassicalAddress.A](new ConcreteLattice(false))
 class TypeSetStoreTest extends StorePropSpec[ClassicalAddress.A](new TypeSetLattice(false))

@@ -213,8 +213,7 @@ object Main {
     Config.parser.parse(args, Config.Config()) match {
       case Some(config) if (config.language == Config.Language.Scheme) => {
         val lattice: Lattice = config.lattice match {
-          case Config.Lattice.Concrete => ConcreteLattice
-          case Config.Lattice.ConcreteNew => new ConcreteLatticeNew(true)
+          case Config.Lattice.Concrete => new ConcreteLattice(true)
           case Config.Lattice.TypeSet => new TypeSetLattice(config.counting)
           case Config.Lattice.BoundedInt => new BoundedIntLattice(config.bound, config.counting)
         }

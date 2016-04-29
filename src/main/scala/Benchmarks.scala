@@ -61,8 +61,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
   class Worker(timeout: Option[Long]) extends Actor {
     def compute(config: MachineConfig): MachineOutput =  {
       val lattice: Lattice = config.lattice match {
-        case Config.Lattice.Concrete => ConcreteLattice
-        case Config.Lattice.ConcreteNew => new ConcreteLatticeNew(true)
+        case Config.Lattice.Concrete => new ConcreteLattice(true)
         case Config.Lattice.TypeSet => new TypeSetLattice(false)
           case Config.Lattice.BoundedInt => new BoundedIntLattice(1000, true)
       }
