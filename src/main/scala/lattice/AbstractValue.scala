@@ -13,10 +13,6 @@ case class CannotJoin[Abs](values: Set[Abs]) extends Exception {
   override def toString = "CannotJoin(" + values.mkString(", ") + ")"
 }
 
-trait StoreShow[A] {
-  def shows[Addr : Address, Abs : AbstractValue](v: A, store: Store[Addr, Abs]): String
-}
-
 /** A (join semi-)lattice L should support the following operations */
 trait JoinLattice[L] extends Semigroup[L] {
   /** A lattice has a bottom element */
@@ -119,8 +115,7 @@ trait SchemeLatticeInternals[L] extends SchemeLattice[L] {
 }
 
 /** Abstract values are abstract representations of the possible values of a variable */
-trait AbstractValue[A] extends SchemeLatticeInternals[A] with ConcurrentSchemeLattice[A] with StoreShow[A] {
-  def shows[Addr : Address, Abs : AbstractValue](v: A, store: Store[Addr, Abs]) = v.toString
+trait AbstractValue[A] extends SchemeLatticeInternals[A] with ConcurrentSchemeLattice[A] {
   /** Returns the string representation of this value */
   def toString[Addr : Address](x: A, store: Store[Addr, A]): String
 

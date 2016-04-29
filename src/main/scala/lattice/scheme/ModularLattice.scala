@@ -126,37 +126,6 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
   val isAbstractValue: AbstractValue[L] = new AbstractValue[L] {
     val name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
     val counting = supportsCounting
-    /* This doesn't deal with circular structures (vectors and cons cells) */
-    override def shows[Addr : Address, Abs : AbstractValue](x: L, store: Store[Addr, Abs]) = x match {
-      case Bot => "⊥"
-      case Str(s) => str.shows(s)
-      case Bool(b) => bool.shows(b)
-      case Int(i) => int.shows(i)
-      case Float(f) => float.shows(f)
-      case Char(c) => char.shows(c)
-      case Symbol(s) => sym.shows(s)
-      case Err(msg) => s"Error($msg)"
-      case Nil => "()"
-      case Cons(car: Addr @unchecked, cdr: Addr @unchecked) => {
-        val carstr = car.toString//implicitly[AbstractValue[Abs]].shows(store.lookup(car), store) // TODO: handle circularity
-        val cdrstr = cdr.toString//implicitly[AbstractValue[Abs]].shows(store.lookup(cdr), store)
-        s"($carstr . $cdrstr)"
-      }
-      case VectorAddress(a: Addr @unchecked) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
-      case Vec(size, elements: Map[I, Addr] @unchecked, init: Addr @unchecked) => {
-        val initstr = implicitly[AbstractValue[Abs]].shows(store.lookup(init), store)
-        val content = elements.toList.map({ case (k, a)  => s"${int.shows(k)}: ${implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)}"}).mkString(", ")
-        if (content.isEmpty) {
-          s"#(default: $initstr)"
-        } else {
-          s"#($content, default: $initstr)"
-        }
-      }
-      case LockAddress(a: Addr @unchecked) => implicitly[AbstractValue[Abs]].shows(store.lookup(a), store)
-      case Unlocked => "#unlocked"
-      case Locked => "#locked"
-      case _ => x.toString
-    }
 
     def isTrue(x: L): Boolean = x match {
       case Bool(b) => bool.isTrue(b)
@@ -521,10 +490,6 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
   val isAbstractValueSet = new AbstractValue[LSet] {
     val name = s"SetLattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
     val counting = supportsCounting
-    override def shows[Addr : Address, Abs : AbstractValue](x: LSet, store: Store[Addr, Abs]) = x match {
-      case Element(x) => isAbstractValue.shows(x, store)
-      case Elements(xs) => "{" + xs.map(x => isAbstractValue.shows(x, store)).mkString(",") + "}"
-    }
 
     def isTrue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isTrue(_))(boolOrMonoid)
     def isFalse(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isFalse(_))(boolOrMonoid)

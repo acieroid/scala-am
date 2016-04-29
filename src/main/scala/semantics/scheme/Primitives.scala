@@ -24,11 +24,11 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
   def traced(prim: Primitive[Addr, Abs]): Primitive[Addr, Abs] = new Primitive[Addr, Abs] {
     val name = prim.name
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
-      val argsstr = args.map({ case (_, v) => abs.shows(v, store) }).mkString(" ")
+      val argsstr = args.map({ case (_, v) => v.toString }).mkString(" ")
       val res = prim.call(fexp, args, store, t)
       res match {
         case Left(err) => println(s"($name $argsstr) -> ERROR: $err")
-        case Right((v, store, effs)) => println(s"($name $argsstr) -> ${abs.shows(v, store)}")
+        case Right((v, store, effs)) => println(s"($name $argsstr) -> $v")
       }
       res
     }
@@ -536,7 +536,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     UnaryOperation("odd?", (x) => numEq(abs.inject(1), modulo(x, abs.inject(2)))), /* (define (odd? x) (= 1 (modulo x 2))) */
     UnaryOperation("even?", (x) => numEq(abs.inject(0), modulo(x, abs.inject(2)))), /* (define (even? x) (= 0 (modulo x 2))) */
     UnaryStoreOperation("display", (v, store) => {
-      val str = abs.shows(v, store)
+      val str = v.toString
       print(if (str.startsWith("\"")) { str.substring(1, str.size-1) } else { str })
       toPrim((v, Set()), store)
     }),
