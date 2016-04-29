@@ -1,8 +1,9 @@
 /**
  * Semantics for ANF Scheme (abstract grammar defined in ANF.scala)
  */
-class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
+class ANFSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
     extends BaseSemantics[ANFExp, Abs, Addr, Time] {
+  def sabs = implicitly[SchemeLattice[Abs]]
   /** ANF Scheme only has three types of continuation frames: halt, let, and letrec */
   trait ANFFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
@@ -15,16 +16,16 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   }
 
   /** Performs evaluation of an atomic expression, returning either an error or the produced value */
-  def atomicEval(e: ANFAtomicExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Either[String, (Abs, Set[Effect[Addr, Abs]])] = e match {
-    case λ: ANFLambda => Right((abs.inject[ANFExp, Addr]((λ, ρ)), Set()))
+  def atomicEval(e: ANFAtomicExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Either[String, (Abs, Set[Effect[Addr]])] = e match {
+    case λ: ANFLambda => Right((sabs.inject[ANFExp, Addr]((λ, ρ)), Set()))
     case ANFIdentifier(name, _) => ρ.lookup(name) match {
       case Some(a) => Right(σ.lookup(a), Set(EffectReadVariable(a)))
       case None => Left(s"Unbound variable: $name")
     }
-    case ANFValue(ValueString(s), _) => Right((abs.inject(s), Set()))
-    case ANFValue(ValueInteger(n), _) => Right((abs.inject(n), Set()))
-    case ANFValue(ValueFloat(n), _) => Right((abs.inject(n), Set()))
-    case ANFValue(ValueBoolean(b), _) => Right((abs.inject(b), Set()))
+    case ANFValue(ValueString(s), _) => Right((sabs.inject(s), Set()))
+    case ANFValue(ValueInteger(n), _) => Right((sabs.inject(n), Set()))
+    case ANFValue(ValueFloat(n), _) => Right((sabs.inject(n), Set()))
+    case ANFValue(ValueBoolean(b), _) => Right((sabs.inject(b), Set()))
     case ANFValue(v, _) => Left(s"Unhandled value: ${v}")
   }
 
@@ -36,7 +37,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
     }
     /* Function call is the interesting case */
     case ANFFuncall(f, args, _) =>
-      val init : Either[String, (List[(ANFExp, Abs)], Set[Effect[Addr, Abs]])] = Right(List(), Set())
+      val init : Either[String, (List[(ANFExp, Abs)], Set[Effect[Addr]])] = Right(List(), Set())
       /* We first atomically evaluate every argument (since we're in ANF, they should
        * all be atomic). Errors need to be propagated, hence the Either. */
       args.foldLeft(init)((acc, arg) => acc match {
@@ -55,7 +56,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
             case Left(err) => Set(ActionError(err))
             case Right((fv, effects2)) => {
               /* For every value of the operand, we call the contained closure and primitive */
-              val fromClo: Set[Action[ANFExp, Abs, Addr]] = abs.getClosures[ANFExp, Addr](fv).map({
+              val fromClo: Set[Action[ANFExp, Abs, Addr]] = sabs.getClosures[ANFExp, Addr](fv).map({
                 case (ANFLambda(args, body, pos), ρ) => if (args.length == argsv.length) {
                   /* To call a closure, bind the arguments and step into the function */
                   bindArgs(args.zip(argsv.reverse), ρ, σ, t) match {
@@ -64,7 +65,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
                 } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length})") }
                 case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
               })
-              val fromPrim: Set[Action[ANFExp, Abs, Addr]] = abs.getPrimitives(fv).map(prim =>
+              val fromPrim: Set[Action[ANFExp, Abs, Addr]] = sabs.getPrimitives(fv).map(prim =>
                 /* To call a primitive, apply the call method with the given arguments and the store */
                 prim.call(f, argsv, σ, t) match {
                   case Right((res, σ2, effects)) => ActionReachedValue[ANFExp, Abs, Addr](res, σ2, effects)
@@ -86,7 +87,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
         case Right((v, effects)) => {
           val t = ActionEval(cons, ρ, σ, effects)
           val f = ActionEval(alt, ρ, σ, effects)
-          if (abs.isTrue(v) && abs.isFalse(v)) { Set(t, f) } else if (abs.isTrue(v)) { Set(t) } else if (abs.isFalse(v)) { Set(f) } else { Set() }
+          if (sabs.isTrue(v) && sabs.isFalse(v)) { Set(t, f) } else if (sabs.isTrue(v)) { Set(t) } else if (sabs.isFalse(v)) { Set(f) } else { Set() }
         }
       }
     /* To evaluate a let, first evaluate the binding */
@@ -108,7 +109,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       case None => Set(ActionError(s"Unbound variable: ${variable}"))
     }
     /* A quoted identifier is a value */
-    case ANFQuoted(SExpIdentifier(sym, _), _) => Set(ActionReachedValue(abs.injectSymbol(sym), σ))
+    case ANFQuoted(SExpIdentifier(sym, _), _) => Set(ActionReachedValue(sabs.injectSymbol(sym), σ))
     /* A quoted s-expression is more complicated to evaluate, as it may require
      * store allocation and is therefore not atomic. We don't deal with them in
      * ANF (they can always be converted into calls to cons). */
@@ -127,7 +128,6 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   }
 
   def parse(program: String): ANFExp = ANF.parse(program)
-  val primitives = new SchemePrimitives[Addr, Abs]
   override def initialEnv = primitives.forEnv
   override def initialStore = primitives.forStore
 }

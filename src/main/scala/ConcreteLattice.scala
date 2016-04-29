@@ -141,7 +141,7 @@ object ConcreteLattice extends Lattice {
     override def unaryOp(op: UnaryOperator) = ConcreteError(s"operation ($op) performed on bottom value")
     override def binaryOp(op: BinaryOperator)(that: L) = ConcreteError(s"operation ($op) performed on bottom value")
   }
-  case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends L {
+  case class Prim[Addr : Address, Abs : JoinLattice](prim: Primitive[Addr, Abs]) extends L {
     override def toString = s"#<prim ${prim.name}>"
   }
   case class Closure[Exp : Expression, Addr : Address](λ: Exp, ρ: Environment[Addr]) extends L {
@@ -285,7 +285,7 @@ object ConcreteLattice extends Lattice {
       case Closure(λ: Exp @unchecked, ρ: Environment[Addr] @unchecked) => Set((λ, ρ))
       case _ => Set()
     }
-    def getPrimitives[Addr : Address, Abs : AbstractValue](x: L) = x match {
+    def getPrimitives[Addr : Address, Abs : JoinLattice](x: L) = x match {
       case Prim(prim: Primitive[Addr, Abs] @unchecked) => Set(prim)
       case _ => Set()
     }
@@ -315,7 +315,7 @@ object ConcreteLattice extends Lattice {
     def inject(x: String): L = ConcreteString(x)
     def inject(x: Char): L = ConcreteChar(x)
     def inject(x: Boolean): L = ConcreteBool(x)
-    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): L = Prim(x)
+    def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L = Prim(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = Closure[Exp, Addr](x._1, x._2)
     def injectTid[TID : ThreadIdentifier](tid: TID): L = Tid(tid)
     def injectSymbol(x: String): L = ConcreteSymbol(x)

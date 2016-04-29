@@ -3,7 +3,7 @@ import SchemeOps._
 /**
  * Basic Scheme semantics, without any optimization
  */
-class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
+class BaseSchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
     extends BaseSemantics[SchemeExp, Abs, Addr, Time] {
   def sabs = implicitly[SchemeLattice[Abs]]
 
@@ -220,19 +220,19 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
  *     to evaluate (+ 1 (f)), we can directly push the continuation and jump to
  *     the evaluation of (f), instead of evaluating +, and 1 in separate states.
  */
-class SchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
+class SchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
     extends BaseSchemeSemantics[Abs, Addr, Time](primitives) {
 
   /** Tries to perform atomic evaluation of an expression. Returns the result of
     * the evaluation if it succeeded, otherwise returns None */
-  protected def atomicEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs]): Option[(Abs, Set[Effect[Addr, Abs]])] = e match {
-    case λ: SchemeLambda => Some((abs.inject[SchemeExp, Addr]((λ, env)), Set()))
+  protected def atomicEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs]): Option[(Abs, Set[Effect[Addr]])] = e match {
+    case λ: SchemeLambda => Some((sabs.inject[SchemeExp, Addr]((λ, env)), Set()))
     case SchemeIdentifier(name, _) => env.lookup(name).map(a => (store.lookup(a), Set(EffectReadVariable(a))))
     case SchemeValue(v, _) => evalValue(v).map(value => (value, Set()))
     case _ => None
   }
 
-  protected def addEffects(action: Action[SchemeExp, Abs, Addr], effects: Set[Effect[Addr, Abs]]): Action[SchemeExp, Abs, Addr] = action match {
+  protected def addEffects(action: Action[SchemeExp, Abs, Addr], effects: Set[Effect[Addr]]): Action[SchemeExp, Abs, Addr] = action match {
     case ActionReachedValue(v, store, effs) => ActionReachedValue(v, store, effs ++ effects)
     case ActionPush(e, frame, env, store, effs) => ActionPush(e, frame, env, store, effs ++ effects)
     case ActionEval(e, env, store, effs) => ActionEval(e, env, store, effs ++ effects)
@@ -272,6 +272,8 @@ class SchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp](pri
 
 class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
     extends SchemeSemantics[Abs, Addr, Time](primitives: Primitives[Addr, Abs]) {
+  def cabs = implicitly[ConcurrentSchemeLattice[Abs]]
+  def aabs = implicitly[AbstractValue[Abs]]
   def thread = implicitly[ThreadIdentifier[TID]]
 
   case class FrameJoin(env: Environment[Addr]) extends SchemeFrame
@@ -281,7 +283,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
   case class FrameAcquire(env: Environment[Addr]) extends SchemeFrame
   case class FrameRelease(env: Environment[Addr]) extends SchemeFrame
 
-  override def addEffects(action: Action[SchemeExp, Abs, Addr], effects: Set[Effect[Addr, Abs]]) = action match {
+  override def addEffects(action: Action[SchemeExp, Abs, Addr], effects: Set[Effect[Addr]]) = action match {
     case ActionSpawn(t: TID @unchecked, e, env, act, effs) => ActionSpawn(t, e, env, act, effs ++ effects)
     case ActionJoin(tid, store, effs) => ActionJoin(tid, store, effs ++ effects)
     case _ => super.addEffects(action, effects)
@@ -290,7 +292,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
   override def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time) = e match {
     case SchemeSpawn(exp, _) =>
       val tid = thread.thread[SchemeExp, Time](exp, t)
-      Set(ActionSpawn(tid, exp, env, ActionReachedValue(abs.injectTid(tid), store)))
+      Set(ActionSpawn(tid, exp, env, ActionReachedValue(cabs.injectTid(tid), store)))
     case SchemeJoin(exp, _) => optimizeAtomic(Set(ActionPush(exp, FrameJoin(env), env, store)), t)
     case SchemeCas(variable, eold, enew, _) => Set(ActionPush(eold, FrameCasOld(variable, None, enew, env), env, store))
     case SchemeCasVector(variable, index, eold, enew, _) => Set(ActionPush(index, FrameCasIndex(variable, eold, enew, env), env, store))
@@ -301,7 +303,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
 
   override def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time) = frame match {
     case FrameJoin(env) =>
-      val tids = abs.getTids(v)
+      val tids = cabs.getTids(v)
       if (tids.isEmpty) {
         Set(ActionError(s"join performed on a non-tid value: $v"))
       } else {
@@ -316,42 +318,42 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
         case Some(a) => index match {
           case Some(i) =>
             /* Compare and swap on vector element */
-            abs.getVectors(store.lookup(a)).flatMap(va => {
+            aabs.getVectors(store.lookup(a)).flatMap(va => {
               val vec = store.lookup(va)
-              val oldvals = abs.vectorRef(vec, i)
+              val oldvals = aabs.vectorRef(vec, i)
               oldvals.flatMap({
                 case Left(_) => /* ignoring error values */ Set[Action[SchemeExp, Abs, Addr]]()
                 case Right(a) => {
                   val oldval = store.lookup(a)
                   val success: Action[SchemeExp, Abs, Addr] = {
                     /* Vector element matches old, success */
-                    val (newvec, addrs) = abs.vectorSet(vec, i, addr.cell(enew, t))
-                    ActionReachedValue(abs.inject(true), addrs.foldLeft(store.update(va, newvec))((acc, a) => acc.updateOrExtend(a, v)),
+                    val (newvec, addrs) = aabs.vectorSet(vec, i, addr.cell(enew, t))
+                    ActionReachedValue(cabs.inject(true), addrs.foldLeft(store.update(va, newvec))((acc, a) => acc.updateOrExtend(a, v)),
                       addrs.flatMap(a => Set(EffectWriteVector(a), EffectReadVector(a))))
                   }
-                  val fail: Action[SchemeExp, Abs, Addr] = ActionReachedValue(abs.inject(false), store, Set(EffectReadVector(a))) /* Vector element doesn't match, fail */
-                  conditional(abs.binaryOp(Eq)(oldval, old), success, fail)
+                  val fail: Action[SchemeExp, Abs, Addr] = ActionReachedValue(cabs.inject(false), store, Set(EffectReadVector(a))) /* Vector element doesn't match, fail */
+                  conditional(cabs.binaryOp(Eq)(oldval, old), success, fail)
                 }})})
           case None =>
             /* Compare and swap on variable value */
-            conditional(abs.binaryOp(Eq)(store.lookup(a), old),
+            conditional(cabs.binaryOp(Eq)(store.lookup(a), old),
               /* Compare and swap succeeds */
-              ActionReachedValue(abs.inject(true), store.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
+              ActionReachedValue(aabs.inject(true), store.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
               /* Compare and swap fails */
-              ActionReachedValue(abs.inject(false), store, Set(EffectReadVariable(a))))
+              ActionReachedValue(aabs.inject(false), store, Set(EffectReadVariable(a))))
         }
         case None => Set(ActionError(s"Unbound variable: $variable"))
       }
     case FrameAcquire(env) =>
-      val locks = abs.getLocks(v)
+      val locks = cabs.getLocks(v)
       if (locks.isEmpty) {
         Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
       } else {
         locks.flatMap(a => {
           val v = store.lookup(a)
-          if (abs.isTrue(abs.unaryOp(IsLock)(v))) {
-            if (abs.isFalse(abs.unaryOp(IsLocked)(v))) {
-              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), store.update(a, abs.lockedValue), Set(EffectAcquire(a))))
+          if (cabs.isTrue(cabs.unaryOp(IsLock)(v))) {
+            if (cabs.isFalse(cabs.unaryOp(IsLocked)(v))) {
+              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](cabs.inject(true), store.update(a, cabs.lockedValue), Set(EffectAcquire(a))))
             } else {
               Set[Action[SchemeExp, Abs, Addr]]()
             }
@@ -361,18 +363,18 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
         })
       }
     case FrameRelease(env) =>
-      val locks = abs.getLocks(v)
+      val locks = cabs.getLocks(v)
       if (locks.isEmpty) {
         Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
       } else {
-        abs.getLocks(v).flatMap(a => {
+        cabs.getLocks(v).flatMap(a => {
           val v = store.lookup(a)
-          if (abs.isTrue(abs.unaryOp(IsLock)(v))) {
-            if (abs.isTrue(abs.unaryOp(IsLocked)(v))) {
-              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), store.update(a, abs.unlockedValue), Set(EffectRelease(a))))
+          if (cabs.isTrue(cabs.unaryOp(IsLock)(v))) {
+            if (cabs.isTrue(cabs.unaryOp(IsLocked)(v))) {
+              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](cabs.inject(true), store.update(a, cabs.unlockedValue), Set(EffectRelease(a))))
             } else {
               /* Lock is already released */
-              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), store))
+              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](cabs.inject(true), store))
             }
           } else {
             Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))

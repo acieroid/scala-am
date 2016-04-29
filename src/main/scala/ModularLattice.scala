@@ -94,7 +94,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
     override def toString = sym.shows(s)
   }
   case class Err(message: String) extends Value
-  case class Prim[Addr : Address, Abs : AbstractValue](prim: Primitive[Addr, Abs]) extends Value {
+  case class Prim[Addr : Address, Abs : JoinLattice](prim: Primitive[Addr, Abs]) extends Value {
     override def toString = s"#<prim ${prim.name}>"
   }
   case class Closure[Exp : Expression, Addr : Address](lambda: Exp, env: Environment[Addr]) extends Value {
@@ -123,7 +123,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
 
   type L = Value
 
-  val isAbstractValue = new AbstractValue[L] {
+  val isAbstractValue: AbstractValue[L] = new AbstractValue[L] {
     val name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
     val counting = supportsCounting
     /* This doesn't deal with circular structures (vectors and cons cells) */
@@ -430,7 +430,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
       case Closure(lam: Exp @unchecked, env: Environment[Addr] @unchecked) => Set((lam, env))
       case _ => Set()
     }
-    def getPrimitives[Addr : Address, Abs : AbstractValue](x: L) = x match {
+    def getPrimitives[Addr : Address, Abs : JoinLattice](x: L) = x match {
       case Prim(p: Primitive[Addr, Abs] @unchecked) => Set(p)
       case _ => Set()
     }
@@ -454,7 +454,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
     def inject(x: String): L = Str(str.inject(x))
     def inject(x: scala.Char): L = Char(char.inject(x))
     def inject(x: Boolean): L = Bool(bool.inject(x))
-    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): L = Prim(x)
+    def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L = Prim(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = Closure(x._1, x._2)
     def injectTid[TID : ThreadIdentifier](tid: TID): L = Tid(tid)
     def injectSymbol(x: String): L = Symbol(sym.inject(x))
@@ -554,7 +554,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
       case Elements(xs) => "{" + xs.mkString(",") + "}"
     }
     def getClosures[Exp : Expression, Addr : Address](x: LSet): Set[(Exp, Environment[Addr])] = foldMapLSet(x, x => isAbstractValue.getClosures(x))
-    def getPrimitives[Addr : Address, Abs : AbstractValue](x: LSet): Set[Primitive[Addr, Abs]] = foldMapLSet(x, x => isAbstractValue.getPrimitives(x))
+    def getPrimitives[Addr : Address, Abs : JoinLattice](x: LSet): Set[Primitive[Addr, Abs]] = foldMapLSet(x, x => isAbstractValue.getPrimitives(x))
     def getTids[TID : ThreadIdentifier](x: LSet): Set[TID] = foldMapLSet(x, x => isAbstractValue.getTids(x))
     def getVectors[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.getVectors(x))
     def getLocks[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.getLocks(x))
@@ -566,7 +566,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
     def inject(x: String): LSet = Element(isAbstractValue.inject(x))
     def inject(x: scala.Char): LSet = Element(isAbstractValue.inject(x))
     def inject(x: Boolean): LSet = Element(isAbstractValue.inject(x))
-    def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): LSet = Element(isAbstractValue.inject(x))
+    def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): LSet = Element(isAbstractValue.inject(x))
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): LSet = Element(isAbstractValue.inject(x))
     def injectTid[TID : ThreadIdentifier](tid: TID): LSet = Element(isAbstractValue.injectTid(tid))
     def injectSymbol(x: String): LSet = Element(isAbstractValue.injectSymbol(x))

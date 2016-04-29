@@ -35,13 +35,13 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     def commit = if (isUnchanged) { this } else { this.copy(store = store.addDelta(delta), delta = Map()) }
   }
 
-  private def effectsToXml(effects: Set[Effect[Addr, Abs]]): List[scala.xml.Node] = effects.toList.map(eff => eff.kind match {
+  private def effectsToXml(effects: Set[Effect[Addr]]): List[scala.xml.Node] = effects.toList.map(eff => eff.kind match {
     case ReadEffect => <font color="forestgreen">{eff.toString}</font>
     case WriteEffect => <font color="red2">{eff.toString}</font>
   })
 
-  type Effects = Set[Effect[Addr, Abs]]
-  val noEffect: Effects = Set[Effect[Addr, Abs]]()
+  type Effects = Set[Effect[Addr]]
+  val noEffect: Effects = Set[Effect[Addr]]()
   def effectsToStr(effs: Effects): String = effs.map(_.toString).mkString(", ")
 
   case class ThreadResults(content: Map[TID, Abs]) {
@@ -229,7 +229,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
 
   private def effectsOf(transitions: Set[(Effects, State)]): Effects =
     transitions.flatMap(_._1)
-  private def dependent(eff1: Effect[Addr, Abs], eff2: Effect[Addr, Abs]): Boolean =
+  private def dependent(eff1: Effect[Addr], eff2: Effect[Addr]): Boolean =
     (eff1.target == eff2.target && (eff1.kind |+| eff2.kind) == WriteEffect)
   private def dependent(effs1: Effects, effs2: Effects): Boolean =
     (effs1.foldLeft(false)((acc, eff1) => effs2.foldLeft(acc)((acc, eff2) => acc || dependent(eff1, eff2))))
@@ -332,7 +332,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).toList.sorted.mkString(", ") }
     def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = {
       val dls: Set[Int] = effects(states(s)).collect({
-        case (s, tid, effs) if (!deadlocks.contains(s) && effs.exists(eff => eff.isInstanceOf[EffectAcquire[Addr, Abs]])) => s })
+        case (s, tid, effs) if (!deadlocks.contains(s) && effs.exists(eff => eff.isInstanceOf[EffectAcquire[Addr]])) => s })
       (this.copy(deadlocks = deadlocks ++ dls), dls.map(s => statesid(s)))
     }
   }
@@ -346,13 +346,13 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     statesid: Vector[State], states: Map[State, Int], next: Int,
     conflicts: Set[(Int, TID)], acquires: Set[Int], deadlocks: Set[Int]) extends EffectsMap {
     def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = Profiler.profile("newTransition") {
-      val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr, Abs]] || x.isInstanceOf[EffectRelease[Addr, Abs]])
+      val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr]] || x.isInstanceOf[EffectRelease[Addr]])
       states.get(s1) match {
         case Some(s1id) => this.copy(effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> (acc(eff.target) + ((s1id, tid, effs2))))),
-          acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + s1id } else { acquires })
+          acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr]])) { acquires + s1id } else { acquires })
         case None => this.copy(statesid = statesid :+ s1, states = states + (s1 -> next), next = next + 1,
           effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> (acc(eff.target) + ((next, tid, effs2))))),
-          acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + next } else { acquires })
+          acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr]])) { acquires + next } else { acquires })
       }
     }
     def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State) = Profiler.profile("newHaltedState") { this }
@@ -373,7 +373,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
 
   object PathEffectsMap {
     def apply(): EffectsMap =
-      PathEffectsMap(Map[Addr, (Set[(Int, TID, Effect[Addr, Abs])], Set[(Int, TID, Effect[Addr, Abs])])]().withDefaultValue((Set[(Int, TID, Effect[Addr, Abs])](), Set[(Int, TID, Effect[Addr, Abs])]())),
+      PathEffectsMap(Map[Addr, (Set[(Int, TID, Effect[Addr])], Set[(Int, TID, Effect[Addr])])]().withDefaultValue((Set[(Int, TID, Effect[Addr])](), Set[(Int, TID, Effect[Addr])]())),
         Map[Int, Set[(TID, Int)]]().withDefaultValue(Set[(TID, Int)]()),
         Map[(Int, TID), Set[(Int, TID)]]().withDefaultValue(Set[(Int, TID)]()),
         Set[(Int, TID)](),
@@ -384,7 +384,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
   }
   case class PathEffectsMap(
     /* Maps an address to the effects that affect it, separated as read effects and write effect */
-    effects: Map[Addr, (Set[(Int, TID, Effect[Addr, Abs])], Set[(Int, TID, Effect[Addr, Abs])])],
+    effects: Map[Addr, (Set[(Int, TID, Effect[Addr])], Set[(Int, TID, Effect[Addr])])],
     /* Records the transition to be able to compute paths between two transitions. From source state to destinations states */
     trans: Map[Int, Set[(TID, Int)]],
     /* Records conflicts that have been already detected to avoid detecting them again */
@@ -402,7 +402,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = {
       (states.get(s1), states.get(s2)) match {
         case (Some(s1id), Some(s2id)) => {
-          val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr, Abs]] || x.isInstanceOf[EffectRelease[Addr, Abs]])
+          val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr]] || x.isInstanceOf[EffectRelease[Addr]])
           this.copy(
             effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> ((eff.kind, acc(eff.target)) match {
               case (WriteEffect, (reads, writes)) => (reads, writes + ((s1id, tid, eff)))
@@ -410,7 +410,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
             }))),
             /* record transition */
             trans = trans + (s1id -> (trans(s1id) + ((tid, s2id)))),
-            acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + ((s1id, tid)) } else { acquires })
+            acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr]])) { acquires + ((s1id, tid)) } else { acquires })
         }
         case (Some(s1id), None) =>
           this.copy(statesid = statesid :+ s2, states = states + (s2 -> next), next = next + 1).newTransition(graph, s1, s2, tid, effs)

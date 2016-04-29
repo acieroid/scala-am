@@ -19,7 +19,7 @@ import scalaz._
  */
 
 trait Semantics[Exp, Abs, Addr, Time] {
-  implicit def abs : AbstractValue[Abs]
+  implicit def abs : JoinLattice[Abs]
   implicit def addr : Address[Addr]
   implicit def exp : Expression[Exp]
   implicit def time : Timestamp[Time]
@@ -62,58 +62,58 @@ object EffectKind {
   }
 }
 
-abstract class Effect[Addr : Address, Abs : AbstractValue] {
+abstract class Effect[Addr : Address] {
   val kind: EffectKind
   val target: Addr
 }
 
-case class EffectReadVariable[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectReadVariable[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = ReadEffect
   override def toString = s"R$target"
 }
-case class EffectReadConsCar[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectReadConsCar[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = ReadEffect
   override def toString = s"Rcar($target)"
 }
-case class EffectReadConsCdr[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectReadConsCdr[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = ReadEffect
   override def toString = s"Rcdr($target)"
 }
-case class EffectReadVector[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectReadVector[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = ReadEffect
   override def toString = s"Rvec($target)"
 }
-case class EffectWriteVariable[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectWriteVariable[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = WriteEffect
   override def toString = s"W$target"
 }
-case class EffectWriteConsCar[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectWriteConsCar[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = WriteEffect
   override def toString = s"Wcar($target)"
 }
-case class EffectWriteConsCdr[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectWriteConsCdr[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = WriteEffect
   override def toString = s"Wcdr($target)"
 }
-case class EffectWriteVector[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectWriteVector[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = WriteEffect
   override def toString = s"Wvec($target)"
 }
-case class EffectAcquire[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectAcquire[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = WriteEffect
   override def toString = s"Acq$target"
 }
-case class EffectRelease[Addr : Address, Abs : AbstractValue](target: Addr)
-    extends Effect[Addr, Abs] {
+case class EffectRelease[Addr : Address](target: Addr)
+    extends Effect[Addr] {
   val kind = WriteEffect
   override def toString = s"Rel$target"
 }
@@ -121,28 +121,28 @@ case class EffectRelease[Addr : Address, Abs : AbstractValue](target: Addr)
 /**
  * The different kinds of actions that can be taken by the abstract machine
  */
-abstract class Action[Exp : Expression, Abs : AbstractValue, Addr : Address]
+abstract class Action[Exp : Expression, Abs : JoinLattice, Addr : Address]
 /**
  * A value is reached by the interpreter. As a result, a continuation will be
  * popped with the given reached value.
  */
-case class ActionReachedValue[Exp : Expression, Abs : AbstractValue, Addr : Address]
-  (v: Abs, σ: Store[Addr, Abs], effects: Set[Effect[Addr, Abs]] = Set[Effect[Addr, Abs]]())
+case class ActionReachedValue[Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (v: Abs, store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr]
 /**
  * A frame needs to be pushed on the stack, and the interpretation continues by
- * evaluating expression e in environment ρ
+ * evaluating expression e in environment env
  */
-case class ActionPush[Exp : Expression, Abs : AbstractValue, Addr : Address]
-  (e: Exp, frame: Frame, ρ: Environment[Addr], σ: Store[Addr, Abs],
-    effects: Set[Effect[Addr, Abs]] = Set[Effect[Addr, Abs]]())
+case class ActionPush[Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (e: Exp, frame: Frame, env: Environment[Addr], store: Store[Addr, Abs],
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr]
 /**
- * Evaluation continues with expression e in environment ρ
+ * Evaluation continues with expression e in environment env
  */
-case class ActionEval[Exp : Expression, Abs : AbstractValue, Addr : Address]
-  (e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs],
-    effects: Set[Effect[Addr, Abs]] = Set[Effect[Addr, Abs]]())
+case class ActionEval[Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (e: Exp, env: Environment[Addr], store: Store[Addr, Abs],
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr]
 /**
  * Similar to ActionEval, but only used when stepping inside a function's body
@@ -150,38 +150,38 @@ case class ActionEval[Exp : Expression, Abs : AbstractValue, Addr : Address]
  * the arguments should also be provided, as they can be needed by the abstract
  * machine.
  */
-case class ActionStepIn[Exp : Expression, Abs : AbstractValue, Addr : Address]
+case class ActionStepIn[Exp : Expression, Abs : JoinLattice, Addr : Address]
   (fexp: Exp, clo: (Exp, Environment[Addr]), e: Exp,
-    ρ: Environment[Addr], σ: Store[Addr, Abs], argsv: List[(Exp, Abs)],
-    effects: Set[Effect[Addr, Abs]] = Set[Effect[Addr, Abs]]())
+    env: Environment[Addr], store: Store[Addr, Abs], argsv: List[(Exp, Abs)],
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr]
 /**
  * An error has been reached
  */
-case class ActionError[Exp : Expression, Abs : AbstractValue, Addr : Address]
+case class ActionError[Exp : Expression, Abs : JoinLattice, Addr : Address]
   (reason: String) extends Action[Exp, Abs, Addr]
 /**
  * Spawns a new thread that evaluates expression e in environment ρ. The current
  * thread continues its execution by performing action act.
  */
-case class ActionSpawn[TID : ThreadIdentifier, Exp : Expression, Abs : AbstractValue, Addr : Address]
-  (t: TID, e: Exp, ρ: Environment[Addr], act: Action[Exp, Abs, Addr],
-    effects: Set[Effect[Addr, Abs]] = Set[Effect[Addr, Abs]]())
+case class ActionSpawn[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (t: TID, e: Exp, env: Environment[Addr], act: Action[Exp, Abs, Addr],
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr]
 /**
  * Waits for the execution of a thread, with tid as its identifier.
  */
-case class ActionJoin[Exp : Expression, Abs : AbstractValue, Addr : Address]
-  (tid: Abs, σ: Store[Addr, Abs], effects: Set[Effect[Addr, Abs]] = Set[Effect[Addr, Abs]]())
+case class ActionJoin[Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (tid: Abs, store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr]
 
 /**
  * Base class for semantics that define some helper methods
  */
-abstract class BaseSemantics[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+abstract class BaseSemantics[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends Semantics[Exp, Abs, Addr, Time] {
   /* wtf scala */
-  def abs = implicitly[AbstractValue[Abs]]
+  def abs = implicitly[JoinLattice[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
   def time = implicitly[Timestamp[Time]]
@@ -193,9 +193,9 @@ abstract class BaseSemantics[Exp : Expression, Abs : AbstractValue, Addr : Addre
    *   - the expression evaluated to get the argument's value
    *   - the value of the argument
    */
-  protected def bindArgs(l: List[(String, (Exp, Abs))], ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
-    l.foldLeft((ρ, σ))({ case ((ρ, σ), (name, (exp, value))) => {
+  protected def bindArgs(l: List[(String, (Exp, Abs))], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
+    l.foldLeft((env, store))({ case ((env, store), (name, (exp, value))) => {
       val a = addr.variable(name, value, t)
-      (ρ.extend(name, a), σ.extend(a, value))
+      (env.extend(name, a), store.extend(a, value))
     }})
 }

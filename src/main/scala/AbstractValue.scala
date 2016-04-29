@@ -56,7 +56,7 @@ trait SchemeLattice[L] extends JoinLattice[L] {
   /** Extract closures contained in this value */
   def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])]
   /** Extract primitives contained in this value */
-  def getPrimitives[Addr : Address, Abs : AbstractValue](x: L): Set[Primitive[Addr, Abs]]
+  def getPrimitives[Addr : Address, Abs : JoinLattice](x: L): Set[Primitive[Addr, Abs]]
 
 
   /** Injection of an integer */
@@ -70,7 +70,7 @@ trait SchemeLattice[L] extends JoinLattice[L] {
   /** Injection of a character */
   def inject(x: Char): L
   /** Injection of a primitive function */
-  def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): L
+  def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L
   /** Injection of a closure */
   def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L
   /** Injection of a symbol */

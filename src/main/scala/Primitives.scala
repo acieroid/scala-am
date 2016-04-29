@@ -10,7 +10,7 @@ trait Primitive[Addr, Abs] {
    * @param store: the store
    * @return either an error, or the value returned by the primitive along with the updated store
    */
-  def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time): Either[String, (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]])]
+  def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time): Either[String, (Abs, Store[Addr, Abs], Set[Effect[Addr]])]
 }
 
 abstract class Primitives[Addr : Address, Abs : JoinLattice] {
@@ -99,7 +99,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     val name = "vector-set!"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, vector) :: (_, index) :: (exp, value) :: Nil => {
-        Right(abs.getVectors(vector).foldLeft((abs.bottom, store, Set[Effect[Addr, Abs]]()))((acc, va) => {
+        Right(abs.getVectors(vector).foldLeft((abs.bottom, store, Set[Effect[Addr]]()))((acc, va) => {
           val oldvec = store.lookup(va)
           val targetaddr = addr.cell(exp, t)
           val (vec, addrs) = abs.vectorSet(oldvec, index, targetaddr)
@@ -170,7 +170,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
   }
 
   /** A primitive taking a single argument and modifying the store */
-  case class UnaryStoreOperation(name: String, f: (Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]]))
+  case class UnaryStoreOperation(name: String, f: (Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs], Set[Effect[Addr]]))
     extends Primitive[Addr, Abs] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: Nil => Right(f(x, store))
@@ -179,7 +179,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
   }
 
   /** A primitive taking two arguments and modifying the store */
-  case class BinaryStoreOperation(name: String, f: (Abs, Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]]))
+  case class BinaryStoreOperation(name: String, f: (Abs, Abs, Store[Addr, Abs]) => (Abs, Store[Addr, Abs], Set[Effect[Addr]]))
       extends Primitive[Addr, Abs] {
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: (_, y) :: Nil => Right(f(x, y, store))
@@ -302,8 +302,8 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     abs.inject(false)
   }
 
-  private def car(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = {
-    val (res, effs) = abs.car(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
+  private def car(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = {
+    val (res, effs) = abs.car(v).foldLeft((abs.bottom, Set[Effect[Addr]]()))((acc, a) =>
       (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadConsCar(a)))
     if (res == abs.bottom) {
       (abs.error(abs.inject(s"Cannot take car of $v")), effs)
@@ -312,8 +312,8 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     }
   }
 
-  private def cdr(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = {
-    val (res, effs) = abs.cdr(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, a) =>
+  private def cdr(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = {
+    val (res, effs) = abs.cdr(v).foldLeft((abs.bottom, Set[Effect[Addr]]()))((acc, a) =>
       (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadConsCdr(a)))
     if (res == abs.bottom) {
       (abs.error(abs.inject(s"Cannot take cdr of $v")), effs)
@@ -322,8 +322,8 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     }
   }
 
-  private def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = {
-    val (res, effs) = abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, va) =>
+  private def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = {
+    val (res, effs) = abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr]]()))((acc, va) =>
       abs.vectorRef(store.lookup(va), index).foldLeft(acc)((acc, res) => res match {
         case Left(v) => (abs.join(acc._1, v), acc._2)
         case Right(a) => (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadVector(a))
@@ -335,8 +335,8 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     }
   }
 
-  private def vectorLength(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = {
-    val (res, effs) = abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr, Abs]]()))((acc, va) =>
+  private def vectorLength(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = {
+    val (res, effs) = abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr]]()))((acc, va) =>
       (abs.join(acc._1, abs.unaryOp(VectorLength)(store.lookup(va))),
         acc._2 + EffectReadVariable(va)))
     if (res == abs.bottom) {
@@ -392,9 +392,9 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
                                      (loop (+ i 1)))))))
                   (loop 0)))))))
    */
-  private def equalVecLoop(a: Abs, b: Abs, i: Abs, n: Abs, store: Store[Addr, Abs], visitedEqual: Set[(Abs, Abs)], visited: Set[(Abs, Abs, Abs, Abs)]): (Abs, Set[Effect[Addr, Abs]]) =
+  private def equalVecLoop(a: Abs, b: Abs, i: Abs, n: Abs, store: Store[Addr, Abs], visitedEqual: Set[(Abs, Abs)], visited: Set[(Abs, Abs, Abs, Abs)]): (Abs, Set[Effect[Addr]]) =
     if (visited.contains((a, b, i, n)) || a == abs.bottom || b == abs.bottom || i == abs.bottom || n == abs.bottom) {
-      (abs.bottom, Set[Effect[Addr, Abs]]())
+      (abs.bottom, Set[Effect[Addr]]())
     } else {
       val numtest = numEq(i, n)
       val t = if (abs.isTrue(numtest)) { abs.inject(true) } else { abs.bottom }
@@ -404,16 +404,16 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
         val (itemtest, effects3) = equal(vai, vbi, store, visitedEqual)
         val (tt, effects4) = if (abs.isTrue(itemtest)) {
           equalVecLoop(a, b, plus(i, abs.inject(1)), n, store, visitedEqual, visited + ((a, b, i, n)))
-        } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+        } else { (abs.bottom, Set[Effect[Addr]]()) }
         val tf = if (abs.isFalse(itemtest)) { abs.inject(false) } else { abs.bottom }
         (abs.join(tt, tf), effects1 ++ effects2 ++ effects3 ++ effects4)
-      } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+      } else { (abs.bottom, Set[Effect[Addr]]()) }
       (abs.join(t, f), effects)
     }
 
-  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): (Abs, Set[Effect[Addr, Abs]]) = {
+  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs], visited: Set[(Abs, Abs)]): (Abs, Set[Effect[Addr]]) = {
     if (visited.contains(a, b) || a == abs.bottom || b == abs.bottom) {
-      (abs.bottom, Set[Effect[Addr, Abs]]())
+      (abs.bottom, Set[Effect[Addr]]())
     } else {
       val visited2 = visited + ((a, b))
       val eqtest = eq(a, b)
@@ -432,10 +432,10 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
               val (cdrb, effects9) = cdr(b, store)
               val (res, effects10) = equal(cdra, cdrb, store, visited2)
               (res, effects8 ++ effects9 ++ effects10)
-            } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+            } else { (abs.bottom, Set[Effect[Addr]]()) }
             val fftf = if (abs.isFalse(cartest)) { abs.inject(false) } else { abs.bottom }
             (abs.join(fftt, fftf), effects4 ++ effects5 ++ effects6 ++ effects7)
-          } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+          } else { (abs.bottom, Set[Effect[Addr]]()) }
           val (fff, effects11) = if (abs.isFalse(constest)) {
             val vectest = abs.and(isVector(a), isVector(b))
             val (ffft, effects12) = if (abs.isTrue(vectest)) {
@@ -444,27 +444,27 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
               val lengthtest = numEq(lengtha, lengthb)
               val (ffftt, effects15) = if (abs.isTrue(lengthtest)) {
                 equalVecLoop(a, b, abs.inject(0), lengtha, store, visited2, Set())
-              } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+              } else { (abs.bottom, Set[Effect[Addr]]()) }
               val ffftf = if (abs.isFalse(lengthtest)) { abs.inject(false) } else { abs.bottom }
               (abs.join(ffftt, ffftf), effects13 ++ effects14 ++ effects15)
-            } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+            } else { (abs.bottom, Set[Effect[Addr]]()) }
             val ffff = if (abs.isFalse(vectest)) { abs.inject(false) } else { abs.bottom }
             (abs.join(ffft, ffff), effects12)
-          } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+          } else { (abs.bottom, Set[Effect[Addr]]()) }
           (abs.join(fft, fff), effects11)
-        } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+        } else { (abs.bottom, Set[Effect[Addr]]()) }
         (abs.join(ft, ff), effects2)
-      } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+      } else { (abs.bottom, Set[Effect[Addr]]()) }
       (abs.join(t, f), effects1)
     }
   }
-  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = equal(a, b, store, Set())
+  private def equal(a: Abs, b: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = equal(a, b, store, Set())
 
   /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
-  private def listp(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): (Abs, Set[Effect[Addr, Abs]]) =
+  private def listp(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): (Abs, Set[Effect[Addr]]) =
     if (visited.contains(l)) {
       /* R5RS: "all lists have finite length", and the cases where this is reached include circular lists */
-      (abs.inject(false), Set[Effect[Addr, Abs]]())
+      (abs.inject(false), Set[Effect[Addr]]())
     } else {
       val nulltest = isNull(l)
       val t = if (abs.isTrue(nulltest)) { nulltest } else { abs.bottom }
@@ -474,18 +474,18 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
           val (cdrl, effects1) = cdr(l, store)
           val (res, effects2) = listp(cdrl, store, visited + l)
           (res, effects1 ++ effects2)
-        } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+        } else { (abs.bottom, Set[Effect[Addr]]()) }
         val ff = if (abs.isFalse(constest)) { abs.inject(false) } else { abs.bottom }
         (abs.join(ft, ff), effs)
-      } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+      } else { (abs.bottom, Set[Effect[Addr]]()) }
       (abs.join(t, f), effs)
     }
-  private def listp(l: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = listp(l, store, Set())
+  private def listp(l: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = listp(l, store, Set())
 
   /** (define (length l) (if (pair? l) (+ 1 (length (cdr l))) (if (null? l) 0 (error "length called with a non-list")))) */
-  private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): (Abs, Set[Effect[Addr, Abs]]) =
+  private def length(l: Abs, store: Store[Addr, Abs], visited: Set[Abs]): (Abs, Set[Effect[Addr]]) =
     if (visited.contains(l)) {
-      (abs.bottom, Set[Effect[Addr, Abs]]())
+      (abs.bottom, Set[Effect[Addr]]())
     } else {
       val visited2 = visited + l
       val cond = isCons(l)
@@ -493,7 +493,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
         val (cdrl, effects1) = cdr(l, store)
         val (lengthl, effects2) = length(cdrl, store, visited2)
         (plus(abs.inject(1), lengthl), effects1 ++ effects2)
-      } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
+      } else { (abs.bottom, Set[Effect[Addr]]()) }
       val f = if (abs.isFalse(cond)) {
         val fcond = isNull(l)
         val ft = if (abs.isTrue(fcond)) { abs.inject(0) } else { abs.bottom }
@@ -504,12 +504,12 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
       }
       (abs.join(t, f), eff)
     }
-  private def length(l: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr, Abs]]) = length(l, store, Set())
+  private def length(l: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = length(l, store, Set())
 
-  private def toPrim(x: (Abs, Set[Effect[Addr, Abs]]), store: Store[Addr, Abs]): (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]]) =
+  private def toPrim(x: (Abs, Set[Effect[Addr]]), store: Store[Addr, Abs]): (Abs, Store[Addr, Abs], Set[Effect[Addr]]) =
     (x._1, store, x._2)
-  private def chain(v: Abs, fs: (Abs => (Abs, Set[Effect[Addr, Abs]]))*): (Abs, Set[Effect[Addr, Abs]]) =
-    fs.foldLeft((v, Set[Effect[Addr, Abs]]()))((acc, f) => {
+  private def chain(v: Abs, fs: (Abs => (Abs, Set[Effect[Addr]]))*): (Abs, Set[Effect[Addr]]) =
+    fs.foldLeft((v, Set[Effect[Addr]]()))((acc, f) => {
       val (res, effects) = f(acc._1)
       (res, acc._2 ++ effects)
     })
@@ -573,12 +573,12 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     UnaryStoreOperation("cdadar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), car(_, store), cdr(_, store)), store)),
     UnaryStoreOperation("cdddar", (v, store) => toPrim(chain(v, car(_, store), cdr(_, store), cdr(_, store), cdr(_, store)), store)),
     BinaryStoreOperation("set-car!", (cell, v, store) => {
-      val (store2, effects) = abs.car(cell).foldLeft((store, Set[Effect[Addr, Abs]]()))((acc, a) =>
+      val (store2, effects) = abs.car(cell).foldLeft((store, Set[Effect[Addr]]()))((acc, a) =>
         (acc._1.update(a, v), acc._2 + EffectWriteConsCar(a)))
       (abs.inject(false), store2, effects)
     }),
     BinaryStoreOperation("set-cdr!", (cell, v, store) => {
-      val (store2, effects) = abs.cdr(cell).foldLeft((store, Set[Effect[Addr, Abs]]()))((acc, a) =>
+      val (store2, effects) = abs.cdr(cell).foldLeft((store, Set[Effect[Addr]]()))((acc, a) =>
         (acc._1.update(a, v), acc._2 + EffectWriteConsCar(a)))
       (abs.inject(false), store2, effects)
     }),

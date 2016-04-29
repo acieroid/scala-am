@@ -88,7 +88,7 @@ object Config {
   implicit val addressRead: scopt.Read[Address.Value] = scopt.Read.reads(Address withName _)
 
   object Language extends Enumeration {
-    val Scheme, ANF, ParSimple = Value
+    val Scheme, ANF = Value
   }
   implicit val languageRead: scopt.Read[Language.Value] = scopt.Read.reads(Language withName _)
 
@@ -247,27 +247,6 @@ object Main {
 
         try {
           do {
-            val program = config.file match {
-              case Some(file) => fileContent(file)
-              case None => StdIn.readLine(">>> ")
-            }
-            if (program == null) throw Done
-            if (program.size > 0)
-              run(machine, sem)(program, config.dotfile, config.timeout, config.inspect)
-          } while (config.file.isEmpty);
-        } catch {
-          case Done => ()
-        }
-      }
-      case Some(config) if (config.language == Config.Language.ParSimple) => {
-        try {
-          do {
-            val address = ClassicalAddress
-            implicit val isAddress = address.isAddress
-            val time = ZeroCFA
-            implicit val isTimestamp = time.isTimestamp
-            val machine = new ConcurrentAAM[ParSimpleExp, ConcreteLattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
-            val sem = new ParSimpleSemantics[ConcreteLattice.L, address.A, time.T, ContextSensitiveTID]
             val program = config.file match {
               case Some(file) => fileContent(file)
               case None => StdIn.readLine(">>> ")

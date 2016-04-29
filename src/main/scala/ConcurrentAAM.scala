@@ -42,13 +42,13 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   type KontAddr = aam.KontAddr
 
-  private def effectsToXml(effects: Set[Effect[Addr, Abs]]): List[scala.xml.Node] = effects.toList.map(eff => eff.kind match {
+  private def effectsToXml(effects: Set[Effect[Addr]]): List[scala.xml.Node] = effects.toList.map(eff => eff.kind match {
     case ReadEffect => <font color="forestgreen">{eff.toString}</font>
     case WriteEffect => <font color="red2">{eff.toString}</font>
   })
 
-  type Effects = Set[Effect[Addr, Abs]]
-  val noEffect: Effects = Set[Effect[Addr, Abs]]()
+  type Effects = Set[Effect[Addr]]
+  val noEffect: Effects = Set[Effect[Addr]]()
   def effectsToStr(effs: Effects): String = effs.map(_.toString).mkString(", ")
 
   case class Context(control: Control, kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
@@ -226,11 +226,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
                   val c2 = ctx2.control.asInstanceOf[ControlEval]
                   println(s"c1.exp == c2.exp is ${c1.exp == c2.exp}")
                   println(s"${c1.exp} -- ${c2.exp}")
-                  val e1 = c1.exp.asInstanceOf[ParSimpleThreadCode]
-                  val e2 = c2.exp.asInstanceOf[ParSimpleThreadCode]
-                  println(s"e1 == e2 is ${e1 == e2}")
-                  println(s"e1.pos == e2.pos is ${e1.pos == e2.pos}")
-                  println(s"e1.code == e2.code is ${e1.code == e2.code}")
                 }
                 println(s"$stateNumber.results == $state2Number.results is ${state.results == state2.results}")
               }
@@ -298,7 +293,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   private def effectsOf(transitions: Set[(Effects, State)]): Effects =
     transitions.flatMap(_._1)
-  private def dependent(eff1: Effect[Addr, Abs], eff2: Effect[Addr, Abs]): Boolean =
+  private def dependent(eff1: Effect[Addr], eff2: Effect[Addr]): Boolean =
       (eff1.target == eff2.target && (eff1.kind |+| eff2.kind) == WriteEffect)
   private def dependent(effs1: Effects, effs2: Effects): Boolean =
     (effs1.foldLeft(false)((acc, eff1) => effs2.foldLeft(acc)((acc, eff2) => acc || dependent(eff1, eff2))))
@@ -381,14 +376,14 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     } { case (_, confls) => confls.map({ case (s, _) => id(graph, s)}).mkString(", ") }
     def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = {
       val dls: Set[State] = effects(s).collect({
-        case (s, tid, effs) if (!deadlocks.contains(s) && effs.exists(eff => eff.isInstanceOf[EffectAcquire[Addr, Abs]])) => s })
+        case (s, tid, effs) if (!deadlocks.contains(s) && effs.exists(eff => eff.isInstanceOf[EffectAcquire[Addr]])) => s })
       (this.copy(deadlocks = deadlocks ++ dls), dls)
     }
   }
 
   object PathEffectsMap {
     def apply(): EffectsMap =
-      PathEffectsMap(Map[Addr, (Set[(State, TID, Effect[Addr, Abs])], Set[(State, TID, Effect[Addr, Abs])])]().withDefaultValue((Set[(State, TID, Effect[Addr, Abs])](), Set[(State, TID, Effect[Addr, Abs])]())),
+      PathEffectsMap(Map[Addr, (Set[(State, TID, Effect[Addr])], Set[(State, TID, Effect[Addr])])]().withDefaultValue((Set[(State, TID, Effect[Addr])](), Set[(State, TID, Effect[Addr])]())),
         Map[State, Set[(TID, State)]]().withDefaultValue(Set[(TID, State)]()),
         Map[(State, TID), Set[(State, TID)]]().withDefaultValue(Set[(State, TID)]()),
         Set[(State, TID)](),
@@ -397,7 +392,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   }
   case class PathEffectsMap(
     /* Maps an address to the effects that affect it, separated as read effects and write effect */
-    effects: Map[Addr, (Set[(State, TID, Effect[Addr, Abs])], Set[(State, TID, Effect[Addr, Abs])])],
+    effects: Map[Addr, (Set[(State, TID, Effect[Addr])], Set[(State, TID, Effect[Addr])])],
     /* Records the transition to be able to compute paths between two transitions. From source state to destinations states */
     trans: Map[State, Set[(TID, State)]],
     /* Records conflicts that have been already detected to avoid detecting them again */
@@ -416,7 +411,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         }))),
         /* record transition */
         trans = trans + (s1 -> (trans(s1) + ((tid, s2)))),
-        acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + ((s1, tid)) } else { acquires }
+        acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr]])) { acquires + ((s1, tid)) } else { acquires }
       )
     }
     def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State) = this /* no need to keep track of halted states */
