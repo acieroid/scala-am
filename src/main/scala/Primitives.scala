@@ -13,9 +13,13 @@ trait Primitive[Addr, Abs] {
   def call[Exp : Expression, Time : Timestamp](fexp : Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time): Either[String, (Abs, Store[Addr, Abs], Set[Effect[Addr, Abs]])]
 }
 
+abstract class Primitives[Addr : Address, Abs : JoinLattice] {
+  val forEnv: Iterable[(String, Addr)]
+  val forStore: Iterable[(Addr, Abs)]
+}
 
 /** This is where we define Scheme primitives */
-class SchemePrimitives[Addr : Address, Abs : AbstractValue] {
+class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[Addr, Abs] {
   import SchemeOps._
   def traced(prim: Primitive[Addr, Abs]): Primitive[Addr, Abs] = new Primitive[Addr, Abs] {
     val name = prim.name
@@ -619,6 +623,6 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] {
   )
 
   private val allocated = ("bottom", addr.primitive("__bottom__"), abs.bottom) :: all.map({ prim => (prim.name, addr.primitive(prim.name), abs.inject(prim)) })
-  val forEnv: List[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
-  val forStore: List[(Addr, Abs)] =  allocated.map({ case (_, a, v) => (a, v) })
+  override val forEnv = allocated.map({ case (name, a, _) => (name, a) })
+  override val forStore =  allocated.map({ case (_, a, v) => (a, v) })
 }

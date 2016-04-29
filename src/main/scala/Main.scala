@@ -240,9 +240,9 @@ object Main {
         }
 
         val sem = if (config.machine == Config.Machine.ConcurrentAAM || config.machine == Config.Machine.ConcurrentAAMGlobalStore) {
-          new ConcurrentSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID]
+          new ConcurrentSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, lattice.L])
         } else {
-          new SchemeSemantics[lattice.L, address.A, time.T]
+          new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
         }
 
         try {
