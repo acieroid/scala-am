@@ -127,4 +127,7 @@ class ANFSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   }
 
   def parse(program: String): ANFExp = ANF.parse(program)
+  val primitives = new SchemePrimitives[Addr, Abs]
+  override def initialEnv = primitives.forEnv
+  override def initialStore = primitives.forStore
 }

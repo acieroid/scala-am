@@ -1,9 +1,7 @@
-import UnaryOperator._
-import BinaryOperator._
-
 /** Concrete value lattice. Throws errors when joining elements (and therefore
     has to be used only with a infinite precision allocator) */
 object ConcreteLattice extends Lattice {
+  import SchemeOps._
   trait Element {
     def isTrue: Boolean = true
     def isFalse: Boolean = false

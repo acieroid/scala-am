@@ -1,28 +1,5 @@
 import scalaz.Semigroup
 
-/* TODO: these are Scheme-specific: rename to SchemeUnaryOperator, move scheme-specific stuff to a different file */
-/** These are the unary operations that should be supported by lattices */
-object UnaryOperator extends Enumeration {
-  type UnaryOperator = Value
-  val IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsFloat, IsBoolean, IsVector, IsLock, /* Checks the type of a value */
-    IsLocked, /* Checks if a lock is considered locked */
-    Not, /* Negate a value */
-    Ceiling, Log, Random, /* Unary arithmetic operations */
-    VectorLength, StringLength, /* Length operations */
-    NumberToString /* Conversions */
-  = Value
-}
-
-/** Binary operations thatt should be supported by lattices */
-object BinaryOperator extends Enumeration {
-  type BinaryOperator = Value
-  val Plus, Minus, Times, Div, Modulo, /* Arithmetic operations */
-    Lt, /* Arithmetic comparison */
-    NumEq, Eq, /* Equality checking (number equality, physical equality) */
-    StringAppend /* string operations */
-  = Value
-}
-
 /**
  * Exception to be raised during injection if an element of the lattice is not
  * supported (e.g., a lattice that doesn't support primitives)
@@ -41,7 +18,7 @@ trait StoreShow[A] {
 }
 
 /** A (join semi-)lattice L should support the following operations */
-trait SimpleLattice[L] extends Semigroup[L] {
+trait JoinLattice[L] extends Semigroup[L] {
   /** A lattice has a bottom element */
   def bottom: L
   /** Elements of the lattice can be joined together */
@@ -63,15 +40,15 @@ trait SimpleLattice[L] extends Semigroup[L] {
 }
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L] extends SimpleLattice[L] {
+trait SchemeLattice[L] extends JoinLattice[L] {
   /** Can this value be considered true for conditionals? */
   def isTrue(x: L): Boolean
   /** Can this value be considered false for conditionals? */
   def isFalse(x: L): Boolean
   /** Performs a unary operation on the abstract value x */
-  def unaryOp(op: UnaryOperator.Value)(x: L): L
+  def unaryOp(op: SchemeOps.UnaryOperator)(x: L): L
   /** Performs a binary operation on abstract values x and y */
-  def binaryOp(op: BinaryOperator.Value)(x: L, y: L): L
+  def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): L
   /** Conjunction */
   def and(x: L, y: => L): L
   /** Disjunction */
@@ -139,7 +116,6 @@ trait SchemeLatticeInternals[L] extends SchemeLattice[L] {
   /** Extract vector addresses contained in this value */
   def getVectors[Addr : Address](x: L): Set[Addr]
   def vector[Addr : Address](addr: Addr, size: L, init: Addr): (L, L)
-  /** Creates a lock wrapper (that contains the address of the lock) */
 }
 
 /** Abstract values are abstract representations of the possible values of a variable */

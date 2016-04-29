@@ -1,6 +1,4 @@
-import UnaryOperator._
-import BinaryOperator._
-
+import SchemeOps._
 /**
  * Product lattice, combines two lattices X and Y as a product (X, Y).
  * Here's an example on how to use it, to combine the type lattice with the typeset lattice:

@@ -38,6 +38,12 @@ trait Semantics[Exp, Abs, Addr, Time] {
    * Defines how to parse a program
    */
   def parse(program: String): Exp
+
+  /** Defines the elements in the initial environment */
+  def initialEnv: Iterable[(String, Addr)] = List()
+
+  /** Defines the initial store */
+  def initialStore: Iterable[(Addr, Abs)] = List()
 }
 
 /**

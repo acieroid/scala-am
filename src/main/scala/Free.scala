@@ -8,10 +8,6 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "Free"
 
-  val primitives = new Primitives[Addr, Abs]()
-  val initialEnv = Environment.empty[Addr].extend(primitives.forEnv)
-  val initialStore = Store.initial[Addr, Abs](primitives.forStore)
-
   trait KontAddr
   object KontAddr {
     implicit object KontAddrKontAddress extends KontAddress[KontAddr]
@@ -36,8 +32,6 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    * exploration phase.
    */
   case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], k: KontAddr, t: Time) {
-    def this(exp: Exp) = this(ControlEval(exp, initialEnv), initialStore,
-                              KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
     override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
@@ -72,6 +66,13 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
       case ControlError(_) => true
     }
   }
+  object State {
+    def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
+      State(ControlEval(exp, Environment.empty[Addr].extend(env)),
+        Store.initial[Addr, Abs](store),
+        KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
+  }
+
 
   /**
    * A configuration is basically a state without the store and continuation
@@ -85,9 +86,6 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    * store and continuation store
    */
   case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
-    def this(exp: Exp) = this(Set(Configuration(ControlEval(exp, initialEnv),
-                                                HaltKontAddress, time.initial(""))),
-                              initialStore, KontStore.empty[KontAddr])
     override def toString = R.toString
     /** Performs a step on all the contained states */
     def step(sem: Semantics[Exp, Abs, Addr, Time]): States = {
@@ -119,6 +117,11 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
       case None =>
         println("Not generating graph because no graph was computed")
     }
+  }
+  object States {
+    def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
+      States(Set(Configuration(ControlEval(exp, Environment.empty[Addr].extend(env)), HaltKontAddress, time.initial(""))),
+        Store.initial[Addr, Abs](store), KontStore.empty[KontAddr])
   }
 
   /**
@@ -163,8 +166,8 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
     if (graph) {
-      loopWithLocalGraph(new States(exp), Set(), Set(), System.nanoTime, timeout, new Graph[State, Unit](), sem)
+      loopWithLocalGraph(States.inject(exp, sem.initialEnv, sem.initialStore), Set(), Set(), System.nanoTime, timeout, new Graph[State, Unit](), sem)
     } else {
-      loop(new States(exp), Set(), Set(), System.nanoTime, timeout, sem)
+      loop(States.inject(exp, sem.initialEnv, sem.initialStore), Set(), Set(), System.nanoTime, timeout, sem)
     }
 }

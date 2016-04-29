@@ -1,9 +1,6 @@
 import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
-// import OrderDerive._
-
-import UnaryOperator._
-import BinaryOperator._
+import SchemeOps._
 
 /**
  * A lattice element should define its name, the bottom value, how to join two

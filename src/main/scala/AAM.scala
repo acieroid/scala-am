@@ -16,7 +16,7 @@
  * be evaluated within this environment, whereas a continuation state only
  * contains the value reached.
  */
-class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "AAM"
 
@@ -37,21 +37,12 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
     implicit object KontAddrKontAddress extends KontAddress[KontAddr]
   }
 
-  /** The primitives are defined in AbstractValue.scala and are available through the Primitives class */
-  val primitives = new Primitives[Addr, Abs]()
-
   /**
    * A machine state is made of a control component, a value store, a
    * continuation store, and an address representing where the current
    * continuation lives.
    */
   case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
-    /**
-     * Builds the state with the initial environment and stores
-     */
-    def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-      Store.initial[Addr, Abs](primitives.forStore),
-      KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
     override def toString() = control.toString(σ)
     /**
      * Checks whether a states subsumes another, i.e., if it is "bigger". This
@@ -107,6 +98,12 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
       case ControlKont(v) => a == HaltKontAddress || abs.isError(v)
       case ControlError(_) => true
     }
+  }
+  object State {
+    def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
+      State(ControlEval(exp, Environment.empty[Addr]().extend(env)),
+        Store.initial[Addr, Abs](store),
+        KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
   }
 
   case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
@@ -184,7 +181,7 @@ class AAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
    * in a file, and returns the set of final states reached
    */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
-    loop(Set(new State(exp)), Set(), Set(), System.nanoTime, timeout,
+    loop(Set(State.inject(exp, sem.initialEnv, sem.initialStore)), Set(), Set(), System.nanoTime, timeout,
       if (graph) { Some(new Graph[State, Unit]()) } else { None },
       sem)
 }

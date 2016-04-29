@@ -29,7 +29,8 @@ object ExplorationTypeParser extends scala.util.parsing.combinator.RegexParsers 
 
 class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](exploration: ExplorationType)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
-  def abs = implicitly[AbstractValue[Abs]]
+  def abs = implicitly[JoinLattice[Abs]]
+  def cabs = implicitly[ConcurrentSchemeLattice[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
   def time = implicitly[Timestamp[Time]]
@@ -66,7 +67,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), KontStore.empty[KontAddr], HaltKontAddress, time.initial(tid2.toString))), oldstore, results)
       }
       case ActionJoin(v, σ, effs) => {
-        abs.getTids(v).flatMap(tid2 =>
+        cabs.getTids(v).flatMap(tid2 =>
         if (results.isDone(tid2)) {
           Set((threads.update(tid, Context(ControlKont(results.get(tid2)), kstore, a, time.tick(t))), results, σ, effs))
         } else {
@@ -166,8 +167,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
   }
 
   object State {
-    def inject(exp: Exp) = {
-      val st = new aam.State(exp)
+    def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) = {
+      val st = aam.State.inject(exp, env, store)
       State(ThreadMap(Map[TID, Set[Context]](thread.initial -> Set(Context(st.control, st.kstore, st.a, st.t)))),
         ThreadResults(Map[TID, Abs]()), st.σ)
     }
@@ -755,20 +756,18 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
+    val state = State.inject(exp, sem.initialEnv, sem.initialStore)
+    val g = if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }
     exploration match {
-      case AllInterleavings => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
-        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(allInterleavings(sem))
-      case OneInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
-        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(oneInterleaving(sem))
-      case RandomInterleaving => loop(Set(State.inject(exp)), Set(), Set(), System.nanoTime, timeout,
-        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(randomInterleaving(sem))
-      case InterferenceTrackingSet => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), SetEffectsMap(), ThreadPickMap(),
-        Set(), System.nanoTime, timeout, Set(),
-        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
-      case _: InterferenceTrackingPath => reducedLoop(scala.collection.immutable.Vector((State.inject(exp), thread.initial)), Set(), PathEffectsMap(), ThreadPickMap(),
-        Set(), System.nanoTime, timeout, Set(),
-        if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
-      case DPOR => dporExplore(State.inject(exp), System.nanoTime, timeout, if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
+      case AllInterleavings => loop(Set(state), Set(), Set(), System.nanoTime, timeout, g)(allInterleavings(sem))
+      case OneInterleaving => loop(Set(state), Set(), Set(), System.nanoTime, timeout, g)(oneInterleaving(sem))
+      case RandomInterleaving => loop(Set(state), Set(), Set(), System.nanoTime, timeout, g)(randomInterleaving(sem))
+      case InterferenceTrackingSet => reducedLoop(scala.collection.immutable.Vector((state, thread.initial)), Set(), SetEffectsMap(), ThreadPickMap(),
+        Set(), System.nanoTime, timeout, Set(), g, sem)
+      case _: InterferenceTrackingPath => reducedLoop(scala.collection.immutable.Vector((state, thread.initial)), Set(), PathEffectsMap(), ThreadPickMap(),
+        Set(), System.nanoTime, timeout, Set(), g, sem)
+      case DPOR => dporExplore(state, System.nanoTime, timeout, g, sem)
     }
+  }
 }

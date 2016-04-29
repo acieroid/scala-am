@@ -1,5 +1,3 @@
-import UnaryOperator._
-import BinaryOperator._
 /**
  * Each primitive has to implement this trait.
  */
@@ -16,8 +14,9 @@ trait Primitive[Addr, Abs] {
 }
 
 
-/** This is where we define (Scheme) primitives */
-class Primitives[Addr : Address, Abs : AbstractValue] {
+/** This is where we define Scheme primitives */
+class SchemePrimitives[Addr : Address, Abs : AbstractValue] {
+  import SchemeOps._
   def traced(prim: Primitive[Addr, Abs]): Primitive[Addr, Abs] = new Primitive[Addr, Abs] {
     val name = prim.name
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
@@ -34,30 +33,30 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
   val addr = implicitly[Address[Addr]]
 
   /** Some shortcuts */
-  def isNull = abs.unaryOp(UnaryOperator.IsNull) _
-  def isCons = abs.unaryOp(UnaryOperator.IsCons) _
-  def isChar = abs.unaryOp(UnaryOperator.IsChar) _
-  def isSymbol = abs.unaryOp(UnaryOperator.IsSymbol) _
-  def isString = abs.unaryOp(UnaryOperator.IsString) _
-  def isInteger = abs.unaryOp(UnaryOperator.IsInteger) _
-  def isFloat = abs.unaryOp(UnaryOperator.IsFloat) _
-  def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
-  def isVector = abs.unaryOp(UnaryOperator.IsVector) _
-  def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
-  def log = abs.unaryOp(UnaryOperator.Log) _
-  def not = abs.unaryOp(UnaryOperator.Not) _
-  def random = abs.unaryOp(UnaryOperator.Random) _
-  def plus = abs.binaryOp(BinaryOperator.Plus) _
-  def minus = abs.binaryOp(BinaryOperator.Minus) _
-  def times = abs.binaryOp(BinaryOperator.Times) _
-  def div = abs.binaryOp(BinaryOperator.Div) _
-  def modulo = abs.binaryOp(BinaryOperator.Modulo) _
-  def lt = abs.binaryOp(BinaryOperator.Lt) _
-  def numEq = abs.binaryOp(BinaryOperator.NumEq) _
-  def eq = abs.binaryOp(BinaryOperator.Eq) _
-  def stringAppend = abs.binaryOp(BinaryOperator.StringAppend) _
-  def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
-  def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
+  def isNull = abs.unaryOp(IsNull) _
+  def isCons = abs.unaryOp(IsCons) _
+  def isChar = abs.unaryOp(IsChar) _
+  def isSymbol = abs.unaryOp(IsSymbol) _
+  def isString = abs.unaryOp(IsString) _
+  def isInteger = abs.unaryOp(IsInteger) _
+  def isFloat = abs.unaryOp(IsFloat) _
+  def isBoolean = abs.unaryOp(IsBoolean) _
+  def isVector = abs.unaryOp(IsVector) _
+  def ceiling = abs.unaryOp(Ceiling) _
+  def log = abs.unaryOp(Log) _
+  def not = abs.unaryOp(Not) _
+  def random = abs.unaryOp(Random) _
+  def plus = abs.binaryOp(SchemeOps.Plus) _
+  def minus = abs.binaryOp(SchemeOps.Minus) _
+  def times = abs.binaryOp(SchemeOps.Times) _
+  def div = abs.binaryOp(SchemeOps.Div) _
+  def modulo = abs.binaryOp(Modulo) _
+  def lt = abs.binaryOp(Lt) _
+  def numEq = abs.binaryOp(NumEq) _
+  def eq = abs.binaryOp(Eq) _
+  def stringAppend = abs.binaryOp(SchemeOps.StringAppend) _
+  def stringLength = abs.unaryOp(StringLength) _
+  def numberToString = abs.unaryOp(NumberToString) _
 
   /** This is how a primitive is defined by extending Primitive */
   object Cons extends Primitive[Addr, Abs] {
@@ -400,7 +399,7 @@ class Primitives[Addr : Address, Abs : AbstractValue] {
         val (vbi, effects2) = vectorRef(b, i, store)
         val (itemtest, effects3) = equal(vai, vbi, store, visitedEqual)
         val (tt, effects4) = if (abs.isTrue(itemtest)) {
-          equalVecLoop(a, b, abs.binaryOp(BinaryOperator.Plus)(i, abs.inject(1)), n, store, visitedEqual, visited + ((a, b, i, n)))
+          equalVecLoop(a, b, plus(i, abs.inject(1)), n, store, visitedEqual, visited + ((a, b, i, n)))
         } else { (abs.bottom, Set[Effect[Addr, Abs]]()) }
         val tf = if (abs.isFalse(itemtest)) { abs.inject(false) } else { abs.bottom }
         (abs.join(tt, tf), effects1 ++ effects2 ++ effects3 ++ effects4)

@@ -1,3 +1,5 @@
+import SchemeOps._
+
 /**
  * Basic Scheme semantics, without any optimization
  */
@@ -234,11 +236,11 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
                       addrs.flatMap(a => Set(EffectWriteVector(a), EffectReadVector(a))))
                   }
                   val fail: Action[SchemeExp, Abs, Addr] = ActionReachedValue(abs.inject(false), σ, Set(EffectReadVector(a))) /* Vector element doesn't match, fail */
-                  conditional(abs.binaryOp(BinaryOperator.Eq)(oldval, old), success, fail)
+                  conditional(abs.binaryOp(Eq)(oldval, old), success, fail)
                 }})})
           case None =>
             /* Compare and swap on variable value */
-            conditional(abs.binaryOp(BinaryOperator.Eq)(σ.lookup(a), old),
+            conditional(abs.binaryOp(Eq)(σ.lookup(a), old),
               /* Compare and swap succeeds */
               ActionReachedValue(abs.inject(true), σ.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
               /* Compare and swap fails */
@@ -253,8 +255,8 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       } else {
         locks.flatMap(a => {
           val v = σ.lookup(a)
-          if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
-            if (abs.isFalse(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
+          if (abs.isTrue(abs.unaryOp(IsLock)(v))) {
+            if (abs.isFalse(abs.unaryOp(IsLocked)(v))) {
               Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.lockedValue), Set(EffectAcquire(a))))
             } else {
               Set[Action[SchemeExp, Abs, Addr]]()
@@ -271,8 +273,8 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
       } else {
         abs.getLocks(v).flatMap(a => {
           val v = σ.lookup(a)
-          if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLock)(v))) {
-            if (abs.isTrue(abs.unaryOp(UnaryOperator.IsLocked)(v))) {
+          if (abs.isTrue(abs.unaryOp(IsLock)(v))) {
+            if (abs.isTrue(abs.unaryOp(IsLocked)(v))) {
               Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](abs.inject(true), σ.update(a, abs.unlockedValue), Set(EffectRelease(a))))
             } else {
               /* Lock is already released */
@@ -286,6 +288,9 @@ class BaseSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp]
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)
+  val primitives = new SchemePrimitives[Addr, Abs]
+  override def initialEnv = primitives.forEnv
+  override def initialStore = primitives.forStore
 }
 
 /**

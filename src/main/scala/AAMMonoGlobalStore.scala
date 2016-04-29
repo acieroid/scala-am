@@ -19,10 +19,6 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
     implicit object KontAddrKontAddress extends KontAddress[KontAddr]
   }
 
-  val primitives = new Primitives[Addr, Abs]()
-  val initialStore: GlobalStore = GlobalStore(DeltaStore[Addr, Abs](primitives.forStore.toMap, Map()), Map())
-  val emptyKStore: KontStore[KontAddr] = TimestampedKontStore[KontAddr](Map(), 0)
-
   case class GlobalStore(val store: DeltaStore[Addr, Abs], delta: Map[Addr, Abs]) {
     def includeDelta(d: Option[Map[Addr, Abs]]): GlobalStore = d match {
       case Some(d) => this.copy(delta = delta |+| d)
@@ -78,10 +74,10 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
     }
   }
   object State {
-    def inject(exp: Exp): (State, GlobalStore, KontStore[KontAddr]) =
-      (State(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)), HaltKontAddress, time.initial("")),
-        initialStore,
-        emptyKStore)
+    def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (State, GlobalStore, KontStore[KontAddr]) =
+      (State(ControlEval(exp, Environment.empty[Addr]().extend(env)), HaltKontAddress, time.initial("")),
+        GlobalStore(DeltaStore[Addr, Abs](store.toMap, Map()), Map()),
+        TimestampedKontStore[KontAddr](Map(), 0))
   }
 
   case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
@@ -139,7 +135,7 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
     }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
-    val (state, store, kstore) = State.inject(exp)
+    val (state, store, kstore) = State.inject(exp, sem.initialEnv, sem.initialStore)
     loop(Set(state), Set(), store, kstore, Set(), System.nanoTime, timeout,
       if (graph) { Some(new Graph[State, Unit]()) } else { None },
       sem)

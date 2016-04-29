@@ -1,8 +1,8 @@
 import scalaz.Scalaz._
 import scalaz.Semigroup
 
-abstract class Store[Addr : Address, Abs : AbstractValue] {
-  val abs = implicitly[AbstractValue[Abs]]
+abstract class Store[Addr : Address, Abs : JoinLattice] {
+  val abs = implicitly[JoinLattice[Abs]]
   val addr = implicitly[Address[Addr]]
   /** Gets all the keys of the store */
   def keys: Iterable[Addr]
@@ -31,7 +31,7 @@ abstract class Store[Addr : Address, Abs : AbstractValue] {
 }
 
 /* Basic store with no fancy feature, just a map from addresses to values */
-case class BasicStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Abs]) extends Store[Addr, Abs] {
+case class BasicStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]) extends Store[Addr, Abs] {
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys = content.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
@@ -63,7 +63,7 @@ case class BasicStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Ab
 }
 
 /** A store that supports store deltas. Many operations are not implemented because they are not needed. */
-case class DeltaStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, Abs], d: Map[Addr, Abs]) extends Store[Addr, Abs] {
+case class DeltaStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs], d: Map[Addr, Abs]) extends Store[Addr, Abs] {
   def this() = this(Map(), Map())
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys = content.keys
@@ -118,7 +118,7 @@ object Count {
   }
 }
 
-case class CountingStore[Addr : Address, Abs : AbstractValue](content: Map[Addr, (Count, Abs)]) extends Store[Addr, Abs] {
+case class CountingStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, (Count, Abs)]) extends Store[Addr, Abs] {
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys = content.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, (_, v)) => p(a, v) })
@@ -161,13 +161,13 @@ case class CountingStore[Addr : Address, Abs : AbstractValue](content: Map[Addr,
 }
 
 object Store {
-  def empty[Addr : Address, Abs : AbstractValue]: Store[Addr, Abs] = empty[Addr, Abs](implicitly[AbstractValue[Abs]].counting)
-  def empty[Addr : Address, Abs : AbstractValue](counting: Boolean): Store[Addr, Abs] = if (counting) {
+  def empty[Addr : Address, Abs : JoinLattice]: Store[Addr, Abs] = empty[Addr, Abs](implicitly[JoinLattice[Abs]].counting)
+  def empty[Addr : Address, Abs : JoinLattice](counting: Boolean): Store[Addr, Abs] = if (counting) {
     CountingStore(Map())
   } else {
     BasicStore(Map())
   }
-  def initial[Addr : Address, Abs : AbstractValue](values: List[(Addr, Abs)]): Store[Addr, Abs] = if (implicitly[AbstractValue[Abs]].counting) {
+  def initial[Addr : Address, Abs : JoinLattice](values: Iterable[(Addr, Abs)]): Store[Addr, Abs] = if (implicitly[JoinLattice[Abs]].counting) {
     CountingStore(values.map({ case (a, v) => (a, (CountOne, v)) }).toMap)
   } else {
     BasicStore(values.toMap)

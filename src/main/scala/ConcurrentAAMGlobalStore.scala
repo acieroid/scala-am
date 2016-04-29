@@ -13,6 +13,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def thread = implicitly[ThreadIdentifier[TID]]
   def name = "ConcurrentAAMGlobalStore"
+  def cabs = implicitly[ConcurrentSchemeLattice[Abs]]
 
   trait KontAddr
   case class NormalKontAddress(exp: Exp, addr: Addr) extends KontAddr {
@@ -24,9 +25,6 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
   object KontAddr {
     implicit object KontAddrKontAddress extends KontAddress[KontAddr]
   }
-  val primitives = new Primitives[Addr, Abs]()
-  val initialStore: GlobalStore = GlobalStore(DeltaStore[Addr, Abs](primitives.forStore.toMap, Map()), Map())
-  val emptyKStore: KontStore[KontAddr] = TimestampedKontStore[KontAddr](Map(), 0)
 
   case class GlobalStore(val store: DeltaStore[Addr, Abs], delta: Map[Addr, Abs]) {
     def includeDelta(d: Option[Map[Addr, Abs]]): GlobalStore = d match {
@@ -79,7 +77,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
         case ActionSpawn(tid2: TID @unchecked, e, env, act, effs) =>
           integrate1(acc)(act, threads.add(tid2, Context(ControlEval(e, env), HaltKontAddress, time.initial(tid2.toString))), results)
         case ActionJoin(v, store2, effs) =>
-          (acc._1 ++ (abs.getTids(v).flatMap(tid2 =>
+          (acc._1 ++ (cabs.getTids(v).flatMap(tid2 =>
             if (results.isDone(tid2)) {
               Set((threads.update(tid, Context(ControlKont(results.get(tid2)), a, time.tick(t))), results, effs))
             } else {
@@ -146,10 +144,11 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
   }
 
   object State {
-    def inject(exp: Exp): (State, GlobalStore, KontStore[KontAddr]) =
-      (State(ThreadMap(Map[TID, Context](thread.initial -> Context(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)), HaltKontAddress, time.initial("__main_thread__")))),
+    def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (State, GlobalStore, KontStore[KontAddr]) =
+      (State(ThreadMap(Map[TID, Context](thread.initial -> Context(ControlEval(exp, Environment.empty[Addr]().extend(env)), HaltKontAddress, time.initial("__main_thread__")))),
         ThreadResults(Map[TID, Abs]())),
-        initialStore, emptyKStore)
+        GlobalStore(DeltaStore[Addr, Abs](store.toMap, Map()), Map()),
+        TimestampedKontStore[KontAddr](Map(), 0))
   }
 
   case class ConcurrentAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, (TID, Effects)]], timedOut: Boolean)
@@ -346,7 +345,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     effects: Map[Addr, Set[(Int, TID, Effects)]],
     statesid: Vector[State], states: Map[State, Int], next: Int,
     conflicts: Set[(Int, TID)], acquires: Set[Int], deadlocks: Set[Int]) extends EffectsMap {
-    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = {
+    def newTransition(graph: Option[Graph[State, (TID, Effects)]], s1: State, s2: State, tid: TID, effs: Effects): EffectsMap = Profiler.profile("newTransition") {
       val effs2 = effs.filterNot(x => x.isInstanceOf[EffectAcquire[Addr, Abs]] || x.isInstanceOf[EffectRelease[Addr, Abs]])
       states.get(s1) match {
         case Some(s1id) => this.copy(effects = effs2.foldLeft(effects)((acc, eff) => acc + (eff.target -> (acc(eff.target) + ((s1id, tid, effs2))))),
@@ -356,18 +355,20 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
           acquires = if (effs.exists(x => x.isInstanceOf[EffectAcquire[Addr, Abs]])) { acquires + next } else { acquires })
       }
     }
-    def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State) = this
-    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = {
-      val confls = effects.keySet.foldLeft(Set[(Int, TID)]())((acc, a) =>
-        acc ++ (effects(a).flatMap({ case (s1id, tid1, effs1) => effects(a).flatMap({
-          case (s2id, tid2, effs2) if (tid1 != tid2 && s1id != s2id && dependent(effs1, effs2) && !(conflicts.contains((s1id, tid2)) && conflicts.contains(s2id, tid1))) =>
+    def newHaltedState(graph: Option[Graph[State, (TID, Effects)]], s: State) = Profiler.profile("newHaltedState") { this }
+    def findConflicts(graph: Option[Graph[State, (TID, Effects)]]): (EffectsMap, Set[(State, TID)]) = Profiler.profile("findConflicts") {
+      val confls = Profiler.profile("findConflicts pt. 1") { effects.keySet.foldLeft(Set[(Int, TID)]())((acc, a) =>
+        acc ++ (effects(a).flatMap({ case (s1id, tid1, effs1) => Profiler.profile("findConflicts inner") { effects(a).flatMap({
+          case (s2id, tid2, effs2) if (Profiler.profile("tid1 != tid2") { tid1 != tid2 } && Profiler.profile("s1id != s2id") { s1id != s2id } && Profiler.profile("dependent") { dependent(effs1, effs2) } && Profiler.profile("conflicts.contains") { true || !(conflicts.contains((s1id, tid2)) && conflicts.contains(s2id, tid1)) }) =>
             Set((s1id, tid2), (s2id, tid1))
           case _ => Set[(Int, TID)]()
-        })})))
-      (this.copy(conflicts = conflicts ++ confls), (confls -- conflicts).map({ case (sid, tid) => (statesid(sid), tid) }))
+        })}})))
+      }
+      Profiler.profile("findConflicts pt. 2") { (this.copy(conflicts = conflicts ++ confls), (confls -- conflicts).map({ case (sid, tid) => (statesid(sid), tid) })) }
     }
-    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) =
+    def findDeadlocks(graph: Option[Graph[State, (TID, Effects)]], s: State): (EffectsMap, Set[State]) = Profiler.profile("findDeadlocks") {
       (this.copy(deadlocks = acquires), (acquires -- deadlocks).map(sid => statesid(sid)))
+    }
   }
 
   object PathEffectsMap {
@@ -653,12 +654,12 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
     def classicalLoop(exp: Exp, exploration: Exploration): Output[Abs] = {
-      val (state, store, kstore) = State.inject(exp)
+      val (state, store, kstore) = State.inject(exp, sem.initialEnv, sem.initialStore)
       loopFrontier(Set(state), Set(), Set(), store, kstore, Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None })(exploration)
     }
     def reducedLoop(exp: Exp, effectsMap: EffectsMap): Output[Abs] = {
-      val (state, store, kstore) = State.inject(exp)
+      val (state, store, kstore) = State.inject(exp, sem.initialEnv, sem.initialStore)
       reducedLoopFrontier(Set((state, thread.initial)), Set(), Set(), Set(), effectsMap, ThreadPickMap(), store, kstore, Set(), System.nanoTime, timeout,
         if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }, sem)
     }

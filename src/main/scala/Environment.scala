@@ -5,7 +5,7 @@ case class Environment[Addr : Address](content: Map[String, Addr]) {
   def forall(p: ((String, Addr)) => Boolean) = content.forall(p)
   def lookup(name: String) = content.get(name)
   def extend(name: String, a: Addr) = Environment(content + (name -> a))
-  def extend(values: List[(String, Addr)]) = Environment(content ++ values)
+  def extend(values: Iterable[(String, Addr)]) = Environment(content ++ values)
   def subsumes(that: Environment[Addr]) =
     that.forall((binding: (String, Addr)) => lookup(binding._1) match {
       case Some(a) => addr.subsumes(a, binding._2)

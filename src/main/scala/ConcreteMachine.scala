@@ -7,8 +7,6 @@ class ConcreteMachine[Exp : Expression, Abs : AbstractValue, Addr : Address, Tim
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "ConcreteMachine"
 
-  val primitives = new Primitives[Addr, Abs]()
-
   trait ConcreteMachineOutput extends Output[Abs] {
     def toDotFile(path: String) = println("Not generating graph for ConcreteMachine")
   }
@@ -79,8 +77,8 @@ class ConcreteMachine[Exp : Expression, Abs : AbstractValue, Addr : Address, Tim
         }
       }
     }
-    loop(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-      Store.initial[Addr, Abs](primitives.forStore),
+    loop(ControlEval(exp, Environment.empty[Addr]().extend(sem.initialEnv)),
+      Store.initial[Addr, Abs](sem.initialStore),
       Nil, time.initial(""), System.nanoTime, 0)
   }
 }

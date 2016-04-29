@@ -16,11 +16,9 @@ import scalaz.Scalaz._
  * used. Use it or remove the definitions.
  * TODO: Investigating AAC with a global value store might be interesting.
  */
-class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "AAC"
-
-  val primitives = new Primitives[Addr, Abs]()
 
   /**
    * A context is basically a continuation's address, is allocated when stepping
@@ -107,8 +105,6 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
    * local continuation and the address of the rest of the continuation
    */
   case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont, t: Time) {
-    def this(exp: Exp) = this(ControlEval(exp, Environment.empty[Addr]().extend(primitives.forEnv)),
-                               Store.initial[Addr, Abs](primitives.forStore), new LocalKont(), KontEmpty, time.initial(""))
     override def toString() = control.toString(σ)
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ) && t == that.t
 
@@ -257,6 +253,11 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
       case ControlError(_) => true
     }
   }
+  object State {
+    def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
+      State(ControlEval(exp, Environment.empty[Addr]().extend(env)),
+        Store.initial[Addr, Abs](store), new LocalKont(), KontEmpty, time.initial(""))
+  }
 
   /**
    * Output of the machine
@@ -348,7 +349,7 @@ class AAC[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestam
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
-    loop(Set(new State(exp)), Set(), Set(), System.nanoTime, timeout,
+    loop(Set(State.inject(exp, sem.initialEnv, sem.initialStore)), Set(), Set(), System.nanoTime, timeout,
       if (graph) { Some(new Graph[State, Unit]()) } else { None },
       new KontStore(), sem)
 }
