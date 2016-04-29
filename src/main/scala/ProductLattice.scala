@@ -30,9 +30,6 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     def isError(p: Product) = p match {
       case Prod(x, y) => xabs.isError(x) || yabs.isError(y)
     }
-    def isNotError(p: Product) = p match {
-      case Prod(x, y) => xabs.isNotError(x) && yabs.isNotError(y)
-    }
     def isPrimitiveValue(p: Product) = p match {
       case Prod(x, y) => xabs.isPrimitiveValue(x) && yabs.isPrimitiveValue(y)
     }
@@ -45,10 +42,6 @@ class ProductLattice[X : AbstractValue, Y : AbstractValue] {
     }
     def join(p1: Product, p2: Product) = (p1, p2) match {
       case (Prod(x1, y1), Prod(x2, y2)) => Prod(xabs.join(x1, x2), yabs.join(y1, y2))
-      case _ => ???
-    }
-    def meet(p1: Product, p2: Product) = (p1, p2) match {
-      case (Prod(x1, y1), Prod(x2, y2)) => Prod(xabs.meet(x1, x2), yabs.meet(y1, y2))
       case _ => ???
     }
     def subsumes(p1: Product, p2: Product) = (p1, p2) match {

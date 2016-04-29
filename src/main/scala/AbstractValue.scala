@@ -1,5 +1,6 @@
 import scalaz.Semigroup
 
+/* TODO: these are Scheme-specific: rename to SchemeUnaryOperator, move scheme-specific stuff to a different file */
 /** These are the unary operations that should be supported by lattices */
 object UnaryOperator extends Enumeration {
   type UnaryOperator = Value
@@ -39,102 +40,114 @@ trait StoreShow[A] {
   def shows[Addr : Address, Abs : AbstractValue](v: A, store: Store[Addr, Abs]): String
 }
 
-/** Abstract values are abstract representations of the possible values of a variable */
-trait AbstractValue[A] extends Semigroup[A] with StoreShow[A] {
-  /** Name of this lattice */
+/** A (join semi-)lattice L should support the following operations */
+trait SimpleLattice[L] extends Semigroup[L] {
+  /** A lattice has a bottom element */
+  def bottom: L
+  /** Elements of the lattice can be joined together */
+  def join(x: L, y: L): L
+  def append(x: L, y: => L): L = join(x, y) /* A lattice is trivially a semigroup by using join as append */
+  /** Subsumption between two elements can be checked */
+  def subsumes(x: L, y: L): Boolean
+
+  /** We have some more components for convenience */
+  /** A name identifying the lattice */
   def name: String
-  /** Does this lattice support abstract counting? */
+  /** It should state whether it supports abstract counting or not. (TODO: this is probably not the best place for that) */
   def counting: Boolean
 
-  def shows[Addr : Address, Abs : AbstractValue](v: A, store: Store[Addr, Abs]) = v.toString
+  /** Some elements can be considered as errors */
+  def isError(x: L): Boolean
+  /** Some elements may contain addresses in there and are therefore not considered as primitive values */
+  def isPrimitiveValue(x: L): Boolean
+}
 
-
-  /** Can this abstract value be considered true for conditionals? */
-  def isTrue(x: A): Boolean
-  /** Can this abstract value be considered false for conditionals? */
-  def isFalse(x: A): Boolean
-  /** Is this an erroneous value? (and only an error) */
-  def isError(x: A): Boolean
-  /** Is this an error-free value? */
-  def isNotError(x: A): Boolean
-  /** Is this a primitive value, i.e. a value that contains no address? */
-  def isPrimitiveValue(x: A): Boolean
-  /** Performs an unary operation on the abstract value x */
-  def unaryOp(op: UnaryOperator.UnaryOperator)(x: A): A
+/** A lattice for Scheme should support the following operations */
+trait SchemeLattice[L] extends SimpleLattice[L] {
+  /** Can this value be considered true for conditionals? */
+  def isTrue(x: L): Boolean
+  /** Can this value be considered false for conditionals? */
+  def isFalse(x: L): Boolean
+  /** Performs a unary operation on the abstract value x */
+  def unaryOp(op: UnaryOperator.Value)(x: L): L
   /** Performs a binary operation on abstract values x and y */
-  def binaryOp(op: BinaryOperator.BinaryOperator)(x: A, y: A): A
-  /** Join operation on lattice elements  */
-  def join(x: A, y: A): A
-  def append(x: A, y: => A): A = join(x, y)
-  /** Meet operation on lattice elements */
-  def meet(x: A, y: A): A
-  /** Checks whether x subsumes y */
-  def subsumes(x: A, y: A): Boolean
+  def binaryOp(op: BinaryOperator.Value)(x: L, y: L): L
   /** Conjunction */
-  def and(x: A, y: => A): A
+  def and(x: L, y: => L): L
   /** Disjunction */
-  def or(x: A, y: => A): A
+  def or(x: L, y: => L): L
+  /** Extract closures contained in this value */
+  def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])]
+  /** Extract primitives contained in this value */
+  def getPrimitives[Addr : Address, Abs : AbstractValue](x: L): Set[Primitive[Addr, Abs]]
+
+
+  /** Injection of an integer */
+  def inject(x: Int): L
+  /** Injection of a float */
+  def inject(x: Float): L
+  /** Injection of a string */
+  def inject(x: String): L
+  /** Injection of a boolean */
+  def inject(x: Boolean): L
+  /** Injection of a character */
+  def inject(x: Char): L
+  /** Injection of a primitive function */
+  def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): L
+  /** Injection of a closure */
+  def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L
+  /** Injection of a symbol */
+  def injectSymbol(x: String): L
+  /** Creates a cons cell */
+  def cons[Addr : Address](car: Addr, cdr: Addr): L
+  /** Nil value */
+  def nil: L
+}
+
+/** A lattice for Concurrent Scheme */
+trait ConcurrentSchemeLattice[L] extends SchemeLattice[L] {
+  /** Extract thread ids contained in this value */
+  def getTids[TID : ThreadIdentifier](x: L): Set[TID]
+  /** Extract lock addresses contained in this value */
+  def getLocks[Addr : Address](x: L): Set[Addr]
+
+  /** Inject a thread id */
+  def injectTid[TID : ThreadIdentifier](tid: TID): L
+  /** Creates a lock wrapper (that contains the address of the lock) */
+  def lock[Addr : Address](addr: Addr): L
+  /** The locked value */
+  def lockedValue: L
+  /** The unlocked value */
+  def unlockedValue: L
+}
+
+/** Internals of a lattice for Scheme, used by the primitives' definitions */
+trait SchemeLatticeInternals[L] extends SchemeLattice[L] {
+  /** Injects an error */
+  def error(x: L): L
   /** Takes the car of a cons cell */
-  def car[Addr : Address](x: A): Set[Addr]
+  def car[Addr : Address](x: L): Set[Addr]
   /** Takes the cdr of a cons cell */
-  def cdr[Addr : Address](x: A): Set[Addr]
+  def cdr[Addr : Address](x: L): Set[Addr]
   /** Get a value from a vector. Returns either an error or the addresses where to look for the values */
-  def vectorRef[Addr : Address](vector: A, index: A): Set[Either[A, Addr]]
+  def vectorRef[Addr : Address](vector: L, index: L): Set[Either[L, Addr]]
   /** Changes a value inside a vector. The address given is an address where the
    * value can be stored if needed.  Returns the vector value, as well as the
    * addresses to update in the store. The value stored is not passed to
    * vectorSet, but will be stored in the returned addresses. */
-  def vectorSet[Addr : Address](vector: A, index: A, addr: Addr): (A, Set[Addr])
+  def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): (L, Set[Addr])
+  /** Extract vector addresses contained in this value */
+  def getVectors[Addr : Address](x: L): Set[Addr]
+  def vector[Addr : Address](addr: Addr, size: L, init: Addr): (L, L)
+  /** Creates a lock wrapper (that contains the address of the lock) */
+}
+
+/** Abstract values are abstract representations of the possible values of a variable */
+trait AbstractValue[A] extends SchemeLatticeInternals[A] with ConcurrentSchemeLattice[A] with StoreShow[A] {
+  def shows[Addr : Address, Abs : AbstractValue](v: A, store: Store[Addr, Abs]) = v.toString
   /** Returns the string representation of this value */
   def toString[Addr : Address](x: A, store: Store[Addr, A]): String
 
-  /** Extract closures contained in this value */
-  def getClosures[Exp : Expression, Addr : Address](x: A): Set[(Exp, Environment[Addr])]
-  /** Extract primitives contained in this value */
-  def getPrimitives[Addr : Address, Abs : AbstractValue](x: A): Set[Primitive[Addr, Abs]]
-  /** Extract thread ids contained in this value */
-  def getTids[TID : ThreadIdentifier](x: A): Set[TID]
-  /** Extract vector addresses contained in this value */
-  def getVectors[Addr : Address](x: A): Set[Addr]
-  /** Extract lock addresses contained in this value */
-  def getLocks[Addr : Address](x: A): Set[Addr]
-
-  /** Bottom element of the lattice */
-  def bottom: A
-  /** Injection of an error value */
-  def error(x: A): A
-  /** Injection of an integer */
-  def inject(x: Int): A
-  /** Injection of a float */
-  def inject(x: Float): A
-  /** Injection of a string */
-  def inject(x: String): A
-  /** Injection of a boolean */
-  def inject(x: Boolean): A
-  /** Injection of a character */
-  def inject(x: Char): A
-  /** Injection of a primitive function */
-  def inject[Addr : Address, Abs : AbstractValue](x: Primitive[Addr, Abs]): A
-  /** Injection of a closure */
-  def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): A
-  /** Inject a thread id */
-  def injectTid[TID : ThreadIdentifier](tid: TID): A
-  /** Injection of a symbol */
-  def injectSymbol(x: String): A
-  /** Creates a cons cell */
-  def cons[Addr : Address](car: Addr, cdr: Addr): A
-  /** Creates a vector that resides at address @param addr, has size @param size
-    * and initial stored at address @param init. Returns two values: one containing
-    * the address of the vector, and the other being the vector value itself. */
-  def vector[Addr : Address](addr: Addr, size: A, init: Addr): (A, A)
-  /** Creates a lock wrapper (that contains the address of the lock) */
-  def lock[Addr : Address](addr: Addr): A
-  /** The locked value */
-  def lockedValue: A
-  /** The unlocked value */
-  def unlockedValue: A
-  /** Nil value */
-  def nil: A
 }
 
 object AbstractValue

@@ -175,10 +175,7 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
       case Err(_) => true
       case _ => false
     }
-    def isNotError(x: L): Boolean = x match {
-      case Err(_) => false
-      case _ => true
-    }
+
     def isPrimitiveValue(x: L): Boolean = x match {
       case Bot | Str(_) | Bool(_) | Int(_) | Float(_) | Char(_) | Symbol(_) | Err(_) | Nil | Locked | Unlocked => true
       case Closure(_, _) | Prim(_) | Tid(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) | LockAddress(_) => false
@@ -368,17 +365,6 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
       }
     }
 
-    def meet(x: L, y: L): L = ??? /*if (x == y) { x } else {
-      (x, y) match {
-        case (Str(s1), Str(s2)) => Str(str.meet(s1, s2))
-        case (Bool(b1), Bool(b2)) => Bool(bool.meet(b1, b2))
-        case (Int(i1), Int(i2)) => Int(int.meet(i1, i2))
-        case (Float(f1), Float(f2)) => Float(float.meet(f1, f2))
-        case (Char(c1), Char(c2)) => Char(char.join(c1, c2))
-        case _ => Bot
-      }
-    }*/
-
     def subsumes(x: L, y: L): Boolean = if (x == y) { true } else {
       (x, y) match {
         case (_, Bot) => true
@@ -546,7 +532,6 @@ class MakeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: I
     def isTrue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isTrue(_))(boolOrMonoid)
     def isFalse(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isFalse(_))(boolOrMonoid)
     def isError(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isError(_))(boolAndMonoid)
-    def isNotError(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isNotError(_))(boolAndMonoid)
     def isPrimitiveValue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isPrimitiveValue(_))(boolAndMonoid)
     def unaryOp(op: UnaryOperator)(x: LSet): LSet = foldMapLSet(x, x => wrap(isAbstractValue.unaryOp(op)(x)))
     def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.binaryOp(op)(x, y))))
