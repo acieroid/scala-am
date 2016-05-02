@@ -4,6 +4,9 @@ The goal of this artefact is to experiment with abstract machines and language
 semantics with the theoretical framework described by Might, Van Horn and
 Johnson (Abstracting Abstract Machines, Abstracting Abstract Control, Pushdown
 Control-Flow Analyses).
+
+To see how the framework can be used to build static analyses or define language
+semantics, look at src/main/scala/LambdaCalculus.scala.
 * Architecture
 To find out about the architecture of the implementation, look at the comments
 on the top of Main.scala (src/main/scala/Main.scala). They will bring you to

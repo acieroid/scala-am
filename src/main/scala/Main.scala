@@ -1,6 +1,9 @@
 import scala.io.StdIn
 
 /**
+ * Before looking at this, we recommend seeing how to use this framework. A
+ * detailed example is available in LambdaCalculus.scala.
+ * m
  * This is the entry point. It parses the arguments, parses the input file and
  * launch an abstract machine on the parsed expression (or launches a REPL if no
  * input file is given). The code in this file isn't very clean and I'd like to
