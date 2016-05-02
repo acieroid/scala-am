@@ -57,9 +57,48 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
 
   type L = Value
 
+  /* TODO: don't use exceptions */
+  case class CannotJoin[Abs](values: Set[Abs]) extends Exception {
+    override def toString = "CannotJoin(" + values.mkString(", ") + ")"
+  }
+
   val isAbstractValue: AbstractValue[L] = new AbstractValue[L] {
+    def bottom = Bot
+    def join(x: L, y: L): L = if (x == y) { x } else {
+      (x, y) match {
+        case (Bot, _) => y
+        case (_, Bot) => x
+        case (Str(s1), Str(s2)) => Str(str.join(s1, s2))
+        case (Bool(b1), Bool(b2)) => Bool(bool.join(b1, b2))
+        case (Int(i1), Int(i2)) => Int(int.join(i1, i2))
+        case (Float(f1), Float(f2)) => Float(float.join(f1, f2))
+        case (Char(c1), Char(c2)) => Char(char.join(c1, c2))
+        case _ => throw new CannotJoin[L](Set(x, y))
+      }
+    }
+    def subsumes(x: L, y: L): Boolean = if (x == y) { true } else {
+      (x, y) match {
+        case (_, Bot) => true
+        case (Str(s1), Str(s2)) => str.subsumes(s1, s2)
+        case (Bool(b1), Bool(b2)) => bool.subsumes(b1, b2)
+        case (Int(i1), Int(i2)) => int.subsumes(i1, i2)
+        case (Float(f1), Float(f2)) => float.subsumes(f1, f2)
+        case (Char(c1), Char(c2)) => char.subsumes(c1, c2)
+        case _ => false
+      }
+    }
     val name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
     val counting = supportsCounting
+
+    def isError(x: L): Boolean = x match {
+      case Err(_) => true
+      case _ => false
+    }
+
+    def isPrimitiveValue(x: L): Boolean = x match {
+      case Bot | Str(_) | Bool(_) | Int(_) | Float(_) | Char(_) | Symbol(_) | Err(_) | Nil | Locked | Unlocked => true
+      case Closure(_, _) | Prim(_) | Tid(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) | LockAddress(_) => false
+    }
 
     def isTrue(x: L): Boolean = x match {
       case Bool(b) => bool.isTrue(b)
@@ -71,16 +110,6 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       case Bot => true
       case _ => false
     }
-    def isError(x: L): Boolean = x match {
-      case Err(_) => true
-      case _ => false
-    }
-
-    def isPrimitiveValue(x: L): Boolean = x match {
-      case Bot | Str(_) | Bool(_) | Int(_) | Float(_) | Char(_) | Symbol(_) | Err(_) | Nil | Locked | Unlocked => true
-      case Closure(_, _) | Prim(_) | Tid(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) | LockAddress(_) => false
-    }
-
     def unaryOp(op: UnaryOperator)(x: L): L = if (x == Bot) { Bot } else { op match {
       case IsNull => x match {
         case Nil => True
@@ -251,33 +280,28 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       }
       case _ => x
     }
+  def inject(x: scala.Int): L = Int(int.inject(x))
+  def inject(x: scala.Float): L = Float(float.inject(x))
+  def inject(x: String): L = Str(str.inject(x))
+  def inject(x: scala.Char): L = Char(char.inject(x))
+  def inject(x: Boolean): L = Bool(bool.inject(x))
+  def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L = Prim(x)
+  def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = Closure(x._1, x._2)
+  def injectSymbol(x: String): L = Symbol(sym.inject(x))
+    def nil: L = Nil
+    def cons[Addr : Address](car: Addr, cdr: Addr): L = Cons(car, cdr)
 
-    def join(x: L, y: L): L = if (x == y) { x } else {
-      (x, y) match {
-        case (Bot, _) => y
-        case (_, Bot) => x
-        case (Str(s1), Str(s2)) => Str(str.join(s1, s2))
-        case (Bool(b1), Bool(b2)) => Bool(bool.join(b1, b2))
-        case (Int(i1), Int(i2)) => Int(int.join(i1, i2))
-        case (Float(f1), Float(f2)) => Float(float.join(f1, f2))
-        case (Char(c1), Char(c2)) => Char(char.join(c1, c2))
-        case _ => throw new CannotJoin[L](Set(x, y))
-      }
+
+    def getClosures[Exp : Expression, Addr : Address](x: L) = x match {
+      case Closure(lam: Exp @unchecked, env: Environment[Addr] @unchecked) => Set((lam, env))
+      case _ => Set()
+    }
+    def getPrimitives[Addr : Address, Abs : JoinLattice](x: L) = x match {
+      case Prim(p: Primitive[Addr, Abs] @unchecked) => Set(p)
+      case _ => Set()
     }
 
-    def subsumes(x: L, y: L): Boolean = if (x == y) { true } else {
-      (x, y) match {
-        case (_, Bot) => true
-        case (Str(s1), Str(s2)) => str.subsumes(s1, s2)
-        case (Bool(b1), Bool(b2)) => bool.subsumes(b1, b2)
-        case (Int(i1), Int(i2)) => int.subsumes(i1, i2)
-        case (Float(f1), Float(f2)) => float.subsumes(f1, f2)
-        case (Char(c1), Char(c2)) => char.subsumes(c1, c2)
-        case _ => false
-      }
-    }
-
-    def car[Addr : Address](x: L): Set[Addr] = x match {
+      def car[Addr : Address](x: L): Set[Addr] = x match {
       case Cons(car: Addr @unchecked, cdr: Addr @unchecked) => Set(car)
       case _ => Set()
     }
@@ -329,14 +353,6 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
 
     def toString[Addr : Address](x: L, store: Store[Addr, L]) = ???
 
-    def getClosures[Exp : Expression, Addr : Address](x: L) = x match {
-      case Closure(lam: Exp @unchecked, env: Environment[Addr] @unchecked) => Set((lam, env))
-      case _ => Set()
-    }
-    def getPrimitives[Addr : Address, Abs : JoinLattice](x: L) = x match {
-      case Prim(p: Primitive[Addr, Abs] @unchecked) => Set(p)
-      case _ => Set()
-    }
     def getTids[TID : ThreadIdentifier](x: L) = x match {
       case Tid(t: TID @unchecked) => Set(t)
       case _ => Set()
@@ -350,19 +366,9 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       case _ => Set()
     }
 
-    def bottom = Bot
     def error(x: L): L = Err(x.toString)
-    def inject(x: scala.Int): L = Int(int.inject(x))
-    def inject(x: scala.Float): L = Float(float.inject(x))
-    def inject(x: String): L = Str(str.inject(x))
-    def inject(x: scala.Char): L = Char(char.inject(x))
-    def inject(x: Boolean): L = Bool(bool.inject(x))
-    def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L = Prim(x)
-    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = Closure(x._1, x._2)
+
     def injectTid[TID : ThreadIdentifier](tid: TID): L = Tid(tid)
-    def injectSymbol(x: String): L = Symbol(sym.inject(x))
-    def nil: L = Nil
-    def cons[Addr : Address](car: Addr, cdr: Addr): L = Cons(car, cdr)
     def vector[Addr : Address](addr: Addr, size: L, init: Addr) = size match {
       case Int(size) => (VectorAddress(addr), Vec(size, Map[I, Addr](), init))
       case _ => (Err(s"vector creation expects an integer size"), Bot)

@@ -1,20 +1,6 @@
 import scalaz._
 import scalaz.Scalaz._
 
-
-/**
- * Exception to be raised during injection if an element of the lattice is not
- * supported (e.g., a lattice that doesn't support primitives)
- */
-object UnsupportedLatticeElement extends Exception
-
-/**
- * Exception to be raised when multiple values cannot be joined
- */
-case class CannotJoin[Abs](values: Set[Abs]) extends Exception {
-  override def toString = "CannotJoin(" + values.mkString(", ") + ")"
-}
-
 /** A (join semi-)lattice L should support the following operations */
 trait JoinLattice[L] extends Semigroup[L] {
   /** A lattice has a bottom element */
@@ -42,23 +28,25 @@ trait JoinLattice[L] extends Semigroup[L] {
  */
 trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
   def name: String
-  def bot: L
+  def bottom: L
   def top: L
   def join(x: L, y: => L): L
   def subsumes(x: L, y: => L): Boolean
   def eql[B : IsBoolean](s1: L, s2: L): B
 
   /* For Monoid[L] */
-  final def zero: L = bot
+  final def zero: L = bottom
   final def append(x: L, y: => L): L = join(x, y)
 }
 
+/** A lattice for strings */
 trait IsString[S] extends LatticeElement[S] {
   def inject(s: String): S
   def length[I : IsInteger](s: S): I
   def append(s1: S, s2: S): S
 }
 
+/** A lattice for booleans */
 trait IsBoolean[B] extends LatticeElement[B] {
   def inject(b: Boolean): B
   def isTrue(b: B): Boolean
@@ -66,6 +54,7 @@ trait IsBoolean[B] extends LatticeElement[B] {
   def not(b: B): B
 }
 
+/** A lattice for integers */
 trait IsInteger[I] extends LatticeElement[I] {
   def inject(n: Int): I
   def ceiling(n: I): I
@@ -80,6 +69,7 @@ trait IsInteger[I] extends LatticeElement[I] {
   def toString[S : IsString](n: I): S
 }
 
+/** A lattice for floats */
 trait IsFloat[F] extends LatticeElement[F] {
   def inject(n: Float): F
   def ceiling(n: F): F
@@ -93,10 +83,12 @@ trait IsFloat[F] extends LatticeElement[F] {
   def toString[S : IsString](n: F): S
 }
 
+/** A lattice for characters */
 trait IsChar[C] extends LatticeElement[C] {
   def inject(c: Char): C
 }
 
+/** A lattice for symbols */
 trait IsSymbol[Sym] extends LatticeElement[Sym] {
   def inject(sym: String): Sym
 }
@@ -111,7 +103,7 @@ object ConcreteString {
     private def showString(s: String) = "\"" + s + "\""
     override def shows(x: S): String = if (x.size == 1) { showString(x.elems.head) } else { "{" + x.toList.map(showString _).mkString(",") + "}" }
     def top: S = throw new Error("Concrete lattice has no top value")
-    val bot: S = ISet.empty
+    val bottom: S = ISet.empty
     def join(x: S, y: => S) = x.union(y)
     def subsumes(x: S, y: => S) = y.isSubsetOf(x)
 
@@ -130,7 +122,7 @@ object ConcreteBoolean {
     def name = "ConcreteBoolean"
     private def showBool(b: Boolean) = if (b) "#t" else "#f"
     override def shows(x: B): String = if (x.size == 1) { showBool(x.elems.head) } else { "{" + x.elems.map(showBool _).mkString(",") + "}" }
-    val bot: B = ISet.empty
+    val bottom: B = ISet.empty
     val top: B = ISet.fromList(List(true, false))
     def join(x: B, y: => B) = x.union(y)
     def subsumes(x: B, y: => B) = y.isSubsetOf(x)
@@ -150,7 +142,7 @@ object ConcreteInteger {
   implicit val isInteger = new IsInteger[I] {
     def name = "ConcreteInteger"
     override def shows(x: I): String = if (x.size == 1) { x.elems.head.toString } else { "{" + x.elems.mkString(",") + "}" }
-    val bot: I = ISet.empty
+    val bottom: I = ISet.empty
     def top: I = throw new Error("Concrete lattice has no top value")
     def join(x: I, y: => I) = x.union(y)
     def subsumes(x: I, y: => I) = y.isSubsetOf(x)
@@ -177,7 +169,7 @@ object ConcreteFloat {
   implicit val isFloat = new IsFloat[F] {
     def name = "ConcreteFloat"
     override def shows(x: F): String = if (x.size == 1) { x.elems.head.toString } else { "{" + x.elems.mkString(",") + "}" }
-    val bot: F = ISet.empty
+    val bottom: F = ISet.empty
     def top: F = throw new Error("Concrete lattice has no top value")
     def join(x: F, y: => F) = x.union(y)
     def subsumes(x: F, y: => F) = y.isSubsetOf(x)
@@ -205,7 +197,7 @@ object ConcreteChar {
     private def showChar(c: Char) = s"#\\$c"
     override def shows(x: C): String = if (x.size == 1) { showChar(x.elems.head) } else { "{" + x.elems.map(showChar _).mkString(",") + "}" }
 
-    val bot: C = ISet.empty
+    val bottom: C = ISet.empty
     def top: C = throw new Error("Concrete lattice has no top value")
     def join(x: C, y: => C) = x.union(y)
     def subsumes(x: C, y: => C) = y.isSubsetOf(x)
@@ -228,7 +220,7 @@ object ConcreteSymbol {
     def showSym(x: String @@ Symbol): String = Tag.unwrap(x)
     override def shows(x: Sym): String = if (x.size == 1) { showSym(x.elems.head) } else { "{" + x.elems.map(showSym _).mkString(",") + "}" }
 
-    val bot: Sym = ISet.empty
+    val bottom: Sym = ISet.empty
     def top: Sym = throw new Error("Concrete lattice has no top value")
     def join(x: Sym, y: => Sym) = x.union(y)
     def subsumes(x: Sym, y: => Sym) = y.isSubsetOf(x)
@@ -261,7 +253,7 @@ class BoundedInteger(bound: Int) {
       case Set(xs) => "{" + xs.elems.mkString(",") + "}"
       case Top => "Int"
     }
-    val bot: I = implicitly[Monoid[I]].zero
+    val bottom: I = implicitly[Monoid[I]].zero
     val top: I = Top
     def join(x: I, y: => I) = implicitly[Monoid[I]].append(x, y)
     def subsumes(x: I, y: => I) = x match {
@@ -326,7 +318,7 @@ object Type {
       case Top => typeName
       case Bottom => "⊥"
     }
-    val bot: T = Bottom
+    val bottom: T = Bottom
     val top: T = Top
     def join(x: T, y: => T) = typeIsMonoid.append(x, y)
     def meet(x: T, y: => T): T = x match {
@@ -342,7 +334,7 @@ object Type {
     }
     def eql[B](n1: T, n2: T)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
       case (Top, Top) => bool.top
-      case _ => bool.bot
+      case _ => bool.bottom
     }
     // def order(x: T, y: T): Ordering = implicitly[Order[T]].order(x, y)
     def order(x: T, y: T): Ordering = (x, y) match {
@@ -356,7 +348,7 @@ object Type {
     def inject(x: String): T = Top
     def length[I](s: T)(implicit int: IsInteger[I]) = s match {
       case Top => int.top
-      case Bottom => int.bot
+      case Bottom => int.bottom
     }
     def append(s1: T, s2: T) = (s1, s2) match {
       case (Top, _) => Top
@@ -375,7 +367,7 @@ object Type {
     def ceiling(n: T): T = n
     def toFloat[F](n: T)(implicit float: IsFloat[F]): F = n match {
       case Top => float.top
-      case Bottom => float.bot
+      case Bottom => float.bottom
     }
     def random(n: T): T = n
     def plus(n1: T, n2: T): T = meet(n1, n2)
@@ -385,11 +377,11 @@ object Type {
     def modulo(n1: T, n2: T): T = meet(n1, n2)
     def lt[B](n1: T, n2: T)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
       case (Top, Top) => bool.top
-      case _ => bool.bot
+      case _ => bool.bottom
     }
     def toString[S](n: T)(implicit str: IsString[S]): S = n match {
       case Top => str.top
-      case Bottom => str.bot
+      case Bottom => str.bottom
     }
   }
   implicit val typeIsFloat: IsFloat[T] = new BaseInstance("Float") with IsFloat[T] {
@@ -403,11 +395,11 @@ object Type {
     def div(n1: T, n2: T): T = meet(n1, n2)
     def lt[B](n1: T, n2: T)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
       case (Top, Top) => bool.top
-      case _ => bool.bot
+      case _ => bool.bottom
     }
     def toString[S](n: T)(implicit str: IsString[S]): S = n match {
       case Top => str.top
-      case Bottom => str.bot
+      case Bottom => str.bottom
     }
   }
   implicit val typeIsChar: IsChar[T] = new BaseInstance("Char") with IsChar[T] {
@@ -418,91 +410,7 @@ object Type {
   }
 }
 
-/** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L] extends JoinLattice[L] {
-  /** Can this value be considered true for conditionals? */
-  def isTrue(x: L): Boolean
-  /** Can this value be considered false for conditionals? */
-  def isFalse(x: L): Boolean
-  /** Performs a unary operation on the abstract value x */
-  def unaryOp(op: SchemeOps.UnaryOperator)(x: L): L
-  /** Performs a binary operation on abstract values x and y */
-  def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): L
-  /** Conjunction */
-  def and(x: L, y: => L): L
-  /** Disjunction */
-  def or(x: L, y: => L): L
-  /** Extract closures contained in this value */
-  def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])]
-  /** Extract primitives contained in this value */
-  def getPrimitives[Addr : Address, Abs : JoinLattice](x: L): Set[Primitive[Addr, Abs]]
-
-
-  /** Injection of an integer */
-  def inject(x: Int): L
-  /** Injection of a float */
-  def inject(x: Float): L
-  /** Injection of a string */
-  def inject(x: String): L
-  /** Injection of a boolean */
-  def inject(x: Boolean): L
-  /** Injection of a character */
-  def inject(x: Char): L
-  /** Injection of a primitive function */
-  def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L
-  /** Injection of a closure */
-  def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L
-  /** Injection of a symbol */
-  def injectSymbol(x: String): L
-  /** Creates a cons cell */
-  def cons[Addr : Address](car: Addr, cdr: Addr): L
-  /** Nil value */
-  def nil: L
-}
-
-/** A lattice for Concurrent Scheme */
-trait ConcurrentSchemeLattice[L] extends SchemeLattice[L] {
-  /** Extract thread ids contained in this value */
-  def getTids[TID : ThreadIdentifier](x: L): Set[TID]
-  /** Extract lock addresses contained in this value */
-  def getLocks[Addr : Address](x: L): Set[Addr]
-
-  /** Inject a thread id */
-  def injectTid[TID : ThreadIdentifier](tid: TID): L
-  /** Creates a lock wrapper (that contains the address of the lock) */
-  def lock[Addr : Address](addr: Addr): L
-  /** The locked value */
-  def lockedValue: L
-  /** The unlocked value */
-  def unlockedValue: L
-}
-
-/** Internals of a lattice for Scheme, used by the primitives' definitions */
-trait SchemeLatticeInternals[L] extends SchemeLattice[L] {
-  /** Injects an error */
-  def error(x: L): L
-  /** Takes the car of a cons cell */
-  def car[Addr : Address](x: L): Set[Addr]
-  /** Takes the cdr of a cons cell */
-  def cdr[Addr : Address](x: L): Set[Addr]
-  /** Get a value from a vector. Returns either an error or the addresses where to look for the values */
-  def vectorRef[Addr : Address](vector: L, index: L): Set[Either[L, Addr]]
-  /** Changes a value inside a vector. The address given is an address where the
-   * value can be stored if needed.  Returns the vector value, as well as the
-   * addresses to update in the store. The value stored is not passed to
-   * vectorSet, but will be stored in the returned addresses. */
-  def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): (L, Set[Addr])
-  /** Extract vector addresses contained in this value */
-  def getVectors[Addr : Address](x: L): Set[Addr]
-  def vector[Addr : Address](addr: Addr, size: L, init: Addr): (L, L)
-}
-
-/** Abstract values are abstract representations of the possible values of a variable */
-trait AbstractValue[A] extends SchemeLatticeInternals[A] with ConcurrentSchemeLattice[A] {
-  /** Returns the string representation of this value */
-  def toString[Addr : Address](x: A, store: Store[Addr, A]): String
-
-}
+trait AbstractValue[A] extends SchemeLatticeInternals[A] with ConcurrentSchemeLattice[A]
 
 object AbstractValue
 
