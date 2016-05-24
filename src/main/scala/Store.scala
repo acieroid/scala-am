@@ -55,13 +55,29 @@ case class BasicStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]
     this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
 }
 
-/*
 /** Store that combines a default read-only store with a writable store */
 case class CombinedStore[Addr : Address, Abs : JoinLattice](ro: Store[Addr, Abs], w: Store[Addr, Abs]) extends Store[Addr, Abs] {
   def keys = ro.keys.toSet ++ w.keys.toSet
-  def forall(p: ((Addr, Abs)) => Boolean) = keys.forall(name => p(name, lookup(name)))
-  def lookup(a: Addr) = ro.lookup
- */
+  def forall(p: ((Addr, Abs)) => Boolean) = keys.forall(a => lookup(a) match {
+    case Some(v) => p((a, v))
+    case None => throw new Exception(s"shouldn't happen: an existing key is not bound in the store (key: $a, store: $this)")
+  })
+  def lookup(a: Addr) = w.lookup(a) match {
+    case Some(v) => Some(v)
+    case None => ro.lookup(a)
+  }
+  def lookupBot(a: Addr) = w.lookup(a) match {
+    case Some(v) => v
+    case None => ro.lookupBot(a)
+  }
+  def extend(a: Addr, v: Abs) = this.copy(w = w.extend(a, v))
+  def update(a: Addr, v: Abs) = updateOrExtend(a, v)
+  def updateOrExtend(a: Addr, v: Abs) = this.copy(w = w.updateOrExtend(a, v))
+  def join(that: Store[Addr, Abs]) = throw new Exception("CombinedStore does not support join")
+  def subsumes(that: Store[Addr, Abs]) =
+    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
+  def diff(that: Store[Addr, Abs]) = throw new Exception("CombinedStore does not support diff")
+}
 
 /** A store that supports store deltas. Many operations are not implemented because they are not needed. */
 case class DeltaStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs], d: Map[Addr, Abs]) extends Store[Addr, Abs] {
