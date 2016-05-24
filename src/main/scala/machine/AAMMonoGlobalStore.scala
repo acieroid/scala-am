@@ -75,7 +75,7 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
   }
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (State, GlobalStore, KontStore[KontAddr]) =
-      (State(ControlEval(exp, Environment.empty[Addr]().extend(env)), HaltKontAddress, time.initial("")),
+      (State(ControlEval(exp, Environment.initial[Addr](env)), HaltKontAddress, time.initial("")),
         GlobalStore(DeltaStore[Addr, Abs](store.toMap, Map()), Map()),
         TimestampedKontStore[KontAddr](Map(), 0))
   }

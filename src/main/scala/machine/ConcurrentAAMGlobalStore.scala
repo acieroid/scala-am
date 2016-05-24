@@ -145,7 +145,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
 
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (State, GlobalStore, KontStore[KontAddr]) =
-      (State(ThreadMap(Map[TID, Context](thread.initial -> Context(ControlEval(exp, Environment.empty[Addr]().extend(env)), HaltKontAddress, time.initial("__main_thread__")))),
+      (State(ThreadMap(Map[TID, Context](thread.initial -> Context(ControlEval(exp, Environment.initial[Addr](env)), HaltKontAddress, time.initial("__main_thread__")))),
         ThreadResults(Map[TID, Abs]())),
         GlobalStore(DeltaStore[Addr, Abs](store.toMap, Map()), Map()),
         TimestampedKontStore[KontAddr](Map(), 0))

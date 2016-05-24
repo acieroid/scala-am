@@ -168,9 +168,8 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) = {
-      val st = aam.State.inject(exp, env, store)
-      State(ThreadMap(Map[TID, Set[Context]](thread.initial -> Set(Context(st.control, st.kstore, st.a, st.t)))),
-        ThreadResults(Map[TID, Abs]()), st.σ)
+      State(ThreadMap(Map[TID, Set[Context]](thread.initial -> Set(Context(ControlEval(exp, Environment.initial[Addr](env)), KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))))),
+        ThreadResults(Map[TID, Abs]()), Store.initial[Addr, Abs](store))
     }
   }
 

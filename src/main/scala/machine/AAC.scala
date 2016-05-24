@@ -255,7 +255,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   }
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
-      State(ControlEval(exp, Environment.empty[Addr]().extend(env)),
+      State(ControlEval(exp, Environment.initial[Addr](env)),
         Store.initial[Addr, Abs](store), new LocalKont(), KontEmpty, time.initial(""))
   }
 

@@ -77,7 +77,7 @@ class ConcreteMachine[Exp : Expression, Abs : AbstractValue, Addr : Address, Tim
         }
       }
     }
-    loop(ControlEval(exp, Environment.empty[Addr]().extend(sem.initialEnv)),
+    loop(ControlEval(exp, Environment.initial[Addr](sem.initialEnv)),
       Store.initial[Addr, Abs](sem.initialStore),
       Nil, time.initial(""), System.nanoTime, 0)
   }

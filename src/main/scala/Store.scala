@@ -30,7 +30,7 @@ abstract class Store[Addr : Address, Abs : JoinLattice] {
   def addDelta(delta: Map[Addr, Abs]): Store[Addr, Abs] = throw new Exception("Store doesn't support deltas")
 }
 
-/* Basic store with no fancy feature, just a map from addresses to values */
+/** Basic store with no fancy feature, just a map from addresses to values */
 case class BasicStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]) extends Store[Addr, Abs] {
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys = content.keys
@@ -51,7 +51,6 @@ case class BasicStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]
   def updateOrExtend(a: Addr, v: Abs): Store[Addr, Abs] = extend(a, v)
   def join(that: Store[Addr, Abs]): Store[Addr, Abs] =
     if (that.isInstanceOf[BasicStore[Addr, Abs]]) {
-      //println(s"$this.join($that)")
       this.copy(content = content |+| that.asInstanceOf[BasicStore[Addr, Abs]].content)
     } else {
       throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
