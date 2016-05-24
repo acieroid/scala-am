@@ -20,12 +20,13 @@ abstract class StorePropSpec[Addr : Address](val lattice: Lattice)
   property("lookup after extend yields same object") { forAll(abstractValues) { v =>
     val a = addr.primitive("foo")
     val store = Store.empty[Addr, Abs].extend(a, v)
-    store.lookup(a) should equal (v)
+    store.lookup(a) should equal (Some(v))
   }}
 
   property("lookupBot returns bot for unbound values") {
     val a = addr.primitive("foo")
     val store = Store.empty[Addr, Abs]
+    store.lookup(a) should equal (None)
     store.lookupBot(a) should equal (abs.bottom)
   }
 

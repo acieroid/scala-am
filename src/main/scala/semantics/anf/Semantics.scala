@@ -16,10 +16,13 @@ class ANFSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primit
   }
 
   /** Performs evaluation of an atomic expression, returning either an error or the produced value */
-  def atomicEval(e: ANFAtomicExp, ρ: Environment[Addr], σ: Store[Addr, Abs]): Either[String, (Abs, Set[Effect[Addr]])] = e match {
-    case λ: ANFLambda => Right((sabs.inject[ANFExp, Addr]((λ, ρ)), Set()))
-    case ANFIdentifier(name, _) => ρ.lookup(name) match {
-      case Some(a) => Right(σ.lookup(a), Set(EffectReadVariable(a)))
+  def atomicEval(e: ANFAtomicExp, env: Environment[Addr], store: Store[Addr, Abs]): Either[String, (Abs, Set[Effect[Addr]])] = e match {
+    case lam: ANFLambda => Right((sabs.inject[ANFExp, Addr]((lam, env)), Set()))
+    case ANFIdentifier(name, _) => env.lookup(name) match {
+      case Some(a) => store.lookup(a) match {
+        case Some(v) => Right(v, Set(EffectReadVariable(a)))
+        case None => Left(s"Unbound address: $a")
+      }
       case None => Left(s"Unbound variable: $name")
     }
     case ANFValue(ValueString(s), _) => Right((sabs.inject(s), Set()))

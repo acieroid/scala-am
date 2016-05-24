@@ -99,7 +99,10 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
     case App(e1, e2, _) => Set(ActionPush(e1, FrameArg(e2, env), env, store))
     /* To evaluate a variable, just look it up in the store */
     case Var(x, _) => env.lookup(x) match {
-      case Some(a) => Set(ActionReachedValue(store.lookup(a), store))
+      case Some(a) => store.lookup(a) match {
+        case Some(v) => Set(ActionReachedValue(v, store))
+        case None => Set(ActionError(s"unbound address $a"))
+      }
       case None => Set(ActionError(s"unbound variable $x"))
     }
   }
@@ -189,7 +192,7 @@ object LamAnalysis {
             env.lookup(x) match {
               /* x bound to address a, we look it up in the store and join its value with the
                * information we already computed */
-              case Some(a) => (acc._1, acc._2 + (x -> abs.join(acc._2(x), store.lookup(a))))
+              case Some(a) => (acc._1, acc._2 + (x -> abs.join(acc._2(x), store.lookupBot(a))))
               /* unbound variable, we add its expression to the unboud variables */
               case None => (acc._1 + exp, acc._2)
             }

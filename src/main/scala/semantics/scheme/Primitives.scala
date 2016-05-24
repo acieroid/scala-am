@@ -100,7 +100,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, vector) :: (_, index) :: (exp, value) :: Nil => {
         Right(abs.getVectors(vector).foldLeft((abs.bottom, store, Set[Effect[Addr]]()))((acc, va) => {
-          val oldvec = store.lookup(va)
+          val oldvec = store.lookupBot(va)
           val targetaddr = addr.cell(exp, t)
           val (vec, addrs) = abs.vectorSet(oldvec, index, targetaddr)
           (abs.join(acc._1, vec),
@@ -304,7 +304,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
 
   private def car(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = {
     val (res, effs) = abs.car(v).foldLeft((abs.bottom, Set[Effect[Addr]]()))((acc, a) =>
-      (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadConsCar(a)))
+      (abs.join(acc._1, store.lookupBot(a)), acc._2 + EffectReadConsCar(a)))
     if (res == abs.bottom) {
       (abs.error(abs.inject(s"Cannot take car of $v")), effs)
     } else {
@@ -314,7 +314,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
 
   private def cdr(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = {
     val (res, effs) = abs.cdr(v).foldLeft((abs.bottom, Set[Effect[Addr]]()))((acc, a) =>
-      (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadConsCdr(a)))
+      (abs.join(acc._1, store.lookupBot(a)), acc._2 + EffectReadConsCdr(a)))
     if (res == abs.bottom) {
       (abs.error(abs.inject(s"Cannot take cdr of $v")), effs)
     } else {
@@ -324,9 +324,9 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
 
   private def vectorRef(v: Abs, index: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = {
     val (res, effs) = abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr]]()))((acc, va) =>
-      abs.vectorRef(store.lookup(va), index).foldLeft(acc)((acc, res) => res match {
+      abs.vectorRef(store.lookupBot(va), index).foldLeft(acc)((acc, res) => res match {
         case Left(v) => (abs.join(acc._1, v), acc._2)
-        case Right(a) => (abs.join(acc._1, store.lookup(a)), acc._2 + EffectReadVector(a))
+        case Right(a) => (abs.join(acc._1, store.lookupBot(a)), acc._2 + EffectReadVector(a))
       }))
     if (res == abs.bottom) {
       (abs.error(abs.inject(s"Cannot access vector $v")), effs)
@@ -337,7 +337,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
 
   private def vectorLength(v: Abs, store: Store[Addr, Abs]): (Abs, Set[Effect[Addr]]) = {
     val (res, effs) = abs.getVectors(v).foldLeft((abs.bottom, Set[Effect[Addr]]()))((acc, va) =>
-      (abs.join(acc._1, abs.unaryOp(VectorLength)(store.lookup(va))),
+      (abs.join(acc._1, abs.unaryOp(VectorLength)(store.lookupBot(va))),
         acc._2 + EffectReadVariable(va)))
     if (res == abs.bottom) {
       (abs.error(abs.inject(s"Cannot access vector $v")), effs)

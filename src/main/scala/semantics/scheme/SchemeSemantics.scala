@@ -131,7 +131,10 @@ class BaseSchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp]
       Set(ActionReachedValue(v, store))
     }
     case SchemeIdentifier(name, _) => env.lookup(name) match {
-      case Some(a) => Set(ActionReachedValue(store.lookup(a), store, Set(EffectReadVariable(a))))
+      case Some(a) => store.lookup(a) match {
+        case Some(v) => Set(ActionReachedValue(v, store, Set(EffectReadVariable(a))))
+        case None => Set(ActionError(s"Unbound variable: $a"))
+      }
       case None => Set(ActionError(s"Unbound variable: $name"))
     }
     case SchemeQuoted(quoted, _) => evalQuoted(quoted, store, t) match {
@@ -227,7 +230,7 @@ class SchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](pri
     * the evaluation if it succeeded, otherwise returns None */
   protected def atomicEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs]): Option[(Abs, Set[Effect[Addr]])] = e match {
     case λ: SchemeLambda => Some((sabs.inject[SchemeExp, Addr]((λ, env)), Set()))
-    case SchemeIdentifier(name, _) => env.lookup(name).map(a => (store.lookup(a), Set(EffectReadVariable(a))))
+    case SchemeIdentifier(name, _) => env.lookup(name).flatMap(a => store.lookup(a).map(v => (v, Set(EffectReadVariable(a)))))
     case SchemeValue(v, _) => evalValue(v).map(value => (value, Set()))
     case _ => None
   }
@@ -318,13 +321,13 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
         case Some(a) => index match {
           case Some(i) =>
             /* Compare and swap on vector element */
-            aabs.getVectors(store.lookup(a)).flatMap(va => {
-              val vec = store.lookup(va)
+            aabs.getVectors(store.lookupBot(a)).flatMap(va => {
+              val vec = store.lookupBot(va)
               val oldvals = aabs.vectorRef(vec, i)
               oldvals.flatMap({
                 case Left(_) => /* ignoring error values */ Set[Action[SchemeExp, Abs, Addr]]()
                 case Right(a) => {
-                  val oldval = store.lookup(a)
+                  val oldval = store.lookupBot(a)
                   val success: Action[SchemeExp, Abs, Addr] = {
                     /* Vector element matches old, success */
                     val (newvec, addrs) = aabs.vectorSet(vec, i, addr.cell(enew, t))
@@ -336,7 +339,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
                 }})})
           case None =>
             /* Compare and swap on variable value */
-            conditional(cabs.binaryOp(Eq)(store.lookup(a), old),
+            conditional(cabs.binaryOp(Eq)(store.lookupBot(a), old),
               /* Compare and swap succeeds */
               ActionReachedValue(aabs.inject(true), store.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
               /* Compare and swap fails */
@@ -350,7 +353,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
         Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
       } else {
         locks.flatMap(a => {
-          val v = store.lookup(a)
+          val v = store.lookupBot(a)
           if (cabs.isTrue(cabs.unaryOp(IsLock)(v))) {
             if (cabs.isFalse(cabs.unaryOp(IsLocked)(v))) {
               Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](cabs.inject(true), store.update(a, cabs.lockedValue), Set(EffectAcquire(a))))
@@ -368,7 +371,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
         Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
       } else {
         cabs.getLocks(v).flatMap(a => {
-          val v = store.lookup(a)
+          val v = store.lookupBot(a)
           if (cabs.isTrue(cabs.unaryOp(IsLock)(v))) {
             if (cabs.isTrue(cabs.unaryOp(IsLocked)(v))) {
               Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](cabs.inject(true), store.update(a, cabs.unlockedValue), Set(EffectRelease(a))))
