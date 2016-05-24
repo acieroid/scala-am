@@ -77,14 +77,14 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     /**
      * Computes the set of states that follow the current state
      */
-    def step(sem: Semantics[Exp, Abs, Addr, Time], genv: Environment[Addr], gstore: Store[Addr, Abs]): Set[State] = control match {
+    def step(sem: Semantics[Exp, Abs, Addr, Time]): Set[State] = control match {
       /* In a eval state, call the semantic's evaluation method */
-      case ControlEval(e, env) => integrate(a, sem.stepEval(e, CombinedEnvironment(genv, env), CombinedStore(gstore, store), t))
+      case ControlEval(e, env) => integrate(a, sem.stepEval(e, env, store, t))
       /* In a continuation state, if the value reached is not an error, call the
        * semantic's continuation method */
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
-        case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, CombinedStore(gstore, store), t))
+        case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, store, t))
       })
       /* In an error state, the state is not able to make a step */
       case ControlError(_) => Set()
@@ -100,9 +100,9 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     }
   }
   object State {
-    def inject(exp: Exp, store: Iterable[(Addr, Abs)]) =
-      State(ControlEval(exp, Environment.empty[Addr]),
-        Store.empty[Addr, Abs], KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
+    def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
+      State(ControlEval(exp, Environment.initial[Addr](env)),
+        Store.initial[Addr, Abs](store), KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
   }
 
   case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
@@ -142,8 +142,6 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
     val startingTime = System.nanoTime
-    val genv = Environment.initial[Addr](sem.initialEnv)
-    val gstore = Store.initial[Addr, Abs](sem.initialStore)
     def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, Unit]]): AAMOutput = {
       if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
         AAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
@@ -163,7 +161,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
             } else {
               /* Otherwise, compute the successors of this state, update the graph, and push
                * the new successors on the todo list */
-              val succs = s.step(sem, genv, gstore)
+              val succs = s.step(sem)
               val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, (), s2))))
               loop(todo.tail ++ succs, visited + s, halted, newGraph)
             }
@@ -172,7 +170,6 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
         }
     }
     }
-    loop(Set(State.inject(exp, sem.initialStore)), Set(), Set(), if (graph) { Some(new Graph[State, Unit]()) } else { None })
+    loop(Set(State.inject(exp, sem.initialEnv, sem.initialStore)), Set(), Set(), if (graph) { Some(new Graph[State, Unit]()) } else { None })
   }
-
 }

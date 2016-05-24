@@ -19,20 +19,20 @@ import scalaz._
  */
 
 trait Semantics[Exp, Abs, Addr, Time] {
-  implicit def abs : JoinLattice[Abs]
-  implicit def addr : Address[Addr]
-  implicit def exp : Expression[Exp]
-  implicit def time : Timestamp[Time]
+  implicit def abs: JoinLattice[Abs]
+  implicit def addr: Address[Addr]
+  implicit def exp: Expression[Exp]
+  implicit def time: Timestamp[Time]
   /**
    * Defines what actions should be taken when an expression e needs to be
-   * evaluated, in environment e with store σ
+   * evaluated, in environment env with store store
    */
-  def stepEval(e: Exp, ρ: Environment[Addr], σ: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
+  def stepEval(e: Exp, env: Environment[Addr], store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
   /**
    * Defines what actions should be taken when a value v has been reached, and
    * the topmost frame is frame
    */
-  def stepKont(v: Abs, frame: Frame, σ: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
+  def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
 
   /**
    * Defines how to parse a program
