@@ -70,6 +70,8 @@ trait AbstractMachine[Exp, Abs, Addr, Time] {
    * evaluation stops and the currently computed results are returned.
    */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs]
+
+  def analyze[L](exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], analysis: Analysis[L, Exp, Abs, Addr, Time], timeout: Option[Long]): Option[L] = throw new Exception(s"analyze method not handled by the following machine: $name")
 }
 
 /**

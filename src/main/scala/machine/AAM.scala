@@ -89,6 +89,16 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       /* In an error state, the state is not able to make a step */
       case ControlError(_) => Set()
     }
+
+    def stepAnalysis[L](analysis: Analysis[L, Exp, Abs, Addr, Time], current: L): L = control match {
+      case ControlEval(e, env) => analysis.stepEval(e, env, store, t, current)
+      case ControlKont(v) if abs.isError(v) => analysis.errorValue(v, current)
+      case ControlKont(v) => kstore.lookup(a).map({
+        case Kont(frame, _) => analysis.stepKont(v, frame, store, t, current)
+      }).reduceLeft((x, y) => analysis.join(x, y))
+      case ControlError(err) => analysis.errorState(err, current)
+    }
+
     /**
      * Checks if the current state is a final state. It is the case if it
      * reached the end of the computation, or an error
@@ -168,8 +178,34 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
           case None => AAMOutput(halted, visited.size,
             (System.nanoTime - startingTime) / Math.pow(10, 9), graph, false)
         }
-    }
+      }
     }
     loop(Set(State.inject(exp, sem.initialEnv, sem.initialStore)), Set(), Set(), if (graph) { Some(new Graph[State, Unit]()) } else { None })
+  }
+
+  override def analyze[L](exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], analysis: Analysis[L, Exp, Abs, Addr, Time], timeout: Option[Long]) = {
+    val startingTime = System.nanoTime
+    def loop(todo: Set[(State, L)], visited: Set[(State, L)], finalValue: Option[L]): Option[L] =
+      if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
+        None
+      } else {
+        todo.headOption match {
+          case Some((s, l)) =>
+            if (visited.contains((s, l)) || visited.exists({ case (s2, _) => s2.subsumes(s) })) {
+              loop(todo.tail, visited, finalValue)
+            } else if (s.halted) {
+              loop(todo.tail, visited + ((s, l)), finalValue match {
+                case None => Some(s.stepAnalysis(analysis, l))
+                case Some(l2) => Some(analysis.join(l2, s.stepAnalysis(analysis, l)))
+              })
+            } else {
+              val succs = s.step(sem)
+              val l2 = s.stepAnalysis(analysis, l)
+              loop(todo.tail ++ succs.map(s2 => (s2, l2)), visited + ((s, l)), finalValue)
+            }
+          case None => finalValue
+        }
+      }
+    loop(Set((State.inject(exp, sem.initialEnv, sem.initialStore), analysis.init)), Set(), None)
   }
 }

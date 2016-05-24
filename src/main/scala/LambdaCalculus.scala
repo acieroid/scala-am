@@ -147,15 +147,45 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
   }
 }
 
+/** This is our unbound variables analysis. We want to detect, for a
+  * lambda-calculus program, which evaluated variables may be unbound. We
+  * represent this by a set of lambda expressions, which is the lattice computed
+  * by this analysis: Set[LamExp]. This class defines how to update the current
+  * state of the analysis. */
+case class UnboundVariablesAnalysis[Abs : JoinLattice, Addr : Address, Time: Timestamp]()
+    extends BaseAnalysis[Set[LamExp], LamExp, Abs, Addr, Time] {
+  /** stepEval is called when the semantics' stepEval is called */
+  def stepEval(e: LamExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: Set[LamExp]) = e match {
+    /* When we evaluate a variable... */
+    case Var(x, _) => env.lookup(x) match {
+      case Some(a) => current /* if it is bound, then we don't care about it and don't change the result of the analysis */
+      case None => current + e /* if it's an unbound variable, we add it to the results */
+    }
+    /* we ignore any other expression */
+    case _ => current
+  }
+  /** No unbound variables appear when a continuation is boing popped */
+  def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time, current: Set[LamExp]) = current
+  /** We don't model error values */
+  def errorValue(v: Abs, current: Set[LamExp]) = current
+  /** The checking for unbound variables could be done here, by looking at the
+   * "reason" parameter, which is "unbound variable: name" for a variable named
+   * name. But that's not how we proceed for this analysis. */
+  def errorState(reason: String, current: Set[LamExp]) = current
+  /** Joining two results is done by taking their union */
+  def join(x: Set[LamExp], y: Set[LamExp]) = x ++ y
+  /** At the beginning of the program, no unbound variable has been evaluated */
+  def init = Set[LamExp]()
+}
+
 /** We want to perform some simple static analyses on lambda-calculus
-  * programs. We compute, for each variable used in the program, if it can be
-  * unbound, and if not, what are its possible values during evaluation. */
+  * programs. We compute the possible unbound variables that are evaluated in
+  * the execution of a program. */
 object LamAnalysis {
-  /** Our analysis takes an input program as a string, and returns two elements:
-   * 1. A set of expressions where unbound variables are evaluated
-   * 2. A mapping from variable names to the values they can have
+  /** Our analysis takes an input program as a string, and returns a set of
+   *  expressions where unbound variables are evaluated.
    */
-  def analyze[L : LamLattice](program: String): (Set[LamExp], Map[String, L]) = {
+  def analyze[L : LamLattice](program: String): Set[LamExp] = {
     /* We first instantiate our semantics. It needs to know which lattice to use (we
      * use the type parameter L for that), which addresses (we use classical
      * addresses), and which timestamps (since we perform static analysis, we
@@ -165,52 +195,21 @@ object LamAnalysis {
      * the semantics, as well as the kind of expression that we are working
      * with. We use an AAM machine here. */
     val machine = new AAM[LamExp, L, ClassicalAddress.A, ZeroCFA.T]
-    /* We can then run the machine on the given program (that we have to parse), using our semantics */
-    val result = machine.eval(sem.parse(program), sem,
-      /* we need to generate a graph */
-      true,
+    /* We finally instantiate our analysis itself */
+    val analysis = UnboundVariablesAnalysis[L, ClassicalAddress.A, ZeroCFA.T]
+    /* We can then analyze the given program using the machine, our semantics and our analysis */
+    machine.analyze(sem.parse(program), sem, analysis,
       /* we don't include a timeout for the analysis */
-      None)
-
-    val abs = implicitly[LamLattice[L]]
-    /* This is the initial value of our analysis: by default, no variable is used,
-     * so we have no unbound variable and no value associated to a variable */
-    val init = (Set[LamExp](), Map[String, L]().withDefaultValue(abs.bottom))
-    /* result contains sufficient information for us to find what we need. We need
-     * to access its internals though (and that's ugly, ideas on how to cleanly
-     * improve that are more than welcome!). */
-    result.asInstanceOf[machine.AAMOutput].graph match {
-      case None => println("No graph was computed!"); init /* oops, we don't have a graph and we needed one, we cannot run the analysis */
-      case Some(g) =>
-        /* g is a graph in which each node is an AAM state. We can extract the current
-         * expression from these nodes: a ControlEval node is a node where we
-         * evaluate an expression. We are only interested in nodes evaluating a
-         * Var(x) expression. For each of these nodes, if x is bound, we remember the current
-         * value of the variable x, otherwise we remember that it's unbound. */
-        g.nodes.foldLeft(init)((acc, node) => node match {
-          case machine.State(machine.ControlEval(exp @ Var(x, _), env), store, _, _, _) =>
-            env.lookup(x) match {
-              /* x bound to address a, we look it up in the store and join its value with the
-               * information we already computed */
-              case Some(a) => (acc._1, acc._2 + (x -> abs.join(acc._2(x), store.lookupBot(a))))
-              /* unbound variable, we add its expression to the unboud variables */
-              case None => (acc._1 + exp, acc._2)
-            }
-          /* We don't care about other nodes */
-          case _ => acc
-        })
+      None) match {
+      case Some(v) => v
+      case None => println("Analysis did not succeed..."); Set()
     }
   }
   def main(args: Array[String]) {
     /* We run our analysis on a simple program */
-    analyze[LamLatticeImpl.L]("((lambda (x) (x x)) (lambda (y) z))") match {
-      case (unbound, mappings) =>
-        /* We can extract positional information from the expressions of unbound variables */
-        val unboundstr = unbound.map(x => s"$x at position ${x.pos}").mkString("\n")
-        println(s"Unbound variables:\n$unboundstr")
-        /* And we can list values of the bound variables that are used */
-        val mappingsstr = mappings.toList.map({ case (x, v) => s"$x: $v" }).mkString("\n")
-        println(s"Mappings:\n$mappingsstr")
-    }
+    val unbound = analyze[LamLatticeImpl.L]("((lambda (x) (x x)) (lambda (y) z))")
+    /* We can extract positional information from the expressions of unbound variables */
+    val unboundstr = unbound.map(x => s"$x at position ${x.pos}").mkString("\n")
+    println(s"Unbound variables:\n$unboundstr")
   }
 }
