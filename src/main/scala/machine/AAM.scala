@@ -42,15 +42,15 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    * continuation store, and an address representing where the current
    * continuation lives.
    */
-  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
-    override def toString() = control.toString(σ)
+  case class State(control: Control, store: Store[Addr, Abs], kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
+    override def toString() = control.toString(store)
     /**
      * Checks whether a states subsumes another, i.e., if it is "bigger". This
      * is used to perform subsumption checking when exploring the state space,
      * in order to avoid exploring states for which another state that subsumes
      * them has already been explored.
      */
-    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && a == that.a && kstore.subsumes(that.kstore) && t == that.t
+    def subsumes(that: State): Boolean = control.subsumes(that.control) && store.subsumes(that.store) && a == that.a && kstore.subsumes(that.kstore) && t == that.t
 
     /**
      * Integrates a set of actions (returned by the semantics, see
@@ -60,31 +60,31 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.flatMap({
         /* When a value is reached, we go to a continuation state */
-        case ActionReachedValue(v, σ, _) => Set(State(ControlKont(v), σ, kstore, a, time.tick(t)))
+        case ActionReachedValue(v, store, _) => Set(State(ControlKont(v), store, kstore, a, time.tick(t)))
         /* When a continuation needs to be pushed, push it in the continuation store */
-        case ActionPush(e, frame, ρ, σ, _) => {
+        case ActionPush(e, frame, env, store, _) => {
           val next = NormalKontAddress(e, addr.variable("__kont__", abs.bottom, t)) // Hack to get infinite number of addresses in concrete mode
-          Set(State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, a)), next, time.tick(t)))
+          Set(State(ControlEval(e, env), store, kstore.extend(next, Kont(frame, a)), next, time.tick(t)))
         }
         /* When a value needs to be evaluated, we go to an eval state */
-        case ActionEval(e, ρ, σ, _) => Set(State(ControlEval(e, ρ), σ, kstore, a, time.tick(t)))
+        case ActionEval(e, env, store, _) => Set(State(ControlEval(e, env), store, kstore, a, time.tick(t)))
         /* When a function is stepped in, we also go to an eval state */
-        case ActionStepIn(fexp, _, e, ρ, σ, _, _) => Set(State(ControlEval(e, ρ), σ, kstore, a, time.tick(t, fexp)))
+        case ActionStepIn(fexp, _, e, env, store, _, _) => Set(State(ControlEval(e, env), store, kstore, a, time.tick(t, fexp)))
         /* When an error is reached, we go to an error state */
-        case ActionError(err) => Set(State(ControlError(err), σ, kstore, a, time.tick(t)))
+        case ActionError(err) => Set(State(ControlError(err), store, kstore, a, time.tick(t)))
       })
 
     /**
      * Computes the set of states that follow the current state
      */
-    def step(sem: Semantics[Exp, Abs, Addr, Time], genv: Environment[Addr]): Set[State] = control match {
+    def step(sem: Semantics[Exp, Abs, Addr, Time], genv: Environment[Addr], gstore: Store[Addr, Abs]): Set[State] = control match {
       /* In a eval state, call the semantic's evaluation method */
-      case ControlEval(e, ρ) => integrate(a, sem.stepEval(e, CombinedEnvironment(genv, ρ), σ, t))
+      case ControlEval(e, env) => integrate(a, sem.stepEval(e, CombinedEnvironment(genv, env), CombinedStore(gstore, store), t))
       /* In a continuation state, if the value reached is not an error, call the
        * semantic's continuation method */
       case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
-        case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, σ, t))
+        case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, CombinedStore(gstore, store), t))
       })
       /* In an error state, the state is not able to make a step */
       case ControlError(_) => Set()
@@ -102,8 +102,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   object State {
     def inject(exp: Exp, store: Iterable[(Addr, Abs)]) =
       State(ControlEval(exp, Environment.empty[Addr]),
-        Store.initial[Addr, Abs](store),
-        KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
+        Store.empty[Addr, Abs], KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
   }
 
   case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
@@ -144,6 +143,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
     val startingTime = System.nanoTime
     val genv = Environment.initial[Addr](sem.initialEnv)
+    val gstore = Store.initial[Addr, Abs](sem.initialStore)
     def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, Unit]]): AAMOutput = {
       if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
         AAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
@@ -163,7 +163,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
             } else {
               /* Otherwise, compute the successors of this state, update the graph, and push
                * the new successors on the todo list */
-              val succs = s.step(sem, genv)
+              val succs = s.step(sem, genv, gstore)
               val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, (), s2))))
               loop(todo.tail ++ succs, visited + s, halted, newGraph)
             }
