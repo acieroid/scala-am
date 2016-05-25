@@ -344,6 +344,8 @@ object Type {
       case (Bottom, Bottom) => Ordering.EQ
     }
   }
+  implicit val typeIsLatticeElement: LatticeElement[T] = new BaseInstance("Type") {
+  }
   implicit val typeIsString: IsString[T] = new BaseInstance("Str") with IsString[T] {
     def inject(x: String): T = Top
     def length[I](s: T)(implicit int: IsInteger[I]) = s match {
@@ -351,9 +353,10 @@ object Type {
       case Bottom => int.bottom
     }
     def append(s1: T, s2: T) = (s1, s2) match {
+      case (Bottom, _) => Bottom
+      case (_, Bottom) => Bottom
       case (Top, _) => Top
       case (_, Top) => Top
-      case _ => Bottom
     }
   }
   implicit val typeIsBoolean: IsBoolean[T] = new BaseInstance("Bool") with IsBoolean[T] {
