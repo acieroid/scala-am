@@ -422,13 +422,14 @@ case class IntegerSpecification[I : IsInteger](gen: LatticeGenerator[I])
   //  }
   //}
   // ∀ a, b, c: b ⊑ c ⇒ modulo(a, b) ⊑ modulo(a, c) ∧ modulo(b, a) ⊑ modulo(c, b)
-  property("modulo is monotone") {
-    forAll { (a: I, c: I) =>
-      forAll(gen.le(c)) { (b: I) =>
-        assert(int.subsumes(c, b) && int.subsumes(int.modulo(a, c), int.modulo(a, b)) && int.subsumes(int.modulo(c, a), int.modulo(b, a)))
-      }
-    }
-  }
+  // TODO: modulo is as special as div
+  //property("modulo is monotone") {
+  //  forAll { (a: I, c: I) =>
+  //    forAll(gen.le(c)) { (b: I) =>
+  //      assert(int.subsumes(c, b) && int.subsumes(int.modulo(a, c), int.modulo(a, b)) && int.subsumes(int.modulo(c, a), int.modulo(b, a)))
+  //    }
+  //  }
+  //}
   // ∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c) ∧ lt(b, a) ⊑ lt(c, b)
   property("lt is monotone") {
     forAll { (a: I, c: I) =>
