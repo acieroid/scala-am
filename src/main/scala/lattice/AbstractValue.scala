@@ -211,24 +211,20 @@ object ConcreteChar {
 
 object ConcreteSymbol {
   sealed trait Symbol
-  type Sym = ISet[String @@ Symbol]
-  implicit val symOrder = new Order[String @@ Symbol] {
-    def order(x: String @@ Symbol, y: String @@ Symbol) = implicitly[Order[String]].order(Tag.unwrap(x), Tag.unwrap(y))
-  }
+  type Sym = ISet[String]
   implicit val isSymbol = new IsSymbol[Sym] {
     def name = "ConcreteSymbol"
-    def showSym(x: String @@ Symbol): String = Tag.unwrap(x)
-    override def shows(x: Sym): String = if (x.size == 1) { showSym(x.elems.head) } else { "{" + x.elems.map(showSym _).mkString(",") + "}" }
+    override def shows(x: Sym): String = if (x.size == 1) { x.elems.head } else { "{" + x.elems.mkString(",") + "}" }
 
     val bottom: Sym = ISet.empty
     def top: Sym = throw new Error("Concrete lattice has no top value")
     def join(x: Sym, y: => Sym) = x.union(y)
     def subsumes(x: Sym, y: => Sym) = y.isSubsetOf(x)
 
-    def inject(x: String): Sym = ISet.singleton(Tag[String, Symbol](x))
+    def inject(x: String): Sym = ISet.singleton(x)
     def eql[B](s1: Sym, s2: Sym)(implicit bool: IsBoolean[B]): B = s1.foldMap(s1 => s2.foldMap(s2 => bool.inject(s1 == s2)))
 
-    def order(x: Sym, y: Sym): Ordering = implicitly[Order[ISet[String @@ Symbol]]].order(x, y)
+    def order(x: Sym, y: Sym): Ordering = implicitly[Order[ISet[String]]].order(x, y)
   }
 }
 
