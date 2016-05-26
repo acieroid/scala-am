@@ -179,16 +179,17 @@ object ConcreteFloatGenerator extends LatticeGenerator[ConcreteFloat.F] {
   def le(l: ConcreteFloat.F) = isetgen.genSubset(l)
 }
 
-/*
+
 object ConcreteCharGenerator extends LatticeGenerator[ConcreteChar.C] {
   val char = ConcreteChar.isChar
   val chargen = Gen.choose(0.toChar, 255.toChar)
+  implicit val charOrder: Order[Char] = Order.fromScalaOrdering[Char]
   val isetgen = ISetGen[Char](chargen)
   def any = isetgen.gen
   def le(l: ConcreteChar.C) = isetgen.genSubset(l)
 }
- */
-// TODO: concrete char, concrete symbols, bounded ints
+
+// TODO: concrete symbols, bounded ints
 
 abstract class LatticeElementSpecification[L : LatticeElement](gen: LatticeGenerator[L])
     extends PropSpec with GeneratorDrivenPropertyChecks {
@@ -494,17 +495,19 @@ case class FloatSpecification[F : IsFloat](gen: LatticeGenerator[F])
 }
 
 class TypeLatticeTest extends LatticeElementSpecification[Type.T](TypeGenerator)(Type.typeIsLatticeElement)
+class TypeBooleanTest extends BooleanSpecification[Type.T](TypeGenerator)(Type.typeIsBoolean)
+class TypeStringTest extends StringSpecification[Type.T](TypeGenerator)(Type.typeIsString)
+class TypeIntegerTest extends IntegerSpecification[Type.T](TypeGenerator)(Type.typeIsInteger)
+class TypeFloatTest extends FloatSpecification[Type.T](TypeGenerator)(Type.typeIsFloat)
+
 class ConcreteBooleanLatticeTest extends LatticeElementSpecification[ConcreteBoolean.B](ConcreteBooleanGenerator)(ConcreteBoolean.isBoolean)
+class ConcreteStringLatticeTest extends LatticeElementSpecification[ConcreteString.S](ConcreteStringGenerator)(ConcreteString.isString)
 class ConcreteIntegerLatticeTest extends LatticeElementSpecification[ConcreteInteger.I](ConcreteIntegerGenerator)(ConcreteInteger.isInteger)
 class ConcreteFloatLatticeTest extends LatticeElementSpecification[ConcreteFloat.F](ConcreteFloatGenerator)(ConcreteFloat.isFloat)
 class ConcreteBooleanTest extends BooleanSpecification[ConcreteBoolean.B](ConcreteBooleanGenerator)(ConcreteBoolean.isBoolean)
-class TypeBooleanTest extends BooleanSpecification[Type.T](TypeGenerator)(Type.typeIsBoolean)
 class ConcreteStringTest extends StringSpecification[ConcreteString.S](ConcreteStringGenerator)(ConcreteString.isString)
-class TypeStringTest extends StringSpecification[Type.T](TypeGenerator)(Type.typeIsString)
 class ConcreteIntegerTest extends IntegerSpecification[ConcreteInteger.I](ConcreteIntegerGenerator)(ConcreteInteger.isInteger)
-class TypeIntegerTest extends IntegerSpecification[Type.T](TypeGenerator)(Type.typeIsInteger)
 class ConcreteFloatTest extends FloatSpecification[ConcreteFloat.F](ConcreteFloatGenerator)(ConcreteFloat.isFloat)
-class TypeFloatTest extends FloatSpecification[Type.T](TypeGenerator)(Type.typeIsFloat)
 
 class ConcreteCountingTest extends LatticePropSpec(new ConcreteLattice(true))
 class ConcreteNoCountingTest extends JoinLatticePropSpec(new ConcreteLattice(false))
@@ -512,3 +515,5 @@ class TypeSetCountingTest extends JoinLatticePropSpec(new TypeSetLattice(true))
 class TypeSetNoCountingTest extends JoinLatticePropSpec(new TypeSetLattice(false))
 class BoundedIntCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(100, true))
 class BoundedIntNoCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(100, false))
+class ConstantPropagationCountingTest extends JoinLatticePropSpec(new ConstantPropagationLattice(true))
+class ConstantPropagationNoCountingTest extends JoinLatticePropSpec(new ConstantPropagationLattice(false))

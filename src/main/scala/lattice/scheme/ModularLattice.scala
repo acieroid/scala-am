@@ -493,7 +493,7 @@ class ConcreteLattice(counting: Boolean) extends Lattice {
   import ConcreteChar._
   import ConcreteSymbol._
 
-  val lattice = new MakeSchemeLattice[S, B, I, F, C, Sym](true)
+  val lattice = new MakeSchemeLattice[S, B, I, F, C, Sym](counting)
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }
@@ -512,6 +512,19 @@ class BoundedIntLattice(bound: Int, counting: Boolean) extends Lattice {
   val bounded = new BoundedInteger(bound)
   import bounded._
   val lattice = new MakeSchemeLattice[T, B, I, T, T, T](counting)
+  type L = lattice.LSet
+  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+}
+
+class ConstantPropagationLattice(counting: Boolean) extends Lattice {
+  import StringConstantPropagation._
+  import ConcreteBoolean._
+  import IntegerConstantPropagation._
+  import FloatConstantPropagation._
+  import CharConstantPropagation._
+  import SymbolConstantPropagation._
+
+  val lattice = new MakeSchemeLattice[S, B, I, F, C, Sym](counting)
   type L = lattice.LSet
   implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
 }

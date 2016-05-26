@@ -413,6 +413,186 @@ object Type {
   }
 }
 
+class ConstantPropagation[A](implicit ordering: Order[A]) {
+  sealed trait L
+  case object Top extends L
+  case class Constant(s: A) extends L
+  case object Bottom extends L
+
+  implicit val constantIsMonoid = new Monoid[L] {
+    def zero: L = Bottom
+    def append(x: L, y: => L): L = x match {
+      case Top => Top
+      case Constant(_) => if (x == y) { x } else { Top }
+      case Bottom => y
+    }
+  }
+
+  abstract class BaseInstance(typeName: String) extends LatticeElement[L] {
+    def name = s"ConstantPropagation$typeName"
+    override def shows(x: L): String = x match {
+      case Top => typeName
+      case Constant(x) => x.toString
+      case Bottom => "⊥"
+    }
+    val bottom: L = Bottom
+    val top: L = Top
+    def join(x: L, y: => L) = constantIsMonoid.append(x, y)
+    def meet(x: L, y: => L): L = x match {
+      case Bottom => Bottom
+      case Constant(_) => y match {
+        case Top => x
+        case Constant(_) => if (x == y) { x } else { Bottom }
+        case Bottom => Bottom
+      }
+      case Top => y
+    }
+    def subsumes(x: L, y: => L) = x match {
+      case Top => true
+      case Constant(_) => y match {
+        case Top => false
+        case Constant(_) => x == y
+        case Bottom => true
+      }
+      case Bottom => y match {
+        case Top => false
+        case Constant(_) => false
+        case Bottom => true
+      }
+    }
+    def eql[B](n1: L, n2: L)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
+      case (Top, Top) => bool.top
+      case (Top, Constant(_)) => bool.top
+      case (Constant(_), Top) => bool.top
+      case (Constant(x), Constant(y)) => if (x == y) { bool.inject(true) } else { bool.inject(false) }
+      case (Bottom, _) => bool.bottom
+      case (_, Bottom) => bool.bottom
+    }
+    def order(x: L, y: L): Ordering = (x, y) match {
+      case (Top, Top) => Ordering.EQ
+      case (Top, _) => Ordering.GT
+      case (Constant(_), Top) => Ordering.LT
+      case (Constant(x), Constant(y)) => ordering.order(x, y)
+      case (Constant(_), Bottom) => Ordering.GT
+      case (Bottom, Bottom) => Ordering.EQ
+      case (Bottom, _) => Ordering.LT
+    }
+  }
+}
+
+object StringConstantPropagation extends ConstantPropagation[String] {
+  type S = L
+  implicit val isString: IsString[S] = new BaseInstance("Str") with IsString[S] {
+    def inject(x: String): S = Constant(x)
+    def length[I](s: S)(implicit int: IsInteger[I]) = s match {
+      case Top => int.top
+      case Constant(s) => int.inject(s.size)
+      case Bottom => int.bottom
+    }
+    def append(s1: S, s2: S) = (s1, s2) match {
+      case (Bottom, _) => Bottom
+      case (_, Bottom) => Bottom
+      case (Top, _) => Top
+      case (_, Top) => Top
+      case (Constant(x), Constant(y)) => Constant(x ++ y)
+    }
+  }
+}
+
+object IntegerConstantPropagation extends ConstantPropagation[Int] {
+  type I = L
+  implicit val isInteger: IsInteger[I] = new BaseInstance("Int") with IsInteger[I] {
+    def inject(x: Int): I = Constant(x)
+    def ceiling(n: I): I = n
+    def toFloat[F](n: I)(implicit float: IsFloat[F]): F = n match {
+      case Top => float.top
+      case Constant(x) => float.inject(x)
+      case Bottom => float.bottom
+    }
+    def random(n: I): I = n match {
+      case Constant(x) => Constant(SchemeOps.random(x))
+      case _ => n
+    }
+    private def binop(op: (Int, Int) => Int, n1: I, n2: I) = (n1, n2) match {
+      case (Top, Top) => Top
+      case (Top, Constant(_)) => Top
+      case (Constant(_), Top) => Top
+      case (Constant(x), Constant(y)) => Constant(op(x, y))
+      case _ => Bottom
+    }
+    def plus(n1: I, n2: I): I = binop(_ + _, n1, n2)
+    def minus(n1: I, n2: I): I = binop(_ - _, n1, n2)
+    def times(n1: I, n2: I): I = binop(_ * _, n1, n2)
+    def div(n1: I, n2: I): I = binop(_ / _, n1, n2)
+    def modulo(n1: I, n2: I): I = binop(SchemeOps.modulo _, n1, n2)
+    def lt[B](n1: I, n2: I)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
+      case (Top, Top) => bool.top
+      case (Top, Constant(_)) => bool.top
+      case (Constant(_), Top) => bool.top
+      case (Constant(x), Constant(y)) => if (x < y) { bool.inject(true) } else { bool.inject(false) }
+      case _ => bool.bottom
+    }
+    def toString[S](n: I)(implicit str: IsString[S]): S = n match {
+      case Top => str.top
+      case Constant(x) => str.inject(x.toString)
+      case Bottom => str.bottom
+    }
+  }
+}
+
+object FloatConstantPropagation extends ConstantPropagation[Float] {
+  type F = L
+  implicit val isFloat: IsFloat[F] = new BaseInstance("Float") with IsFloat[F] {
+    def inject(x: Float) = Constant(x)
+    def ceiling(n: F): F = n
+    def random(n: F): F = n match {
+      case Constant(x) => Constant(SchemeOps.random(x))
+      case _ => n
+    }
+    def log(n: F): F = n match {
+      case Constant(x) => Constant(scala.math.log(x.toDouble).toFloat)
+      case _ => n
+    }
+    private def binop(op: (Float, Float) => Float, n1: F, n2: F) = (n1, n2) match {
+      case (Top, Top) => Top
+      case (Top, Constant(_)) => Top
+      case (Constant(_), Top) => Top
+      case (Constant(x), Constant(y)) => Constant(op(x, y))
+      case _ => Bottom
+    }
+    def plus(n1: F, n2: F): F = binop(_ + _, n1, n2)
+    def minus(n1: F, n2: F): F = binop(_ - _, n1, n2)
+    def times(n1: F, n2: F): F = binop(_ * _, n1, n2)
+    def div(n1: F, n2: F): F = binop(_ / _, n1, n2)
+    def lt[B](n1: F, n2: F)(implicit bool: IsBoolean[B]): B = (n1, n2) match {
+      case (Top, Top) => bool.top
+      case (Top, Constant(_)) => bool.top
+      case (Constant(_), Top) => bool.top
+      case (Constant(x), Constant(y)) => if (x < y) { bool.inject(true) } else { bool.inject(false) }
+      case _ => bool.bottom
+    }
+    def toString[S](n: F)(implicit str: IsString[S]): S = n match {
+      case Top => str.top
+      case Constant(x) => str.inject(x.toString)
+      case Bottom => str.bottom
+    }
+  }
+}
+
+object CharConstantPropagation extends ConstantPropagation[Char] {
+  type C = L
+  implicit val isChar: IsChar[C] = new BaseInstance("Char") with IsChar[C] {
+    def inject(x: Char) = Constant(x)
+  }
+}
+
+object SymbolConstantPropagation extends ConstantPropagation[String] {
+  type Sym = L
+  implicit val isSymbol: IsSymbol[Sym] = new BaseInstance("Sym") with IsSymbol[Sym] {
+    def inject(x: String) = Constant(x)
+  }
+}
+
 trait AbstractValue[A] extends SchemeLatticeInternals[A] with ConcurrentSchemeLattice[A]
 
 object AbstractValue
