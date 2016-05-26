@@ -131,6 +131,14 @@ trait LatticeGenerator[L] {
   def le(l: L): Gen[L]
 }
 
+object Generators {
+  val str: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr, Gen.numStr))
+  val int: Gen[Int] = Gen.choose(-1000, 1000)
+  val float: Gen[Float] = Gen.choose(-1000.toFloat, 1000.toFloat)
+  val char: Gen[Char] = Gen.choose(0.toChar, 255.toChar)
+  val sym: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr))
+}
+
 object ConcreteBooleanGenerator extends LatticeGenerator[ConcreteBoolean.B] {
   /** ConcreteBool is a finite lattice with four elements */
   val bool = ConcreteBoolean.isBoolean
@@ -156,48 +164,51 @@ object TypeGenerator extends LatticeGenerator[Type.T] {
 }
 
 object ConcreteStringGenerator extends LatticeGenerator[ConcreteString.S] {
-  val str = ConcreteString.isString
-  val strgen = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr, Gen.numStr))
-  val isetgen = ISetGen[String](strgen)
+  val isetgen = ISetGen[String](Generators.str)
   def any = isetgen.gen
   def le(l: ConcreteString.S) = isetgen.genSubset(l)
 }
 
 object ConcreteIntegerGenerator extends LatticeGenerator[ConcreteInteger.I] {
-  val int = ConcreteInteger.isInteger
-  val intgen = Gen.choose(-1000, 1000)
-  val isetgen = ISetGen[Int](intgen)
+  val isetgen = ISetGen[Int](Generators.int)
   def any = isetgen.gen
   def le(l: ConcreteInteger.I) = isetgen.genSubset(l)
 }
 
 object ConcreteFloatGenerator extends LatticeGenerator[ConcreteFloat.F] {
-  val float = ConcreteFloat.isFloat
-  val floatgen: Gen[Float] = Gen.choose(-1000.toFloat, 1000.toFloat)
-  val isetgen = ISetGen[Float](floatgen)
+  val isetgen = ISetGen[Float](Generators.float)
   def any = isetgen.gen
   def le(l: ConcreteFloat.F) = isetgen.genSubset(l)
 }
 
-
 object ConcreteCharGenerator extends LatticeGenerator[ConcreteChar.C] {
-  val char = ConcreteChar.isChar
-  val chargen = Gen.choose(0.toChar, 255.toChar)
   implicit val charOrder: Order[Char] = Order.fromScalaOrdering[Char]
-  val isetgen = ISetGen[Char](chargen)
+  val isetgen = ISetGen[Char](Generators.char)
   def any = isetgen.gen
   def le(l: ConcreteChar.C) = isetgen.genSubset(l)
 }
 
 object ConcreteSymbolGenerator extends LatticeGenerator[ConcreteSymbol.Sym] {
-  val sym = ConcreteSymbol.isSymbol
-  val symgen = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr))
-  val isetgen = ISetGen[String](symgen)
+  val isetgen = ISetGen[String](Generators.sym)
   def any = isetgen.gen
   def le(l: ConcreteSymbol.Sym) = isetgen.genSubset(l)
 }
 
 // TODO: bounded ints, constant propagation
+
+abstract class ConstantPropagationGenerator[X, L](gen: Gen[X])(const: X => L, bot: L, top: L) extends LatticeGenerator[L] {
+  def constgen: Gen[L] = for { x <- gen } yield const(x)
+  def botgen: Gen[L] = bot
+  def topgen: Gen[L] = top
+  def any: Gen[L] = Gen.oneOf(constgen, botgen, topgen)
+  def le(l: L) = if (l == top) { any } else if (l == bot) { bot } else { Gen.oneOf(l, bot) }
+}
+
+object StringConstantPropagationGenerator extends ConstantPropagationGenerator[String, StringConstantPropagation.S](Generators.str)(StringConstantPropagation.Constant, StringConstantPropagation.Bottom, StringConstantPropagation.Top)
+object IntegerConstantPropagationGenerator extends ConstantPropagationGenerator[Int, IntegerConstantPropagation.I](Generators.int)(IntegerConstantPropagation.Constant, IntegerConstantPropagation.Bottom, IntegerConstantPropagation.Top)
+object FloatConstantPropagationGenerator extends ConstantPropagationGenerator[Float, FloatConstantPropagation.F](Generators.float)(FloatConstantPropagation.Constant, FloatConstantPropagation.Bottom, FloatConstantPropagation.Top)
+object CharConstantPropagationGenerator extends ConstantPropagationGenerator[Char, CharConstantPropagation.C](Generators.char)(CharConstantPropagation.Constant, CharConstantPropagation.Bottom, CharConstantPropagation.Top)
+object SymbolConstantPropagationGenerator extends ConstantPropagationGenerator[String, SymbolConstantPropagation.Sym](Generators.sym)(SymbolConstantPropagation.Constant, SymbolConstantPropagation.Bottom, SymbolConstantPropagation.Top)
 
 abstract class LatticeElementSpecification[L : LatticeElement](gen: LatticeGenerator[L])
     extends PropSpec with GeneratorDrivenPropertyChecks {
@@ -533,6 +544,13 @@ class ConcreteIntegerTest extends IntegerSpecification[ConcreteInteger.I](Concre
 class ConcreteFloatTest extends FloatSpecification[ConcreteFloat.F](ConcreteFloatGenerator)(ConcreteFloat.isFloat)
 class ConcreteCharTest extends CharSpecification[ConcreteChar.C](ConcreteCharGenerator)(ConcreteChar.isChar)
 class ConcreteSymbolTest extends SymbolSpecification[ConcreteSymbol.Sym](ConcreteSymbolGenerator)(ConcreteSymbol.isSymbol)
+
+class StringConstantPropagationLatticeTest extends LatticeElementSpecification[StringConstantPropagation.S](StringConstantPropagationGenerator)(StringConstantPropagation.isString)
+class IntegerConstantPropagationLatticeTest extends LatticeElementSpecification[IntegerConstantPropagation.I](IntegerConstantPropagationGenerator)(IntegerConstantPropagation.isInteger)
+class FloatConstantPropagationLatticeTest extends LatticeElementSpecification[FloatConstantPropagation.F](FloatConstantPropagationGenerator)(FloatConstantPropagation.isFloat)
+class CharConstantPropagationLatticeTest extends LatticeElementSpecification[CharConstantPropagation.C](CharConstantPropagationGenerator)(CharConstantPropagation.isChar)
+class SymbolConstantPropagationLatticeTest extends LatticeElementSpecification[SymbolConstantPropagation.Sym](SymbolConstantPropagationGenerator)(SymbolConstantPropagation.isSymbol)
+
 
 class ConcreteCountingTest extends LatticePropSpec(new ConcreteLattice(true))
 class ConcreteNoCountingTest extends JoinLatticePropSpec(new ConcreteLattice(false))
