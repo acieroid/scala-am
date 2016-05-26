@@ -419,7 +419,11 @@ class ConstantPropagation[A](implicit ordering: Order[A]) {
     def zero: L = Bottom
     def append(x: L, y: => L): L = x match {
       case Top => Top
-      case Constant(_) => if (x == y) { x } else { Top }
+      case Constant(_) => y match {
+        case Top => Top
+        case Constant(_) => if (x == y) { x } else { Top }
+        case Bottom => x
+      }
       case Bottom => y
     }
   }
