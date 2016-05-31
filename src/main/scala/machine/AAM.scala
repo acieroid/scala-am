@@ -93,9 +93,13 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     def stepAnalysis[L](analysis: Analysis[L, Exp, Abs, Addr, Time], current: L): L = control match {
       case ControlEval(e, env) => analysis.stepEval(e, env, store, t, current)
       case ControlKont(v) if abs.isError(v) => analysis.errorValue(v, current)
-      case ControlKont(v) => kstore.lookup(a).map({
-        case Kont(frame, _) => analysis.stepKont(v, frame, store, t, current)
-      }).reduceLeft((x, y) => analysis.join(x, y))
+      case ControlKont(v) => {
+        val konts = kstore.lookup(a).map({
+          case Kont(frame, _) => analysis.stepKont(v, frame, store, t, current)
+        })
+        if (konts.isEmpty) { current }
+        else { konts.reduceLeft((x, y) => analysis.join(x, y)) }
+      }
       case ControlError(err) => analysis.errorState(err, current)
     }
 

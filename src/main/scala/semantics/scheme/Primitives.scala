@@ -14,13 +14,14 @@ trait Primitive[Addr, Abs] {
 }
 
 abstract class Primitives[Addr : Address, Abs : JoinLattice] {
-  val forEnv: Iterable[(String, Addr)]
-  val forStore: Iterable[(Addr, Abs)]
-}
+  def all: List[Primitive[Addr, Abs]]
+  def toVal(prim: Primitive[Addr, Abs]): Abs
 
-/** This is where we define Scheme primitives */
-class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[Addr, Abs] {
-  import SchemeOps._
+  val lat = implicitly[JoinLattice[Abs]]
+  val addr = implicitly[Address[Addr]]
+
+  /** Modify a primitive to trace it: output will be printed when the primitive is
+    * called. This is for debugging purposes. */
   def traced(prim: Primitive[Addr, Abs]): Primitive[Addr, Abs] = new Primitive[Addr, Abs] {
     val name = prim.name
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
@@ -33,8 +34,16 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
       res
     }
   }
+
+  private lazy val allocated = ("bottom", addr.primitive("__bottom__"), lat.bottom) :: all.map({ prim => (prim.name, addr.primitive(prim.name), toVal(prim)) })
+  lazy val forEnv: Iterable[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
+  lazy val forStore: Iterable[(Addr, Abs)] =  allocated.map({ case (_, a, v) => (a, v) })
+}
+
+/** This is where we define Scheme primitives */
+class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[Addr, Abs] {
+  import SchemeOps._
   val abs = implicitly[AbstractValue[Abs]]
-  val addr = implicitly[Address[Addr]]
 
   /** Some shortcuts */
   def isNull = abs.unaryOp(IsNull) _
@@ -516,7 +525,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
 
 
   /** Bundles all the primitives together */
-  val all: List[Primitive[Addr, Abs]] = List(
+  def all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div, Max, Min,
     BinaryOperation("quotient", div),
     BinaryOperation("<", lt), // TODO: <, <=, =, >, >= should accept any number of arguments
@@ -622,7 +631,5 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     Lock
   )
 
-  private val allocated = ("bottom", addr.primitive("__bottom__"), abs.bottom) :: all.map({ prim => (prim.name, addr.primitive(prim.name), abs.inject(prim)) })
-  override val forEnv = allocated.map({ case (name, a, _) => (name, a) })
-  override val forStore =  allocated.map({ case (_, a, v) => (a, v) })
+  def toVal(prim: Primitive[Addr, Abs]): Abs = abs.inject(prim)
 }

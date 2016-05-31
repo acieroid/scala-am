@@ -593,6 +593,7 @@ object SymbolConstantPropagation extends ConstantPropagation[String] {
   }
 }
 
+/* TODO: ConcurrentSchemeLattice has to move from there... */
 trait AbstractValue[A] extends SchemeLatticeInternals[A] with ConcurrentSchemeLattice[A]
 
 object AbstractValue

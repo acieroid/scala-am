@@ -280,14 +280,14 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       }
       case _ => x
     }
-  def inject(x: scala.Int): L = Int(int.inject(x))
-  def inject(x: scala.Float): L = Float(float.inject(x))
-  def inject(x: String): L = Str(str.inject(x))
-  def inject(x: scala.Char): L = Char(char.inject(x))
-  def inject(x: Boolean): L = Bool(bool.inject(x))
-  def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L = Prim(x)
-  def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = Closure(x._1, x._2)
-  def injectSymbol(x: String): L = Symbol(sym.inject(x))
+    def inject(x: scala.Int): L = Int(int.inject(x))
+    def inject(x: scala.Float): L = Float(float.inject(x))
+    def inject(x: String): L = Str(str.inject(x))
+    def inject(x: scala.Char): L = Char(char.inject(x))
+    def inject(x: Boolean): L = Bool(bool.inject(x))
+    def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L = Prim(x)
+    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = Closure(x._1, x._2)
+    def injectSymbol(x: String): L = Symbol(sym.inject(x))
     def nil: L = Nil
     def cons[Addr : Address](car: Addr, cdr: Addr): L = Cons(car, cdr)
 
