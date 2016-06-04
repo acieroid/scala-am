@@ -1,3 +1,58 @@
+import scalaz.{Plus => _, _}
+import scalaz.Scalaz._
+import SchemeOps._
+
+trait SchemeError
+case class OperatorNotApplicable(name: String, arguments: List[String]) extends SchemeError
+case class ArityError(name: String, expected: Int, got: Int) extends SchemeError
+case class VariadicArityError(name: String, min: Int, got: Int) extends SchemeError
+case class TypeError(name: String, operand: String, expected: String, got: String) extends SchemeError
+case class UserError(reason: String, pos: scala.util.parsing.input.Position) extends SchemeError
+case class UnboundAddress(addr: String) extends SchemeError
+case class CannotAccessVector(vector: String) extends SchemeError
+case class CannotAccessCar(v: String) extends SchemeError
+case class CannotAccessCdr(v: String) extends SchemeError
+
+trait MayFail[L] {
+  def map[A](f: L => A): MayFail[A]
+  def bind[A](f: L => MayFail[A]): MayFail[A]
+  def addError(err: SchemeError): MayFail[L]
+}
+case class MayFailSuccess[L](l: L) extends MayFail[L] {
+  def map[A](f: L => A) = MayFailSuccess[A](f(l))
+  def bind[A](f: L => MayFail[A]) = f(l)
+  def addError(err: SchemeError) = MayFailBoth[L](l, List(err))
+}
+case class MayFailError[L](errs: List[SchemeError]) extends MayFail[L] {
+  def map[A](f: L => A) = MayFailError[A](errs)
+  def bind[A](f: L => MayFail[A]) = MayFailError[A](errs)
+  def addError(err: SchemeError) = MayFailError[L](errs :+ err)
+}
+case class MayFailBoth[L](l: L, errs: List[SchemeError]) extends MayFail[L] {
+  def map[A](f: L => A) = MayFailBoth(f(l), errs)
+  def bind[A](f: L => MayFail[A]) = f(l) match {
+    case MayFailSuccess(a) => MayFailBoth[A](a, errs)
+    case MayFailError(errs2) => MayFailError(errs ++ errs2)
+    case MayFailBoth(a, errs2) => MayFailBoth[A](a, errs ++ errs2)
+  }
+  def addError(err: SchemeError) = MayFailBoth[L](l, errs :+ err)
+}
+
+object MayFail {
+  implicit def monoid[A](implicit monoid: Monoid[A]): Monoid[MayFail[A]] =
+    new Monoid[MayFail[A]] {
+      def append(x: MayFail[A], y: => MayFail[A]): MayFail[A] = (x, y) match {
+        case (MayFailSuccess(x), MayFailSuccess(y)) => MayFailSuccess(monoid.append(x, y))
+        case (MayFailSuccess(x), MayFailError(errs)) => MayFailBoth(x, errs)
+        case (MayFailSuccess(x), MayFailBoth(y, errs)) => MayFailBoth(monoid.append(x, y), errs)
+        case (MayFailError(errs1), MayFailError(errs2)) => MayFailError(errs1 ++ errs2)
+        case (MayFailError(errs1), MayFailBoth(x, errs2)) => MayFailBoth(x, errs1 ++ errs2)
+        case (MayFailBoth(x, errs1), MayFailBoth(y, errs2)) => MayFailBoth(monoid.append(x, y), errs1 ++ errs2)
+      }
+      def zero: MayFail[A] = MayFailSuccess(monoid.zero)
+    }
+}
+
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L] extends JoinLattice[L] {
   /** Can this value be considered true for conditionals? */
@@ -5,9 +60,9 @@ trait SchemeLattice[L] extends JoinLattice[L] {
   /** Can this value be considered false for conditionals? */
   def isFalse(x: L): Boolean
   /** Performs a unary operation on the abstract value x */
-  def unaryOp(op: SchemeOps.UnaryOperator)(x: L): L
+  def unaryOp(op: SchemeOps.UnaryOperator)(x: L): MayFail[L]
   /** Performs a binary operation on abstract values x and y */
-  def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): L
+  def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): MayFail[L]
   /** Conjunction */
   def and(x: L, y: => L): L
   /** Disjunction */
@@ -16,7 +71,6 @@ trait SchemeLattice[L] extends JoinLattice[L] {
   def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])]
   /** Extract primitives contained in this value */
   def getPrimitives[Addr : Address, Abs : JoinLattice](x: L): Set[Primitive[Addr, Abs]]
-
 
   /** Injection of an integer */
   def inject(x: Int): L
@@ -60,19 +114,19 @@ trait ConcurrentSchemeLattice[L] extends SchemeLattice[L] {
 /** Internals of a lattice for Scheme, used by the primitives' definitions */
 trait SchemeLatticeInternals[L] extends SchemeLattice[L] {
   /** Injects an error */
-  def error(x: L): L
+  // def error(x: L): L
   /** Takes the car of a cons cell */
   def car[Addr : Address](x: L): Set[Addr]
   /** Takes the cdr of a cons cell */
   def cdr[Addr : Address](x: L): Set[Addr]
-  /** Get a value from a vector. Returns either an error or the addresses where to look for the values */
-  def vectorRef[Addr : Address](vector: L, index: L): Set[Either[L, Addr]]
+  /** Get a value from a vector. Returns the addresses where to look for the values */
+  def vectorRef[Addr : Address](vector: L, index: L): MayFail[Set[Addr]]
   /** Changes a value inside a vector. The address given is an address where the
-   * value can be stored if needed.  Returns the vector value, as well as the
+   * value can be stored if needed. Returns the vector value, as well as the
    * addresses to update in the store. The value stored is not passed to
    * vectorSet, but will be stored in the returned addresses. */
-  def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): (L, Set[Addr])
+  def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): MayFail[(L, Set[Addr])]
   /** Extract vector addresses contained in this value */
   def getVectors[Addr : Address](x: L): Set[Addr]
-  def vector[Addr : Address](addr: Addr, size: L, init: Addr): (L, L)
+  def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
 }

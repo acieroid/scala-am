@@ -51,7 +51,6 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
     /** Computes the successors states of this one relying on the given semantics */
     def step(sem: Semantics[Exp, Abs, Addr, Time]): Set[State] = control match {
       case ControlEval(e, ρ) => integrate(k, sem.stepEval(e, ρ, σ, t))
-      case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(k).foldLeft(Set[State]())((acc, k) => k match {
         case Kont(frame, next) => acc ++ integrate(next, sem.stepKont(v, frame, σ, t))
       })
@@ -61,8 +60,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
     /** Checks whether this state has finished evaluation */
     def halted = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) =>
-        k.equals(HaltKontAddress) || abs.isError(v)
+      case ControlKont(v) => k.equals(HaltKontAddress)
       case ControlError(_) => true
     }
   }

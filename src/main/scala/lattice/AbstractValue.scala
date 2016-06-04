@@ -2,12 +2,13 @@ import scalaz._
 import scalaz.Scalaz._
 
 /** A (join semi-)lattice L should support the following operations */
-trait JoinLattice[L] extends Semigroup[L] {
+trait JoinLattice[L] extends Monoid[L] {
   /** A lattice has a bottom element */
   def bottom: L
   /** Elements of the lattice can be joined together */
   def join(x: L, y: L): L
-  def append(x: L, y: => L): L = join(x, y) /* A lattice is trivially a semigroup by using join as append */
+  def append(x: L, y: => L): L = join(x, y) /* A lattice is trivially a monoid by using join as append */
+  def zero: L = bottom /* And bottom as zero */
   /** Subsumption between two elements can be checked */
   def subsumes(x: L, y: L): Boolean
 
@@ -18,7 +19,7 @@ trait JoinLattice[L] extends Semigroup[L] {
   def counting: Boolean
 
   /** Some elements can be considered as errors */
-  def isError(x: L): Boolean
+  //def isError(x: L): Boolean
   /** Some elements may contain addresses in there and are therefore not considered as primitive values */
   def isPrimitiveValue(x: L): Boolean
 }

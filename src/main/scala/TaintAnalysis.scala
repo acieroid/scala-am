@@ -1,4 +1,4 @@
-/* Here, we develop a static taint analysis of Scheme programs. */
+/*/* Here, we develop a static taint analysis of Scheme programs. */
 
 /* We need a lattice tracking tainted values, that is compatible with Scheme
  * operations */
@@ -70,12 +70,13 @@ class TaintLatticeImpl[Abs : AbstractValue] extends Lattice {
     val name = "Taint(${abs.name})"
     val counting = abs.counting
 
-    def isError(x: L) = abs.isError(x._2)
     def isPrimitiveValue(x: L) = abs.isPrimitiveValue(x._2)
     def isTrue(x: L) = abs.isTrue(x._2)
     def isFalse(x: L) = abs.isFalse(x._2)
-    def unaryOp(op: SchemeOps.UnaryOperator)(x: L): L = (x._1, abs.unaryOp(op)(x._2))
-    def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): L = (joinTaint(x._1, y._1), abs.binaryOp(op)(x._2, y._2))
+    def unaryOp(op: SchemeOps.UnaryOperator)(x: L): MayFail[L] =
+      abs.unaryOp(op)(x._2).map(res => (x._1, res))
+    def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): MayFail[L] =
+      abs.binaryOp(op)(x._2, y._2).map(res => (joinTaint(x._1, y._1), res))
     def and(x: L, y: => L): L = (joinTaint(x._1, y._1), abs.and(x._2, y._2))
     def or(x: L, y: => L): L = (joinTaint(x._1, y._1), abs.or(x._2, y._2))
     def car[Addr : Address](x: L) = abs.car[Addr](x._2)
@@ -93,7 +94,6 @@ class TaintLatticeImpl[Abs : AbstractValue] extends Lattice {
     def cons[Addr : Address](car: Addr, cdr: Addr): L = (Untainted, abs.cons[Addr](car, cdr))
     def vector[Addr : Address](addr: Addr, size: L, init: Addr): (L, L) = ???
     def nil: L = (Untainted, abs.nil)
-    def error(x: L): L = (x._1, abs.error(x._2))
 
     def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])] = abs.getClosures(x._2)
     def getPrimitives[Addr : Address, Abs : JoinLattice](x: L): Set[Primitive[Addr, Abs]] = abs.getPrimitives(x._2)
@@ -147,8 +147,7 @@ case class TaintAnalysis[Abs : JoinLattice, Addr : Address, Time : Timestamp]()
     extends BaseAnalysis[Set[String], SchemeExp, Abs, Addr, Time] {
   def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: Set[String]) = current
   def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time, current: Set[String]) = current
-  def errorValue(v: Abs, current: Set[String]) = current
-  def errorState(reason: String, current: Set[String]) = if (reason.startsWith("sink: ")) { current + reason } else { current }
+  def error(reason: String, current: Set[String]) = if (reason.startsWith("sink: ")) { current + reason } else { current }
   def join(x: Set[String], y: Set[String]) = x ++ y
   def init = Set[String]()
 }
@@ -181,3 +180,4 @@ object TaintAnalysis {
     }
   }
 }
+ */

@@ -51,8 +51,6 @@ object LamLatticeImpl {
     def name = "LamLattice"
     /** We don't need abstract counting */
     def counting = false
-    /** We don't model errors, so x cannot be an error */
-    def isError(x: L) = false
     /** We don't have primitive values (the only values we have are closures) */
     def isPrimitiveValue(x: L) = false
 
@@ -166,12 +164,10 @@ case class UnboundVariablesAnalysis[Abs : JoinLattice, Addr : Address, Time: Tim
   }
   /** No unbound variables appear when a continuation is boing popped */
   def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time, current: Set[LamExp]) = current
-  /** We don't model error values */
-  def errorValue(v: Abs, current: Set[LamExp]) = current
   /** The checking for unbound variables could be done here, by looking at the
    * "reason" parameter, which is "unbound variable: name" for a variable named
    * name. But that's not how we proceed for this analysis. */
-  def errorState(reason: String, current: Set[LamExp]) = current
+  def error(reason: String, current: Set[LamExp]) = current
   /** Joining two results is done by taking their union */
   def join(x: Set[LamExp], y: Set[LamExp]) = x ++ y
   /** At the beginning of the program, no unbound variable has been evaluated */

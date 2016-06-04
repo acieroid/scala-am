@@ -90,7 +90,6 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
         (Set[(ThreadMap, ThreadResults, Effects)], GlobalStore, KontStore[KontAddr]) = control match {
       case ControlEval(e, env) => integrate(tid, a, sem.stepEval(e, env, store.store, t), threads, store, kstore, results)
       case ControlKont(v) if halted && tid != thread.initial => (Set((threads.remove(tid), results.add(tid, v), noEffect)), store, kstore)
-      case ControlKont(v) if abs.isError(v) => (Set(), store, kstore)
       case ControlKont(v) => kstore.lookup(a).foldLeft((Set[(ThreadMap, ThreadResults, Effects)](), store, kstore))((acc, kont) => kont match {
         case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, frame, store.store, t), threads, store, kstore, results) match {
           case (states, store2, kstore2) => (acc._1 ++ states, store2, kstore2)
@@ -101,7 +100,7 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
 
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => a == HaltKontAddress || abs.isError(v)
+      case ControlKont(v) => a == HaltKontAddress
       case ControlError(_) => true
     }
   }

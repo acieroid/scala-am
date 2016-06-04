@@ -52,9 +52,7 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
     def step(sem: Semantics[Exp, Abs, Addr, Time], store: GlobalStore, kstore: KontStore[KontAddr]): (Set[State], GlobalStore, KontStore[KontAddr]) = control match {
       /* In a eval state, call the semantic's evaluation method */
       case ControlEval(e, env) => integrate(a, sem.stepEval(e, env, store.store, t), store, kstore)
-      /* In a continuation state, if the value reached is not an error, call the
-       * semantic's continuation method */
-      case ControlKont(v) if abs.isError(v) => (Set(), store, kstore)
+      /* In a continuation state, call the semantic's continuation method */
       case ControlKont(v) => kstore.lookup(a).foldLeft((Set[State](), store, kstore))((acc, kont) => kont match {
         case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, store.store, t), acc._2, acc._3) match {
           case (states, store2, kstore2) => (acc._1 ++ states, store2, kstore2)
@@ -69,7 +67,7 @@ class AAMMonoGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, 
      */
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => a == HaltKontAddress || abs.isError(v)
+      case ControlKont(v) => a == HaltKontAddress
       case ControlError(_) => true
     }
   }

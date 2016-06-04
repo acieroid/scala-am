@@ -80,9 +80,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     def step(sem: Semantics[Exp, Abs, Addr, Time]): Set[State] = control match {
       /* In a eval state, call the semantic's evaluation method */
       case ControlEval(e, env) => integrate(a, sem.stepEval(e, env, store, t))
-      /* In a continuation state, if the value reached is not an error, call the
-       * semantic's continuation method */
-      case ControlKont(v) if abs.isError(v) => Set()
+      /* In a continuation state, call the semantics' continuation method */
       case ControlKont(v) => kstore.lookup(a).flatMap({
         case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, store, t))
       })
@@ -92,7 +90,6 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
 
     def stepAnalysis[L](analysis: Analysis[L, Exp, Abs, Addr, Time], current: L): L = control match {
       case ControlEval(e, env) => analysis.stepEval(e, env, store, t, current)
-      case ControlKont(v) if abs.isError(v) => analysis.errorValue(v, current)
       case ControlKont(v) => {
         val konts = kstore.lookup(a).map({
           case Kont(frame, _) => analysis.stepKont(v, frame, store, t, current)
@@ -100,7 +97,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
         if (konts.isEmpty) { current }
         else { konts.reduceLeft((x, y) => analysis.join(x, y)) }
       }
-      case ControlError(err) => analysis.errorState(err, current)
+      case ControlError(err) => analysis.error(err, current)
     }
 
     /**
@@ -109,7 +106,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
      */
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => a == HaltKontAddress || abs.isError(v)
+      case ControlKont(v) => a == HaltKontAddress
       case ControlError(_) => true
     }
   }

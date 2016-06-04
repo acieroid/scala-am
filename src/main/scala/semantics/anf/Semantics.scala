@@ -68,11 +68,12 @@ class ANFSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primit
                 } else { ActionError[ANFExp, Abs, Addr](s"Arity error when calling $f (${args.length} arguments expected, got ${argsv.length})") }
                 case (λ, _) => ActionError[ANFExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
               })
-              val fromPrim: Set[Action[ANFExp, Abs, Addr]] = sabs.getPrimitives(fv).map(prim =>
+              val fromPrim: Set[Action[ANFExp, Abs, Addr]] = sabs.getPrimitives(fv).flatMap(prim =>
                 /* To call a primitive, apply the call method with the given arguments and the store */
                 prim.call(f, argsv, σ, t) match {
-                  case Right((res, σ2, effects)) => ActionReachedValue[ANFExp, Abs, Addr](res, σ2, effects)
-                  case Left(err) => ActionError[ANFExp, Abs, Addr](err)
+                  case MayFailSuccess((res, store2, effects)) => Set(ActionReachedValue[ANFExp, Abs, Addr](res, store2, effects))
+                  case MayFailError(errs) => errs.map(err => ActionError[ANFExp, Abs, Addr](err.toString))
+                  case MayFailBoth((res, store2, effects), errs) => errs.map(err => ActionError[ANFExp, Abs, Addr](err.toString)) ++ Set(ActionReachedValue[ANFExp, Abs, Addr](res, store2, effects))
                 })
               if (fromClo.isEmpty && fromPrim.isEmpty) {
                 Set(ActionError(s"Called value is not a function: $fv"))

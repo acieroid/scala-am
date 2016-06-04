@@ -48,10 +48,11 @@ class BaseSchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp]
         } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
       case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
     })
-    val fromPrim = sabs.getPrimitives(function).map(prim =>
+    val fromPrim = sabs.getPrimitives(function).flatMap(prim =>
       prim.call(fexp, argsv, store, t) match {
-        case Right((res, store2, effects)) => ActionReachedValue[SchemeExp, Abs, Addr](res, store2, effects)
-        case Left(err) => ActionError[SchemeExp, Abs, Addr](err)
+        case MayFailSuccess((res, store2, effects)) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, store2, effects))
+        case MayFailError(errs) => errs.map(err => ActionError[SchemeExp, Abs, Addr](err.toString))
+        case MayFailBoth((res, store2, effects), errs) => errs.map(err => ActionError[SchemeExp, Abs, Addr](err.toString)) ++ Set(ActionReachedValue[SchemeExp, Abs, Addr](res, store2, effects))
       })
     if (fromClo.isEmpty && fromPrim.isEmpty) {
       Set(ActionError(s"Called value is not a function: $function"))
@@ -316,6 +317,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
       Set(ActionPush(eold, FrameCasOld(variable, Some(v), enew, env), env, store))
     case FrameCasOld(variable, index, enew, env) =>
       Set(ActionPush(enew, FrameCasNew(variable, index, enew, v, env), env, store))
+      /* TODO
     case FrameCasNew(variable, index, enew, old, env) =>
       env.lookup(variable) match {
         case Some(a) => index match {
@@ -383,7 +385,7 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
             Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
           }
         })
-      }
+      }*/
     case _ => super.stepKont(v, frame, store, t)
   }
 }

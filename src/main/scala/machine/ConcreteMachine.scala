@@ -53,8 +53,6 @@ class ConcreteMachine[Exp : Expression, Abs : AbstractValue, Addr : Address, Tim
             } else {
               ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
             }
-          case ControlKont(v) if abs.isError(v) => /* reached an error */
-            ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, v.toString)
           case ControlKont(v) => /* pop a continuation */
             stack match {
               case frame :: tl =>

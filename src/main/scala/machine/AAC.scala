@@ -235,7 +235,6 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
      */
     def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], KontStore, Set[Context]) = control match {
       case ControlEval(e, ρ) => integrate(ι, κ, kstore, sem.stepEval(e, ρ, σ, t))
-      case ControlKont(v) if abs.isError(v) => (Set(), kstore, Set[Context]())
       case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore, Set[Context]()))((acc, popped) => {
         val (states, kstore1, contexts) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, popped._1, σ, t))
         (acc._1 ++ states, kstore1, acc._3 ++ contexts)
@@ -249,7 +248,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
      */
     def halted(kstore: KontStore) = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => abs.isError(v) || (ι.isEmpty && kontCanBeEmpty(ι, κ, kstore))
+      case ControlKont(v) => (ι.isEmpty && kontCanBeEmpty(ι, κ, kstore))
       case ControlError(_) => true
     }
   }

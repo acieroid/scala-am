@@ -87,7 +87,6 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
         /* TODO: we could avoid distinguishing the initial thread, and just get the
          * final results at its location in results */
         Set((threads.remove(tid), results.add(tid, v), store, noEffect))
-      case ControlKont(v) if abs.isError(v) => Set()
       case ControlKont(v) => kstore.lookup(a).flatMap({
         case Kont(frame, next) => integrate(tid, next, sem.stepKont(v, frame, store, t), threads, store, results)
       })
@@ -96,7 +95,7 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
 
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => a == HaltKontAddress || abs.isError(v)
+      case ControlKont(v) => a == HaltKontAddress
       case ControlError(_) => true
     }
   }
