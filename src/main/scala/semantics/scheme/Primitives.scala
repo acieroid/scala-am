@@ -40,9 +40,7 @@ abstract class Primitives[Addr : Address, Abs : JoinLattice] {
     }
   }
 
-  private lazy val allocated = ("bottom", addr.primitive("__bottom__"), lat.bottom) :: all.map({ prim => (prim.name, addr.primitive(prim.name), toVal(prim)) })
-  lazy val forEnv: Iterable[(String, Addr)] = allocated.map({ case (name, a, _) => (name, a) })
-  lazy val forStore: Iterable[(Addr, Abs)] =  allocated.map({ case (_, a, v) => (a, v) })
+  lazy val bindings = ("bottom", addr.primitive("__bottom__"), lat.bottom) :: all.map({ prim => (prim.name, addr.primitive(prim.name), toVal(prim)) })
 }
 
 /** This is where we define Scheme primitives */

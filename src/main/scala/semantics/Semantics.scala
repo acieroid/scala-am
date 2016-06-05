@@ -39,11 +39,10 @@ trait Semantics[Exp, Abs, Addr, Time] {
    */
   def parse(program: String): Exp
 
-  /** Defines the elements in the initial environment */
-  def initialEnv: Iterable[(String, Addr)] = List()
-
-  /** Defines the initial store */
-  def initialStore: Iterable[(Addr, Abs)] = List()
+  /** Defines the elements in the initial environment/store */
+  def initialBindings: Iterable[(String, Addr, Abs)] = List()
+  def initialEnv: Iterable[(String, Addr)] = initialBindings.map({ case (name, a, _) => (name, a) })
+  def initialStore: Iterable[(Addr, Abs)] = initialBindings.map({ case (_, a, v) => (a, v) })
 }
 
 /**

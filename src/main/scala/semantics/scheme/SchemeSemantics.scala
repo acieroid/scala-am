@@ -212,8 +212,7 @@ class BaseSchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp]
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)
-  override def initialEnv = primitives.forEnv
-  override def initialStore = primitives.forStore
+  override def initialBindings = primitives.bindings
 }
 
 /**

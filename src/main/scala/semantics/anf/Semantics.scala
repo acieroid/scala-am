@@ -132,6 +132,5 @@ class ANFSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primit
   }
 
   def parse(program: String): ANFExp = ANF.parse(program)
-  override def initialEnv = primitives.forEnv
-  override def initialStore = primitives.forStore
+  override def initialBindings = primitives.bindings
 }
