@@ -17,16 +17,25 @@ trait MayFail[L] {
   def map[A](f: L => A): MayFail[A]
   def bind[A](f: L => MayFail[A]): MayFail[A]
   def addError(err: SchemeError): MayFail[L]
+  def extract: L
+  def value: Option[L]
+  def errors: List[SchemeError]
 }
 case class MayFailSuccess[L](l: L) extends MayFail[L] {
   def map[A](f: L => A) = MayFailSuccess[A](f(l))
   def bind[A](f: L => MayFail[A]) = f(l)
   def addError(err: SchemeError) = MayFailBoth[L](l, List(err))
+  def extract = l
+  def value = Some(l)
+  def errors = List()
 }
 case class MayFailError[L](errs: List[SchemeError]) extends MayFail[L] {
   def map[A](f: L => A) = MayFailError[A](errs)
   def bind[A](f: L => MayFail[A]) = MayFailError[A](errs)
   def addError(err: SchemeError) = MayFailError[L](errs :+ err)
+  def extract = throw new Exception("Cannot extract from MayFailError")
+  def value = None
+  def errors = errs
 }
 case class MayFailBoth[L](l: L, errs: List[SchemeError]) extends MayFail[L] {
   def map[A](f: L => A) = MayFailBoth(f(l), errs)
@@ -36,6 +45,9 @@ case class MayFailBoth[L](l: L, errs: List[SchemeError]) extends MayFail[L] {
     case MayFailBoth(a, errs2) => MayFailBoth[A](a, errs ++ errs2)
   }
   def addError(err: SchemeError) = MayFailBoth[L](l, errs :+ err)
+  def extract = l
+  def value = Some(l)
+  def errors = errs
 }
 
 object MayFail {
@@ -48,6 +60,7 @@ object MayFail {
         case (MayFailError(errs1), MayFailError(errs2)) => MayFailError(errs1 ++ errs2)
         case (MayFailError(errs1), MayFailBoth(x, errs2)) => MayFailBoth(x, errs1 ++ errs2)
         case (MayFailBoth(x, errs1), MayFailBoth(y, errs2)) => MayFailBoth(monoid.append(x, y), errs1 ++ errs2)
+        case (x, y) => append(y, x)
       }
       def zero: MayFail[A] = MayFailSuccess(monoid.zero)
     }

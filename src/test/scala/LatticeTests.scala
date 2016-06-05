@@ -20,7 +20,7 @@ abstract class LatticePropSpec(val lattice: Lattice)
     forAll { (b: Boolean) => {
       val v = abs.inject(b)
       if (b) assert(abs.isTrue(v)) else assert(abs.isFalse(v))
-      if (b) assert(abs.isFalse(abs.unaryOp(Not)(v))) else assert(abs.isTrue(abs.unaryOp(Not)(v)))
+      if (b) assert(abs.isFalse(abs.unaryOp(Not)(v).extract)) else assert(abs.isTrue(abs.unaryOp(Not)(v).extract))
     }}
   }
   property("lattice should correctly implement boolean operations") {
@@ -35,20 +35,21 @@ abstract class LatticePropSpec(val lattice: Lattice)
     forAll { (n1: Int, n2: Int) => {
         val v1 = abs.inject(n1)
         val v2 = abs.inject(n2)
-        if (n1 < n2) assert(abs.isTrue(abs.binaryOp(Lt)(v1, v2))) else assert(abs.isFalse(abs.binaryOp(Lt)(v1, v2)))
-        if (n1 == n2) assert(abs.isTrue(abs.binaryOp(NumEq)(v1, v2))) else assert(abs.isFalse(abs.binaryOp(NumEq)(v1, v2)))
+        if (n1 < n2) assert(abs.isTrue(abs.binaryOp(Lt)(v1, v2).extract)) else assert(abs.isFalse(abs.binaryOp(Lt)(v1, v2).extract))
+        if (n1 == n2) assert(abs.isTrue(abs.binaryOp(NumEq)(v1, v2).extract)) else assert(abs.isFalse(abs.binaryOp(NumEq)(v1, v2).extract))
     }}
   }
+  def noErr(v: MayFail[Abs]): Unit = assert(!v.errors.isEmpty)
   property("lattice should report errors on invalid operations") {
     val v1 = abs.inject(1)
     val v2 = abs.inject(true)
-    assert(abs.isError(abs.binaryOp(Plus)(v1, v2))); assert(abs.isError(abs.binaryOp(Plus)(v2, v1)))
-    assert(abs.isError(abs.binaryOp(Minus)(v1, v2))); assert(abs.isError(abs.binaryOp(Minus)(v2, v1)))
-    assert(abs.isError(abs.binaryOp(Times)(v1, v2))); assert(abs.isError(abs.binaryOp(Times)(v2, v1)))
-    assert(abs.isError(abs.binaryOp(Div)(v1, v2))); assert(abs.isError(abs.binaryOp(Div)(v2, v1)))
-    assert(abs.isError(abs.binaryOp(Modulo)(v1, v2))); assert(abs.isError(abs.binaryOp(Modulo)(v2, v1)))
-    assert(abs.isError(abs.binaryOp(Lt)(v1, v2))); assert(abs.isError(abs.binaryOp(Lt)(v2, v1)))
-    assert(abs.isError(abs.binaryOp(NumEq)(v1, v2))); assert(abs.isError(abs.binaryOp(NumEq)(v2, v1)))
+    noErr(abs.binaryOp(Plus)(v1, v2)); noErr(abs.binaryOp(Plus)(v2, v1))
+    noErr(abs.binaryOp(Minus)(v1, v2)); noErr(abs.binaryOp(Minus)(v2, v1))
+    noErr(abs.binaryOp(Times)(v1, v2)); noErr(abs.binaryOp(Times)(v2, v1))
+    noErr(abs.binaryOp(Div)(v1, v2)); noErr(abs.binaryOp(Div)(v2, v1))
+    noErr(abs.binaryOp(Modulo)(v1, v2)); noErr(abs.binaryOp(Modulo)(v2, v1))
+    noErr(abs.binaryOp(Lt)(v1, v2)); noErr(abs.binaryOp(Lt)(v2, v1))
+    noErr(abs.binaryOp(NumEq)(v1, v2)); noErr(abs.binaryOp(NumEq)(v2, v1))
   }
   property("bottom should be subsumed by any other value") {
     val values = Table(
@@ -95,15 +96,6 @@ abstract class JoinLatticePropSpec(lattice: Lattice)
     val int = abs.inject(1000)
     val joined = abs.join(int, abs.join(t, str))
     assert(abs.subsumes(joined, str))
-  }
-  property("isError is correct") {
-    val err = abs.error(abs.inject("Error"))
-    val noterr = abs.inject(true)
-    val joined = abs.join(err, noterr)
-    /* isError is true for values that contain errors only */
-    assert(abs.isError(err))
-    /* For values that contain errors and non-errors, isError is false */
-    assert(!abs.isError(joined))
   }
 }
 

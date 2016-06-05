@@ -105,7 +105,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    * local continuation and the address of the rest of the continuation
    */
   case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont, t: Time) {
-    override def toString() = control.toString(σ)
+    override def toString = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ) && t == that.t
 
     /* TODO: There are a few functions inspecting the continuation (pop,

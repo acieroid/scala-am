@@ -462,10 +462,6 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     def vectorSet[Addr : Address](vector: LSet, index: LSet, addr: Addr): MayFail[(LSet, Set[Addr])] = foldMapLSet(vector, vector => foldMapLSet(index, index =>
       isAbstractValue.vectorSet(vector, index, addr).map({ case (v, addrs) => (wrap(v), addrs) })))
 
-    def toString[Addr : Address](x: LSet, store: Store[Addr, LSet]): String = x match {
-      case Element(x) => x.toString
-      case Elements(xs) => "{" + xs.mkString(",") + "}"
-    }
     def getClosures[Exp : Expression, Addr : Address](x: LSet): Set[(Exp, Environment[Addr])] = foldMapLSet(x, x => isAbstractValue.getClosures(x))
     def getPrimitives[Addr : Address, Abs : JoinLattice](x: LSet): Set[Primitive[Addr, Abs]] = foldMapLSet(x, x => isAbstractValue.getPrimitives(x))
     def getTids[TID : ThreadIdentifier](x: LSet): Set[TID] = foldMapLSet(x, x => isAbstractValue.getTids(x))

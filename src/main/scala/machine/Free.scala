@@ -32,7 +32,7 @@ class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timesta
    * exploration phase.
    */
   case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], k: KontAddr, t: Time) {
-    override def toString() = control.toString(σ)
+    override def toString = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
     /** Integrate a set of action to compute the successor states */

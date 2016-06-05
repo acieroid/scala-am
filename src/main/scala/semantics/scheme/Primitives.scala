@@ -278,6 +278,9 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
   object Eq extends NoStoreOperation("eq?", Some(2)) {
     override def call(x: Abs, y: Abs) = abs.binaryOp(SchemeOps.Eq)(x, y)
   }
+  object Not extends NoStoreOperation("not", Some(1)) {
+    override def call(x: Abs) = not(x)
+  }
   object NumberToString extends NoStoreOperation("number->string", Some(1)) {
     override def call(x: Abs) = numberToString(x)
   }
@@ -570,7 +573,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
               vs.foldLeft(acc)((acc, a) =>
                 mfmon.append(acc,
                   store.lookup(a) match {
-                    case Some(value) => MayFailSuccess((v, Set(EffectReadVector(a))))
+                    case Some(value) => MayFailSuccess((value, Set(EffectReadVector(a))))
                     case None => err(UnboundAddress(a.toString))
                   })))
             case None => acc.addError(UnboundAddress(va.toString))
@@ -594,9 +597,10 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
                                      (loop (+ i 1)))))))
                   (loop 0)))))))
    */
-  object Equal extends StoreOperation("equal", Some(2)) {
+  object Equal extends StoreOperation("equal?", Some(2)) {
     override def call(a: Abs, b: Abs, store: Store[Addr, Abs]) = {
       def equalVec(a: Abs, b: Abs, i: Abs, n: Abs, visitedEqual: Set[(Abs, Abs)], visited: Set[(Abs, Abs, Abs, Abs)]): MayFail[(Abs, Set[Effect[Addr]])] = {
+        println(s"equalVec($a, $b, $i, $n)")
         if (visited.contains((a, b, i, n)) || a == abs.bottom || b == abs.bottom || i == abs.bottom || n == abs.bottom) {
           MayFailSuccess((abs.bottom, Set[Effect[Addr]]()))
         } else {
@@ -621,6 +625,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
         }
       }
       def equalp(a: Abs, b: Abs, visited: Set[(Abs, Abs)]): MayFail[(Abs, Set[Effect[Addr]])] = {
+        println(s"equal($a, $b)")
         if (visited.contains((a, b)) || a == abs.bottom || b == abs.bottom) {
           MayFailSuccess((abs.bottom, Set[Effect[Addr]]()))
         } else {
@@ -701,7 +706,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     Plus, Minus, Times, Div, Quotient, LessThan, LessOrEqual, NumEq, GreaterThan, GreaterOrEqual,
     Modulo, Random, Ceiling, Log, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
     Nullp, Pairp, Charp, Symbolp, Stringp, Integerp, Realp, Numberp, Booleanp, Vectorp, Eq,
-    NumberToString, StringAppend, StringLength, Newline, Display, Error,
+    NumberToString, StringAppend, StringLength, Newline, Display, Error, Not,
     Cons, Car, Cdr, Caar, Cadr, Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar,
     Cdddr, Caaaar, Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar, Cdaadr, Cdadar,
     Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr, SetCar, SetCdr, Length, Listp,

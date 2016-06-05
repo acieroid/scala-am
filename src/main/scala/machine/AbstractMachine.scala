@@ -91,7 +91,6 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    */
   trait Control {
     def subsumes(that: Control): Boolean
-    def toString(store: Store[Addr, Abs]): String = toString()
   }
 
   /**
@@ -111,7 +110,6 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    */
   case class ControlKont(v: Abs) extends Control {
     override def toString() = s"ko(${v})"
-    override def toString(store: Store[Addr, Abs]) = s"ko($abs)"
     def subsumes(that: Control) = that match {
       case ControlKont(v2) => abs.subsumes(v, v2)
       case _ => false

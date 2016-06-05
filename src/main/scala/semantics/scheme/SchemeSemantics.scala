@@ -46,7 +46,7 @@ class BaseSchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp]
                 ActionStepIn[SchemeExp, Abs, Addr](fexp, (SchemeLambda(args, body, pos), env1), SchemeBegin(body, pos), env2, store, argsv)
           }
         } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
-      case (λ, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${λ}")
+      case (lambda, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${lambda}")
     })
     val fromPrim = sabs.getPrimitives(function).flatMap(prim =>
       prim.call(fexp, argsv, store, t) match {
