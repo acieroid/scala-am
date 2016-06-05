@@ -77,7 +77,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
 
       val machine = config.machine match {
         case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, address.A, time.T]
-        case Config.Machine.AAMMonoGlobalStore => new AAMMonoGlobalStore[SchemeExp, lattice.L, address.A, time.T]
+        case Config.Machine.AAMGlobalStore => new AAMGlobalStore[SchemeExp, lattice.L, address.A, time.T]
         case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
         case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
         case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
@@ -203,10 +203,10 @@ object MonoBenchmarks extends Benchmarks("test", {
   import Config._
   programs.flatMap(p =>
     Set(MachineConfig(p, machine = Machine.AAM),
-      MachineConfig(p, machine = Machine.AAMMonoGlobalStore)))
+      MachineConfig(p, machine = Machine.AAMGlobalStore)))
 }, (config => config.machine match {
   case Config.Machine.AAM => "AAM"
-  case Config.Machine.AAMMonoGlobalStore => "AAM+GS"
+  case Config.Machine.AAMGlobalStore => "AAM+GS"
 }))
 
 object ConcurrentMonoBenchmarks extends Benchmarks("concurrent", {

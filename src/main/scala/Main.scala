@@ -79,7 +79,7 @@ import scala.io.StdIn
  */
 object Config {
   object Machine extends Enumeration {
-    val AAC, AAM, AAMMonoGlobalStore, Free, ConcurrentAAM, ConcurrentAAMGlobalStore, ConcreteMachine = Value
+    val AAC, AAM, AAMGlobalStore, Free, ConcurrentAAM, ConcurrentAAMGlobalStore, ConcreteMachine = Value
   }
   implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
 
@@ -153,7 +153,7 @@ object Config {
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
     head("scala-am", "0.0")
-    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAMMonoGlobalStore, AAC, Free, ConcurrentAAM, ConcurrentAAMGlobalStore, ConcreteMachine)")
+    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAMGlobalStore, AAC, Free, ConcurrentAAM, ConcurrentAAMGlobalStore, ConcreteMachine)")
     opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text("Lattice to use (Concrete, Type, TypeSet)")
     opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
@@ -236,7 +236,7 @@ object Main {
 
         val machine = config.machine match {
           case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, address.A, time.T]
-          case Config.Machine.AAMMonoGlobalStore => new AAMMonoGlobalStore[SchemeExp, lattice.L, address.A, time.T]
+          case Config.Machine.AAMGlobalStore => new AAMGlobalStore[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
