@@ -3,7 +3,7 @@
  * implementations in this framework because it doesn't store the set of visited
  * states.
  */
-class ConcreteMachine[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "ConcreteMachine"
 

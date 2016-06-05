@@ -1,4 +1,4 @@
-import scalaz.Scalaz._
+/*import scalaz.Scalaz._
 import scalaz._
 
 trait ExplorationType
@@ -764,3 +764,4 @@ class ConcurrentAAM[Exp : Expression, Abs : AbstractValue, Addr : Address, Time 
     }
   }
 }
+ */

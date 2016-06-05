@@ -1,4 +1,4 @@
-import scalaz.Scalaz._
+/*import scalaz.Scalaz._
 import scalaz._
 
 /**
@@ -673,3 +673,4 @@ class ConcurrentAAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Add
     }
   }
 }
+ */

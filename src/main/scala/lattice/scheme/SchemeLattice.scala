@@ -67,7 +67,7 @@ object MayFail {
 }
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L] extends JoinLattice[L] {
+trait IsSchemeLattice[L] extends JoinLattice[L] {
   /** Can this value be considered true for conditionals? */
   def isTrue(x: L): Boolean
   /** Can this value be considered false for conditionals? */
@@ -105,29 +105,7 @@ trait SchemeLattice[L] extends JoinLattice[L] {
   def cons[Addr : Address](car: Addr, cdr: Addr): L
   /** Nil value */
   def nil: L
-}
 
-/** A lattice for Concurrent Scheme */
-trait ConcurrentSchemeLattice[L] extends SchemeLattice[L] {
-  /** Extract thread ids contained in this value */
-  def getTids[TID : ThreadIdentifier](x: L): Set[TID]
-  /** Extract lock addresses contained in this value */
-  def getLocks[Addr : Address](x: L): Set[Addr]
-
-  /** Inject a thread id */
-  def injectTid[TID : ThreadIdentifier](tid: TID): L
-  /** Creates a lock wrapper (that contains the address of the lock) */
-  def lock[Addr : Address](addr: Addr): L
-  /** The locked value */
-  def lockedValue: L
-  /** The unlocked value */
-  def unlockedValue: L
-}
-
-/** Internals of a lattice for Scheme, used by the primitives' definitions */
-trait SchemeLatticeInternals[L] extends SchemeLattice[L] {
-  /** Injects an error */
-  // def error(x: L): L
   /** Takes the car of a cons cell */
   def car[Addr : Address](x: L): Set[Addr]
   /** Takes the cdr of a cons cell */
@@ -141,5 +119,31 @@ trait SchemeLatticeInternals[L] extends SchemeLattice[L] {
   def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): MayFail[(L, Set[Addr])]
   /** Extract vector addresses contained in this value */
   def getVectors[Addr : Address](x: L): Set[Addr]
+  /** Creates a vector of the given size, where the initial value lies at
+   * address. Return the vector address wrapped in a lattice value, as well as
+   * the vector value itsel */
   def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
+
+}
+
+trait SchemeLattice {
+  type L
+  val isSchemeLattice: IsSchemeLattice[L]
+}
+
+/** A lattice for Concurrent Scheme */
+trait IsConcurrentSchemeLattice[L] extends IsSchemeLattice[L] {
+  /** Extract thread ids contained in this value */
+  def getTids[TID : ThreadIdentifier](x: L): Set[TID]
+  /** Extract lock addresses contained in this value */
+  def getLocks[Addr : Address](x: L): Set[Addr]
+
+  /** Inject a thread id */
+  def injectTid[TID : ThreadIdentifier](tid: TID): L
+  /** Creates a lock wrapper (that contains the address of the lock) */
+  def lock[Addr : Address](addr: Addr): L
+  /** The locked value */
+  def lockedValue: L
+  /** The unlocked value */
+  def unlockedValue: L
 }

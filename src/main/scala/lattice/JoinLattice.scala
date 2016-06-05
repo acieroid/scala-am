@@ -27,7 +27,7 @@ trait JoinLattice[L] extends Monoid[L] {
 /**
  * We define here some domains that can will be useful to build a lattice for most languages.
  */
-trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
+trait IsLatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
   def name: String
   def bottom: L
   def top: L
@@ -41,14 +41,14 @@ trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
 }
 
 /** A lattice for strings */
-trait IsString[S] extends LatticeElement[S] {
+trait IsString[S] extends IsLatticeElement[S] {
   def inject(s: String): S
   def length[I : IsInteger](s: S): I
   def append(s1: S, s2: S): S
 }
 
 /** A lattice for booleans */
-trait IsBoolean[B] extends LatticeElement[B] {
+trait IsBoolean[B] extends IsLatticeElement[B] {
   def inject(b: Boolean): B
   def isTrue(b: B): Boolean
   def isFalse(b: B): Boolean
@@ -56,7 +56,7 @@ trait IsBoolean[B] extends LatticeElement[B] {
 }
 
 /** A lattice for integers */
-trait IsInteger[I] extends LatticeElement[I] {
+trait IsInteger[I] extends IsLatticeElement[I] {
   def inject(n: Int): I
   def ceiling(n: I): I
   def toFloat[F : IsFloat](n: I): F
@@ -71,7 +71,7 @@ trait IsInteger[I] extends LatticeElement[I] {
 }
 
 /** A lattice for floats */
-trait IsFloat[F] extends LatticeElement[F] {
+trait IsFloat[F] extends IsLatticeElement[F] {
   def inject(n: Float): F
   def ceiling(n: F): F
   def log(n: F): F
@@ -85,12 +85,12 @@ trait IsFloat[F] extends LatticeElement[F] {
 }
 
 /** A lattice for characters */
-trait IsChar[C] extends LatticeElement[C] {
+trait IsChar[C] extends IsLatticeElement[C] {
   def inject(c: Char): C
 }
 
 /** A lattice for symbols */
-trait IsSymbol[Sym] extends LatticeElement[Sym] {
+trait IsSymbol[Sym] extends IsLatticeElement[Sym] {
   def inject(sym: String): Sym
 }
 
@@ -267,7 +267,7 @@ class BoundedInteger(bound: Int) {
         case _ => Set(x)
       }
     }
-    private def fold[L](x: I, f: Int => L)(implicit b: LatticeElement[L]): L = x match {
+    private def fold[L](x: I, f: Int => L)(implicit b: IsLatticeElement[L]): L = x match {
       case Set(xs) => xs.foldMap(f)
       case Top => b.top
     }
@@ -309,7 +309,7 @@ object Type {
       case Bottom => y
     }
   }
-  abstract class BaseInstance(typeName: String) extends LatticeElement[T] {
+  abstract class BaseInstance(typeName: String) extends IsLatticeElement[T] {
     def name = s"Type$typeName"
     override def shows(x: T): String = x match {
       case Top => typeName
@@ -341,7 +341,7 @@ object Type {
       case (Bottom, Bottom) => Ordering.EQ
     }
   }
-  implicit val typeIsLatticeElement: LatticeElement[T] = new BaseInstance("Type") {
+  implicit val typeIsLatticeElement: IsLatticeElement[T] = new BaseInstance("Type") {
   }
   implicit val typeIsString: IsString[T] = new BaseInstance("Str") with IsString[T] {
     def inject(x: String): T = Top
@@ -429,7 +429,7 @@ class ConstantPropagation[A](implicit ordering: Order[A]) {
     }
   }
 
-  abstract class BaseInstance(typeName: String) extends LatticeElement[L] {
+  abstract class BaseInstance(typeName: String) extends IsLatticeElement[L] {
     def name = s"ConstantPropagation$typeName"
     override def shows(x: L): String = x match {
       case Top => typeName
@@ -592,14 +592,4 @@ object SymbolConstantPropagation extends ConstantPropagation[String] {
   implicit val isSymbol: IsSymbol[Sym] = new BaseInstance("Sym") with IsSymbol[Sym] {
     def inject(x: String) = Constant(x)
   }
-}
-
-/* TODO: ConcurrentSchemeLattice has to move from there... */
-trait AbstractValue[A] extends SchemeLatticeInternals[A] with ConcurrentSchemeLattice[A]
-
-object AbstractValue
-
-trait Lattice {
-  type L
-  val isAbstractValue: AbstractValue[L]
 }

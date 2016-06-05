@@ -1,9 +1,9 @@
 /**
  * Semantics for ANF Scheme (abstract grammar defined in ANF.scala)
  */
-class ANFSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
+class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
     extends BaseSemantics[ANFExp, Abs, Addr, Time] {
-  def sabs = implicitly[SchemeLattice[Abs]]
+  def sabs = implicitly[IsSchemeLattice[Abs]]
   /** ANF Scheme only has three types of continuation frames: halt, let, and letrec */
   trait ANFFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)

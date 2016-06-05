@@ -79,7 +79,7 @@ import scala.io.StdIn
  */
 object Config {
   object Machine extends Enumeration {
-    val AAC, AAM, AAMGlobalStore, Free, ConcurrentAAM, ConcurrentAAMGlobalStore, ConcreteMachine = Value
+    val AAC, AAM, AAMGlobalStore, Free, ConcreteMachine = Value
   }
   implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
 
@@ -92,13 +92,6 @@ object Config {
     val Classical, ValueSensitive = Value
   }
   implicit val addressRead: scopt.Read[Address.Value] = scopt.Read.reads(Address withName _)
-
-  object Language extends Enumeration {
-    val Scheme, ANF = Value
-  }
-  implicit val languageRead: scopt.Read[Language.Value] = scopt.Read.reads(Language withName _)
-
-  implicit val explorationTypeRead: scopt.Read[ExplorationType] = scopt.Read.reads(ExplorationTypeParser.parse _)
 
   trait Time {
     def nanoSeconds: Long
@@ -143,9 +136,7 @@ object Config {
   case class Config(machine: Machine.Value = Machine.Free,
     lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
     file: Option[String] = None, dotfile: Option[String] = None,
-    language: Language.Value = Language.Scheme,
     address: Address.Value = Address.Classical,
-    exploration: ExplorationType = InterferenceTrackingPath(Some(4)),
     inspect: Boolean = false,
     counting: Boolean = false,
     bound: Int = 100,
@@ -153,13 +144,11 @@ object Config {
 
   val parser = new scopt.OptionParser[Config]("scala-am") {
     head("scala-am", "0.0")
-    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAMGlobalStore, AAC, Free, ConcurrentAAM, ConcurrentAAMGlobalStore, ConcreteMachine)")
+    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAMGlobalStore, AAC, Free, ConcreteMachine)")
     opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text("Lattice to use (Concrete, Type, TypeSet)")
     opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
-    opt[Language.Value]("language") action { (x, c) => c.copy(language = x) } text("The language to analyze")
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
-    opt[ExplorationType]('e', "exploration") action { (x, c) => c.copy(exploration = x) } text("Exploration type for concurrent programs (OneInterleaving, RandomInterleaving, AllInterleavings, InterferenceTrackingSet, InterferenceTrackingPath, InterferenceTrackingPath(bound))")
     opt[Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
     opt[Unit]('i', "inspect") action { (x, c) => c.copy(inspect = true) } text("Launch inspection REPL (disabled by default)")
     opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text("Addresses to use (Classical, ValueSensitive)")
@@ -172,8 +161,8 @@ object Main {
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
     * file. */
-  def run[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, output: Option[String], timeout: Option[Long], inspect: Boolean): Unit = {
-    val abs = implicitly[AbstractValue[Abs]]
+  def run[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, output: Option[String], timeout: Option[Long], inspect: Boolean): Unit = {
+    val abs = implicitly[JoinLattice[Abs]]
     val addr = implicitly[Address[Addr]]
     println(s"Running ${machine.name} with lattice ${abs.name} and address ${addr.name}")
     val result = machine.eval(sem.parse(program), sem, !output.isEmpty, timeout)
@@ -217,13 +206,13 @@ object Main {
   def main(args: Array[String]) {
     import scala.util.control.Breaks._
     Config.parser.parse(args, Config.Config()) match {
-      case Some(config) if (config.language == Config.Language.Scheme) => {
-        val lattice: Lattice = config.lattice match {
+      case Some(config) => {
+        val lattice: SchemeLattice = config.lattice match {
           case Config.Lattice.Concrete => new ConcreteLattice(true)
           case Config.Lattice.TypeSet => new TypeSetLattice(config.counting)
           case Config.Lattice.BoundedInt => new BoundedIntLattice(config.bound, config.counting)
         }
-        implicit val isAbstractValue = lattice.isAbstractValue
+        implicit val isSchemeLattice = lattice.isSchemeLattice
 
         val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
         implicit val isTimestamp = time.isTimestamp
@@ -240,15 +229,9 @@ object Main {
           case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
           case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
-          case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
-          case Config.Machine.ConcurrentAAMGlobalStore => new ConcurrentAAMGlobalStore[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
         }
 
-        val sem = if (config.machine == Config.Machine.ConcurrentAAM || config.machine == Config.Machine.ConcurrentAAMGlobalStore) {
-          new ConcurrentSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, lattice.L])
-        } else {
-          new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
-        }
+        val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
 
         try {
           do {

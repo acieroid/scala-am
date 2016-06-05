@@ -11,9 +11,6 @@ object SchemeOps {
   case object IsFloat extends UnaryOperator
   case object IsBoolean extends UnaryOperator
   case object IsVector extends UnaryOperator
-  case object IsLock extends UnaryOperator
-  /* Checks if a lock is considered locked */
-  case object IsLocked extends UnaryOperator
   /* Negate a value */
   case object Not extends UnaryOperator
   /* Unary arithmetic operations */

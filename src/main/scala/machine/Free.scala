@@ -4,7 +4,7 @@
  * al. "Pushdown Control-Flow Analysis for Free." arXiv preprint
  * arXiv:1507.03137 (2015)).
  */
-class Free[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "Free"
 

@@ -44,9 +44,9 @@ abstract class Primitives[Addr : Address, Abs : JoinLattice] {
 }
 
 /** This is where we define Scheme primitives */
-class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[Addr, Abs] {
+class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives[Addr, Abs] {
   import SchemeOps._
-  val abs = implicitly[AbstractValue[Abs]]
+  val abs = implicitly[IsSchemeLattice[Abs]]
 
   def isNull = abs.unaryOp(SchemeOps.IsNull) _
   def isCons = abs.unaryOp(SchemeOps.IsCons) _
@@ -689,7 +689,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     }
   }
 
-  object Lock extends Primitive[Addr, Abs] {
+/*  object Lock extends Primitive[Addr, Abs] {
     val name = "new-lock"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case Nil =>
@@ -698,6 +698,7 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
       case l => MayFailError(List(ArityError("lock", 0, l.size)))
     }
   }
+ */
 
   /** Bundles all the primitives together */
   def all: List[Primitive[Addr, Abs]] = List(
@@ -709,7 +710,6 @@ class SchemePrimitives[Addr : Address, Abs : AbstractValue] extends Primitives[A
     Cdddr, Caaaar, Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar, Cdaadr, Cdadar,
     Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr, SetCar, SetCdr, Length, Listp,
     MakeVector, VectorSet, Vector, VectorLength, VectorRef,
-    Equal,
-    Lock)
+    Equal /*, Lock */)
   def toVal(prim: Primitive[Addr, Abs]): Abs = abs.inject(prim)
 }

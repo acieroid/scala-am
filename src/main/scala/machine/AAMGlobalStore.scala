@@ -3,7 +3,7 @@ import scalaz.Scalaz._
 /**
  * AAM with a monotonically growing global store.
  */
-class AAMGlobalStore[Exp : Expression, Abs : AbstractValue, Addr : Address, Time : Timestamp]
+class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "AAMMonoGlobalStore"
 

@@ -3,9 +3,9 @@ import SchemeOps._
 /**
  * Basic Scheme semantics, without any optimization
  */
-class BaseSchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
+class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
     extends BaseSemantics[SchemeExp, Abs, Addr, Time] {
-  def sabs = implicitly[SchemeLattice[Abs]]
+  def sabs = implicitly[IsSchemeLattice[Abs]]
 
   trait SchemeFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
@@ -223,7 +223,7 @@ class BaseSchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp]
  *     to evaluate (+ 1 (f)), we can directly push the continuation and jump to
  *     the evaluation of (f), instead of evaluating +, and 1 in separate states.
  */
-class SchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
+class SchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
     extends BaseSchemeSemantics[Abs, Addr, Time](primitives) {
 
   /** Tries to perform atomic evaluation of an expression. Returns the result of
@@ -273,7 +273,8 @@ class SchemeSemantics[Abs : SchemeLattice, Addr : Address, Time : Timestamp](pri
     optimizeAtomic(super.stepKont(v, frame, store, t), t)
 }
 
-class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
+/*
+class ConcurrentSchemeSemantics[Abs : ConcurrentSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
     extends SchemeSemantics[Abs, Addr, Time](primitives: Primitives[Addr, Abs]) {
   def cabs = implicitly[ConcurrentSchemeLattice[Abs]]
   def aabs = implicitly[AbstractValue[Abs]]
@@ -388,3 +389,4 @@ class ConcurrentSchemeSemantics[Abs : AbstractValue, Addr : Address, Time : Time
     case _ => super.stepKont(v, frame, store, t)
   }
 }
+ */

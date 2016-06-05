@@ -44,12 +44,6 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     }
   }
   case class VectorAddress[Addr : Address](a: Addr) extends Value
-  case class Tid[TID : ThreadIdentifier](t: TID) extends Value {
-    override def toString = s"#<thread $t>"
-  }
-  case class LockAddress[Addr : Address](addr: Addr) extends Value
-  case object Locked extends Value
-  case object Unlocked extends Value
 
   val True = Bool(bool.inject(true))
   val False = Bool(bool.inject(false))
@@ -61,7 +55,7 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     override def toString = "CannotJoin(" + values.mkString(", ") + ")"
   }
 
-  val isAbstractValue: AbstractValue[L] = new AbstractValue[L] {
+  val isSchemeLattice: IsSchemeLattice[L] = new IsSchemeLattice[L] {
     def bottom = Bot
     def join(x: L, y: L): L = if (x == y) { x } else {
       (x, y) match {
@@ -90,8 +84,8 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     val counting = supportsCounting
 
     def isPrimitiveValue(x: L): Boolean = x match {
-      case Bot | Str(_) | Bool(_) | Int(_) | Float(_) | Char(_) | Symbol(_) | Nil | Locked | Unlocked => true
-      case Closure(_, _) | Prim(_) | Tid(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) | LockAddress(_) => false
+      case Bot | Str(_) | Bool(_) | Int(_) | Float(_) | Char(_) | Symbol(_) | Nil => true
+      case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) => false
     }
 
     def isTrue(x: L): Boolean = x match {
@@ -144,16 +138,6 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       case IsVector => x match {
         case Vec(_, _, _) => True
         case VectorAddress(_) => True
-        case _ => False
-      }
-      case IsLock => x match {
-        case LockAddress(_) => True
-        case Locked => True
-        case Unlocked => True
-        case _ => False
-      }
-      case IsLocked => x match {
-        case Locked => True
         case _ => False
       }
       case Not => x match {
@@ -250,7 +234,6 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
         case (Closure(_, _), Closure(_, _)) => Bool(bool.inject(x == y))
         case (Cons(_, _), Cons(_, _)) => Bool(bool.inject(x == y))
         case (VectorAddress(_), VectorAddress(_)) => Bool(bool.inject(x == y))
-        case (LockAddress(_), LockAddress(_)) => Bool(bool.inject(x == y))
         case _ => False
       }
       case StringAppend => (x, y) match {
@@ -298,7 +281,7 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       case _ => Set()
     }
 
-      def car[Addr : Address](x: L): Set[Addr] = x match {
+    def car[Addr : Address](x: L): Set[Addr] = x match {
       case Cons(car: Addr @unchecked, cdr: Addr @unchecked) => Set(car)
       case _ => Set()
     }
@@ -348,27 +331,15 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       case _ => MayFailError(List(OperatorNotApplicable("vector-set!", List(vector.toString, index.toString, addr.toString))))
     }
 
-    def getTids[TID : ThreadIdentifier](x: L) = x match {
-      case Tid(t: TID @unchecked) => Set(t)
-      case _ => Set()
-    }
     def getVectors[Addr : Address](x: L) = x match {
       case VectorAddress(a: Addr @unchecked) => Set(a)
       case _ => Set()
     }
-    def getLocks[Addr : Address](x: L) = x match {
-      case LockAddress(a: Addr @unchecked) => Set(a)
-      case _ => Set()
-    }
 
-    def injectTid[TID : ThreadIdentifier](tid: TID): L = Tid(tid)
     def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)] = size match {
       case Int(size) => MayFailSuccess((VectorAddress(addr), Vec(size, Map[I, Addr](), init)))
       case _ => MayFailError(List(OperatorNotApplicable("vector", List(addr.toString, size.toString, init.toString))))
     }
-    def lock[Addr : Address](addr: Addr) = LockAddress(addr)
-    def lockedValue = Locked
-    def unlockedValue = Unlocked
   }
 
   sealed trait LSet
@@ -394,7 +365,7 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       case Element(Bot) => y
       case Element(a) => y match {
         case Element(Bot) => x
-        case Element(b) => wrap(isAbstractValue.join(a, b))
+        case Element(b) => wrap(isSchemeLattice.join(a, b))
         case _: Elements => append(Elements(Set(a)), y)
       }
       case Elements(as) => y match {
@@ -403,12 +374,12 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
         case Elements(bs) =>
           /* every element in the other set has to be joined in this set */
           Elements(as.foldLeft(bs)((acc, x2) =>
-            if (acc.exists(x1 => isAbstractValue.subsumes(x1, x2))) {
+            if (acc.exists(x1 => isSchemeLattice.subsumes(x1, x2))) {
               /* the set already contains an element that subsumes x2, don't add it to the set */
               acc
             } else {
               /* remove all elements subsumed by x2 and add x2 to the set */
-              val subsumed = acc.filter(x1 => isAbstractValue.subsumes(x2, x1))
+              val subsumed = acc.filter(x1 => isSchemeLattice.subsumes(x2, x1))
               (acc -- subsumed) + x2
             }))
       }
@@ -435,15 +406,15 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     case Element(x) => f(x)
     case Elements(xs) => xs.foldMap(x => f(x))(b)
   }
-  val isAbstractValueSet = new AbstractValue[LSet] {
+  val isSchemeLatticeSet = new IsSchemeLattice[LSet] {
     val name = s"SetLattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
     val counting = supportsCounting
 
-    def isTrue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isTrue(_))(boolOrMonoid)
-    def isFalse(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isFalse(_))(boolOrMonoid)
-    def isPrimitiveValue(x: LSet): Boolean = foldMapLSet(x, isAbstractValue.isPrimitiveValue(_))(boolAndMonoid)
-    def unaryOp(op: UnaryOperator)(x: LSet): MayFail[LSet] = foldMapLSet(x, x => isAbstractValue.unaryOp(op)(x).map(x => wrap(x)))
-    def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): MayFail[LSet] = foldMapLSet(x, x => foldMapLSet(y, y => isAbstractValue.binaryOp(op)(x, y).map(x => wrap(x))))
+    def isTrue(x: LSet): Boolean = foldMapLSet(x, isSchemeLattice.isTrue(_))(boolOrMonoid)
+    def isFalse(x: LSet): Boolean = foldMapLSet(x, isSchemeLattice.isFalse(_))(boolOrMonoid)
+    def isPrimitiveValue(x: LSet): Boolean = foldMapLSet(x, isSchemeLattice.isPrimitiveValue(_))(boolAndMonoid)
+    def unaryOp(op: UnaryOperator)(x: LSet): MayFail[LSet] = foldMapLSet(x, x => isSchemeLattice.unaryOp(op)(x).map(x => wrap(x)))
+    def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): MayFail[LSet] = foldMapLSet(x, x => foldMapLSet(y, y => isSchemeLattice.binaryOp(op)(x, y).map(x => wrap(x))))
     def join(x: LSet, y: LSet): LSet = implicitly[Monoid[LSet]].append(x, y)
     /* if we need to define meet at some point, a different representation might be
      * more practical. Using a product of all the domains used is probably thea
@@ -451,44 +422,38 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     def meet(x: LSet, y: LSet): LSet = ???
     def subsumes(x: LSet, y: LSet): Boolean = foldMapLSet(y, y =>
       /* For every element in y, there exists an element of x that subsumes it */
-      foldMapLSet(x, x => isAbstractValue.subsumes(x, y))(boolOrMonoid))(boolAndMonoid)
-    def and(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.and(x, y))))
-    def or(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isAbstractValue.or(x, y))))
-    def car[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.car(x))
-    def cdr[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.cdr(x))
+      foldMapLSet(x, x => isSchemeLattice.subsumes(x, y))(boolOrMonoid))(boolAndMonoid)
+    def and(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isSchemeLattice.and(x, y))))
+    def or(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isSchemeLattice.or(x, y))))
+    def car[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isSchemeLattice.car(x))
+    def cdr[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isSchemeLattice.cdr(x))
 
     def vectorRef[Addr : Address](vector: LSet, index: LSet): MayFail[Set[Addr]] = foldMapLSet(vector, vector => foldMapLSet(index, index =>
-      isAbstractValue.vectorRef(vector, index)))
+      isSchemeLattice.vectorRef(vector, index)))
     def vectorSet[Addr : Address](vector: LSet, index: LSet, addr: Addr): MayFail[(LSet, Set[Addr])] = foldMapLSet(vector, vector => foldMapLSet(index, index =>
-      isAbstractValue.vectorSet(vector, index, addr).map({ case (v, addrs) => (wrap(v), addrs) })))
+      isSchemeLattice.vectorSet(vector, index, addr).map({ case (v, addrs) => (wrap(v), addrs) })))
 
-    def getClosures[Exp : Expression, Addr : Address](x: LSet): Set[(Exp, Environment[Addr])] = foldMapLSet(x, x => isAbstractValue.getClosures(x))
-    def getPrimitives[Addr : Address, Abs : JoinLattice](x: LSet): Set[Primitive[Addr, Abs]] = foldMapLSet(x, x => isAbstractValue.getPrimitives(x))
-    def getTids[TID : ThreadIdentifier](x: LSet): Set[TID] = foldMapLSet(x, x => isAbstractValue.getTids(x))
-    def getVectors[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.getVectors(x))
-    def getLocks[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isAbstractValue.getLocks(x))
+    def getClosures[Exp : Expression, Addr : Address](x: LSet): Set[(Exp, Environment[Addr])] = foldMapLSet(x, x => isSchemeLattice.getClosures(x))
+    def getPrimitives[Addr : Address, Abs : JoinLattice](x: LSet): Set[Primitive[Addr, Abs]] = foldMapLSet(x, x => isSchemeLattice.getPrimitives(x))
+    def getVectors[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isSchemeLattice.getVectors(x))
 
-    def bottom: LSet = Element(isAbstractValue.bottom)
-    def inject(x: scala.Int): LSet = Element(isAbstractValue.inject(x))
-    def inject(x: scala.Float): LSet = Element(isAbstractValue.inject(x))
-    def inject(x: String): LSet = Element(isAbstractValue.inject(x))
-    def inject(x: scala.Char): LSet = Element(isAbstractValue.inject(x))
-    def inject(x: Boolean): LSet = Element(isAbstractValue.inject(x))
-    def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): LSet = Element(isAbstractValue.inject(x))
-    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): LSet = Element(isAbstractValue.inject(x))
-    def injectTid[TID : ThreadIdentifier](tid: TID): LSet = Element(isAbstractValue.injectTid(tid))
-    def injectSymbol(x: String): LSet = Element(isAbstractValue.injectSymbol(x))
-    def cons[Addr : Address](car: Addr, cdr: Addr): LSet = Element(isAbstractValue.cons(car, cdr))
+    def bottom: LSet = Element(isSchemeLattice.bottom)
+    def inject(x: scala.Int): LSet = Element(isSchemeLattice.inject(x))
+    def inject(x: scala.Float): LSet = Element(isSchemeLattice.inject(x))
+    def inject(x: String): LSet = Element(isSchemeLattice.inject(x))
+    def inject(x: scala.Char): LSet = Element(isSchemeLattice.inject(x))
+    def inject(x: Boolean): LSet = Element(isSchemeLattice.inject(x))
+    def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): LSet = Element(isSchemeLattice.inject(x))
+    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): LSet = Element(isSchemeLattice.inject(x))
+    def injectSymbol(x: String): LSet = Element(isSchemeLattice.injectSymbol(x))
+    def cons[Addr : Address](car: Addr, cdr: Addr): LSet = Element(isSchemeLattice.cons(car, cdr))
     def vector[Addr : Address](addr: Addr, size: LSet, init: Addr): MayFail[(LSet, LSet)] = foldMapLSet(size, size =>
-      isAbstractValue.vector(addr, size, init).map({ case (a, v) => (Element(a), Element(v)) }))
-    def lock[Addr : Address](addr: Addr): LSet = Element(isAbstractValue.lock(addr))
-    def lockedValue: LSet = Element(isAbstractValue.lockedValue)
-    def unlockedValue: LSet = Element(isAbstractValue.unlockedValue)
-    def nil: LSet = Element(isAbstractValue.nil)
+      isSchemeLattice.vector(addr, size, init).map({ case (a, v) => (Element(a), Element(v)) }))
+    def nil: LSet = Element(isSchemeLattice.nil)
   }
 }
 
-class ConcreteLattice(counting: Boolean) extends Lattice {
+class ConcreteLattice(counting: Boolean) extends SchemeLattice {
   import ConcreteString._
   import ConcreteBoolean._
   import ConcreteInteger._
@@ -498,28 +463,28 @@ class ConcreteLattice(counting: Boolean) extends Lattice {
 
   val lattice = new MakeSchemeLattice[S, B, I, F, C, Sym](counting)
   type L = lattice.LSet
-  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+  implicit val isSchemeLattice: IsSchemeLattice[L] = lattice.isSchemeLatticeSet
 }
 
-class TypeSetLattice(counting: Boolean) extends Lattice {
+class TypeSetLattice(counting: Boolean) extends SchemeLattice {
   import Type._
   import ConcreteBoolean._
   val lattice = new MakeSchemeLattice[T, B, T, T, T, T](counting)
   type L = lattice.LSet
-  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+  implicit val isSchemeLattice: IsSchemeLattice[L] = lattice.isSchemeLatticeSet
 }
 
-class BoundedIntLattice(bound: Int, counting: Boolean) extends Lattice {
+class BoundedIntLattice(bound: Int, counting: Boolean) extends SchemeLattice {
   import Type._
   import ConcreteBoolean._
   val bounded = new BoundedInteger(bound)
   import bounded._
   val lattice = new MakeSchemeLattice[T, B, I, T, T, T](counting)
   type L = lattice.LSet
-  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+  implicit val isSchemeLattice: IsSchemeLattice[L] = lattice.isSchemeLatticeSet
 }
 
-class ConstantPropagationLattice(counting: Boolean) extends Lattice {
+class ConstantPropagationLattice(counting: Boolean) extends SchemeLattice {
   import StringConstantPropagation._
   import ConcreteBoolean._
   import IntegerConstantPropagation._
@@ -529,5 +494,5 @@ class ConstantPropagationLattice(counting: Boolean) extends Lattice {
 
   val lattice = new MakeSchemeLattice[S, B, I, F, C, Sym](counting)
   type L = lattice.LSet
-  implicit val isAbstractValue: AbstractValue[L] = lattice.isAbstractValueSet
+  implicit val isSchemeLattice: IsSchemeLattice[L] = lattice.isSchemeLatticeSet
 }

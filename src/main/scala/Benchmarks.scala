@@ -1,4 +1,4 @@
-object BenchmarksConfig {
+/*object BenchmarksConfig {
   case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false, skipConcrete: Boolean = false, skipOne: Boolean = false, skipDPOR: Boolean = false, bound: Option[Int] = None)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
@@ -259,3 +259,4 @@ object ConcurrentExplorationBenchmarks extends Benchmarks("concurrent", {
     case InterferenceTrackingPath(Some(n)) => s"path($n)"
     case InterferenceTrackingPath(None) => "path"
   }))
+ */
