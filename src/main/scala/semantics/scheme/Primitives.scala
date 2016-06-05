@@ -598,7 +598,6 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Equal extends StoreOperation("equal?", Some(2)) {
     override def call(a: Abs, b: Abs, store: Store[Addr, Abs]) = {
       def equalVec(a: Abs, b: Abs, i: Abs, n: Abs, visitedEqual: Set[(Abs, Abs)], visited: Set[(Abs, Abs, Abs, Abs)]): MayFail[(Abs, Set[Effect[Addr]])] = {
-        println(s"equalVec($a, $b, $i, $n)")
         if (visited.contains((a, b, i, n)) || a == abs.bottom || b == abs.bottom || i == abs.bottom || n == abs.bottom) {
           MayFailSuccess((abs.bottom, Set[Effect[Addr]]()))
         } else {
@@ -623,7 +622,6 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
         }
       }
       def equalp(a: Abs, b: Abs, visited: Set[(Abs, Abs)]): MayFail[(Abs, Set[Effect[Addr]])] = {
-        println(s"equal($a, $b)")
         if (visited.contains((a, b)) || a == abs.bottom || b == abs.bottom) {
           MayFailSuccess((abs.bottom, Set[Effect[Addr]]()))
         } else {

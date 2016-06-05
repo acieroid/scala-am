@@ -215,7 +215,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
      * these states as well as the updated continuation store (which is global)
      * and the set of contexts changed in this store.
      */
-    private def integrate(lkont: LocalKont, κ: Kont, kstore: KontStore, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore, Set[Context]) =
+    private def integrate(lkont: LocalKont, kont: Kont, kstore: KontStore, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore, Set[Context]) =
       actions.foldLeft((Set[State](), kstore, Set[Context]()))({ (acc, act) =>
         val (states, kstore, contexts) = acc
         act match {
@@ -234,7 +234,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
      * Performs an evaluation step, relying on the given semantics (@param sem)
      */
     def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], KontStore, Set[Context]) = control match {
-      case ControlEval(e, ρ) => integrate(lkont, kont, kstore, sem.stepEval(e, ρ, store, t))
+      case ControlEval(e, env) => integrate(lkont, kont, kstore, sem.stepEval(e, env, store, t))
       case ControlKont(v) => pop(lkont, kont, kstore).foldLeft((Set[State](), kstore, Set[Context]()))((acc, popped) => {
         val (states, kstore1, contexts) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, popped._1, store, t))
         (acc._1 ++ states, kstore1, acc._3 ++ contexts)

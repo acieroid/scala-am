@@ -8,10 +8,10 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
   * not tested (because they aren't given any test case in R5RS). Unsupported
   * primitives with test cases defined in R5RS are explicitely stated in
   * comments. If you're bored, you can implement some of them. */
-abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: Lattice)
+abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: SchemeLattice)
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
   type Abs = lattice.L
-  implicit val abs = lattice.isAbstractValue
+  implicit val abs = lattice.isSchemeLattice
   val sem: Semantics[Exp, Abs, Addr, Time]
   val machine: AbstractMachine[Exp, Abs, Addr, Time]
 
@@ -241,37 +241,31 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
   /* 6.6 Input and output */
 }
 
-abstract class AAMPrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class AAMPrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
   val machine = new AAM[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class AAMMonoGlobalStorePrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class AAMGlobalStorePrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
-  val machine = new AAMMonoGlobalStore[SchemeExp, lattice.L, Addr, Time]
+  val machine = new AAMGlobalStore[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class AACPrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class AACPrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
   val machine = new AAC[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class FreePrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class FreePrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
   val machine = new Free[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class ConcurrentAAMPrimitiveTests[Addr : Address, Time : Timestamp, TID : ThreadIdentifier](override val lattice: Lattice)
-    extends Tests[SchemeExp, Addr, Time](lattice) {
-  val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
-  val machine = new ConcurrentAAM[SchemeExp, lattice.L, Addr, Time, TID](AllInterleavings)
-}
-
-abstract class ConcreteMachinePrimitiveTests(override val lattice: Lattice)
+abstract class ConcreteMachinePrimitiveTests(override val lattice: SchemeLattice)
     extends Tests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](lattice) {
   val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T](new SchemePrimitives[ClassicalAddress.A, lattice.L])
   val machine = new ConcreteMachine[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
@@ -281,16 +275,13 @@ abstract class ConcreteMachinePrimitiveTests(override val lattice: Lattice)
 class AAMConcretePrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true))
 class AAMTypeSetPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 class AAMBoundedIntPrimitiveTests extends AAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
-class AAMGlobalStoreConcretePrimitiveTests extends AAMMonoGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new ConcreteLattice(true))
-class AAMGlobalStoreTypeSetPrimitiveTests extends AAMMonoGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
-class AAMGlobalStoreBoundedIntPrimitiveTests extends AAMMonoGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
+class AAMGlobalStoreConcretePrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new ConcreteLattice(true))
+class AAMGlobalStoreTypeSetPrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
+class AAMGlobalStoreBoundedIntPrimitiveTests extends AAMGlobalStorePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
 class AACConcretePrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true))
 class AACTypeSetPrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 class AACBoundedIntPrimitiveTests extends AACPrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
 class FreeConcretePrimitiveTests extends FreePrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true))
 class FreeTypeSetPrimitiveTests extends FreePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 class FreeBoundedIntPrimitiveTests extends FreePrimitiveTests[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
-class ConcurrentAAMConcretePrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](new ConcreteLattice(true))
-class ConcurrentAAMTypeSetPrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID](new TypeSetLattice(false))
-class ConcurrentAAMBoundedIntPrimitiveTests extends ConcurrentAAMPrimitiveTests[ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID](new BoundedIntLattice(100, false))
 class ConcreteMachineConcretePrimitiveTests extends ConcreteMachinePrimitiveTests(new ConcreteLattice(true))

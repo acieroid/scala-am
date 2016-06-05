@@ -2,10 +2,10 @@ import org.scalatest._
 import org.scalatest.prop._
 import org.scalacheck.Gen
 
-abstract class StorePropSpec[Addr : Address](val lattice: Lattice)
+abstract class StorePropSpec[Addr : Address](val lattice: SchemeLattice)
     extends PropSpec with GeneratorDrivenPropertyChecks with Matchers {
   type Abs = lattice.L
-  implicit val abs = lattice.isAbstractValue
+  implicit val abs = lattice.isSchemeLattice
   val addr = implicitly[Address[Addr]]
 
   val absint: Gen[Abs] = for { n: Int <- Gen.choose(-100, 100) } yield abs.inject(n)

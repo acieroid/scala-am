@@ -1,10 +1,10 @@
 import org.scalatest._
 import org.scalatest.prop._
 
-abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: Lattice)
+abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: SchemeLattice)
     extends FlatSpec with Matchers {
   type Abs = lattice.L
-  implicit val abs = lattice.isAbstractValue
+  implicit val abs = lattice.isSchemeLattice
   val sem: Semantics[Exp, lattice.L, Addr, Time]
   val machine: AbstractMachine[Exp, lattice.L, Addr, Time]
 
@@ -51,10 +51,10 @@ abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](va
   }
 }
 
-abstract class OneResultTests[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: Lattice)
+abstract class OneResultTests[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: SchemeLattice)
     extends FlatSpec with Matchers {
   type Abs = lattice.L
-  implicit val abs = lattice.isAbstractValue
+  implicit val abs = lattice.isSchemeLattice
   val sem: Semantics[Exp, lattice.L, Addr, Time]
   val machine: AbstractMachine[Exp, lattice.L, Addr, Time]
 
@@ -96,37 +96,31 @@ abstract class OneResultTests[Exp : Expression, Addr : Address, Time : Timestamp
   }
 }
 
-abstract class AACBenchmarks[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class AACBenchmarks[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Benchmarks[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
   val machine = new AAC[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class AAMBenchmarks[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class AAMBenchmarks[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Benchmarks[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
   val machine = new AAM[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class AAMMonoGlobalStoreBenchmarks[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class AAMGlobalStoreBenchmarks[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Benchmarks[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
-  val machine = new AAMMonoGlobalStore[SchemeExp, lattice.L, Addr, Time]
+  val machine = new AAMGlobalStore[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class FreeBenchmarks[Addr : Address, Time : Timestamp](override val lattice: Lattice)
+abstract class FreeBenchmarks[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Benchmarks[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
   val machine = new Free[SchemeExp, lattice.L, Addr, Time]
 }
 
-abstract class ConcurrentAAMBenchmarks[Addr : Address, Time : Timestamp, TID : ThreadIdentifier](override val lattice: Lattice)
-    extends Benchmarks[SchemeExp, Addr, Time](lattice) {
-  val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
-  val machine = new ConcurrentAAM[SchemeExp, lattice.L, Addr, Time, TID](AllInterleavings)
-}
-
-abstract class ConcreteMachineBenchmarks(override val lattice: Lattice)
+abstract class ConcreteMachineBenchmarks(override val lattice: SchemeLattice)
     extends Benchmarks[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](lattice) {
   val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T](new SchemePrimitives[ClassicalAddress.A, lattice.L])
   val machine = new ConcreteMachine[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
@@ -134,23 +128,15 @@ abstract class ConcreteMachineBenchmarks(override val lattice: Lattice)
 
 class AACConcreteBenchmarks extends AACBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true))
 class AACTypeSetBenchmarks extends AACBenchmarks[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
-//class AACBoundedIntBenchmarks extends AACBenchmarks[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
 
 class AAMConcreteBenchmarks extends AAMBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true))
 class AAMTypeSetBenchmarks extends AAMBenchmarks[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
-//class AAMBoundedIntBenchmarks extends AACBenchmarks[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
 
-class AAMMonoGlobalStoreConcreteBenchmarks extends AAMMonoGlobalStoreBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true))
-class AAMMonoGlobalStoreTypeSetBenchmarks extends AAMMonoGlobalStoreBenchmarks[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
-//class AAMBoundedIntBenchmarks extends AACBenchmarks[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
+class AAMGlobalStoreConcreteBenchmarks extends AAMGlobalStoreBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true))
+class AAMGlobalStoreTypeSetBenchmarks extends AAMGlobalStoreBenchmarks[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
 
 class FreeConcreteBenchmarks extends FreeBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true))
 class FreeTypeSetBenchmarks extends FreeBenchmarks[ClassicalAddress.A, ZeroCFA.T](new TypeSetLattice(false))
-//class FreeBoundedIntBenchmarks extends FreeBenchmarks[ClassicalAddress.A, ZeroCFA.T](new BoundedIntLattice(100, false))
-
-class ConcurrentAAMConcreteBenchmarks extends ConcurrentAAMBenchmarks[ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](new ConcreteLattice(true))
-class ConcurrentAAMTypeSetBenchmarks extends ConcurrentAAMBenchmarks[ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID](new TypeSetLattice(false))
-//class ConcurrentAAMBoundedIntBenchmarks extends ConcurrentAAMBenchmarks[ClassicalAddress.A, ZeroCFA.T, ContextSensitiveTID](new BoundedIntLattice(100, false))
 
 class ConcreteMachineConcreteBenchmarks extends ConcreteMachineBenchmarks(new ConcreteLattice(true))
 
@@ -167,11 +153,6 @@ class AAMOneResultTests extends OneResultTests[SchemeExp, ClassicalAddress.A, Co
 class FreeOneResultTests extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true)) {
   val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T](new SchemePrimitives[ClassicalAddress.A, lattice.L])
   val machine = new Free[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-}
-
-class ConcurrentAAMOneResultTests extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true)) {
-  val sem = new SchemeSemantics[lattice.L, ClassicalAddress.A, ConcreteTimestamp.T](new SchemePrimitives[ClassicalAddress.A, lattice.L])
-  val machine = new ConcurrentAAM[SchemeExp, lattice.L, ClassicalAddress.A, ConcreteTimestamp.T, ContextSensitiveTID](AllInterleavings)
 }
 
 class ConcreteMachineOneResultTests extends OneResultTests[SchemeExp, ClassicalAddress.A, ConcreteTimestamp.T](new ConcreteLattice(true)) {

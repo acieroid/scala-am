@@ -12,10 +12,10 @@ import scalaz.Scalaz._
 
 import SchemeOps._
 
-abstract class LatticePropSpec(val lattice: Lattice)
+abstract class LatticePropSpec(val lattice: SchemeLattice)
     extends PropSpec with GeneratorDrivenPropertyChecks with Matchers with TableDrivenPropertyChecks {
   type Abs = lattice.L
-  val abs = lattice.isAbstractValue
+  val abs = lattice.isSchemeLattice
   property("lattice should preserve boolean value and correctly implement not") {
     forAll { (b: Boolean) => {
       val v = abs.inject(b)
@@ -70,7 +70,7 @@ abstract class LatticePropSpec(val lattice: Lattice)
   }
 }
 
-abstract class JoinLatticePropSpec(lattice: Lattice)
+abstract class JoinLatticePropSpec(lattice: SchemeLattice)
     extends LatticePropSpec(lattice) {
   property("lattice should join values correctly or raise a CannotJoin error") {
     val bot = abs.bottom
@@ -202,9 +202,9 @@ object FloatConstantPropagationGenerator extends ConstantPropagationGenerator[Fl
 object CharConstantPropagationGenerator extends ConstantPropagationGenerator[Char, CharConstantPropagation.C](Generators.char)(CharConstantPropagation.Constant, CharConstantPropagation.Bottom, CharConstantPropagation.Top)
 object SymbolConstantPropagationGenerator extends ConstantPropagationGenerator[String, SymbolConstantPropagation.Sym](Generators.sym)(SymbolConstantPropagation.Constant, SymbolConstantPropagation.Bottom, SymbolConstantPropagation.Top)
 
-abstract class LatticeElementSpecification[L : LatticeElement](gen: LatticeGenerator[L])
+abstract class LatticeElementSpecification[L : IsLatticeElement](gen: LatticeGenerator[L])
     extends PropSpec with GeneratorDrivenPropertyChecks {
-  val abs = implicitly[LatticeElement[L]]
+  val abs = implicitly[IsLatticeElement[L]]
   val bot = abs.bottom
   implicit val arbL: Arbitrary[L] = Arbitrary(gen.any)
 
