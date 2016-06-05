@@ -1,5 +1,5 @@
-/*object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Long] = None, random: Int = 10, skipAll: Boolean = false, skipAbstract: Boolean = false, skipConcrete: Boolean = false, skipOne: Boolean = false, skipDPOR: Boolean = false, bound: Option[Int] = None)
+object BenchmarksConfig {
+  case class Configuration(workers: Int = 1, timeout: Option[Long] = None)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
@@ -35,8 +35,8 @@ object Tabulator {
   def rowSeparator(colSizes: Seq[Int]) = colSizes map { "-" * _ } mkString("+", "+", "+")
 }
 
-case class MachineConfig(program: String, machine: Config.Machine.Value = Config.Machine.AAM, address: Config.Address.Value = Config.Address.Classical, lattice: Config.Lattice.Value = Config.Lattice.TypeSet, concrete: Boolean = false, exploration: ExplorationType = OneInterleaving) {
-  override def toString = s"[$program, $machine, $exploration, $address, $lattice]"
+case class MachineConfig(program: String, machine: Config.Machine.Value = Config.Machine.AAM, address: Config.Address.Value = Config.Address.Classical, lattice: Config.Lattice.Value = Config.Lattice.TypeSet, concrete: Boolean = false) {
+  override def toString = s"[$program, $machine, $address, $lattice]"
 }
 
 abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify: MachineConfig => String) {
@@ -60,12 +60,12 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
 
   class Worker(timeout: Option[Long]) extends Actor {
     def compute(config: MachineConfig): MachineOutput =  {
-      val lattice: Lattice = config.lattice match {
+      val lattice: SchemeLattice = config.lattice match {
         case Config.Lattice.Concrete => new ConcreteLattice(true)
         case Config.Lattice.TypeSet => new TypeSetLattice(false)
-          case Config.Lattice.BoundedInt => new BoundedIntLattice(1000, true)
+        case Config.Lattice.BoundedInt => new BoundedIntLattice(1000, true)
       }
-      implicit val isAbstractValue = lattice.isAbstractValue
+      implicit val isSchemeLattice = lattice.isSchemeLattice
       val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
       implicit val isTimestamp = time.isTimestamp
 
@@ -81,15 +81,9 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
         case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
         case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
         case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
-        case Config.Machine.ConcurrentAAM => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
-        case Config.Machine.ConcurrentAAMGlobalStore => new ConcurrentAAMGlobalStore[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](config.exploration)
       }
 
-      val sem = if (config.machine == Config.Machine.ConcurrentAAM || config.machine == Config.Machine.ConcurrentAAMGlobalStore) {
-        new ConcurrentSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, lattice.L])
-      } else {
-        new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
-      }
+      val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
 
       val program = Main.fileContent(s"$dir/${config.program}.scm")
       if (program != null || program.size > 0) {
@@ -209,6 +203,7 @@ object MonoBenchmarks extends Benchmarks("test", {
   case Config.Machine.AAMGlobalStore => "AAM+GS"
 }))
 
+/*
 object ConcurrentMonoBenchmarks extends Benchmarks("concurrent", {
   val programs = List("count2", "count3", "count4", "count5", "count6", "count7", "count8", "count9", "count10", "count11", "count12", "count13", "count14", "count15",
     "dekker", "fact2",
