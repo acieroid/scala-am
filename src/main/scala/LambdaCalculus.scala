@@ -99,9 +99,9 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
     case Var(x, _) => env.lookup(x) match {
       case Some(a) => store.lookup(a) match {
         case Some(v) => Set(ActionReachedValue(v, store))
-        case None => Set(ActionError(s"unbound address $a"))
+        case None => Set(ActionError(UnboundAddress(a.toString)))
       }
-      case None => Set(ActionError(s"unbound variable $x"))
+      case None => Set(ActionError(UnboundVariable(x)))
     }
   }
 
@@ -165,9 +165,10 @@ case class UnboundVariablesAnalysis[Abs : JoinLattice, Addr : Address, Time: Tim
   /** No unbound variables appear when a continuation is boing popped */
   def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time, current: Set[LamExp]) = current
   /** The checking for unbound variables could be done here, by looking at the
-   * "reason" parameter, which is "unbound variable: name" for a variable named
-   * name. But that's not how we proceed for this analysis. */
-  def error(reason: String, current: Set[LamExp]) = current
+   * "err" parameter, which is UnboundVariable(name). But that's not how we
+   * proceed for this analysis, because we want the full expression (and also,
+   * we want to show how to describe the analysis in terms of stepEval). */
+  def error(err: Error, current: Set[LamExp]) = current
   /** Joining two results is done by taking their union */
   def join(x: Set[LamExp], y: Set[LamExp]) = x ++ y
   /** At the beginning of the program, no unbound variable has been evaluated */

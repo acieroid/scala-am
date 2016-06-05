@@ -158,7 +158,17 @@ case class ActionStepIn[Exp : Expression, Abs : JoinLattice, Addr : Address]
  * An error has been reached
  */
 case class ActionError[Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (reason: String) extends Action[Exp, Abs, Addr]
+  (error: Error) extends Action[Exp, Abs, Addr]
+trait Error
+case class OperatorNotApplicable(name: String, arguments: List[String]) extends Error
+case class ArityError(name: String, expected: Int, got: Int) extends Error
+case class VariadicArityError(name: String, min: Int, got: Int) extends Error
+case class TypeError(name: String, operand: String, expected: String, got: String) extends Error
+case class UserError(reason: String, pos: scala.util.parsing.input.Position) extends Error
+case class UnboundVariable(name: String) extends Error
+case class UnboundAddress(addr: String) extends Error
+case class NotSupported(reason: String) extends Error
+
 /**
  * Spawns a new thread that evaluates expression e in environment ρ. The current
  * thread continues its execution by performing action act.

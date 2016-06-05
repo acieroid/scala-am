@@ -101,7 +101,7 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
 
     import scala.language.implicitConversions
     implicit def mayFailSuccess(l: L): MayFail[L] = MayFailSuccess(l)
-    implicit def mayFailError(err: SchemeError): MayFail[L] = MayFailError(List(err))
+    implicit def mayFailError(err: Error): MayFail[L] = MayFailError(List(err))
     def unaryOp(op: UnaryOperator)(x: L): MayFail[L] = if (x == Bot) { Bot } else { op match {
       case IsNull => x match {
         case Nil => True

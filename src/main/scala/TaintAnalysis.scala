@@ -104,6 +104,8 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
   val isSchemeLattice: IsSchemeLattice[L] = isTaintLattice
 }
 
+case class TaintError(sources: Set[Position], sink: Position) extends Error
+
 /* We need to extend the language with primitives representing sources, sinks, and sanitizers */
 class TSchemePrimitives[Addr : Address, Abs : IsTaintLattice] extends SchemePrimitives[Addr, Abs] {
   val tabs = implicitly[IsTaintLattice[Abs]]
@@ -119,9 +121,8 @@ class TSchemePrimitives[Addr : Address, Abs : IsTaintLattice] extends SchemePrim
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, x) :: Nil => tabs.taintStatus(x) match {
         case Untainted => MayFailSuccess((x, store, Set()))
-        case MaybeTainted(sources) => MayFailBoth((x, store, Set()),
-          List(UserError(s"sink: called with a maybe tainted value originating from $sources", implicitly[Expression[Exp]].pos(fexp))))
-        case Tainted(sources) => MayFailError(List(UserError(s"sink: called with a tainted value originating from $sources", implicitly[Expression[Exp]].pos(fexp))))
+        case MaybeTainted(sources) => MayFailBoth((x, store, Set()), List(TaintError(sources, implicitly[Expression[Exp]].pos(fexp))))
+        case Tainted(sources) => MayFailError(List(TaintError(sources, implicitly[Expression[Exp]].pos(fexp))))
         case BottomTaint => MayFailSuccess(x, store, Set())
       }
       case l => MayFailError(List(ArityError(name, 1, l.size)))
@@ -139,17 +140,20 @@ class TSchemePrimitives[Addr : Address, Abs : IsTaintLattice] extends SchemePrim
 
 /* The analysis itself only collects the error strings starting with "sink: " */
 case class TaintAnalysis[Abs : JoinLattice, Addr : Address, Time : Timestamp]()
-    extends BaseAnalysis[Set[String], SchemeExp, Abs, Addr, Time] {
-  def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: Set[String]) = current
-  def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time, current: Set[String]) = current
-  def error(reason: String, current: Set[String]) = if (reason.startsWith("sink: ")) { current + reason } else { current }
-  def join(x: Set[String], y: Set[String]) = x ++ y
-  def init = Set[String]()
+    extends BaseAnalysis[Set[(Position, Position)], SchemeExp, Abs, Addr, Time] {
+  def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: Set[(Position, Position)]) = current
+  def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time, current: Set[(Position, Position)]) = current
+  def error(error: Error, current: Set[(Position, Position)]) = error match {
+    case TaintError(sources, sink) => current ++ sources.map(source => (source, sink))
+    case _ => current
+  }
+  def join(x: Set[(Position, Position)], y: Set[(Position, Position)]) = x ++ y
+  def init = Set[(Position, Position)]()
 }
 
 /* We can finally run the analysis and detect when a tanted value flows to a sink */
 object TaintAnalysis {
-  def analyze[L : IsTaintLattice](program: String): Set[String] = {
+  def analyze[L : IsTaintLattice](program: String): Set[(Position, Position)] = {
     val sem = new SchemeSemantics[L, ClassicalAddress.A, ZeroCFA.T](new TSchemePrimitives[ClassicalAddress.A, L])
     val machine = new AAM[SchemeExp, L, ClassicalAddress.A, ZeroCFA.T]
     val analysis = TaintAnalysis[L, ClassicalAddress.A, ZeroCFA.T]
@@ -168,7 +172,7 @@ object TaintAnalysis {
       if (errors.isEmpty) {
         println("No taint errors detected")
       } else {
-        errors.foreach(println _)
+        errors.foreach({ case (source, sink) => println(s"tainted value flows from source at position $source to sink at position $sink") })
       }
     } else {
       println("Please provide input program as argument")

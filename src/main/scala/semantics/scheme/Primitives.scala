@@ -307,7 +307,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
 
   val mfmon = MayFail.monoid[(Abs, Set[Effect[Addr]])]
-  def err(e: SchemeError): MayFail[(Abs, Set[Effect[Addr]])] = MayFailError(List(e))
+  def err(e: Error): MayFail[(Abs, Set[Effect[Addr]])] = MayFailError(List(e))
   def success(v: Abs): MayFail[(Abs, Set[Effect[Addr]])] = MayFailSuccess((v, Set()))
   object Cons extends Primitive[Addr, Abs] {
     val name = "cons"

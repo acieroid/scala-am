@@ -119,8 +119,8 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    * Or an error component, in case an error is reached (e.g., incorrect number
    * of arguments in a function call)
    */
-  case class ControlError(reason: String) extends Control {
-    override def toString() = s"err($reason)"
+  case class ControlError(err: Error) extends Control {
+    override def toString() = s"err($err)"
     def subsumes(that: Control) = that.equals(this)
   }
 }

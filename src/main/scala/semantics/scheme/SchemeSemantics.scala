@@ -45,17 +45,15 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
               else
                 ActionStepIn[SchemeExp, Abs, Addr](fexp, (SchemeLambda(args, body, pos), env1), SchemeBegin(body, pos), env2, store, argsv)
           }
-        } else { ActionError[SchemeExp, Abs, Addr](s"Arity error when calling $fexp (${args.length} arguments expected, got ${argsv.length})") }
-      case (lambda, _) => ActionError[SchemeExp, Abs, Addr](s"Incorrect closure with lambda-expression ${lambda}")
+        } else { ActionError[SchemeExp, Abs, Addr](ArityError(fexp.toString, args.length, argsv.length)) }
+      case (lambda, _) => ActionError[SchemeExp, Abs, Addr](TypeError(lambda.toString, "operator", "closure", "not a closure"))
     })
     val fromPrim = sabs.getPrimitives(function).flatMap(prim =>
-      prim.call(fexp, argsv, store, t) match {
-        case MayFailSuccess((res, store2, effects)) => Set(ActionReachedValue[SchemeExp, Abs, Addr](res, store2, effects))
-        case MayFailError(errs) => errs.map(err => ActionError[SchemeExp, Abs, Addr](err.toString))
-        case MayFailBoth((res, store2, effects), errs) => errs.map(err => ActionError[SchemeExp, Abs, Addr](err.toString)) ++ Set(ActionReachedValue[SchemeExp, Abs, Addr](res, store2, effects))
-      })
+      prim.call(fexp, argsv, store, t).collect({
+        case (res, store2, effects) => Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](res, store2, effects))
+      }, err => Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](err))))
     if (fromClo.isEmpty && fromPrim.isEmpty) {
-      Set(ActionError(s"Called value is not a function: $function"))
+      Set(ActionError(TypeError(function.toString, "operator", "function", "not a function")))
     } else {
       fromClo ++ fromPrim
     }
@@ -116,7 +114,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     }
     case SchemeSet(variable, exp, _) => Set(ActionPush(exp, FrameSet(variable, env), env, store))
     case SchemeBegin(body, _) => Set(evalBody(body, env, store))
-    case SchemeCond(Nil, _) => Set(ActionError(s"cond without clauses"))
+    case SchemeCond(Nil, _) => Set(ActionError(NotSupported("cond without clauses")))
     case SchemeCond((cond, cons) :: clauses, _) => Set(ActionPush(cond, FrameCond(cons, clauses, env), env, store))
     case SchemeCase(key, clauses, default, _) => Set(ActionPush(key, FrameCase(clauses, default, env), env, store))
     case SchemeAnd(Nil, _) => Set(ActionReachedValue(sabs.inject(true), store))
@@ -134,16 +132,16 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case SchemeIdentifier(name, _) => env.lookup(name) match {
       case Some(a) => store.lookup(a) match {
         case Some(v) => Set(ActionReachedValue(v, store, Set(EffectReadVariable(a))))
-        case None => Set(ActionError(s"Unbound variable: $a"))
+        case None => Set(ActionError(UnboundAddress(a.toString)))
       }
-      case None => Set(ActionError(s"Unbound variable: $name"))
+      case None => Set(ActionError(UnboundVariable(name)))
     }
     case SchemeQuoted(quoted, _) => evalQuoted(quoted, store, t) match {
       case (value, store2) => Set(ActionReachedValue(value, store2))
     }
     case SchemeValue(v, _) => evalValue(v) match {
       case Some(v) => Set(ActionReachedValue(v, store))
-      case None => Set(ActionError(s"Unhandled value: $v"))
+      case None => Set(ActionError(NotSupported(s"Unhandled value: $v")))
     }
   }
 
@@ -176,7 +174,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
       Set(ActionPush(exp, FrameLetrec(a1, rest, body, env), env, store.update(a, v)))
     case FrameSet(name, env) => env.lookup(name) match {
       case Some(a) => Set(ActionReachedValue(sabs.inject(false), store.update(a, v), Set(EffectWriteVariable(a))))
-      case None => Set(ActionError(s"Unbound variable: $name"))
+      case None => Set(ActionError(UnboundVariable(name)))
     }
     case FrameBegin(body, env) => Set(evalBody(body, env, store))
     case FrameCond(cons, clauses, env) =>

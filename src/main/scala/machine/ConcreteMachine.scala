@@ -48,7 +48,7 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
                 case ActionPush(e, frame, env, store2, _) => loop(ControlEval(e, env), store2, frame :: stack, time.tick(t), start, count + 1)
                 case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, stack, time.tick(t), start, count + 1)
                 case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, stack, time.tick(t, fexp), start, count + 1)
-                case ActionError(err) => ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err)
+                case ActionError(err) => ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
               }
             } else {
               ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
@@ -63,7 +63,7 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
                     case ActionPush(e, frame, env, store2, _) => loop(ControlEval(e, env), store2, frame :: tl, time.tick(t), start, count + 1)
                     case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, tl, time.tick(t), start, count + 1)
                     case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, tl, time.tick(t, fexp), start, count + 1)
-                    case ActionError(err) => ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err)
+                    case ActionError(err) => ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
                   }
                 } else {
                   ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
@@ -71,7 +71,7 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
               case Nil => ConcreteMachineOutputValue((System.nanoTime - start) / Math.pow(10, 9), count, v)
             }
           case ControlError(err) =>
-            ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err)
+            ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
         }
       }
     }

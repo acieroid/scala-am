@@ -2,52 +2,49 @@ import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
 import SchemeOps._
 
-trait SchemeError
-case class OperatorNotApplicable(name: String, arguments: List[String]) extends SchemeError
-case class ArityError(name: String, expected: Int, got: Int) extends SchemeError
-case class VariadicArityError(name: String, min: Int, got: Int) extends SchemeError
-case class TypeError(name: String, operand: String, expected: String, got: String) extends SchemeError
-case class UserError(reason: String, pos: scala.util.parsing.input.Position) extends SchemeError
-case class UnboundAddress(addr: String) extends SchemeError
-case class CannotAccessVector(vector: String) extends SchemeError
-case class CannotAccessCar(v: String) extends SchemeError
-case class CannotAccessCdr(v: String) extends SchemeError
+case class CannotAccessVector(vector: String) extends Error
+case class CannotAccessCar(v: String) extends Error
+case class CannotAccessCdr(v: String) extends Error
 
 trait MayFail[L] {
   def map[A](f: L => A): MayFail[A]
   def bind[A](f: L => MayFail[A]): MayFail[A]
-  def addError(err: SchemeError): MayFail[L]
+  def addError(err: Error): MayFail[L]
   def extract: L
   def value: Option[L]
-  def errors: List[SchemeError]
+  def errors: List[Error]
+  def collect[A](success: L => Set[A], error: Error => Set[A]): Set[A]
 }
 case class MayFailSuccess[L](l: L) extends MayFail[L] {
   def map[A](f: L => A) = MayFailSuccess[A](f(l))
   def bind[A](f: L => MayFail[A]) = f(l)
-  def addError(err: SchemeError) = MayFailBoth[L](l, List(err))
+  def addError(err: Error) = MayFailBoth[L](l, List(err))
   def extract = l
   def value = Some(l)
   def errors = List()
+  def collect[A](success: L => Set[A], error: Error => Set[A]) = success(l)
 }
-case class MayFailError[L](errs: List[SchemeError]) extends MayFail[L] {
+case class MayFailError[L](errs: List[Error]) extends MayFail[L] {
   def map[A](f: L => A) = MayFailError[A](errs)
   def bind[A](f: L => MayFail[A]) = MayFailError[A](errs)
-  def addError(err: SchemeError) = MayFailError[L](errs :+ err)
-  def extract = throw new Exception("Cannot extract from MayFailError")
+  def addError(err: Error) = MayFailError[L](errs :+ err)
+  def extract = throw new Exception("Cannot extract value from MayFailError")
   def value = None
   def errors = errs
+  def collect[A](success: L => Set[A], error: Error => Set[A]) = errs.toSet.foldMap(error)
 }
-case class MayFailBoth[L](l: L, errs: List[SchemeError]) extends MayFail[L] {
+case class MayFailBoth[L](l: L, errs: List[Error]) extends MayFail[L] {
   def map[A](f: L => A) = MayFailBoth(f(l), errs)
   def bind[A](f: L => MayFail[A]) = f(l) match {
     case MayFailSuccess(a) => MayFailBoth[A](a, errs)
     case MayFailError(errs2) => MayFailError(errs ++ errs2)
     case MayFailBoth(a, errs2) => MayFailBoth[A](a, errs ++ errs2)
   }
-  def addError(err: SchemeError) = MayFailBoth[L](l, errs :+ err)
+  def addError(err: Error) = MayFailBoth[L](l, errs :+ err)
   def extract = l
   def value = Some(l)
   def errors = errs
+  def collect[A](success: L => Set[A], error: Error => Set[A]) = success(l) ++ errs.toSet.foldMap(error)
 }
 
 object MayFail {

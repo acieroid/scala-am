@@ -26,9 +26,9 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    * the closure itself, the expressions and values of the arguments, and the
    * store at calling time.
    */
-  case class Context(clo: (Exp, Environment[Addr]), argsv: List[(Exp, Abs)], σ: Store[Addr, Abs], t: Time) {
+  case class Context(clo: (Exp, Environment[Addr]), argsv: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) {
     def subsumes(that: Context) = {
-      clo._1.equals(that.clo._1) && clo._2.subsumes(that.clo._2) && σ.subsumes(that.σ) &&
+      clo._1.equals(that.clo._1) && clo._2.subsumes(that.clo._2) && store.subsumes(that.store) &&
       argsv.zip(that.argsv).forall({ case ((e1, v1), (e2, v2)) => e1 == e2 && abs.subsumes(v1, v2) })
     }
   }
@@ -75,26 +75,26 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    */
   case class KontStore(content: Map[Context, Set[(LocalKont, Kont)]]) {
     def this() = this(Map())
-    def lookup(τ: Context): Set[(LocalKont, Kont)] = content.getOrElse(τ, Set())
-    def extend(τ: Context, v: (LocalKont, Kont)): KontStore = {
+    def lookup(ctx: Context): Set[(LocalKont, Kont)] = content.getOrElse(ctx, Set())
+    def extend(ctx: Context, v: (LocalKont, Kont)): KontStore = {
       /*
-      content.get(τ) match {
-        case Some(vals) if !vals.contains(v) => println(s"Joining at $τ: $v + $vals")
+      content.get(ctx) match {
+        case Some(vals) if !vals.contains(v) => println(s"Joining at $ctx: $v + $vals")
         case _ => ()
       } */
-      KontStore(content + (τ -> (lookup(τ) + v)))
+      KontStore(content + (ctx -> (lookup(ctx) + v)))
     }
     def join(that: KontStore): KontStore = KontStore(content |+| that.content)
     /** Useful for debugging purposes, in order to have a visualization of the
       * kontinuation store */
     def toDotFile(file: String): Unit = {
-      val graph = content.foldLeft(new Graph[Kont, LocalKont]())({ case (g, (τ, succs)) =>
-        succs.foldLeft(g)({ case (g, (local, κ)) =>
-          g.addEdge(KontCtx(τ), local, κ)
+      val graph = content.foldLeft(new Graph[Kont, LocalKont]())({ case (g, (ctx, succs)) =>
+        succs.foldLeft(g)({ case (g, (local, k)) =>
+          g.addEdge(KontCtx(ctx), local, k)
         })
       })
       graph.toDotFile(file, {
-        case KontCtx(τ) => List(scala.xml.Text(τ.toString.take(40)))
+        case KontCtx(ctx) => List(scala.xml.Text(ctx.toString.take(40)))
         case KontEmpty => List(scala.xml.Text("ε"))
       }, x => Colors.White, x => List(scala.xml.Text(x.toString)))
     }
@@ -104,9 +104,9 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    * The state of the machine contains the control component, the local store, a
    * local continuation and the address of the rest of the continuation
    */
-  case class State(control: Control, σ: Store[Addr, Abs], ι: LocalKont, κ: Kont, t: Time) {
+  case class State(control: Control, store: Store[Addr, Abs], lkont: LocalKont, kont: Kont, t: Time) {
     override def toString = control.toString
-    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && ι.subsumes(that.ι) && κ.subsumes(that.κ) && t == that.t
+    def subsumes(that: State): Boolean = control.subsumes(that.control) && store.subsumes(that.store) && lkont.subsumes(that.lkont) && kont.subsumes(that.kont) && t == that.t
 
     /* TODO: There are a few functions inspecting the continuation (pop,
      * computeKont, kontCanBeEmpty). They should be factored into a single
@@ -120,16 +120,16 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
      * avoid looping indefinitely when there is a cycle in the continuation
      * store.
      */
-    private def pop(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Set[(Frame, LocalKont, Kont)] = ι.deconstruct match {
-      case None => κ match {
+    private def pop(lkont: LocalKont, kont: Kont, kstore: KontStore, G: Set[Kont]): Set[(Frame, LocalKont, Kont)] = lkont.deconstruct match {
+      case None => kont match {
         case KontEmpty =>
           /* No local continuation and no continuation, the stack is empty and there is no top frame */
           Set()
-        case KontCtx(τ) => {
+        case KontCtx(ctx) => {
           /* G2 contains the continuation addresses to which no local continuation are associated */
-          val G2: Set[Kont] = kstore.lookup(τ).flatMap({
-            case (ι, κ) => ι.deconstruct match {
-              case None => Set(κ)
+          val G2: Set[Kont] = kstore.lookup(ctx).flatMap({
+            case (lkont, kont) => lkont.deconstruct match {
+              case None => Set(kont)
               case Some(_) => Set[Kont]()
             }
           }).diff(G)
@@ -138,105 +138,105 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
            * the top frame of this local continuation. To this, add the popped
            * frame for every continuation to which no local continuation are
            * associated. */
-          kstore.lookup(τ).flatMap({
-            case (ι, κ) => ι.deconstruct match {
+          kstore.lookup(ctx).flatMap({
+            case (lkont, kont) => lkont.deconstruct match {
               case None => Set[(Frame, LocalKont, Kont)]()
-              case Some((top, rest)) => Set((top, rest, κ))
+              case Some((top, rest)) => Set((top, rest, kont))
             }
-          }).union(G2.flatMap((κ) => pop(new LocalKont(), κ, kstore, GuG2)))
+          }).union(G2.flatMap((kont) => pop(new LocalKont(), kont, kstore, GuG2)))
         }
       }
       case Some((top, rest)) =>
         /* Local continuation is not empty, just return the top frame */
-        Set((top, rest, κ))
+        Set((top, rest, kont))
     }
 
-    private def pop(ι: LocalKont, κ: Kont, kstore: KontStore): Set[(Frame, LocalKont, Kont)] =
-      pop(ι, κ, kstore, Set())
+    private def pop(lkont: LocalKont, kont: Kont, kstore: KontStore): Set[(Frame, LocalKont, Kont)] =
+      pop(lkont, kont, kstore, Set())
 
     /** Debugging function that computes the full current continuation. It is very similar to pop. */
-    private def computeKont(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Set[List[Frame]] = ι.deconstruct match {
-      case None => κ match {
+    private def computeKont(lkont: LocalKont, kont: Kont, kstore: KontStore, G: Set[Kont]): Set[List[Frame]] = lkont.deconstruct match {
+      case None => kont match {
         case KontEmpty => Set(List())
-        case KontCtx(τ) => {
-          val G2: Set[Kont] = kstore.lookup(τ).flatMap({
-            case (ι, κ) => ι.deconstruct match {
-              case None => Set(κ)
+        case KontCtx(ctx) => {
+          val G2: Set[Kont] = kstore.lookup(ctx).flatMap({
+            case (lkont, kont) => lkont.deconstruct match {
+              case None => Set(kont)
               case Some(_) => Set[Kont]()
             }
           }).diff(G)
           val GuG2 = G.union(G2)
-          kstore.lookup(τ).flatMap({
-            case (ι, κ) => ι.deconstruct match {
+          kstore.lookup(ctx).flatMap({
+            case (lkont, kont) => lkont.deconstruct match {
               case None => Set[List[Frame]]()
-              case Some((top, rest)) => computeKont(rest, κ, kstore, GuG2).map(k => top :: k)
+              case Some((top, rest)) => computeKont(rest, kont, kstore, GuG2).map(k => top :: k)
             }
-          }).union(G2.flatMap((κ) => computeKont(new LocalKont(), κ, kstore, GuG2)))
+          }).union(G2.flatMap((kont) => computeKont(new LocalKont(), kont, kstore, GuG2)))
         }
       }
-      case Some((top, rest)) => computeKont(rest, κ, kstore, G).map(k => top :: k)
+      case Some((top, rest)) => computeKont(rest, kont, kstore, G).map(k => top :: k)
     }
 
-    private def computeKont(ι: LocalKont, κ: Kont, kstore: KontStore): Set[List[Frame]] =
-      computeKont(ι, κ, kstore, Set())
+    private def computeKont(lkont: LocalKont, kont: Kont, kstore: KontStore): Set[List[Frame]] =
+      computeKont(lkont, kont, kstore, Set())
 
     /**
      *  Checks whether the continuaton can be empty. That is, will the evaluation be
      * done once we reach a control state?
      */
-    private def kontCanBeEmpty(ι: LocalKont, κ: Kont, kstore: KontStore, G: Set[Kont]): Boolean = ι.deconstruct match {
-      case None => κ match {
+    private def kontCanBeEmpty(lkont: LocalKont, kont: Kont, kstore: KontStore, G: Set[Kont]): Boolean = lkont.deconstruct match {
+      case None => kont match {
         case KontEmpty => true
-        case KontCtx(τ) => {
-          val G2: Set[Kont] = kstore.lookup(τ).flatMap({
-            case (ι, κ) => ι.deconstruct match {
-              case None => Set(κ)
+        case KontCtx(ctx) => {
+          val G2: Set[Kont] = kstore.lookup(ctx).flatMap({
+            case (lkont, kont) => lkont.deconstruct match {
+              case None => Set(kont)
               case Some(_) => Set[Kont]()
             }
           }).diff(G)
           val GuG2 = G.union(G2)
-          kstore.lookup(τ).map({
-            case (ι, KontEmpty) => ι.isEmpty
-            case (ι, κ) => ι.deconstruct match {
+          kstore.lookup(ctx).map({
+            case (lkont, KontEmpty) => lkont.isEmpty
+            case (lkont, kont) => lkont.deconstruct match {
               case None => false
               case Some((top, rest)) => false
             }
-          }).union(G2.map((κ) => kontCanBeEmpty(new LocalKont(), κ, kstore, GuG2))).foldLeft(false)((x, y) => x || y)
+          }).union(G2.map(kont => kontCanBeEmpty(new LocalKont(), kont, kstore, GuG2))).foldLeft(false)((x, y) => x || y)
         }
       }
       case Some((top, rest)) => false
     }
 
-    private def kontCanBeEmpty(ι: LocalKont, κ: Kont, kstore: KontStore): Boolean =
-      kontCanBeEmpty(ι, κ, kstore, Set())
+    private def kontCanBeEmpty(lkont: LocalKont, kont: Kont, kstore: KontStore): Boolean =
+      kontCanBeEmpty(lkont, kont, kstore, Set())
 
     /**
      * Integrate a set of actions to generate successor states, and returns
      * these states as well as the updated continuation store (which is global)
      * and the set of contexts changed in this store.
      */
-    private def integrate(ι: LocalKont, κ: Kont, kstore: KontStore, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore, Set[Context]) =
+    private def integrate(lkont: LocalKont, κ: Kont, kstore: KontStore, actions: Set[Action[Exp, Abs, Addr]]): (Set[State], KontStore, Set[Context]) =
       actions.foldLeft((Set[State](), kstore, Set[Context]()))({ (acc, act) =>
         val (states, kstore, contexts) = acc
         act match {
-          case ActionReachedValue(v, σ, _) => (states + State(ControlKont(v), σ, ι, κ, time.tick(t)), kstore, contexts)
-          case ActionPush(e, frame, ρ, σ, _) => (states + State(ControlEval(e, ρ), σ, ι.push(frame), κ, time.tick(t)), kstore, contexts)
-          case ActionEval(e, ρ, σ, _) => (states + State(ControlEval(e, ρ), σ, ι, κ, time.tick(t)), kstore, contexts)
-          case ActionStepIn(fexp, clo, e, ρ, σ, argsv, _) => {
-            val τ = Context(clo, argsv, σ, t)
-            (states + State(ControlEval(e, ρ), σ, new LocalKont(), new KontCtx(τ), time.tick(t, fexp)),
-             kstore.extend(τ, (ι, κ)), contexts + τ)
+          case ActionReachedValue(v, store, _) => (states + State(ControlKont(v), store, lkont, kont, time.tick(t)), kstore, contexts)
+          case ActionPush(e, frame, ρ, store, _) => (states + State(ControlEval(e, ρ), store, lkont.push(frame), kont, time.tick(t)), kstore, contexts)
+          case ActionEval(e, ρ, store, _) => (states + State(ControlEval(e, ρ), store, lkont, kont, time.tick(t)), kstore, contexts)
+          case ActionStepIn(fexp, clo, e, ρ, store, argsv, _) => {
+            val ctx = Context(clo, argsv, store, t)
+            (states + State(ControlEval(e, ρ), store, new LocalKont(), new KontCtx(ctx), time.tick(t, fexp)),
+             kstore.extend(ctx, (lkont, kont)), contexts + ctx)
           }
-          case ActionError(err) => (states + State(ControlError(err), σ, ι, κ, time.tick(t)), kstore, contexts)
+          case ActionError(err) => (states + State(ControlError(err), store, lkont, kont, time.tick(t)), kstore, contexts)
         }})
 
     /**
      * Performs an evaluation step, relying on the given semantics (@param sem)
      */
     def step(kstore: KontStore, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], KontStore, Set[Context]) = control match {
-      case ControlEval(e, ρ) => integrate(ι, κ, kstore, sem.stepEval(e, ρ, σ, t))
-      case ControlKont(v) => pop(ι, κ, kstore).foldLeft((Set[State](), kstore, Set[Context]()))((acc, popped) => {
-        val (states, kstore1, contexts) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, popped._1, σ, t))
+      case ControlEval(e, ρ) => integrate(lkont, kont, kstore, sem.stepEval(e, ρ, store, t))
+      case ControlKont(v) => pop(lkont, kont, kstore).foldLeft((Set[State](), kstore, Set[Context]()))((acc, popped) => {
+        val (states, kstore1, contexts) = integrate(popped._2, popped._3, acc._2, sem.stepKont(v, popped._1, store, t))
         (acc._1 ++ states, kstore1, acc._3 ++ contexts)
       })
       case ControlError(_) => (Set(), kstore, Set[Context]())
@@ -248,7 +248,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
      */
     def halted(kstore: KontStore) = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => (ι.isEmpty && kontCanBeEmpty(ι, κ, kstore))
+      case ControlKont(v) => (lkont.isEmpty && kontCanBeEmpty(lkont, kont, kstore))
       case ControlError(_) => true
     }
   }
@@ -292,24 +292,24 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       /*
       graph.map(g => {
         println(s"There are ${g.nodes.size} states")
-        println(s"c: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control) }).size}")
-        println(s"σ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ) }).size}")
-        println(s"ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (ι) }).size}")
-        println(s"κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (κ) }).size}")
+        println(s"c: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (control) }).size}")
+        println(s"store: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (store) }).size}")
+        println(s"lkont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (lkont) }).size}")
+        println(s"kont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (kont) }).size}")
 
-        println(s"c, σ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ) }).size}")
-        println(s"c, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, ι) }).size}")
-        println(s"c, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, κ) }).size}")
-        println(s"σ, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, ι) }).size}")
-        println(s"σ, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, κ) }).size}")
-        println(s"ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (ι, κ) }).size}")
+        println(s"c, store: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (control, store) }).size}")
+        println(s"c, lkont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (control, lkont) }).size}")
+        println(s"c, kont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (control, kont) }).size}")
+        println(s"store, lkont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (store, lkont) }).size}")
+        println(s"store, kont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (store, kont) }).size}")
+        println(s"lkont, kont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (lkont, kont) }).size}")
 
-        println(s"c, σ, ι: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, ι) }).size}")
-        println(s"c, σ, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, κ) }).size}")
-        println(s"c, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, ι, κ) }).size}")
-        println(s"σ, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (σ, ι, κ) }).size}")
+        println(s"c, store, lkont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (control, store, lkont) }).size}")
+        println(s"c, store, kont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (control, store, kont) }).size}")
+        println(s"c, lkont, kont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (control, lkont, kont) }).size}")
+        println(s"store, lkont, kont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (store, lkont, kont) }).size}")
 
-        println(s"c, σ, ι, κ: ${g.nodes.groupBy({ case State(control, σ, ι, κ) => (control, σ, ι, κ) }).size}")
+        println(s"c, store, lkont, kont: ${g.nodes.groupBy({ case State(control, store, lkont, kont) => (control, store, lkont, kont) }).size}")
         // grouped.toList.map({ case (k, v) => println(s"Group $k has ${v.size} items") })
       }) */
       /* No more element to visit, outputs the result */
