@@ -8,7 +8,7 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
   def name = "AAMMonoGlobalStore"
 
   trait KontAddr
-  case class NormalKontAddress(exp: Exp, addr: Addr) extends KontAddr {
+  case class NormalKontAddress(exp: Exp, t: Time) extends KontAddr {
     override def toString = s"NormalKontAddress($exp)"
   }
   case object HaltKontAddress extends KontAddr {
@@ -36,7 +36,7 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
       actions.foldLeft((Set[State](), store, kstore))((acc, action) => action match {
         case ActionReachedValue(v, store2, _) => (acc._1 + State(ControlKont(v), a, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3)
         case ActionPush(e, frame, env, store2, _) =>
-          val next = NormalKontAddress(e, addr.variable("__kont__", abs.bottom, t))
+          val next = NormalKontAddress(e, t)
           (acc._1 + State(ControlEval(e, env), next, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3.extend(next, Kont(frame, a)))
         case ActionEval(e, env, store2, _) =>
           (acc._1 + State(ControlEval(e, env), a, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3)
