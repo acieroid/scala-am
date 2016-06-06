@@ -45,7 +45,7 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
             if (actions.size == 1) {
               actions.head match {
                 case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, stack, time.tick(t), start, count + 1)
-                case ActionPush(e, frame, env, store2, _) => loop(ControlEval(e, env), store2, frame :: stack, time.tick(t), start, count + 1)
+                case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: stack, time.tick(t), start, count + 1)
                 case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, stack, time.tick(t), start, count + 1)
                 case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, stack, time.tick(t, fexp), start, count + 1)
                 case ActionError(err) => ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
@@ -60,7 +60,7 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
                 if (actions.size == 1) {
                   actions.head match {
                     case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, tl, time.tick(t), start, count + 1)
-                    case ActionPush(e, frame, env, store2, _) => loop(ControlEval(e, env), store2, frame :: tl, time.tick(t), start, count + 1)
+                    case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: tl, time.tick(t), start, count + 1)
                     case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, tl, time.tick(t), start, count + 1)
                     case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, tl, time.tick(t, fexp), start, count + 1)
                     case ActionError(err) => ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err.toString)

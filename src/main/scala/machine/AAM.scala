@@ -62,8 +62,8 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
         /* When a value is reached, we go to a continuation state */
         case ActionReachedValue(v, store, _) => Set(State(ControlKont(v), store, kstore, a, time.tick(t)))
         /* When a continuation needs to be pushed, push it in the continuation store */
-        case ActionPush(e, frame, env, store, _) => {
-          val next = NormalKontAddress(e, t) // Hack to get infinite number of addresses in concrete mode
+        case ActionPush(frame, e, env, store, _) => {
+          val next = NormalKontAddress(e, t)
           Set(State(ControlEval(e, env), store, kstore.extend(next, Kont(frame, a)), next, time.tick(t)))
         }
         /* When a value needs to be evaluated, we go to an eval state */

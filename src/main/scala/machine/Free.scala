@@ -17,7 +17,7 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
    * expression and the corresponding binding environment from the moment where
    * the continuation has been allocated
    */
-  case class NormalKontAddress(exp: Exp, ρ: Environment[Addr]) extends KontAddr {
+  case class NormalKontAddress(exp: Exp, env: Environment[Addr]) extends KontAddr {
     override def toString = s"NormalKontAddress($exp)"
   }
   /** Or it is the address of the halt continuation */
@@ -31,28 +31,28 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
    * to the state, but they are injected inside it during the state space
    * exploration phase.
    */
-  case class State(control: Control, σ: Store[Addr, Abs], kstore: KontStore[KontAddr], k: KontAddr, t: Time) {
+  case class State(control: Control, store: Store[Addr, Abs], kstore: KontStore[KontAddr], k: KontAddr, t: Time) {
     override def toString = control.toString
-    def subsumes(that: State): Boolean = control.subsumes(that.control) && σ.subsumes(that.σ) && kstore.subsumes(that.kstore) && k.equals(that.k)
+    def subsumes(that: State): Boolean = control.subsumes(that.control) && store.subsumes(that.store) && kstore.subsumes(that.kstore) && k.equals(that.k)
 
     /** Integrate a set of action to compute the successor states */
     private def integrate(k: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.map({
-        case ActionReachedValue(v, σ, _) => State(ControlKont(v), σ, kstore, k, time.tick(t))
-        case ActionPush(e, frame, ρ, σ, _) => {
-          val next = new NormalKontAddress(e, ρ)
-          State(ControlEval(e, ρ), σ, kstore.extend(next, Kont(frame, k)), next, time.tick(t))
+        case ActionReachedValue(v, store, _) => State(ControlKont(v), store, kstore, k, time.tick(t))
+        case ActionPush(frame, e, env, store, _) => {
+          val next = new NormalKontAddress(e, env)
+          State(ControlEval(e, env), store, kstore.extend(next, Kont(frame, k)), next, time.tick(t))
         }
-        case ActionEval(e, ρ, σ, _) => State(ControlEval(e, ρ), σ, kstore, k, time.tick(t))
-        case ActionStepIn(fexp, _, e, ρ, σ, _, _) => State(ControlEval(e, ρ), σ, kstore, k, time.tick(t, fexp))
-        case ActionError(err) => State(ControlError(err), σ, kstore, k, time.tick(t))
+        case ActionEval(e, env, store, _) => State(ControlEval(e, env), store, kstore, k, time.tick(t))
+        case ActionStepIn(fexp, _, e, env, store, _, _) => State(ControlEval(e, env), store, kstore, k, time.tick(t, fexp))
+        case ActionError(err) => State(ControlError(err), store, kstore, k, time.tick(t))
       })
 
     /** Computes the successors states of this one relying on the given semantics */
     def step(sem: Semantics[Exp, Abs, Addr, Time]): Set[State] = control match {
-      case ControlEval(e, ρ) => integrate(k, sem.stepEval(e, ρ, σ, t))
+      case ControlEval(e, env) => integrate(k, sem.stepEval(e, env, store, t))
       case ControlKont(v) => kstore.lookup(k).foldLeft(Set[State]())((acc, k) => k match {
-        case Kont(frame, next) => acc ++ integrate(next, sem.stepKont(v, frame, σ, t))
+        case Kont(frame, next) => acc ++ integrate(next, sem.stepKont(v, frame, store, t))
       })
       case ControlError(_) => Set()
     }
@@ -83,17 +83,17 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
    * Represents multiple states as a set of configuration that share the same
    * store and continuation store
    */
-  case class States(R: Set[Configuration], σ: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
+  case class States(R: Set[Configuration], store: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
     override def toString = R.toString
     /** Performs a step on all the contained states */
     def step(sem: Semantics[Exp, Abs, Addr, Time]): States = {
-      val states = R.map(conf => State(conf.control, σ, kstore, conf.k, conf.t))
-      val succs = states.flatMap(ς => ς.step(sem))
-      val (σ1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs], KontStore.empty[KontAddr]))((acc, ς) => (acc._1.join(ς.σ), acc._2.join(ς.kstore)))
-      States(succs.map(ς => Configuration(ς.control, ς.k, ς.t)), σ1, kstore1)
+      val states = R.map(conf => State(conf.control, store, kstore, conf.k, conf.t))
+      val succs = states.flatMap(state => state.step(sem))
+      val (store1, kstore1) = succs.foldLeft((Store.empty[Addr, Abs], KontStore.empty[KontAddr]))((acc, state) => (acc._1.join(state.store), acc._2.join(state.kstore)))
+      States(succs.map(state => Configuration(state.control, state.k, state.t)), store1, kstore1)
     }
     def isEmpty = R.isEmpty
-    def toStateSet: Set[State] = R.map({ case Configuration(control, k, t) => State(control, σ, kstore, k, t) })
+    def toStateSet: Set[State] = R.map({ case Configuration(control, k, t) => State(control, store, kstore, k, t) })
     def size: Int = R.size
   }
 
@@ -140,8 +140,8 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
         timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
       loopWithLocalGraph(s2, visited + s, h, startingTime, timeout,
-        graph.addEdges(s.toStateSet.flatMap(ς1 =>
-          s2.toStateSet.map(ς2 => (ς1, (), ς2)))), sem)
+        graph.addEdges(s.toStateSet.flatMap(state1 =>
+          s2.toStateSet.map(state2 => (state1, (), state2)))), sem)
     }
   }
 

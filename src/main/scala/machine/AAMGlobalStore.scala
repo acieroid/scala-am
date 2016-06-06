@@ -35,7 +35,7 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], store: GlobalStore, kstore: KontStore[KontAddr]): (Set[State], GlobalStore, KontStore[KontAddr]) =
       actions.foldLeft((Set[State](), store, kstore))((acc, action) => action match {
         case ActionReachedValue(v, store2, _) => (acc._1 + State(ControlKont(v), a, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3)
-        case ActionPush(e, frame, env, store2, _) =>
+        case ActionPush(frame, e, env, store2, _) =>
           val next = NormalKontAddress(e, t)
           (acc._1 + State(ControlEval(e, env), next, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3.extend(next, Kont(frame, a)))
         case ActionEval(e, env, store2, _) =>

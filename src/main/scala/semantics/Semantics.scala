@@ -133,7 +133,7 @@ case class ActionReachedValue[Exp : Expression, Abs : JoinLattice, Addr : Addres
  * evaluating expression e in environment env
  */
 case class ActionPush[Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (e: Exp, frame: Frame, env: Environment[Addr], store: Store[Addr, Abs],
+  (frame: Frame, e: Exp, env: Environment[Addr], store: Store[Addr, Abs],
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr]
 /**

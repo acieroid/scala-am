@@ -83,13 +83,13 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
       }, err => Set(ActionError(err)))
     /* To evaluate a let, first evaluate the binding */
     case ANFLet(variable, exp, body, _) =>
-      Set(ActionPush(exp, FrameLet(variable, body, env), env, store))
+      Set(ActionPush(FrameLet(variable, body, env), exp, env, store))
     /* Same for letrec, but we need to bind the variable to an undefined value first */
     case ANFLetrec(variable, exp, body, pos) => {
       val vara = addr.variable(variable, abs.bottom, t)
       val env1 = env.extend(variable, vara)
       val store1 = store.extend(vara, abs.bottom)
-      Set(ActionPush(exp, FrameLetrec(variable, vara, body, env1), env1, store1))
+      Set(ActionPush(FrameLetrec(variable, vara, body, env1), exp, env1, store1))
     }
     /* A set! needs to update the value of a variable in the store */
     case ANFSet(variable, value, _) => env.lookup(variable) match {

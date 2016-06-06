@@ -94,7 +94,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
     case Lam(_, _, _) => Set(ActionReachedValue(labs.inject((e, env)), store))
     /* To evaluate an application, we first have to evaluate e1, and we push a
      * continuation to remember to evaluate e2 in the environment env */
-    case App(e1, e2, _) => Set(ActionPush(e1, FrameArg(e2, env), env, store))
+    case App(e1, e2, _) => Set(ActionPush(FrameArg(e2, env), e1, env, store))
     /* To evaluate a variable, just look it up in the store */
     case Var(x, _) => env.lookup(x) match {
       case Some(a) => store.lookup(a) match {
@@ -109,7 +109,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
     * have frame as the top continuation on the stack */
   def stepKont(v: Abs, frame: Frame, store: Sto, t: Time) = frame match {
     /* We have evaluated the operator v but still need to evaluate the operator e */
-    case FrameArg(e, env) => Set(ActionPush(e, FrameFun(v), env, store))
+    case FrameArg(e, env) => Set(ActionPush(FrameFun(v), e, env, store))
     /* We have evaluated both the operator (fun) and the operand (v). We go through
      * the possible closures bound to the operator and for each of them, we
      * have to evaluate their body by extending their environment with their

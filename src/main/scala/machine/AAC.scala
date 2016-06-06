@@ -220,11 +220,11 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
         val (states, kstore, contexts) = acc
         act match {
           case ActionReachedValue(v, store, _) => (states + State(ControlKont(v), store, lkont, kont, time.tick(t)), kstore, contexts)
-          case ActionPush(e, frame, ρ, store, _) => (states + State(ControlEval(e, ρ), store, lkont.push(frame), kont, time.tick(t)), kstore, contexts)
-          case ActionEval(e, ρ, store, _) => (states + State(ControlEval(e, ρ), store, lkont, kont, time.tick(t)), kstore, contexts)
-          case ActionStepIn(fexp, clo, e, ρ, store, argsv, _) => {
+          case ActionPush(frame, e, env, store, _) => (states + State(ControlEval(e, env), store, lkont.push(frame), kont, time.tick(t)), kstore, contexts)
+          case ActionEval(e, env, store, _) => (states + State(ControlEval(e, env), store, lkont, kont, time.tick(t)), kstore, contexts)
+          case ActionStepIn(fexp, clo, e, env, store, argsv, _) => {
             val ctx = Context(clo, argsv, store, t)
-            (states + State(ControlEval(e, ρ), store, new LocalKont(), new KontCtx(ctx), time.tick(t, fexp)),
+            (states + State(ControlEval(e, env), store, new LocalKont(), new KontCtx(ctx), time.tick(t, fexp)),
              kstore.extend(ctx, (lkont, kont)), contexts + ctx)
           }
           case ActionError(err) => (states + State(ControlError(err), store, lkont, kont, time.tick(t)), kstore, contexts)
