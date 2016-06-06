@@ -8,6 +8,11 @@ import scala.util.parsing.input.Position
 trait LamExp {
   val pos: Position
 }
+object LamExp {
+  implicit val isExp: Expression[LamExp] = new Expression[LamExp] {
+    def pos(e: LamExp) = e.pos
+  }
+}
 /** An abstraction: lambda x. e */
 case class Lam(x: String, e: LamExp, pos: Position) extends LamExp {
   override def toString = s"(lambda ($x) $e)"

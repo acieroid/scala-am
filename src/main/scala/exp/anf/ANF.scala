@@ -6,6 +6,11 @@ import scala.util.parsing.input.Position
 trait ANFExp {
   val pos: Position
 }
+object ANFExp {
+  implicit val isExp: Expression[ANFExp] = new Expression[ANFExp] {
+    def pos(e: ANFExp) = e.pos
+  }
+}
 trait ANFAtomicExp extends ANFExp
 case class ANFLambda(args: List[String], body: ANFExp, pos: Position) extends ANFAtomicExp {
   override def toString() = {

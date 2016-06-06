@@ -6,6 +6,11 @@ import scala.util.parsing.input.Position
 trait SchemeExp {
   val pos: Position
 }
+object SchemeExp {
+  implicit val isExp: Expression[SchemeExp] = new Expression[SchemeExp] {
+    def pos(e: SchemeExp) = e.pos
+  }
+}
 
 /**
  * A lambda expression: (lambda (args...) body...)
