@@ -104,7 +104,7 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
   val isSchemeLattice: IsSchemeLattice[L] = isTaintLattice
 }
 
-case class TaintError(sources: Set[Position], sink: Position) extends Error
+case class TaintError(sources: Set[Position], sink: Position) extends SemanticError
 
 /* We need to extend the language with primitives representing sources, sinks, and sanitizers */
 class TSchemePrimitives[Addr : Address, Abs : IsTaintLattice] extends SchemePrimitives[Addr, Abs] {
@@ -143,7 +143,7 @@ case class TaintAnalysis[Abs : JoinLattice, Addr : Address, Time : Timestamp]()
     extends BaseAnalysis[Set[(Position, Position)], SchemeExp, Abs, Addr, Time] {
   def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: Set[(Position, Position)]) = current
   def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time, current: Set[(Position, Position)]) = current
-  def error(error: Error, current: Set[(Position, Position)]) = error match {
+  def error(error: SemanticError, current: Set[(Position, Position)]) = error match {
     case TaintError(sources, sink) => current ++ sources.map(source => (source, sink))
     case _ => current
   }

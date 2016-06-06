@@ -168,7 +168,7 @@ case class UnboundVariablesAnalysis[Abs : JoinLattice, Addr : Address, Time: Tim
    * "err" parameter, which is UnboundVariable(name). But that's not how we
    * proceed for this analysis, because we want the full expression (and also,
    * we want to show how to describe the analysis in terms of stepEval). */
-  def error(err: Error, current: Set[LamExp]) = current
+  def error(err: SemanticError, current: Set[LamExp]) = current
   /** Joining two results is done by taking their union */
   def join(x: Set[LamExp], y: Set[LamExp]) = x ++ y
   /** At the beginning of the program, no unbound variable has been evaluated */

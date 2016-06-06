@@ -2,49 +2,49 @@ import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
 import SchemeOps._
 
-case class CannotAccessVector(vector: String) extends Error
-case class CannotAccessCar(v: String) extends Error
-case class CannotAccessCdr(v: String) extends Error
+case class CannotAccessVector(vector: String) extends SemanticError
+case class CannotAccessCar(v: String) extends SemanticError
+case class CannotAccessCdr(v: String) extends SemanticError
 
 trait MayFail[L] {
   def map[A](f: L => A): MayFail[A]
   def bind[A](f: L => MayFail[A]): MayFail[A]
-  def addError(err: Error): MayFail[L]
+  def addError(err: SemanticError): MayFail[L]
   def extract: L
   def value: Option[L]
-  def errors: List[Error]
-  def collect[A](success: L => Set[A], error: Error => Set[A]): Set[A]
+  def errors: List[SemanticError]
+  def collect[A](success: L => Set[A], error: SemanticError => Set[A]): Set[A]
 }
 case class MayFailSuccess[L](l: L) extends MayFail[L] {
   def map[A](f: L => A) = MayFailSuccess[A](f(l))
   def bind[A](f: L => MayFail[A]) = f(l)
-  def addError(err: Error) = MayFailBoth[L](l, List(err))
+  def addError(err: SemanticError) = MayFailBoth[L](l, List(err))
   def extract = l
   def value = Some(l)
   def errors = List()
-  def collect[A](success: L => Set[A], error: Error => Set[A]) = success(l)
+  def collect[A](success: L => Set[A], error: SemanticError => Set[A]) = success(l)
 }
-case class MayFailError[L](errs: List[Error]) extends MayFail[L] {
+case class MayFailError[L](errs: List[SemanticError]) extends MayFail[L] {
   def map[A](f: L => A) = MayFailError[A](errs)
   def bind[A](f: L => MayFail[A]) = MayFailError[A](errs)
-  def addError(err: Error) = MayFailError[L](errs :+ err)
+  def addError(err: SemanticError) = MayFailError[L](errs :+ err)
   def extract = throw new Exception("Cannot extract value from MayFailError")
   def value = None
   def errors = errs
-  def collect[A](success: L => Set[A], error: Error => Set[A]) = errs.toSet.foldMap(error)
+  def collect[A](success: L => Set[A], error: SemanticError => Set[A]) = errs.toSet.foldMap(error)
 }
-case class MayFailBoth[L](l: L, errs: List[Error]) extends MayFail[L] {
+case class MayFailBoth[L](l: L, errs: List[SemanticError]) extends MayFail[L] {
   def map[A](f: L => A) = MayFailBoth(f(l), errs)
   def bind[A](f: L => MayFail[A]) = f(l) match {
     case MayFailSuccess(a) => MayFailBoth[A](a, errs)
     case MayFailError(errs2) => MayFailError(errs ++ errs2)
     case MayFailBoth(a, errs2) => MayFailBoth[A](a, errs ++ errs2)
   }
-  def addError(err: Error) = MayFailBoth[L](l, errs :+ err)
+  def addError(err: SemanticError) = MayFailBoth[L](l, errs :+ err)
   def extract = l
   def value = Some(l)
   def errors = errs
-  def collect[A](success: L => Set[A], error: Error => Set[A]) = success(l) ++ errs.toSet.foldMap(error)
+  def collect[A](success: L => Set[A], error: SemanticError => Set[A]) = success(l) ++ errs.toSet.foldMap(error)
 }
 
 object MayFail {
