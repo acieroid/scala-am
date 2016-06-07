@@ -8,6 +8,7 @@ import scala.util.parsing.input.Position
 trait LamExp {
   val pos: Position
 }
+/** We have to tell scala-am that LamExp are actually expressions */
 object LamExp {
   implicit val isExp: Expression[LamExp] = new Expression[LamExp] {
     def pos(e: LamExp) = e.pos
@@ -180,9 +181,9 @@ case class UnboundVariablesAnalysis[Abs : JoinLattice, Addr : Address, Time: Tim
   def init = Set[LamExp]()
 }
 
-/** We want to perform some simple static analyses on lambda-calculus
-  * programs. We compute the possible unbound variables that are evaluated in
-  * the execution of a program. */
+/** We want to perform a simple static analysis on lambda-calculus programs. We
+  * compute the possible unbound variables that are evaluated in the execution
+  * of a program. */
 object LamAnalysis {
   /** Our analysis takes an input program as a string, and returns a set of
    *  expressions where unbound variables are evaluated.
