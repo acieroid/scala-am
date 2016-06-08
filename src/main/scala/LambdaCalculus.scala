@@ -84,13 +84,13 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
   /** Shorcuct for the store */
   type Sto = Store[Addr, Abs]
   /** We need some frames */
-  trait ANFFrame extends Frame {
+  trait LamFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
   }
   /** One frame to remember the operand when we evaluate the operator */
-  case class FrameArg(e: LamExp, env: Env) extends ANFFrame
+  case class FrameArg(e: LamExp, env: Env) extends LamFrame
   /** And one frame to remember the operator value when we evaluate the operand */
-  case class FrameFun(v: Abs) extends ANFFrame
+  case class FrameFun(v: Abs) extends LamFrame
 
   /** The stepEval function defines how to perform an evaluation step on an
     * expression */
