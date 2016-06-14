@@ -66,6 +66,12 @@ abstract class Effect[Addr : Address] {
   val target: Addr
 }
 
+object Effect {
+  def none[Addr : Address]: Set[Effect[Addr]] = Set.empty
+  def readVariable[Addr : Address](target: Addr): Effect[Addr] = EffectReadVariable(target)
+  def writeVariable[Addr : Address](target: Addr): Effect[Addr] = EffectWriteVariable(target)
+}
+
 case class EffectReadVariable[Addr : Address](target: Addr)
     extends Effect[Addr] {
   val kind = ReadEffect
