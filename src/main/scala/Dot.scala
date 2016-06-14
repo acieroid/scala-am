@@ -1,6 +1,10 @@
 import scala.util.parsing.input.Position
+import scalaz.Scalaz._
 
-object DotLanguage {
+class DotLanguage[Addr : Address] {
+  val addr = implicitly[Address[Addr]]
+  type Env = Environment[Addr]
+
   trait Term {
     val pos: Position
   }
@@ -43,18 +47,18 @@ object DotLanguage {
 
   trait DotLattice[L] extends JoinLattice[L] {
     /* Injects closures, which can either be a lambda (function), or a nu (object) */
-    def lambda[Addr : Address](v: Variable, body: Term, env: Environment[Addr]): L
-    def obj[Addr : Address](v: Variable, defs: Definition, env: Environment[Addr]): L
-    def getClosures[Addr : Address](x: L): Set[(Variable, Term, Environment[Addr])]
-    def getObjects[Addr : Address](x: L): Set[(Variable, Definition, Environment[Addr])]
+    def lambda(v: Variable, body: Term, env: Env): L
+    def obj(v: Variable, defs: Definition, env: Env): L
+    def getClosures(x: L): Set[(Variable, Term, Env)]
+    def getObjects(x: L): Set[(Variable, Definition, Env)]
   }
 
   object DotLatticeImpl {
     sealed trait Value
-    case class Closure[Addr : Address](v: Variable, body: Term, env: Environment[Addr]) extends Value {
+    case class Closure(v: Variable, body: Term, env: Env) extends Value {
       override def toString = s"#<λ ($v) $body>"
     }
-    case class Obj[Addr : Address](v: Variable, defs: Definition, env: Environment[Addr]) extends Value {
+    case class Obj(v: Variable, defs: Definition, env: Env) extends Value {
       override def toString = s"#<ν ($v) $defs>"
     }
     case class L(elements: Set[Value]) {
@@ -68,20 +72,20 @@ object DotLanguage {
       def counting = false
       def isPrimitiveValue(x: L) = false
 
-      def lambda[Addr : Address](v: Variable, body: Term, env: Environment[Addr]) =
-        L(Set[Value](Closure[Addr](v, body, env)))
-      def obj[Addr : Address](v: Variable, defs: Definition, env: Environment[Addr]) =
-        L(Set[Value](Obj[Addr](v, defs, env)))
-      def getClosures[Addr : Address](x: L) = {
-        def getClo(x: Value): Option[(Variable, Term, Environment[Addr])] = x match {
-          case Closure(v, body, env : Environment[Addr] @unchecked) => Some((v, body, env))
+      def lambda(v: Variable, body: Term, env: Env) =
+        L(Set[Value](Closure(v, body, env)))
+      def obj(v: Variable, defs: Definition, env: Env) =
+        L(Set[Value](Obj(v, defs, env)))
+      def getClosures(x: L) = {
+        def getClo(x: Value): Option[(Variable, Term, Env)] = x match {
+          case Closure(v, body, env) => Some((v, body, env))
           case _ => None
         }
         x.elements.flatMap(getClo)
       }
-      def getObjects[Addr : Address](x: L) = {
-        def getObj(x: Value): Option[(Variable, Definition, Environment[Addr])] = x match {
-          case Obj(v, defs, env: Environment[Addr] @unchecked) => Some((v, defs, env))
+      def getObjects(x: L) = {
+        def getObj(x: Value): Option[(Variable, Definition, Env)] = x match {
+          case Obj(v, defs, env) => Some((v, defs, env))
           case _ => None
         }
         x.elements.flatMap(getObj)
@@ -89,10 +93,9 @@ object DotLanguage {
     }
   }
 
-  class DotSemantics[Abs : DotLattice, Addr : Address, Time : Timestamp]
+  class DotSemantics[Abs : DotLattice, Time : Timestamp]
       extends BaseSemantics[Term, Abs, Addr, Time] {
     def dabs = implicitly[DotLattice[Abs]]
-    type Env = Environment[Addr]
     type Sto = Store[Addr, Abs]
     trait DotFrame extends Frame {
       def subsumes(that: Frame) = that.equals(this)
@@ -101,13 +104,12 @@ object DotLanguage {
 
     private def evalVar(x: Variable, env: Env, store: Sto): MayFail[Abs] = env.lookup(x) match {
       case Some(a) => store.lookup(a) match {
-        case Some(v) => MayFailSuccess(v)
-        case None => MayFailError(List(UnboundAddress(a.toString)))
+        case Some(v) => v
+        case None => UnboundAddress(a.toString)
       }
-      case None => MayFailError(List(UnboundVariable(x)))
+      case None => UnboundVariable(x)
     }
 
-    private def toErr(err: SemanticError): Set[Action[Term, Abs, Addr]] = Set(ActionError(err))
     private def findTermMember(defs: Definition, a: TermMember): Option[Term] = defs match {
       case Field(a2, t, _) if a2 == a => Some(t)
       case Field(_, _, _) => None
@@ -117,42 +119,43 @@ object DotLanguage {
       }
     }
 
-
+    case class NoTermMember(member: String, obj: String, pos: Position) extends SemanticError
     def stepEval(t: Term, env: Env, store: Sto, time: Time) = t match {
-      case Var(x, _) => evalVar(x, env, store).collect(v => Set(ActionReachedValue(v, store)), err => Set(ActionError(err)))
-      case Lam(x, t, _) => Set(ActionReachedValue(dabs.lambda(x, t, env), store))
-      case App(x, y, _) => evalVar(x, env, store).bind(fun =>
-        evalVar(y, env, store).map(arg => {
-          val res: Set[Action[Term, Abs, Addr]] = dabs.getClosures[Addr](fun).map({
-            case (x, body, env) => {
-              val a = addr.variable(x, arg, time)
-              ActionEval[Term, Abs, Addr](t, env.extend(x, a), store.extend(a, arg))
-            }
-          })
-          res
-        })).collect(actions => actions, toErr)
-      case Let(x, t, u, _) => Set(ActionPush(FrameLet(x, u, env), t, env, store))
-      case Sel(x, a, _) => evalVar(x, env, store).map(obj => {
-        val res: Set[Action[Term, Abs, Addr]] =  dabs.getObjects[Addr](obj).map({
-          case (x, defs, env) =>
-            findTermMember(defs, a) match {
-              case Some(t) => {
-                val ad = addr.variable(x, obj, time)
-                ActionEval(t, env.extend(x, ad), store.extend(ad, obj))
-              }
-              case None => ActionError[Term, Abs, Addr](UserError("no term member $a in object $obj", t.pos))
-            }
-        })
-        res
-      }).collect(actions => actions, toErr)
-      case Obj(x, d, _) => Set(ActionReachedValue(dabs.obj(x, d, env), store))
+      case Var(x, _) => for {
+        v <- evalVar(x, env, store)
+      } yield Action.value(v, store)
+      case Lam(x, t, _) =>
+        Action.value(dabs.lambda(x, t, env), store)
+      case Obj(x, d, _) =>
+        Action.value(dabs.obj(x, d, env), store)
+      case App(x, y, _) => for {
+        fun <- evalVar(x, env, store)
+        arg <- evalVar(y, env, store)
+      } yield dabs.getClosures(fun).map({
+        case (x, t, env) =>
+          val a = addr.variable(x, arg, time)
+          Action.eval(t, env.extend(x, a), store.extend(a, arg))
+      })
+      case Let(x, t, u, _) =>
+        Action.push(FrameLet(x, u, env), t, env, store)
+      case Sel(x, a, _) => for {
+        obj <- evalVar(x, env, store)
+      } yield dabs.getObjects(obj).map({
+        case (x, defs, env) =>
+          findTermMember(defs, a) match {
+            case Some(t) =>
+              val ad = addr.variable(x, obj, time)
+              Action.eval(t, env.extend(x, ad), store.extend(ad, obj))
+            case None =>
+              Action.error(NoTermMember(a, obj.toString, t.pos))
+          }
+      })
     }
 
     def stepKont(v: Abs, frame: Frame, store: Sto, time: Time) = frame match {
-      case FrameLet(x, u, env) => {
+      case FrameLet(x, u, env) =>
         val a = addr.variable(x, v, time)
-        Set(ActionEval(u, env.extend(x, a), store.extend(a, v)))
-      }
+        Action.eval(u, env.extend(x, a), store.extend(a, v))
     }
 
     def parse(program: String): Term = {
@@ -192,12 +195,13 @@ object DotLanguage {
 }
 
 object Dot {
-  import DotLanguage._
   def main(args: Array[String]) {
     if (args.length >= 1) {
+      val dot = new DotLanguage[ClassicalAddress.A]
+      import dot._
       val lattice = DotLatticeImpl
       implicit val isDotLattice = lattice.isDotLattice
-      val sem = new DotSemantics[lattice.L, ClassicalAddress.A, ZeroCFA.T]
+      val sem = new DotSemantics[lattice.L, ZeroCFA.T]
       val machine = new AAM[Term, lattice.L, ClassicalAddress.A, ZeroCFA.T]
       val res = machine.eval(sem.parse(args(0)), sem, true, None)
       res.toDotFile("foo.dot")
