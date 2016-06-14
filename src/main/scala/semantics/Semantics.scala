@@ -121,6 +121,16 @@ case class EffectRelease[Addr : Address](target: Addr)
  * The different kinds of actions that can be taken by the abstract machine
  */
 abstract class Action[Exp : Expression, Abs : JoinLattice, Addr : Address]
+class ActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address] {
+  def value(v: Abs, store: Store[Addr, Abs]): Action[Exp, Abs, Addr] =
+    ActionReachedValue(v, store)
+  def push(frame: Frame, e: Exp, env: Environment[Addr], store: Store[Addr, Abs]): Action[Exp, Abs, Addr] =
+    ActionPush(frame, e, env, store)
+  def eval(e: Exp, env: Environment[Addr], store: Store[Addr, Abs]): Action[Exp, Abs, Addr] =
+    ActionEval(e, env, store)
+  def error(err: SemanticError): Action[Exp, Abs, Addr] =
+    ActionError(err)
+}
 /**
  * A value is reached by the interpreter. As a result, a continuation will be
  * popped with the given reached value.
@@ -189,11 +199,20 @@ case class ActionJoin[Exp : Expression, Abs : JoinLattice, Addr : Address]
  */
 abstract class BaseSemantics[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends Semantics[Exp, Abs, Addr, Time] {
-  /* wtf scala */
   def abs = implicitly[JoinLattice[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
   def time = implicitly[Timestamp[Time]]
+
+  object Action extends ActionHelpers[Exp, Abs, Addr]
+
+  import scala.language.implicitConversions
+  implicit def mfToActions(mf: MayFail[Set[Action[Exp, Abs, Addr]]]): Set[Action[Exp, Abs, Addr]] =
+    mf.collect(actions => actions, err => Set(ActionError(err)))
+  implicit def mfActionToActions(mf: MayFail[Action[Exp, Abs, Addr]]): Set[Action[Exp, Abs, Addr]] =
+    mfToActions(mf.map(x => Set[Action[Exp, Abs, Addr]](x)))
+  implicit def actionToSet(action: Action[Exp, Abs, Addr]): Set[Action[Exp, Abs, Addr]] =
+    Set(action)
 
   /**
    * Binds arguments in the environment and store. Arguments are given as a list
