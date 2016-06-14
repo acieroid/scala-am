@@ -2,7 +2,7 @@ import scalaz._
 import scalaz.Scalaz._
 
 /** A (join semi-)lattice L should support the following operations */
-trait JoinLattice[L] extends Monoid[L] {
+trait JoinLattice[L] extends Monoid[L] with PartialOrdering[L] {
   /** A lattice has a bottom element */
   def bottom: L
   /** Elements of the lattice can be joined together */
@@ -11,6 +11,13 @@ trait JoinLattice[L] extends Monoid[L] {
   def zero: L = bottom /* And bottom as zero */
   /** Subsumption between two elements can be checked */
   def subsumes(x: L, y: L): Boolean
+  def lteq(x: L, y: L): Boolean = subsumes(y, x) /* A lattice has a partial order, defined by subsumes */
+  def tryCompare(x: L, y: L): Option[Int] = (subsumes(x, y), subsumes(y, x)) match {
+    case (true, true) => Some(0) // x >= y and y >= x => x = y
+    case (true, false) => Some(1) // x >= y and x != y
+    case (false, true) => Some(-1) // y >= x and x != y
+    case (false, false) => None // not comparable
+  }
 
   /** We have some more components for convenience */
   /** A name identifying the lattice */
