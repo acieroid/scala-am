@@ -1,3 +1,5 @@
+import scalaz.Scalaz._
+import scalaz._
 /* Here, we develop a static taint analysis of Scheme programs. */
 
 /* We need a lattice tracking tainted values, that is compatible with Scheme

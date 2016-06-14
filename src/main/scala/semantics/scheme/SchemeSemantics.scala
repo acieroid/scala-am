@@ -1,4 +1,6 @@
 import SchemeOps._
+import scalaz.Scalaz._
+import scalaz._
 
 /**
  * Basic Scheme semantics, without any optimization
@@ -51,7 +53,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
       case (lambda, _) => Action.error(TypeError(lambda.toString, "operator", "closure", "not a closure"))
     })
     val fromPrim: Actions = sabs.getPrimitives(function).flatMap(prim =>
-      prim.call(fexp, argsv, store, t).map({ case (res, store2, effects) => Action.value(res, store2, effects) }))
+      for { (res, store2, effects) <- prim.call(fexp, argsv, store, t) } yield Action.value(res, store2, effects) )
     if (fromClo.isEmpty && fromPrim.isEmpty) {
       Action.error(TypeError(function.toString, "operator", "function", "not a function"))
     } else {

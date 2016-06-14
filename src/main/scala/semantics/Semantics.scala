@@ -1,4 +1,6 @@
 import scalaz._
+import scalaz.Scalaz._
+
 /**
  * This is where the interface of a language's semantics is defined. By defining
  * the semantics of a language, you get an abstract abstract machine for free
@@ -234,9 +236,14 @@ abstract class BaseSemantics[Exp : Expression, Abs : JoinLattice, Addr : Address
 
   import scala.language.implicitConversions
   implicit def mfToActions(mf: MayFail[Set[Action[Exp, Abs, Addr]]]): Set[Action[Exp, Abs, Addr]] =
-    mf.collect(actions => actions, err => Set(ActionError(err)))
+    mf match {
+      case MayFailSuccess(l) => l
+      case MayFailError(errs) => errs.toSet.map((err: SemanticError) => ActionError(err))
+      case MayFailBoth(l, errs) => l ++ errs.toSet.map((err: SemanticError) => ActionError(err))
+    }
   implicit def mfActionToActions(mf: MayFail[Action[Exp, Abs, Addr]]): Set[Action[Exp, Abs, Addr]] =
-    mfToActions(mf.map(x => Set[Action[Exp, Abs, Addr]](x)))
+    /* TODO: mf.map does not use the correct map apparently? */
+    mfToActions(MayFail.isFunctor.map(mf)(x => Set[Action[Exp, Abs, Addr]](x)))
   implicit def actionToSet(action: Action[Exp, Abs, Addr]): Set[Action[Exp, Abs, Addr]] =
     Set(action)
 

@@ -142,7 +142,10 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     override def call(x: Abs, y: Abs) = lt(x, y) /* TODO: < should accept any number of arguments (same for <= etc.) */
   }
   object LessOrEqual extends NoStoreOperation("<=", Some(2)) {
-    override def call(x: Abs, y: Abs) = lt(x, y).bind(ltres => numEq(x, y).map(eqres => abs.or(ltres, eqres)))
+    override def call(x: Abs, y: Abs) = for {
+      ltres <- lt(x, y)
+      eqres <- numEq(x, y)
+    } yield abs.or(ltres, eqres)
   }
   object NumEq extends NoStoreOperation("=", Some(2)) {
     override def call(x: Abs, y: Abs) = numEq(x, y)
@@ -258,7 +261,10 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     override def call(x: Abs) = isInteger(x)
   }
   object Realp extends NoStoreOperation("real?", Some(1)) {
-    override def call(x: Abs) = isInteger(x).bind(isint => isFloat(x).map(isfloat => abs.or(isint, isfloat)))
+    override def call(x: Abs) = for {
+      isint <- isInteger(x)
+      isfloat <- isFloat(x)
+    } yield abs.or(isint, isfloat)
   }
   object Numberp extends NoStoreOperation("number?", Some(1)) {
     override def call(x: Abs) = Realp.call(x) /* No support for complex number, so number? is equivalent as real? */
@@ -281,7 +287,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object StringAppend extends NoStoreOperation("string-append") {
     override def call(args: List[Abs]) = args match {
       case Nil => MayFailSuccess(abs.inject(""))
-      case x :: rest => call(rest).bind(y => stringAppend(x, y))
+      case x :: rest => call(rest) >>= (stringAppend(x, _))
     }
   }
   object StringLength extends NoStoreOperation("string-length", Some(1)) {
@@ -350,11 +356,13 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       else if (c == 'd') { Cdr }
       else { throw new Exception("Incorrect car/cdr operation: $name") })
     override def call(v: Abs, store: Store[Addr, Abs]) =
-      spec.foldLeft(success(v))((acc, op) =>
-        acc.bind({ case (v, effs) => op match {
+      for { (v, effs) <- spec.foldLeft(success(v))((acc, op) => for {
+        (v, effs) <- acc
+        (vcxr, effs2) <- op match {
           case Car => car(v, store)
           case Cdr => cdr(v, store)
-        }})).map({ case (v, effs) => (v, store, effs) })
+        }
+      } yield (vcxr, effs ++ effs2)) } yield (v, store, effs)
   }
   object Car extends CarCdrOperation("car")
   object Cdr extends CarCdrOperation("cdr")
@@ -417,17 +425,17 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
         if (visited.contains(l)) {
           MayFailSuccess((abs.bottom, Set[Effect[Addr]]()))
         } else {
-          isCons(l).bind(cond => {
+          isCons(l) >>= (cond => {
             val t = if (abs.isTrue(cond)) {
-              cdr(l, store).bind({ case (cdrl, effects1) =>
-                length(cdrl, visited + l).bind( { case (lengthcdrl, effects2) =>
+              cdr(l, store) >>= ({ case (cdrl, effects1) =>
+                length(cdrl, visited + l) >>= ({ case (lengthcdrl, effects2) =>
                   plus(abs.inject(1), lengthcdrl).map(lengthl =>
                     (lengthl, effects1 ++ effects2))
                 })
               })
             } else { mfmon.zero }
             val f = if (abs.isFalse(cond)) {
-              isNull(l).bind(fcond => {
+              isNull(l) >>= (fcond => {
               val ft = if (abs.isTrue(fcond)) { MayFailSuccess((abs.inject(0), Set[Effect[Addr]]())) } else { mfmon.zero }
                 val ff = if (abs.isFalse(fcond)) { err(TypeError("length", "first operand", "list", "non-list")) } else { mfmon.zero }
                 mfmon.append(ft, ff)
@@ -448,12 +456,12 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
           /* R5RS: "all lists have finite length", and the cases where this is reached include circular lists */
           MayFailSuccess(abs.inject(false), Set[Effect[Addr]]())
         } else {
-          isNull(l).bind(nulltest => {
+          isNull(l) >>= (nulltest => {
             val t = if (abs.isTrue(nulltest)) { MayFailSuccess((nulltest, Set[Effect[Addr]]())) } else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
             val f = if (abs.isFalse(nulltest)) {
-              isCons(l).bind(constest => {
+              isCons(l) >>= (constest => {
                 val ft = if (abs.isTrue(constest)) {
-                  cdr(l, store).bind({ case (cdrl, effects1) =>
+                  cdr(l, store) >>= ({ case (cdrl, effects1) =>
                     listp(cdrl, visited + l).map({ case (listpl, effects2) =>
                       (listpl, effects1 ++ effects2)
                     })
@@ -477,7 +485,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     val name = "make-vector"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (_, size) :: (initexp, init) :: Nil =>
-        isInteger(size).bind(isint =>
+        isInteger(size) >>= (isint =>
           if (abs.isTrue(isint)) {
             val a = addr.cell(fexp, t)
             val initaddr = addr.cell(initexp, t)
@@ -501,7 +509,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
           addrs.foldLeft(init)((acc, va) => {
             store.lookup(va) match {
               case Some(oldvec) => {
-                acc.bind({ case (oldval, store, effects) =>
+                acc >>= ({ case (oldval, store, effects) =>
                   val targetaddr = addr.cell(exp, t)
                   abs.vectorSet(oldvec, index, targetaddr).map({ case (vec, addrs) =>
                     val store2 = addrs.foldLeft(store.update(va, vec))((st, a) => st.updateOrExtend(a, value))
@@ -523,10 +531,10 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
       val a = addr.cell(fexp, t)
       val botaddr = addr.primitive("__bottom__")
-      abs.vector(a, abs.inject(args.size), botaddr).bind({ case (va, emptyVector) =>
+      abs.vector(a, abs.inject(args.size), botaddr) >>= ({ case (va, emptyVector) =>
         /* No tracked effects because we only perform atomic updates at allocation time */
         val init: MayFail[(Abs, Store[Addr, Abs])] = MayFailSuccess((emptyVector, store))
-        args.zipWithIndex.foldLeft(init)((acc, arg) => acc.bind({ case (vec, store) =>
+        args.zipWithIndex.foldLeft(init)((acc, arg) => acc >>= ({ case (vec, store) =>
           arg match {
             case ((exp, value), index) =>
               val valaddr = addr.cell(exp, t)
@@ -563,14 +571,14 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       } else {
         addrs.foldLeft(mfmon.zero)((acc, va) =>
           store.lookup(va) match {
-            case Some(v) => abs.vectorRef(v, index).bind(vs =>
+            case Some(v) => abs.vectorRef(v, index) >>= (vs =>
               vs.foldLeft(acc)((acc, a) =>
                 mfmon.append(acc,
                   store.lookup(a) match {
                     case Some(value) => MayFailSuccess((value, Set(EffectReadVector(a))))
                     case None => err(UnboundAddress(a.toString))
                   })))
-            case None => acc.addError(UnboundAddress(va.toString))
+            case None => mfmon.append(acc, MayFailError(List(UnboundAddress(va.toString))))
           })
       }
     }
@@ -597,14 +605,14 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
         if (visited.contains((a, b, i, n)) || a == abs.bottom || b == abs.bottom || i == abs.bottom || n == abs.bottom) {
           MayFailSuccess((abs.bottom, Set[Effect[Addr]]()))
         } else {
-          numEq(i, n).bind(numtest => {
+          numEq(i, n) >>= (numtest => {
             val t = if (abs.isTrue(numtest)) { MayFailSuccess((abs.inject(true), Set[Effect[Addr]]())) } else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
             val f = if (abs.isFalse(numtest)) {
-              VectorRef.vectorRef(a, i, store).bind({ case (vai, effects1) =>
-                VectorRef.vectorRef(b, i, store).bind({ case (vbi, effects2) =>
-                  equalp(vai, vbi, visitedEqual).bind({ case (itemtest, effects3) => {
+              VectorRef.vectorRef(a, i, store) >>= ({ case (vai, effects1) =>
+                VectorRef.vectorRef(b, i, store) >>= ({ case (vbi, effects2) =>
+                  equalp(vai, vbi, visitedEqual) >>= ({ case (itemtest, effects3) => {
                     val tt = if (abs.isTrue(itemtest)) {
-                      plus(i, abs.inject(1)).bind(iplus1 =>
+                      plus(i, abs.inject(1)) >>= (iplus1 =>
                         equalVec(a, b, iplus1, n, visitedEqual, visited + ((a, b, i, n))).map({ case (eqvec, effects4) =>
                         (eqvec, effects1 ++ effects2 ++ effects3 ++ effects4)}))
                     } else { MayFailSuccess((abs.bottom, effects1 ++ effects2 ++ effects3)) }
@@ -622,22 +630,22 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
           MayFailSuccess((abs.bottom, Set[Effect[Addr]]()))
         } else {
           val visited2 = visited + ((a, b))
-          abs.binaryOp(SchemeOps.Eq)(a, b).bind(eqtest => {
+          abs.binaryOp(SchemeOps.Eq)(a, b) >>= (eqtest => {
             val t = if (abs.isTrue(eqtest)) { MayFailSuccess((eqtest, Set[Effect[Addr]]())) } else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
             val f = if (abs.isFalse(eqtest)) {
-              isNull(a).bind(anull => isNull(b).bind(bnull => {
+              isNull(a) >>= (anull => isNull(b) >>= (bnull => {
                 val nulltest = abs.and(anull, bnull)
                 val ft = if (abs.isTrue(nulltest)) { MayFailSuccess((eqtest, Set[Effect[Addr]]())) } else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
                 val ff = if (abs.isFalse(nulltest)) {
-                  isCons(a).bind(acons => isCons(b).bind(bcons => {
+                  isCons(a) >>= (acons => isCons(b) >>= (bcons => {
                     val constest = abs.and(acons, bcons)
                     val fft = if (abs.isTrue(constest)) {
-                      car(a, store).bind({ case (acar, effects1) =>
-                        car(b, store).bind({ case (bcar, effects2) =>
-                          equalp(acar, bcar, visited2).bind({ case (cartest, effects3) => {
+                      car(a, store) >>= ({ case (acar, effects1) =>
+                        car(b, store) >>= ({ case (bcar, effects2) =>
+                          equalp(acar, bcar, visited2) >>= ({ case (cartest, effects3) => {
                             val fftt = if (abs.isTrue(cartest)) {
-                              cdr(a, store).bind({ case (acdr, effects4) =>
-                                cdr(b, store).bind({ case (bcdr, effects5) =>
+                              cdr(a, store) >>= ({ case (acdr, effects4) =>
+                                cdr(b, store) >>= ({ case (bcdr, effects5) =>
                                   equalp(acdr, bcdr, visited2).map({ case (eqtest, effects6) =>
                                     (eqtest, effects1 ++ effects2 ++ effects3 ++ effects4 ++ effects5 ++ effects6)
                                   })
@@ -648,13 +656,13 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                             MayFail.monoid[(Abs, Set[Effect[Addr]])].append(fftt, fftf)
                           }})})})} else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
                     val fff = if (abs.isFalse(constest)) {
-                      isVector(a).bind(avec =>
-                        isVector(b).bind(bvec => {
+                      isVector(a) >>= (avec =>
+                        isVector(b) >>= (bvec => {
                           val vectest = abs.and(avec, bvec)
                           val ffft = if (abs.isTrue(vectest)) {
-                            VectorLength.length(a, store).bind({ case (alength, effects1) =>
-                              VectorLength.length(b, store).bind({ case (blength, effects2) =>
-                                numEq(alength, blength).bind(lengthtest => {
+                            VectorLength.length(a, store) >>= ({ case (alength, effects1) =>
+                              VectorLength.length(b, store) >>= ({ case (blength, effects2) =>
+                                numEq(alength, blength) >>= (lengthtest => {
                                   val ffftt = if (abs.isTrue(lengthtest)) {
                                     equalVec(a, b, abs.inject(0), alength, visited2, Set()).map({ case (eqvec, effects3) =>
                                       (eqvec, effects1 ++ effects2 ++ effects3)})

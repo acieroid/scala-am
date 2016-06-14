@@ -97,17 +97,17 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
   def stepEval(e: LamExp, env: Env, store: Sto, t: Time) = e match {
     /* A lambda evaluate to a closure by pairing it with the current environment,
      * and injecting this in the abstract domain */
-    case Lam(_, _, _) => Set(ActionReachedValue(labs.inject((e, env)), store))
+    case Lam(_, _, _) => Action.value(labs.inject((e, env)), store)
     /* To evaluate an application, we first have to evaluate e1, and we push a
      * continuation to remember to evaluate e2 in the environment env */
-    case App(e1, e2, _) => Set(ActionPush(FrameArg(e2, env), e1, env, store))
+    case App(e1, e2, _) => Action.push(FrameArg(e2, env), e1, env, store)
     /* To evaluate a variable, just look it up in the store */
     case Var(x, _) => env.lookup(x) match {
       case Some(a) => store.lookup(a) match {
-        case Some(v) => Set(ActionReachedValue(v, store))
-        case None => Set(ActionError(UnboundAddress(a.toString)))
+        case Some(v) => Action.value(v, store)
+        case None => Action.error(UnboundAddress(a.toString))
       }
-      case None => Set(ActionError(UnboundVariable(x)))
+      case None => Action.error(UnboundVariable(x))
     }
   }
 
@@ -123,7 +123,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
     case FrameFun(fun) => labs.getClosures[LamExp, Addr](fun).map({
       case (Lam(x, e, _), env) => {
         val a = addr.variable(x, v, t)
-        ActionEval(e, env.extend(x, a), store.extend(a, v))
+        Action.eval(e, env.extend(x, a), store.extend(a, v))
       }
     })
   }
