@@ -351,7 +351,7 @@ abstract class StringSpecification[S : IsString](gen: LatticeGenerator[S])
 case class IntegerSpecification[I : IsInteger](gen: LatticeGenerator[I])
     extends PropSpec with GeneratorDrivenPropertyChecks {
   val int = implicitly[IsInteger[I]]
-  implicit val abrI: Arbitrary[I] = Arbitrary(gen.any)
+  implicit val arbI: Arbitrary[I] = Arbitrary(gen.any)
 
   type B = ConcreteBoolean.B
   implicit val bool = ConcreteBoolean.isBoolean

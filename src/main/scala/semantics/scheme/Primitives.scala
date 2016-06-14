@@ -113,26 +113,26 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Plus extends NoStoreOperation("+") {
     override def call(args: List[Abs]) = args match {
       case Nil => MayFailSuccess(abs.inject(0))
-      case x :: rest => call(rest).bind(y => plus(x, y))
+      case x :: rest => call(rest) >>= (plus(x, _))
     }
   }
   object Minus extends NoStoreOperation("-") {
     override def call(args: List[Abs]) = args match {
       case Nil => MayFailError(List(VariadicArityError(name, 1, 0)))
       case x :: Nil => minus(abs.inject(0), x)
-      case x :: rest => Plus.call(rest).bind(y => minus(x, y))
+      case x :: rest => Plus.call(rest) >>= (minus(x, _))
     }
   }
   object Times extends NoStoreOperation("*") {
     override def call(args: List[Abs]) = args match {
       case Nil => MayFailSuccess(abs.inject(1))
-      case x :: rest => call(rest).bind(y => times(x, y))
+      case x :: rest => call(rest) >>= (times(x, _))
     }
   }
   object Div extends NoStoreOperation("/") {
     override def call(args: List[Abs]) = args match {
       case Nil => MayFailError(List(VariadicArityError(name, 1, 0)))
-      case x :: rest => Times.call(rest).bind(y => div(x, y))
+      case x :: rest => Times.call(rest) >>= (div(x, _))
     }
   }
   object Quotient extends NoStoreOperation("quotient", Some(2)) {
@@ -148,10 +148,10 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     override def call(x: Abs, y: Abs) = numEq(x, y)
   }
   object GreaterThan extends NoStoreOperation(">", Some(2)) {
-    override def call(x: Abs, y: Abs) = LessOrEqual.call(x, y).bind(leres => not(leres))
+    override def call(x: Abs, y: Abs) = LessOrEqual.call(x, y) >>= not
   }
   object GreaterOrEqual extends NoStoreOperation(">=", Some(2)) {
-    override def call(x: Abs, y: Abs) = LessThan.call(x, y).bind(ltres => not(ltres))
+    override def call(x: Abs, y: Abs) = LessThan.call(x, y) >>= not
   }
   object Modulo extends NoStoreOperation("modulo", Some(2)) {
     override def call(x: Abs, y: Abs) = modulo(x, y)
@@ -179,24 +179,24 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
   /** (define (odd? x) (= 1 (modulo x 2))) */
   object Oddp extends NoStoreOperation("odd?", Some(1)) {
-    override def call(x: Abs) = modulo(x, abs.inject(2)).bind(mod => numEq(abs.inject(1), mod))
+    override def call(x: Abs) = modulo(x, abs.inject(2)) >>= (numEq(abs.inject(1), _))
   }
   /** (define (even? x) (= 0 (modulo x 2))) */
   object Evenp extends NoStoreOperation("even?", Some(1)) {
-    override def call(x: Abs) = modulo(x, abs.inject(2)).bind(mod => numEq(abs.inject(0), mod))
+    override def call(x: Abs) = modulo(x, abs.inject(2)) >>= (numEq(abs.inject(0), _))
   }
   object Max extends NoStoreOperation("max") {
     /* TODO: In Scheme, max casts numbers to inexact as soon as one of them is inexact, but we don't support that */
     private def call(args: List[Abs], max: Abs): MayFail[Abs] = args match {
       case Nil => MayFailSuccess(max)
-      case x :: rest => lt(max, x).bind(test => {
-        val t = if (abs.isTrue(test)) { call(rest, x) } else { MayFailSuccess(abs.bottom) }
-        val f = if (abs.isFalse(test)) { call(rest, max) } else { MayFailSuccess(abs.bottom) }
-        MayFail.monoid[Abs].append(t, f)
-      })
+      case x :: rest => for {
+        test <- lt(max, x)
+        t <- if (abs.isTrue(test)) { call(rest, x) } else { abs.bottom.point[MayFail] }
+        f <- if (abs.isFalse(test)) { call(rest, max) } else { abs.bottom.point[MayFail] }
+      } yield abs.join(t, f)
     }
     override def call(args: List[Abs]) = args match {
-      case Nil => MayFailError(List(VariadicArityError(name, 1, 0)))
+      case Nil => VariadicArityError(name, 1, 0)
       case x :: rest => call(rest, x)
     }
   }
@@ -204,40 +204,36 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     /* TODO: same remark as max */
     private def call(args: List[Abs], min: Abs): MayFail[Abs] = args match {
       case Nil => MayFailSuccess(min)
-      case x :: rest => lt(x, min).bind(test => {
-        val t = if (abs.isTrue(test)) { call(rest, x) } else { MayFailSuccess(abs.bottom) }
-        val f = if (abs.isFalse(test)) { call(rest, min) } else { MayFailSuccess(abs.bottom) }
-        MayFail.monoid[Abs].append(t, f)
-      })
+      case x :: rest => for {
+        test <- lt(x, min)
+        t <- if (abs.isTrue(test)) { call(rest, x) } else { MayFailSuccess(abs.bottom) }
+        f <- if (abs.isFalse(test)) { call(rest, min) } else { MayFailSuccess(abs.bottom) }
+      } yield abs.join(t, f)
     }
     override def call(args: List[Abs]) = args match {
-      case Nil => MayFailError(List(VariadicArityError(name, 1, 0)))
+      case Nil => VariadicArityError(name, 1, 0)
       case x :: rest => call(rest, x)
     }
   }
   /** (define (abs x) (if (< x 0) (- 0 x) x)) */
   object Abs extends NoStoreOperation("abs", Some(1)) {
-    override def call(x: Abs) = lt(x, abs.inject(0)).bind(ltres => {
-      val t = if (abs.isTrue(ltres)) { minus(abs.inject(0), x) } else { MayFailSuccess(abs.bottom) }
-      val f = if (abs.isFalse(ltres)) { MayFailSuccess(x) } else { MayFailSuccess(abs.bottom) }
-      MayFail.monoid[Abs].append(t, f)
-    })
+    override def call(x: Abs) = for {
+      test <- lt(x, abs.inject(0))
+      t <- if (abs.isTrue(test)) { minus(abs.inject(0), x) } else { abs.bottom.point[MayFail] }
+      f <- if (abs.isFalse(test)) { x.point[MayFail] } else { abs.bottom.point[MayFail] }
+    } yield abs.join(t, f)
   }
   /** (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
   object Gcd extends NoStoreOperation("gcd", Some(2)) {
     private def gcd(a: Abs, b: Abs, visited: Set[(Abs, Abs)]): MayFail[Abs] = {
       if (visited.contains((a, b))) {
-        MayFailSuccess(abs.bottom)
+        abs.bottom.point[MayFail]
       } else {
-        numEq(b, abs.inject(0)).bind(cond => {
-          val t = if (abs.isTrue(cond)) { MayFailSuccess(a) } else { MayFailSuccess(abs.bottom) }
-          val f = if (abs.isFalse(cond)) {
-            modulo(a, b).bind(amodb => gcd(b, amodb, visited + ((a, b))))
-          } else {
-            MayFailSuccess(abs.bottom)
-          }
-          MayFail.monoid[Abs].append(t, f)
-        })
+        for {
+          test <- numEq(b, abs.inject(0))
+          t <- if (abs.isTrue(test)) { a.point[MayFail] } else { abs.bottom.point[MayFail] }
+          f <- if (abs.isFalse(test)) { modulo(a, b) >>= (amodb => gcd(b, amodb, visited + ((a, b)))) } else { abs.bottom.point[MayFail] }
+        } yield abs.join(t, f)
       }
     }
     override def call(x: Abs, y: Abs) = gcd(x, y, Set())
@@ -307,8 +303,8 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
 
   val mfmon = MayFail.monoid[(Abs, Set[Effect[Addr]])]
-  def err(e: SemanticError): MayFail[(Abs, Set[Effect[Addr]])] = MayFailError(List(e))
-  def success(v: Abs): MayFail[(Abs, Set[Effect[Addr]])] = MayFailSuccess((v, Set()))
+  def err(e: SemanticError): MayFail[(Abs, Set[Effect[Addr]])] = e
+  def success(v: Abs): MayFail[(Abs, Set[Effect[Addr]])] = (v, Set[Effect[Addr]]()).point[MayFail]
   object Cons extends Primitive[Addr, Abs] {
     val name = "cons"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
@@ -323,12 +319,12 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   private def car(v: Abs, store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
     val addrs = abs.car(v)
     if (addrs.isEmpty) {
-      err(CannotAccessCar(v.toString))
+      CannotAccessCar(v.toString)
     } else {
       addrs.foldLeft(mfmon.zero)((acc, a) =>
-        mfmon.append(acc, store.lookup(a) match {
-          case Some(v) => MayFailSuccess((v, Set(EffectReadConsCar(a))))
-          case None => err(UnboundAddress(a.toString))
+        acc |+| (store.lookup(a) match {
+          case Some(v) => (v, Set[Effect[Addr]](EffectReadConsCar(a))).point[MayFail]
+          case None => UnboundAddress(a.toString)
         }))
     }
   }
@@ -338,7 +334,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       err(CannotAccessCdr(v.toString))
     } else {
       addrs.foldLeft(mfmon.zero)((acc, a) =>
-        MayFail.monoid[(Abs, Set[Effect[Addr]])].append(acc, store.lookup(a) match {
+        mfmon.append(acc, store.lookup(a) match {
           case Some(v) => MayFailSuccess((v, Set(EffectReadConsCdr(a))))
           case None => err(UnboundAddress(a.toString))
         }))

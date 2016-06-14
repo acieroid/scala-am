@@ -61,6 +61,31 @@ object MayFail {
       }
       def zero: MayFail[A] = MayFailSuccess(monoid.zero)
     }
+
+  implicit val isMonad: Monad[MayFail] = new Monad[MayFail] {
+    def bind[A, B](fa: MayFail[A])(f: (A) => MayFail[B]): MayFail[B] = fa match {
+      case MayFailSuccess(l) => f(l)
+      case MayFailError(errs) => MayFailError(errs)
+      case MayFailBoth(l, errs) => f(l) match {
+        case MayFailSuccess(l) => MayFailBoth(l, errs)
+        case MayFailError(errs2) => MayFailError(errs ++ errs2)
+        case MayFailBoth(l, errs2) => MayFailBoth(l, errs ++ errs2)
+      }
+    }
+    def point[A](a: => A): MayFail[A] = MayFailSuccess[A](a)
+  }
+
+  implicit val isFunctor: Functor[MayFail] = new Functor[MayFail] {
+    def map[A, B](fa: MayFail[A])(f: (A) => B): MayFail[B] = fa match {
+      case MayFailSuccess(l) => MayFailSuccess(f(l))
+      case MayFailError(errs) => MayFailError(errs)
+      case MayFailBoth(l, errs) => MayFailBoth(f(l), errs)
+    }
+  }
+
+  import scala.language.implicitConversions
+  implicit def semErr[A](err: SemanticError): MayFail[A] = MayFailError(List(err))
+  implicit def success[A](a: A): MayFail[A] = MayFailSuccess(a)
 }
 
 /** A lattice for Scheme should support the following operations */
