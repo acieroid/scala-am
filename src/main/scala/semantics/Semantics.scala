@@ -120,16 +120,21 @@ case class EffectRelease[Addr : Address](target: Addr)
 /**
  * The different kinds of actions that can be taken by the abstract machine
  */
-abstract class Action[Exp : Expression, Abs : JoinLattice, Addr : Address]
+abstract class Action[Exp : Expression, Abs : JoinLattice, Addr : Address] {
+  def addEffects(effects: Set[Effect[Addr]]): Action[Exp, Abs, Addr]
+}
 class ActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address] {
-  def value(v: Abs, store: Store[Addr, Abs]): Action[Exp, Abs, Addr] =
-    ActionReachedValue(v, store)
-  def push(frame: Frame, e: Exp, env: Environment[Addr], store: Store[Addr, Abs]): Action[Exp, Abs, Addr] =
+  def value(v: Abs, store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set.empty): Action[Exp, Abs, Addr] =
+    ActionReachedValue(v, store, effects)
+  def push(frame: Frame, e: Exp, env: Environment[Addr], store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set.empty): Action[Exp, Abs, Addr] =
     ActionPush(frame, e, env, store)
-  def eval(e: Exp, env: Environment[Addr], store: Store[Addr, Abs]): Action[Exp, Abs, Addr] =
+  def eval(e: Exp, env: Environment[Addr], store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set.empty): Action[Exp, Abs, Addr] =
     ActionEval(e, env, store)
+  def stepIn(fexp: Exp, clo: (Exp, Environment[Addr]), e: Exp, env: Environment[Addr], store: Store[Addr, Abs], argsv: List[(Exp, Abs)], effects: Set[Effect[Addr]] = Set.empty) =
+    ActionStepIn(fexp, clo, e, env, store, argsv)
   def error(err: SemanticError): Action[Exp, Abs, Addr] =
     ActionError(err)
+  def none: Set[Action[Exp, Abs, Addr]] = Set.empty
 }
 /**
  * A value is reached by the interpreter. As a result, a continuation will be
@@ -137,7 +142,9 @@ class ActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address] {
  */
 case class ActionReachedValue[Exp : Expression, Abs : JoinLattice, Addr : Address]
   (v: Abs, store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
-    extends Action[Exp, Abs, Addr]
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
 /**
  * A frame needs to be pushed on the stack, and the interpretation continues by
  * evaluating expression e in environment env
@@ -145,14 +152,18 @@ case class ActionReachedValue[Exp : Expression, Abs : JoinLattice, Addr : Addres
 case class ActionPush[Exp : Expression, Abs : JoinLattice, Addr : Address]
   (frame: Frame, e: Exp, env: Environment[Addr], store: Store[Addr, Abs],
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
-    extends Action[Exp, Abs, Addr]
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
 /**
  * Evaluation continues with expression e in environment env
  */
 case class ActionEval[Exp : Expression, Abs : JoinLattice, Addr : Address]
   (e: Exp, env: Environment[Addr], store: Store[Addr, Abs],
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
-    extends Action[Exp, Abs, Addr]
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
 /**
  * Similar to ActionEval, but only used when stepping inside a function's body
  * (clo is therefore the function stepped into). The expressions and values of
@@ -163,12 +174,17 @@ case class ActionStepIn[Exp : Expression, Abs : JoinLattice, Addr : Address]
   (fexp: Exp, clo: (Exp, Environment[Addr]), e: Exp,
     env: Environment[Addr], store: Store[Addr, Abs], argsv: List[(Exp, Abs)],
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
-    extends Action[Exp, Abs, Addr]
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
 /**
  * An error has been reached
  */
 case class ActionError[Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (error: SemanticError) extends Action[Exp, Abs, Addr]
+  (error: SemanticError) extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this /* no effects stored in this action */
+}
+
 trait SemanticError
 case class OperatorNotApplicable(name: String, arguments: List[String]) extends SemanticError
 case class ArityError(name: String, expected: Int, got: Int) extends SemanticError
@@ -186,13 +202,17 @@ case class NotSupported(reason: String) extends SemanticError
 case class ActionSpawn[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
   (t: TID, e: Exp, env: Environment[Addr], act: Action[Exp, Abs, Addr],
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
-    extends Action[Exp, Abs, Addr]
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
 /**
  * Waits for the execution of a thread, with tid as its identifier.
  */
 case class ActionJoin[Exp : Expression, Abs : JoinLattice, Addr : Address]
   (tid: Abs, store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
-    extends Action[Exp, Abs, Addr]
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
 
 /**
  * Base class for semantics that define some helper methods
