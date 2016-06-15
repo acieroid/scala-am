@@ -242,25 +242,6 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       }
     }
 
-    def and(x: L, y: => L): L = x match {
-      case Bot => False
-      case Bool(b) => (bool.isTrue(b), bool.isFalse(b)) match {
-        case (true, false) => y
-        case (false, _) => False
-        case (true, true) => join(False, y)
-      }
-      case _ => y
-    }
-
-    def or(x: L, y: => L): L = x match {
-      case Bot => y
-      case Bool(b) => (bool.isTrue(b), bool.isFalse(b)) match {
-        case (true, false) => x
-        case (false, _) => y
-        case (true, true) => join(x, y)
-      }
-      case _ => x
-    }
     def inject(x: scala.Int): L = Int(int.inject(x))
     def inject(x: scala.Float): L = Float(float.inject(x))
     def inject(x: String): L = Str(str.inject(x))
@@ -423,8 +404,6 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     def subsumes(x: LSet, y: LSet): Boolean = foldMapLSet(y, y =>
       /* For every element in y, there exists an element of x that subsumes it */
       foldMapLSet(x, x => isSchemeLattice.subsumes(x, y))(boolOrMonoid))(boolAndMonoid)
-    def and(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isSchemeLattice.and(x, y))))
-    def or(x: LSet, y: => LSet): LSet = foldMapLSet(x, x => foldMapLSet(y, y => wrap(isSchemeLattice.or(x, y))))
     def car[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isSchemeLattice.car(x))
     def cdr[Addr : Address](x: LSet): Set[Addr] = foldMapLSet(x, x => isSchemeLattice.cdr(x))
 

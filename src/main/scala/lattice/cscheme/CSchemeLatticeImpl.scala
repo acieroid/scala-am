@@ -15,7 +15,7 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
       if (x.size == 1 && y.size == 1 && x == y) { bool.inject(true) }
       else if (x.intersect(y).isEmpty) { bool.inject(false) }
       else { bool.top }
-    def order(x: Set[A], y: Set[A]): Ordering = ??? // Cannot define an order since A is not required to be ordered
+    def order(x: Set[A], y: Set[A]): Ordering = throw new Error("Cannot define an order since A is not required to be ordered")
   }
 
   sealed trait Locked
@@ -69,11 +69,13 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     }
   }
 
-  val tids: IsLatticeElement[Set[Any]] = ofSet[Any]
-  val lockaddrs: IsLatticeElement[Set[Any]] = ofSet[Any]
+  type Tids = Set[Any] /* TODO: get rid of the any */
+  type LockAddrs = Set[Any]
 
-  /* TODO: get rid of the any */
-  case class Value(seq: lattice.L = lat.bottom, t: Set[Any] = Set.empty, la: Set[Any] = Set.empty, l: Locked = locked.bottom)
+  val tids: IsLatticeElement[Tids] = ofSet[Any]
+  val lockaddrs: IsLatticeElement[LockAddrs] = ofSet[Any]
+
+  case class Value(seq: lattice.L = lat.bottom, t: Tids = tids.bottom, la: LockAddrs = lockaddrs.bottom, l: Locked = locked.bottom)
   type L = Value
 
   val isCSchemeLattice: IsCSchemeLattice[L] = new IsCSchemeLattice[L] {
@@ -90,10 +92,22 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     val counting = lat.counting
     def isTrue(x: L) = lat.isTrue(x.seq) || x.t != tids.bottom || x.la != lockaddrs.bottom || x.l != locked.bottom
     def isFalse(x: L) = lat.isFalse(x.seq)
-    def unaryOp(op: UnaryOperator)(x: L): MayFail[L] = ???
-    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = ???
-    def and(x: L, y: => L) = ???
-    def or(x: L, y: => L) = ???
+    def unaryOp(op: UnaryOperator)(x: L): MayFail[L] = for { seq2 <- lat.unaryOp(op)(x.seq) } yield Value(seq = seq2)
+    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = op match {
+      case Eq => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield {
+        val nonseq = if (x == bottom) { lat.bottom } else {
+          if (!x.t.intersect(y.t).isEmpty || !x.la.intersect(y.la).isEmpty || locked.subsumes(x.l, y.l) || locked.subsumes(y.l, x.l)) {
+            if ((x.l == locked.bottom && y.l == locked.bottom && x.t.size + x.la.size == 1 && y.t.size + y.la.size == 1)
+              || (x.t.size + x.la.size == 0 && y.t.size + y.la.size == 0 && x.l == y.l && x.l != LockedTop)) {
+              lat.inject(true) /* are certainly equal (only one element) */
+            } else {
+              lat.join(lat.inject(true), lat.inject(false)) /* can be equal */
+            }
+          } else { lat.inject(false) /* are certainly not equal */ }}
+        Value(seq = lat.join(nonseq, seq2))
+      }
+      case _ => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield Value(seq = seq2)
+    }
     def getClosures[Exp : Expression, Addr : Address](x: L) = lat.getClosures[Exp, Addr](x.seq)
     def getPrimitives[Addr : Address, Abs : JoinLattice](x: L) = lat.getPrimitives[Addr, Abs](x.seq)
     def isPrimitiveValue(x: L) = lat.isPrimitiveValue(x.seq) && x.t.isEmpty && x.la.isEmpty
@@ -126,8 +140,15 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     def getLocks[Addr : Address](x: L): Set[Addr] = x.la.collect({
       case addr: Addr @unchecked => addr
     })
-    def isLock(x: L) = ???
-    def isLocked(x: L) = ???
+    def isLock(x: L) = Value(seq = lat.join(
+      if (x.l != locked.bottom || x.la != lockaddrs.bottom) { lat.inject(true) } else { lat.bottom },
+      if (x.seq != lat.bottom || x.t != tids.bottom) { lat.inject(false) } else { lat.bottom }))
+    def isLocked(x: L) = x.l match {
+      case LockedBottom => Value(seq = lat.bottom)
+      case LockedLocked => Value(seq = lat.inject(true))
+      case LockedUnlocked => Value(seq = lat.inject(false))
+      case LockedTop => Value(seq = lat.join(lat.inject(true), lat.inject(false)))
+    }
     def injectTid[TID : ThreadIdentifier](tid: TID) = Value(t = Set(tid))
     def lock[Addr : Address](addr: Addr) = Value(la = Set(addr))
     def lockedValue = Value(l = LockedLocked)
@@ -138,4 +159,4 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
 class CSchemeConcreteLattice(counting: Boolean) extends MakeCSchemeLattice(new ConcreteLattice(counting))
 class CSchemeTypeSetLattice(counting: Boolean) extends MakeCSchemeLattice(new TypeSetLattice(counting))
 class CSchemeBoundedIntLattice(bound: Int, counting: Boolean) extends MakeCSchemeLattice(new BoundedIntLattice(bound, counting))
-class CSchemeConstantPropagationlattice(counting: Boolean) extends MakeCSchemeLattice(new ConstantPropagationLattice(counting))
+class CSchemeConstantPropagationLattice(counting: Boolean) extends MakeCSchemeLattice(new ConstantPropagationLattice(counting))

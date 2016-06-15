@@ -17,9 +17,19 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
   /** Performs a binary operation on abstract values x and y */
   def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): MayFail[L]
   /** Conjunction */
-  def and(x: L, y: => L): L
+  def and(x: L, y: => L): L = (isTrue(x), isFalse(x)) match {
+    case (true, false) => y /* x is true: return y */
+    case (false, true) => inject(false) /* x is false: return false */
+    case (false, false) => bottom /* x is not true nor false, it is therefore bottom */
+    case (true, true) => join(y, inject(false)) /* either x is true, and we have y, or x is false, and we have false */
+  }
   /** Disjunction */
-  def or(x: L, y: => L): L
+  def or(x: L, y: => L): L = (isTrue(x), isFalse(x)) match {
+    case (true, false) => x /* x is true, return x */
+    case (false, true) => y /* x is false, return y */
+    case (false, false) => bottom /* x is not true nor false, it is therefore bottom */
+    case (true, true) => join(x, y) /* either x is true, and we have x, or x is false, and we have y */
+  }
   /** Extract closures contained in this value */
   def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])]
   /** Extract primitives contained in this value */

@@ -79,8 +79,6 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
       abs.unaryOp(op)(x._2).map(res => (x._1, res))
     def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): MayFail[L] =
       abs.binaryOp(op)(x._2, y._2).map(res => (joinTaint(x._1, y._1), res))
-    def and(x: L, y: => L): L = (joinTaint(x._1, y._1), abs.and(x._2, y._2))
-    def or(x: L, y: => L): L = (joinTaint(x._1, y._1), abs.or(x._2, y._2))
     def car[Addr : Address](x: L) = abs.car[Addr](x._2)
     def cdr[Addr : Address](x: L) = abs.cdr[Addr](x._2)
     def vectorRef[Addr : Address](vector: L, index: L): MayFail[Set[Addr]] = abs.vectorRef(vector._2, index._2)

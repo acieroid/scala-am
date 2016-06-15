@@ -559,3 +559,12 @@ class BoundedIntCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(1
 class BoundedIntNoCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(100, false))
 class ConstantPropagationCountingTest extends JoinLatticePropSpec(new ConstantPropagationLattice(true))
 class ConstantPropagationNoCountingTest extends JoinLatticePropSpec(new ConstantPropagationLattice(false))
+
+class CSchemeConcreteCountingTest extends LatticePropSpec(new CSchemeConcreteLattice(true))
+class CSchemeConcreteNoCountingTest extends JoinLatticePropSpec(new CSchemeConcreteLattice(false))
+class CSchemeTypeSetCountingTest extends JoinLatticePropSpec(new CSchemeTypeSetLattice(true))
+class CSchemeTypeSetNoCountingTest extends JoinLatticePropSpec(new CSchemeTypeSetLattice(false))
+class CSchemeBoundedIntCountingTest extends JoinLatticePropSpec(new CSchemeBoundedIntLattice(100, true))
+class CSchemeBoundedIntNoCountingTest extends JoinLatticePropSpec(new CSchemeBoundedIntLattice(100, false))
+class CSchemeConstantPropagationCountingTest extends JoinLatticePropSpec(new CSchemeConstantPropagationLattice(true))
+class CSchemeConstantPropagationNoCountingTest extends JoinLatticePropSpec(new CSchemeConstantPropagationLattice(false))
