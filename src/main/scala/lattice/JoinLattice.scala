@@ -25,8 +25,6 @@ trait JoinLattice[L] extends Monoid[L] with PartialOrdering[L] {
   /** It should state whether it supports abstract counting or not. (TODO: this is probably not the best place for that) */
   def counting: Boolean
 
-  /** Some elements can be considered as errors */
-  //def isError(x: L): Boolean
   /** Some elements may contain addresses in there and are therefore not considered as primitive values */
   def isPrimitiveValue(x: L): Boolean
 }
@@ -40,7 +38,7 @@ trait IsLatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
   def top: L
   def join(x: L, y: => L): L
   def subsumes(x: L, y: => L): Boolean
-  def eql[B : IsBoolean](s1: L, s2: L): B
+  def eql[B : IsBoolean](x: L, y: L): B
 
   /* For Monoid[L] */
   final def zero: L = bottom
