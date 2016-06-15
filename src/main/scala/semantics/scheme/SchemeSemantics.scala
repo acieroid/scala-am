@@ -9,36 +9,39 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     extends BaseSemantics[SchemeExp, Abs, Addr, Time] {
   def sabs = implicitly[IsSchemeLattice[Abs]]
 
+  type Env = Environment[Addr]
+  type Sto = Store[Addr, Abs]
+  type Actions = Set[Action[SchemeExp, Abs, Addr]]
+
   trait SchemeFrame extends Frame {
     def subsumes(that: Frame) = that.equals(this)
     override def toString = s"${this.getClass.getSimpleName}"
   }
-  case class FrameFuncallOperator(fexp: SchemeExp, args: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameFuncallOperands(f: Abs, fexp: SchemeExp, cur: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameIf(cons: SchemeExp, alt: SchemeExp, env: Environment[Addr]) extends SchemeFrame
-  case class FrameLet(variable: String, bindings: List[(String, Abs)], toeval: List[(String, SchemeExp)], body: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameLetStar(variable: String, bindings: List[(String, SchemeExp)], body: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameLetrec(addr: Addr, bindings: List[(Addr, SchemeExp)], body: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameSet(variable: String, env: Environment[Addr]) extends SchemeFrame
-  case class FrameBegin(rest: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameCond(cons: List[SchemeExp], clauses: List[(SchemeExp, List[SchemeExp])], env: Environment[Addr]) extends SchemeFrame
-  case class FrameCase(clauses: List[(List[SchemeValue], List[SchemeExp])], default: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameAnd(rest: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameOr(rest: List[SchemeExp], env: Environment[Addr]) extends SchemeFrame
-  case class FrameDefine(variable: String, env: Environment[Addr]) extends SchemeFrame
+  case class FrameFuncallOperator(fexp: SchemeExp, args: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameFuncallOperands(f: Abs, fexp: SchemeExp, cur: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameIf(cons: SchemeExp, alt: SchemeExp, env: Env) extends SchemeFrame
+  case class FrameLet(variable: String, bindings: List[(String, Abs)], toeval: List[(String, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameLetStar(variable: String, bindings: List[(String, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameLetrec(addr: Addr, bindings: List[(Addr, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameSet(variable: String, env: Env) extends SchemeFrame
+  case class FrameBegin(rest: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameCond(cons: List[SchemeExp], clauses: List[(SchemeExp, List[SchemeExp])], env: Env) extends SchemeFrame
+  case class FrameCase(clauses: List[(List[SchemeValue], List[SchemeExp])], default: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameAnd(rest: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameOr(rest: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameDefine(variable: String, env: Env) extends SchemeFrame
 
-  protected def evalBody(body: List[SchemeExp], env: Environment[Addr], store: Store[Addr, Abs]): Set[Action[SchemeExp, Abs, Addr]] = body match {
+  protected def evalBody(body: List[SchemeExp], env: Env, store: Sto): Actions = body match {
     case Nil => Action.value(sabs.inject(false), store)
     case List(exp) => Action.eval(exp, env, store)
     case exp :: rest => Action.push(FrameBegin(rest, env), exp, env, store)
   }
 
-  type Actions = Set[Action[SchemeExp, Abs, Addr]]
 
   def conditional(v: Abs, t: => Actions, f: => Actions): Actions =
     (if (sabs.isTrue(v)) t else Action.none) ++ (if (sabs.isFalse(v)) f else Action.none)
 
-  def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], store: Store[Addr, Abs], t: Time): Actions = {
+  def evalCall(function: Abs, fexp: SchemeExp, argsv: List[(SchemeExp, Abs)], store: Sto, t: Time): Actions = {
     val fromClo: Actions = sabs.getClosures[SchemeExp, Addr](function).map({
       case (SchemeLambda(args, body, pos), env1) =>
         if (args.length == argsv.length) {
@@ -69,14 +72,14 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case _ => None
   }
 
-  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Environment[Addr], store: Store[Addr, Abs], t: Time): Actions = toeval match {
+  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Env, store: Sto, t: Time): Actions = toeval match {
     case Nil => evalCall(f, fexp, args.reverse, store, t)
     case e :: rest => Action.push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)
   }
-  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], env: Environment[Addr], store: Store[Addr, Abs], t: Time): Actions =
+  protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], env: Env, store: Sto, t: Time): Actions =
     funcallArgs(f, fexp, List(), args, env, store, t)
 
-  protected def evalQuoted(exp: SExp, store: Store[Addr, Abs], t: Time): (Abs, Store[Addr, Abs]) = exp match {
+  protected def evalQuoted(exp: SExp, store: Sto, t: Time): (Abs, Sto) = exp match {
     case SExpIdentifier(sym, _) => (sabs.injectSymbol(sym), store)
     case SExpPair(car, cdr, _) => {
       val care: SchemeExp = SchemeIdentifier(car.toString, car.pos)
@@ -99,7 +102,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case SExpQuoted(q, pos) => evalQuoted(SExpPair(SExpIdentifier("quote", pos), SExpPair(q, SExpValue(ValueNil, pos), pos), pos), store, t)
   }
 
-  def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time) = e match {
+  def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = e match {
     case λ: SchemeLambda => Action.value(sabs.inject[SchemeExp, Addr]((λ, env)), store)
     case SchemeFuncall(f, args, _) => Action.push(FrameFuncallOperator(f, args, env), f, env, store)
     case SchemeIf(cond, cons, alt, _) => Action.push(FrameIf(cons, alt, env), cond, env, store)
@@ -147,7 +150,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     }
   }
 
-  def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time) = frame match {
+  def stepKont(v: Abs, frame: Frame, store: Sto, t: Time) = frame match {
     case FrameFuncallOperator(fexp, args, env) => funcallArgs(v, fexp, args, env, store, t)
     case FrameFuncallOperands(f, fexp, exp, args, toeval, env) => funcallArgs(f, fexp, (exp, v) :: args, toeval, env, store, t)
     case FrameIf(cons, alt, env) =>
@@ -228,14 +231,14 @@ class SchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](p
 
   /** Tries to perform atomic evaluation of an expression. Returns the result of
     * the evaluation if it succeeded, otherwise returns None */
-  protected def atomicEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs]): Option[(Abs, Set[Effect[Addr]])] = e match {
+  protected def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[(Abs, Set[Effect[Addr]])] = e match {
     case λ: SchemeLambda => Some((sabs.inject[SchemeExp, Addr]((λ, env)), Set()))
     case SchemeIdentifier(name, _) => env.lookup(name).flatMap(a => store.lookup(a).map(v => (v, Set(EffectReadVariable(a)))))
     case SchemeValue(v, _) => evalValue(v).map(value => (value, Set()))
     case _ => None
   }
 
-   override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Environment[Addr], store: Store[Addr, Abs], t: Time): Actions = toeval match {
+   override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Env, store: Sto, t: Time): Actions = toeval match {
     case Nil => evalCall(f, fexp, args.reverse, store, t)
     case e :: rest => atomicEval(e, env, store) match {
       case Some((v, effs)) => funcallArgs(f, fexp, (e, v) :: args, rest, env, store, t).map(_.addEffects(effs))
@@ -256,127 +259,9 @@ class SchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](p
     case action => action
   })
 
-  override def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time) =
+  override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) =
     optimizeAtomic(super.stepEval(e, env, store, t), t)
 
-  override def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time) =
+  override def stepKont(v: Abs, frame: Frame, store: Sto, t: Time) =
     optimizeAtomic(super.stepKont(v, frame, store, t), t)
 }
-
-/*
-class ConcurrentSchemeSemantics[Abs : ConcurrentSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
-    extends SchemeSemantics[Abs, Addr, Time](primitives: Primitives[Addr, Abs]) {
-  def cabs = implicitly[ConcurrentSchemeLattice[Abs]]
-  def aabs = implicitly[AbstractValue[Abs]]
-  def thread = implicitly[ThreadIdentifier[TID]]
-
-  case class FrameJoin(env: Environment[Addr]) extends SchemeFrame
-  case class FrameCasIndex(variable: String, eold: SchemeExp, enew: SchemeExp, env: Environment[Addr]) extends SchemeFrame
-  case class FrameCasOld(variable: String, index: Option[Abs], enew: SchemeExp, env: Environment[Addr]) extends SchemeFrame
-  case class FrameCasNew(variable: String, index: Option[Abs], enew: SchemeExp, old: Abs, env: Environment[Addr]) extends SchemeFrame
-  case class FrameAcquire(env: Environment[Addr]) extends SchemeFrame
-  case class FrameRelease(env: Environment[Addr]) extends SchemeFrame
-
-  override def addEffects(action: Action[SchemeExp, Abs, Addr], effects: Set[Effect[Addr]]) = action match {
-    case ActionSpawn(t: TID @unchecked, e, env, act, effs) => ActionSpawn(t, e, env, act, effs ++ effects)
-    case ActionJoin(tid, store, effs) => ActionJoin(tid, store, effs ++ effects)
-    case _ => super.addEffects(action, effects)
-  }
-
-  override def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time) = e match {
-    case SchemeSpawn(exp, _) =>
-      val tid = thread.thread[SchemeExp, Time](exp, t)
-      Set(ActionSpawn(tid, exp, env, ActionReachedValue(cabs.injectTid(tid), store)))
-    case SchemeJoin(exp, _) => optimizeAtomic(Set(ActionPush(FrameJoin(env), exp, env, store)), t)
-    case SchemeCas(variable, eold, enew, _) => Set(ActionPush(FrameCasOld(variable, None, enew, env), eold, env, store))
-    case SchemeCasVector(variable, index, eold, enew, _) => Set(ActionPush(FrameCasIndex(variable, eold, enew, env), index, env, store))
-    case SchemeAcquire(exp, _) => Set(ActionPush(FrameAcquire(env), exp, env, store))
-    case SchemeRelease(exp, _) => Set(ActionPush(FrameRelease(env), exp, env, store))
-    case _ => super.stepEval(e, env, store, t)
-  }
-
-  override def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time) = frame match {
-    case FrameJoin(env) =>
-      val tids = cabs.getTids(v)
-      if (tids.isEmpty) {
-        Set(ActionError(s"join performed on a non-tid value: $v"))
-      } else {
-        Set(ActionJoin(v, store))
-      }
-    case FrameCasIndex(variable, eold, enew, env) =>
-      Set(ActionPush(FrameCasOld(variable, Some(v), enew, env), eold, env, store))
-    case FrameCasOld(variable, index, enew, env) =>
-      Set(ActionPush(FrameCasNew(variable, index, enew, v, env), enew, env, store))
-      /* TODO
-    case FrameCasNew(variable, index, enew, old, env) =>
-      env.lookup(variable) match {
-        case Some(a) => index match {
-          case Some(i) =>
-            /* Compare and swap on vector element */
-            aabs.getVectors(store.lookupBot(a)).flatMap(va => {
-              val vec = store.lookupBot(va)
-              val oldvals = aabs.vectorRef(vec, i)
-              oldvals.flatMap({
-                case Left(_) => /* ignoring error values */ Set[Action[SchemeExp, Abs, Addr]]()
-                case Right(a) => {
-                  val oldval = store.lookupBot(a)
-                  val success: Action[SchemeExp, Abs, Addr] = {
-                    /* Vector element matches old, success */
-                    val (newvec, addrs) = aabs.vectorSet(vec, i, addr.cell(enew, t))
-                    ActionReachedValue(cabs.inject(true), addrs.foldLeft(store.update(va, newvec))((acc, a) => acc.updateOrExtend(a, v)),
-                      addrs.flatMap(a => Set(EffectWriteVector(a), EffectReadVector(a))))
-                  }
-                  val fail: Action[SchemeExp, Abs, Addr] = ActionReachedValue(cabs.inject(false), store, Set(EffectReadVector(a))) /* Vector element doesn't match, fail */
-                  conditional(cabs.binaryOp(Eq)(oldval, old), success, fail)
-                }})})
-          case None =>
-            /* Compare and swap on variable value */
-            conditional(cabs.binaryOp(Eq)(store.lookupBot(a), old),
-              /* Compare and swap succeeds */
-              ActionReachedValue(aabs.inject(true), store.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
-              /* Compare and swap fails */
-              ActionReachedValue(aabs.inject(false), store, Set(EffectReadVariable(a))))
-        }
-        case None => Set(ActionError(s"Unbound variable: $variable"))
-      }
-    case FrameAcquire(env) =>
-      val locks = cabs.getLocks(v)
-      if (locks.isEmpty) {
-        Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
-      } else {
-        locks.flatMap(a => {
-          val v = store.lookupBot(a)
-          if (cabs.isTrue(cabs.unaryOp(IsLock)(v))) {
-            if (cabs.isFalse(cabs.unaryOp(IsLocked)(v))) {
-              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](cabs.inject(true), store.update(a, cabs.lockedValue), Set(EffectAcquire(a))))
-            } else {
-              Set[Action[SchemeExp, Abs, Addr]]()
-            }
-          } else {
-            Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"acquire performed on a non-lock value: $v"))
-          }
-        })
-      }
-    case FrameRelease(env) =>
-      val locks = cabs.getLocks(v)
-      if (locks.isEmpty) {
-        Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
-      } else {
-        cabs.getLocks(v).flatMap(a => {
-          val v = store.lookupBot(a)
-          if (cabs.isTrue(cabs.unaryOp(IsLock)(v))) {
-            if (cabs.isTrue(cabs.unaryOp(IsLocked)(v))) {
-              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](cabs.inject(true), store.update(a, cabs.unlockedValue), Set(EffectRelease(a))))
-            } else {
-              /* Lock is already released */
-              Set[Action[SchemeExp, Abs, Addr]](ActionReachedValue[SchemeExp, Abs, Addr](cabs.inject(true), store))
-            }
-          } else {
-            Set[Action[SchemeExp, Abs, Addr]](ActionError[SchemeExp, Abs, Addr](s"release performed on a non-lock value: $v"))
-          }
-        })
-      }*/
-    case _ => super.stepKont(v, frame, store, t)
-  }
-}
- */
