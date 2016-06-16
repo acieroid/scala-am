@@ -132,17 +132,25 @@ abstract class Action[Exp : Expression, Abs : JoinLattice, Addr : Address] {
   def addEffects(effects: Set[Effect[Addr]]): Action[Exp, Abs, Addr]
 }
 class ActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address] {
-  def value(v: Abs, store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set.empty): Action[Exp, Abs, Addr] =
+  type Effs = Set[Effect[Addr]]
+  type Env = Environment[Addr]
+  type Sto = Store[Addr, Abs]
+  type Act = Action[Exp, Abs, Addr]
+  def none: Set[Act] = Set.empty
+  def value(v: Abs, store: Sto, effects: Effs = Set.empty): Act =
     ActionReachedValue(v, store, effects)
-  def push(frame: Frame, e: Exp, env: Environment[Addr], store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set.empty): Action[Exp, Abs, Addr] =
+  def push(frame: Frame, e: Exp, env: Env, store: Sto, effects: Effs = Set.empty): Act =
     ActionPush(frame, e, env, store)
-  def eval(e: Exp, env: Environment[Addr], store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set.empty): Action[Exp, Abs, Addr] =
+  def eval(e: Exp, env: Env, store: Sto, effects: Effs = Set.empty): Act =
     ActionEval(e, env, store)
-  def stepIn(fexp: Exp, clo: (Exp, Environment[Addr]), e: Exp, env: Environment[Addr], store: Store[Addr, Abs], argsv: List[(Exp, Abs)], effects: Set[Effect[Addr]] = Set.empty) =
+  def stepIn(fexp: Exp, clo: (Exp, Env), e: Exp, env: Env, store: Sto, argsv: List[(Exp, Abs)], effects: Effs = Set.empty): Act =
     ActionStepIn(fexp, clo, e, env, store, argsv)
-  def error(err: SemanticError): Action[Exp, Abs, Addr] =
+  def error(err: SemanticError): Act =
     ActionError(err)
-  def none: Set[Action[Exp, Abs, Addr]] = Set.empty
+  def spawn[TID : ThreadIdentifier](t: TID, e: Exp, env: Env, store: Sto, act: Act, effects: Effs = Set.empty): Act =
+    ActionSpawn(t, e, env, act, effects)
+  def join[TID : ThreadIdentifier](t: TID, store: Sto, effects: Effs = Set.empty): Act =
+    ActionJoin(t, store, effects)
 }
 /**
  * A value is reached by the interpreter. As a result, a continuation will be
@@ -216,8 +224,8 @@ case class ActionSpawn[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLatti
 /**
  * Waits for the execution of a thread, with tid as its identifier.
  */
-case class ActionJoin[Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (tid: Abs, store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+case class ActionJoin[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (t: TID, store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }

@@ -17,12 +17,12 @@ class ConcurrentSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : T
   override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = e match {
     case SchemeSpawn(exp, _) =>
       val tid = thread.thread[SchemeExp, Time](exp, t)
-      Set(ActionSpawn(tid, exp, env, ActionReachedValue(cabs.injectTid(tid), store)))
-    case SchemeJoin(exp, _) => optimizeAtomic(Set(ActionPush(FrameJoin(env), exp, env, store)), t)
-    case SchemeCas(variable, eold, enew, _) => Set(ActionPush(FrameCasOld(variable, None, enew, env), eold, env, store))
-    case SchemeCasVector(variable, index, eold, enew, _) => Set(ActionPush(FrameCasIndex(variable, eold, enew, env), index, env, store))
-    case SchemeAcquire(exp, _) => Set(ActionPush(FrameAcquire(env), exp, env, store))
-    case SchemeRelease(exp, _) => Set(ActionPush(FrameRelease(env), exp, env, store))
+      Action.spawn(tid, exp, env, store, Action.value(cabs.injectTid(tid), store))
+    case SchemeJoin(exp, _) => optimizeAtomic(Action.push(FrameJoin(env), exp, env, store), t)
+    case SchemeCas(variable, eold, enew, _) => Action.push(FrameCasOld(variable, None, enew, env), eold, env, store)
+    case SchemeCasVector(variable, index, eold, enew, _) => Action.push(FrameCasIndex(variable, eold, enew, env), index, env, store)
+    case SchemeAcquire(exp, _) => Action.push(FrameAcquire(env), exp, env, store)
+    case SchemeRelease(exp, _) => Action.push(FrameRelease(env), exp, env, store)
     case _ => super.stepEval(e, env, store, t)
   }
 
@@ -30,14 +30,14 @@ class ConcurrentSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : T
     case FrameJoin(env) =>
       val tids = cabs.getTids(v)
       if (tids.isEmpty) {
-        Set(Action.error(TypeError("join", "first operand", "tid value", s"non-tid value ($v)")))
+        Action.error(TypeError("join", "first operand", "tid value", s"non-tid value ($v)"))
       } else {
-        Set(ActionJoin(v, store))
+        tids.map(t => Action.join(t, store))
       }
     case FrameCasIndex(variable, eold, enew, env) =>
-      Set(ActionPush(FrameCasOld(variable, Some(v), enew, env), eold, env, store))
+      Action.push(FrameCasOld(variable, Some(v), enew, env), eold, env, store)
     case FrameCasOld(variable, index, enew, env) =>
-      Set(ActionPush(FrameCasNew(variable, index, enew, v, env), enew, env, store))
+      Action.push(FrameCasNew(variable, index, enew, v, env), enew, env, store)
     case FrameCasNew(variable, index, enew, old, env) =>
       env.lookup(variable) match {
         case None => Action.error(UnboundVariable(variable.toString))
@@ -56,14 +56,14 @@ class ConcurrentSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : T
           }
           /* Compare and swap on vector element */
           case Some(i) => store.lookup(a) match {
-            case None => Set(Action.error(UnboundAddress(a.toString)))
+            case None => Action.error(UnboundAddress(a.toString))
             case Some(vs) =>
               val vectors = aabs.getVectors(vs)
               if (vectors.isEmpty && vectors != aabs.bottom) {
-                Set(Action.error(TypeError("cas-vector", "first operand", "vector", s"non-vector: $vs")))
+                Action.error(TypeError("cas-vector", "first operand", "vector", s"non-vector: $vs"))
               } else {
                 vectors.flatMap(va => store.lookup(va) match {
-                  case None => Set(Action.error(UnboundAddress(va.toString)))
+                  case None => Action.error(UnboundAddress(va.toString))
                   case Some(vec) =>
                     val mfmon = implicitly[Monoid[MayFail[Actions]]]
                     for { oldvals <- aabs.vectorRef(vec, i) }
@@ -87,37 +87,37 @@ class ConcurrentSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : T
     case FrameAcquire(env) =>
       val locks = cabs.getLocks(v)
       if (locks.isEmpty && locks != cabs.bottom) {
-        Set(Action.error(TypeError("acquire", "first operand", "lock value", s"non-lock value: $v")))
+        Action.error(TypeError("acquire", "first operand", "lock value", s"non-lock value: $v"))
       } else {
         locks.flatMap(a => store.lookup(a) match {
-          case None => Set(Action.error(UnboundAddress(a.toString)))
+          case None => Action.error(UnboundAddress(a.toString))
           case Some(v) => if (cabs.isTrue(cabs.isLock(v))) {
             if (cabs.isFalse(cabs.isLocked(v))) {
-              Set(Action.value(cabs.inject(true), store.update(a, cabs.lockedValue), Set(EffectAcquire(a))))
+              Action.value(cabs.inject(true), store.update(a, cabs.lockedValue), Set(EffectAcquire(a)))
             } else {
               Action.none
             }
           } else {
-            Set(Action.error(TypeError("acquire", "first operand", "lock value", s"non-lock value: $v")))
+            Action.error(TypeError("acquire", "first operand", "lock value", s"non-lock value: $v"))
           }
         })
       }
     case FrameRelease(env) =>
       val locks = cabs.getLocks(v)
       if (locks.isEmpty && locks != cabs.bottom) {
-        Set(Action.error(TypeError("release", "first operand", "lock value", s"non-lock value: $v")))
+        Action.error(TypeError("release", "first operand", "lock value", s"non-lock value: $v"))
       } else {
         locks.flatMap(a => store.lookup(a) match {
-          case None => Set(Action.error(UnboundAddress(a.toString)))
+          case None => Action.error(UnboundAddress(a.toString))
           case Some(v) => if (cabs.isTrue(cabs.isLock(v))) {
             if (cabs.isTrue(cabs.isLocked(v))) {
-              Set(Action.value(cabs.inject(true), store.update(a, cabs.unlockedValue), Set(EffectRelease(a))))
+              Action.value(cabs.inject(true), store.update(a, cabs.unlockedValue), Set(EffectRelease(a)))
             } else {
               /* Lock is already released */
-              Set(Action.value(cabs.inject(true), store))
+              Action.value(cabs.inject(true), store)
             }
           } else {
-            Set(Action.error(TypeError("release", "first operand", "lock value", s"non-lock value: $v")))
+            Action.error(TypeError("release", "first operand", "lock value", s"non-lock value: $v"))
           }
         })
       }
