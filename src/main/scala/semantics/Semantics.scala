@@ -148,7 +148,7 @@ class ActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address] {
   def error(err: SemanticError): Act =
     ActionError(err)
   def spawn[TID : ThreadIdentifier](t: TID, e: Exp, env: Env, store: Sto, act: Act, effects: Effs = Set.empty): Act =
-    ActionSpawn(t, e, env, act, effects)
+    ActionSpawn(t, e, env, store, act, effects)
   def join[TID : ThreadIdentifier](t: TID, store: Sto, effects: Effs = Set.empty): Act =
     ActionJoin(t, store, effects)
 }
@@ -216,7 +216,7 @@ case class NotSupported(reason: String) extends SemanticError
  * thread continues its execution by performing action act.
  */
 case class ActionSpawn[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (t: TID, e: Exp, env: Environment[Addr], act: Action[Exp, Abs, Addr],
+  (t: TID, e: Exp, env: Environment[Addr], store: Store[Addr, Abs], act: Action[Exp, Abs, Addr],
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
