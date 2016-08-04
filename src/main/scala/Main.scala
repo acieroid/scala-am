@@ -225,10 +225,10 @@ object Main {
 
         val machine = config.machine match {
           case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, address.A, time.T]
-          case Config.Machine.AAMGlobalStore => new AAMGlobalStore[SchemeExp, lattice.L, address.A, time.T]
+          case Config.Machine.AAMGlobalStore => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AAMKAlloc)
           case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
-          case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
-          case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
+          case Config.Machine.AAC => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AACKAlloc)
+          case Config.Machine.Free => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](P4FKAlloc)
         }
 
         val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])

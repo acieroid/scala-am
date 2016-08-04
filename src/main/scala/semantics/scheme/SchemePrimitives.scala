@@ -650,17 +650,6 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     }
   }
 
-/*  object Lock extends Primitive[Addr, Abs] {
-    val name = "new-lock"
-    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case Nil =>
-        val a = addr.cell(fexp, t)
-        MayFailSuccess((abs.lock(a), store.extend(a, abs.unlockedValue), Set()))
-      case l => MayFailError(List(ArityError("lock", 0, l.size)))
-    }
-  }
- */
-
   /** Bundles all the primitives together */
   def all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div, Quotient, LessThan, LessOrEqual, NumEq, GreaterThan, GreaterOrEqual,

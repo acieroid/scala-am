@@ -6,10 +6,10 @@ Johnson (Abstracting Abstract Machines, Abstracting Abstract Control, Pushdown
 Control-Flow Analyses).
 
 To see how the framework can be used to build static analyses or define language
-semantics, look at src/main/scala/LambdaCalculus.scala.
+semantics, look at =src/main/scala/LambdaCalculus.scala=.
 * Architecture
 To find out about the architecture of the implementation, look at the comments
-on the top of Main.scala (src/main/scala/Main.scala). They will bring you to
+on the top of Main.scala (=src/main/scala/Main.scala=). They will bring you to
 other parts of the code that are worth seeing.
 
 When doing modification to the source code, you can run the test suite to test
@@ -30,12 +30,28 @@ run # Launches a REPL that performs interpretation of the input
 #+END_SRC
 
 * Benchmarks
-To run benchmarks, do the following:
+Some benchmarks are included, in multiple benchmark suites. Look at
+=src/main/Benchmarks.scala= for the benchmark suites. You can run them as
+follows, for the suite =SimpleBenchmarks=:
 
 #+BEGIN_SRC
 run-main Benchmarks
 #+END_SRC
 
 You can give a timeout parameter (=-t=, no timeout by default), and a number of
-workers (=-w=, 1 by default), as well as many other options that you can play
-with. They are explained when the =-h= option is given.
+workers threads to distribute the work(=-w=, 1 by default), as well as many
+other options that you can play with. They are explained when the =-h= option is
+given.
+* Test suite
+The test suite can be run using =sbt test=
+* Relevant publications
+The idea behind Scala-AM comes from the AAM paper (/Van Horn, David, and Matthew
+Might. "Abstracting abstract machines." ACM Sigplan
+Notices. Vol. 45. No. 9. ACM, 2010/), and we have support for other machine
+abstractions: AAC (/Johnson, James Ian, and David Van Horn. "Abstracting
+abstract control." ACM SIGPLAN Notices 50.2 (2015): 11-22./), P4F (/Gilray,
+Thomas, et al. "Pushdown control-flow analysis for free." ACM SIGPLAN
+Notices. Vol. 51. No. 1. ACM, 2016./), and a concurrent version of AAM (/Might,
+Matthew, and David Van Horn. "A family of abstract interpretations for static
+analysis of concurrent higher-order programs." International Static Analysis
+Symposium. Springer Berlin Heidelberg, 2011./).

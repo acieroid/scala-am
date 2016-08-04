@@ -151,7 +151,7 @@ case class TaintAnalysis[Abs : JoinLattice, Addr : Address, Time : Timestamp]()
   def init = Set[(Position, Position)]()
 }
 
-/* We can finally run the analysis and detect when a tanted value flows to a sink */
+/* We can finally run the analysis and detect when a tainted value flows to a sink */
 object TaintAnalysis {
   def analyze[L : IsTaintLattice](program: String): Set[(Position, Position)] = {
     val sem = new SchemeSemantics[L, ClassicalAddress.A, ZeroCFA.T](new TSchemePrimitives[ClassicalAddress.A, L])

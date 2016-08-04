@@ -77,10 +77,10 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
 
       val machine = config.machine match {
         case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, address.A, time.T]
-        case Config.Machine.AAMGlobalStore => new AAMGlobalStore[SchemeExp, lattice.L, address.A, time.T]
+        case Config.Machine.AAMGlobalStore => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AAMKAlloc)
         case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
-        case Config.Machine.AAC => new AAC[SchemeExp, lattice.L, address.A, time.T]
-        case Config.Machine.Free => new Free[SchemeExp, lattice.L, address.A, time.T]
+        case Config.Machine.AAC => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AACKAlloc)
+        case Config.Machine.Free => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](P4FKAlloc)
       }
 
       val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
@@ -187,10 +187,18 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
   def main(args: Array[String]) {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
       case Some(config) => run(config.workers, config.timeout)
-      case None => ()
+      case None => system.shutdown
     }
   }
 }
+
+object SimpleBenchmarks extends Benchmarks("test", {
+  val programs = List("ack", "blur", "church", "collatz", "count", "cpstak", "dderiv", "divrec", "eta", "fact", "fib", "gcipd", "grid", "inc", "kcfa2", "kcfa3", "loop2", "mceval", "mut-rec", "mj09", "nqueens", "primtest", "regex", "rotate", "rsa", "scm2java", "sq", "takl", "widen")
+  import Config._
+  programs.flatMap(p => Set(MachineConfig(p, machine = Machine.AAM)))
+  }, (config => config.machine match {
+    case Config.Machine.AAM => "AAM"
+  }))
 
 object MonoBenchmarks extends Benchmarks("test", {
   val programs = List("ack", "blur", "church", "collatz", "count", "cpstak", "dderiv", "divrec", "eta", "fact", "fib", "gcipd", "grid", "inc", "kcfa2", "kcfa3", "loop2", "mceval", "mut-rec", "mj09", "nqueens", "primtest", "regex", "rotate", "rsa", "scm2java", "sq", "takl", "widen")
@@ -201,6 +209,19 @@ object MonoBenchmarks extends Benchmarks("test", {
 }, (config => config.machine match {
   case Config.Machine.AAM => "AAM"
   case Config.Machine.AAMGlobalStore => "AAM+GS"
+}))
+
+object AAMAACP4FBenchmarks extends Benchmarks("test", {
+  val programs = List("ack", "blur", "church", "collatz", "count", "cpstak", "dderiv", "divrec", "eta", "fact", "fib", "gcipd", "grid", "inc", "kcfa2", "kcfa3", "loop2", "mceval", "mut-rec", "mj09", "nqueens", "primtest", "regex", "rotate", "rsa", "scm2java", "sq", "takl", "widen")
+  import Config._
+  programs.flatMap(p =>
+    Set(MachineConfig(p, machine = Machine.AAMGlobalStore),
+      MachineConfig(p, machine = Machine.AAC),
+      MachineConfig(p, machine = Machine.Free)))
+}, (config => config.machine match {
+  case Config.Machine.AAMGlobalStore => "AAM"
+  case Config.Machine.AAC => "AAC"
+  case Config.Machine.Free => "P4F"
 }))
 
 /*

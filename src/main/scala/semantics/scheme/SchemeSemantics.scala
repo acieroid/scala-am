@@ -235,14 +235,6 @@ class SchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](p
     case _ => None
   }
 
-   override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Env, store: Sto, t: Time): Actions = toeval match {
-    case Nil => evalCall(f, fexp, args.reverse, store, t)
-    case e :: rest => atomicEval(e, env, store) match {
-      case Some((v, effs)) => funcallArgs(f, fexp, (e, v) :: args, rest, env, store, t).map(_.addEffects(effs))
-      case None => Action.push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)
-    }
-  }
-
   /**
    * Optimize the following pattern: when we see an ActionPush(frame, exp, env, store)
    * where exp is an atomic expression, we can atomically evaluate exp to get v,
@@ -255,6 +247,14 @@ class SchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](p
     }
     case action => action
   })
+
+  override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Env, store: Sto, t: Time): Actions = toeval match {
+    case Nil => evalCall(f, fexp, args.reverse, store, t)
+    case e :: rest => atomicEval(e, env, store) match {
+      case Some((v, effs)) => funcallArgs(f, fexp, (e, v) :: args, rest, env, store, t).map(_.addEffects(effs))
+      case None => Action.push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)
+    }
+  }
 
   override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) =
     optimizeAtomic(super.stepEval(e, env, store, t), t)

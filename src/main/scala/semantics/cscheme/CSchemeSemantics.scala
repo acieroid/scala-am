@@ -1,7 +1,7 @@
 import scalaz.Scalaz._
 import scalaz._
 
-class ConcurrentSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
+class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
     extends SchemeSemantics[Abs, Addr, Time](primitives: Primitives[Addr, Abs]) {
   def cabs = implicitly[IsCSchemeLattice[Abs]]
   def aabs = implicitly[IsSchemeLattice[Abs]]
