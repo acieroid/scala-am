@@ -1,7 +1,9 @@
 import scalaz.Scalaz._
 
 trait Frame {
-  def subsumes(that: Frame): Boolean
+  def subsumes(that: Frame): Boolean = {
+    this.equals(that)
+  }
 }
 trait KontAddress[A]
 

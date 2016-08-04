@@ -14,7 +14,6 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
   type Actions = Set[Action[SchemeExp, Abs, Addr]]
 
   trait SchemeFrame extends Frame {
-    def subsumes(that: Frame) = that.equals(this)
     override def toString = s"${this.getClass.getSimpleName}"
   }
   case class FrameFuncallOperator(fexp: SchemeExp, args: List[SchemeExp], env: Env) extends SchemeFrame
@@ -36,7 +35,6 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case List(exp) => Action.eval(exp, env, store)
     case exp :: rest => Action.push(FrameBegin(rest, env), exp, env, store)
   }
-
 
   def conditional(v: Abs, t: => Actions, f: => Actions): Actions =
     (if (sabs.isTrue(v)) t else Action.none) ++ (if (sabs.isFalse(v)) f else Action.none)
@@ -88,7 +86,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
       val (carv, store2) = evalQuoted(car, store, t)
       val cdra = addr.cell(cdre, t)
       val (cdrv, store3) = evalQuoted(cdr, store2, t)
-      (sabs.cons(cara, cdra), store3.extend(cara, carv).extend(cdra, cdrv))
+        (sabs.cons(cara, cdra), store3.extend(cara, carv).extend(cdra, cdrv))
     }
     case SExpValue(v, _) => (v match {
       case ValueString(str) => sabs.inject(str)
@@ -115,7 +113,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
       val variables = v :: bindings.map(_._1)
       val addresses = variables.map(v => addr.variable(v, abs.bottom, t))
       val (env1, store1) = variables.zip(addresses).foldLeft((env, store))({ case ((env, store), (v, a)) => (env.extend(v, a), store.extend(a, abs.bottom)) })
-      Action.push(FrameLetrec(addresses.head, addresses.tail.zip(bindings.map(_._2)), body, env1), exp, env1, store1)
+        Action.push(FrameLetrec(addresses.head, addresses.tail.zip(bindings.map(_._2)), body, env1), exp, env1, store1)
     }
     case SchemeSet(variable, exp, _) => Action.push(FrameSet(variable, env), exp, env, store)
     case SchemeBegin(body, _) => evalBody(body, env, store)
@@ -201,7 +199,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
       })
       /* TODO: precision could be improved in cases where we know that default is not
        * reachable */
-      fromClauses.toSet ++ evalBody(default, env, store)
+        fromClauses.toSet ++ evalBody(default, env, store)
     }
     case FrameAnd(Nil, env) =>
       conditional(v, Action.value(v, store), Action.value(sabs.inject(false), store))
@@ -228,9 +226,8 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
  */
 class SchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](primitives: Primitives[Addr, Abs])
     extends BaseSchemeSemantics[Abs, Addr, Time](primitives) {
-
   /** Tries to perform atomic evaluation of an expression. Returns the result of
-    * the evaluation if it succeeded, otherwise returns None */
+   * the evaluation if it succeeded, otherwise returns None */
   protected def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[(Abs, Set[Effect[Addr]])] = e match {
     case λ: SchemeLambda => Some((sabs.inject[SchemeExp, Addr]((λ, env)), Set()))
     case SchemeIdentifier(name, _) => env.lookup(name).flatMap(a => store.lookup(a).map(v => (v, Set(EffectReadVariable(a)))))

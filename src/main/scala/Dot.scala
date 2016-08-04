@@ -97,9 +97,7 @@ class DotLanguage[Addr : Address] {
       extends BaseSemantics[Term, Abs, Addr, Time] {
     def dabs = implicitly[DotLattice[Abs]]
     type Sto = Store[Addr, Abs]
-    trait DotFrame extends Frame {
-      def subsumes(that: Frame) = that.equals(this)
-    }
+    trait DotFrame extends Frame
     case class FrameLet(x: Variable, u: Term, env: Env) extends DotFrame
 
     private def evalVar(x: Variable, env: Env, store: Sto): MayFail[Abs] = env.lookup(x) match {

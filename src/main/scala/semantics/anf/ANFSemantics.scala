@@ -8,9 +8,7 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
     extends BaseSemantics[ANFExp, Abs, Addr, Time] {
   def sabs = implicitly[IsSchemeLattice[Abs]]
   /** ANF Scheme only has three types of continuation frames: halt, let, and letrec */
-  trait ANFFrame extends Frame {
-    def subsumes(that: Frame) = that.equals(this)
-  }
+  trait ANFFrame extends Frame
   case class FrameLet(v: String, body: ANFExp, env: Environment[Addr]) extends ANFFrame {
     override def toString() = s"FrameLet(${v.toString})"
   }
