@@ -13,37 +13,37 @@ object ANFExp {
 }
 trait ANFAtomicExp extends ANFExp
 case class ANFLambda(args: List[String], body: ANFExp, pos: Position) extends ANFAtomicExp {
-  override def toString() = {
+  override def toString = {
     val a = args.mkString(" ")
     s"(lambda ($a) $body)"
   }
 }
 case class ANFIf(cond: ANFAtomicExp, cons: ANFExp, alt: ANFExp, pos: Position) extends ANFExp {
-  override def toString() = s"(if $cond $cons $alt)"
+  override def toString = s"(if $cond $cons $alt)"
 }
 case class ANFFuncall(f: ANFAtomicExp, args: List[ANFAtomicExp], pos: Position) extends ANFExp {
-  override def toString() = {
+  override def toString = {
     val a = args.mkString(" ")
     s"($f $a)"
   }
 }
 case class ANFLet(variable: String, value: ANFExp, body: ANFExp, pos: Position) extends ANFExp {
-  override def toString() = s"(let (($variable $value)) $body)"
+  override def toString = s"(let (($variable $value)) $body)"
 }
 case class ANFLetrec(variable: String, value: ANFExp, body: ANFExp, pos: Position) extends ANFExp {
-  override def toString() = s"(letrec (($variable $value)) $body)"
+  override def toString = s"(letrec (($variable $value)) $body)"
 }
 case class ANFSet(variable: String, value: ANFAtomicExp, pos: Position) extends ANFExp {
-  override def toString() = s"(set! $variable $value)"
+  override def toString = s"(set! $variable $value)"
 }
 case class ANFQuoted(quoted: SExp, pos: Position) extends ANFExp {
-  override def toString() = s"'$quoted"
+  override def toString = s"'$quoted"
 }
 case class ANFIdentifier(name: String, pos: Position) extends ANFAtomicExp {
-  override def toString() = name
+  override def toString = name
 }
 case class ANFValue(value: Value, pos: Position) extends ANFAtomicExp {
-  override def toString() = value.toString
+  override def toString = value.toString
 }
 
 object ANFCompiler {

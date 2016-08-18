@@ -10,10 +10,10 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
   /** ANF Scheme only has three types of continuation frames: halt, let, and letrec */
   trait ANFFrame extends Frame
   case class FrameLet(v: String, body: ANFExp, env: Environment[Addr]) extends ANFFrame {
-    override def toString() = s"FrameLet(${v.toString})"
+    override def toString = s"FrameLet(${v.toString})"
   }
   case class FrameLetrec(v: String, a: Addr, body: ANFExp, env: Environment[Addr]) extends ANFFrame {
-    override def toString() = s"FrameLetrec(${v.toString})"
+    override def toString = s"FrameLetrec(${v.toString})"
   }
 
   type Actions = Set[Action[ANFExp, Abs, Addr]]

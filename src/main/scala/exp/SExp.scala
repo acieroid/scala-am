@@ -4,28 +4,28 @@
 
 sealed abstract class Value
 case class ValueString(value: String) extends Value {
-  override def toString() = "\"" + value + "\"" // https://issues.scala-lang.org/browse/SI-6476
+  override def toString = "\"" + value + "\"" // https://issues.scala-lang.org/browse/SI-6476
 }
 case class ValueSymbol(sym: String) extends Value {
-  override def toString() = sym
+  override def toString = sym
 }
 case class ValueInteger(value: Int) extends Value {
-  override def toString() = value.toString
+  override def toString = value.toString
 }
 case class ValueFloat(value: Float) extends Value {
-  override def toString() = value.toString
+  override def toString = value.toString
 }
 case class ValueBoolean(value: Boolean) extends Value {
-  override def toString() = value match {
+  override def toString = value match {
     case true => "#t"
     case false => "#f"
   }
 }
 case class ValueCharacter(value: Character) extends Value {
-  override def toString() = s"#\\$value" // not entirely correct (eg. newline, ...)
+  override def toString = s"#\\$value" // not entirely correct (eg. newline, ...)
 }
 object ValueNil extends Value {
-  override def toString() = "()"
+  override def toString = "()"
 }
 
 /**
@@ -46,11 +46,11 @@ trait SExp extends {
  * . ()))
  */
 case class SExpPair(car: SExp, cdr: SExp, pos: Position) extends SExp {
-  override def toString() = {
+  override def toString = {
     val content = toStringRest
     s"($content)"
   }
-  def toStringRest(): String =
+  def toStringRest: String =
     cdr match {
       case pair: SExpPair =>
         val rest = pair.toStringRest
@@ -75,7 +75,7 @@ object SExpList {
  * An identifier, such as foo, bar, etc.
  */
 case class SExpIdentifier(name: String, pos: Position) extends SExp {
-  override def toString() = name
+  override def toString = name
 }
 
 /**
@@ -89,5 +89,5 @@ case class SExpValue(value: Value, pos: Position) extends SExp {
  * A quoted element, such as 'foo, '(foo (bar)), etc.
  */
 case class SExpQuoted(content: SExp, pos: Position) extends SExp {
-  override def toString() = s"'$content"
+  override def toString = s"'$content"
 }

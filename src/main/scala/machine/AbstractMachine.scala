@@ -98,7 +98,7 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    * evaluated in an environment
    */
   case class ControlEval(exp: Exp, env: Environment[Addr]) extends Control {
-    override def toString() = s"ev(${exp})"
+    override def toString = s"ev(${exp})"
     def subsumes(that: Control) = that match {
       case ControlEval(exp2, env2) => exp.equals(exp2) && env.subsumes(env2)
       case _ => false
@@ -109,7 +109,7 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    * continuation should be popped from the stack to continue the evaluation
    */
   case class ControlKont(v: Abs) extends Control {
-    override def toString() = s"ko(${v})"
+    override def toString = s"ko(${v})"
     def subsumes(that: Control) = that match {
       case ControlKont(v2) => abs.subsumes(v, v2)
       case _ => false
@@ -120,7 +120,7 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    * of arguments in a function call)
    */
   case class ControlError(err: SemanticError) extends Control {
-    override def toString() = s"err($err)"
+    override def toString = s"err($err)"
     def subsumes(that: Control) = that.equals(this)
   }
 }

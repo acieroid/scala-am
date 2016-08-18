@@ -17,7 +17,7 @@ object SchemeExp {
  * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
  */
 case class SchemeLambda(args: List[String], body: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
     s"(lambda ($a) $b)"
@@ -28,7 +28,7 @@ case class SchemeLambda(args: List[String], body: List[SchemeExp], pos: Position
  * A function call: (f args...)
  */
 case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     if (args.isEmpty) {
       s"($f)"
     } else {
@@ -42,13 +42,13 @@ case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp], pos: Position) ext
  * If without alt clauses need to be encoded with an empty begin as alt clause
  */
 case class SchemeIf(cond: SchemeExp, cons: SchemeExp, alt: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(if $cond $cons $alt)"
+  override def toString = s"(if $cond $cons $alt)"
 }
 /**
  * Let-bindings: (let ((v1 e1) ...) body...)
  */
 case class SchemeLet(bindings: List[(String, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
     s"(let ($bi) $bo)"
@@ -58,7 +58,7 @@ case class SchemeLet(bindings: List[(String, SchemeExp)], body: List[SchemeExp],
  * Let*-bindings: (let* ((v1 e1) ...) body...)
  */
 case class SchemeLetStar(bindings: List[(String, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
     s"(let* ($bi) $bo)"
@@ -68,7 +68,7 @@ case class SchemeLetStar(bindings: List[(String, SchemeExp)], body: List[SchemeE
  * Letrec-bindings: (letrec ((v1 e1) ...) body...)
  */
 case class SchemeLetrec(bindings: List[(String, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
     s"(letrec ($bi) $bo)"
@@ -78,13 +78,13 @@ case class SchemeLetrec(bindings: List[(String, SchemeExp)], body: List[SchemeEx
  * A set! expression: (set! variable value)
  */
 case class SchemeSet(variable: String, value: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(set! $variable $value)"
+  override def toString = s"(set! $variable $value)"
 }
 /**
  * A begin clause: (begin body...)
  */
 case class SchemeBegin(exps: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val body = exps.mkString(" ")
     s"(begin $body)"
   }
@@ -93,7 +93,7 @@ case class SchemeBegin(exps: List[SchemeExp], pos: Position) extends SchemeExp {
  * A cond expression: (cond (test1 body1...) ...)
  */
 case class SchemeCond(clauses: List[(SchemeExp, List[SchemeExp])], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val c = clauses.map({ case (cond, cons) => {
       val b = cons.mkString(" ")
       s"($cond $b)"
@@ -106,7 +106,7 @@ case class SchemeCond(clauses: List[(SchemeExp, List[SchemeExp])], pos: Position
  * A case expression: (case key ((vals1...) body1...) ... (else default...))
  */
 case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[SchemeExp])], default: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val c = clauses.map({ case (datums, cons) => {
       val d = datums.mkString(" ")
       val b = cons.mkString(" ")
@@ -124,7 +124,7 @@ case class SchemeCase(key: SchemeExp, clauses: List[(List[SchemeValue], List[Sch
  * An and expression: (and exps...)
  */
 case class SchemeAnd(exps: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val e = exps.mkString(" ")
     s"(and $e)"
   }
@@ -133,7 +133,7 @@ case class SchemeAnd(exps: List[SchemeExp], pos: Position) extends SchemeExp {
  * An or expression: (or exps...)
  */
 case class SchemeOr(exps: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val e = exps.mkString(" ")
     s"(or $e)"
   }
@@ -142,13 +142,13 @@ case class SchemeOr(exps: List[SchemeExp], pos: Position) extends SchemeExp {
  * A variable definition: (define name value)
  */
 case class SchemeDefineVariable(name: String, value: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(define $name $value)"
+  override def toString = s"(define $name $value)"
 }
 /**
  * A function definition: (define (name args...) body...)
  */
 case class SchemeDefineFunction(name: String, args: List[String], body: List[SchemeExp], pos: Position) extends SchemeExp {
-  override def toString() = {
+  override def toString = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
     s"(define ($name $a) $b)"
@@ -158,7 +158,7 @@ case class SchemeDefineFunction(name: String, args: List[String], body: List[Sch
  * An identifier: name
  */
 case class SchemeIdentifier(name: String, pos: Position) extends SchemeExp {
-  override def toString() = name
+  override def toString = name
 }
 
 /**
@@ -167,56 +167,56 @@ case class SchemeIdentifier(name: String, pos: Position) extends SchemeExp {
  * a simple s-expression, because that's exactly what it should be.
  */
 case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
-  override def toString() = s"'$quoted"
+  override def toString = s"'$quoted"
 }
 
 /**
  * A literal value (number, symbol, string, ...)
  */
 case class SchemeValue(value: Value, pos: Position) extends SchemeExp {
-  override def toString() = value.toString
+  override def toString = value.toString
 }
 
 /**
  * Compare-and-swap, concurrency synchronization primitive.
  */
 case class SchemeCas(variable: String, eold: SchemeExp, enew: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(cas $variable $eold $enew)"
+  override def toString = s"(cas $variable $eold $enew)"
 }
 
 /**
  * Compare-and-swap on a vector
  */
 case class SchemeCasVector(variable: String, index: SchemeExp, eold: SchemeExp, enew: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(cas-vector $variable $index $eold $enew)"
+  override def toString = s"(cas-vector $variable $index $eold $enew)"
 }
 
 /**
  * Acquire a lock
  */
 case class SchemeAcquire(exp: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(acquire $exp)"
+  override def toString = s"(acquire $exp)"
 }
 
 /**
  * Release a lock
  */
 case class SchemeRelease(exp: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(release $exp)"
+  override def toString = s"(release $exp)"
 }
 
 /**
  * Spawn a new thread to compute an expression
  */
 case class SchemeSpawn(exp: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(spawn $exp)"
+  override def toString = s"(spawn $exp)"
 }
 
 /**
  * Wait for a thread (whose identifier is the value of exp) to terminate
  */
 case class SchemeJoin(exp: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString() = s"(join $exp)"
+  override def toString = s"(join $exp)"
 }
 
 /**
