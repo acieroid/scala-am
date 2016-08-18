@@ -55,5 +55,4 @@ analysis of concurrent higher-order programs." International Static Analysis
 Symposium. Springer Berlin Heidelberg, 2011).
 
 This framework is described in the following publication:
-  - Scala-AM: A Modular Static Analysis Framework, SCAM 2016, [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf).
-    [![DOI](https://zenodo.org/badge/23603/acieroid/scala-am.svg)](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am)
+  - Scala-AM: A Modular Static Analysis Framework, SCAM 2016, [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf][pdf]], [[https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am][doi]].
