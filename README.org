@@ -53,3 +53,7 @@ Notices. Vol. 51. No. 1. ACM, 2016), and a concurrent version of AAM (Might,
 Matthew, and David Van Horn. "A family of abstract interpretations for static
 analysis of concurrent higher-order programs." International Static Analysis
 Symposium. Springer Berlin Heidelberg, 2011).
+
+This framework is described in the following publication:
+  - Scala-AM: A Modular Static Analysis Framework, SCAM 2016, [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf).
+    [![DOI](https://zenodo.org/badge/23603/acieroid/scala-am.svg)](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am)
