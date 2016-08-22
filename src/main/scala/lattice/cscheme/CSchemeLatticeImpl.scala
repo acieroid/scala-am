@@ -91,7 +91,7 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     val name = s"C(${lat.name})"
     val counting = lat.counting
     def isTrue(x: L) = lat.isTrue(x.seq) || x.t != tids.bottom || x.la != lockaddrs.bottom || x.l != locked.bottom
-    def isFalse(x: L) = lat.isFalse(x.seq)
+    def isFalse(x: L) = lat.isFalse(x.seq) && x.t == tids.bottom && x.la == lockaddrs.bottom && x.l == locked.bottom
     def unaryOp(op: UnaryOperator)(x: L): MayFail[L] = for { seq2 <- lat.unaryOp(op)(x.seq) } yield Value(seq = seq2)
     def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = op match {
       case Eq => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield {
@@ -103,7 +103,8 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
             } else {
               lat.join(lat.inject(true), lat.inject(false)) /* can be equal */
             }
-          } else { lat.inject(false) /* are certainly not equal */ }}
+          } else { lat.inject(false) /* are certainly not equal */ }
+        }
         Value(seq = lat.join(nonseq, seq2))
       }
       case _ => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield Value(seq = seq2)
@@ -119,7 +120,7 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     def inject(x: Char) = Value(seq = lat.inject(x))
     def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]) = Value(seq = lat.inject[Addr, Abs](x))
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Value(seq = lat.inject[Exp, Addr](x))
-    def injectSymbol(x: String) = Value(seq = lat.inject(x))
+    def injectSymbol(x: String) = Value(seq = lat.injectSymbol(x))
     def cons[Addr : Address](car: Addr, cdr: Addr) = Value(seq = lat.cons[Addr](car, cdr))
     def nil = Value(seq = lat.nil)
     def car[Addr : Address](x: L) = lat.car[Addr](x.seq)

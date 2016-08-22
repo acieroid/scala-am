@@ -17,6 +17,7 @@ object SchemeExp {
  * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
  */
 case class SchemeLambda(args: List[String], body: List[SchemeExp], pos: Position) extends SchemeExp {
+  assert(body.size >= 1)
   override def toString = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
@@ -220,6 +221,41 @@ case class SchemeJoin(exp: SchemeExp, pos: Position) extends SchemeExp {
 }
 
 /**
+ * Send a message to an actor
+ */
+case class SchemeSend(target: SchemeExp, args: List[SchemeExp], pos: Position) extends SchemeExp {
+  val a = args.mkString(" ")
+  override def toString = s"(send $target $a)"
+}
+
+/**
+ * Create an actor from a behavior
+ */
+case class SchemeCreate(behavior: SchemeExp, args: List[SchemeExp], pos: Position) extends SchemeExp {
+  val a = args.mkString(" ")
+  override def toString = s"(create $behavior $a)"
+}
+
+/**
+ * Change the behavior of the current actor
+ */
+case class SchemeBecome(behavior: SchemeExp, args: List[SchemeExp], pos: Position) extends SchemeExp {
+  val a = args.mkString(" ")
+  override def toString = s"(become $behavior $a)"
+}
+
+/**
+ * Define a behavior
+ */
+case class SchemeBehavior(xs: List[String], ys: List[String], body: List[SchemeExp], pos: Position) extends SchemeExp {
+  assert(body.size >= 1)
+  val x = xs.mkString(" ")
+  val y = ys.mkString(" ")
+  val b = body.mkString(" ")
+  override def toString = s"(behavior ($x) ($y) $b)"
+}
+
+/**
  * Object that provides a method to compile an s-expression into a Scheme expression
  */
 object SchemeCompiler {
@@ -286,6 +322,7 @@ object SchemeCompiler {
       SExpPair(SExpPair(SExpIdentifier(name, _), args, _),
         SExpPair(first, rest, _), _), _) =>
       SchemeDefineFunction(name, compileArgs(args), compile(first) :: compileBody(rest), exp.pos)
+
     case SExpPair(SExpIdentifier("cas", _),
       SExpPair(SExpIdentifier(variable, _),
         SExpPair(eold, SExpPair(enew, SExpValue(ValueNil, _), _), _), _), _) =>
@@ -318,6 +355,25 @@ object SchemeCompiler {
       SchemeJoin(compile(exp), exp.pos)
     case SExpPair(SExpIdentifier("join", _), _, _) =>
       throw new Exception(s"Invalid Scheme join: $exp")
+
+    case SExpPair(SExpIdentifier("behavior", _),
+      SExpPair(xargs, SExpPair(yargs, SExpPair(first, rest, _), _), _), _) =>
+      SchemeBehavior(compileArgs(xargs), compileArgs(yargs), compile(first) :: compileBody(rest), exp.pos)
+    case SExpPair(SExpIdentifier("behavior", _), _, _) =>
+      throw new Exception(s"Invalid Scheme behavior: $exp (${exp.pos})")
+    case SExpPair(SExpIdentifier("send", _), SExpPair(target, args, _), _) =>
+      SchemeSend(compile(target), compileBody(args), exp.pos)
+    case SExpPair(SExpIdentifier("send", _), _, _) =>
+      throw new Exception(s"Invalid Scheme send: $exp (${exp.pos})")
+    case SExpPair(SExpIdentifier("create", _), SExpPair(behavior, args, _), _) =>
+      SchemeCreate(compile(behavior), compileBody(args), exp.pos)
+    case SExpPair(SExpIdentifier("create", _), _, _) =>
+      throw new Exception(s"Invalid Scheme create: $exp (${exp.pos})")
+    case SExpPair(SExpIdentifier("become", _), SExpPair(behavior, args, _), _) =>
+      SchemeBecome(compile(behavior), compileBody(args), exp.pos)
+    case SExpPair(SExpIdentifier("become", _), _, _) =>
+      throw new Exception(s"Invalid Scheme become: $exp (${exp.pos})")
+
     case SExpPair(f, args, _) =>
       SchemeFuncall(compile(f), compileBody(args), exp.pos)
     case SExpIdentifier(name, _) => if (reserved.contains(name)) {

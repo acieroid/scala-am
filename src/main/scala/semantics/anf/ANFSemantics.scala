@@ -58,7 +58,7 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
         val fromClo: Actions = sabs.getClosures[ANFExp, Addr](fv).map({
           case (ANFLambda(args, body, pos), env) => if (args.length == argsv.length) {
             /* To call a closure, bind the arguments and step into the function */
-            bindArgs(args.zip(argsv.reverse), env, store, t) match {
+            bindArgs(args.zip(argsv.reverse.map(_._2)), env, store, t) match {
               case (env2, store) => Action.stepIn(f, (ANFLambda(args, body, pos), env), body, env2, store, argsv, effects)
             }
           } else {

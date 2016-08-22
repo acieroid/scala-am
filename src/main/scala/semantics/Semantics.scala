@@ -138,20 +138,21 @@ class ActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address] {
   type Act = Action[Exp, Abs, Addr]
   def none: Set[Act] = Set.empty
   def value(v: Abs, store: Sto, effects: Effs = Set.empty): Act =
-    ActionReachedValue(v, store, effects)
+    new ActionReachedValue(v, store, effects)
   def push(frame: Frame, e: Exp, env: Env, store: Sto, effects: Effs = Set.empty): Act =
-    ActionPush(frame, e, env, store)
+    new ActionPush(frame, e, env, store, effects)
   def eval(e: Exp, env: Env, store: Sto, effects: Effs = Set.empty): Act =
-    ActionEval(e, env, store)
+    new ActionEval(e, env, store, effects)
   def stepIn(fexp: Exp, clo: (Exp, Env), e: Exp, env: Env, store: Sto, argsv: List[(Exp, Abs)], effects: Effs = Set.empty): Act =
-    ActionStepIn(fexp, clo, e, env, store, argsv)
+    new ActionStepIn(fexp, clo, e, env, store, argsv, effects)
   def error(err: SemanticError): Act =
-    ActionError(err)
+    new ActionError(err)
   def spawn[TID : ThreadIdentifier](t: TID, e: Exp, env: Env, store: Sto, act: Act, effects: Effs = Set.empty): Act =
-    ActionSpawn(t, e, env, store, act, effects)
+    new ActionSpawn(t, e, env, store, act, effects)
   def join[TID : ThreadIdentifier](t: TID, store: Sto, effects: Effs = Set.empty): Act =
-    ActionJoin(t, store, effects)
+    new ActionJoin(t, store, effects)
 }
+
 /**
  * A value is reached by the interpreter. As a result, a continuation will be
  * popped with the given reached value.
@@ -230,6 +231,38 @@ case class ActionJoin[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLattic
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }
 
+class ActorActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address, PID : ThreadIdentifier] {
+  type Effs = Set[Effect[Addr]]
+  type Env = Environment[Addr]
+  type Sto = Store[Addr, Abs]
+  type Act = Action[Exp, Abs, Addr]
+  def send(pid: PID, msg: List[Abs], act: Act, effs: Effs = Set.empty): Act =
+    new ActorActionSend(pid, msg, act, effs)
+  def create[Time : Timestamp](beh: (List[Abs], Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], effs: Effs = Set.empty): Act =
+    new ActorActionCreate(beh, effs)
+  def become[Time : Timestamp](beh: (List[Abs], Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], effs: Effs = Set.empty): Act =
+    new ActorActionBecome(beh, effs)
+}
+
+case class ActorActionSend[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (t: TID, msg: List[Abs], act: Action[Exp, Abs, Addr],
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
+
+case class ActorActionCreate[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
+  (beh: (List[Abs], Store[Addr, Abs], Time)  => Action[Exp, Abs, Addr], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
+
+case class ActorActionBecome[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
+  (beh: (List[Abs], Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
+
 /**
  * Base class for semantics that define some helper methods
  */
@@ -259,11 +292,10 @@ abstract class BaseSemantics[Exp : Expression, Abs : JoinLattice, Addr : Address
    * Binds arguments in the environment and store. Arguments are given as a list
    * of triple, where each triple is made of:
    *   - the name of the argument
-   *   - the expression evaluated to get the argument's value
    *   - the value of the argument
    */
-  protected def bindArgs(l: List[(String, (Exp, Abs))], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
-    l.foldLeft((env, store))({ case ((env, store), (name, (exp, value))) => {
+  protected def bindArgs(l: List[(String, Abs)], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
+    l.foldLeft((env, store))({ case ((env, store), (name, value)) => {
       val a = addr.variable(name, value, t)
       (env.extend(name, a), store.extend(a, value))
     }})

@@ -43,7 +43,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     val fromClo: Actions = sabs.getClosures[SchemeExp, Addr](function).map({
       case (SchemeLambda(args, body, pos), env1) =>
         if (args.length == argsv.length) {
-          bindArgs(args.zip(argsv), env1, store, t) match {
+          bindArgs(args.zip(argsv.map(_._2)), env1, store, t) match {
             case (env2, store) =>
               if (body.length == 1)
                 Action.stepIn(fexp, (SchemeLambda(args, body, pos), env1), body.head, env2, store, argsv)
