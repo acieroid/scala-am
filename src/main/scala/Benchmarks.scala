@@ -1,15 +1,5 @@
 import scala.concurrent.duration.Duration
 import Util._
-/* TODO: reuse Util config */
-object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Duration] = None)
-
-  val parser = new scopt.OptionParser[Configuration]("scala-am") {
-    head("scala-am", "0.0")
-    opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers to run the benchmarks on (1 by default)")
-    opt[Duration]('t', "timeout") action { (x, c) => c.copy(timeout = if (x.isFinite) Some(x) else None) } text("Timeout (none by default)")
-  }
-}
 
 case class MachineConfig(program: String, machine: Config.Machine.Value = Config.Machine.AAM, address: Config.Address.Value = Config.Address.Classical, lattice: Config.Lattice.Value = Config.Lattice.TypeSet, concrete: Boolean = false) {
   override def toString = s"[$program, $machine, $address, $lattice]"
@@ -161,7 +151,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
     workers.foreach(dispatcher ! SendWork(_))
   }
   def main(args: Array[String]) {
-    BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
+    Config.parser.parse(args, Config.Config()) match {
       case Some(config) => run(config.workers, config.timeout.map(_.toNanos))
       case None => system.shutdown
     }

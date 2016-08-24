@@ -110,7 +110,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           store = store2)
       case ActionError(err) =>
         this.copy(procs = procs.update(p, ctx.copy(control = ControlError(err))))
-      case ActorActionSend(ptarget : PID, msg, act2, effs) if ptarget != p => {
+      case ActorActionSend(ptarget : PID @unchecked, msg, act2, effs) if ptarget != p => {
         val ctxtarget = procs.get(ptarget).head /* TODO: map */
         this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(sabs.inject(false))))
@@ -118,13 +118,13 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       }
       case ActorActionSend(ptarget, msg, act2, effs) if ptarget == p => /* TODO: special care need to be taken if p maps to more than a single actor */
         this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), mbox = ctx.mbox.push(p -> msg))))
-      case ActorActionCreate(beh : Beh, exp, effs) => {
+      case ActorActionCreate(beh : Beh @unchecked, exp, effs) => {
         val p2 = pid.thread(exp, t0)
         this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(aabs.injectPid(p2))))
           .extend(p -> Context.create(p2, beh)))
       }
-      case ActorActionBecome(beh2 : Beh, effs) =>
+      case ActorActionBecome(beh2 : Beh @unchecked, effs) =>
         this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), beh = ActorBehavior(beh2))))
     }
     def stepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = procs.get(p).flatMap(ctx => ctx.control match {

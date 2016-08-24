@@ -8,6 +8,7 @@ libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.12.5" % "test" // l
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.4.0"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.15"
 libraryDependencies += "com.typesafe.akka" %% "akka-agent" % "2.3.15"
+libraryDependencies += "jline" % "jline" % "2.14.2"
 
 maxErrors := 5
 mainClass in (Compile, run) := Some("Main")

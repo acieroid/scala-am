@@ -6,11 +6,13 @@ case object AllInterleavings extends ExplorationType
 case object OneInterleaving extends ExplorationType
 case object RandomInterleaving extends ExplorationType
 case object DPOR extends ExplorationType
+case object Joined extends ExplorationType
 object ExplorationTypeParser extends scala.util.parsing.combinator.RegexParsers {
   val all = "AllInterleavings".r ^^ (_ => AllInterleavings)
   val one = "OneInterleaving".r ^^ (_ => OneInterleaving)
   val random = "RandomInterleaving".r ^^ (_ => RandomInterleaving)
   val dpor = "DPOR".r ^^ (_ => DPOR)
+  def joined = "Joined".r ^^ (_ => Joined)
   def expl: Parser[ExplorationType] = all | one | random | dpor
   def parse(s: String): ExplorationType = parseAll(expl, s) match {
     case Success(res, _) => res
@@ -90,10 +92,16 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
   }
 
   case class ThreadMap(content: Map[TID, Set[Context]]) {
-    def get(tid: TID): Set[Context] = content.getOrElse(tid, Set())
+    def get(tid: TID): Set[Context] = content(tid)
     def tids: Set[TID] = content.keys.toSet
-    def update(tid: TID, context: Context): ThreadMap =
-      ThreadMap(content + (tid -> Set(context))) /* TODO: abstract thread counting, join */
+    def update(tid: TID, context: Context): ThreadMap = {
+      val existing = get(tid)
+      if (existing.size == 1) {
+        ThreadMap(content + (tid -> Set(context))) /* strong update */
+      } else {
+        ThreadMap(content + (tid -> (existing + context))) /* weak update */
+      }
+    }
     def add(tid: TID, context: Context): ThreadMap =
       ThreadMap(content + (tid -> (get(tid) + context)))
     def remove(tid: TID): ThreadMap =
@@ -101,15 +109,22 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
     def join(that: ThreadMap): ThreadMap = ThreadMap(this.content |+| that.content) /* TODO: does this correctly joins sets? */
     def forall(f: ((TID, Set[Context])) => Boolean): Boolean = content.forall(f)
   }
+  object ThreadMap {
+    def apply(ctx: Context): ThreadMap =
+      ThreadMap(Map[TID, Set[Context]](thread.initial -> Set(ctx)).withDefaultValue(Set[Context]()))
+  }
 
   case class ThreadResults(content: Map[TID, Abs]) {
     /* TODO: what if two threads share tid, one is done but not the other? -> use thread counting to know more*/
     def isDone(tid: TID): Boolean = content.contains(tid)
     def get(tid: TID): Abs = content.getOrElse(tid, abs.bottom)
     def add(tid: TID, v: Abs): ThreadResults = ThreadResults(content + (tid -> abs.join(get(tid), v)))
+    def join(that: ThreadResults): ThreadResults = ThreadResults(this.content |+| that.content)
   }
 
   case class State(threads: ThreadMap, results: ThreadResults, store: Store[Addr, Abs]) {
+    def join(that: State): State =
+      State(threads.join(that.threads), results.join(that.results), store.join(that.store))
     def step(sem: Semantics[Exp, Abs, Addr, Time], tid: TID): Set[(Effects, State)] =
       threads.get(tid).flatMap(ctx => ctx.step(sem, tid, store, threads, results).map({
         case (threads, results, store, effects) => (effects, State(threads, results, store))
@@ -156,7 +171,7 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
 
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) = {
-      State(ThreadMap(Map[TID, Set[Context]](thread.initial -> Set(Context(ControlEval(exp, Environment.initial[Addr](env)), KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))))),
+      State(ThreadMap(Context(ControlEval(exp, Environment.initial[Addr](env)), KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))),
         ThreadResults(Map[TID, Abs]()), Store.initial[Addr, Abs](store))
     }
   }
@@ -257,6 +272,20 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
     case Some((tid, succs)) => succs.map(s2 => (tid, s2._1, s2._2))
     case None => Set()
   }
+
+  @scala.annotation.tailrec
+  private def loopJoined(state: State, sem: Semantics[Exp, Abs, Addr, Time], startingTime: Long, timeout: Option[Long]): ConcurrentAAMOutput =
+    if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
+      ConcurrentAAMOutput(Set.empty, 0, (System.nanoTime - startingTime) / Math.pow(10, 9), None, true)
+    } else {
+      println(state)
+      val state2 = state.stepAll(sem).foldLeft(state)((acc, succ) => acc.join(succ._3))
+      if (state2 == state) {
+        ConcurrentAAMOutput(Set.empty, 0, (System.nanoTime - startingTime) / Math.pow(10, 9), None, false)
+      } else {
+        loopJoined(state2, sem, startingTime, timeout)
+      }
+    }
 
   private def effectsOf(transitions: Set[(Effects, State)]): Effects =
     transitions.flatMap(_._1)
@@ -401,6 +430,7 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
       case OneInterleaving => loop(Set(state), Set(), Set(), System.nanoTime, timeout, g)(oneInterleaving(sem))
       case RandomInterleaving => loop(Set(state), Set(), Set(), System.nanoTime, timeout, g)(randomInterleaving(sem))
       case DPOR => dporExplore(state, System.nanoTime, timeout, g, sem)
+      case Joined => loopJoined(state, sem, System.nanoTime, timeout)
     }
   }
 }

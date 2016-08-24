@@ -10,23 +10,21 @@ object Util {
   }
 
   object Done extends Exception
-  /* TODO: use jline? e.g. http://stackoverflow.com/questions/7913555/how-to-write-interactive-shell-with-readline-support-in-scala
-   An empty line would submit to cb
-   */
   /** Either run cb on the content of the given file, or run a REPL, each line being sent to cb */
   def replOrFile(file: Option[String], cb: String => Unit): Unit = {
-    try {
-      do {
-        val program = file match {
-          case Some(file) => fileContent(file)
-          case None => StdIn.readLine(">>> ")
-        }
-        if (program == null) throw Done
-        if (program.size > 0)
+    lazy val reader = new jline.console.ConsoleReader()
+    def loop(): Unit = {
+      val program = reader.readLine(">>> ")
+      if (program != null) {
+        if (program.size > 0) {
           cb(program)
-      } while (file.isEmpty);
-    } catch {
-      case Done => ()
+        }
+        loop()
+      }
+    }
+    file match {
+      case Some(file) => cb(fileContent(file))
+      case None => loop()
     }
   }
 
@@ -59,19 +57,20 @@ object Util {
       timeout: Option[Duration] = None,
       workers: Int = 1)
 
+    private val separator = ", "
     val parser = new scopt.OptionParser[Config]("scala-am") {
       head("scala-am", "0.0")
-      opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAMGlobalStore, AAC, Free, ConcreteMachine)")
-      opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text("Lattice to use (Concrete, Type, TypeSet)")
+      opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text(s"Abstract machine to use (${Machine.values.mkString(separator)})")
+      opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text(s"Lattice to use (${Lattice.values.mkString(separator)})")
       opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
       opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
       opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
       opt[Duration]('t', "timeout") action { (x, c) => c.copy(timeout = if (x.isFinite) Some(x) else None) } text("Timeout (none by default)")
       opt[Unit]('i', "inspect") action { (x, c) => c.copy(inspect = true) } text("Launch inspection REPL (disabled by default)")
-      opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text("Addresses to use (Classical, ValueSensitive)")
-      opt[Unit]("counting") action { (x, c) => c.copy(counting = true) } text("Use abstract counting (on for concrete lattices)")
-      opt[Int]('b', "bound") action { (x, c) => c.copy(bound = x) } text("Bound for bounded lattice (default to 100)")
-      opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers")
+      opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text(s"Addresses to use (${Address.values.mkString(separator)})")
+      opt[Unit]("counting") action { (x, c) => c.copy(counting = true) } text("Use absstract counting (on for concrete lattices)")
+      opt[Int]('b', "bound") action { (x, c) => c.copy(bound = x) } text("Bound for bounded lattice (defaults to 100)")
+      opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers (defaults to 1)")
     }
   }
 
