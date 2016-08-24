@@ -75,5 +75,6 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       }
     case FrameBecome(argsv, first :: rest, env) =>
       Action.push(FrameBecome(v :: argsv, rest, env), first, env, store)
+    case _ => super.stepKont(v, frame, store, t)
   }
 }

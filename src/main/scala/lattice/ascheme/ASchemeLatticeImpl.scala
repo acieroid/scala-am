@@ -24,7 +24,14 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
   type Behs = Set[Any]
   val behs: IsLatticeElement[Behs] = ofSet[Any]
 
-  case class Value(seq: lattice.L = lat.bottom, p: Pids = pids.bottom, b: Behs = behs.bottom)
+  case class Value(seq: lattice.L = lat.bottom, p: Pids = pids.bottom, b: Behs = behs.bottom) {
+    override def toString = {
+      val content: Set[String] = p.map(_.toString) ++ b.map(_.toString) + seq.toString
+      "{" + content.mkString(", ") + "}"
+    }
+  }
+
+
   type L = Value
 
   /* TODO: most of this can be generalized so that we only have to redefine stuff like join, subsumes, binaryOp, and the new functions */

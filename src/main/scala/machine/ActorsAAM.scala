@@ -50,6 +50,12 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   }
 
   case class Context(control: Control, kont: KontAddr, beh: Behavior, mbox: Mbox) {
+    def toXml: List[scala.xml.Node] = control match {
+      case ControlEval(e, _) => List(<font color="forestgreen">{e.toString.take(40)}</font>)
+      case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
+      case ControlError(err) => List(<font color="red2">{err.toString.take(40)}</font>)
+      case ControlWait => List(<font color="skyblue">wait</font>)
+    }
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
       case ControlKont(v) => beh == MainBehavior && kont == HaltKontAddress
@@ -68,6 +74,8 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
 
   /* TODO: add counting */
   case class Procs(content: Map[PID, Set[Context]]) {
+    def toXml: List[scala.xml.Node] = content.keySet.toList.flatMap(p =>
+      <br/> :: scala.xml.Text(s"$p: ") :: content(p).head.toXml) /* TODO: adjust to multiple contexts */
     def get(p: PID): Set[Context] = content(p)
     def update(v: (PID, Context)): Procs = {
       assert(content(v._1).size <= 1) /* TODO: can remove this assertion when we have counting, and add strong updates */
@@ -88,6 +96,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
 
 
   case class State(procs: Procs, store: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
+    def toXml = procs.toXml
     def halted: Boolean = procs.get(pid.initial).forall(_.halted)
     def hasError: Boolean = procs.exists((pid, ctxs) => ctxs.exists(_.hasError))
     def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = stepPids(procs.pids, sem)
@@ -162,7 +171,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     }))
     def containsFinalValue(v: Abs): Boolean = finalValues.exists(v2 => abs.subsumes(v2, v))
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
+      case Some(g) => g.toDotFile(path, _.toXml,
         (s) => if (halted.contains(s)) {
           Colors.Yellow
         } else if (s.hasError) {
