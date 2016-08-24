@@ -82,6 +82,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       Procs(content = content + (v._1 -> Set(v._2)))
     }
     def extend(v: (PID, Context)): Procs = {
+      println(s"extend($v)")
       assert(get(v._1).size == 0) /* TODO */
       Procs(content = content + (v._1 -> (get(v._1) + v._2)))
     }
@@ -123,7 +124,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         val ctxtarget = procs.get(ptarget).head /* TODO: map */
         this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(sabs.inject(false))))
-          .extend(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push(p -> msg))))
+          .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push(p -> msg))))
       }
       case ActorActionSend(ptarget, msg, act2, effs) if ptarget == p => /* TODO: special care need to be taken if p maps to more than a single actor */
         this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), mbox = ctx.mbox.push(p -> msg))))
@@ -131,7 +132,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         val p2 = pid.thread(exp, t0)
         this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(aabs.injectPid(p2))))
-          .extend(p -> Context.create(p2, beh)))
+          .extend(p2 -> Context.create(p2, beh)))
       }
       case ActorActionBecome(beh2 : Beh @unchecked, effs) =>
         this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), beh = ActorBehavior(beh2))))
@@ -139,10 +140,13 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def stepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = procs.get(p).flatMap(ctx => ctx.control match {
       case ControlEval(e, env) => /* call semantics */
         sem.stepEval(e, env, store, t0).map(action => (integrate(p, ctx, action), p))
-      case ControlKont(v) if ctx.halted && ctx.beh != MainBehavior => /* apply continuation if exists, otherwise go to wait */
+      case ControlKont(v) if !ctx.halted => /* apply continuation */
         kstore.lookup(ctx.kont).flatMap({
           case Kont(frame, next) => sem.stepKont(v, frame, store, t0).map(action => (integrate(p, ctx.copy(kont = next), action), p))
         })
+      case ControlKont(v) if ctx.halted && ctx.beh != MainBehavior => /* go to wait */
+        Set[(State, PID)]((this.copy(procs = procs.update(p -> ctx.copy(control = ControlWait))), p))
+      case ControlKont(v) if ctx.halted && ctx.beh == MainBehavior => Set[(State, PID)]() /* main is stuck at this point */
       case ControlError(_) => Set[(State, PID)]() /* no successor */
       case ControlWait => /* receive a message */
         ctx.beh match {
