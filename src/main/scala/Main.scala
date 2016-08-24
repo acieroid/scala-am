@@ -1,4 +1,5 @@
 import scala.io.StdIn
+import Util._
 
 /**
  * Before looking at this, we recommend seeing how to use this framework. A
@@ -74,89 +75,6 @@ import scala.io.StdIn
  *    inspiration.
  */
 
-/**
- * This is where we parse the arguments given to the implementation
- */
-object Config {
-  object Machine extends Enumeration {
-    val AAC, AAM, AAMGlobalStore, Free, ConcreteMachine = Value
-  }
-  implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
-
-  object Lattice extends Enumeration {
-    val Concrete, ConcreteNew, TypeSet, BoundedInt = Value
-  }
-  implicit val latticeRead: scopt.Read[Lattice.Value] = scopt.Read.reads(Lattice withName _)
-
-  object Address extends Enumeration {
-    val Classical, ValueSensitive = Value
-  }
-  implicit val addressRead: scopt.Read[Address.Value] = scopt.Read.reads(Address withName _)
-
-  trait Time {
-    def nanoSeconds: Long
-  }
-  case class Hours(n: Long) extends Time {
-    def nanoSeconds = n * 60 * 60 * Math.pow(10, 9).toLong
-    override def toString = if (n == 1) "1 hour" else s"$n hours"
-  }
-  case class Minutes(n: Long) extends Time {
-    def nanoSeconds = n * 60 * Math.pow(10, 9).toLong
-    override def toString = if (n == 1) "1 minute" else s"$n minutes"
-  }
-  case class Seconds(n: Long) extends Time {
-    def nanoSeconds = n * Math.pow(10, 9).toLong
-    override def toString = if (n == 1) "1 second" else s"$n seconds"
-  }
-  case class Milliseconds(n: Long) extends Time {
-    def nanoSeconds = n * Math.pow(10, 6).toLong
-    override def toString = if (n == 1) "1 millisecond" else s"$n milliseconds"
-  }
-  case class Nanoseconds(nanoSeconds: Long) extends Time {
-    override def toString = if (nanoSeconds == 1) "1 nanosecond" else s"$nanoSeconds nanoseconds"
-  }
-
-  object TimeParser extends scala.util.parsing.combinator.RegexParsers {
-    val number = "[0-9]+".r
-    def hours: Parser[Time] = (number <~ "h") ^^ ((s) => Hours(s.toLong))
-    def minutes: Parser[Time] = (number <~ "min") ^^ ((s) => Minutes(s.toLong))
-    def seconds: Parser[Time] = (number <~ "s") ^^ ((s) => Seconds(s.toLong))
-    def milliseconds: Parser[Time] = (number <~ "ms") ^^ ((s) => Milliseconds(s.toLong))
-    def nanoseconds: Parser[Time] = (number <~ "ns") ^^ ((s) => Nanoseconds(s.toLong))
-    def time: Parser[Time] = hours | minutes | seconds | milliseconds | nanoseconds
-    def parse(s: String): Time = parseAll(time, s) match {
-      case Success(res, _) => res
-      case Failure(msg, _) => throw new Exception(s"cannot parse time: $msg")
-      case Error(msg, _) => throw new Exception(s"cannot parse time: $msg")
-    }
-  }
-
-  implicit val timeRead: scopt.Read[Time] = scopt.Read.reads(TimeParser.parse _)
-
-  case class Config(machine: Machine.Value = Machine.Free,
-    lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
-    file: Option[String] = None, dotfile: Option[String] = None,
-    address: Address.Value = Address.Classical,
-    inspect: Boolean = false,
-    counting: Boolean = false,
-    bound: Int = 100,
-    timeout: Option[Long] = None)
-
-  val parser = new scopt.OptionParser[Config]("scala-am") {
-    head("scala-am", "0.0")
-    opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text("Abstract machine to use (AAM, AAMGlobalStore, AAC, Free, ConcreteMachine)")
-    opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text("Lattice to use (Concrete, Type, TypeSet)")
-    opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
-    opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
-    opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")
-    opt[Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
-    opt[Unit]('i', "inspect") action { (x, c) => c.copy(inspect = true) } text("Launch inspection REPL (disabled by default)")
-    opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text("Addresses to use (Classical, ValueSensitive)")
-    opt[Unit]("counting") action { (x, c) => c.copy(counting = true) } text("Use abstract counting (on for concrete lattices)")
-    opt[Int]('b', "bound") action { (x, c) => c.copy(bound = x) } text("Bound for bounded lattice (default to 100)")
-  }
-}
-
 object Main {
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
@@ -173,6 +91,7 @@ object Main {
     if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
     println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
     if (inspect) {
+      /* TODO: use repl from Util */
       try {
         do {
           import scala.util.{Try,Success,Failure}
@@ -192,15 +111,6 @@ object Main {
         case Done => ()
       }
     }
-  }
-
-  object Done extends Exception
-
-  def fileContent(file: String): String = {
-    val f = scala.io.Source.fromFile(file)
-    val content = f.getLines.mkString("\n")
-    f.close()
-    content
   }
 
   def main(args: Array[String]) {
@@ -233,19 +143,7 @@ object Main {
 
         val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
 
-        try {
-          do {
-            val program = config.file match {
-              case Some(file) => fileContent(file)
-              case None => StdIn.readLine(">>> ")
-            }
-            if (program == null) throw Done
-            if (program.size > 0)
-              run(machine, sem)(program, config.dotfile, config.timeout, config.inspect)
-          } while (config.file.isEmpty);
-        } catch {
-          case Done => ()
-        }
+        replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.timeout.map(_.toNanos), config.inspect))
       }
       case None => ()
     }

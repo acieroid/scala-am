@@ -238,21 +238,21 @@ class ActorActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address, PI
   type Act = Action[Exp, Abs, Addr]
   def send(pid: PID, msg: List[Abs], act: Act, effs: Effs = Set.empty): Act =
     new ActorActionSend(pid, msg, act, effs)
-  def create[Time : Timestamp](beh: (List[Abs], Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], effs: Effs = Set.empty): Act =
-    new ActorActionCreate(beh, effs)
+  def create[Time : Timestamp](beh: (List[Abs], Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], exp: Exp, effs: Effs = Set.empty): Act =
+    new ActorActionCreate(beh, exp, effs)
   def become[Time : Timestamp](beh: (List[Abs], Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], effs: Effs = Set.empty): Act =
     new ActorActionBecome(beh, effs)
 }
 
-case class ActorActionSend[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (t: TID, msg: List[Abs], act: Action[Exp, Abs, Addr],
+case class ActorActionSend[PID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (p: PID, msg: List[Abs], act: Action[Exp, Abs, Addr],
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }
 
 case class ActorActionCreate[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
-  (beh: (List[Abs], Store[Addr, Abs], Time)  => Action[Exp, Abs, Addr], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+  (beh: (List[Abs], Store[Addr, Abs], Time)  => Action[Exp, Abs, Addr], e: Exp, effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }

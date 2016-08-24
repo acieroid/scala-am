@@ -1,38 +1,14 @@
+import scala.concurrent.duration.Duration
+import Util._
+/* TODO: reuse Util config */
 object BenchmarksConfig {
-  case class Configuration(workers: Int = 1, timeout: Option[Long] = None)
+  case class Configuration(workers: Int = 1, timeout: Option[Duration] = None)
 
   val parser = new scopt.OptionParser[Configuration]("scala-am") {
     head("scala-am", "0.0")
     opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers to run the benchmarks on (1 by default)")
-    opt[Config.Time]('t', "timeout") action { (x, c) => c.copy(timeout = Some(x.nanoSeconds)) } text("Timeout (none by default)")
+    opt[Duration]('t', "timeout") action { (x, c) => c.copy(timeout = if (x.isFinite) Some(x) else None) } text("Timeout (none by default)")
   }
-}
-
-/* From http://stackoverflow.com/questions/7539831/scala-draw-table-to-console */
-object Tabulator {
-  def format(table: Seq[Seq[Any]]) = table match {
-    case Seq() => ""
-    case _ =>
-      val sizes = for (row <- table) yield (for (cell <- row) yield if (cell == null) 0 else cell.toString.length)
-      val colSizes = for (col <- sizes.transpose) yield col.max
-      val rows = for (row <- table) yield formatRow(row, colSizes)
-      formatRows(rowSeparator(colSizes), rows)
-  }
-
-  def formatRows(rowSeparator: String, rows: Seq[String]): String = (
-    rowSeparator ::
-    rows.head ::
-    rowSeparator ::
-    rows.tail.toList :::
-    rowSeparator ::
-    List()).mkString("\n")
-
-  def formatRow(row: Seq[Any], colSizes: Seq[Int]) = {
-    val cells = (for ((item, size) <- row.zip(colSizes)) yield if (size == 0) "" else ("%" + size + "s").format(item))
-    cells.mkString("|", "|", "|")
-  }
-
-  def rowSeparator(colSizes: Seq[Int]) = colSizes map { "-" * _ } mkString("+", "+", "+")
 }
 
 case class MachineConfig(program: String, machine: Config.Machine.Value = Config.Machine.AAM, address: Config.Address.Value = Config.Address.Classical, lattice: Config.Lattice.Value = Config.Lattice.TypeSet, concrete: Boolean = false) {
@@ -85,7 +61,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
 
       val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
 
-      val program = Main.fileContent(s"$dir/${config.program}.scm")
+      val program = fileContent(s"$dir/${config.program}.scm")
       if (program != null || program.size > 0) {
         try {
           val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {
@@ -186,7 +162,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
   }
   def main(args: Array[String]) {
     BenchmarksConfig.parser.parse(args, BenchmarksConfig.Configuration()) match {
-      case Some(config) => run(config.workers, config.timeout)
+      case Some(config) => run(config.workers, config.timeout.map(_.toNanos))
       case None => system.shutdown
     }
   }
