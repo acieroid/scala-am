@@ -682,6 +682,10 @@ object SchemeUndefiner {
         case SchemeRelease(exp, pos) => SchemeRelease(undefine1(exp), pos)
         case SchemeSpawn(exp, pos) => SchemeSpawn(undefine1(exp), pos)
         case SchemeJoin(exp, pos) => SchemeJoin(undefine1(exp), pos)
+        case SchemeSend(target, args, pos) => SchemeSend(undefine1(target), undefineBody(args), pos)
+        case SchemeCreate(beh, args, pos) => SchemeCreate(undefine1(beh), undefineBody(args), pos)
+        case SchemeBecome(beh, args, pos) => SchemeBecome(undefine1(beh), undefineBody(args), pos)
+        case SchemeBehavior(xs, ys, body, pos) => SchemeBehavior(xs, ys, undefineBody(body), pos)
       }
       exp2 :: undefineBody(rest)
     }
