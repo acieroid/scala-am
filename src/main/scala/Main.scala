@@ -1,5 +1,6 @@
 import scala.io.StdIn
 import Util._
+import scala.util.{Try, Success, Failure}
 
 /**
  * Before looking at this, we recommend seeing how to use this framework. A
@@ -91,25 +92,13 @@ object Main {
     if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
     println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
     if (inspect) {
-      /* TODO: use repl from Util */
-      try {
-        do {
-          import scala.util.{Try,Success,Failure}
-          val input = StdIn.readLine(">>> ")
-          if (input == null) throw Done
-          if (input.size > 0) {
-            input.indexOf(".") match {
-              case -1 => println(s"Unknown inspection query: $input")
-              case n => Try(input.subSequence(0, n).toString.toInt) match {
-                case Success(state) => result.inspect(state, input.subSequence(n+1, input.size).toString)
-                case Failure(e) => println(s"Cannot parse state number (${input.subSequence(0, n)}): $e")
-              }
-            }
-          }
-        } while (true);
-      } catch {
-        case Done => ()
-      }
+      replOrFile(None, input => input.indexOf(".") match {
+        case -1 => println(s"Unknown inspection query: $input")
+        case n => Try(input.subSequence(0, n).toString.toInt) match {
+          case Success(state) => result.inspect(state, input.subSequence(n+1, input.size).toString)
+          case Failure(e) => println(s"Cannot parse state number (${input.subSequence(0, n)}): $e")
+        }
+      })
     }
   }
 
@@ -117,33 +106,88 @@ object Main {
     import scala.util.control.Breaks._
     Config.parser.parse(args, Config.Config()) match {
       case Some(config) => {
-        val lattice: SchemeLattice = config.lattice match {
-          case Config.Lattice.Concrete => new ConcreteLattice(true)
-          case Config.Lattice.TypeSet => new TypeSetLattice(config.counting)
-          case Config.Lattice.BoundedInt => new BoundedIntLattice(config.bound, config.counting)
+        /* TODO: there's a lot of duplication, factor this out */
+        config.language match {
+          case Config.Language.Scheme =>
+            val lattice: SchemeLattice = config.lattice match {
+              case Config.Lattice.Concrete => new ConcreteLattice(true)
+              case Config.Lattice.TypeSet => new TypeSetLattice(config.counting)
+              case Config.Lattice.BoundedInt => new BoundedIntLattice(config.bound, config.counting)
+              case Config.Lattice.ConstantPropagation => new ConstantPropagationLattice(config.counting)
+            }
+            implicit val isSchemeLattice = lattice.isSchemeLattice
+
+            val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
+            implicit val isTimestamp = time.isTimestamp
+
+            val address: AddressWrapper = config.address match {
+              case Config.Address.Classical => ClassicalAddress
+              case Config.Address.ValueSensitive => ValueSensitiveAddress
+            }
+            implicit val isAddress = address.isAddress
+
+            val machine = config.machine match {
+              case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, address.A, time.T]
+              case Config.Machine.AAMGlobalStore => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AAMKAlloc)
+              case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
+              case Config.Machine.AAC => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AACKAlloc)
+              case Config.Machine.Free => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](P4FKAlloc)
+            }
+
+            val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
+
+            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.timeout.map(_.toNanos), config.inspect))
+          case Config.Language.CScheme =>
+            val lattice: CSchemeLattice = config.lattice match {
+              case Config.Lattice.Concrete => new CSchemeConcreteLattice(true)
+              case Config.Lattice.TypeSet => new CSchemeTypeSetLattice(config.counting)
+              case Config.Lattice.BoundedInt => new CSchemeBoundedIntLattice(config.bound, config.counting)
+              case Config.Lattice.ConstantPropagation => new CSchemeConstantPropagationLattice(config.counting)
+            }
+            implicit val isCSchemeLattice = lattice.isCSchemeLattice
+
+            val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
+            implicit val isTimestamp = time.isTimestamp
+
+            val address: AddressWrapper = config.address match {
+              case Config.Address.Classical => ClassicalAddress
+              case Config.Address.ValueSensitive => ValueSensitiveAddress
+            }
+            implicit val isAddress = address.isAddress
+
+            val machine = config.machine match {
+              case Config.Machine.AAM => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](AllInterleavings)
+              case _ => throw new Exception(s"unsupported machine for CScheme: ${config.machine}")
+            }
+
+            val sem = new CSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new CSchemePrimitives[address.A, lattice.L])
+            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.timeout.map(_.toNanos), config.inspect))
+          case Config.Language.AScheme =>
+            val lattice: ASchemeLattice = config.lattice match {
+              case Config.Lattice.Concrete => new ASchemeConcreteLattice(true)
+              case Config.Lattice.TypeSet => new ASchemeTypeSetLattice(config.counting)
+              case Config.Lattice.BoundedInt => new ASchemeBoundedIntLattice(config.bound, config.counting)
+              case Config.Lattice.ConstantPropagation => new ASchemeConstantPropagationLattice(config.counting)
+            }
+            implicit val isASchemeLattice = lattice.isASchemeLattice
+
+            val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
+            implicit val isTimestamp = time.isTimestamp
+
+            val address: AddressWrapper = config.address match {
+              case Config.Address.Classical => ClassicalAddress
+              case Config.Address.ValueSensitive => ValueSensitiveAddress
+            }
+            implicit val isAddress = address.isAddress
+
+            val machine = config.machine match {
+              case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID]
+              case _ => throw new Exception(s"unsupported machine for AScheme: ${config.machine}")
+            }
+
+            val sem = new ASchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, lattice.L])
+            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.timeout.map(_.toNanos), config.inspect))
         }
-        implicit val isSchemeLattice = lattice.isSchemeLattice
-
-        val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
-        implicit val isTimestamp = time.isTimestamp
-
-        val address: AddressWrapper = config.address match {
-          case Config.Address.Classical => ClassicalAddress
-          case Config.Address.ValueSensitive => ValueSensitiveAddress
-        }
-        implicit val isAddress = address.isAddress
-
-        val machine = config.machine match {
-          case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, address.A, time.T]
-          case Config.Machine.AAMGlobalStore => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AAMKAlloc)
-          case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
-          case Config.Machine.AAC => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AACKAlloc)
-          case Config.Machine.Free => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](P4FKAlloc)
-        }
-
-        val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
-
-        replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.timeout.map(_.toNanos), config.inspect))
       }
       case None => ()
     }

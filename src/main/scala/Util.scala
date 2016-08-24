@@ -13,6 +13,7 @@ object Util {
   /** Either run cb on the content of the given file, or run a REPL, each line being sent to cb */
   def replOrFile(file: Option[String], cb: String => Unit): Unit = {
     lazy val reader = new jline.console.ConsoleReader()
+    @scala.annotation.tailrec
     def loop(): Unit = {
       val program = reader.readLine(">>> ")
       if (program != null) {
@@ -38,9 +39,14 @@ object Util {
     implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
 
     object Lattice extends Enumeration {
-      val Concrete, ConcreteNew, TypeSet, BoundedInt = Value
+      val Concrete, TypeSet, BoundedInt, ConstantPropagation = Value
     }
     implicit val latticeRead: scopt.Read[Lattice.Value] = scopt.Read.reads(Lattice withName _)
+
+    object Language extends Enumeration {
+      val Scheme, AScheme, CScheme = Value
+    }
+    implicit val languageRead: scopt.Read[Language.Value] = scopt.Read.reads(Language withName _)
 
     object Address extends Enumeration {
       val Classical, ValueSensitive = Value
@@ -48,6 +54,7 @@ object Util {
     implicit val addressRead: scopt.Read[Address.Value] = scopt.Read.reads(Address withName _)
 
     case class Config(machine: Machine.Value = Machine.Free,
+      language: Language.Value = Language.Scheme,
       lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
       file: Option[String] = None, dotfile: Option[String] = None,
       address: Address.Value = Address.Classical,
@@ -62,6 +69,7 @@ object Util {
       head("scala-am", "0.0")
       opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text(s"Abstract machine to use (${Machine.values.mkString(separator)})")
       opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text(s"Lattice to use (${Lattice.values.mkString(separator)})")
+      opt[Language.Value]("lang") action { (x, c) => c.copy(language = x) } text(s"Language to analyze (${Language.values.mkString(separator)})")
       opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
       opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
       opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")

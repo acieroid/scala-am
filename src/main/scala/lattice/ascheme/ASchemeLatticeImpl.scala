@@ -93,3 +93,8 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
     def isPrimitiveValue(x: L) = lat.isPrimitiveValue(x.seq) && x.p.isEmpty && x.b.isEmpty
   }
 }
+
+class ASchemeConcreteLattice(counting: Boolean) extends MakeASchemeLattice(new ConcreteLattice(counting))
+class ASchemeTypeSetLattice(counting: Boolean) extends MakeASchemeLattice(new TypeSetLattice(counting))
+class ASchemeBoundedIntLattice(bound: Int, counting: Boolean) extends MakeASchemeLattice(new BoundedIntLattice(bound, counting))
+class ASchemeConstantPropagationLattice(counting: Boolean) extends MakeASchemeLattice(new ConstantPropagationLattice(counting))
