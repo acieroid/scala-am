@@ -60,7 +60,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       case ControlEval(_, _) => false
       case ControlKont(v) => beh == MainBehavior && kont == HaltKontAddress
       case ControlError(_) => true
-      case ControlWait => beh == MainBehavior
+      case ControlWait => true
     }
     def hasError: Boolean = control match {
       case ControlError(_) => true
@@ -74,20 +74,21 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
 
   /* TODO: add counting */
   case class Procs(content: Map[PID, Set[Context]]) {
-    def toXml: List[scala.xml.Node] = content.keySet.toList.flatMap(p =>
-      <br/> :: scala.xml.Text(s"$p: ") :: content(p).head.toXml) /* TODO: adjust to multiple contexts */
+    /* TODO: adjust to multiple contexts */
+    def toXml: List[scala.xml.Node] = content.keySet.toList.map(p =>
+      scala.xml.Text(s"$p: ") :: content(p).head.toXml).reduceLeft({ (acc, l) => acc ++ (<br/> :: l) })
     def get(p: PID): Set[Context] = content(p)
     def update(v: (PID, Context)): Procs = {
       assert(content(v._1).size <= 1) /* TODO: can remove this assertion when we have counting, and add strong updates */
       Procs(content = content + (v._1 -> Set(v._2)))
     }
     def extend(v: (PID, Context)): Procs = {
-      println(s"extend($v)")
       assert(get(v._1).size == 0) /* TODO */
       Procs(content = content + (v._1 -> (get(v._1) + v._2)))
     }
     def pids: Set[PID] = content.keySet
-    def exists(p: (PID, Set[Context]) => Boolean): Boolean = content.exists({ case (pid, ctxs) => p(pid, ctxs) })
+    def exists(p: (PID, Context) => Boolean): Boolean = content.exists({ case (pid, ctxs) => ctxs.exists(ctx => p(pid, ctx)) })
+    def forall(p: (PID, Context) => Boolean): Boolean = content.forall({ case (pid, ctxs) => ctxs.forall(ctx => p(pid, ctx)) })
   }
   object Procs {
     def empty: Procs = Procs(Map[PID, Set[Context]]().withDefaultValue(Set[Context]()))
@@ -98,8 +99,8 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
 
   case class State(procs: Procs, store: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
     def toXml = procs.toXml
-    def halted: Boolean = procs.get(pid.initial).forall(_.halted)
-    def hasError: Boolean = procs.exists((pid, ctxs) => ctxs.exists(_.hasError))
+    def halted: Boolean = procs.forall((p, ctx) => ctx.halted)
+    def hasError: Boolean = procs.exists((pid, ctx) => ctx.hasError)
     def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = stepPids(procs.pids, sem)
     def stepPids(pids: Set[PID], sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = pids.flatMap(p => stepPid(p, sem))
 
@@ -107,11 +108,10 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       case ActionReachedValue(v, store2, effs) =>
         this.copy(procs = procs.update(p, ctx.copy(control = ControlKont(v))),
           store = store2)
-      case ActionPush(frame, e, env, store2, effs) => {
+      case ActionPush(frame, e, env, store2, effs) =>
         val next = NormalKontAddress(p, e, t0)
         this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), kont = next)),
           kstore = kstore.extend(next, Kont(frame, ctx.kont)), store = store2)
-      }
       case ActionEval(e, env, store2, effs) =>
         this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env))),
           store = store2)
@@ -120,33 +120,33 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           store = store2)
       case ActionError(err) =>
         this.copy(procs = procs.update(p, ctx.copy(control = ControlError(err))))
-      case ActorActionSend(ptarget : PID @unchecked, msg, act2, effs) if ptarget != p => {
+      case ActorActionSend(ptarget : PID @unchecked, msg, act2, effs) if ptarget != p =>
         val ctxtarget = procs.get(ptarget).head /* TODO: map */
         this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(sabs.inject(false))))
           .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push(p -> msg))))
-      }
       case ActorActionSend(ptarget, msg, act2, effs) if ptarget == p => /* TODO: special care need to be taken if p maps to more than a single actor */
         this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), mbox = ctx.mbox.push(p -> msg))))
-      case ActorActionCreate(beh : Beh @unchecked, exp, effs) => {
+      case ActorActionCreate(beh : Beh @unchecked, exp, effs) =>
         val p2 = pid.thread(exp, t0)
         this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(aabs.injectPid(p2))))
           .extend(p2 -> Context.create(p2, beh)))
-      }
       case ActorActionBecome(beh2 : Beh @unchecked, effs) =>
         this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), beh = ActorBehavior(beh2))))
     }
+
     def stepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = procs.get(p).flatMap(ctx => ctx.control match {
       case ControlEval(e, env) => /* call semantics */
         sem.stepEval(e, env, store, t0).map(action => (integrate(p, ctx, action), p))
-      case ControlKont(v) if !ctx.halted => /* apply continuation */
+      case ControlKont(v) if ctx.kont != HaltKontAddress => /* apply continuation */
         kstore.lookup(ctx.kont).flatMap({
           case Kont(frame, next) => sem.stepKont(v, frame, store, t0).map(action => (integrate(p, ctx.copy(kont = next), action), p))
         })
-      case ControlKont(v) if ctx.halted && ctx.beh != MainBehavior => /* go to wait */
+      case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.beh != MainBehavior => /* go to wait */
         Set[(State, PID)]((this.copy(procs = procs.update(p -> ctx.copy(control = ControlWait))), p))
-      case ControlKont(v) if ctx.halted && ctx.beh == MainBehavior => Set[(State, PID)]() /* main is stuck at this point */
+      case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.beh == MainBehavior =>
+        Set[(State, PID)]() /* main is stuck at this point */
       case ControlError(_) => Set[(State, PID)]() /* no successor */
       case ControlWait => /* receive a message */
         ctx.beh match {
@@ -196,6 +196,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       } else {
         todo.headOption match {
           case Some(s) =>
+            // graph.foreach(g => println(s"State ${g.nodeId(s)}"))
             if (visited.contains(s)) {
               loop(todo.tail, visited, halted, graph)
             } else if (s.halted) {

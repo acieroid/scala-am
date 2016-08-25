@@ -27,11 +27,16 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
   def foldNodes[B](init: B)(f: (B, Node) => B) = nodes.foldLeft(init)(f)
   def getNode(id: Int): Option[Node] = ids.find({ case (_, v) => id == v }).map(_._1)
   def nodeId(node: Node): Int = ids.getOrElse(node, -1)
-  def toDot(label: Node => List[scala.xml.Node], color: Node => String, annotLabel: Annotation => List[scala.xml.Node]): String = {
+  def emptyTooltip(node: Node): String = ""
+  def toDot(label: Node => List[scala.xml.Node],
+    color: Node => String,
+    annotLabel: Annotation => List[scala.xml.Node],
+    tooltip: Node => String = emptyTooltip): String = {
     val sb = new StringBuilder("digraph G {\n")
     nodes.foreach((n) => {
       val labelstr = label(n).mkString(" ")
-      sb.append(s"node_${ids(n)}[label=<${ids(n)}: $labelstr>, fillcolor=<${color(n)}> style=<filled>];\n")
+
+      sb.append(s"node_${ids(n)}[xlabel=${ids(n)}, label=<$labelstr>, fillcolor=<${color(n)}> style=<filled>, tooltip=<${tooltip(n)}>];\n")
     })
     edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) =>
       val annotstr = annotLabel(annot).mkString(" ")
