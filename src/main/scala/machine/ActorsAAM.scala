@@ -21,7 +21,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   }
 
   type Act = Action[Exp, Abs, Addr]
-  type Beh = (List[Abs], Store[Addr, Abs], Time) => Act
+  type Beh = (List[Abs], PID, PID, Store[Addr, Abs], Time) => Act
   trait Behavior
   case class ActorBehavior(beh: Beh) extends Behavior
   case object MainBehavior extends Behavior
@@ -44,6 +44,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   case class Mbox(messages: Set[Message]) {
     def pop: Set[(Message, Mbox)] = messages.map(m => (m, this))
     def push(m: Message): Mbox = this.copy(messages = messages + m)
+    def isEmpty: Boolean = messages.isEmpty
   }
   object Mbox {
     def empty: Mbox = Mbox(Set[Message]())
@@ -53,14 +54,14 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def toXml: List[scala.xml.Node] = control match {
       case ControlEval(e, _) => List(<font color="forestgreen">{e.toString.take(40)}</font>)
       case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
-      case ControlError(err) => List(<font color="red2">{err.toString.take(40)}</font>)
+      case ControlError(err) => List(<font color="black">{err.toString}</font>)
       case ControlWait => List(<font color="skyblue">wait</font>)
     }
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
       case ControlKont(v) => beh == MainBehavior && kont == HaltKontAddress
       case ControlError(_) => true
-      case ControlWait => true
+      case ControlWait => mbox.isEmpty
     }
     def hasError: Boolean = control match {
       case ControlError(_) => true
@@ -96,65 +97,71 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
 
   val t0 = time.initial("dummy") /* TODO: add timestamping */
 
+  trait ActorEffect
+  case class ActorEffectSend(target: PID) extends ActorEffect
+  case class ActorEffectSendSelf(target: PID) extends ActorEffect
 
   case class State(procs: Procs, store: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
     def toXml = procs.toXml
     def halted: Boolean = procs.forall((p, ctx) => ctx.halted)
     def hasError: Boolean = procs.exists((pid, ctx) => ctx.hasError)
-    def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = stepPids(procs.pids, sem)
-    def stepPids(pids: Set[PID], sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = pids.flatMap(p => stepPid(p, sem))
+    def stepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = stepPids(procs.pids, sem)
+    def stepPids(pids: Set[PID], sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = pids.flatMap(p => stepPid(p, sem))
+    def stepAllExceptPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = stepPids(procs.pids - p, sem)
 
-    def integrate(p: PID, ctx: Context, act: Act): State = act match {
+    def integrate(p: PID, ctx: Context, act: Act): (State, PID, Option[ActorEffect]) = act match {
       case ActionReachedValue(v, store2, effs) =>
-        this.copy(procs = procs.update(p, ctx.copy(control = ControlKont(v))),
-          store = store2)
+        (this.copy(procs = procs.update(p, ctx.copy(control = ControlKont(v))),
+          store = store2), p, None)
       case ActionPush(frame, e, env, store2, effs) =>
         val next = NormalKontAddress(p, e, t0)
-        this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), kont = next)),
-          kstore = kstore.extend(next, Kont(frame, ctx.kont)), store = store2)
+        (this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), kont = next)),
+          kstore = kstore.extend(next, Kont(frame, ctx.kont)), store = store2), p, None)
       case ActionEval(e, env, store2, effs) =>
-        this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env))),
-          store = store2)
+        (this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env))),
+          store = store2), p, None)
       case ActionStepIn(fexp, _, e, env, store2, _, effs) =>
-        this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env))),
-          store = store2)
+        (this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env))),
+          store = store2), p, None)
       case ActionError(err) =>
-        this.copy(procs = procs.update(p, ctx.copy(control = ControlError(err))))
+        (this.copy(procs = procs.update(p, ctx.copy(control = ControlError(err)))), p, None)
       case ActorActionSend(ptarget : PID @unchecked, msg, act2, effs) if ptarget != p =>
         val ctxtarget = procs.get(ptarget).head /* TODO: map */
-        this.copy(procs = procs
+        (this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(sabs.inject(false))))
-          .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push(p -> msg))))
+          .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push(p -> msg)))),
+          p, Some(ActorEffectSend(ptarget)))
       case ActorActionSend(ptarget, msg, act2, effs) if ptarget == p => /* TODO: special care need to be taken if p maps to more than a single actor */
-        this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), mbox = ctx.mbox.push(p -> msg))))
+        (this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), mbox = ctx.mbox.push(p -> msg)))),
+          p, Some(ActorEffectSendSelf(p)))
       case ActorActionCreate(beh : Beh @unchecked, exp, effs) =>
         val p2 = pid.thread(exp, t0)
-        this.copy(procs = procs
+        (this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(aabs.injectPid(p2))))
-          .extend(p2 -> Context.create(p2, beh)))
+          .extend(p2 -> Context.create(p2, beh))), p, None)
       case ActorActionBecome(beh2 : Beh @unchecked, effs) =>
-        this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), beh = ActorBehavior(beh2))))
+        (this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), beh = ActorBehavior(beh2)))), p, None)
     }
 
-    def stepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID)] = procs.get(p).flatMap(ctx => ctx.control match {
+    def stepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = procs.get(p).flatMap(ctx => ctx.control match {
       case ControlEval(e, env) => /* call semantics */
-        sem.stepEval(e, env, store, t0).map(action => (integrate(p, ctx, action), p))
+        sem.stepEval(e, env, store, t0).map(action => integrate(p, ctx, action))
       case ControlKont(v) if ctx.kont != HaltKontAddress => /* apply continuation */
         kstore.lookup(ctx.kont).flatMap({
-          case Kont(frame, next) => sem.stepKont(v, frame, store, t0).map(action => (integrate(p, ctx.copy(kont = next), action), p))
+          case Kont(frame, next) => sem.stepKont(v, frame, store, t0).map(action => integrate(p, ctx.copy(kont = next), action))
         })
       case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.beh != MainBehavior => /* go to wait */
-        Set[(State, PID)]((this.copy(procs = procs.update(p -> ctx.copy(control = ControlWait))), p))
+        Set[(State, PID, Option[ActorEffect])]((this.copy(procs = procs.update(p -> ctx.copy(control = ControlWait))), p, None))
       case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.beh == MainBehavior =>
-        Set[(State, PID)]() /* main is stuck at this point */
-      case ControlError(_) => Set[(State, PID)]() /* no successor */
+        Set[(State, PID, Option[ActorEffect])]() /* main is stuck at this point */
+      case ControlError(_) => Set[(State, PID, Option[ActorEffect])]() /* no successor */
       case ControlWait => /* receive a message */
         ctx.beh match {
           case ActorBehavior(beh) =>
-            ctx.mbox.pop.map({ case ((sender, values), mbox2) => /* TODO: bind sender and self */
-              (integrate(p, ctx.copy(mbox = mbox2), beh(values, store, t0)), p)
+            ctx.mbox.pop.map({ case ((sender, values), mbox2) =>
+              integrate(p, ctx.copy(mbox = mbox2), beh(values, p, sender, store, t0))
             })
-          case MainBehavior => Set[(State, PID)]() /* main cannot receive messages */
+          case MainBehavior => Set[(State, PID, Option[ActorEffect])]() /* main cannot receive messages */
         }
     })
   }
@@ -176,41 +183,105 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def containsFinalValue(v: Abs): Boolean = finalValues.exists(v2 => abs.subsumes(v2, v))
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, _.toXml,
-        (s) => if (halted.contains(s)) {
-          Colors.Yellow
-        } else if (s.hasError) {
+        (s) => if (s.hasError) {
           Colors.Red
+        } else if (halted.contains(s)) {
+          Colors.Yellow
         } else {
           Colors.White
         }, p => List(scala.xml.Text(p.toString)))
       case None =>
         println("Not generating graph because no graph was computed")
     }
+    import scala.util.{Try,Success,Failure}
+    override def inspect(stateNumber: Int, query: String) = graph.flatMap(_.getNode(stateNumber)) match {
+      case Some(state) => query.split('.') match {
+        case Array("store") => println(state.store)
+        case Array("hashCode") => println(state.hashCode)
+        case Array("equals", s) => Try(s.toInt) match {
+          case Success(state2Number) => graph.flatMap(_.getNode(state2Number)) match {
+            case Some(state2) =>
+              println(state == state2)
+              println(state)
+              println("===")
+              println(state2)
+            case None => println(s"Graph doesn't contain state ${state2Number}")
+          }
+          case Failure(e) => println(s"Cannot parse state number ($s): $e")
+        }
+        case v => println(s"Unknown inspection query on $stateNumber: $query")
+      }
+      case None => println(s"Graph was either not generated, or doesn't contain state $stateNumber. I cannot query it")
+    }
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
     val startingTime = System.nanoTime
-    def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
-      if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-        ActorsAAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+    @scala.annotation.tailrec
+    def loopAllInterleavings(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
+      if (Util.timeoutReached(timeout, startingTime)) {
+        ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
       } else {
         todo.headOption match {
           case Some(s) =>
             // graph.foreach(g => println(s"State ${g.nodeId(s)}"))
             if (visited.contains(s)) {
-              loop(todo.tail, visited, halted, graph)
+              loopAllInterleavings(todo.tail, visited, halted, graph)
             } else if (s.halted) {
-              loop(todo.tail, visited + s, halted + s, graph)
+              loopAllInterleavings(todo.tail, visited + s, halted + s, graph)
             } else {
-              val succs: Set[(State, PID)] = s.stepAll(sem)
-              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, pid) => (s, pid, s2) })))
-              loop(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
+              val succs: Set[(State, PID, Option[ActorEffect])] = s.stepAll(sem)
+              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, pid, _) => (s, pid, s2) })))
+              loopAllInterleavings(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
             }
           case None =>
-            ActorsAAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, false)
+            ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
         }
       }
     }
-    loop(Set(State.inject(exp, sem.initialEnv, sem.initialStore)), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
+    @scala.annotation.tailrec
+    def loopSendInterleavings(todo: Set[(State, PID)], visited: Set[(State, PID)], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
+      if (Util.timeoutReached(timeout, startingTime)) {
+        ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
+      } else {
+        todo.headOption match {
+          case Some((s, p)) =>
+            if (visited.contains((s, p))) {
+              loopSendInterleavings(todo.tail, visited, halted, graph)
+            } else if (s.halted) {
+              loopSendInterleavings(todo.tail, visited + ((s, p)), halted + s, graph)
+            } else {
+
+              // TODO: problem with loops, we might keep running the same process forever, since messages might not be removed from the mailbox in the abstract
+              // 1: Step only the current pid
+              val succs: Set[(State, PID, Option[ActorEffect])] = s.stepPid(p, sem)
+              // 2: If we sent a message, we need to explore other pids as well
+              val send: Boolean = succs.exists({ case (_, _, eff) => eff match {
+                case Some(_: ActorEffectSend) => true
+                case Some(_: ActorEffectSendSelf) => true
+                case _ => false
+              }})
+              val succs2: Set[(State, PID, Option[ActorEffect])] = if (!send) { succs } else {
+                succs ++ s.stepAllExceptPid(p, sem)
+              }
+              val succs3: Set[(State, PID, Option[ActorEffect])] = if (!succs2.isEmpty) { succs2 } else {
+                // 3: if there is no successor at all, we may need to explore more pids. This basically applies when no message was sent (and succs == succs2 == empty set)
+                s.stepAllExceptPid(p, sem)
+              }
+              // 4: Compute the pids we explored
+              val pids: Set[PID] = succs3.map({ case (_, p, _) => p })
+              // 5: Add new stuff to the graph
+              val newGraph = graph.map(_.addEdges(succs3.map({ case (s2, p, _) => (s, p, s2) })))
+              // 6: Explore the remainder + new states
+              loopSendInterleavings(todo.tail ++ succs3.map({ case (s2, p, _) => (s2, p) }), visited ++ pids.map(p => (s, p)), halted, newGraph)
+            }
+          case None =>
+            ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
+        }
+      }
+    }
+    val initialState = State.inject(exp, sem.initialEnv, sem.initialStore)
+    // loopAllInterleavings(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
+    loopSendInterleavings(Set((initialState, pid.initial)), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
   }
 }

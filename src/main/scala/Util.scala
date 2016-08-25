@@ -29,6 +29,10 @@ object Util {
     }
   }
 
+  def timeoutReached(timeout: Option[Long], startingTime: Long): Boolean =
+    timeout.map(System.nanoTime - startingTime > _).getOrElse(false)
+  def timeElapsed(startingTime: Long): Double = (System.nanoTime - startingTime) / Math.pow(10, 9)
+
   /**
    * This is where we parse the arguments given to the implementation
    */
