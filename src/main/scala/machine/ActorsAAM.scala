@@ -4,8 +4,6 @@ import scalaz._
 class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def abs = implicitly[JoinLattice[Abs]]
-  def sabs = implicitly[IsSchemeLattice[Abs]] /* TODO: machine should be independent of Scheme and AScheme lattices */
-  def aabs = implicitly[IsASchemeLattice[Abs]]
   def addr = implicitly[Address[Addr]]
   def exp = implicitly[Expression[Exp]]
   def time = implicitly[Timestamp[Time]]
@@ -125,22 +123,22 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           store = store2), p, None)
       case ActionError(err) =>
         (this.copy(procs = procs.update(p, ctx.copy(control = ControlError(err)))), p, None)
-      case ActorActionSend(ptarget : PID @unchecked, msg, act2, effs) if ptarget != p =>
+      case ActorActionSend(ptarget : PID @unchecked, msg, vres, effs) if ptarget != p =>
         val ctxtarget = procs.get(ptarget).head /* TODO: map */
         (this.copy(procs = procs
-          .update(p -> ctx.copy(control = ControlKont(sabs.inject(false))))
+          .update(p -> ctx.copy(control = ControlKont(vres)))
           .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push(p -> msg)))),
           p, Some(ActorEffectSend(ptarget)))
-      case ActorActionSend(ptarget, msg, act2, effs) if ptarget == p => /* TODO: special care need to be taken if p maps to more than a single actor */
-        (this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), mbox = ctx.mbox.push(p -> msg)))),
+      case ActorActionSend(ptarget, msg, vres, effs) if ptarget == p => /* TODO: special care need to be taken if p maps to more than a single actor */
+        (this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push(p -> msg)))),
           p, Some(ActorEffectSendSelf(p)))
-      case ActorActionCreate(beh : Beh @unchecked, exp, effs) =>
+      case ActorActionCreate(beh : Beh @unchecked, exp, fres : (PID => Abs), effs) =>
         val p2 = pid.thread(exp, t0)
         (this.copy(procs = procs
-          .update(p -> ctx.copy(control = ControlKont(aabs.injectPid(p2))))
+          .update(p -> ctx.copy(control = ControlKont(fres(p2))))
           .extend(p2 -> Context.create(p2, beh))), p, None)
-      case ActorActionBecome(beh2 : Beh @unchecked, effs) =>
-        (this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(sabs.inject(false)), beh = ActorBehavior(beh2)))), p, None)
+      case ActorActionBecome(beh2 : Beh @unchecked, vres, effs) =>
+        (this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(vres), beh = ActorBehavior(beh2)))), p, None)
     }
 
     def stepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = procs.get(p).flatMap(ctx => ctx.control match {

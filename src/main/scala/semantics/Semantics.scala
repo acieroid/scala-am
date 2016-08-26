@@ -237,29 +237,31 @@ class ActorActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address, Ti
   type Sto = Store[Addr, Abs]
   type Act = Action[Exp, Abs, Addr]
   type Beh = (List[Abs], PID, PID, Store[Addr, Abs], Time) => Act
-  def send(pid: PID, msg: List[Abs], act: Act, effs: Effs = Set.empty): Act =
-    new ActorActionSend(pid, msg, act, effs)
-  def create(beh: Beh, exp: Exp, effs: Effs = Set.empty): Act =
-    new ActorActionCreate(beh, exp, effs)
-  def become(beh: Beh, effs: Effs = Set.empty): Act =
-    new ActorActionBecome(beh, effs)
+  def send(pid: PID, msg: List[Abs], vres: Abs, effs: Effs = Set.empty): Act =
+    new ActorActionSend(pid, msg, vres, effs)
+  def create(beh: Beh, exp: Exp, fres: PID => Abs, effs: Effs = Set.empty): Act =
+    new ActorActionCreate(beh, exp, fres, effs)
+  def become(beh: Beh, vres: Abs, effs: Effs = Set.empty): Act =
+    new ActorActionBecome(beh, vres, effs)
 }
 
 case class ActorActionSend[PID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (p: PID, msg: List[Abs], act: Action[Exp, Abs, Addr],
+  (p: PID, msg: List[Abs], vres: Abs,
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }
 
 case class ActorActionCreate[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
-  (beh: (List[Abs], PID, PID, Store[Addr, Abs], Time)  => Action[Exp, Abs, Addr], e: Exp, effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+  (beh: (List[Abs], PID, PID, Store[Addr, Abs], Time)  => Action[Exp, Abs, Addr], e: Exp, fres: PID => Abs,
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }
 
 case class ActorActionBecome[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
-  (beh: (List[Abs], PID, PID, Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+  (beh: (List[Abs], PID, PID, Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], vres: Abs,
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }

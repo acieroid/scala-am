@@ -48,7 +48,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       if (pids.isEmpty) {
         Action.error(TypeError("send", "first operand", "pid value", s"non-pid value ($target)"))
       } else {
-        pids.map(p => ActorAction.send(p, argsv, Action.value(aabs.injectPid(p), store)))
+        pids.map(p => ActorAction.send(p, argsv, aabs.injectPid(p)))
       }
     case FrameSend(argsv, first :: rest, env) =>
       Action.push(FrameSend(v :: argsv, rest, env), first, env, store)
@@ -62,7 +62,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
           if (xs.size != argsv.size) {
             Action.error(ArityError("create behavior", xs.size, argsv.size))
           } else {
-            ActorAction.create(createBeh(xs, ys, env, body, argsv, t), exp)
+            ActorAction.create(createBeh(xs, ys, env, body, argsv, t), exp, aabs.injectPid _)
           }
         })
       }
@@ -78,7 +78,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
           if (xs.size != argsv.size) {
             Action.error(ArityError("become behavior", xs.size, argsv.size))
           } else {
-            ActorAction.become(createBeh(xs, ys, env, body, argsv, t))
+            ActorAction.become(createBeh(xs, ys, env, body, argsv, t), aabs.inject(false))
           }
         })
       }
