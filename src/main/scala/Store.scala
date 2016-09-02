@@ -114,24 +114,6 @@ case class DeltaStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]
   override def addDelta(delta: Map[Addr, Abs]) = this.copy(content = content |+| delta, d = Map())
 }
 
-/* Count values for counting store */
-trait Count {
-  def inc: Count
-}
-case object CountOne extends Count {
-  def inc = CountInfinity
-}
-case object CountInfinity extends Count {
-  def inc = CountInfinity
-}
-
-object Count {
-  /* We need it to form a semigroup to use |+| to join stores */
-  implicit val isSemigroup  = new Semigroup[Count] {
-    def append(x: Count, y: => Count) = CountInfinity
-  }
-}
-
 case class CountingStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, (Count, Abs)]) extends Store[Addr, Abs] {
   override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
   def keys = content.keys

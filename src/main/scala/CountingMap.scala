@@ -1,0 +1,54 @@
+import scalaz.Scalaz._
+import scalaz.Semigroup
+
+trait Count {
+  def inc: Count
+}
+case object CountOne extends Count {
+  def inc = CountInfinity
+}
+case object CountInfinity extends Count {
+  def inc = CountInfinity
+}
+
+object Count {
+  /* We need it to form a semigroup to use |+| to join stores */
+  implicit val isSemigroup  = new Semigroup[Count] {
+    def append(x: Count, y: => Count) = CountInfinity
+  }
+}
+
+case class CountingMap[A, B](content: Map[A, (Count, Set[B])]) {
+  override def toString = content.toString
+  def keys: Set[A] = content.keySet
+  def forall(p: (A, B) => Boolean): Boolean = content.forall({ case (a, (_, vs)) => vs.forall(v => p(a, v)) })
+  def exists(p: (A, B) => Boolean): Boolean = content.exists({ case (a, (_, vs)) => vs.exists(v => p(a, v)) })
+  def lookup(a: A): Set[B] = content.get(a) match {
+    case None => Set[B]()
+    case Some((_, bs)) => bs
+  }
+  def extend(a: A, b: B) = content.get(a) match {
+    case None => this.copy(content = content + (a -> (CountOne, Set[B](b))))
+    case Some((n, bs)) => this.copy(content = content + (a -> (n.inc, bs + b)))
+  }
+  def update(a: A, b: B) = content.get(a) match {
+    case None => throw new RuntimeException(s"Updating counting map at a non-present key: $a")
+    case Some((CountOne, _)) => this.copy(content = content + (a -> (CountOne, Set(b))))
+    case _ => extend(a, b)
+  }
+  def updateOrExtend(a: A, b: B) = content.get(a) match {
+    case None => extend(a, b)
+    case Some(_) => update(a, b)
+  }
+  def join(that: CountingMap[A, B]) =
+    this.copy(content = content |+| that.content)
+
+  def subsumes(that: CountingMap[A, B]) =
+    that.content.forall({ case
+      (a, (_, bs)) => bs.subsetOf(lookup(a))
+    })
+}
+
+object CountingMap {
+  def empty[A, B]: CountingMap[A, B] = CountingMap(Map[A, (Count, Set[B])]())
+}
