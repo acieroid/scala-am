@@ -6,9 +6,9 @@ libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.2.6"
 libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.0" % "test"
 libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.2" % "test"
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.5.0"
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.15"
-libraryDependencies += "com.typesafe.akka" %% "akka-agent" % "2.3.15"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.11"
 libraryDependencies += "jline" % "jline" % "2.14.2"
-
+libraryDependencies += "org.json4s" %% "json4s-native" % "3.4.1"
+libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.4.1"
 maxErrors := 5
 mainClass in (Compile, run) := Some("Main")

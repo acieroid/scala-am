@@ -15,6 +15,7 @@ case class Kont[KontAddr: KontAddress](frame: Frame, next: KontAddr) {
 }
 
 abstract class KontStore[KontAddr : KontAddress] {
+  def keys: Iterable[KontAddr]
   def lookup(a: KontAddr): Set[Kont[KontAddr]]
   def extend(a: KontAddr, kont: Kont[KontAddr]): KontStore[KontAddr]
   def join(that: KontStore[KontAddr]): KontStore[KontAddr]
@@ -24,6 +25,7 @@ abstract class KontStore[KontAddr : KontAddress] {
 }
 
 case class BasicKontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kont[KontAddr]]]) extends KontStore[KontAddr] {
+  def keys = content.keys
   def lookup(a: KontAddr) = content.getOrElse(a, Set())
   override def toString = content.toString
   def extend(a: KontAddr, kont: Kont[KontAddr]) = /* Profiler.logRes(s"$this.extend($a, $kont)") */{
@@ -44,6 +46,7 @@ case class BasicKontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kon
 }
 
 case class TimestampedKontStore[KontAddr : KontAddress](content: Map[KontAddr, Set[Kont[KontAddr]]], timestamp: Int) extends KontStore[KontAddr] {
+  def keys = content.keys
   def lookup(a: KontAddr) = content.getOrElse(a, Set())
   override def toString = content.toString
   def extend(a: KontAddr, kont: Kont[KontAddr]) = /* Profiler.logRes(s"$this.extend($a, $kont)") */ {

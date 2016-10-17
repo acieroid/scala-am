@@ -118,7 +118,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
             /* no more work to do, nothing is computing, stop */
             state.results.print
           }
-          system.shutdown
+          system.terminate
         }
         active(state)
       }
@@ -153,7 +153,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
   def main(args: Array[String]) {
     Config.parser.parse(args, Config.Config()) match {
       case Some(config) => run(config.workers, config.timeout.map(_.toNanos))
-      case None => system.shutdown
+      case None => system.terminate
     }
   }
 }
