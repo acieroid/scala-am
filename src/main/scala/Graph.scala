@@ -1,3 +1,7 @@
+import org.json4s._
+import org.json4s.JsonDSL._
+import org.json4s.jackson.JsonMethods._
+
 object Colors {
   val Yellow = "#FFFFDD"
   val Green = "#DDFFDD"
@@ -35,7 +39,6 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
     val sb = new StringBuilder("digraph G {\n")
     nodes.foreach((n) => {
       val labelstr = label(n).mkString(" ")
-
       sb.append(s"node_${ids(n)}[xlabel=${ids(n)}, label=<$labelstr>, fillcolor=<${color(n)}> style=<filled>, tooltip=<${tooltip(n)}>];\n")
     })
     edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) =>
@@ -45,9 +48,26 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
     return sb.toString
   }
   def toDotFile(path: String, label: Node => List[scala.xml.Node], color: Node => String, annotLabel: Annotation => List[scala.xml.Node]): Unit = {
-    val f = new java.io.File(path)
-    val bw = new java.io.BufferedWriter(new java.io.FileWriter(f))
-    bw.write(toDot(label, color, annotLabel))
-    bw.close()
+    Util.writeToFile(path, toDot(label, color, annotLabel))
+  }
+  def toJSONFile(path: String)(implicit nodeToJSON: Node => JValue, annotToJSON: Annotation => JValue): Unit =  {
+    /* array of nodes, index in the array is the index of the node, e.g.
+     * [a, b, c]: a has index 0, b index 1, etc. */
+    val ns: List[Node] = nodes.toList.sortBy(n => ids(n))
+    /* array of edges, index in the array is the source node, value is an array of
+     * destination and annotation, e.g.:
+     * [[[0 annotaa] [1 annotab]], ...]
+     */
+    import scala.language.implicitConversions
+    implicit def pairToJSON(x: (Int, Annotation)) = JArray(List(JInt(x._1), annotToJSON(x._2)))
+    val es: List[List[(Int, Annotation)]] = edges.toList
+      .sortBy({ case (src, dests) => ids(src) })
+      .map({ case (src, dests: Set[(Annotation, Node)]) =>
+        dests.toList.map({ case (annot, dest) =>
+          (ids(dest), annot)
+        })
+      })
+    val json = ("nodes" -> ns) ~ ("edges" -> es)
+    Util.writeToFile(path, pretty(render(json)))
   }
 }

@@ -40,6 +40,11 @@ trait Output[Abs] {
   def toDotFile(path: String): Unit
 
   /**
+   * Output the graph computed by the machine in a JSON
+   */
+  def toJSONFile(path: String): Unit = ??? /* TODO: don't provide a default implementation */
+
+  /**
    * Inspects a specific state
    */
   def inspect(state: Int, query: String): Unit =
@@ -91,6 +96,13 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    */
   trait Control {
     def subsumes(that: Control): Boolean
+  }
+  object Control {
+    import org.json4s._
+    import org.json4s.JsonDSL._
+    import org.json4s.jackson.JsonMethods._
+    import scala.language.implicitConversions
+    implicit def controlToJSON(c: Control) = c.toString
   }
 
   /**

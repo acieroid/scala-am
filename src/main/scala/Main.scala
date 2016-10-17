@@ -80,15 +80,13 @@ object Main {
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
     * file. */
-  def run[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, output: Option[String], timeout: Option[Long], inspect: Boolean): Unit = {
+  def run[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, outputDot: Option[String], outputJSON: Option[String], timeout: Option[Long], inspect: Boolean): Unit = {
     val abs = implicitly[JoinLattice[Abs]]
     val addr = implicitly[Address[Addr]]
     println(s"Running ${machine.name} with lattice ${abs.name} and address ${addr.name}")
-    val result = machine.eval(sem.parse(program), sem, !output.isEmpty, timeout)
-    output match {
-      case Some(f) => result.toDotFile(f)
-      case None => ()
-    }
+    val result = machine.eval(sem.parse(program), sem, !outputDot.isEmpty || !outputJSON.isEmpty, timeout)
+    outputDot.foreach(result.toDotFile _)
+    outputJSON.foreach(result.toJSONFile _)
     if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
     println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
     if (inspect) {
@@ -136,7 +134,7 @@ object Main {
 
             val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
 
-            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.timeout.map(_.toNanos), config.inspect))
+            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
           case Config.Language.CScheme =>
             val lattice: CSchemeLattice = config.lattice match {
               case Config.Lattice.Concrete => new CSchemeConcreteLattice(true)
@@ -161,7 +159,7 @@ object Main {
             }
 
             val sem = new CSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new CSchemePrimitives[address.A, lattice.L])
-            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.timeout.map(_.toNanos), config.inspect))
+            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
           case Config.Language.AScheme =>
             val lattice: ASchemeLattice = config.lattice match {
               case Config.Lattice.Concrete => new ASchemeConcreteLattice(true)
@@ -186,7 +184,7 @@ object Main {
             }
 
             val sem = new ASchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, lattice.L])
-            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.timeout.map(_.toNanos), config.inspect))
+            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
         }
       }
       case None => ()

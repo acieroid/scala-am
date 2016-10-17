@@ -44,6 +44,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    */
   case class State(control: Control, store: Store[Addr, Abs], kstore: KontStore[KontAddr], a: KontAddr, t: Time) {
     override def toString = control.toString
+
     /**
      * Checks whether a states subsumes another, i.e., if it is "bigger". This
      * is used to perform subsumption checking when exploring the state space,
@@ -114,6 +115,15 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
       State(ControlEval(exp, Environment.initial[Addr](env)),
         Store.initial[Addr, Abs](store), KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
+    import scala.language.implicitConversions
+    import org.json4s._
+    import org.json4s.JsonDSL._
+    import org.json4s.jackson.JsonMethods._
+    implicit val controlToJSON: Control => JValue = Control.controlToJSON // why?
+    import JSON._
+    implicit def stateToJSON(s: State): JValue = {
+      ("control" -> s.control) ~ ("store" -> s.store) ~ ("kstore" -> s.kstore) ~ ("kont" -> s.a.toString) ~ ("time" -> s.t.toString)
+    }
   }
 
   case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
@@ -142,6 +152,12 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
           case ControlKont(_) => Colors.Pink
           case ControlError(_) => Colors.Red
         }}, _ => List())
+      case None =>
+        println("Not generating graph because no graph was computed")
+    }
+    import JSON._
+    override def toJSONFile(path: String) = graph match {
+      case Some(g) => g.toJSONFile(path)
       case None =>
         println("Not generating graph because no graph was computed")
     }
