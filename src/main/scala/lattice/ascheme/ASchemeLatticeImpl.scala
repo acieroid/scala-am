@@ -89,9 +89,9 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
       (v1, v2) <- lat.vector[Addr](addr, size.seq, init)
     } yield (Value(seq = v1), Value(seq = v2))
 
-    def injectBehavior[Exp : Expression, Addr : Address](e: Exp, env: Environment[Addr]) = Value(b = Set((e, env)))
-    def getBehaviors[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])] = x.b.collect({
-      case beh: (Exp, Environment[Addr]) @unchecked => beh
+    def injectActor[Exp : Expression, Addr : Address](e: Exp, env: Environment[Addr]) = Value(b = Set((e, env)))
+    def getActors[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])] = x.b.collect({
+      case act: (Exp, Environment[Addr]) @unchecked => act
     })
     def injectPid[PID : ThreadIdentifier](pid: PID) = Value(p = Set(pid))
     def getPids[PID : ThreadIdentifier](x: L): Set[PID] = x.p.collect({

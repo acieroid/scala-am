@@ -210,6 +210,7 @@ case class TypeError(name: String, operand: String, expected: String, got: Strin
 case class UserError(reason: String, pos: scala.util.parsing.input.Position) extends SemanticError
 case class UnboundVariable(name: String) extends SemanticError
 case class UnboundAddress(addr: String) extends SemanticError
+case class MessageNotSupported(actor: String, message: String, supported: List[String]) extends SemanticError
 case class NotSupported(reason: String) extends SemanticError
 
 /**

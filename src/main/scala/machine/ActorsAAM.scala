@@ -185,12 +185,13 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       case ControlWait => /* receive a message */
         ctx.beh match {
           case ActorBehavior(beh) =>
-            ctx.mbox.pop.flatMap({ case ((sender, values), mbox2) =>
-              integrate(p, ctx.copy(mbox = mbox2), beh(values, p, sender, store, ctx.t))
+            ctx.mbox.pop.flatMap({ case ((sender, values), mbox2) => integrate(p, ctx.copy(mbox = mbox2), beh(values, p, sender, store, ctx.t))
             })
           case MainBehavior => Set[(State, PID, Option[ActorEffect])]() /* main cannot receive messages */
         }
     })
+    //def macroStepPidTrace(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): (State, List[State]) =
+      //def macroStepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], ActorEffect, Graph[State, PID]) = ???
   }
 
   object State {
