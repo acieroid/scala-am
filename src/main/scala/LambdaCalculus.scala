@@ -59,6 +59,8 @@ object LamLatticeImpl {
     def counting = false
     /** We don't have primitive values (the only values we have are closures) */
     def isPrimitiveValue(x: L) = false
+    /** The cardinality is just the number of elements in the set */
+    def cardinality(x: L) = CardinalityNumber(x.elements.size)
 
     /** To inject a closure into our lattice, we just wrap it in a L */
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = L(Set[Value](Closure[Exp, Addr](x._1, x._2)))

@@ -99,7 +99,7 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
 
   /** The output of the machine */
   case class FreeOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
-      extends Output[Abs] {
+      extends Output {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
@@ -115,6 +115,8 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
       case None =>
         println("Not generating graph because no graph was computed")
     }
+    override def joinedStore: Store[Addr, Abs] =
+      halted.map(s => s.store).foldLeft(Store.empty[Addr, Abs])((acc, store) => acc.join(store))
   }
   object States {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
@@ -131,7 +133,7 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
   @scala.annotation.tailrec
   private def loopWithLocalGraph(s: States, visited: Set[States],
     halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Graph[State, Unit],
-    sem: Semantics[Exp, Abs, Addr, Time]): Output[Abs] = {
+    sem: Semantics[Exp, Abs, Addr, Time]): Output = {
     val s2 = s.step(sem)
     val h = halted ++ s.toStateSet.filter(_.halted)
     if (s2.isEmpty || visited.contains(s2) || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
@@ -150,7 +152,7 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
    */
   private def loop(s: States, visited: Set[States],
     halted: Set[State], startingTime: Long, timeout: Option[Long],
-    sem: Semantics[Exp, Abs, Addr, Time]): Output[Abs] = {
+    sem: Semantics[Exp, Abs, Addr, Time]): Output = {
     val s2 = s.step(sem)
     val h = halted ++ s.toStateSet.filter(_.halted)
     if (s2.isEmpty || visited.contains(s2) || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
@@ -162,7 +164,7 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output =
     if (graph) {
       loopWithLocalGraph(States.inject(exp, sem.initialEnv, sem.initialStore), Set(), Set(), System.nanoTime, timeout, new Graph[State, Unit](), sem)
     } else {

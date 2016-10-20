@@ -7,37 +7,40 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
     extends EvalKontMachine[Exp, Abs, Addr, Time] {
   def name = "ConcreteMachine"
 
-  trait ConcreteMachineOutput extends Output[Abs] {
+  trait ConcreteMachineOutput extends Output {
     def toDotFile(path: String) = println("Not generating graph for ConcreteMachine")
   }
 
-  case class ConcreteMachineOutputError(time: Double, numberOfStates: Int, err: String) extends ConcreteMachineOutput {
+  case class ConcreteMachineOutputError(store: Store[Addr, Abs], time: Double, numberOfStates: Int, err: String) extends ConcreteMachineOutput {
     def finalValues = {
       println(s"Execution failed: $err")
       Set()
     }
     def containsFinalValue(v: Abs) = false
     def timedOut = false
+    override def joinedStore = store
   }
-  case class ConcreteMachineOutputTimeout(time: Double, numberOfStates: Int) extends ConcreteMachineOutput {
+  case class ConcreteMachineOutputTimeout(store: Store[Addr, Abs], time: Double, numberOfStates: Int) extends ConcreteMachineOutput {
     def finalValues = Set()
     def containsFinalValue(v: Abs) = false
     def timedOut = true
+    override def joinedStore = store
   }
-  case class ConcreteMachineOutputValue(time: Double, numberOfStates: Int, v: Abs) extends ConcreteMachineOutput {
+  case class ConcreteMachineOutputValue(store: Store[Addr, Abs], time: Double, numberOfStates: Int, v: Abs) extends ConcreteMachineOutput {
     def finalValues = Set(v)
     def containsFinalValue(v2: Abs) = v == v2
     def timedOut = false
+    override def joinedStore = store
   }
 
   /**
    * Performs the evaluation of an expression, possibly writing the output graph
    * in a file, and returns the set of final states reached
    */
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
     def loop(control: Control, store: Store[Addr, Abs], stack: List[Frame], t: Time, start: Long, count: Int): ConcreteMachineOutput = {
       if (timeout.map(System.nanoTime - start > _).getOrElse(false)) {
-        ConcreteMachineOutputTimeout((System.nanoTime - start) / Math.pow(10, 9), count)
+        ConcreteMachineOutputTimeout(store, (System.nanoTime - start) / Math.pow(10, 9), count)
       } else {
         control match {
           case ControlEval(e, env) =>
@@ -48,10 +51,10 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
                 case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: stack, time.tick(t), start, count + 1)
                 case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, stack, time.tick(t), start, count + 1)
                 case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, stack, time.tick(t, fexp), start, count + 1)
-                case ActionError(err) => ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
+                case ActionError(err) => ConcreteMachineOutputError(store, (System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
               }
             } else {
-              ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
+              ConcreteMachineOutputError(store, (System.nanoTime - start) / Math.pow(10, 9), count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
             }
           case ControlKont(v) => /* pop a continuation */
             stack match {
@@ -63,15 +66,15 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
                     case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: tl, time.tick(t), start, count + 1)
                     case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, tl, time.tick(t), start, count + 1)
                     case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, tl, time.tick(t, fexp), start, count + 1)
-                    case ActionError(err) => ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
+                    case ActionError(err) => ConcreteMachineOutputError(store, (System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
                   }
                 } else {
-                  ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
+                  ConcreteMachineOutputError(store, (System.nanoTime - start) / Math.pow(10, 9), count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
                 }
-              case Nil => ConcreteMachineOutputValue((System.nanoTime - start) / Math.pow(10, 9), count, v)
+              case Nil => ConcreteMachineOutputValue(store, (System.nanoTime - start) / Math.pow(10, 9), count, v)
             }
           case ControlError(err) =>
-            ConcreteMachineOutputError((System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
+            ConcreteMachineOutputError(store, (System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
         }
       }
     }

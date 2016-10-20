@@ -16,6 +16,7 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
       else if (x.intersect(y).isEmpty) { bool.inject(false) }
       else { bool.top }
     def order(x: Set[A], y: Set[A]): Ordering = throw new Error("Cannot define an order since A is not required to be ordered")
+    def cardinality(x: Set[A]): Cardinality = CardinalityNumber(x.size)
   }
 
   sealed trait Locked
@@ -67,6 +68,12 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
       case (_, LockedUnlocked) => Ordering.GT
       case (LockedTop, LockedTop) => Ordering.EQ
     }
+    def cardinality(x: Locked): Cardinality = x match {
+      case LockedBottom => CardinalityPrimitiveLikeNumber(0)
+      case LockedLocked => CardinalityPrimitiveLikeNumber(1)
+      case LockedUnlocked => CardinalityPrimitiveLikeNumber(1)
+      case LockedTop => CardinalityPrimitiveLikeInf()
+    }
   }
 
   type Tids = Set[Any] /* TODO: get rid of the any */
@@ -112,6 +119,7 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     def getClosures[Exp : Expression, Addr : Address](x: L) = lat.getClosures[Exp, Addr](x.seq)
     def getPrimitives[Addr : Address, Abs : JoinLattice](x: L) = lat.getPrimitives[Addr, Abs](x.seq)
     def isPrimitiveValue(x: L) = lat.isPrimitiveValue(x.seq) && x.t.isEmpty && x.la.isEmpty
+    def cardinality(x: L) = ??? /* TODO */
 
     def inject(x: Int) = Value(seq = lat.inject(x))
     def inject(x: Float) = Value(seq = lat.inject(x))

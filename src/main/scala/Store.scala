@@ -24,10 +24,18 @@ abstract class Store[Addr : Address, Abs : JoinLattice] {
   def subsumes(that: Store[Addr, Abs]): Boolean
   /** Returns a store containing items that differ between the two stores */
   def diff(that: Store[Addr, Abs]): Store[Addr, Abs]
-  /** Return a delta of the changes made on this store. None if the store doesn't support store deltas */
+  /** Returns a delta of the changes made on this store. None if the store doesn't support store deltas */
   def delta: Option[Map[Addr, Abs]] = None
   /** Add a delta to the store. This clears the current delta */
   def addDelta(delta: Map[Addr, Abs]): Store[Addr, Abs] = throw new Exception("Store doesn't support deltas")
+  /** Returns the cardinality of each lattice element of this store */
+  def cardinalities(withPrimitives: Boolean = false): Map[Addr, Cardinality] =
+    keys
+      .filter(a => withPrimitives || !addr.isPrimitive(a))
+      .foldLeft(Map[Addr, Cardinality]())((acc, a) => lookup(a) match {
+        case Some(v) => acc + (a -> abs.cardinality(v))
+        case None => acc /* should not happen */
+      })
 }
 
 /** Basic store with no fancy feature, just a map from addresses to values */

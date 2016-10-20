@@ -78,8 +78,8 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
         TimestampedKontStore[KontAddr](Map(), 0))
   }
 
-  case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
-      extends Output[Abs] {
+  case class AAMOutput(halted: Set[State], store: Store[Addr, Abs], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
+      extends Output {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
@@ -95,6 +95,7 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
       case None =>
         println("Not generating graph because no graph was computed")
     }
+    override def joinedStore = store
   }
 
   /* Explore state graph when a monotonically growing store is present */
@@ -103,7 +104,7 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
     halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, Unit]],
     sem: Semantics[Exp, Abs, Addr, Time]): AAMOutput =
     if (todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-      AAMOutput(halted, graph.map(g => g.nodes.size).getOrElse(0), (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
+      AAMOutput(halted, store.commit.store, graph.map(g => g.nodes.size).getOrElse(0), (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
         timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
       val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), store, kstore)((acc, state) =>
@@ -132,7 +133,7 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
       }
     }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
     val (state, store, kstore) = State.inject(exp, sem.initialEnv, sem.initialStore)
     loop(Set(state), Set(), store, kstore, Set(), System.nanoTime, timeout,
       if (graph) { Some(new Graph[State, Unit]()) } else { None },

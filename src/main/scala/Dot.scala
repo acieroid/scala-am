@@ -71,6 +71,7 @@ class DotLanguage[Addr : Address] {
       def name = "DotLattice"
       def counting = false
       def isPrimitiveValue(x: L) = false
+      def cardinality(x: L) = CardinalityNumber(x.elements.length)
 
       def lambda(v: Variable, body: Term, env: Env) =
         L(Set[Value](Closure(v, body, env)))

@@ -17,6 +17,7 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
       else if (x.intersect(y).isEmpty) { bool.inject(false) }
       else { bool.top }
     def order(x: Set[A], y: Set[A]): Ordering = throw new Error("Cannot define an order since A is not required to be ordered")
+    def cardinality(x: Set[A]): Cardinality = CardinalityNumber(x.size)
   }
 
   type Pids = Set[Any]
@@ -98,6 +99,7 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
       case p: PID @unchecked => p
     })
     def isPrimitiveValue(x: L) = lat.isPrimitiveValue(x.seq) && x.p.isEmpty && x.b.isEmpty
+    def cardinality(x: L) = ??? /* TODO */
   }
 }
 

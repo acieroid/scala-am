@@ -177,7 +177,7 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
   }
 
   case class ConcurrentAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, (TID, Effects)]], timedOut: Boolean)
-      extends Output[Abs] {
+      extends Output {
     def finalValues = halted.flatMap(st => st.threads.get(thread.initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
@@ -422,7 +422,7 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
     val state = State.inject(exp, sem.initialEnv, sem.initialStore)
     val g = if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }
     exploration match {

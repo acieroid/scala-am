@@ -88,6 +88,18 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) => false
     }
 
+    def cardinality(x: L): Cardinality = x match {
+      case Bot => CardinalityNumber(0)
+      case Str(s) => str.cardinality(s)
+      case Bool(b) => bool.cardinality(b)
+      case Int(i) => int.cardinality(i)
+      case Float(f) => float.cardinality(f)
+      case Char(c) => char.cardinality(c)
+      case Symbol(s) => sym.cardinality(s)
+      case Nil => CardinalityNumber(1)
+      case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _)  => CardinalityNumber(1)
+    }
+
     def isTrue(x: L): Boolean = x match {
       case Bool(b) => bool.isTrue(b)
       case Bot => false
@@ -397,6 +409,7 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     def isTrue(x: LSet): Boolean = foldMapLSet(x, isSchemeLattice.isTrue(_))(boolOrMonoid)
     def isFalse(x: LSet): Boolean = foldMapLSet(x, isSchemeLattice.isFalse(_))(boolOrMonoid)
     def isPrimitiveValue(x: LSet): Boolean = foldMapLSet(x, isSchemeLattice.isPrimitiveValue(_))(boolAndMonoid)
+    def cardinality(x: LSet): Cardinality = foldMapLSet(x, isSchemeLattice.cardinality(_))
     def unaryOp(op: UnaryOperator)(x: LSet): MayFail[LSet] = foldMapLSet(x, x => isSchemeLattice.unaryOp(op)(x).map(x => wrap(x)))
     def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): MayFail[LSet] = foldMapLSet(x, x => foldMapLSet(y, y => isSchemeLattice.binaryOp(op)(x, y).map(x => wrap(x))))
     def join(x: LSet, y: LSet): LSet = implicitly[Monoid[LSet]].append(x, y)

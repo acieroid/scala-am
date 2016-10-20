@@ -1,6 +1,33 @@
 import scalaz._
 import scalaz.Scalaz._
 
+trait Cardinality
+case object CardinalityInf extends Cardinality
+case class CardinalityNumber(n: Int) extends Cardinality
+/* TODO: In some cases we might not want to have cardinalities for values such
+ * as numbers, strings, etc. For example, cardinality of {Int, clo(...),
+ * clo(...)}  is infinity, while it would make more sense to have it as either 2
+ * or 3. We might want to split cardinalities between pointer-like values
+ * (closures, primitive functions, cons, etc.) to primitive-like values (ints,
+ * strings, etc.). One just needs to change the following objects to case
+ * classes and adapt the monoid.
+ */
+object CardinalityPrimitiveLikeInf {
+  def apply(): Cardinality = CardinalityInf
+}
+object CardinalityPrimitiveLikeNumber {
+  def apply(n: Int): Cardinality = CardinalityNumber(n)
+}
+object Cardinality {
+  implicit val cardinalityAddMonoid: Monoid[Cardinality] = new Monoid[Cardinality] {
+    def zero: Cardinality = CardinalityNumber(0)
+    def append(x: Cardinality, y: => Cardinality): Cardinality = (x, y) match {
+      case (CardinalityInf, _) | (_, CardinalityInf) => CardinalityInf
+      case (CardinalityNumber(m), CardinalityNumber(n)) => CardinalityNumber(m + n)
+    }
+  }
+}
+
 /** A (join semi-)lattice L should support the following operations */
 trait JoinLattice[L] extends Monoid[L] with PartialOrdering[L] {
   /** A lattice has a bottom element */
@@ -27,6 +54,8 @@ trait JoinLattice[L] extends Monoid[L] with PartialOrdering[L] {
 
   /** Some elements may contain addresses in there and are therefore not considered as primitive values */
   def isPrimitiveValue(x: L): Boolean
+  /** Cardinality of this value */
+  def cardinality(x: L): Cardinality
 }
 
 /**
@@ -39,6 +68,7 @@ trait IsLatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
   def join(x: L, y: => L): L
   def subsumes(x: L, y: => L): Boolean
   def eql[B : IsBoolean](x: L, y: L): B
+  def cardinality(x: L): Cardinality
 
   /* For Monoid[L] */
   final def zero: L = bottom
@@ -119,6 +149,7 @@ object ConcreteString {
     def eql[B](s1: S, s2: S)(implicit bool: IsBoolean[B]): B = s1.foldMap(s1 => s2.foldMap(s2 => bool.inject(s1 == s2)))
 
     def order(x: S, y: S): Ordering = implicitly[Order[ISet[String]]].order(x, y)
+    def cardinality(x: S): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
 
@@ -140,6 +171,7 @@ object ConcreteBoolean {
     def eql[B1](b1: B, b2: B)(implicit bool: IsBoolean[B1]): B1 = b1.foldMap(b1 => b2.foldMap(b2 => bool.inject(b1 == b2)))
 
     def order(x: B, y: B): Ordering = implicitly[Order[ISet[Boolean]]].order(x, y)
+    def cardinality(x: B): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
 
@@ -167,6 +199,7 @@ object ConcreteInteger {
     def toString[S](n: I)(implicit str: IsString[S]): S = n.foldMap(n => str.inject(n.toString))
 
     def order(x: I, y: I): Ordering = implicitly[Order[ISet[Int]]].order(x, y)
+    def cardinality(x: I): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
 
@@ -193,6 +226,7 @@ object ConcreteFloat {
     def toString[S](n: F)(implicit str: IsString[S]): S = n.foldMap(n => str.inject(n.toString))
 
     def order(x: F, y: F): Ordering = implicitly[Order[ISet[Float]]].order(x, y)
+    def cardinality(x: F): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
 
@@ -212,6 +246,7 @@ object ConcreteChar {
     def eql[B](c1: C, c2: C)(implicit bool: IsBoolean[B]): B = c1.foldMap(c1 => c2.foldMap(c2 => bool.inject(c1 == c2)))
 
     def order(x: C, y: C): Ordering = implicitly[Order[ISet[Char]]].order(x, y)
+    def cardinality(x: C): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
 
@@ -231,6 +266,7 @@ object ConcreteSymbol {
     def eql[B](s1: Sym, s2: Sym)(implicit bool: IsBoolean[B]): B = s1.foldMap(s1 => s2.foldMap(s2 => bool.inject(s1 == s2)))
 
     def order(x: Sym, y: Sym): Ordering = implicitly[Order[ISet[String]]].order(x, y)
+    def cardinality(x: Sym): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
 
@@ -299,6 +335,10 @@ class BoundedInteger(bound: Int) {
       case (_: Set, Top) => Ordering.LT
       case (Top, Top) => Ordering.EQ
     }
+    def cardinality(x: I): Cardinality = x match {
+      case Set(xs) => CardinalityPrimitiveLikeNumber(xs.toList.length)
+      case Top => CardinalityPrimitiveLikeInf()
+    }
   }
 }
 
@@ -345,6 +385,10 @@ object Type {
       case (Bottom, Top) => Ordering.LT
       case (Bottom, Bottom) => Ordering.EQ
     }
+    def cardinality(x: T): Cardinality = x match {
+      case Top => CardinalityInf
+      case Bottom => CardinalityPrimitiveLikeNumber(0)
+    }
   }
   implicit val typeIsLatticeElement: IsLatticeElement[T] = new BaseInstance("Type") {
   }
@@ -366,6 +410,14 @@ object Type {
     def isTrue(b: T) = b == Top
     def isFalse(b: T) = b == Top
     def not(b: T) = b
+    /* TODO: we could redefine cardinality for booleans, as they have max. two
+     * values. But it makes sense to keep it as inf, because if it's top we have
+     * lost all precision on that boolean */
+    /*
+    override def cardinality(x: T): Cardinality = x match {
+      case Top => CardinalityPrimitiveLikeNumber(2)
+      case Bottom => CardinalityPrimitiveLikeNumber(0)
+    }*/
   }
   implicit val typeIsInteger: IsInteger[T] = new BaseInstance("Int") with IsInteger[T] {
     def inject(x: Int): T = Top
@@ -482,6 +534,11 @@ class ConstantPropagation[A](implicit ordering: Order[A]) {
       case (Constant(_), Bottom) => Ordering.GT
       case (Bottom, Bottom) => Ordering.EQ
       case (Bottom, _) => Ordering.LT
+    }
+    def cardinality(x: L): Cardinality = x match {
+      case Top => CardinalityInf
+      case _: Constant => CardinalityPrimitiveLikeNumber(1)
+      case Bottom => CardinalityPrimitiveLikeNumber(0)
     }
   }
 }

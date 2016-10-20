@@ -95,8 +95,9 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
         TimestampedKontStore[KontAddr](Map(), 0))
   }
 
-  case class AAMAACP4FOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
-      extends Output[Abs] {
+  case class AAMAACP4FOutput(halted: Set[State], store: Store[Addr, Abs],
+    numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
+      extends Output {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
@@ -112,6 +113,7 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
       case None =>
         println("Not generating graph because no graph was computed")
     }
+    override def joinedStore: Store[Addr, Abs] = store
   }
 
   @scala.annotation.tailrec
@@ -119,7 +121,8 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
     halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, Unit]],
     sem: Semantics[Exp, Abs, Addr, Time], reallyVisited: Set[State]): AAMAACP4FOutput =
     if (todo.isEmpty || timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-      AAMAACP4FOutput(halted, reallyVisited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
+      AAMAACP4FOutput(halted, store.commit.store,
+        reallyVisited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph,
         timeout.map(System.nanoTime - startingTime > _).getOrElse(false))
     } else {
       val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), store, kstore)((acc, state) =>
@@ -148,7 +151,7 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
       }
     }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
     val (state, store, kstore) = State.inject(exp, sem.initialEnv, sem.initialStore)
     loop(Set(state), Set(), store, kstore, Set(), System.nanoTime, timeout,
       if (graph) { Some(new Graph[State, Unit]()) } else { None },

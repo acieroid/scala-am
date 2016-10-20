@@ -127,7 +127,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   }
 
   case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
-      extends Output[Abs] {
+      extends Output {
 
     /**
      * Returns the list of final values that can be reached
@@ -161,13 +161,15 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       case None =>
         println("Not generating graph because no graph was computed")
     }
+    override def joinedStore: Store[Addr, Abs] =
+      halted.map(s => s.store).foldLeft(Store.empty[Addr, Abs])((acc, store) => acc.join(store))
   }
 
   /**
    * Performs the evaluation of an expression, possibly writing the output graph
    * in a file, and returns the set of final states reached
    */
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
     val startingTime = System.nanoTime
     def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, Unit]]): AAMOutput = {
       if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {

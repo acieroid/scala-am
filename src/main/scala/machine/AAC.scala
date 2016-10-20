@@ -262,7 +262,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    * Output of the machine
    */
   case class AACOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
-      extends Output[Abs] {
+      extends Output {
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
@@ -278,6 +278,8 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       case None =>
         println("Not generating graph because no graph was computed")
     }
+    override def joinedStore: Store[Addr, Abs] =
+      halted.map(s => s.store).foldLeft(Store.empty[Addr, Abs])((acc, store) => acc.join(store))
   }
 
   /** Performs the frontier-based state exploration.
@@ -347,7 +349,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] =
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output =
     loop(Set(State.inject(exp, sem.initialEnv, sem.initialStore)), Set(), Set(), System.nanoTime, timeout,
       if (graph) { Some(new Graph[State, Unit]()) } else { None },
       new KontStore(), sem)

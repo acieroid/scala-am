@@ -73,6 +73,7 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
     val counting = abs.counting
 
     def isPrimitiveValue(x: L) = abs.isPrimitiveValue(x._2)
+    def cardinality(x: L) = abs.cardinality(x._2) /* We could return the cardinality of the taint part instead */
     def isTrue(x: L) = abs.isTrue(x._2)
     def isFalse(x: L) = abs.isFalse(x._2)
     def unaryOp(op: SchemeOps.UnaryOperator)(x: L): MayFail[L] =

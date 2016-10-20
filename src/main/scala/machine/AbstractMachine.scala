@@ -5,53 +5,6 @@
  */
 
 /**
- * The output of the abstract machine
- */
-trait Output[Abs] {
-  /**
-   * Returns the set of final values that can be reached by the abstract machine.
-   * Example: the Scheme program (+ 1 2) has as final values the set {3} , in the concrete case.
-   */
-  def finalValues: Set[Abs]
-
-  /**
-   * Checks if the set of final values contains a value that subsumes @param v
-   */
-  def containsFinalValue(v: Abs): Boolean
-
-  /**
-   * Returns the number of states visited to evaluate the program
-   */
-  def numberOfStates: Int
-
-  /**
-   * Returns the time it took to evaluate the program
-   */
-  def time: Double
-
-  /**
-   * Does this output comes from a computation that timed out?
-   */
-  def timedOut: Boolean
-
-  /**
-   * Outputs the graph computed by the machine in a dot file
-   */
-  def toDotFile(path: String): Unit
-
-  /**
-   * Output the graph computed by the machine in a JSON
-   */
-  def toJSONFile(path: String): Unit = ??? /* TODO: don't provide a default implementation */
-
-  /**
-   * Inspects a specific state
-   */
-  def inspect(state: Int, query: String): Unit =
-    println("TODO: Inspection not implemented for this machine")
-}
-
-/**
  * The interface of the abstract machine itself
  */
 trait AbstractMachine[Exp, Abs, Addr, Time] {
@@ -68,13 +21,62 @@ trait AbstractMachine[Exp, Abs, Addr, Time] {
   def name: String
 
   /**
+   * The output of the abstract machine
+   */
+  trait Output {
+    /**
+     * Returns the set of final values that can be reached by the abstract machine.
+     * Example: the Scheme program (+ 1 2) has as final values the set {3} , in the concrete case.
+     */
+    def finalValues: Set[Abs]
+
+    /**
+     * Checks if the set of final values contains a value that subsumes @param v
+     */
+    def containsFinalValue(v: Abs): Boolean
+
+    /**
+     * Returns the number of states visited to evaluate the program
+     */
+    def numberOfStates: Int
+
+    /**
+     * Returns the time it took to evaluate the program
+     */
+    def time: Double
+
+    /**
+     * Does this output comes from a computation that timed out?
+     */
+    def timedOut: Boolean
+
+    /**
+     * Outputs the graph computed by the machine in a dot file
+     */
+    def toDotFile(path: String): Unit
+
+    /**
+     * Output the graph computed by the machine in a JSON
+     */
+    def toJSONFile(path: String): Unit = ??? /* TODO: don't provide a default implementation */
+
+    /**
+     * Inspects a specific state
+     */
+    def inspect(state: Int, query: String): Unit =
+      println("TODO: Inspection not implemented for this machine")
+
+    def joinedStore: Store[Addr, Abs] = ???
+  }
+
+  /**
    * Evaluates a program, given a semantics. If @param graph is true, the state
    * graph will be computed and stored in the output. Returns an object
    * implementing the Output trait, containing information about the
    * evaluation. @param timeout is the timeout in ns, when reached, the
    * evaluation stops and the currently computed results are returned.
    */
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean = false, timeout: Option[Long] = None): Output[Abs]
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean = false, timeout: Option[Long] = None): Output
 
   def analyze[L](exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], analysis: Analysis[L, Exp, Abs, Addr, Time], timeout: Option[Long] = None): Option[L] = throw new Exception(s"analyze method not handled by the following machine: $name")
 }
