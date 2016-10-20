@@ -102,6 +102,14 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
     def apply(): Results = Results(Map[String, Map[String, MachineOutput]]().withDefaultValue(Map[String, MachineOutput]()), Set())
   }
 
+  /* Avoids deprecated warning when using Java 8, and call the shutdown method if an older version is used */
+  def terminate(system: ActorSystem) = try {
+    system.getClass.getMethod("terminate").invoke(system)
+  } catch {
+    case _: NoSuchMethodException =>
+      system.getClass.getMethod("shutdown").invoke(system)
+  }
+
   class Dispatcher(bound: Option[Int]) extends Actor {
     import scala.collection.immutable.Queue
 
@@ -118,7 +126,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
             /* no more work to do, nothing is computing, stop */
             state.results.print
           }
-          system.terminate
+          terminate(system)
         }
         active(state)
       }
@@ -153,7 +161,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
   def main(args: Array[String]) {
     Config.parser.parse(args, Config.Config()) match {
       case Some(config) => run(config.workers, config.timeout.map(_.toNanos))
-      case None => system.terminate
+      case None => terminate(system)
     }
   }
 }
