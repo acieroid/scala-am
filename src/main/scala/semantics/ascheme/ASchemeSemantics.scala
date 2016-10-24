@@ -50,7 +50,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
     if (pids.isEmpty) {
       Action.error(TypeError("send", "first operand", "pid value", s"non-pid value ($target)"))
     } else {
-      pids.map(p => ActorAction.send(p, args, aabs.injectPid(p)))
+      pids.map(p => ActorAction.send(p, message, args, aabs.injectPid(p)))
     }
   }
 

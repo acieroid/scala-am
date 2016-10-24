@@ -18,11 +18,12 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     implicit object KontAddrKontAddress extends KontAddress[KontAddr]
   }
 
-  type Act = Action[Exp, Abs, Addr]
-  type Beh = (List[Abs], PID, PID, Store[Addr, Abs], Time) => Act
-  trait Behavior
-  case class ActorBehavior(beh: Beh) extends Behavior
-  case object MainBehavior extends Behavior
+  object ActionHelpers extends ActorActionHelpers[Exp, Abs, Addr, Time, PID]
+  import ActionHelpers.{Act, ActorDefinition}
+
+  trait ActorInstance
+  case class ActorInstanceActor(act: ActorDefinition) extends ActorInstance
+  case object ActorInstanceMain extends ActorInstance
 
   trait Control
   case class ControlEval(e: Exp, env: Environment[Addr]) extends Control {
@@ -38,7 +39,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     override def toString = "wait"
   }
 
-  type Message = (PID, List[Abs])
+  type Message = (PID, String, List[Abs])
   trait Mbox {
     def pop: Set[(Message, Mbox)]
     def push(m: Message): Mbox
@@ -68,7 +69,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def empty: Mbox = ListMbox.empty
   }
 
-  case class Context(control: Control, kont: KontAddr, beh: Behavior, mbox: Mbox, t: Time) {
+  case class Context(control: Control, kont: KontAddr, inst: ActorInstance, mbox: Mbox, t: Time) {
     def toXml: List[scala.xml.Node] = control match {
       case ControlEval(e, _) => List(<font color="forestgreen">{e.toString.take(40)}</font>)
       case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
@@ -77,7 +78,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     }
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => beh == MainBehavior && kont == HaltKontAddress
+      case ControlKont(v) => inst == ActorInstanceMain && kont == HaltKontAddress
       case ControlError(_) => true
       case ControlWait => mbox.isEmpty
     }
@@ -87,10 +88,10 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     }
   }
   object Context {
-    def create(p: PID, beh: Beh): Context =
-      Context(ControlWait, HaltKontAddress, ActorBehavior(beh), Mbox.empty, time.initial(p.toString))
+    def create(p: PID, act: ActorDefinition): Context =
+      Context(ControlWait, HaltKontAddress, ActorInstanceActor(act), Mbox.empty, time.initial(p.toString))
     def createMain(e: Exp, env: Environment[Addr]): Context =
-      Context(ControlEval(e, env), HaltKontAddress, MainBehavior, Mbox.empty, time.initial("main"))
+      Context(ControlEval(e, env), HaltKontAddress, ActorInstanceMain, Mbox.empty, time.initial("main"))
   }
 
   case class Procs(content: CountingMap[PID, Context]) {
@@ -152,22 +153,27 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           store = store2), p, None))
       case ActionError(err) =>
         Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlError(err)))), p, None))
-      case ActorActionSend(ptarget : PID @unchecked, msg, vres, effs) if ptarget != p =>
+      case ActorActionSend(ptarget : PID @unchecked, name, msg, vres, effs) if ptarget != p =>
         procs.get(ptarget).map(ctxtarget =>
           (this.copy(procs = procs
             .update(p -> ctx.copy(control = ControlKont(vres), t = time.tick(ctx.t)))
-            .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push(p -> msg)))),
+            .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push((p, name, msg))))),
             p, Some(ActorEffectSend(ptarget))))
-      case ActorActionSend(ptarget, msg, vres, effs) if ptarget == p => /* TODO: special care need to be taken if p maps to more than a single actor */
-        Set((this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push(p -> msg), t = time.tick(ctx.t)))),
+      case ActorActionSend(ptarget, name, msg, vres, effs) if ptarget == p =>
+        /* TODO: special care need to be taken if p maps to more than a single actor */
+        Set((this.copy(procs = procs
+          .update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push((p, name, msg)), t = time.tick(ctx.t)))),
           p, Some(ActorEffectSendSelf(p))))
-      case ActorActionCreate(beh : Beh @unchecked, exp, fres : (PID => Abs), effs) =>
+      case ActorActionCreate(act : ActorDefinition @unchecked, exp, fres : (PID => Abs), store2, effs) =>
         val p2 = pid.thread(exp, ctx.t)
         Set((this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(fres(p2)), t = time.tick(ctx.t)))
-          .extend(p2 -> Context.create(p2, beh))), p, None))
-      case ActorActionBecome(beh2 : Beh @unchecked, vres, effs) =>
-        Set((this.copy(procs = procs.update(p -> ctx.copy(control = ControlKont(vres), beh = ActorBehavior(beh2), t = time.tick(ctx.t)))), p, None))
+          .extend(p2 -> Context.create(p2, act)),
+          store = store2), p, None))
+      case ActorActionBecome(act2 : ActorDefinition @unchecked, vres, store2, effs) =>
+        Set((this.copy(procs = procs
+          .update(p -> ctx.copy(control = ControlKont(vres), inst = ActorInstanceActor(act2), t = time.tick(ctx.t))),
+          store = store2), p, None))
     }
 
     def stepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = procs.get(p).flatMap(ctx => ctx.control match {
@@ -177,17 +183,17 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         kstore.lookup(ctx.kont).flatMap({
           case Kont(frame, next) => sem.stepKont(v, frame, store, ctx.t).flatMap(action => integrate(p, ctx.copy(kont = next), action))
         })
-      case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.beh != MainBehavior => /* go to wait */
+      case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.inst != ActorInstanceMain => /* go to wait */
         Set[(State, PID, Option[ActorEffect])]((this.copy(procs = procs.update(p -> ctx.copy(control = ControlWait, t = time.tick(ctx.t)))), p, None))
-      case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.beh == MainBehavior =>
+      case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.inst == ActorInstanceMain =>
         Set[(State, PID, Option[ActorEffect])]() /* main is stuck at this point */
       case ControlError(_) => Set[(State, PID, Option[ActorEffect])]() /* no successor */
       case ControlWait => /* receive a message */
-        ctx.beh match {
-          case ActorBehavior(beh) =>
-            ctx.mbox.pop.flatMap({ case ((sender, values), mbox2) => integrate(p, ctx.copy(mbox = mbox2), beh(values, p, sender, store, ctx.t))
+        ctx.inst match {
+          case ActorInstanceActor(act) =>
+            ctx.mbox.pop.flatMap({ case ((sender, name, values), mbox2) => integrate(p, ctx.copy(mbox = mbox2), act(name, values, p, sender, store, ctx.t))
             })
-          case MainBehavior => Set[(State, PID, Option[ActorEffect])]() /* main cannot receive messages */
+          case ActorInstanceMain => Set[(State, PID, Option[ActorEffect])]() /* main cannot receive messages */
         }
     })
     //def macroStepPidTrace(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): (State, List[State]) =

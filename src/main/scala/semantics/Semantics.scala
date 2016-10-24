@@ -238,8 +238,8 @@ class ActorActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address, Ti
   type Sto = Store[Addr, Abs]
   type Act = Action[Exp, Abs, Addr]
   type ActorDefinition = (String, List[Abs], PID, PID, Store[Addr, Abs], Time) => Act
-  def send(pid: PID, msg: List[Abs], vres: Abs, effs: Effs = Set.empty): Act =
-    new ActorActionSend(pid, msg, vres, effs)
+  def send(pid: PID, name: String, msg: List[Abs], vres: Abs, effs: Effs = Set.empty): Act =
+    new ActorActionSend(pid, name, msg, vres, effs)
   def create(beh: ActorDefinition, exp: Exp, fres: PID => Abs, store: Sto, effs: Effs = Set.empty): Act =
     new ActorActionCreate(beh, exp, fres, store, effs)
   def become(beh: ActorDefinition, vres: Abs, store: Sto, effs: Effs = Set.empty): Act =
@@ -247,7 +247,7 @@ class ActorActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address, Ti
 }
 
 case class ActorActionSend[PID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (p: PID, msg: List[Abs], vres: Abs,
+  (p: PID, name: String, msg: List[Abs], vres: Abs,
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
