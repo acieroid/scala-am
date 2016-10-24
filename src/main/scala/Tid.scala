@@ -11,7 +11,7 @@ object ContextSensitiveTID {
     override def toString = "main"
   }
   case class TID[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) extends ContextSensitiveTID {
-    override def  toString = if (implicitly[Timestamp[Time]].name == "Concrete") {
+    override def  toString = if (false && implicitly[Timestamp[Time]].name == "Concrete") {
       t.toString
     } else {
       exp.toString

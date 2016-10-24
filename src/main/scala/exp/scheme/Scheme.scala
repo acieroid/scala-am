@@ -378,8 +378,7 @@ object SchemeCompiler {
       throw new Exception(s"Invalid Scheme create: $exp (${exp.pos})")
     case SExpPair(SExpIdentifier("terminate", _), SExpValue(ValueNil, _), _) =>
       SchemeTerminate(exp.pos)
-      //case class SchemeActor(name: String, xs: List[String], defs: List[(String, List[String], List[SchemeExp])], pos: Position) extends SchemeExp {
-    case SExpPair(SExpIdentifier("actor", _), SExpPair(SExpIdentifier(name, _), SExpPair(args, defs, _), _), _) =>
+    case SExpPair(SExpIdentifier("actor", _), SExpPair(SExpValue(ValueString(name), _), SExpPair(args, defs, _), _), _) =>
       SchemeActor(name, compileArgs(args), compileActorDefs(defs).toMap, exp.pos)
     case SExpPair(SExpIdentifier("actor", _), _, _) =>
       throw new Exception(s"Invalid Scheme actor: $exp (${exp.pos})")
@@ -703,6 +702,7 @@ object SchemeUndefiner {
         case SchemeCreate(beh, args, pos) => SchemeCreate(undefine1(beh), undefineBody(args), pos)
         case SchemeBecome(beh, args, pos) => SchemeBecome(undefine1(beh), undefineBody(args), pos)
         case SchemeActor(name, xs, defs, pos) => SchemeActor(name, xs, defs.map({ case (name, (args, body)) => (name, (args, undefineBody(body))) }), pos)
+        case SchemeTerminate(pos) => SchemeTerminate(pos)
       }
       exp2 :: undefineBody(rest)
     }

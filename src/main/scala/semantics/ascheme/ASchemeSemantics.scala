@@ -24,6 +24,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
     case SchemeSend(target, message, args, _) => Action.push(FrameSendTarget(message, args, env), target, env, store)
     case SchemeCreate(beh, args, _) => Action.push(FrameCreate(List(), args, beh, env), beh, env, store)
     case SchemeBecome(beh, args, _) => Action.push(FrameBecome(List(), args, env), beh, env, store)
+    case SchemeTerminate(_) => Action.none /* TODO: specific action to kill the actor? */
     case _ => super.stepEval(e, env, store, t)
   }, t)
 

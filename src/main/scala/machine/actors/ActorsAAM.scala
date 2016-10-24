@@ -1,7 +1,74 @@
 import scalaz.Scalaz._
 import scalaz._
 
-class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
+trait MboxImpl[PID, Abs] {
+  type Message = (PID, String, List[Abs])
+  trait T {
+    def pop: Set[(Message, T)]
+    def push(m: Message): T
+    def isEmpty: Boolean
+  }
+  def empty: T
+}
+
+case class PowersetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
+  case class M(messages: Set[Message]) extends T {
+    def pop = messages.map(m => (m, this))
+    def push(m: Message) = this.copy(messages = messages + m)
+    def isEmpty = messages.isEmpty
+  }
+  def empty = M(Set.empty)
+}
+
+case class ListMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
+  case class M(messages: List[Message]) extends T {
+    def pop = messages match {
+      case Nil => Set.empty
+      case h :: t => Set((h, M(t)))
+    }
+    def push(m: Message) = this.copy(messages = messages :+ m)
+    def isEmpty = messages.isEmpty
+  }
+  def empty = M(List.empty)
+}
+
+case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, Abs] {
+  case class MOrdered(messages: List[Message]) extends T {
+    def pop = messages match {
+      case Nil => Set.empty
+      case h :: t => Set((h, MOrdered(t)))
+    }
+    def push(m: Message) = if (messages.length == bound) {
+      MUnordered(messages.toSet + m)
+    } else {
+      this.copy(messages = messages :+ m)
+    }
+    def isEmpty = messages.isEmpty
+  }
+  case class MUnordered(messages: Set[Message]) extends T {
+    def pop = messages.map(m => (m, this))
+    def push(m: Message) = this.copy(messages = messages + m)
+    def isEmpty = messages.isEmpty
+  }
+  def empty = MOrdered(List.empty)
+}
+
+case class MultisetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
+  case class M(messages: Set[(Message, Int)]) extends T {
+    def pop = messages.map({
+      case (m, 1) => (m, M(messages - ((m, 1))))
+      case (m, count) => (m, M(messages - ((m, count)) + ((m, count - 1))))
+    })
+    def push(m: Message) = messages.find({ case (m2, count) => m2 == m }) match {
+      case Some((_, count)) => M(messages - ((m, count)) + ((m, count + 1)))
+      case None => M(messages + ((m, 1)))
+    }
+    def isEmpty = messages.isEmpty
+  }
+  def empty = M(Set.empty)
+}
+
+class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier](val M: MboxImpl[PID, Abs])
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def abs = implicitly[JoinLattice[Abs]]
   def addr = implicitly[Address[Addr]]
@@ -39,37 +106,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     override def toString = "wait"
   }
 
-  type Message = (PID, String, List[Abs])
-  trait Mbox {
-    def pop: Set[(Message, Mbox)]
-    def push(m: Message): Mbox
-    def isEmpty: Boolean
-  }
-
-  case class PowersetMbox(messages: Set[Message]) extends Mbox {
-    def pop = messages.map(m => (m, this))
-    def push(m: Message) = this.copy(messages = messages + m)
-    def isEmpty = messages.isEmpty
-  }
-  object PowersetMbox {
-    def empty: Mbox = PowersetMbox(Set[Message]())
-  }
-  case class ListMbox(messages: List[Message]) extends Mbox {
-    def pop = messages match {
-      case Nil => Set()
-      case h :: t => Set((h, ListMbox(t)))
-    }
-    def push(m: Message) = this.copy(messages :+ m)
-    def isEmpty = messages.isEmpty
-  }
-  object ListMbox {
-    def empty: Mbox = ListMbox(List[Message]())
-  }
-  object Mbox {
-    def empty: Mbox = ListMbox.empty
-  }
-
-  case class Context(control: Control, kont: KontAddr, inst: ActorInstance, mbox: Mbox, t: Time) {
+  case class Context(control: Control, kont: KontAddr, inst: ActorInstance, mbox: M.T, t: Time) {
     def toXml: List[scala.xml.Node] = control match {
       case ControlEval(e, _) => List(<font color="forestgreen">{e.toString.take(40)}</font>)
       case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
@@ -89,9 +126,9 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   }
   object Context {
     def create(p: PID, act: ActorDefinition): Context =
-      Context(ControlWait, HaltKontAddress, ActorInstanceActor(act), Mbox.empty, time.initial(p.toString))
+      Context(ControlWait, HaltKontAddress, ActorInstanceActor(act), M.empty, time.initial(p.toString))
     def createMain(e: Exp, env: Environment[Addr]): Context =
-      Context(ControlEval(e, env), HaltKontAddress, ActorInstanceMain, Mbox.empty, time.initial("main"))
+      Context(ControlEval(e, env), HaltKontAddress, ActorInstanceMain, M.empty, time.initial("main"))
   }
 
   case class Procs(content: CountingMap[PID, Context]) {
