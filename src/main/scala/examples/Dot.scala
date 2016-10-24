@@ -202,10 +202,14 @@ object Dot {
       implicit val isDotLattice = lattice.isDotLattice
       val sem = new DotSemantics[lattice.L, ZeroCFA.T]
       val machine = new AAM[Term, lattice.L, ClassicalAddress.A, ZeroCFA.T]
+      println(sem.parse(args(0)))
       val res = machine.eval(sem.parse(args(0)), sem, true, None)
       res.toDotFile("foo.dot")
     } else {
+      val example = """
+(let ((some-obj (nu (x) (id (lambda (x) x))))) (let ((f (sel some-obj id))) (let ((res1 (f some-obj))) (f f))))"""
       println("Please provide input program as argument")
+      println(s"For example: \n$example")
     }
   }
 }
