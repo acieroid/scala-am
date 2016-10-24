@@ -702,7 +702,7 @@ object SchemeUndefiner {
         case SchemeSend(target, message, args, pos) => SchemeSend(undefine1(target), message, undefineBody(args), pos)
         case SchemeCreate(beh, args, pos) => SchemeCreate(undefine1(beh), undefineBody(args), pos)
         case SchemeBecome(beh, args, pos) => SchemeBecome(undefine1(beh), undefineBody(args), pos)
-        case SchemeActor(name, xs, defs, pos) => SchemeActor(name, xs, defs.map({ case (name, args, body) => (name, args, undefineBody(body)) }), pos)
+        case SchemeActor(name, xs, defs, pos) => SchemeActor(name, xs, defs.map({ case (name, (args, body)) => (name, (args, undefineBody(body))) }), pos)
       }
       exp2 :: undefineBody(rest)
     }

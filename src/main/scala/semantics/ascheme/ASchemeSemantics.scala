@@ -7,9 +7,10 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
   def pid = implicitly[ThreadIdentifier[PID]]
 
   object ActorAction extends ActorActionHelpers[SchemeExp, Abs, Addr, Time, PID]
+  type ActorDefinition = ActorAction.ActorDefinition
 
   case class FrameSendTarget(message: String, args: List[SchemeExp], env: Env) extends SchemeFrame
-  case class FrameSend(message: String, target: Abs, argsv: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameSend(message: String, target: Abs, argsv: List[Abs], args: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameCreate(argsv: List[Abs], args: List[SchemeExp], exp: SchemeExp, env: Env) extends SchemeFrame
   case class FrameBecome(argsv: List[Abs], args: List[SchemeExp], env: Env) extends SchemeFrame
 
@@ -26,13 +27,13 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
     case _ => super.stepEval(e, env, store, t)
   }, t)
 
-  type ActorDefinition = ((String, List[Abs], PID, PID, Store[Addr, Abs], Time) => Action[SchemeExp, Abs, Addr])
+
   private def createActor(actorName: String, xs: List[String], defs: Map[String, (List[String], List[SchemeExp])],
     argsv: List[Abs], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Store[Addr, Abs], ActorDefinition) = {
     val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
     def act(message: String, margsv: List[Abs], self: PID, sender: PID, store: Store[Addr, Abs], t2: Time): Action[SchemeExp, Abs, Addr] =
-      defs.lookup(message) match {
-        case Some((margs, body)) => {
+      defs.get(message) match {
+        case Some((margs, body)) =>
           val (env3, store3) = bindArgs(margs.zip(margsv), env2, store, t2)
           val vself = aabs.injectPid(self)
           val aself = addr.variable("self", vself, t2)
@@ -40,7 +41,6 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
             env3.extend("self", aself), store3.extend(aself, vself))
         case None =>
           Action.error(MessageNotSupported(actorName, message, defs.keys.toList))
-        }
       }
     (store2, act)
   }
@@ -61,12 +61,12 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       Action.push(FrameSend(message, v, List(), rest, env), first, env, store)
     case FrameSend(message, target, revargsv, List(), env) =>
       val argsv = (v :: revargsv).reverse
-      send(target, message, (v :: revargsv).revers)
-    case FrameSend(message, argsv, first :: rest, env) =>
-      Action.push(FrameSend(message, v :: argsv, rest, env), first, env, store)
+      send(target, message, (v :: revargsv).reverse)
+    case FrameSend(message, target, argsv, first :: rest, env) =>
+      Action.push(FrameSend(message, target, v :: argsv, rest, env), first, env, store)
     case FrameCreate(revargsv, List(), exp, env) =>
       val act :: argsv = (v :: revargsv).reverse
-      val actors = aabs.getActors[SchemeExp, Addr](beh)
+      val actors = aabs.getActors[SchemeExp, Addr](act)
       if (actors.isEmpty) {
         Action.error(TypeError("create", "first operand", "actor", s"non-actor value ($act)"))
       } else {
@@ -75,7 +75,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
             Action.error(ArityError("create actor", xs.size, argsv.size))
           } else {
             val (store2, actor) = createActor(name, xs, defs, argsv, env, store, t)
-            ActorAction.create(actor, store2, exp, aabs.injectPid _)
+            ActorAction.create(actor, exp, aabs.injectPid _, store2)
           }
         })
       }
@@ -83,15 +83,16 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       Action.push(FrameCreate(v :: argsv, rest, exp, env), first, env, store)
     case FrameBecome(revargsv, List(), env) =>
       val act :: argsv = (v :: revargsv).reverse
-      val actors = aabs.getActors[SchemeExp, Addr](beh)
+      val actors = aabs.getActors[SchemeExp, Addr](act)
       if (actors.isEmpty) {
         Action.error(TypeError("become", "first operand", "actor", s"non-actor value ($act)"))
       } else {
-        actors.map({ case (SchemeBehavior(name, xs, defs, _), env) =>
+        actors.map({ case (SchemeActor(name, xs, defs, _), env) =>
           if (xs.size != argsv.size) {
             Action.error(ArityError("become behavior", xs.size, argsv.size))
           } else {
-            ActorAction.become(createActor(name, xs, defs, env, argsv, t), aabs.inject(false))
+            val (store2, actor) = createActor(name, xs, defs, argsv, env, store, t)
+            ActorAction.become(actor, aabs.inject(false), store2)
           }
         })
       }
