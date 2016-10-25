@@ -26,8 +26,12 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
 
   case class Value(seq: lattice.L = lat.bottom, p: Pids = pids.bottom, b: Behs = behs.bottom) {
     override def toString = {
-      val content: Set[String] = p.map(_.toString) ++ b.map(_.toString) + seq.toString
-      "{" + content.mkString(", ") + "}"
+      val pcontent: Set[String] = p.map(_.toString) ++ b.map(_.toString)
+      if (seq == lat.bottom) {
+        if (pcontent.size == 1) { pcontent.head } else { "{" + pcontent.mkString(", ") + "}" }
+      } else {
+        "{" + (pcontent + seq.toString).mkString(", ") + "}"
+      }
     }
   }
 

@@ -48,7 +48,6 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
 
   private def send(target: Abs, message: String, args: List[Abs]): Set[Action[SchemeExp, Abs, Addr]] = {
     val pids = aabs.getPids(target)
-    println(s"Sending $message to target: $target, with pid $pids (length: ${pids.size})")
     if (pids.isEmpty) {
       Action.error(TypeError("send", "first operand", "pid value", s"non-pid value ($target)"))
     } else {
