@@ -107,12 +107,12 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   }
 
   case class Context(control: Control, kont: KontAddr, inst: ActorInstance, mbox: M.T, t: Time) {
-    def toXml: List[scala.xml.Node] = control match {
+    def toXml: List[scala.xml.Node] = (control match {
       case ControlEval(e, _) => List(<font color="forestgreen">{e.toString.take(40)}</font>)
       case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
       case ControlError(err) => List(<font color="black">{err.toString}</font>)
       case ControlWait => List(<font color="skyblue">wait</font>)
-    }
+    }) ++ List(scala.xml.Text(if (mbox.isEmpty) "0" else ">0"))
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
       case ControlKont(v) => inst == ActorInstanceMain && kont == HaltKontAddress
@@ -150,9 +150,15 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def empty: Procs = Procs(CountingMap.empty[PID, Context])
   }
 
-  trait ActorEffect
-  case class ActorEffectSend(target: PID) extends ActorEffect
-  case class ActorEffectSendSelf(target: PID) extends ActorEffect
+  trait ActorEffect {
+    def macrostepStopper: Boolean
+  }
+  case class ActorEffectSend(target: PID) extends ActorEffect {
+    def macrostepStopper = true
+  }
+  case class ActorEffectSendSelf(target: PID) extends ActorEffect {
+    def macrostepStopper = true
+  }
 
   case class State(procs: Procs, store: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
     def toXml = procs.toXml
@@ -162,16 +168,13 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def stepPids(pids: Set[PID], sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = pids.flatMap(p => stepPid(p, sem))
     def stepAllExceptPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = stepPids(procs.pids - p, sem)
     def stepAny(sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = {
-      val init: Option[Set[(State, PID, Option[ActorEffect])]] = None
+      val init: Option[Set[(State, PID, Option[ActorEffect])]] = Option.empty
       procs.pids.foldLeft(init)((acc, p) => acc match {
         case None =>
           val stepped = stepPid(p, sem)
-          if (stepped.isEmpty) { None } else { Some(stepped) }
+          if (stepped.isEmpty) { Option.empty } else { Option(stepped) }
         case Some(_) => acc
-      }) match {
-        case None => Set.empty
-        case Some(res) => res
-      }
+      }).getOrElse(Set.empty)
     }
 
     def integrate(p: PID, ctx: Context, act: Act): Set[(State, PID, Option[ActorEffect])] = act match {
@@ -233,8 +236,34 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           case ActorInstanceMain => Set[(State, PID, Option[ActorEffect])]() /* main cannot receive messages */
         }
     })
-    //def macroStepPidTrace(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): (State, List[State]) =
-      //def macroStepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], ActorEffect, Graph[State, PID]) = ???
+    def macrostepPidTrace(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Option[(State, List[State])] = {
+      val succs = stepPid(p, sem)
+      succs.length match {
+        case 0 => /* No successor, stuck state */ None
+        case 1 => /* Single successor, what we want */
+          val (succ, _, eff) = succs.head
+          if (eff.map(_.macrostepStopper).getOrElse(false)) {
+            /* there was an effect that stops the macrostep */
+            Some((succ, List()))
+          } else {
+            /* otherwise, continue */
+            succ.macrostepPidTrace(p, sem) match {
+              case None => Some((succ, List())) /* next state is stuck, macrostep ends here */
+              case Some((last, trace)) => Some((last, succ :: trace))
+            }
+          }
+        case n => /* More than one successor, can't handle that here */
+          throw new Exception("more than one successor when macrostepping thread $p (got $n successors)")
+      }
+    }
+    def macrostepTraceAny(sem: Semantics[Exp, Abs, Addr, Time]): Option[(State, PID, List[State])] = {
+      val init: Option[(State, PID, List[State])] = Option.empty
+      procs.pids.foldLeft(init)((acc, p) => acc match {
+        case None => macrostepPidTrace(p, sem).map({ case (s, trace) => (s, p, trace) })
+        case Some(_) => acc
+      })
+    }
+    //def macroStepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], ActorEffect, Graph[State, PID]) = ???
   }
 
   object State {
@@ -372,9 +401,37 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         }
       }
     }
+    @scala.annotation.tailrec
+    def loopMacrostep(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
+      if (Util.timeoutReached(timeout, startingTime)) {
+        ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
+      } else {
+        todo.headOption match {
+          case Some(s) =>
+            if (visited.contains(s)) {
+              loopMacrostep(todo.tail, visited, halted, graph)
+            } else if (s.halted) {
+              loopMacrostep(todo.tail, visited + s, halted + s, graph)
+            } else {
+              /* TODO: macrostep ALL */
+              println(s"Macrostepping")
+              s.macrostepTraceAny(sem) match {
+                case None => loopMacrostep(todo.tail, visited, halted, graph)
+                case Some((s2, p, trace)) =>
+                  println(s"Leading to trace of length ${trace.length}")
+                  val newGraph = graph.map(_.addEdge(s, p, s2))
+                  loopMacrostep(todo.tail + s2, visited ++ trace + s, halted, newGraph)
+              }
+            }
+          case None =>
+            ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
+        }
+      }
+    }
     val initialState = State.inject(exp, sem.initialEnv, sem.initialStore)
     // loopAllInterleavings(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
     // loopSendInterleavings(Set((initialState, pid.initial)), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
-    loopSingleInterleaving(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
+    // loopSingleInterleaving(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
+    loopMacrostep(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
   }
 }
