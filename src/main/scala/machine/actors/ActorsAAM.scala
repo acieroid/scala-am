@@ -155,7 +155,9 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def update(v: (PID, Context)): Procs =
       Procs(content = content.update(v._1, v._2))
     def extend(v: (PID, Context)): Procs =
-        Procs(content = content.extend(v._1, v._2))
+      Procs(content = content.extend(v._1, v._2))
+    def terminate(p: PID): Procs =
+      Procs(content = content.remove(p))
     def pids: Set[PID] = content.keys
     def exists(p: (PID, Context) => Boolean): Boolean = content.exists(p)
     def forall(p: (PID, Context) => Boolean): Boolean = content.forall(p)
@@ -171,6 +173,9 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def macrostepStopper = true
   }
   case class ActorEffectSendSelf(target: PID) extends ActorEffect {
+    def macrostepStopper = true
+  }
+  case class ActorEffectTerminate(p: PID) extends ActorEffect {
     def macrostepStopper = true
   }
 
@@ -228,6 +233,8 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         Set((this.copy(procs = procs
           .update(p -> Context.create(p, actd, env2).copy(t = time.tick(ctx.t), mbox = ctx.mbox)),
           store = store2), p, None))
+      case ActorActionTerminate(_) =>
+        Set((this.copy(procs = procs.terminate(p)), p, Some(ActorEffectTerminate(p))))
     }
 
     def stepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, Option[ActorEffect])] = procs.get(p).flatMap(ctx => ctx.control match {
@@ -444,20 +451,25 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     }
     @scala.annotation.tailrec
     def loopMacrostep(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
+      def id(g: Option[Graph[State, PID]], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
       if (Util.timeoutReached(timeout, startingTime)) {
         ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
       } else {
         todo.headOption match {
           case Some(s) =>
             if (visited.contains(s)) {
+              // println(s"State ${id(graph,s)} already visited (hashCode: ${s.hashCode})")
               loopMacrostep(todo.tail, visited, halted, graph)
             } else if (s.halted) {
+              // println(s"State ${id(graph,s)} halted")
               loopMacrostep(todo.tail, visited + s, halted + s, graph)
             } else {
+              // println(s"Macrostepping from state ${id(graph, s)}")
               val succs = s.macrostepTraceAll(sem)
-              // println(s"Explored traces of length ${succs.map({ case (_, _, tr) => tr.length })}")
               val newGraph = graph.map(_.addEdges(succs.map({ case (s2, p, trace) => (s, p, s2) })))
-              loopMacrostep(todo.tail ++ succs.map(_._1), visited ++ succs.flatMap(_._3) + s, halted, newGraph)
+              // val statesAndTraces = succs.map({ case (s2, p, trace) => s"${id(newGraph, s2)}: ${trace.map(s => s.hashCode)}" })
+              // println(s"Getting states and traces $statesAndTraces")
+              loopMacrostep(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
             }
           case None =>
             ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
