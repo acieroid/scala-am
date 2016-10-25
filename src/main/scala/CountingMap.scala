@@ -47,6 +47,14 @@ case class CountingMap[A, B](content: Map[A, (Count, Set[B])]) {
     that.content.forall({ case
       (a, (_, bs)) => bs.subsetOf(lookup(a))
     })
+  def diff(that: CountingMap[A, B]): String =
+    if (this == that) { "equals" }
+    else if (this.keys != that.keys) { "keys are not equal" }
+    else {
+      val ks = this.keys.filter(k => (that.lookup(k) != this.lookup(k))).mkString(", ")
+      s"the following keys are different: $ks"
+    }
+
 }
 
 object CountingMap {

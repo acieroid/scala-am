@@ -36,6 +36,9 @@ trait Semantics[Exp, Abs, Addr, Time] {
    */
   def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
 
+  def stepReceive(self: Any /* TODO */, mname: String, margsv: List[Abs], d: Exp, env: Environment[Addr], store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]] =
+    throw new Exception("Semantics do not support message-based concurrency")
+
   /**
    * Defines how to parse a program
    */
@@ -237,13 +240,13 @@ class ActorActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address, Ti
   type Env = Environment[Addr]
   type Sto = Store[Addr, Abs]
   type Act = Action[Exp, Abs, Addr]
-  type ActorDefinition = (String, List[Abs], PID, PID, Store[Addr, Abs], Time) => Act
   def send(pid: PID, name: String, msg: List[Abs], vres: Abs, effs: Effs = Set.empty): Act =
     new ActorActionSend(pid, name, msg, vres, effs)
-  def create(beh: ActorDefinition, exp: Exp, fres: PID => Abs, store: Sto, effs: Effs = Set.empty): Act =
-    new ActorActionCreate(beh, exp, fres, store, effs)
-  def become(beh: ActorDefinition, vres: Abs, store: Sto, effs: Effs = Set.empty): Act =
-    new ActorActionBecome(beh, vres, store, effs)
+  def create(actd: Exp, exp: Exp, env: Env, store: Sto, fres: PID => Abs, effs: Effs = Set.empty): Act =
+    new ActorActionCreate(actd, exp, env, store, fres, effs)
+  def become(actd: Exp, env: Env, store: Sto, vres: Abs, effs: Effs = Set.empty): Act =
+    new ActorActionBecome(actd, env, store, vres, effs)
+  def terminate: Act = new ActorActionTerminate[Exp, Abs, Addr]()
 }
 
 case class ActorActionSend[PID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
@@ -254,18 +257,25 @@ case class ActorActionSend[PID : ThreadIdentifier, Exp : Expression, Abs : JoinL
 }
 
 case class ActorActionCreate[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
-  (act: (String, List[Abs], PID, PID, Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], e: Exp, fres: PID => Abs,
-    store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+  (actd: Exp, e: Exp, env: Environment[Addr], store: Store[Addr, Abs], fres: PID => Abs,
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }
 
 case class ActorActionBecome[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
-  (act: (String, List[Abs], PID, PID, Store[Addr, Abs], Time) => Action[Exp, Abs, Addr], vres: Abs,
-    store: Store[Addr, Abs], effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+  (actd: Exp, env: Environment[Addr], store: Store[Addr, Abs], vres: Abs,
+    effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }
+
+case class ActorActionTerminate[Exp : Expression, Abs : JoinLattice, Addr : Address]
+  (effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
+    extends Action[Exp, Abs, Addr] {
+  def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
+}
+
 
 /**
  * Base class for semantics that define some helper methods

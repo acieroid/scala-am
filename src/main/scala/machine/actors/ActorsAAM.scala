@@ -1,12 +1,21 @@
 import scalaz.Scalaz._
 import scalaz._
 
+trait MboxSize
+case class MboxSizeN(n: Int) extends MboxSize {
+  override def toString = n.toString
+}
+case object MboxSizeUnbounded extends MboxSize {
+  override def toString = "+"
+}
+
 trait MboxImpl[PID, Abs] {
   type Message = (PID, String, List[Abs])
   trait T {
     def pop: Set[(Message, T)]
     def push(m: Message): T
     def isEmpty: Boolean
+    def size: MboxSize
   }
   def empty: T
 }
@@ -16,6 +25,7 @@ case class PowersetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     def pop = messages.map(m => (m, this))
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
+    def size = MboxSizeUnbounded
   }
   def empty = M(Set.empty)
 }
@@ -28,6 +38,7 @@ case class ListMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     }
     def push(m: Message) = this.copy(messages = messages :+ m)
     def isEmpty = messages.isEmpty
+    def size = MboxSizeN(messages.length)
   }
   def empty = M(List.empty)
 }
@@ -44,11 +55,13 @@ case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, A
       this.copy(messages = messages :+ m)
     }
     def isEmpty = messages.isEmpty
+    def size = MboxSizeN(messages.length)
   }
   case class MUnordered(messages: Set[Message]) extends T {
     def pop = messages.map(m => (m, this))
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
+    def size = MboxSizeUnbounded
   }
   def empty = MOrdered(List.empty)
 }
@@ -64,6 +77,7 @@ case class MultisetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
       case None => M(messages + ((m, 1)))
     }
     def isEmpty = messages.isEmpty
+    def size = MboxSizeN(messages.map({ case (_, n) => n }).sum)
   }
   def empty = M(Set.empty)
 }
@@ -86,10 +100,10 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   }
 
   object ActionHelpers extends ActorActionHelpers[Exp, Abs, Addr, Time, PID]
-  import ActionHelpers.{Act, ActorDefinition}
+  import ActionHelpers._
 
   trait ActorInstance
-  case class ActorInstanceActor(act: ActorDefinition) extends ActorInstance
+  case class ActorInstanceActor(actd: Exp, env: Environment[Addr]) extends ActorInstance
   case object ActorInstanceMain extends ActorInstance
 
   trait Control
@@ -112,7 +126,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
       case ControlError(err) => List(<font color="black">{err.toString}</font>)
       case ControlWait => List(<font color="skyblue">wait</font>)
-    }) ++ List(scala.xml.Text(if (mbox.isEmpty) "0" else ">0"))
+    }) ++ List(scala.xml.Text(mbox.size.toString))
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
       case ControlKont(v) => inst == ActorInstanceMain && kont == HaltKontAddress
@@ -125,8 +139,8 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     }
   }
   object Context {
-    def create(p: PID, act: ActorDefinition): Context =
-      Context(ControlWait, HaltKontAddress, ActorInstanceActor(act), M.empty, time.initial(p.toString))
+    def create(p: PID, actd: Exp, env: Environment[Addr]): Context =
+      Context(ControlWait, HaltKontAddress, ActorInstanceActor(actd, env), M.empty, time.initial(p.toString))
     def createMain(e: Exp, env: Environment[Addr]): Context =
       Context(ControlEval(e, env), HaltKontAddress, ActorInstanceMain, M.empty, time.initial("main"))
   }
@@ -204,15 +218,15 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         Set((this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push((p, name, msg)), t = time.tick(ctx.t)))),
           p, Some(ActorEffectSendSelf(p))))
-      case ActorActionCreate(act : ActorDefinition @unchecked, exp, fres : (PID => Abs), store2, effs) =>
+      case ActorActionCreate(actd, exp, env2, store2, fres : (PID => Abs), effs) =>
         val p2 = pid.thread(exp, ctx.t)
         Set((this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(fres(p2)), t = time.tick(ctx.t)))
-          .extend(p2 -> Context.create(p2, act)),
+          .extend(p2 -> Context.create(p2, actd, env2)),
           store = store2), p, None))
-      case ActorActionBecome(act2 : ActorDefinition @unchecked, vres, store2, effs) =>
+      case ActorActionBecome(actd, env2, store2, vres, effs) =>
         Set((this.copy(procs = procs
-          .update(p -> ctx.copy(control = ControlKont(vres), inst = ActorInstanceActor(act2), t = time.tick(ctx.t))),
+          .update(p -> Context.create(p, actd, env2).copy(t = time.tick(ctx.t), mbox = ctx.mbox)),
           store = store2), p, None))
     }
 
@@ -230,8 +244,9 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       case ControlError(_) => Set[(State, PID, Option[ActorEffect])]() /* no successor */
       case ControlWait => /* receive a message */
         ctx.inst match {
-          case ActorInstanceActor(act) =>
-            ctx.mbox.pop.flatMap({ case ((sender, name, values), mbox2) => integrate(p, ctx.copy(mbox = mbox2), act(name, values, p, sender, store, ctx.t))
+          case ActorInstanceActor(actd, env) =>
+            ctx.mbox.pop.flatMap({ case ((sender, name, values), mbox2) =>
+              sem.stepReceive(p, name, values, actd, env, store, ctx.t).flatMap(action => integrate(p, ctx.copy(mbox = mbox2), action))
             })
           case ActorInstanceMain => Set[(State, PID, Option[ActorEffect])]() /* main cannot receive messages */
         }
@@ -253,7 +268,10 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
             }
           }
         case n => /* More than one successor, can't handle that here */
-          throw new Exception("more than one successor when macrostepping thread $p (got $n successors)")
+          println(this.procs.get(p))
+          println("==>")
+          succs.foreach({ case (s, _, _) => println(s.procs.get(p)) })
+          throw new Exception(s"more than one successor when macrostepping thread $p (got $n successors)")
       }
     }
     def macrostepTraceAny(sem: Semantics[Exp, Abs, Addr, Time]): Option[(State, PID, List[State])] = {
@@ -263,6 +281,8 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         case Some(_) => acc
       })
     }
+    def macrostepTraceAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(State, PID, List[State])] =
+      procs.pids.flatMap(p => macrostepPidTrace(p, sem).map({ case (s, trace) => (s, p, trace) }))
     //def macroStepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): (Set[State], ActorEffect, Graph[State, PID]) = ???
   }
 
@@ -301,7 +321,28 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         case Array("equals", s) => Try(s.toInt) match {
           case Success(state2Number) => graph.flatMap(_.getNode(state2Number)) match {
             case Some(state2) =>
-              println(state == state2)
+              println(s"state == state2: ${state == state2}")
+              println(s"state.store == state2.store: ${state.store == state2.store}")
+              println(s"state.kstore == state2.kstore: ${state.kstore == state2.kstore}")
+              println(s"state.procs == state2.procs: ${state.procs == state2.procs}")
+              println(s"state.procs.keys == state2.procs.keys: ${state.procs.content.keys == state2.procs.content.keys}")
+              println(s"diff(state.procs, state2.procs): ${state.procs.content.diff(state2.procs.content)}")
+              state.procs.pids.foreach(p => {
+                val ctxs1 = state.procs.get(p)
+                val ctxs2 = state2.procs.get(p)
+                if (ctxs1 != ctxs2) {
+                  println(s"pid $p: ctxs1 != ctxs2, ctxs1.length = ${ctxs1.length}, ctxs2.length = ${ctxs2.length}")
+                  if (ctxs1.length == 1 && ctxs2.length == 1) {
+                    val ctx1 = ctxs1.head
+                    val ctx2 = ctxs2.head
+                    println(s"ctx1.control == ctx2.control: ${ctx1.control == ctx2.control}")
+                    println(s"ctx1.kont == ctx2.kont: ${ctx1.kont == ctx2.kont}")
+                    println(s"ctx1.inst == ctx2.inst: ${ctx1.inst == ctx2.inst}")
+                    println(s"ctx1.mbox == ctx2.mbox: ${ctx1.mbox == ctx2.mbox}")
+                    println(s"ctx1.t == ctx2.t: ${ctx1.t == ctx2.t}")
+                  }
+                }
+              })
               println(state)
               println("===")
               println(state2)
@@ -413,15 +454,10 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
             } else if (s.halted) {
               loopMacrostep(todo.tail, visited + s, halted + s, graph)
             } else {
-              /* TODO: macrostep ALL */
-              println(s"Macrostepping")
-              s.macrostepTraceAny(sem) match {
-                case None => loopMacrostep(todo.tail, visited, halted, graph)
-                case Some((s2, p, trace)) =>
-                  println(s"Leading to trace of length ${trace.length}")
-                  val newGraph = graph.map(_.addEdge(s, p, s2))
-                  loopMacrostep(todo.tail + s2, visited ++ trace + s, halted, newGraph)
-              }
+              val succs = s.macrostepTraceAll(sem)
+              // println(s"Explored traces of length ${succs.map({ case (_, _, tr) => tr.length })}")
+              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, p, trace) => (s, p, s2) })))
+              loopMacrostep(todo.tail ++ succs.map(_._1), visited ++ succs.flatMap(_._3) + s, halted, newGraph)
             }
           case None =>
             ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)

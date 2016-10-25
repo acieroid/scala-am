@@ -225,23 +225,23 @@ case class SchemeJoin(exp: SchemeExp, pos: Position) extends SchemeExp {
  */
 case class SchemeSend(target: SchemeExp, message: String, args: List[SchemeExp], pos: Position) extends SchemeExp {
   val a = args.mkString(" ")
-  override def toString = s"(send $target $message $a)"
+  override def toString = if (args.isEmpty) s"(send $target $message)" else s"(send $target $message $a)"
 }
 
 /**
  * Create an actor from a behavior
  */
 case class SchemeCreate(actor: SchemeExp, args: List[SchemeExp], pos: Position) extends SchemeExp {
-  val a = args.mkString(" ")
-  override def toString = s"(create $actor $a)"
+  val a = (actor :: args).mkString(" ")
+  override def toString = s"(create $a)"
 }
 
 /**
  * Change the behavior of the current actor
  */
 case class SchemeBecome(actor: SchemeExp, args: List[SchemeExp], pos: Position) extends SchemeExp {
-  val a = args.mkString(" ")
-  override def toString = s"(become $actor $a)"
+  val a = (actor :: args).mkString(" ")
+  override def toString = s"(become $a)"
 }
 
 /**
@@ -260,7 +260,7 @@ case class SchemeActor(name: String, xs: List[String], defs: Map[String, (List[S
     val argss = args.mkString(" ")
     val bodys = body.mkString(" ")
     s"($msg ($argss) $bodys)"
-  })
+  }).mkString(" ")
   override def toString = s"(actor $name ($xss) ($defss))"
 }
 
