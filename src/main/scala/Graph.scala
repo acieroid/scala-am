@@ -39,7 +39,7 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
     val sb = new StringBuilder("digraph G {\n")
     nodes.foreach((n) => {
       val labelstr = label(n).mkString(" ")
-      sb.append(s"node_${ids(n)}[xlabel=${ids(n)}, label=<$labelstr>, fillcolor=<${color(n)}> style=<filled>, tooltip=<${tooltip(n)}>];\n")
+      sb.append(s"node_${ids(n)}[shape=box, xlabel=${ids(n)}, label=<$labelstr>, fillcolor=<${color(n)}> style=<filled>, tooltip=<${tooltip(n)}>];\n")
     })
     edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) =>
       val annotstr = annotLabel(annot).mkString(" ")
