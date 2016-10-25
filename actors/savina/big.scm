@@ -1,4 +1,3 @@
-
 ;; Adapted from Savina benchmarks ("Big" benchmark, from BenchErl)
 (letrec ((num-messages 10)
          (num-workers 2)

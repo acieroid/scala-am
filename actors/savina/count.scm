@@ -14,8 +14,8 @@
                               (become producer-actor counter)))
                  (result (count)
                          (if (= count N)
-                             (displayln "Success!")
-                             (displayln "Error!"))
+                             (display "Success!")
+                             (display "Error!"))
                          (terminate))))
          (counting-actor
           (actor "counting" (count)
