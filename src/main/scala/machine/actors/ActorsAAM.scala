@@ -388,47 +388,6 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       }
     }
     @scala.annotation.tailrec
-    def loopSendInterleavings(todo: Set[(State, PID)], visited: Set[(State, PID)], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
-      if (Util.timeoutReached(timeout, startingTime)) {
-        ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
-      } else {
-        todo.headOption match {
-          case Some((s, p)) =>
-            if (visited.contains((s, p))) {
-              loopSendInterleavings(todo.tail, visited, halted, graph)
-            } else if (s.halted) {
-              loopSendInterleavings(todo.tail, visited + ((s, p)), halted + s, graph)
-            } else {
-
-              // TODO: problem with loops, we might keep running the same process forever, since messages might not be removed from the mailbox in the abstract
-              // 1: Step only the current pid
-              val succs: Set[(State, PID, Option[ActorEffect])] = s.stepPid(p, sem)
-              // 2: If we sent a message, we need to explore other pids as well
-              val send: Boolean = succs.exists({ case (_, _, eff) => eff match {
-                case Some(_: ActorEffectSend) => true
-                case Some(_: ActorEffectSendSelf) => true
-                case _ => false
-              }})
-              val succs2: Set[(State, PID, Option[ActorEffect])] = if (!send) { succs } else {
-                succs ++ s.stepAllExceptPid(p, sem)
-              }
-              val succs3: Set[(State, PID, Option[ActorEffect])] = if (!succs2.isEmpty) { succs2 } else {
-                // 3: if there is no successor at all, we may need to explore more pids. This basically applies when no message was sent (and succs == succs2 == empty set)
-                s.stepAllExceptPid(p, sem)
-              }
-              // 4: Compute the pids we explored
-              val pids: Set[PID] = succs3.map({ case (_, p, _) => p })
-              // 5: Add new stuff to the graph
-              val newGraph = graph.map(_.addEdges(succs3.map({ case (s2, p, _) => (s, p, s2) })))
-              // 6: Explore the remainder + new states
-              loopSendInterleavings(todo.tail ++ succs3.map({ case (s2, p, _) => (s2, p) }), visited ++ pids.map(p => (s, p)), halted, newGraph)
-            }
-          case None =>
-            ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
-        }
-      }
-    }
-    @scala.annotation.tailrec
     def loopSingleInterleaving(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
       if (Util.timeoutReached(timeout, startingTime)) {
         ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
@@ -450,7 +409,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       }
     }
     @scala.annotation.tailrec
-    def loopMacrostep(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
+    def loopMacrostepTrace(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
       def id(g: Option[Graph[State, PID]], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
       if (Util.timeoutReached(timeout, startingTime)) {
         ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
@@ -459,17 +418,17 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           case Some(s) =>
             if (visited.contains(s)) {
               // println(s"State ${id(graph,s)} already visited (hashCode: ${s.hashCode})")
-              loopMacrostep(todo.tail, visited, halted, graph)
+              loopMacrostepTrace(todo.tail, visited, halted, graph)
             } else if (s.halted) {
               // println(s"State ${id(graph,s)} halted")
-              loopMacrostep(todo.tail, visited + s, halted + s, graph)
+              loopMacrostepTrace(todo.tail, visited + s, halted + s, graph)
             } else {
               // println(s"Macrostepping from state ${id(graph, s)}")
               val succs = s.macrostepTraceAll(sem)
               val newGraph = graph.map(_.addEdges(succs.map({ case (s2, p, trace) => (s, p, s2) })))
               // val statesAndTraces = succs.map({ case (s2, p, trace) => s"${id(newGraph, s2)}: ${trace.map(s => s.hashCode)}" })
               // println(s"Getting states and traces $statesAndTraces")
-              loopMacrostep(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
+              loopMacrostepTrace(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
             }
           case None =>
             ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
@@ -478,8 +437,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     }
     val initialState = State.inject(exp, sem.initialEnv, sem.initialStore)
     // loopAllInterleavings(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
-    // loopSendInterleavings(Set((initialState, pid.initial)), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
     // loopSingleInterleaving(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
-    loopMacrostep(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
+    loopMacrostepTrace(Set(initialState), Set(), Set(), if (graph) { Some(new Graph[State, PID]()) } else { None })
   }
 }
