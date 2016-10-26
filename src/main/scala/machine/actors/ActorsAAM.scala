@@ -518,7 +518,10 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
                     Colors.Yellow
                   } else {
                     Colors.White
-                  }, p => List(scala.xml.Text(p.toString)))
+                  }, {
+                    case (p, None) => List(scala.xml.Text(p.toString))
+                    case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
+                  })
                 case None => ()
               }*/
               val newGraph = graph.map(_.addEdges(succs.flatMap({ case (ss, p, _) => ss.map({ case (s2, eff) => (s, (p, eff), s2) }) })))
