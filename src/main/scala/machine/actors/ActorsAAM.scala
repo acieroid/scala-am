@@ -39,6 +39,7 @@ case class ListMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     def push(m: Message) = this.copy(messages = messages :+ m)
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.length)
+    override def toString = messages.map({ case (_, s, _) => s }).mkString(", ")
   }
   def empty = M(List.empty)
 }
@@ -92,6 +93,12 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
 
   def name = "ActorsAAM"
 
+  type G = Graph[State, (PID, Option[ActorEffect])]
+  object G {
+    def apply(): G = new Graph()
+    def apply(s: State): G = new Graph(s)
+  }
+
   trait KontAddr
   case class NormalKontAddress(pid: PID, exp: Exp, time: Time) extends KontAddr
   case object HaltKontAddress extends KontAddr
@@ -126,7 +133,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
       case ControlError(err) => List(<font color="black">{err.toString}</font>)
       case ControlWait => List(<font color="skyblue">wait</font>)
-    }) ++ List(scala.xml.Text(mbox.size.toString))
+    }) ++ List(scala.xml.Text(mbox.toString.take(40)))
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
       case ControlKont(v) => inst == ActorInstanceMain && kont == HaltKontAddress
@@ -169,14 +176,17 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   trait ActorEffect {
     def macrostepStopper: Boolean
   }
-  case class ActorEffectSend(target: PID) extends ActorEffect {
+  case class ActorEffectSend(target: PID, name: String) extends ActorEffect {
     def macrostepStopper = true
+    override def toString = s"$target ! $name"
   }
-  case class ActorEffectSendSelf(target: PID) extends ActorEffect {
+  case class ActorEffectSendSelf(target: PID, name: String) extends ActorEffect {
     def macrostepStopper = true
+    override def toString = s"self ! $name"
   }
   case class ActorEffectTerminate(p: PID) extends ActorEffect {
     def macrostepStopper = true
+    override def toString = s"x"
   }
 
   case class State(procs: Procs, store: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
@@ -217,12 +227,12 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           (this.copy(procs = procs
             .update(p -> ctx.copy(control = ControlKont(vres), t = time.tick(ctx.t)))
             .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push((p, name, msg))))),
-            p, Some(ActorEffectSend(ptarget))))
+            p, Some(ActorEffectSend(ptarget, name))))
       case ActorActionSend(ptarget, name, msg, vres, effs) if ptarget == p =>
         /* TODO: special care need to be taken if p maps to more than a single actor */
         Set((this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push((p, name, msg)), t = time.tick(ctx.t)))),
-          p, Some(ActorEffectSendSelf(p))))
+          p, Some(ActorEffectSendSelf(p, name))))
       case ActorActionCreate(actd, exp, env2, store2, fres : (PID => Abs), effs) =>
         val p2 = pid.thread(exp, ctx.t)
         Set((this.copy(procs = procs
@@ -296,11 +306,12 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     /**
      * Performs a macrostep for a given PID. If the state is stuck, returns
      * None. Otherwise, returns the graph explored for this macrostep, as well
-     * as every final state. This final state *is* in the graph (unlinke
-     * macrostepTrace), because we need to keep track of the edge. */
+     * as every final state and the effect that stopped the macrostep for that
+     * state. The final states *are* in the graph (unlike macrostepTrace),
+     * because we need to keep track of the edge. */
     /* TODO: computing the graph can be disabled when it is not required by the main loop. */
-    def macrostepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Option[(Graph[State, PID], Set[State])] = {
-      def loop(todo: Set[State], visited: Set[State], finals: Set[State], graph: Graph[State, PID]): (Graph[State, PID], Set[State]) = {
+    def macrostepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Option[(G, Set[(State, Option[ActorEffect])])] = {
+      def loop(todo: Set[State], visited: Set[State], finals: Set[(State, Option[ActorEffect])], graph: G): (G, Set[(State, Option[ActorEffect])]) = {
         todo.headOption match {
           case Some(s) =>
             if (visited.contains(s)) {
@@ -309,16 +320,16 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
             } else if (s.halted) {
               /* The state is halted. It's therefore part of the final states (although it
                * doesn't produce any effect) */
-              loop(todo.tail, visited, finals + s, graph)
+              loop(todo.tail, visited, finals + ((s, None)), graph)
             } else {
               /* Otherwise, step this state */
               val succs = s.stepPid(p, sem)
               /* add the successors to the graph */
-              val newGraph = graph.addEdges(succs.map({ case (s2, _, _) => (s, p, s2) }))
+              val newGraph = graph.addEdges(succs.map({ case (s2, _, eff) => (s, (p, eff), s2) }))
               /* schedule the successors that did not produce effects for exploration, and add
                * the ones that did produce effects to the finals set */
               val (succsEff, succsNoEff) = succs.partition({ case (_, _, eff) => eff.map(_.macrostepStopper).getOrElse(false) })
-              loop(todo.tail ++ succsNoEff.map(_._1), visited + s, finals ++ succsEff.map(_._1), newGraph)
+              loop(todo.tail ++ succsNoEff.map(_._1), visited + s, finals ++ succsEff.map({ case (s2, _, eff) => (s2, eff) }), newGraph)
             }
           case None =>
             /* Nothing more to explore */
@@ -329,14 +340,14 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       if (succs.isEmpty) {
         None
       } else {
-        val graph = new Graph[State, PID](this)
+        val graph = G(this)
         /* TODO: this is copy paste, solve that. */
-        val newGraph = graph.addEdges(succs.map({ case (s2, _, _) => (this, p, s2) }))
+        val newGraph = graph.addEdges(succs.map({ case (s2, _, eff) => (this, (p, eff), s2) }))
         val (succsEff, succsNoEff) = succs.partition({ case (_, _, eff) => eff.map(_.macrostepStopper).getOrElse(false) })
-        Some(loop(succsNoEff.map(_._1), Set(this), succsEff.map(_._1), newGraph))
+        Some(loop(succsNoEff.map(_._1), Set(this), succsEff.map({ case (s2, _, eff) => (s2, eff) }), newGraph))
       }
     }
-    def macrostepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(Set[State], PID, Graph[State, PID])] =
+    def macrostepAll(sem: Semantics[Exp, Abs, Addr, Time]): Set[(Set[(State, Option[ActorEffect])], PID, G)] =
       procs.pids.flatMap(p => macrostepPid(p, sem).map({ case (graph, states) => (states, p, graph) }))
   }
 
@@ -348,7 +359,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         KontStore.empty[KontAddr])
   }
 
-  case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, PID]], timedOut: Boolean)
+  case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
       extends Output[Abs] {
     def finalValues: Set[Abs] = halted.flatMap(st => st.procs.get(pid.initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
@@ -363,7 +374,10 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           Colors.Yellow
         } else {
           Colors.White
-        }, p => List(scala.xml.Text(p.toString)))
+        }, {
+          case (p, None) => List(scala.xml.Text(p.toString))
+          case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
+        })
       case None =>
         println("Not generating graph because no graph was computed")
     }
@@ -413,7 +427,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
     val startingTime = System.nanoTime
     @scala.annotation.tailrec
-    def loopAllInterleavings(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
+    def loopAllInterleavings(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
       if (Util.timeoutReached(timeout, startingTime)) {
         ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
       } else {
@@ -426,7 +440,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
               loopAllInterleavings(todo.tail, visited + s, halted + s, graph)
             } else {
               val succs: Set[(State, PID, Option[ActorEffect])] = s.stepAll(sem)
-              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, pid, _) => (s, pid, s2) })))
+              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, pid, eff) => (s, (pid, eff), s2) })))
               loopAllInterleavings(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
             }
           case None =>
@@ -435,7 +449,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       }
     }
     @scala.annotation.tailrec
-    def loopSingleInterleaving(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
+    def loopSingleInterleaving(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
       if (Util.timeoutReached(timeout, startingTime)) {
         ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
       } else {
@@ -447,7 +461,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
               loopSingleInterleaving(todo.tail, visited + s, halted + s, graph)
             } else {
               val succs = s.stepAny(sem)
-              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, pid, _) => (s, pid, s2) })))
+              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, pid, eff) => (s, (pid, eff), s2) })))
               loopSingleInterleaving(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
             }
           case None =>
@@ -456,8 +470,8 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       }
     }
     @scala.annotation.tailrec
-    def loopMacrostepTrace(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
-      def id(g: Option[Graph[State, PID]], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
+    def loopMacrostepTrace(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
+      def id(g: Option[G], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
       if (Util.timeoutReached(timeout, startingTime)) {
         ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
       } else {
@@ -472,7 +486,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
             } else {
               // println(s"Macrostepping from state ${id(graph, s)}")
               val succs = s.macrostepTraceAll(sem)
-              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, p, trace) => (s, p, s2) })))
+              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, p, trace) => (s, (p, None /* TODO: incorrect */), s2) })))
               // val statesAndTraces = succs.map({ case (s2, p, trace) => s"${id(newGraph, s2)}: ${trace.map(s => s.hashCode)}" })
               // println(s"Getting states and traces $statesAndTraces")
               loopMacrostepTrace(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
@@ -483,7 +497,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       }
     }
     @scala.annotation.tailrec
-    def loopMacrostep(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, PID]]): ActorsAAMOutput = {
+    def loopMacrostep(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
       if (Util.timeoutReached(timeout, startingTime)) {
         ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
       } else {
@@ -507,8 +521,8 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
                   }, p => List(scala.xml.Text(p.toString)))
                 case None => ()
               }*/
-              val newGraph = graph.map(_.addEdges(succs.flatMap({ case (ss, p, _) => ss.map(s2 => (s, p, s2)) })))
-              loopMacrostep(todo.tail ++ succs.flatMap(_._1), visited + s, halted, newGraph)
+              val newGraph = graph.map(_.addEdges(succs.flatMap({ case (ss, p, _) => ss.map({ case (s2, eff) => (s, (p, eff), s2) }) })))
+              loopMacrostep(todo.tail ++ succs.flatMap(_._1.map(_._1)), visited + s, halted, newGraph)
             }
           case None =>
             ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
@@ -516,7 +530,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       }
     }
     val initialState = State.inject(exp, sem.initialEnv, sem.initialStore)
-    val g = if (graph) { Some(new Graph[State, PID]()) } else { None }
+    val g = if (graph) { Some(G()) } else { None }
     // loopAllInterleavings(Set(initialState), Set(), Set(), g)
     // loopSingleInterleaving(Set(initialState), Set(), Set(), g)
     // loopMacrostepTrace(Set(initialState), Set(), Set(), g)
