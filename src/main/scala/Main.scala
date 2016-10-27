@@ -179,7 +179,7 @@ object Main {
             implicit val isAddress = address.isAddress
 
             val machine = config.machine match {
-              case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID]
+              case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](new MultisetMboxImpl[ContextSensitiveTID, lattice.L])
               case _ => throw new Exception(s"unsupported machine for AScheme: ${config.machine}")
             }
 

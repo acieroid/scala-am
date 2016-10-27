@@ -71,7 +71,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
 
   object Plus extends NoStoreOperation("+") {
     override def call(args: List[Abs]) = args match {
-      case Nil => MayFailSuccess(abs.inject(0))
+      case Nil => abs.inject(0)
       case x :: rest => call(rest) >>= (plus(x, _))
     }
   }
