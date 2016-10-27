@@ -78,9 +78,30 @@ case class MultisetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
       case None => M(messages + ((m, 1)))
     }
     def isEmpty = messages.isEmpty
-    def size = MboxSizeN(messages.map({ case (_, n) => n }).sum)
+    def size = MboxSizeN(messages.map(_._2).sum)
   }
   def empty = M(Set.empty)
+}
+
+case class BoundedMultisetMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, Abs] {
+  case class M(messages: Set[(Message, Int)], noCountMessages: Set[Message]) extends T {
+    def pop = messages.map({
+      case (m, 1) => (m, this.copy(messages = messages - ((m, 1))))
+      case (m, count) => (m, (this.copy(messages = messages - ((m, count)) + ((m, count - 1)))))
+    }) ++ noCountMessages.map(m => (m, this))
+    def push(m: Message) = if (noCountMessages.contains(m)) { this } else {
+      messages.find({ case (m2, count) => m2 == m }) match {
+        case Some((_, count)) if count + 1 < bound => this.copy(messages = messages - ((m, count)) + ((m, count + 1)))
+        case Some((_, count)) => this.copy(
+          messages = messages - ((m, count)),
+          noCountMessages = noCountMessages + m)
+        case None => this.copy(messages = messages + ((m, 1)))
+      }
+    }
+    def isEmpty = messages.isEmpty && noCountMessages.isEmpty
+    def size = if (noCountMessages.isEmpty) { MboxSizeN(messages.map(_._2).sum) } else { MboxSizeUnbounded }
+  }
+  def empty = M(Set.empty, Set.empty)
 }
 
 class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier](val M: MboxImpl[PID, Abs])
@@ -324,12 +345,17 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
             } else {
               /* Otherwise, step this state */
               val succs = s.stepPid(p, sem)
-              /* add the successors to the graph */
-              val newGraph = graph.addEdges(succs.map({ case (s2, _, eff) => (s, (p, eff), s2) }))
-              /* schedule the successors that did not produce effects for exploration, and add
-               * the ones that did produce effects to the finals set */
-              val (succsEff, succsNoEff) = succs.partition({ case (_, _, eff) => eff.map(_.macrostepStopper).getOrElse(false) })
-              loop(todo.tail ++ succsNoEff.map(_._1), visited + s, finals ++ succsEff.map({ case (s2, _, eff) => (s2, eff) }), newGraph)
+              /* if (succs.isEmpty) {
+                /* No state produced, this state is stuck for this actor, treat it as a final state */
+                loop(todo.tail, visited + s, finals + ((s, None)), graph)
+              } else { */
+                /* add the successors to the graph */
+                val newGraph = graph.addEdges(succs.map({ case (s2, _, eff) => (s, (p, eff), s2) }))
+                /* schedule the successors that did not produce effects for exploration, and add
+                 * the ones that did produce effects to the finals set */
+                val (succsEff, succsNoEff) = succs.partition({ case (_, _, eff) => eff.map(_.macrostepStopper).getOrElse(false) })
+                loop(todo.tail ++ succsNoEff.map(_._1), visited + s, finals ++ succsEff.map({ case (s2, _, eff) => (s2, eff) }), newGraph)
+            /* } */
             }
           case None =>
             /* Nothing more to explore */
@@ -498,6 +524,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     }
     @scala.annotation.tailrec
     def loopMacrostep(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
+      def id(g: Option[G], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
       if (Util.timeoutReached(timeout, startingTime)) {
         ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
       } else {
@@ -508,8 +535,9 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
             } else if (s.halted) {
               loopMacrostep(todo.tail, visited + s, halted + s, graph)
             } else {
+              // println(s"Macrostepping from state ${id(graph, s)}")
               val succs = s.macrostepAll(sem)
-/*              println(s"Macrostep produced ${succs.size} successors")
+              /* println(s"Macrostep produced ${succs.size} successors")
               succs.headOption match {
                 case Some((s, p, g)) => g.toDotFile("foo.dot", _.toXml,
                   (s) => if (s.hasError) {
