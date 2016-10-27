@@ -386,7 +386,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   }
 
   case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
-      extends Output[Abs] {
+      extends Output {
     def finalValues: Set[Abs] = halted.flatMap(st => st.procs.get(pid.initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
@@ -450,7 +450,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output[Abs] = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
     val startingTime = System.nanoTime
     @scala.annotation.tailrec
     def loopAllInterleavings(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
