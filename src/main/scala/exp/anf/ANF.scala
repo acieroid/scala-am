@@ -1,7 +1,6 @@
 /**
   * Abstract syntax of ANF programs
   */
-import scala.util.parsing.input.Position
 
 trait ANFExp {
   val pos: Position

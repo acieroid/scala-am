@@ -1,6 +1,5 @@
 import scalaz._
 import scalaz.Scalaz._
-import scala.util.parsing.input.Position
 
 /**
  * This analysis computes, for every function call, the values to which the operator can point to

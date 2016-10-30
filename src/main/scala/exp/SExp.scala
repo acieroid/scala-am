@@ -34,7 +34,6 @@ object ValueNil extends Value {
  * resides in the input file, and as tagging information for the abstract
  * machine.
  */
-import scala.util.parsing.input.Position
 trait SExp extends {
   val pos: Position
 }

@@ -210,7 +210,7 @@ case class OperatorNotApplicable(name: String, arguments: List[String]) extends 
 case class ArityError(name: String, expected: Int, got: Int) extends SemanticError
 case class VariadicArityError(name: String, min: Int, got: Int) extends SemanticError
 case class TypeError(name: String, operand: String, expected: String, got: String) extends SemanticError
-case class UserError(reason: String, pos: scala.util.parsing.input.Position) extends SemanticError
+case class UserError(reason: String, pos: Position) extends SemanticError
 case class UnboundVariable(name: String) extends SemanticError
 case class UnboundAddress(addr: String) extends SemanticError
 case class MessageNotSupported(actor: String, message: String, supported: List[String]) extends SemanticError

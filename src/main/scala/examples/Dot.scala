@@ -1,4 +1,3 @@
-import scala.util.parsing.input.Position
 import scalaz.Scalaz._
 
 class DotLanguage[Addr : Address] {

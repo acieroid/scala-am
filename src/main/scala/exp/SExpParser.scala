@@ -153,14 +153,14 @@ object SExpParser extends TokenParsers {
 
   def value: Parser[SExp] = Parser { in =>
     (bool | float | integer | character | string | nil)(in) match {
-      case Success(t, in1) => Success(SExpValue(t, in.pos), in1)
+      case Success(t, in1) => Success(SExpValue(t, Position(in.pos)), in1)
       case ns: NoSuccess => ns
     }
   }
 
   def identifier: Parser[SExp] = Parser { in =>
     elem("identifier", _.isInstanceOf[TIdentifier])(in) match {
-      case Success(TIdentifier(s), in1) => Success(SExpIdentifier(s, in.pos), in1)
+      case Success(TIdentifier(s), in1) => Success(SExpIdentifier(s, Position(in.pos)), in1)
       case Success(v, in1) => Failure(s"Expected identifier, got $v", in1)
       case ns: NoSuccess => ns
     }
@@ -171,13 +171,13 @@ object SExpParser extends TokenParsers {
   def quote = elem("quote", _.isInstanceOf[TQuote])
   def list: Parser[SExp] = Parser { in =>
     (leftParen ~> rep1(exp) <~ rightParen)(in) match {
-      case Success(es, in1) => Success(SExpList(es, in.pos), in1)
+      case Success(es, in1) => Success(SExpList(es, Position(in.pos)), in1)
       case ns: NoSuccess => ns
     }
   }
   def quoted: Parser[SExp] = Parser { in =>
     (quote ~> exp)(in) match {
-      case Success(e, in1) => Success(SExpQuoted(e, in.pos), in1)
+      case Success(e, in1) => Success(SExpQuoted(e, Position(in.pos)), in1)
       case ns: NoSuccess => ns
     }
   }

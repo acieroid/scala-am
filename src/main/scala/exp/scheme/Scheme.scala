@@ -1,8 +1,6 @@
 /**
  * Abstract syntax of Scheme programs (probably far from complete)
  */
-import scala.util.parsing.input.Position
-
 trait SchemeExp {
   val pos: Position
 }
@@ -655,12 +653,12 @@ object SchemeUndefiner {
     undefine(exps, List())
 
   def undefine(exps: List[SchemeExp], defs: List[(String, SchemeExp)]): SchemeExp = exps match {
-    case Nil => SchemeBegin(Nil, scala.util.parsing.input.NoPosition)
+    case Nil => SchemeBegin(Nil, Position.none)
     case SchemeDefineFunction(name, args, body, pos) :: rest => undefine(SchemeDefineVariable(name, SchemeLambda(args, body, exps.head.pos), pos) :: rest, defs)
     case SchemeDefineVariable(name, value, _) :: rest => undefine(rest, (name, value) :: defs)
     case _ :: _ => if (defs.isEmpty) {
       undefineBody(exps) match {
-        case Nil => SchemeBegin(Nil, scala.util.parsing.input.NoPosition)
+        case Nil => SchemeBegin(Nil, Position.none)
         case exp :: Nil => exp
         case exps => SchemeBegin(exps, exps.head.pos)
       }

@@ -8,7 +8,6 @@ import scalaz._
 /* We represent the taint status by a lattice, with the following ordering:
  * Bottom < Untainted | Tainted < MaybeTainted. Tainted values are associated
  * with the source position of their taint */
-import scala.util.parsing.input.Position
 trait TaintStatus
 case class Tainted(sources: Set[Position]) extends TaintStatus
 case object Untainted extends TaintStatus

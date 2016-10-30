@@ -1,8 +1,6 @@
 /* We show here how to add support for a new language and how to build static
  * analyses for the language. We do it for lambda calculus */
 
-import scala.util.parsing.input.Position
-
 /** A lambda calculus expression is represented by a LamExp. It needs to have a
   * position to identify its location in the input file. */
 trait LamExp {
