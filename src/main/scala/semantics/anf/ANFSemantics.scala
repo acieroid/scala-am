@@ -9,11 +9,11 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
   def sabs = implicitly[IsSchemeLattice[Abs]]
   /** ANF Scheme only has three types of continuation frames: halt, let, and letrec */
   trait ANFFrame extends Frame
-  case class FrameLet(v: String, body: ANFExp, env: Environment[Addr]) extends ANFFrame {
-    override def toString = s"FrameLet(${v.toString})"
+  case class FrameLet(v: Identifier, body: ANFExp, env: Environment[Addr]) extends ANFFrame {
+    override def toString = s"FrameLet($v)"
   }
-  case class FrameLetrec(v: String, a: Addr, body: ANFExp, env: Environment[Addr]) extends ANFFrame {
-    override def toString = s"FrameLetrec(${v.toString})"
+  case class FrameLetrec(v: Identifier, a: Addr, body: ANFExp, env: Environment[Addr]) extends ANFFrame {
+    override def toString = s"FrameLetrec($v)"
   }
 
   type Actions = Set[Action[ANFExp, Abs, Addr]]
@@ -21,12 +21,12 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
   /** Performs evaluation of an atomic expression, returning either an error or the produced value */
   def atomicEval(e: ANFAtomicExp, env: Environment[Addr], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = e match {
     case lam: ANFLambda => (sabs.inject[ANFExp, Addr]((lam, env)), Effect.none).point[MayFail]
-    case ANFIdentifier(name, _) => env.lookup(name) match {
+    case ANFVar(variable) => env.lookup(variable.name) match {
       case Some(a) => store.lookup(a) match {
         case Some(v) => (v, Set(Effect.readVariable(a))).point[MayFail]
         case None => UnboundAddress(a.toString)
       }
-      case None => UnboundVariable(name)
+      case None => UnboundVariable(variable)
     }
     case ANFValue(ValueString(s), _) => (sabs.inject(s), Effect.none).point[MayFail]
     case ANFValue(ValueInteger(n), _) => (sabs.inject(n), Effect.none).point[MayFail]
@@ -86,24 +86,24 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
       if (sabs.isTrue(v) && sabs.isFalse(v)) { t ++ f } else if (sabs.isTrue(v)) { t } else if (sabs.isFalse(v)) { f } else { Action.none }
     }
     /* To evaluate a let, first evaluaprograms.te the binding */
-    case ANFLet(variable, exp, body, _) =>
+    case ANFLet(variable, exp, body, pos) =>
       Action.push(FrameLet(variable, body, env), exp, env, store)
     /* Same for letrec, but we need to bind the variable to an undefined value first */
     case ANFLetrec(variable, exp, body, pos) => {
       val vara = addr.variable(variable, abs.bottom, t)
-      val env1 = env.extend(variable, vara)
+      val env1 = env.extend(variable.name, vara)
       val store1 = store.extend(vara, abs.bottom)
       Action.push(FrameLetrec(variable, vara, body, env1), exp, env1, store1)
     }
     /* A set! needs to update the value of a variable in the store */
-    case ANFSet(variable, value, _) => env.lookup(variable) match {
+    case ANFSet(variable, value, _) => env.lookup(variable.name) match {
       case Some(vara) => for {
         (v, effects) <- atomicEval(value, env, store)
       } yield Action.value(v, store.update(vara, v), effects + Effect.writeVariable(vara))
       case None => Action.error(UnboundVariable(variable))
     }
     /* A quoted identifier is a value */
-    case ANFQuoted(SExpIdentifier(sym, _), _) => Action.value(sabs.injectSymbol(sym), store)
+    case ANFQuoted(SExpId(Identifier(sym, _)), _) => Action.value(sabs.injectSymbol(sym), store)
     /* A quoted s-expression is more complicated to evaluate, as it may require
      * store allocation and is therefore not atomic. We don't deal with them in
      * ANF (they can always be converted into calls to cons). */
@@ -114,7 +114,7 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
     /* Allocate the variable and bind it to the reached value */
     case FrameLet(variable, body, env) => {
       val vara = addr.variable(variable, v, t)
-      Action.eval(body, env.extend(variable, vara), store.extend(vara, v))
+      Action.eval(body, env.extend(variable.name, vara), store.extend(vara, v))
     }
     /* Just bind the variable to the reached value, since it has already been allocated */
     case FrameLetrec(variable, vara, body, env) =>

@@ -7,15 +7,15 @@ class DotLanguage[Addr : Address] {
   trait Term {
     val pos: Position
   }
-  type Variable = String
-  type TermMember = String
+  type Variable = Identifier
+  type TermMember = Identifier
   case class Var(x: Variable, pos: Position) extends Term {
-    override def toString = x
+    override def toString = x.toString
   }
   case class Lam(x: Variable, t: Term, pos: Position) extends Term {
     override def toString = s"λ($x) $t"
   }
-  case class App(x: Variable, y: Variable, pos: Position) extends Term {
+  case class App(x: Variable, y: Identifier, pos: Position) extends Term {
     override def toString = s"$x $y"
   }
   case class Let(x: Variable, t: Term, u: Term, pos: Position) extends Term {
@@ -25,7 +25,7 @@ class DotLanguage[Addr : Address] {
     override def toString = s"$x.$a"
   }
   case class Obj(x: Variable, d: Definition, pos: Position) extends Term {
-    override def toString = s"ν(x) $d"
+    override def toString = s"ν($x) $d"
   }
 
   trait Definition {
@@ -46,10 +46,10 @@ class DotLanguage[Addr : Address] {
 
   trait DotLattice[L] extends JoinLattice[L] {
     /* Injects closures, which can either be a lambda (function), or a nu (object) */
-    def lambda(v: Variable, body: Term, env: Env): L
+    def clo(v: Variable, body: Term, env: Env): L
     def obj(v: Variable, defs: Definition, env: Env): L
-    def getClosures(x: L): Set[(Variable, Term, Env)]
-    def getObjects(x: L): Set[(Variable, Definition, Env)]
+    def getClos(x: L): Set[(Variable, Term, Env)]
+    def getObjs(x: L): Set[(Variable, Definition, Env)]
   }
 
   object DotLatticeImpl {
@@ -72,18 +72,18 @@ class DotLanguage[Addr : Address] {
       def isPrimitiveValue(x: L) = false
       def cardinality(x: L) = CardinalityNumber(x.elements.length)
 
-      def lambda(v: Variable, body: Term, env: Env) =
+      def clo(v: Variable, body: Term, env: Env) =
         L(Set[Value](Closure(v, body, env)))
       def obj(v: Variable, defs: Definition, env: Env) =
         L(Set[Value](Obj(v, defs, env)))
-      def getClosures(x: L) = {
+      def getClos(x: L) = {
         def getClo(x: Value): Option[(Variable, Term, Env)] = x match {
           case Closure(v, body, env) => Some((v, body, env))
           case _ => None
         }
         x.elements.flatMap(getClo)
       }
-      def getObjects(x: L) = {
+      def getObjs(x: L) = {
         def getObj(x: Value): Option[(Variable, Definition, Env)] = x match {
           case Obj(v, defs, env) => Some((v, defs, env))
           case _ => None
@@ -100,13 +100,8 @@ class DotLanguage[Addr : Address] {
     trait DotFrame extends Frame
     case class FrameLet(x: Variable, u: Term, env: Env) extends DotFrame
 
-    private def evalVar(x: Variable, env: Env, store: Sto): MayFail[Abs] = env.lookup(x) match {
-      case Some(a) => store.lookup(a) match {
-        case Some(v) => v
-        case None => UnboundAddress(a.toString)
-      }
-      case None => UnboundVariable(x)
-    }
+    private def evalVar(x: Variable, env: Env, store: Sto): MayFail[Abs] =
+      env.lookupMF(x) >>= store.lookupMF
 
     private def findTermMember(defs: Definition, a: TermMember): Option[Term] = defs match {
       case Field(a2, t, _) if a2 == a => Some(t)
@@ -117,33 +112,34 @@ class DotLanguage[Addr : Address] {
       }
     }
 
-    case class NoTermMember(member: String, obj: String, pos: Position) extends SemanticError
+    case class NoTermMember(member: Identifier, obj: String, pos: Position) extends SemanticError
+    /* TODO: all the Position.none could be replaced by the actual position */
     def stepEval(t: Term, env: Env, store: Sto, time: Time) = t match {
       case Var(x, _) => for {
         v <- evalVar(x, env, store)
       } yield Action.value(v, store)
       case Lam(x, t, _) =>
-        Action.value(dabs.lambda(x, t, env), store)
+        Action.value(dabs.clo(x, t, env), store)
       case Obj(x, d, _) =>
         Action.value(dabs.obj(x, d, env), store)
       case App(x, y, _) => for {
         fun <- evalVar(x, env, store)
         arg <- evalVar(y, env, store)
-      } yield dabs.getClosures(fun).map({
+      } yield dabs.getClos(fun).map({
         case (x, t, env) =>
           val a = addr.variable(x, arg, time)
-          Action.eval(t, env.extend(x, a), store.extend(a, arg))
+          Action.eval(t, env.extend(x.name, a), store.extend(a, arg))
       })
       case Let(x, t, u, _) =>
         Action.push(FrameLet(x, u, env), t, env, store)
       case Sel(x, a, _) => for {
         obj <- evalVar(x, env, store)
-      } yield dabs.getObjects(obj).map({
+      } yield dabs.getObjs(obj).map({
         case (x, defs, env) =>
           findTermMember(defs, a) match {
             case Some(t) =>
               val ad = addr.variable(x, obj, time)
-              Action.eval(t, env.extend(x, ad), store.extend(ad, obj))
+              Action.eval(t, env.extend(x.name, ad), store.extend(ad, obj))
             case None =>
               Action.error(NoTermMember(a, obj.toString, t.pos))
           }
@@ -153,38 +149,38 @@ class DotLanguage[Addr : Address] {
     def stepKont(v: Abs, frame: Frame, store: Sto, time: Time) = frame match {
       case FrameLet(x, u, env) =>
         val a = addr.variable(x, v, time)
-        Action.eval(u, env.extend(x, a), store.extend(a, v))
+        Action.eval(u, env.extend(x.name, a), store.extend(a, v))
     }
 
     def parse(program: String): Term = {
       def compileDefs(exp: SExp): Definition = exp match {
         /* case: (aggregate def def) */
-        case SExpPair(SExpIdentifier("aggregate", _), SExpPair(def1, SExpPair(def2, SExpValue(ValueNil, _), _), _), _) =>
+        case SExpPair(SExpId(Identifier("aggregate", _)), SExpPair(def1, SExpPair(def2, SExpValue(ValueNil, _), _), _), _) =>
           Aggregate(compileDefs(def1), compileDefs(def2), exp.pos)
         /* case: (a t) */
-        case SExpPair(SExpIdentifier(a, _), SExpPair(t, SExpValue(ValueNil, _), _), _) =>
+        case SExpPair(SExpId(a: Identifier), SExpPair(t, SExpValue(ValueNil, _), _), _) =>
           Field(a, compile(t), exp.pos)
       }
       def compile(exp: SExp): Term = exp match {
         /* case: (lambda (x) e) */
-        case SExpPair(SExpIdentifier("lambda", _), SExpPair(SExpPair(SExpIdentifier(arg, _), SExpValue(ValueNil, _), _),
+        case SExpPair(SExpId(Identifier("lambda", _)), SExpPair(SExpPair(SExpId(arg), SExpValue(ValueNil, _), _),
           SExpPair(body, SExpValue(ValueNil, _), _), _), _) =>
           Lam(arg, compile(body), exp.pos)
         /* case: (nu (x) defs) */
-        case SExpPair(SExpIdentifier("nu", _), SExpPair(SExpPair(SExpIdentifier(arg, _), SExpValue(ValueNil, _), _),
+        case SExpPair(SExpId(Identifier("nu", _)), SExpPair(SExpPair(SExpId(arg), SExpValue(ValueNil, _), _),
           SExpPair(defs, SExpValue(ValueNil, _), _), _), _) =>
           Obj(arg, compileDefs(defs), exp.pos)
         /* case: (let ((x t)) u) */
-        case SExpPair(SExpIdentifier("let", _), SExpPair(SExpPair(SExpPair(SExpIdentifier(x, _), SExpPair(t, SExpValue(ValueNil, _), _), _), SExpValue(ValueNil, _), _), SExpPair(u, SExpValue(ValueNil, _), _), _), _)=>
+        case SExpPair(SExpId(Identifier("let", _)), SExpPair(SExpPair(SExpPair(SExpId(x), SExpPair(t, SExpValue(ValueNil, _), _), _), SExpValue(ValueNil, _), _), SExpPair(u, SExpValue(ValueNil, _), _), _), _)=>
           Let(x, compile(t), compile(u), exp.pos)
         /* case: (sel x a) */
-        case SExpPair(SExpIdentifier("sel", _), SExpPair(SExpIdentifier(x, _), SExpPair(SExpIdentifier(a, _), SExpValue(ValueNil, _), _), _), _) =>
+        case SExpPair(SExpId(Identifier("sel", _)), SExpPair(SExpId(x), SExpPair(SExpId(a), SExpValue(ValueNil, _), _), _), _) =>
           Sel(x, a, exp.pos)
         /* case: (x y) */
-        case SExpPair(SExpIdentifier(x, _), SExpPair(SExpIdentifier(y, _), SExpValue(ValueNil, _), _), _) =>
+        case SExpPair(SExpId(x), SExpPair(SExpId(y), SExpValue(ValueNil, _), _), _) =>
           App(x, y, exp.pos)
         /* case : x */
-        case SExpIdentifier(x, _) =>
+        case SExpId(x) =>
           Var(x, exp.pos)
       }
       compile(SExpParser.parse(program).head)

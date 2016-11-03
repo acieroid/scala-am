@@ -19,16 +19,16 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
   case class FrameFuncallOperator(fexp: SchemeExp, args: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameFuncallOperands(f: Abs, fexp: SchemeExp, cur: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameIf(cons: SchemeExp, alt: SchemeExp, env: Env) extends SchemeFrame
-  case class FrameLet(variable: String, bindings: List[(String, Abs)], toeval: List[(String, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
-  case class FrameLetStar(variable: String, bindings: List[(String, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameLet(variable: Identifier, bindings: List[(Identifier, Abs)], toeval: List[(Identifier, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameLetStar(variable: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameLetrec(addr: Addr, bindings: List[(Addr, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
-  case class FrameSet(variable: String, env: Env) extends SchemeFrame
+  case class FrameSet(variable: Identifier, env: Env) extends SchemeFrame
   case class FrameBegin(rest: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameCond(cons: List[SchemeExp], clauses: List[(SchemeExp, List[SchemeExp])], env: Env) extends SchemeFrame
   case class FrameCase(clauses: List[(List[SchemeValue], List[SchemeExp])], default: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameAnd(rest: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameOr(rest: List[SchemeExp], env: Env) extends SchemeFrame
-  case class FrameDefine(variable: String, env: Env) extends SchemeFrame
+  case class FrameDefine(variable: Identifier, env: Env) extends SchemeFrame
 
   protected def evalBody(body: List[SchemeExp], env: Env, store: Sto): Actions = body match {
     case Nil => Action.value(sabs.inject(false), store)
@@ -71,17 +71,18 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
   }
 
   protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Env, store: Sto, t: Time): Actions = toeval match {
-    case Nil => evalCall(f, fexp, args.reverse, store, t)
+    case Nil =>
+      evalCall(f, fexp, args.reverse, store, t)
     case e :: rest => Action.push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)
   }
   protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[SchemeExp], env: Env, store: Sto, t: Time): Actions =
     funcallArgs(f, fexp, List(), args, env, store, t)
 
   protected def evalQuoted(exp: SExp, store: Sto, t: Time): (Abs, Sto) = exp match {
-    case SExpIdentifier(sym, _) => (sabs.injectSymbol(sym), store)
+    case SExpId(Identifier(sym, _)) => (sabs.injectSymbol(sym), store)
     case SExpPair(car, cdr, _) => {
-      val care: SchemeExp = SchemeIdentifier(car.toString, car.pos)
-      val cdre: SchemeExp = SchemeIdentifier(cdr.toString, cdr.pos)
+      val care: SchemeExp = SchemeVar(Identifier(car.toString, car.pos))
+      val cdre: SchemeExp = SchemeVar(Identifier(cdr.toString, cdr.pos))
       val cara = addr.cell(care, t)
       val (carv, store2) = evalQuoted(car, store, t)
       val cdra = addr.cell(cdre, t)
@@ -97,7 +98,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
       case ValueBoolean(b) => sabs.inject(b)
       case ValueNil => sabs.nil
     }, store)
-    case SExpQuoted(q, pos) => evalQuoted(SExpPair(SExpIdentifier("quote", pos), SExpPair(q, SExpValue(ValueNil, pos), pos), pos), store, t)
+    case SExpQuoted(q, pos) => evalQuoted(SExpPair(SExpId(Identifier("quote", pos)), SExpPair(q, SExpValue(ValueNil, pos), pos), pos), store, t)
   }
 
   def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = e match {
@@ -109,12 +110,15 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case SchemeLetStar(Nil, body, _) => evalBody(body, env, store)
     case SchemeLetStar((v, exp) :: bindings, body, _) => Action.push(FrameLetStar(v, bindings, body, env), exp, env, store)
     case SchemeLetrec(Nil, body, _) => evalBody(body, env, store)
-    case SchemeLetrec((v, exp) :: bindings, body, _) => {
-      val variables = v :: bindings.map(_._1)
+    case SchemeLetrec(bindings, body, _) =>
+      val variables = bindings.map(_._1)
       val addresses = variables.map(v => addr.variable(v, abs.bottom, t))
-      val (env1, store1) = variables.zip(addresses).foldLeft((env, store))({ case ((env, store), (v, a)) => (env.extend(v, a), store.extend(a, abs.bottom)) })
-        Action.push(FrameLetrec(addresses.head, addresses.tail.zip(bindings.map(_._2)), body, env1), exp, env1, store1)
-    }
+      val (env1, store1) = variables.zip(addresses).foldLeft((env, store))({
+        case ((env, store), (v, a)) =>
+          (env.extend(v.name, a), store.extend(a, abs.bottom))
+      })
+      val exp = bindings.head._2
+      Action.push(FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1), exp, env1, store1)
     case SchemeSet(variable, exp, _) => Action.push(FrameSet(variable, env), exp, env, store)
     case SchemeBegin(body, _) => evalBody(body, env, store)
     case SchemeCond(Nil, _) => Action.error(NotSupported("cond without clauses"))
@@ -125,19 +129,19 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case SchemeOr(Nil, _) => Action.value(sabs.inject(false), store)
     case SchemeOr(exp :: exps, _) => Action.push(FrameOr(exps, env), exp, env, store)
     case SchemeDefineVariable(name, exp, _) => Action.push(FrameDefine(name, env), exp, env, store)
-    case SchemeDefineFunction(name, args, body, pos) => {
-      val a = addr.variable(name, abs.bottom, t)
+    case SchemeDefineFunction(f, args, body, pos) => {
+      val a = addr.variable(f, abs.bottom, t)
       val v = sabs.inject[SchemeExp, Addr]((SchemeLambda(args, body, pos), env))
-      val env1 = env.extend(name, a)
+      val env1 = env.extend(f.name, a)
       val store1 = store.extend(a, v)
       Action.value(v, store)
     }
-    case SchemeIdentifier(name, _) => env.lookup(name) match {
+    case SchemeVar(variable) => env.lookup(variable.name) match {
       case Some(a) => store.lookup(a) match {
         case Some(v) => Action.value(v, store, Set(EffectReadVariable(a)))
         case None => Action.error(UnboundAddress(a.toString))
       }
-      case None => Action.error(UnboundVariable(name))
+      case None => Action.error(UnboundVariable(variable))
     }
     case SchemeQuoted(quoted, _) => evalQuoted(quoted, store, t) match {
       case (value, store2) => Action.value(value, store2)
@@ -157,15 +161,15 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
       val variables = name :: bindings.reverse.map(_._1)
       val addresses = variables.map(variable => addr.variable(variable, v, t))
       val (env1, store1) = ((name, v) :: bindings).zip(addresses).foldLeft((env, store))({
-        case ((env, store), ((variable, value), a)) => (env.extend(variable, a), store.extend(a, value))
+        case ((env, store), ((variable, value), a)) => (env.extend(variable.name, a), store.extend(a, value))
       })
       evalBody(body, env1, store1)
     }
     case FrameLet(name, bindings, (variable, e) :: toeval, body, env) =>
       Action.push(FrameLet(variable, (name, v) :: bindings, toeval, body, env), e, env, store)
-    case FrameLetStar(name, bindings, body, env) => {
-      val a = addr.variable(name, abs.bottom, t)
-      val env1 = env.extend(name, a)
+    case FrameLetStar(variable, bindings, body, env) => {
+      val a = addr.variable(variable, abs.bottom, t)
+      val env1 = env.extend(variable.name, a)
       val store1 = store.extend(a, v)
       bindings match {
         case Nil => evalBody(body, env1, store1)
@@ -175,9 +179,9 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case FrameLetrec(a, Nil, body, env) => evalBody(body, env, store.update(a, v))
     case FrameLetrec(a, (a1, exp) :: rest, body, env) =>
       Action.push(FrameLetrec(a1, rest, body, env), exp, env, store.update(a, v))
-    case FrameSet(name, env) => env.lookup(name) match {
+    case FrameSet(variable, env) => env.lookup(variable.name) match {
       case Some(a) => Action.value(sabs.inject(false), store.update(a, v), Set(EffectWriteVariable(a)))
-      case None => Action.error(UnboundVariable(name))
+      case None => Action.error(UnboundVariable(variable))
     }
     case FrameBegin(body, env) => evalBody(body, env, store)
     case FrameCond(cons, clauses, env) =>
@@ -230,7 +234,7 @@ class SchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](p
    * the evaluation if it succeeded, otherwise returns None */
   protected def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[(Abs, Set[Effect[Addr]])] = e match {
     case λ: SchemeLambda => Some((sabs.inject[SchemeExp, Addr]((λ, env)), Set()))
-    case SchemeIdentifier(name, _) => env.lookup(name).flatMap(a => store.lookup(a).map(v => (v, Set(EffectReadVariable(a)))))
+    case SchemeVar(variable) => env.lookup(variable.name).flatMap(a => store.lookup(a).map(v => (v, Set(EffectReadVariable(a)))))
     case SchemeValue(v, _) => evalValue(v).map(value => (value, Set()))
     case _ => None
   }
@@ -249,7 +253,8 @@ class SchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](p
   })
 
   override protected def funcallArgs(f: Abs, fexp: SchemeExp, args: List[(SchemeExp, Abs)], toeval: List[SchemeExp], env: Env, store: Sto, t: Time): Actions = toeval match {
-    case Nil => evalCall(f, fexp, args.reverse, store, t)
+    case Nil =>
+      evalCall(f, fexp, args.reverse, store, t)
     case e :: rest => atomicEval(e, env, store) match {
       case Some((v, effs)) => funcallArgs(f, fexp, (e, v) :: args, rest, env, store, t).map(_.addEffects(effs))
       case None => Action.push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)

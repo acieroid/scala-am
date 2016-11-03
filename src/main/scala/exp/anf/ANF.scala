@@ -1,6 +1,6 @@
 /**
-  * Abstract syntax of ANF programs
-  */
+ * Abstract syntax of ANF programs
+ */
 
 trait ANFExp {
   val pos: Position
@@ -11,7 +11,7 @@ object ANFExp {
   }
 }
 trait ANFAtomicExp extends ANFExp
-case class ANFLambda(args: List[String], body: ANFExp, pos: Position) extends ANFAtomicExp {
+case class ANFLambda(args: List[Identifier], body: ANFExp, pos: Position) extends ANFAtomicExp {
   override def toString = {
     val a = args.mkString(" ")
     s"(lambda ($a) $body)"
@@ -26,20 +26,21 @@ case class ANFFuncall(f: ANFAtomicExp, args: List[ANFAtomicExp], pos: Position) 
     s"($f $a)"
   }
 }
-case class ANFLet(variable: String, value: ANFExp, body: ANFExp, pos: Position) extends ANFExp {
+case class ANFLet(variable: Identifier, value: ANFExp, body: ANFExp, pos: Position) extends ANFExp {
   override def toString = s"(let (($variable $value)) $body)"
 }
-case class ANFLetrec(variable: String, value: ANFExp, body: ANFExp, pos: Position) extends ANFExp {
+case class ANFLetrec(variable: Identifier, value: ANFExp, body: ANFExp, pos: Position) extends ANFExp {
   override def toString = s"(letrec (($variable $value)) $body)"
 }
-case class ANFSet(variable: String, value: ANFAtomicExp, pos: Position) extends ANFExp {
+case class ANFSet(variable: Identifier, value: ANFAtomicExp, pos: Position) extends ANFExp {
   override def toString = s"(set! $variable $value)"
 }
 case class ANFQuoted(quoted: SExp, pos: Position) extends ANFExp {
   override def toString = s"'$quoted"
 }
-case class ANFIdentifier(name: String, pos: Position) extends ANFAtomicExp {
-  override def toString = name
+case class ANFVar(v: Identifier) extends ANFAtomicExp {
+  val pos = v.pos
+  override def toString = s"$v"
 }
 case class ANFValue(value: Value, pos: Position) extends ANFAtomicExp {
   override def toString = value.toString
@@ -64,18 +65,18 @@ object ANFCompiler {
       compile(cond, false, a => ret(ANFIf(a, compile(cons), compile(alt), pos), tail, k))
     case SchemeLet(bindings, body, pos) =>
       bindings.reverse.foldLeft(compileBody(body, pos, a => a))(
-        (e: ANFExp, binding: (String, SchemeExp)) =>
+        (e: ANFExp, binding: (Identifier, SchemeExp)) =>
         ANFLet(binding._1, compile(binding._2), e, pos))
     case SchemeLetStar(bindings, body, pos) =>
       bindings.reverse.foldLeft(compileBody(body, pos, a => a))(
-        (e: ANFExp, binding: (String, SchemeExp)) =>
+        (e: ANFExp, binding: (Identifier, SchemeExp)) =>
         ANFLet(binding._1, compile(binding._2), e, pos))
     case SchemeLetrec(bindings, body, pos) =>
       /* TODO: we should at least warn when desugaring mutually-recursive functions,
        * as they are not supported. The best solution would be to desugar them
        * using set! to support them */
       bindings.reverse.foldLeft(compileBody(body, pos, a => a))(
-        (e: ANFExp, binding: (String, SchemeExp)) =>
+        (e: ANFExp, binding: (Identifier, SchemeExp)) =>
         ANFLetrec(binding._1, compile(binding._2), e, pos))
     case SchemeSet(variable, value, pos) =>
       compile(value, false, a => ret(ANFSet(variable, a, pos), tail, k))
@@ -97,8 +98,8 @@ object ANFCompiler {
       compile(e, tail, k)
     case SchemeOr(e :: es, pos) =>
       compile(e, false, a => ret(ANFIf(a, ANFValue(ValueBoolean(true), pos), compile(SchemeOr(es, pos)), pos), tail, k))
-    case SchemeIdentifier(name, pos) =>
-      k(ANFIdentifier(name, pos))
+    case SchemeVar(v) =>
+      k(ANFVar(v))
     case SchemeQuoted(quoted, pos) =>
       /* a quoted value is not atomic, as it may require an allocation to be evaluated */
       ret(ANFQuoted(quoted, pos), tail, k)
@@ -115,7 +116,7 @@ object ANFCompiler {
       e
     } else {
       val v = newVar
-      ANFLet(v, e, k(ANFIdentifier(v, e.pos)), e.pos)
+      ANFLet(Identifier(v, e.pos), e, k(ANFVar(Identifier(v, e.pos))), e.pos)
     }
   }
 
@@ -124,7 +125,7 @@ object ANFCompiler {
     case e :: Nil => compile(e, true, a => a)
     case e :: rest => compile(e, false, a => {
       val v = newVar
-      ANFLet(v, a, compileBody(rest, pos, a => a), pos)
+      ANFLet(Identifier(v, e.pos), a, compileBody(rest, pos, a => a), pos)
     })
   }
 

@@ -13,7 +13,7 @@ object LamExp {
   }
 }
 /** An abstraction: lambda x. e */
-case class Lam(x: String, e: LamExp, pos: Position) extends LamExp {
+case class Lam(x: Identifier, e: LamExp, pos: Position) extends LamExp {
   override def toString = s"(lambda ($x) $e)"
 }
 /** An application: (e1 e2) */
@@ -21,7 +21,7 @@ case class App(e1: LamExp, e2: LamExp, pos: Position) extends LamExp {
   override def toString = s"($e1 $e2)"
 }
 /** A variable reference: x */
-case class Var(x: String, pos: Position) extends LamExp {
+case class Var(x: Identifier, pos: Position) extends LamExp {
   override def toString = s"$x"
 }
 
@@ -100,7 +100,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
      * continuation to remember to evaluate e2 in the environment env */
     case App(e1, e2, _) => Action.push(FrameArg(e2, env), e1, env, store)
     /* To evaluate a variable, just look it up in the store */
-    case Var(x, _) => env.lookup(x) match {
+    case Var(x, _) => env.lookup(x.name) match {
       case Some(a) => store.lookup(a) match {
         case Some(v) => Action.value(v, store)
         case None => Action.error(UnboundAddress(a.toString))
@@ -121,7 +121,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
     case FrameFun(fun) => labs.getClosures[LamExp, Addr](fun).map({
       case (Lam(x, e, _), env) => {
         val a = addr.variable(x, v, t)
-        Action.eval(e, env.extend(x, a), store.extend(a, v))
+        Action.eval(e, env.extend(x.name, a), store.extend(a, v))
       }
     })
   }
@@ -133,10 +133,10 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
   def parse(program: String): LamExp = {
     def compile(exp: SExp): LamExp = exp match {
       /* case: (lambda (x) e) */
-      case SExpPair(SExpIdentifier("lambda", _), SExpPair(SExpPair(SExpIdentifier(arg, _), SExpValue(ValueNil, _), _), SExpPair(body, SExpValue(ValueNil, _), _), _), _) =>
+      case SExpPair(SExpId(Identifier("lambda", _)), SExpPair(SExpPair(SExpId(arg), SExpValue(ValueNil, _), _), SExpPair(body, SExpValue(ValueNil, _), _), _), _) =>
         Lam(arg, compile(body), exp.pos)
       /* case: x */
-      case SExpIdentifier(x, _) =>
+      case SExpId(x) =>
         Var(x, exp.pos)
       /* case: (operator operand) */
       case SExpPair(operator, SExpPair(operand, SExpValue(ValueNil, _), _), _) =>
@@ -159,7 +159,7 @@ case class UnboundVariablesAnalysis[Abs : JoinLattice, Addr : Address, Time: Tim
   /** stepEval is called when the semantics' stepEval is called */
   def stepEval(e: LamExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: Set[LamExp]) = e match {
     /* When we evaluate a variable... */
-    case Var(x, _) => env.lookup(x) match {
+    case Var(x, _) => env.lookup(x.name) match {
       case Some(a) => current /* if it is bound, then we don't care about it and don't change the result of the analysis */
       case None => current + e /* if it's an unbound variable, we add it to the results */
     }

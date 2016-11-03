@@ -211,7 +211,7 @@ case class ArityError(name: String, expected: Int, got: Int) extends SemanticErr
 case class VariadicArityError(name: String, min: Int, got: Int) extends SemanticError
 case class TypeError(name: String, operand: String, expected: String, got: String) extends SemanticError
 case class UserError(reason: String, pos: Position) extends SemanticError
-case class UnboundVariable(name: String) extends SemanticError
+case class UnboundVariable(name: Identifier) extends SemanticError
 case class UnboundAddress(addr: String) extends SemanticError
 case class MessageNotSupported(actor: String, message: String, supported: List[String]) extends SemanticError
 case class NotSupported(reason: String) extends SemanticError
@@ -306,11 +306,12 @@ abstract class BaseSemantics[Exp : Expression, Abs : JoinLattice, Addr : Address
    * Binds arguments in the environment and store. Arguments are given as a list
    * of triple, where each triple is made of:
    *   - the name of the argument
+   *   - the position of the argument
    *   - the value of the argument
    */
-  protected def bindArgs(l: List[(String, Abs)], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
-    l.foldLeft((env, store))({ case ((env, store), (name, value)) => {
-      val a = addr.variable(name, value, t)
-      (env.extend(name, a), store.extend(a, value))
+  protected def bindArgs(l: List[(Identifier, Abs)], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
+    l.foldLeft((env, store))({ case ((env, store), (id, value)) => {
+      val a = addr.variable(id, value, t)
+      (env.extend(id.name, a), store.extend(a, value))
     }})
 }

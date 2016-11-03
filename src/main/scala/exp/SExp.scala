@@ -73,8 +73,9 @@ object SExpList {
 /**
  * An identifier, such as foo, bar, etc.
  */
-case class SExpIdentifier(name: String, pos: Position) extends SExp {
-  override def toString = name
+case class SExpId(id: Identifier) extends SExp {
+  val pos = id.pos
+  override def toString = id.toString
 }
 
 /**

@@ -8,9 +8,9 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
   def thread = implicitly[ThreadIdentifier[TID]]
 
   case class FrameJoin(env: Env) extends SchemeFrame
-  case class FrameCasIndex(variable: String, eold: SchemeExp, enew: SchemeExp, env: Env) extends SchemeFrame
-  case class FrameCasOld(variable: String, index: Option[Abs], enew: SchemeExp, env: Env) extends SchemeFrame
-  case class FrameCasNew(variable: String, index: Option[Abs], enew: SchemeExp, old: Abs, env: Env) extends SchemeFrame
+  case class FrameCasIndex(variable: Identifier, eold: SchemeExp, enew: SchemeExp, env: Env) extends SchemeFrame
+  case class FrameCasOld(variable: Identifier, index: Option[Abs], enew: SchemeExp, env: Env) extends SchemeFrame
+  case class FrameCasNew(variable: Identifier, index: Option[Abs], enew: SchemeExp, old: Abs, env: Env) extends SchemeFrame
   case class FrameAcquire(env: Env) extends SchemeFrame
   case class FrameRelease(env: Env) extends SchemeFrame
 
@@ -39,8 +39,8 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
     case FrameCasOld(variable, index, enew, env) =>
       Action.push(FrameCasNew(variable, index, enew, v, env), enew, env, store)
     case FrameCasNew(variable, index, enew, old, env) =>
-      env.lookup(variable) match {
-        case None => Action.error(UnboundVariable(variable.toString))
+      env.lookup(variable.name) match {
+        case None => Action.error(UnboundVariable(variable))
         case Some(a) => index match {
           /* Compare and swap on variable value */
           case None => store.lookup(a) match {

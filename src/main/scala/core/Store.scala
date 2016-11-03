@@ -10,6 +10,10 @@ abstract class Store[Addr : Address, Abs : JoinLattice] {
   def forall(p: ((Addr, Abs)) => Boolean): Boolean
   /** Looks up a value in the store */
   def lookup(a: Addr): Option[Abs]
+  def lookupMF(a: Addr): MayFail[Abs] = lookup(a) match {
+    case Some(a) => a
+    case None => UnboundAddress(a.toString)
+  }
   /** Looks up a  value in the store, or return bottom if it's not there */
   def lookupBot(a: Addr): Abs
   /** Add a new entry in the store */

@@ -18,3 +18,8 @@ object Position {
   def apply(p: scala.util.parsing.input.Position): Position = SomePosition(p)
   def none: Position = SomePosition(scala.util.parsing.input.NoPosition)
 }
+
+/** An identifier has a name and a position */
+case class Identifier(name: String, pos: Position) {
+  override def toString = name
+}

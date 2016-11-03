@@ -8,8 +8,8 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
 
   object ActorAction extends ActorActionHelpers[SchemeExp, Abs, Addr, Time, PID]
 
-  case class FrameSendTarget(message: String, args: List[SchemeExp], env: Env) extends SchemeFrame
-  case class FrameSend(message: String, target: Abs, argsv: List[Abs], args: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameSendTarget(message: Identifier, args: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameSend(message: Identifier, target: Abs, argsv: List[Abs], args: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameCreate(argsv: List[Abs], args: List[SchemeExp], exp: SchemeExp, env: Env) extends SchemeFrame
   case class FrameBecome(argsv: List[Abs], args: List[SchemeExp], env: Env) extends SchemeFrame
 
@@ -37,7 +37,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
             val (env2, store2) = bindArgs(margs.zip(margsv), env, store, t)
             val pself = self.asInstanceOf[PID]
             val vself = aabs.injectPid(pself)
-            val aself = addr.variable("self", vself, t)
+            val aself = addr.variable(Identifier("self", Position.none), vself, t)
             Action.eval(if (body.size == 1) { body.head } else { SchemeBegin(body, body.head.pos) },
               env2.extend("self", aself), store2.extend(aself, vself))
           }
@@ -57,12 +57,12 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
 
   override def stepKont(v: Abs, frame: Frame, store: Sto, t: Time) = optimizeAtomic(frame match {
     case FrameSendTarget(message, List(), env) =>
-      send(v, message, List())
+      send(v, message.name, List())
     case FrameSendTarget(message, first :: rest, env) =>
       Action.push(FrameSend(message, v, List(), rest, env), first, env, store)
     case FrameSend(message, target, revargsv, List(), env) =>
       val argsv = (v :: revargsv).reverse
-      send(target, message, (v :: revargsv).reverse)
+      send(target, message.name, (v :: revargsv).reverse)
     case FrameSend(message, target, argsv, first :: rest, env) =>
       Action.push(FrameSend(message, target, v :: argsv, rest, env), first, env, store)
     case FrameCreate(revargsv, List(), exp, env) =>
@@ -71,7 +71,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       if (actors.isEmpty) {
         Action.error(TypeError("create", "first operand", "actor", s"non-actor value ($act)"))
       } else {
-        actors.map({ case (actd @SchemeActor(name, xs, defs, _), env) =>
+        actors.map({ case (actd @ SchemeActor(name, xs, defs, _), env) =>
           if (xs.size != argsv.size) {
             Action.error(ArityError(s"create actor $name", xs.size, argsv.size))
           } else {

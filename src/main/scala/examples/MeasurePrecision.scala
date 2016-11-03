@@ -65,8 +65,8 @@ object MeasurePrecision {
     val machine = new AAM[SchemeExp, lattice.L, address.A, timestamp.T]
     //new AAMAACP4F[SchemeExp, lattice.L, address.A, timestamp.T](P4FKAlloc)
     val analysis = new VarRefPrecisionAnalysis[SchemeExp, lattice.L, address.A, timestamp.T]((e, env, store) => e match {
-      case SchemeIdentifier(name, pos) => env.lookup(name).map(a => {
-        (name, pos, store.lookupBot(a))
+      case SchemeVar(variable) => env.lookup(variable.name).map(a => {
+        (variable.name, variable.pos, store.lookupBot(a))
       })
       case _ => None
     })

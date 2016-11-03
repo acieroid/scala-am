@@ -160,7 +160,7 @@ object SExpParser extends TokenParsers {
 
   def identifier: Parser[SExp] = Parser { in =>
     elem("identifier", _.isInstanceOf[TIdentifier])(in) match {
-      case Success(TIdentifier(s), in1) => Success(SExpIdentifier(s, Position(in.pos)), in1)
+      case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, Position(in.pos))), in1)
       case Success(v, in1) => Failure(s"Expected identifier, got $v", in1)
       case ns: NoSuccess => ns
     }

@@ -5,6 +5,10 @@ abstract class Environment[Addr : Address] {
   def forall(p: ((String, Addr)) => Boolean): Boolean
   /** Looks up a value in the environment */
   def lookup(name: String): Option[Addr]
+  def lookupMF(name: Identifier): MayFail[Addr] = lookup(name.name) match {
+    case Some(v) => v
+    case None => UnboundVariable(name)
+  }
   /** Extend the environment */
   def extend(name: String, a: Addr): Environment[Addr]
   /** Extend the environment with multiple values */
