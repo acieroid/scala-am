@@ -1,7 +1,6 @@
 import scalaz.Scalaz._
 
 class DotLanguage[Addr : Address] {
-  val addr = implicitly[Address[Addr]]
   type Env = Environment[Addr]
 
   trait Term {
@@ -113,7 +112,6 @@ class DotLanguage[Addr : Address] {
     }
 
     case class NoTermMember(member: Identifier, obj: String, pos: Position) extends SemanticError
-    /* TODO: all the Position.none could be replaced by the actual position */
     def stepEval(t: Term, env: Env, store: Sto, time: Time) = t match {
       case Var(x, _) => for {
         v <- evalVar(x, env, store)
@@ -127,7 +125,7 @@ class DotLanguage[Addr : Address] {
         arg <- evalVar(y, env, store)
       } yield dabs.getClos(fun).map({
         case (x, t, env) =>
-          val a = addr.variable(x, arg, time)
+          val a = Address[Addr].variable(x, arg, time)
           Action.eval(t, env.extend(x.name, a), store.extend(a, arg))
       })
       case Let(x, t, u, _) =>
@@ -138,7 +136,7 @@ class DotLanguage[Addr : Address] {
         case (x, defs, env) =>
           findTermMember(defs, a) match {
             case Some(t) =>
-              val ad = addr.variable(x, obj, time)
+              val ad = Address[Addr].variable(x, obj, time)
               Action.eval(t, env.extend(x.name, ad), store.extend(ad, obj))
             case None =>
               Action.error(NoTermMember(a, obj.toString, t.pos))
@@ -148,7 +146,7 @@ class DotLanguage[Addr : Address] {
 
     def stepKont(v: Abs, frame: Frame, store: Sto, time: Time) = frame match {
       case FrameLet(x, u, env) =>
-        val a = addr.variable(x, v, time)
+        val a = Address[Addr].variable(x, v, time)
         Action.eval(u, env.extend(x.name, a), store.extend(a, v))
     }
 

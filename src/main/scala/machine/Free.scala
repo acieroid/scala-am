@@ -38,14 +38,14 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
     /** Integrate a set of action to compute the successor states */
     private def integrate(k: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.map({
-        case ActionReachedValue(v, store, _) => State(ControlKont(v), store, kstore, k, time.tick(t))
+        case ActionReachedValue(v, store, _) => State(ControlKont(v), store, kstore, k, Timestamp[Time].tick(t))
         case ActionPush(frame, e, env, store, _) => {
           val next = new NormalKontAddress(e, env)
-          State(ControlEval(e, env), store, kstore.extend(next, Kont(frame, k)), next, time.tick(t))
+          State(ControlEval(e, env), store, kstore.extend(next, Kont(frame, k)), next, Timestamp[Time].tick(t))
         }
-        case ActionEval(e, env, store, _) => State(ControlEval(e, env), store, kstore, k, time.tick(t))
-        case ActionStepIn(fexp, _, e, env, store, _, _) => State(ControlEval(e, env), store, kstore, k, time.tick(t, fexp))
-        case ActionError(err) => State(ControlError(err), store, kstore, k, time.tick(t))
+        case ActionEval(e, env, store, _) => State(ControlEval(e, env), store, kstore, k, Timestamp[Time].tick(t))
+        case ActionStepIn(fexp, _, e, env, store, _, _) => State(ControlEval(e, env), store, kstore, k, Timestamp[Time].tick(t, fexp))
+        case ActionError(err) => State(ControlError(err), store, kstore, k, Timestamp[Time].tick(t))
       })
 
     /** Computes the successors states of this one relying on the given semantics */
@@ -68,7 +68,7 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
       State(ControlEval(exp, Environment.empty[Addr].extend(env)),
         Store.initial[Addr, Abs](store),
-        KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
+        KontStore.empty[KontAddr], HaltKontAddress, Timestamp[Time].initial(""))
   }
 
 
@@ -104,7 +104,7 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     })
-    def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
+    def containsFinalValue(v: Abs) = finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString)),
         (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
@@ -120,7 +120,7 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
   }
   object States {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
-      States(Set(Configuration(ControlEval(exp, Environment.empty[Addr].extend(env)), HaltKontAddress, time.initial(""))),
+      States(Set(Configuration(ControlEval(exp, Environment.empty[Addr].extend(env)), HaltKontAddress, Timestamp[Time].initial(""))),
         Store.initial[Addr, Abs](store), KontStore.empty[KontAddr])
   }
 

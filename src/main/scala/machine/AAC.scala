@@ -29,7 +29,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   case class Context(clo: (Exp, Environment[Addr]), argsv: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) {
     def subsumes(that: Context) = {
       clo._1.equals(that.clo._1) && clo._2.subsumes(that.clo._2) && store.subsumes(that.store) &&
-      argsv.zip(that.argsv).forall({ case ((e1, v1), (e2, v2)) => e1 == e2 && abs.subsumes(v1, v2) })
+      argsv.zip(that.argsv).forall({ case ((e1, v1), (e2, v2)) => e1 == e2 && JoinLattice[Abs].subsumes(v1, v2) })
     }
   }
 
@@ -219,15 +219,15 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       actions.foldLeft((Set[State](), kstore, Set[Context]()))({ (acc, act) =>
         val (states, kstore, contexts) = acc
         act match {
-          case ActionReachedValue(v, store, _) => (states + State(ControlKont(v), store, lkont, kont, time.tick(t)), kstore, contexts)
-          case ActionPush(frame, e, env, store, _) => (states + State(ControlEval(e, env), store, lkont.push(frame), kont, time.tick(t)), kstore, contexts)
-          case ActionEval(e, env, store, _) => (states + State(ControlEval(e, env), store, lkont, kont, time.tick(t)), kstore, contexts)
+          case ActionReachedValue(v, store, _) => (states + State(ControlKont(v), store, lkont, kont, Timestamp[Time].tick(t)), kstore, contexts)
+          case ActionPush(frame, e, env, store, _) => (states + State(ControlEval(e, env), store, lkont.push(frame), kont, Timestamp[Time].tick(t)), kstore, contexts)
+          case ActionEval(e, env, store, _) => (states + State(ControlEval(e, env), store, lkont, kont, Timestamp[Time].tick(t)), kstore, contexts)
           case ActionStepIn(fexp, clo, e, env, store, argsv, _) => {
             val ctx = Context(clo, argsv, store, t)
-            (states + State(ControlEval(e, env), store, new LocalKont(), new KontCtx(ctx), time.tick(t, fexp)),
+            (states + State(ControlEval(e, env), store, new LocalKont(), new KontCtx(ctx), Timestamp[Time].tick(t, fexp)),
              kstore.extend(ctx, (lkont, kont)), contexts + ctx)
           }
-          case ActionError(err) => (states + State(ControlError(err), store, lkont, kont, time.tick(t)), kstore, contexts)
+          case ActionError(err) => (states + State(ControlError(err), store, lkont, kont, Timestamp[Time].tick(t)), kstore, contexts)
         }})
 
     /**
@@ -255,7 +255,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
       State(ControlEval(exp, Environment.initial[Addr](env)),
-        Store.initial[Addr, Abs](store), new LocalKont(), KontEmpty, time.initial(""))
+        Store.initial[Addr, Abs](store), new LocalKont(), KontEmpty, Timestamp[Time].initial(""))
   }
 
   /**
@@ -267,7 +267,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     })
-    def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
+    def containsFinalValue(v: Abs) = finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
         (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {

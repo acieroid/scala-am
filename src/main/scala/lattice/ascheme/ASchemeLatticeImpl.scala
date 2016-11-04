@@ -6,24 +6,12 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
   val lat = lattice.isSchemeLattice
 
   /* TODO: factor this somewhere else */
-  implicit def ofSet[A]: IsLatticeElement[Set[A]] = new IsLatticeElement[Set[A]] {
-    def name = "OfSet"
-    def bottom: Set[A] = Set.empty
-    def top: Set[A] = throw new Error("OfSet lattice has no top value")
-    def join(x: Set[A], y: => Set[A]): Set[A] = x ++ y
-    def subsumes(x: Set[A], y: => Set[A]): Boolean = y.subsetOf(x)
-    def eql[B](x: Set[A], y: Set[A])(implicit bool: IsBoolean[B]): B =
-      if (x.size == 1 && y.size == 1 && x == y) { bool.inject(true) }
-      else if (x.intersect(y).isEmpty) { bool.inject(false) }
-      else { bool.top }
-    def order(x: Set[A], y: Set[A]): Ordering = throw new Error("Cannot define an order since A is not required to be ordered")
-    def cardinality(x: Set[A]): Cardinality = CardinalityNumber(x.size)
-  }
+
 
   type Pids = Set[Any]
-  val pids: IsLatticeElement[Pids] = ofSet[Any]
+  val pids: LatticeElement[Pids] = LatticeElement.ofSet[Any]
   type Behs = Set[Any]
-  val behs: IsLatticeElement[Behs] = ofSet[Any]
+  val behs: LatticeElement[Behs] = LatticeElement.ofSet[Any]
 
   case class Value(seq: lattice.L = lat.bottom, p: Pids = pids.bottom, b: Behs = behs.bottom) {
     override def toString = {

@@ -22,7 +22,6 @@ import scalaz.Scalaz._
 
 trait Semantics[Exp, Abs, Addr, Time] {
   implicit def abs: JoinLattice[Abs]
-  implicit def addr: Address[Addr]
   implicit def exp: Expression[Exp]
   implicit def time: Timestamp[Time]
   /**
@@ -311,7 +310,7 @@ abstract class BaseSemantics[Exp : Expression, Abs : JoinLattice, Addr : Address
    */
   protected def bindArgs(l: List[(Identifier, Abs)], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
     l.foldLeft((env, store))({ case ((env, store), (id, value)) => {
-      val a = addr.variable(id, value, t)
+      val a = Address[Addr].variable(id, value, t)
       (env.extend(id.name, a), store.extend(a, value))
     }})
 }

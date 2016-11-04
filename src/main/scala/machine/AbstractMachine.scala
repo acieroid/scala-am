@@ -5,18 +5,12 @@
  */
 
 /**
- * The interface of the abstract machine itself
+ * The interface of the abstract machine itself.
+ * The abstract machine is parameterized by abstract values, addresses and
+ * expressions. Look into AAM.scala for an example of how to define these
+ * parameters
  */
-trait AbstractMachine[Exp, Abs, Addr, Time] {
-  /**
-   * The abstract machine is parameterized by abstract values, addresses and
-   * expressions. Look into AAM.scala for an example of how to define these
-   * parameters */
-  implicit def abs : JoinLattice[Abs]
-  implicit def addr : Address[Addr]
-  implicit def exp : Expression[Exp]
-  implicit def time : Timestamp[Time]
-
+abstract class AbstractMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp] {
   /** The name of the abstract machine */
   def name: String
 
@@ -88,10 +82,6 @@ trait AbstractMachine[Exp, Abs, Addr, Time] {
  */
 abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends AbstractMachine[Exp, Abs, Addr, Time] {
-  def abs = implicitly[JoinLattice[Abs]]
-  def addr = implicitly[Address[Addr]]
-  def exp = implicitly[Expression[Exp]]
-  def time = implicitly[Timestamp[Time]]
 
   /**
    * The control component of the machine
@@ -125,7 +115,7 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
   case class ControlKont(v: Abs) extends Control {
     override def toString = s"ko(${v})"
     def subsumes(that: Control) = that match {
-      case ControlKont(v2) => abs.subsumes(v, v2)
+      case ControlKont(v2) => JoinLattice[Abs].subsumes(v, v2)
       case _ => false
     }
   }

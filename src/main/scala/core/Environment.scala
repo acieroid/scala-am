@@ -16,15 +16,14 @@ abstract class Environment[Addr : Address] {
   /** Checks whether this environment subsumes another */
   def subsumes(that: Environment[Addr]) =
     that.forall((binding: (String, Addr)) => lookup(binding._1) match {
-      case Some(a) => implicitly[Address[Addr]].subsumes(a, binding._2)
+      case Some(a) => a == binding._2
       case None => false
     })
 }
 
 /** Basic mapping from names to addresses */
 case class BasicEnvironment[Addr : Address](content: Map[String, Addr]) extends Environment[Addr] {
-  val addr = implicitly[Address[Addr]]
-  override def toString = content.filter({ case (_, a) => !addr.isPrimitive(a) }).toString
+  override def toString = content.filter({ case (_, a) => !Address[Addr].isPrimitive(a) }).toString
   def keys = content.keys
   def forall(p: ((String, Addr)) => Boolean) = content.forall(p)
   def lookup(name: String) = content.get(name)
@@ -34,7 +33,6 @@ case class BasicEnvironment[Addr : Address](content: Map[String, Addr]) extends 
 
 /** Environment that combines a default read-only environment with a writable environment */
 case class CombinedEnvironment[Addr : Address](ro: Environment[Addr], w: Environment[Addr]) extends Environment[Addr] {
-  val addr = implicitly[Address[Addr]]
   def keys = ro.keys.toSet ++ w.keys.toSet
   def forall(p: ((String, Addr)) => Boolean) = keys.forall(name => lookup(name) match {
     case Some(a) => p(name, a)

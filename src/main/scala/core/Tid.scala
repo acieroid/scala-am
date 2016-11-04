@@ -4,6 +4,10 @@ trait ThreadIdentifier[TID] {
   def thread[Exp : Expression, Time : Timestamp](exp: Exp, t: Time): TID
 }
 
+object ThreadIdentifier {
+  def apply[T : ThreadIdentifier]: ThreadIdentifier[T] = implicitly[ThreadIdentifier[T]]
+}
+
 trait ContextSensitiveTID
 
 object ContextSensitiveTID {
@@ -11,10 +15,10 @@ object ContextSensitiveTID {
     override def toString = "main"
   }
   case class TID[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) extends ContextSensitiveTID {
-    override def  toString = if (false && implicitly[Timestamp[Time]].name == "Concrete") {
+    override def  toString = if (false && Timestamp[Time].name == "Concrete") {
       t.toString
     } else {
-      exp.toString + "@" + implicitly[Expression[Exp]].pos(exp).toString
+      exp.toString + "@" + Expression[Exp].pos(exp).toString
     }
   }
 

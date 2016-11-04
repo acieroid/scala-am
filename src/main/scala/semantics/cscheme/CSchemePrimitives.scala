@@ -8,7 +8,7 @@ class CSchemePrimitives[Addr : Address, Abs : IsCSchemeLattice] extends SchemePr
     val name = "new-lock"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case Nil =>
-        val a = addr.cell(fexp, t)
+        val a = Address[Addr].cell(fexp, t)
         MayFailSuccess((cabs.lock(a), store.extend(a, cabs.unlockedValue), Set()))
       case l => MayFailError(List(ArityError(name, 0, l.size)))
     }

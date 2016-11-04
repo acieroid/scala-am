@@ -209,9 +209,9 @@ object FloatConstantPropagationGenerator extends ConstantPropagationGenerator[Fl
 object CharConstantPropagationGenerator extends ConstantPropagationGenerator[Char, CharConstantPropagation.C](Generators.char)(CharConstantPropagation.Constant, CharConstantPropagation.Bottom, CharConstantPropagation.Top)
 object SymbolConstantPropagationGenerator extends ConstantPropagationGenerator[String, SymbolConstantPropagation.Sym](Generators.sym)(SymbolConstantPropagation.Constant, SymbolConstantPropagation.Bottom, SymbolConstantPropagation.Top)
 
-abstract class LatticeElementSpecification[L : IsLatticeElement](gen: LatticeGenerator[L])
+abstract class LatticeElementSpecification[L : LatticeElement](gen: LatticeGenerator[L])
     extends PropSpec with GeneratorDrivenPropertyChecks {
-  val abs = implicitly[IsLatticeElement[L]]
+  val abs = LatticeElement[L]
   val bot = abs.bottom
   implicit val arbL: Arbitrary[L] = Arbitrary(gen.any)
 
@@ -267,9 +267,9 @@ abstract class LatticeElementSpecification[L : IsLatticeElement](gen: LatticeGen
   }
 }
 
-abstract class BooleanSpecification[B : IsBoolean](gen: LatticeGenerator[B])
+abstract class BooleanSpecification[B : BoolLattice](gen: LatticeGenerator[B])
     extends PropSpec with GeneratorDrivenPropertyChecks {
-  val bool: IsBoolean[B] = implicitly[IsBoolean[B]]
+  val bool = BoolLattice[B]
   implicit val arbB: Arbitrary[B] = Arbitrary(gen.any)
   // ∀ a: (a ⇒ isTrue(inject(a))) && (¬a => isFalse(inject(a)))
   property("Inject preserves truthiness") {
@@ -297,9 +297,9 @@ abstract class BooleanSpecification[B : IsBoolean](gen: LatticeGenerator[B])
   }
 }
 
-abstract class StringSpecification[S : IsString](gen: LatticeGenerator[S])
+abstract class StringSpecification[S : StringLattice](gen: LatticeGenerator[S])
     extends PropSpec with GeneratorDrivenPropertyChecks {
-  val str = implicitly[IsString[S]]
+  val str = StringLattice[S]
   implicit val arbS: Arbitrary[S] = Arbitrary(gen.any)
 
   val boundedInt = new BoundedInteger(1000)
@@ -355,9 +355,9 @@ abstract class StringSpecification[S : IsString](gen: LatticeGenerator[S])
   }
 }
 
-case class IntegerSpecification[I : IsInteger](gen: LatticeGenerator[I])
+case class IntegerSpecification[I : IntLattice](gen: LatticeGenerator[I])
     extends PropSpec with GeneratorDrivenPropertyChecks {
-  val int = implicitly[IsInteger[I]]
+  val int = IntLattice[I]
   implicit val arbI: Arbitrary[I] = Arbitrary(gen.any)
 
   type B = ConcreteBoolean.B
@@ -507,17 +507,17 @@ case class IntegerSpecification[I : IsInteger](gen: LatticeGenerator[I])
   }
 }
 
-case class FloatSpecification[F : IsFloat](gen: LatticeGenerator[F])
+case class FloatSpecification[F : FloatLattice](gen: LatticeGenerator[F])
     extends PropSpec with GeneratorDrivenPropertyChecks {
   // No specification (yet). TODO
 }
 
-case class CharSpecification[C : IsChar](gen: LatticeGenerator[C])
+case class CharSpecification[C : CharLattice](gen: LatticeGenerator[C])
     extends PropSpec with GeneratorDrivenPropertyChecks {
   // No specification
 }
 
-case class SymbolSpecification[Sym : IsSymbol](gen: LatticeGenerator[Sym])
+case class SymbolSpecification[Sym : SymbolLattice](gen: LatticeGenerator[Sym])
     extends PropSpec with GeneratorDrivenPropertyChecks {
   // No specification
 }

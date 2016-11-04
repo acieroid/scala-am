@@ -274,8 +274,8 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     val name = "cons"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
       case (carexp, car) :: (cdrexp, cdr) :: Nil => {
-        val cara = addr.cell(carexp, t)
-        val cdra = addr.cell(cdrexp, t)
+        val cara = Address[Addr].cell(carexp, t)
+        val cdra = Address[Addr].cell(cdrexp, t)
         MayFailSuccess((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr), Set()))
       }
       case l => MayFailError(List(ArityError(name, 2, l.size)))
@@ -446,8 +446,8 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       case (_, size) :: (initexp, init) :: Nil =>
         isInteger(size) >>= (isint =>
           if (abs.isTrue(isint)) {
-            val a = addr.cell(fexp, t)
-            val initaddr = addr.cell(initexp, t)
+            val a = Address[Addr].cell(fexp, t)
+            val initaddr = Address[Addr].cell(initexp, t)
             abs.vector(a, size, initaddr).map({ case (va, vector) =>
               (va, store.extend(a, vector).extend(initaddr, init), Set())})
           } else {
@@ -469,7 +469,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
             store.lookup(va) match {
               case Some(oldvec) => {
                 acc >>= ({ case (oldval, store, effects) =>
-                  val targetaddr = addr.cell(exp, t)
+                  val targetaddr = Address[Addr].cell(exp, t)
                   abs.vectorSet(oldvec, index, targetaddr).map({ case (vec, addrs) =>
                     val store2 = addrs.foldLeft(store.update(va, vec))((st, a) => st.updateOrExtend(a, value))
                     val effects2 = addrs.map(a => EffectWriteVector(a))
@@ -488,15 +488,15 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Vector extends Primitive[Addr, Abs] {
     val name = "vector"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
-      val a = addr.cell(fexp, t)
-      val botaddr = addr.primitive("__bottom__")
+      val a = Address[Addr].cell(fexp, t)
+      val botaddr = Address[Addr].primitive("__bottom__")
       abs.vector(a, abs.inject(args.size), botaddr) >>= ({ case (va, emptyVector) =>
         /* No tracked effects because we only perform atomic updates at allocation time */
         val init: MayFail[(Abs, Store[Addr, Abs])] = MayFailSuccess((emptyVector, store))
         args.zipWithIndex.foldLeft(init)((acc, arg) => acc >>= ({ case (vec, store) =>
           arg match {
             case ((exp, value), index) =>
-              val valaddr = addr.cell(exp, t)
+              val valaddr = Address[Addr].cell(exp, t)
               abs.vectorSet(vec, abs.inject(index), valaddr).map({
                 case (vec, addrs) => (vec, addrs.foldLeft(store)((st, a) => st.updateOrExtend(a, value)))
               })

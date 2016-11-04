@@ -53,7 +53,7 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
       case (Tainted(s), Untainted) => MaybeTainted(s)
     }
     def bottom = (BottomTaint, abs.bottom)
-    def join(x: L, y: L) = (joinTaint(x._1, y._1), abs.join(x._2, y._2))
+    def join(x: L, y: L) = (joinTaint(x._1, y._1), JoinLattice[Abs].join(x._2, y._2))
     def subsumes(x: L, y: L) = abs.subsumes(x._2, y._2) && (if (x._1 == y._1) { true } else {
       (x._1, y._1) match {
         case (_, BottomTaint) => true
@@ -112,7 +112,7 @@ class TSchemePrimitives[Addr : Address, Abs : IsTaintLattice] extends SchemePrim
   object Taint extends Primitive[Addr, Abs] {
     val name = "taint"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case (_, x) :: Nil => MayFailSuccess((tabs.taint(x, implicitly[Expression[Exp]].pos(fexp)), store, Set()))
+      case (_, x) :: Nil => MayFailSuccess((tabs.taint(x, Expression[Exp].pos(fexp)), store, Set()))
       case l => MayFailError(List(ArityError(name, 1, l.size)))
     }
   }
@@ -140,7 +140,7 @@ class TSchemePrimitives[Addr : Address, Abs : IsTaintLattice] extends SchemePrim
 
 /* The analysis itself only collects the error strings starting with "sink: " */
 case class TaintAnalysis[Abs : JoinLattice, Addr : Address, Time : Timestamp]()
-    extends BaseAnalysis[Set[(Position, Position)], SchemeExp, Abs, Addr, Time] {
+    extends Analysis[Set[(Position, Position)], SchemeExp, Abs, Addr, Time] {
   def stepEval(e: SchemeExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: Set[(Position, Position)]) = current
   def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time, current: Set[(Position, Position)]) = current
   def error(error: SemanticError, current: Set[(Position, Position)]) = error match {

@@ -2,8 +2,6 @@ import scalaz.Scalaz._
 import scalaz.Semigroup
 
 abstract class Store[Addr : Address, Abs : JoinLattice] {
-  val abs = implicitly[JoinLattice[Abs]]
-  val addr = implicitly[Address[Addr]]
   /** Gets all the keys of the store */
   def keys: Iterable[Addr]
   /** Checks if a predicate is true for all elements of the store */
@@ -35,23 +33,23 @@ abstract class Store[Addr : Address, Abs : JoinLattice] {
   /** Returns the cardinality of each lattice element of this store */
   def cardinalities(withPrimitives: Boolean = false): Map[Addr, Cardinality] =
     keys
-      .filter(a => withPrimitives || !addr.isPrimitive(a))
+      .filter(a => withPrimitives || !Address[Addr].isPrimitive(a))
       .foldLeft(Map[Addr, Cardinality]())((acc, a) => lookup(a) match {
-        case Some(v) => acc + (a -> abs.cardinality(v))
+        case Some(v) => acc + (a -> JoinLattice[Abs].cardinality(v))
         case None => acc /* should not happen */
       })
 }
 
 /** Basic store with no fancy feature, just a map from addresses to values */
 case class BasicStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]) extends Store[Addr, Abs] {
-  override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
+  override def toString = content.filterKeys(a => !Address[Addr].isPrimitive(a)).toString
   def keys = content.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
   def lookup(a: Addr) = content.get(a)
-  def lookupBot(a: Addr) = content.get(a).getOrElse(abs.bottom)
+  def lookupBot(a: Addr) = content.get(a).getOrElse(JoinLattice[Abs].bottom)
   def extend(a: Addr, v: Abs) = content.get(a) match {
     case None => this.copy(content = content + (a -> v))
-    case Some(v2) => this.copy(content = content + (a -> abs.join(v2, v)))
+    case Some(v2) => this.copy(content = content + (a -> JoinLattice[Abs].join(v2, v)))
   }
   def update(a: Addr, v: Abs) = extend(a, v)
   def updateOrExtend(a: Addr, v: Abs) = extend(a, v)
@@ -62,7 +60,7 @@ case class BasicStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]
       throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
     }
   def subsumes(that: Store[Addr, Abs]) =
-    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
+    that.forall((binding: (Addr, Abs)) => JoinLattice[Abs].subsumes(lookupBot(binding._1), binding._2))
   def diff(that: Store[Addr, Abs]) =
     this.copy(content = content.filter({ case (a, v) => that.lookupBot(a) != v}))
 }
@@ -87,14 +85,14 @@ case class CombinedStore[Addr : Address, Abs : JoinLattice](ro: Store[Addr, Abs]
   def updateOrExtend(a: Addr, v: Abs) = this.copy(w = w.updateOrExtend(a, v))
   def join(that: Store[Addr, Abs]) = throw new Exception("CombinedStore does not support join")
   def subsumes(that: Store[Addr, Abs]) =
-    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
+    that.forall((binding: (Addr, Abs)) => JoinLattice[Abs].subsumes(lookupBot(binding._1), binding._2))
   def diff(that: Store[Addr, Abs]) = throw new Exception("CombinedStore does not support diff")
 }
 
 /** A store that supports store deltas. Many operations are not implemented because they are not needed. */
 case class DeltaStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs], d: Map[Addr, Abs]) extends Store[Addr, Abs] {
   def this() = this(Map(), Map())
-  override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
+  override def toString = content.filterKeys(a => !Address[Addr].isPrimitive(a)).toString
   def keys = content.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
   def lookup(a: Addr) = d.get(a) match {
@@ -102,15 +100,15 @@ case class DeltaStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]
     case Some(v) => Some(v) /* information in the delta should always be as broad as the information in the store itself */
   }
   def lookupBot(a: Addr) = d.get(a) match {
-    case None => content.get(a).getOrElse(abs.bottom)
+    case None => content.get(a).getOrElse(JoinLattice[Abs].bottom)
     case Some(v) => v
   }
   def extend(a: Addr, v: Abs) = d.get(a) match {
-    case Some(v2) => this.copy(d = d + (a -> abs.join(v2, v)))
+    case Some(v2) => this.copy(d = d + (a -> JoinLattice[Abs].join(v2, v)))
     case None => content.get(a) match {
       case None => this.copy(d = d + (a -> v))
-      case Some(v2) if v2 == v || abs.subsumes(v2, v) => this
-      case Some(v2) => this.copy(d = d + (a -> abs.join(v2, v)))
+      case Some(v2) if v2 == v || JoinLattice[Abs].subsumes(v2, v) => this
+      case Some(v2) => this.copy(d = d + (a -> JoinLattice[Abs].join(v2, v)))
     }
   }
   def update(a: Addr, v: Abs) = extend(a, v)
@@ -127,14 +125,14 @@ case class DeltaStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]
 }
 
 case class CountingStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, (Count, Abs)]) extends Store[Addr, Abs] {
-  override def toString = content.filterKeys(a => !addr.isPrimitive(a)).toString
+  override def toString = content.filterKeys(a => !Address[Addr].isPrimitive(a)).toString
   def keys = content.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, (_, v)) => p(a, v) })
   def lookup(a: Addr) = content.get(a).map(_._2)
-  def lookupBot(a: Addr) = content.get(a).map(_._2).getOrElse(abs.bottom)
+  def lookupBot(a: Addr) = content.get(a).map(_._2).getOrElse(JoinLattice[Abs].bottom)
   def extend(a: Addr, v: Abs) = content.get(a) match {
     case None => this.copy(content = content + (a -> (CountOne, v)))
-    case Some((n, v2)) => this.copy(content = content + (a -> (n.inc, abs.join(v2, v))))
+    case Some((n, v2)) => this.copy(content = content + (a -> (n.inc, JoinLattice[Abs].join(v2, v))))
   }
   def update(a: Addr, v: Abs) = content.get(a) match {
     case None => throw new RuntimeException("Updating store at an adress not used")
@@ -152,7 +150,7 @@ case class CountingStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, (
       throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
     }
   def subsumes(that: Store[Addr, Abs]) =
-    that.forall((binding: (Addr, Abs)) => abs.subsumes(lookupBot(binding._1), binding._2))
+    that.forall((binding: (Addr, Abs)) => JoinLattice[Abs].subsumes(lookupBot(binding._1), binding._2))
   def diff(that: Store[Addr, Abs]) =
     if (that.isInstanceOf[CountingStore[Addr, Abs]]) {
       val other = that.asInstanceOf[CountingStore[Addr, Abs]]
@@ -166,13 +164,13 @@ case class CountingStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, (
 }
 
 object Store {
-  def empty[Addr : Address, Abs : JoinLattice]: Store[Addr, Abs] = empty[Addr, Abs](implicitly[JoinLattice[Abs]].counting)
+  def empty[Addr : Address, Abs : JoinLattice]: Store[Addr, Abs] = empty[Addr, Abs](JoinLattice[Abs].counting)
   def empty[Addr : Address, Abs : JoinLattice](counting: Boolean): Store[Addr, Abs] = if (counting) {
     CountingStore(Map())
   } else {
     BasicStore(Map())
   }
-  def initial[Addr : Address, Abs : JoinLattice](values: Iterable[(Addr, Abs)]): Store[Addr, Abs] = if (implicitly[JoinLattice[Abs]].counting) {
+  def initial[Addr : Address, Abs : JoinLattice](values: Iterable[(Addr, Abs)]): Store[Addr, Abs] = if (JoinLattice[Abs].counting) {
     CountingStore(values.map({ case (a, v) => (a, (CountOne, v)) }).toMap)
   } else {
     BasicStore(values.toMap)

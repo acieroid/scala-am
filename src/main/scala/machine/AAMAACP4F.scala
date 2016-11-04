@@ -51,16 +51,16 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
 
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]], store: GlobalStore, kstore: KontStore[KontAddr]): (Set[State], GlobalStore, KontStore[KontAddr]) =
       actions.foldLeft((Set[State](), store, kstore))((acc, action) => action match {
-        case ActionReachedValue(v, store2, _) => (acc._1 + State(ControlKont(v), a, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3)
+        case ActionReachedValue(v, store2, _) => (acc._1 + State(ControlKont(v), a, Timestamp[Time].tick(t)), acc._2.includeDelta(store2.delta), acc._3)
         case ActionPush(frame, e, env, store2, _) =>
           val next = kalloc(this, e, env, store2, t)
-          (acc._1 + State(ControlEval(e, env), next, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3.extend(next, Kont(frame, a)))
+          (acc._1 + State(ControlEval(e, env), next, Timestamp[Time].tick(t)), acc._2.includeDelta(store2.delta), acc._3.extend(next, Kont(frame, a)))
         case ActionEval(e, env, store2, _) =>
-          (acc._1 + State(ControlEval(e, env), a, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3)
+          (acc._1 + State(ControlEval(e, env), a, Timestamp[Time].tick(t)), acc._2.includeDelta(store2.delta), acc._3)
         case ActionStepIn(fexp, _, e, env, store2, _, _) =>
-          (acc._1 + State(ControlEval(e, env), a, time.tick(t)), acc._2.includeDelta(store2.delta), acc._3)
+          (acc._1 + State(ControlEval(e, env), a, Timestamp[Time].tick(t)), acc._2.includeDelta(store2.delta), acc._3)
         case ActionError(err) =>
-          (acc._1 + State(ControlError(err), a, time.tick(t)), acc._2, acc._3)
+          (acc._1 + State(ControlError(err), a, Timestamp[Time].tick(t)), acc._2, acc._3)
       })
 
     /**
@@ -90,7 +90,7 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
   }
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (State, GlobalStore, KontStore[KontAddr]) =
-      (State(ControlEval(exp, Environment.initial[Addr](env)), HaltKontAddress, time.initial("")),
+      (State(ControlEval(exp, Environment.initial[Addr](env)), HaltKontAddress, Timestamp[Time].initial("")),
         GlobalStore(DeltaStore[Addr, Abs](store.toMap, Map()), Map()),
         TimestampedKontStore[KontAddr](Map(), 0))
   }
@@ -102,7 +102,7 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     })
-    def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
+    def containsFinalValue(v: Abs) = finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
         (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {

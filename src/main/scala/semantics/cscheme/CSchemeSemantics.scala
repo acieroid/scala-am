@@ -69,7 +69,7 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
                     for { oldvals <- aabs.vectorRef(vec, i) }
                     yield {
                       val success: Actions = for {
-                        (newvec, addrs) <- aabs.vectorSet(vec, i, addr.cell(enew, t))
+                        (newvec, addrs) <- aabs.vectorSet(vec, i, Address[Addr].cell(enew, t))
                       } yield Action.value(cabs.inject(true), addrs.foldLeft(store.update(va, newvec))((acc, a) => acc.updateOrExtend(a, v)),
                         addrs.flatMap(a => Set(EffectWriteVector(a), EffectReadVector(a))))
                       val fail: Actions = Action.value(cabs.inject(false), store, Set(EffectReadVector(a)))

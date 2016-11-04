@@ -61,18 +61,18 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     private def integrate(a: KontAddr, actions: Set[Action[Exp, Abs, Addr]]): Set[State] =
       actions.flatMap({
         /* When a value is reached, we go to a continuation state */
-        case ActionReachedValue(v, store, _) => Set(State(ControlKont(v), store, kstore, a, time.tick(t)))
+        case ActionReachedValue(v, store, _) => Set(State(ControlKont(v), store, kstore, a, Timestamp[Time].tick(t)))
         /* When a continuation needs to be pushed, push it in the continuation store */
         case ActionPush(frame, e, env, store, _) => {
           val next = NormalKontAddress(e, t)
-          Set(State(ControlEval(e, env), store, kstore.extend(next, Kont(frame, a)), next, time.tick(t)))
+          Set(State(ControlEval(e, env), store, kstore.extend(next, Kont(frame, a)), next, Timestamp[Time].tick(t)))
         }
         /* When a value needs to be evaluated, we go to an eval state */
-        case ActionEval(e, env, store, _) => Set(State(ControlEval(e, env), store, kstore, a, time.tick(t)))
+        case ActionEval(e, env, store, _) => Set(State(ControlEval(e, env), store, kstore, a, Timestamp[Time].tick(t)))
         /* When a function is stepped in, we also go to an eval state */
-        case ActionStepIn(fexp, _, e, env, store, _, _) => Set(State(ControlEval(e, env), store, kstore, a, time.tick(t, fexp)))
+        case ActionStepIn(fexp, _, e, env, store, _, _) => Set(State(ControlEval(e, env), store, kstore, a, Timestamp[Time].tick(t, fexp)))
         /* When an error is reached, we go to an error state */
-        case ActionError(err) => Set(State(ControlError(err), store, kstore, a, time.tick(t)))
+        case ActionError(err) => Set(State(ControlError(err), store, kstore, a, Timestamp[Time].tick(t)))
       })
 
     /**
@@ -114,7 +114,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
       State(ControlEval(exp, Environment.initial[Addr](env)),
-        Store.initial[Addr, Abs](store), KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))
+        Store.initial[Addr, Abs](store), KontStore.empty[KontAddr], HaltKontAddress, Timestamp[Time].initial(""))
     import scala.language.implicitConversions
     import org.json4s._
     import org.json4s.JsonDSL._
@@ -140,7 +140,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     /**
      * Checks if a halted state contains a value that subsumes @param v
      */
-    def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
+    def containsFinalValue(v: Abs) = finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
 
     /**
      * Outputs the graph in a dot file

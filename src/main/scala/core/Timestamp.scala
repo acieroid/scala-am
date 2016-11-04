@@ -5,6 +5,10 @@ trait Timestamp[T] {
   def tick[Exp](t: T, e: Exp): T
 }
 
+object Timestamp {
+  def apply[T : Timestamp]: Timestamp[T] = implicitly[Timestamp[T]]
+}
+
 trait TimestampWrapper {
   type T
   val isTimestamp: Timestamp[T]

@@ -1,10 +1,14 @@
 trait Address[A] {
   def name: String
-  def subsumes(x: A, y: A): Boolean = x.equals(y)
   def isPrimitive(x: A): Boolean
   def primitive(name: String): A
   def variable[Time : Timestamp, Abs : JoinLattice](id: Identifier, value: Abs, t: Time): A
   def cell[Exp : Expression, Time : Timestamp](exp: Exp, t: Time): A
+  def botAddress: A = primitive("__bottom__")
+}
+
+object Address {
+  def apply[A : Address]: Address[A] = implicitly[Address[A]]
 }
 
 trait AddressWrapper {
@@ -56,9 +60,8 @@ object ValueSensitiveAddress extends AddressWrapper {
     }
     def primitive(name: String) = PrimitiveAddress(name)
     def variable[Time : Timestamp, Abs : JoinLattice](id: Identifier, value: Abs, t: Time) = {
-      val abs = implicitly[JoinLattice[Abs]]
       /* To ensure finiteness, value should be a primitive value that doesn't contain addresses (i.e., no cons cell etc.) */
-      VariableAddress(id, if (abs.isPrimitiveValue(value)) value else abs.bottom, t)
+      VariableAddress(id, if (JoinLattice[Abs].isPrimitiveValue(value)) value else JoinLattice[Abs].bottom, t)
     }
     def cell[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) = CellAddress(exp, t)
   }

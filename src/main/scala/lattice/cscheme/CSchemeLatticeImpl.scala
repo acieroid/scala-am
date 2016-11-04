@@ -4,28 +4,13 @@ import SchemeOps._
 
 class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
   val lat = lattice.isSchemeLattice
-
-  implicit def ofSet[A]: IsLatticeElement[Set[A]] = new IsLatticeElement[Set[A]] {
-    def name = "OfSet"
-    def bottom: Set[A] = Set.empty
-    def top: Set[A] = throw new Error("OfSet lattice has no top value")
-    def join(x: Set[A], y: => Set[A]): Set[A] = x ++ y
-    def subsumes(x: Set[A], y: => Set[A]): Boolean = y.subsetOf(x)
-    def eql[B](x: Set[A], y: Set[A])(implicit bool: IsBoolean[B]): B =
-      if (x.size == 1 && y.size == 1 && x == y) { bool.inject(true) }
-      else if (x.intersect(y).isEmpty) { bool.inject(false) }
-      else { bool.top }
-    def order(x: Set[A], y: Set[A]): Ordering = throw new Error("Cannot define an order since A is not required to be ordered")
-    def cardinality(x: Set[A]): Cardinality = CardinalityNumber(x.size)
-  }
-
   sealed trait Locked
   case object LockedBottom extends Locked
   case object LockedLocked extends Locked
   case object LockedUnlocked extends Locked
   case object LockedTop extends Locked
 
-  implicit val locked: IsLatticeElement[Locked] = new IsLatticeElement[Locked] {
+  implicit val locked: LatticeElement[Locked] = new LatticeElement[Locked] {
     def name = "Locked"
     def bottom = LockedBottom
     def top = LockedTop
@@ -47,14 +32,14 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
       case (LockedBottom, LockedBottom) => true
       case _ => false
     }
-    def eql[B](x: Locked, y: Locked)(implicit bool: IsBoolean[B]): B = (x, y) match {
-      case (LockedLocked, LockedLocked) => bool.inject(true)
-      case (LockedUnlocked, LockedUnlocked) => bool.inject(true)
-      case (LockedLocked, LockedUnlocked) => bool.inject(false)
-      case (LockedUnlocked, LockedLocked) => bool.inject(false)
-      case (LockedBottom, _) => bool.bottom
-      case (_, LockedBottom) => bool.bottom
-      case _ => bool.top
+    def eql[B](x: Locked, y: Locked)(implicit bool: BoolLattice[B]): B = (x, y) match {
+      case (LockedLocked, LockedLocked) => BoolLattice[B].inject(true)
+      case (LockedUnlocked, LockedUnlocked) => BoolLattice[B].inject(true)
+      case (LockedLocked, LockedUnlocked) => BoolLattice[B].inject(false)
+      case (LockedUnlocked, LockedLocked) => BoolLattice[B].inject(false)
+      case (LockedBottom, _) => BoolLattice[B].bottom
+      case (_, LockedBottom) => BoolLattice[B].bottom
+      case _ => BoolLattice[B].top
     }
     def order(x: Locked, y: Locked): Ordering = (x, y) match {
       case (LockedBottom, LockedBottom) => Ordering.EQ
@@ -79,8 +64,8 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
   type Tids = Set[Any] /* TODO: get rid of the any */
   type LockAddrs = Set[Any]
 
-  val tids: IsLatticeElement[Tids] = ofSet[Any]
-  val lockaddrs: IsLatticeElement[LockAddrs] = ofSet[Any]
+  val tids: LatticeElement[Tids] = LatticeElement.ofSet[Any]
+  val lockaddrs: LatticeElement[LockAddrs] = LatticeElement.ofSet[Any]
 
   case class Value(seq: lattice.L = lat.bottom, t: Tids = tids.bottom, la: LockAddrs = lockaddrs.bottom, l: Locked = locked.bottom)
   type L = Value

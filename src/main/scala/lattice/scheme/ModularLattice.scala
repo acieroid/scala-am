@@ -2,30 +2,35 @@ import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
 import SchemeOps._
 
-class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit str: IsString[S],
-  bool: IsBoolean[B], int: IsInteger[I], float: IsFloat[F], char: IsChar[C],
-  sym: IsSymbol[Sym]) {
+class MakeSchemeLattice[
+  S : StringLattice,
+  B : BoolLattice,
+  I : IntLattice,
+  F : FloatLattice,
+  C : CharLattice,
+  Sym : SymbolLattice
+](supportsCounting: Boolean) {
   sealed trait Value
   case object Bot extends Value {
     override def toString = "⊥"
   }
   case class Str(s: S) extends Value {
-    override def toString = str.shows(s)
+    override def toString = StringLattice[S].shows(s)
   }
   case class Bool(b: B) extends Value {
-    override def toString = bool.shows(b)
+    override def toString = BoolLattice[B].shows(b)
   }
   case class Int(i: I) extends Value {
-    override def toString = int.shows(i)
+    override def toString = IntLattice[I].shows(i)
   }
   case class Float(f: F) extends Value {
-    override def toString = float.shows(f)
+    override def toString = FloatLattice[F].shows(f)
   }
   case class Char(c: C) extends Value {
-    override def toString = char.shows(c)
+    override def toString = CharLattice[C].shows(c)
   }
   case class Symbol(s: Sym) extends Value {
-    override def toString = sym.shows(s)
+    override def toString = SymbolLattice[Sym].shows(s)
   }
   case class Prim[Addr : Address, Abs : JoinLattice](prim: Primitive[Addr, Abs]) extends Value {
     override def toString = s"#<prim ${prim.name}>"
@@ -39,14 +44,16 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
   }
   case class Vec[Addr : Address](size: I, elements: Map[I, Addr], init: Addr) extends Value {
     override def toString = {
-      val els = elements.toList.map({ case (k, v) => s"${int.shows(k)}: $v" }).mkString(", ")
-      s"Vec(${int.shows(size)}, {$els}, $init)"
+      val els = elements.toList.map({
+        case (k, v) => s"${IntLattice[I].shows(k)}: $v"
+      }).mkString(", ")
+      s"Vec(${IntLattice[I].shows(size)}, {$els}, $init)"
     }
   }
   case class VectorAddress[Addr : Address](a: Addr) extends Value
 
-  val True = Bool(bool.inject(true))
-  val False = Bool(bool.inject(false))
+  val True = Bool(BoolLattice[B].inject(true))
+  val False = Bool(BoolLattice[B].inject(false))
 
   type L = Value
 
@@ -61,26 +68,26 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
       (x, y) match {
         case (Bot, _) => y
         case (_, Bot) => x
-        case (Str(s1), Str(s2)) => Str(str.join(s1, s2))
-        case (Bool(b1), Bool(b2)) => Bool(bool.join(b1, b2))
-        case (Int(i1), Int(i2)) => Int(int.join(i1, i2))
-        case (Float(f1), Float(f2)) => Float(float.join(f1, f2))
-        case (Char(c1), Char(c2)) => Char(char.join(c1, c2))
+        case (Str(s1), Str(s2)) => Str(StringLattice[S].join(s1, s2))
+        case (Bool(b1), Bool(b2)) => Bool(BoolLattice[B].join(b1, b2))
+        case (Int(i1), Int(i2)) => Int(IntLattice[I].join(i1, i2))
+        case (Float(f1), Float(f2)) => Float(FloatLattice[F].join(f1, f2))
+        case (Char(c1), Char(c2)) => Char(CharLattice[C].join(c1, c2))
         case _ => throw new CannotJoin[L](Set(x, y))
       }
     }
     def subsumes(x: L, y: L): Boolean = if (x == y) { true } else {
       (x, y) match {
         case (_, Bot) => true
-        case (Str(s1), Str(s2)) => str.subsumes(s1, s2)
-        case (Bool(b1), Bool(b2)) => bool.subsumes(b1, b2)
-        case (Int(i1), Int(i2)) => int.subsumes(i1, i2)
-        case (Float(f1), Float(f2)) => float.subsumes(f1, f2)
-        case (Char(c1), Char(c2)) => char.subsumes(c1, c2)
+        case (Str(s1), Str(s2)) => StringLattice[S].subsumes(s1, s2)
+        case (Bool(b1), Bool(b2)) => BoolLattice[B].subsumes(b1, b2)
+        case (Int(i1), Int(i2)) => IntLattice[I].subsumes(i1, i2)
+        case (Float(f1), Float(f2)) => FloatLattice[F].subsumes(f1, f2)
+        case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
         case _ => false
       }
     }
-    val name = s"Lattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    val name = s"Lattice(${StringLattice[S].name}, ${BoolLattice[B].name}, ${IntLattice[I].name}, ${FloatLattice[F].name}, ${CharLattice[C].name}, ${SymbolLattice[Sym].name})"
     val counting = supportsCounting
 
     def isPrimitiveValue(x: L): Boolean = x match {
@@ -90,23 +97,23 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
 
     def cardinality(x: L): Cardinality = x match {
       case Bot => CardinalityNumber(0)
-      case Str(s) => str.cardinality(s)
-      case Bool(b) => bool.cardinality(b)
-      case Int(i) => int.cardinality(i)
-      case Float(f) => float.cardinality(f)
-      case Char(c) => char.cardinality(c)
-      case Symbol(s) => sym.cardinality(s)
+      case Str(s) => StringLattice[S].cardinality(s)
+      case Bool(b) => BoolLattice[B].cardinality(b)
+      case Int(i) => IntLattice[I].cardinality(i)
+      case Float(f) => FloatLattice[F].cardinality(f)
+      case Char(c) => CharLattice[C].cardinality(c)
+      case Symbol(s) => SymbolLattice[Sym].cardinality(s)
       case Nil => CardinalityNumber(1)
       case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _)  => CardinalityNumber(1)
     }
 
     def isTrue(x: L): Boolean = x match {
-      case Bool(b) => bool.isTrue(b)
+      case Bool(b) => BoolLattice[B].isTrue(b)
       case Bot => false
       case _ => true
     }
     def isFalse(x: L): Boolean = x match {
-      case Bool(b) => bool.isFalse(b)
+      case Bool(b) => BoolLattice[B].isFalse(b)
       case Bot => true
       case _ => false
     }
@@ -153,22 +160,22 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
         case _ => False
       }
       case Not => x match {
-        case Bool(b) => Bool(bool.not(b))
+        case Bool(b) => Bool(BoolLattice[B].not(b))
         case _ => False /* any value is true */
       }
       case Ceiling => x match {
-        case Int(n) => Int(int.ceiling(n))
-        case Float(n) => Float(float.ceiling(n))
+        case Int(n) => Int(IntLattice[I].ceiling(n))
+        case Float(n) => Float(FloatLattice[F].ceiling(n))
         case _ => OperatorNotApplicable("ceiling", List(x.toString))
       }
       case Log => x match {
-        case Int(n) => Float(float.log(int.toFloat(n)))
-        case Float(n) => Float(float.log(n))
+        case Int(n) => Float(FloatLattice[F].log(IntLattice[I].toFloat(n)))
+        case Float(n) => Float(FloatLattice[F].log(n))
         case _ => OperatorNotApplicable("log", List(x.toString))
       }
       case Random => x match {
-        case Int(n) => Int(int.random(n))
-        case Float(n) => Float(float.random(n))
+        case Int(n) => Int(IntLattice[I].random(n))
+        case Float(n) => Float(FloatLattice[F].random(n))
         case _ => OperatorNotApplicable("random", List(x.toString))
       }
       case VectorLength => x match {
@@ -176,92 +183,92 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
         case _ => OperatorNotApplicable("vector-length", List(x.toString))
       }
       case StringLength => x match {
-        case Str(s) => Int(str.length(s))
+        case Str(s) => Int(StringLattice[S].length(s))
         case _ => OperatorNotApplicable("string-length", List(x.toString))
       }
       case NumberToString => x match {
-        case Int(n) => Str(int.toString(n))
-        case Float(n) => Str(float.toString(n))
+        case Int(n) => Str(IntLattice[I].toString(n))
+        case Float(n) => Str(FloatLattice[F].toString(n))
         case _ => OperatorNotApplicable("number->string", List(x.toString))
       }
     }}
 
     def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = op match {
       case Plus => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(int.plus(n1, n2))
-        case (Int(n1), Float(n2)) => Float(float.plus(int.toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Float(float.plus(n1, int.toFloat(n2)))
-        case (Float(n1), Float(n2)) => Float(float.plus(n1, n2))
+        case (Int(n1), Int(n2)) => Int(IntLattice[I].plus(n1, n2))
+        case (Int(n1), Float(n2)) => Float(FloatLattice[F].plus(IntLattice[I].toFloat(n1), n2))
+        case (Float(n1), Int(n2)) => Float(FloatLattice[F].plus(n1, IntLattice[I].toFloat(n2)))
+        case (Float(n1), Float(n2)) => Float(FloatLattice[F].plus(n1, n2))
         case _ => OperatorNotApplicable("+", List(x.toString, y.toString))
       }
       case Minus => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(int.minus(n1, n2))
-        case (Int(n1), Float(n2)) => Float(float.minus(int.toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Float(float.minus(n1, int.toFloat(n2)))
-        case (Float(n1), Float(n2)) => Float(float.minus(n1, n2))
+        case (Int(n1), Int(n2)) => Int(IntLattice[I].minus(n1, n2))
+        case (Int(n1), Float(n2)) => Float(FloatLattice[F].minus(IntLattice[I].toFloat(n1), n2))
+        case (Float(n1), Int(n2)) => Float(FloatLattice[F].minus(n1, IntLattice[I].toFloat(n2)))
+        case (Float(n1), Float(n2)) => Float(FloatLattice[F].minus(n1, n2))
         case _ => OperatorNotApplicable("-", List(x.toString, y.toString))
       }
       case Times => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(int.times(n1, n2))
-        case (Int(n1), Float(n2)) => Float(float.times(int.toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Float(float.times(n1, int.toFloat(n2)))
-        case (Float(n1), Float(n2)) => Float(float.times(n1, n2))
+        case (Int(n1), Int(n2)) => Int(IntLattice[I].times(n1, n2))
+        case (Int(n1), Float(n2)) => Float(FloatLattice[F].times(IntLattice[I].toFloat(n1), n2))
+        case (Float(n1), Int(n2)) => Float(FloatLattice[F].times(n1, IntLattice[I].toFloat(n2)))
+        case (Float(n1), Float(n2)) => Float(FloatLattice[F].times(n1, n2))
         case _ => OperatorNotApplicable("*", List(x.toString, y.toString))
       }
       /* TODO: have a div for integer division (i.e., Scheme's quotient), and one for real division (/)). Also, handle division by zero. */
       case Div => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(int.div(n1, n2))
-        case (Int(n1), Float(n2)) => Float(float.div(int.toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Float(float.div(n1, int.toFloat(n2)))
-        case (Float(n1), Float(n2)) => Float(float.div(n1, n2))
+        case (Int(n1), Int(n2)) => Int(IntLattice[I].div(n1, n2))
+        case (Int(n1), Float(n2)) => Float(FloatLattice[F].div(IntLattice[I].toFloat(n1), n2))
+        case (Float(n1), Int(n2)) => Float(FloatLattice[F].div(n1, IntLattice[I].toFloat(n2)))
+        case (Float(n1), Float(n2)) => Float(FloatLattice[F].div(n1, n2))
         case _ => OperatorNotApplicable("/", List(x.toString, y.toString))
       }
       case Modulo => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(int.modulo(n1, n2))
+        case (Int(n1), Int(n2)) => Int(IntLattice[I].modulo(n1, n2))
         case _ => OperatorNotApplicable("modulo", List(x.toString, y.toString))
       }
       case Lt => (x, y) match {
-        case (Int(n1), Int(n2)) => Bool(int.lt(n1, n2))
-        case (Int(n1), Float(n2)) => Bool(float.lt(int.toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Bool(float.lt(n1, int.toFloat(n2)))
-        case (Float(n1), Float(n2)) => Bool(float.lt(n1, n2))
+        case (Int(n1), Int(n2)) => Bool(IntLattice[I].lt(n1, n2))
+        case (Int(n1), Float(n2)) => Bool(FloatLattice[F].lt(IntLattice[I].toFloat(n1), n2))
+        case (Float(n1), Int(n2)) => Bool(FloatLattice[F].lt(n1, IntLattice[I].toFloat(n2)))
+        case (Float(n1), Float(n2)) => Bool(FloatLattice[F].lt(n1, n2))
         case _ => OperatorNotApplicable("<", List(x.toString, y.toString))
       }
       case NumEq => (x, y) match {
-        case (Int(n1), Int(n2)) => Bool(int.eql(n1, n2))
-        case (Int(n1), Float(n2)) => Bool(float.eql(int.toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Bool(float.eql(n1, int.toFloat(n2)))
-        case (Float(n1), Float(n2)) => Bool(float.eql(n1, n2))
+        case (Int(n1), Int(n2)) => Bool(IntLattice[I].eql(n1, n2))
+        case (Int(n1), Float(n2)) => Bool(FloatLattice[F].eql(IntLattice[I].toFloat(n1), n2))
+        case (Float(n1), Int(n2)) => Bool(FloatLattice[F].eql(n1, IntLattice[I].toFloat(n2)))
+        case (Float(n1), Float(n2)) => Bool(FloatLattice[F].eql(n1, n2))
         case _ => OperatorNotApplicable("number=", List(x.toString, y.toString))
       }
       case Eq => (x, y) match {
-        case (Str(s1), Str(s2)) => Bool(str.eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
-        case (Bool(b1), Bool(b2)) => Bool(bool.eql(b1, b2))
-        case (Int(n1), Int(n2)) => Bool(int.eql(n1, n2))
-        case (Float(n1), Float(n2)) => Bool(float.eql(n1, n2))
-        case (Char(c1), Char(c2)) => Bool(char.eql(c1, c2))
-        case (Symbol(s1), Symbol(s2)) => Bool(sym.eql(s1, s2))
+        case (Str(s1), Str(s2)) => Bool(StringLattice[S].eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
+        case (Bool(b1), Bool(b2)) => Bool(BoolLattice[B].eql(b1, b2))
+        case (Int(n1), Int(n2)) => Bool(IntLattice[I].eql(n1, n2))
+        case (Float(n1), Float(n2)) => Bool(FloatLattice[F].eql(n1, n2))
+        case (Char(c1), Char(c2)) => Bool(CharLattice[C].eql(c1, c2))
+        case (Symbol(s1), Symbol(s2)) => Bool(SymbolLattice[Sym].eql(s1, s2))
         case (Nil, Nil) => True
-        case (Prim(_), Prim(_)) => Bool(bool.inject(x == y))
-        case (Closure(_, _), Closure(_, _)) => Bool(bool.inject(x == y))
-        case (Cons(_, _), Cons(_, _)) => Bool(bool.inject(x == y))
-        case (VectorAddress(_), VectorAddress(_)) => Bool(bool.inject(x == y))
+        case (Prim(_), Prim(_)) => Bool(BoolLattice[B].inject(x == y))
+        case (Closure(_, _), Closure(_, _)) => Bool(BoolLattice[B].inject(x == y))
+        case (Cons(_, _), Cons(_, _)) => Bool(BoolLattice[B].inject(x == y))
+        case (VectorAddress(_), VectorAddress(_)) => Bool(BoolLattice[B].inject(x == y))
         case _ => False
       }
       case StringAppend => (x, y) match {
-        case (Str(s1), Str(s2)) => Str(str.append(s1, s2))
+        case (Str(s1), Str(s2)) => Str(StringLattice[S].append(s1, s2))
         case _ => OperatorNotApplicable("string-append", List(x.toString, y.toString))
       }
     }
 
-    def inject(x: scala.Int): L = Int(int.inject(x))
-    def inject(x: scala.Float): L = Float(float.inject(x))
-    def inject(x: String): L = Str(str.inject(x))
-    def inject(x: scala.Char): L = Char(char.inject(x))
-    def inject(x: Boolean): L = Bool(bool.inject(x))
+    def inject(x: scala.Int): L = Int(IntLattice[I].inject(x))
+    def inject(x: scala.Float): L = Float(FloatLattice[F].inject(x))
+    def inject(x: String): L = Str(StringLattice[S].inject(x))
+    def inject(x: scala.Char): L = Char(CharLattice[C].inject(x))
+    def inject(x: Boolean): L = Bool(BoolLattice[B].inject(x))
     def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L = Prim(x)
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = Closure(x._1, x._2)
-    def injectSymbol(x: String): L = Symbol(sym.inject(x))
+    def injectSymbol(x: String): L = Symbol(SymbolLattice[Sym].inject(x))
     def nil: L = Nil
     def cons[Addr : Address](car: Addr, cdr: Addr): L = Cons(car, cdr)
 
@@ -286,11 +293,11 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
 
     def vectorRef[Addr : Address](vector: L, index: L): MayFail[Set[Addr]] = (vector, index) match {
       case (Vec(size, content: Map[I, Addr] @unchecked, init: Addr @unchecked), Int(index)) => {
-        val comp = int.lt(index, size)
-        val t: Set[Addr] = if (bool.isTrue(comp)) {
+        val comp = IntLattice[I].lt(index, size)
+        val t: Set[Addr] = if (BoolLattice[B].isTrue(comp)) {
           content.get(index) match {
             case Some(a: Addr @unchecked) =>
-              if (bool.isTrue(int.eql(index, index)) && !bool.isFalse(int.eql(index, index))) {
+              if (BoolLattice[B].isTrue(IntLattice[I].eql(index, index)) && !BoolLattice[B].isFalse(IntLattice[I].eql(index, index))) {
                 /* we know index represents a concrete integer, we can return only one address */
                 Set(a)
               } else {
@@ -310,8 +317,8 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
 
     def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): MayFail[(L, Set[Addr])] = (vector, index) match {
       case (Vec(size, content: Map[I, Addr] @unchecked, init: Addr @unchecked), Int(index)) => {
-        val comp = int.lt(index, size)
-        val t: (L, Set[Addr]) = if (bool.isTrue(comp)) {
+        val comp = IntLattice[I].lt(index, size)
+        val t: (L, Set[Addr]) = if (BoolLattice[B].isTrue(comp)) {
           content.get(index) match {
             case Some(a: Addr @unchecked) => (vector, Set(a))
             case None => (Vec(size, content + (index -> addr), init), Set(addr))
@@ -403,7 +410,7 @@ class MakeSchemeLattice[S, B, I, F, C, Sym](supportsCounting: Boolean)(implicit 
     case Elements(xs) => xs.foldMap(x => f(x))(b)
   }
   val isSchemeLatticeSet = new IsSchemeLattice[LSet] {
-    val name = s"SetLattice(${str.name}, ${bool.name}, ${int.name}, ${float.name}, ${char.name}, ${sym.name})"
+    val name = s"SetLattice(${StringLattice[S].name}, ${BoolLattice[B].name}, ${IntLattice[I].name}, ${FloatLattice[F].name}, ${CharLattice[C].name}, ${SymbolLattice[Sym].name})"
     val counting = supportsCounting
 
     def isTrue(x: LSet): Boolean = foldMapLSet(x, isSchemeLattice.isTrue(_))(boolOrMonoid)

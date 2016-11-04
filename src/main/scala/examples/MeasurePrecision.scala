@@ -29,11 +29,11 @@ class CallSitePrecisionAnalysis[Exp : Expression, Abs : JoinLattice, Addr : Addr
  */
 class VarRefPrecisionAnalysis[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   (ref: (Exp, Environment[Addr], Store[Addr, Abs]) => Option[(String, Position, Abs)])
-    extends BaseAnalysis[Map[(String, Position), Abs], Exp, Abs, Addr, Time] {
+    extends Analysis[Map[(String, Position), Abs], Exp, Abs, Addr, Time] {
   // val abs = implicitly[JoinLattice[Abs]]
   type FlowSet = Map[(String, Position), Abs]
   object FlowSet {
-    def apply(): FlowSet = Map[(String, Position), Abs]().withDefaultValue(abs.bottom)
+    def apply(): FlowSet = Map[(String, Position), Abs]().withDefaultValue(JoinLattice[Abs].bottom)
   }
   /** Initial value is the empty set */
   def init = FlowSet()
@@ -46,7 +46,7 @@ class VarRefPrecisionAnalysis[Exp : Expression, Abs : JoinLattice, Addr : Addres
   /** Variables can be referenced when an expression is evaluated, and we rely on ref to tell us when it is the case */
   def stepEval(e: Exp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: FlowSet) =
     ref(e, env, store) match {
-      case Some((name, pos, v)) => current + ((name, pos) -> (abs.join(current((name, pos)), v)))
+      case Some((name, pos, v)) => current + ((name, pos) -> (JoinLattice[Abs].join(current((name, pos)), v)))
       case None => current
     }
 }

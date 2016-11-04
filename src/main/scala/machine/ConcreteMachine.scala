@@ -47,10 +47,10 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
             val actions = sem.stepEval(e, env, store, t)
             if (actions.size == 1) {
               actions.head match {
-                case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, stack, time.tick(t), start, count + 1)
-                case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: stack, time.tick(t), start, count + 1)
-                case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, stack, time.tick(t), start, count + 1)
-                case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, stack, time.tick(t, fexp), start, count + 1)
+                case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, stack, Timestamp[Time].tick(t), start, count + 1)
+                case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: stack, Timestamp[Time].tick(t), start, count + 1)
+                case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, stack, Timestamp[Time].tick(t), start, count + 1)
+                case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, stack, Timestamp[Time].tick(t, fexp), start, count + 1)
                 case ActionError(err) => ConcreteMachineOutputError(store, (System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
               }
             } else {
@@ -62,10 +62,10 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
                 val actions = sem.stepKont(v, frame, store, t)
                 if (actions.size == 1) {
                   actions.head match {
-                    case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, tl, time.tick(t), start, count + 1)
-                    case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: tl, time.tick(t), start, count + 1)
-                    case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, tl, time.tick(t), start, count + 1)
-                    case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, tl, time.tick(t, fexp), start, count + 1)
+                    case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, tl, Timestamp[Time].tick(t), start, count + 1)
+                    case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: tl, Timestamp[Time].tick(t), start, count + 1)
+                    case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, tl, Timestamp[Time].tick(t), start, count + 1)
+                    case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, tl, Timestamp[Time].tick(t, fexp), start, count + 1)
                     case ActionError(err) => ConcreteMachineOutputError(store, (System.nanoTime - start) / Math.pow(10, 9), count, err.toString)
                   }
                 } else {
@@ -80,6 +80,6 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
     }
     loop(ControlEval(exp, Environment.initial[Addr](sem.initialEnv)),
       Store.initial[Addr, Abs](sem.initialStore),
-      Nil, time.initial(""), System.nanoTime, 0)
+      Nil, Timestamp[Time].initial(""), System.nanoTime, 0)
   }
 }

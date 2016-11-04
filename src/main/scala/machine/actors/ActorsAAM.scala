@@ -106,12 +106,6 @@ case class BoundedMultisetMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PI
 
 class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier](val M: MboxImpl[PID, Abs])
     extends AbstractMachine[Exp, Abs, Addr, Time] {
-  def abs = implicitly[JoinLattice[Abs]]
-  def addr = implicitly[Address[Addr]]
-  def exp = implicitly[Expression[Exp]]
-  def time = implicitly[Timestamp[Time]]
-  def pid = implicitly[ThreadIdentifier[PID]]
-
   def name = "ActorsAAM"
 
   type G = Graph[State, (PID, Option[ActorEffect])]
@@ -168,9 +162,9 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   }
   object Context {
     def create(p: PID, actd: Exp, env: Environment[Addr]): Context =
-      Context(ControlWait, HaltKontAddress, ActorInstanceActor(actd, env), M.empty, time.initial(p.toString))
+      Context(ControlWait, HaltKontAddress, ActorInstanceActor(actd, env), M.empty, Timestamp[Time].initial(p.toString))
     def createMain(e: Exp, env: Environment[Addr]): Context =
-      Context(ControlEval(e, env), HaltKontAddress, ActorInstanceMain, M.empty, time.initial("main"))
+      Context(ControlEval(e, env), HaltKontAddress, ActorInstanceMain, M.empty, Timestamp[Time].initial("main"))
   }
 
   case class Procs(content: CountingMap[PID, Context]) {
@@ -229,40 +223,40 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
 
     def integrate(p: PID, ctx: Context, act: Act): Set[(State, PID, Option[ActorEffect])] = act match {
       case ActionReachedValue(v, store2, effs) =>
-        Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlKont(v), t = time.tick(ctx.t))),
+        Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlKont(v), t = Timestamp[Time].tick(ctx.t))),
           store = store2), p, None))
       case ActionPush(frame, e, env, store2, effs) =>
         val next = NormalKontAddress(p, e, ctx.t)
-        Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), kont = next, t = time.tick(ctx.t))),
+        Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), kont = next, t = Timestamp[Time].tick(ctx.t))),
           kstore = kstore.extend(next, Kont(frame, ctx.kont)), store = store2), p, None))
       case ActionEval(e, env, store2, effs) =>
-        Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), t = time.tick(ctx.t))),
+        Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), t = Timestamp[Time].tick(ctx.t))),
           store = store2), p, None))
       case ActionStepIn(fexp, _, e, env, store2, _, effs) =>
-        Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), t = time.tick(ctx.t, fexp))),
+        Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlEval(e, env), t = Timestamp[Time].tick(ctx.t, fexp))),
           store = store2), p, None))
       case ActionError(err) =>
         Set((this.copy(procs = procs.update(p, ctx.copy(control = ControlError(err)))), p, None))
       case ActorActionSend(ptarget : PID @unchecked, name, msg, vres, effs) if ptarget != p =>
         procs.get(ptarget).map(ctxtarget =>
           (this.copy(procs = procs
-            .update(p -> ctx.copy(control = ControlKont(vres), t = time.tick(ctx.t)))
+            .update(p -> ctx.copy(control = ControlKont(vres), t = Timestamp[Time].tick(ctx.t)))
             .update(ptarget -> ctxtarget.copy(mbox = ctxtarget.mbox.push((p, name, msg))))),
             p, Some(ActorEffectSend(ptarget, name))))
       case ActorActionSend(ptarget, name, msg, vres, effs) if ptarget == p =>
         /* TODO: special care need to be taken if p maps to more than a single actor */
         Set((this.copy(procs = procs
-          .update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push((p, name, msg)), t = time.tick(ctx.t)))),
+          .update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push((p, name, msg)), t = Timestamp[Time].tick(ctx.t)))),
           p, Some(ActorEffectSendSelf(p, name))))
       case ActorActionCreate(actd, exp, env2, store2, fres : (PID => Abs), effs) =>
-        val p2 = pid.thread(exp, ctx.t)
+        val p2 = ThreadIdentifier[PID].thread(exp, ctx.t)
         Set((this.copy(procs = procs
-          .update(p -> ctx.copy(control = ControlKont(fres(p2)), t = time.tick(ctx.t)))
+          .update(p -> ctx.copy(control = ControlKont(fres(p2)), t = Timestamp[Time].tick(ctx.t)))
           .extend(p2 -> Context.create(p2, actd, env2)),
           store = store2), p, None))
       case ActorActionBecome(actd, env2, store2, vres, effs) =>
         Set((this.copy(procs = procs
-          .update(p -> Context.create(p, actd, env2).copy(t = time.tick(ctx.t), mbox = ctx.mbox)),
+          .update(p -> Context.create(p, actd, env2).copy(t = Timestamp[Time].tick(ctx.t), mbox = ctx.mbox)),
           store = store2), p, None))
       case ActorActionTerminate(_) =>
         Set((this.copy(procs = procs.terminate(p)), p, Some(ActorEffectTerminate(p))))
@@ -276,7 +270,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
           case Kont(frame, next) => sem.stepKont(v, frame, store, ctx.t).flatMap(action => integrate(p, ctx.copy(kont = next), action))
         })
       case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.inst != ActorInstanceMain => /* go to wait */
-        Set[(State, PID, Option[ActorEffect])]((this.copy(procs = procs.update(p -> ctx.copy(control = ControlWait, t = time.tick(ctx.t)))), p, None))
+        Set[(State, PID, Option[ActorEffect])]((this.copy(procs = procs.update(p -> ctx.copy(control = ControlWait, t = Timestamp[Time].tick(ctx.t)))), p, None))
       case ControlKont(v) if ctx.kont == HaltKontAddress && ctx.inst == ActorInstanceMain =>
         Set[(State, PID, Option[ActorEffect])]() /* main is stuck at this point */
       case ControlError(_) => Set[(State, PID, Option[ActorEffect])]() /* no successor */
@@ -380,18 +374,19 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   object State {
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
       State(
-        Procs.empty.extend(pid.initial -> Context.createMain(exp, Environment.initial[Addr](env))),
+        Procs.empty.extend(ThreadIdentifier[PID].initial -> Context.createMain(exp, Environment.initial[Addr](env))),
         Store.initial[Addr, Abs](store),
         KontStore.empty[KontAddr])
   }
 
   case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
       extends Output {
-    def finalValues: Set[Abs] = halted.flatMap(st => st.procs.get(pid.initial).flatMap(ctx => ctx.control match {
+    def finalValues: Set[Abs] = halted.flatMap(st => st.procs.get(ThreadIdentifier[PID].initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     }))
-    def containsFinalValue(v: Abs): Boolean = finalValues.exists(v2 => abs.subsumes(v2, v))
+    def containsFinalValue(v: Abs): Boolean =
+      finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
     def toDotFile(path: String) = graph match {
       case Some(g) => g.toDotFile(path, _.toXml,
         (s) => if (s.hasError) {

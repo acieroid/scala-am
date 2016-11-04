@@ -83,9 +83,9 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case SExpPair(car, cdr, _) => {
       val care: SchemeExp = SchemeVar(Identifier(car.toString, car.pos))
       val cdre: SchemeExp = SchemeVar(Identifier(cdr.toString, cdr.pos))
-      val cara = addr.cell(care, t)
+      val cara = Address[Addr].cell(care, t)
       val (carv, store2) = evalQuoted(car, store, t)
-      val cdra = addr.cell(cdre, t)
+      val cdra = Address[Addr].cell(cdre, t)
       val (cdrv, store3) = evalQuoted(cdr, store2, t)
         (sabs.cons(cara, cdra), store3.extend(cara, carv).extend(cdra, cdrv))
     }
@@ -112,7 +112,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case SchemeLetrec(Nil, body, _) => evalBody(body, env, store)
     case SchemeLetrec(bindings, body, _) =>
       val variables = bindings.map(_._1)
-      val addresses = variables.map(v => addr.variable(v, abs.bottom, t))
+      val addresses = variables.map(v => Address[Addr].variable(v, abs.bottom, t))
       val (env1, store1) = variables.zip(addresses).foldLeft((env, store))({
         case ((env, store), (v, a)) =>
           (env.extend(v.name, a), store.extend(a, abs.bottom))
@@ -130,7 +130,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case SchemeOr(exp :: exps, _) => Action.push(FrameOr(exps, env), exp, env, store)
     case SchemeDefineVariable(name, exp, _) => Action.push(FrameDefine(name, env), exp, env, store)
     case SchemeDefineFunction(f, args, body, pos) => {
-      val a = addr.variable(f, abs.bottom, t)
+      val a = Address[Addr].variable(f, abs.bottom, t)
       val v = sabs.inject[SchemeExp, Addr]((SchemeLambda(args, body, pos), env))
       val env1 = env.extend(f.name, a)
       val store1 = store.extend(a, v)
@@ -159,7 +159,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
       conditional(v, Action.eval(cons, env, store), Action.eval(alt, env, store))
     case FrameLet(name, bindings, Nil, body, env) => {
       val variables = name :: bindings.reverse.map(_._1)
-      val addresses = variables.map(variable => addr.variable(variable, v, t))
+      val addresses = variables.map(variable => Address[Addr].variable(variable, v, t))
       val (env1, store1) = ((name, v) :: bindings).zip(addresses).foldLeft((env, store))({
         case ((env, store), ((variable, value), a)) => (env.extend(variable.name, a), store.extend(a, value))
       })
@@ -168,7 +168,7 @@ class BaseSchemeSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestam
     case FrameLet(name, bindings, (variable, e) :: toeval, body, env) =>
       Action.push(FrameLet(variable, (name, v) :: bindings, toeval, body, env), e, env, store)
     case FrameLetStar(variable, bindings, body, env) => {
-      val a = addr.variable(variable, abs.bottom, t)
+      val a = Address[Addr].variable(variable, abs.bottom, t)
       val env1 = env.extend(variable.name, a)
       val store1 = store.extend(a, v)
       bindings match {

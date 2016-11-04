@@ -120,7 +120,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
      * argument */
     case FrameFun(fun) => labs.getClosures[LamExp, Addr](fun).map({
       case (Lam(x, e, _), env) => {
-        val a = addr.variable(x, v, t)
+        val a = Address[Addr].variable(x, v, t)
         Action.eval(e, env.extend(x.name, a), store.extend(a, v))
       }
     })
@@ -155,7 +155,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
   * by this analysis: Set[LamExp]. This class defines how to update the current
   * state of the analysis. */
 case class UnboundVariablesAnalysis[Abs : JoinLattice, Addr : Address, Time: Timestamp]()
-    extends BaseAnalysis[Set[LamExp], LamExp, Abs, Addr, Time] {
+    extends Analysis[Set[LamExp], LamExp, Abs, Addr, Time] {
   /** stepEval is called when the semantics' stepEval is called */
   def stepEval(e: LamExp, env: Environment[Addr], store: Store[Addr, Abs], t: Time, current: Set[LamExp]) = e match {
     /* When we evaluate a variable... */

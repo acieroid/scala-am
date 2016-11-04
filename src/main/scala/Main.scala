@@ -81,9 +81,7 @@ object Main {
     * set, generate a dot graph visualizing the computed graph in the given
     * file. */
   def run[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, outputDot: Option[String], outputJSON: Option[String], timeout: Option[Long], inspect: Boolean): Unit = {
-    val abs = implicitly[JoinLattice[Abs]]
-    val addr = implicitly[Address[Addr]]
-    println(s"Running ${machine.name} with lattice ${abs.name} and address ${addr.name}")
+    println(s"Running ${machine.name} with lattice ${JoinLattice[Abs].name} and address ${Address[Addr].name}")
     val result = machine.eval(sem.parse(program), sem, !outputDot.isEmpty || !outputJSON.isEmpty, timeout)
     outputDot.foreach(result.toDotFile _)
     outputJSON.foreach(result.toJSONFile _)
