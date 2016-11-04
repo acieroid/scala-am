@@ -33,6 +33,10 @@ trait LamLattice[L] extends JoinLattice[L] {
   def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])]
 }
 
+object LamLattice {
+  def apply[L : LamLattice]: LamLattice[L] = implicitly
+}
+
 /** Here's an implementation of this lattice */
 object LamLatticeImpl {
   sealed trait Value
@@ -78,7 +82,6 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
   /** We inherit the value abs that is bound to a JoinLattice[Abs], but we need
     * access to our inject and getClosures, so we need a LamLattice[Abs] as
     * well. */
-  def labs = implicitly[LamLattice[Abs]]
   /** Shortcut for the environment */
   type Env = Environment[Addr]
   /** Shorcuct for the store */
@@ -95,7 +98,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
   def stepEval(e: LamExp, env: Env, store: Sto, t: Time) = e match {
     /* A lambda evaluate to a closure by pairing it with the current environment,
      * and injecting this in the abstract domain */
-    case Lam(_, _, _) => Action.value(labs.inject((e, env)), store)
+    case Lam(_, _, _) => Action.value(LamLattice[Abs].inject((e, env)), store)
     /* To evaluate an application, we first have to evaluate e1, and we push a
      * continuation to remember to evaluate e2 in the environment env */
     case App(e1, e2, _) => Action.push(FrameArg(e2, env), e1, env, store)
@@ -118,7 +121,7 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
      * the possible closures bound to the operator and for each of them, we
      * have to evaluate their body by extending their environment with their
      * argument */
-    case FrameFun(fun) => labs.getClosures[LamExp, Addr](fun).map({
+    case FrameFun(fun) => LamLattice[Abs].getClosures[LamExp, Addr](fun).map({
       case (Lam(x, e, _), env) => {
         val a = Address[Addr].variable(x, v, t)
         Action.eval(e, env.extend(x.name, a), store.extend(a, v))

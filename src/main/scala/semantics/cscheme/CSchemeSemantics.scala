@@ -3,8 +3,6 @@ import scalaz._
 
 class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
     extends SchemeSemantics[Abs, Addr, Time](primitives) {
-  def cabs = implicitly[IsCSchemeLattice[Abs]]
-
   case class FrameJoin(env: Env) extends SchemeFrame
   case class FrameCasIndex(variable: Identifier, eold: SchemeExp, enew: SchemeExp, env: Env) extends SchemeFrame
   case class FrameCasOld(variable: Identifier, index: Option[Abs], enew: SchemeExp, env: Env) extends SchemeFrame
@@ -63,7 +61,7 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
                 vectors.flatMap(va => store.lookup(va) match {
                   case None => Action.error(UnboundAddress(va.toString))
                   case Some(vec) =>
-                    val mfmon = implicitly[Monoid[MayFail[Actions]]]
+                    val mfmon = Monoid[MayFail[Actions]]
                     for { oldvals <- IsSchemeLattice[Abs].vectorRef(vec, i) }
                     yield {
                       val success: Actions = for {

@@ -51,6 +51,10 @@ class DotLanguage[Addr : Address] {
     def getObjs(x: L): Set[(Variable, Definition, Env)]
   }
 
+  object DotLattice {
+    def apply[L : DotLattice]: DotLattice[L] = implicitly
+  }
+
   object DotLatticeImpl {
     sealed trait Value
     case class Closure(v: Variable, body: Term, env: Env) extends Value {
@@ -94,7 +98,6 @@ class DotLanguage[Addr : Address] {
 
   class DotSemantics[Abs : DotLattice, Time : Timestamp]
       extends Semantics[Term, Abs, Addr, Time] {
-    def dabs = implicitly[DotLattice[Abs]]
     type Sto = Store[Addr, Abs]
     trait DotFrame extends Frame
     case class FrameLet(x: Variable, u: Term, env: Env) extends DotFrame
@@ -117,13 +120,13 @@ class DotLanguage[Addr : Address] {
         v <- evalVar(x, env, store)
       } yield Action.value(v, store)
       case Lam(x, t, _) =>
-        Action.value(dabs.clo(x, t, env), store)
+        Action.value(DotLattice[Abs].clo(x, t, env), store)
       case Obj(x, d, _) =>
-        Action.value(dabs.obj(x, d, env), store)
+        Action.value(DotLattice[Abs].obj(x, d, env), store)
       case App(x, y, _) => for {
         fun <- evalVar(x, env, store)
         arg <- evalVar(y, env, store)
-      } yield dabs.getClos(fun).map({
+      } yield DotLattice[Abs].getClos(fun).map({
         case (x, t, env) =>
           val a = Address[Addr].variable(x, arg, time)
           Action.eval(t, env.extend(x.name, a), store.extend(a, arg))
@@ -132,7 +135,7 @@ class DotLanguage[Addr : Address] {
         Action.push(FrameLet(x, u, env), t, env, store)
       case Sel(x, a, _) => for {
         obj <- evalVar(x, env, store)
-      } yield dabs.getObjs(obj).map({
+      } yield DotLattice[Abs].getObjs(obj).map({
         case (x, defs, env) =>
           findTermMember(defs, a) match {
             case Some(t) =>

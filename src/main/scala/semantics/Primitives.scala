@@ -17,8 +17,6 @@ abstract class Primitives[Addr : Address, Abs : JoinLattice] {
   def all: List[Primitive[Addr, Abs]]
   def toVal(prim: Primitive[Addr, Abs]): Abs
 
-  val lat = implicitly[JoinLattice[Abs]]
-
   /** Modify a primitive to trace it: output will be printed when the primitive is
     * called. This is for debugging purposes. */
   def traced(prim: Primitive[Addr, Abs]): Primitive[Addr, Abs] = new Primitive[Addr, Abs] {
@@ -36,5 +34,5 @@ abstract class Primitives[Addr : Address, Abs : JoinLattice] {
     }
   }
 
-  lazy val bindings = ("bottom", Address[Addr].botAddress, lat.bottom) :: all.map({ prim => (prim.name, Address[Addr].primitive(prim.name), toVal(prim)) })
+  lazy val bindings = ("bottom", Address[Addr].botAddress, JoinLattice[Abs].bottom) :: all.map({ prim => (prim.name, Address[Addr].primitive(prim.name), toVal(prim)) })
 }

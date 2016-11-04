@@ -22,9 +22,12 @@ trait IsTaintLattice[L] extends IsSchemeLattice[L] {
   def taintStatus(x: L): TaintStatus
 }
 
+object IsTaintLattice {
+  def apply[L : IsTaintLattice]: IsTaintLattice[L] = implicitly
+}
+
 class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
   type L = (TaintStatus, Abs)
-  val abs = implicitly[IsSchemeLattice[Abs]]
   implicit val isTaintLattice: IsTaintLattice[L] = new IsTaintLattice[L] {
     def taint(x: L, source: Position) = x._1 match {
       case BottomTaint => x /* cannot taint bottom */
@@ -52,9 +55,9 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
       case (Untainted, Tainted(s)) => MaybeTainted(s)
       case (Tainted(s), Untainted) => MaybeTainted(s)
     }
-    def bottom = (BottomTaint, abs.bottom)
+    def bottom = (BottomTaint, JoinLattice[Abs].bottom)
     def join(x: L, y: L) = (joinTaint(x._1, y._1), JoinLattice[Abs].join(x._2, y._2))
-    def subsumes(x: L, y: L) = abs.subsumes(x._2, y._2) && (if (x._1 == y._1) { true } else {
+    def subsumes(x: L, y: L) = JoinLattice[Abs].subsumes(x._2, y._2) && (if (x._1 == y._1) { true } else {
       (x._1, y._1) match {
         case (_, BottomTaint) => true
         case (BottomTaint, _) => false
@@ -68,38 +71,38 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
         case (Tainted(_), Untainted) => false
       }
     })
-    val name = "Taint(${abs.name})"
-    val counting = abs.counting
+    val name = "Taint(${JoinLattice[Abs].name})"
+    val counting = JoinLattice[Abs].counting
 
-    def isPrimitiveValue(x: L) = abs.isPrimitiveValue(x._2)
-    def cardinality(x: L) = abs.cardinality(x._2) /* We could return the cardinality of the taint part instead */
-    def isTrue(x: L) = abs.isTrue(x._2)
-    def isFalse(x: L) = abs.isFalse(x._2)
+    def isPrimitiveValue(x: L) = JoinLattice[Abs].isPrimitiveValue(x._2)
+    def cardinality(x: L) = JoinLattice[Abs].cardinality(x._2) /* We could return the cardinality of the taint part instead */
+    def isTrue(x: L) = IsSchemeLattice[Abs].isTrue(x._2)
+    def isFalse(x: L) = IsSchemeLattice[Abs].isFalse(x._2)
     def unaryOp(op: SchemeOps.UnaryOperator)(x: L): MayFail[L] =
-      abs.unaryOp(op)(x._2).map(res => (x._1, res))
+      IsSchemeLattice[Abs].unaryOp(op)(x._2).map(res => (x._1, res))
     def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): MayFail[L] =
-      abs.binaryOp(op)(x._2, y._2).map(res => (joinTaint(x._1, y._1), res))
-    def car[Addr : Address](x: L) = abs.car[Addr](x._2)
-    def cdr[Addr : Address](x: L) = abs.cdr[Addr](x._2)
-    def vectorRef[Addr : Address](vector: L, index: L): MayFail[Set[Addr]] = abs.vectorRef(vector._2, index._2)
-    def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): MayFail[(L, Set[Addr])] = abs.vectorSet(vector._2, index._2, addr).map({
+      IsSchemeLattice[Abs].binaryOp(op)(x._2, y._2).map(res => (joinTaint(x._1, y._1), res))
+    def car[Addr : Address](x: L) = IsSchemeLattice[Abs].car[Addr](x._2)
+    def cdr[Addr : Address](x: L) = IsSchemeLattice[Abs].cdr[Addr](x._2)
+    def vectorRef[Addr : Address](vector: L, index: L): MayFail[Set[Addr]] = IsSchemeLattice[Abs].vectorRef(vector._2, index._2)
+    def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): MayFail[(L, Set[Addr])] = IsSchemeLattice[Abs].vectorSet(vector._2, index._2, addr).map({
       case (res, addrs) => ((Untainted, res), addrs) })
-    def inject(x: Int): L = (Untainted, abs.inject(x))
-    def inject(x: Float): L = (Untainted, abs.inject(x))
-    def inject(x: String): L = (Untainted, abs.inject(x))
-    def inject(x: Char): L = (Untainted, abs.inject(x))
-    def inject(x: Boolean): L = (Untainted, abs.inject(x))
-    def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]): L = (Untainted, abs.inject[Addr, Abs](x))
-    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = (Untainted, abs.inject[Exp, Addr](x))
-    def injectSymbol(x: String): L = (Untainted, abs.injectSymbol(x))
-    def cons[Addr : Address](car: Addr, cdr: Addr): L = (Untainted, abs.cons[Addr](car, cdr))
-    def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)] = abs.vector(addr, size._2, init).map({
+    def inject(x: Int): L = (Untainted, IsSchemeLattice[Abs].inject(x))
+    def inject(x: Float): L = (Untainted, IsSchemeLattice[Abs].inject(x))
+    def inject(x: String): L = (Untainted, IsSchemeLattice[Abs].inject(x))
+    def inject(x: Char): L = (Untainted, IsSchemeLattice[Abs].inject(x))
+    def inject(x: Boolean): L = (Untainted, IsSchemeLattice[Abs].inject(x))
+    def inject[Addr : Address, Abs2 : JoinLattice](x: Primitive[Addr, Abs2]): L = (Untainted, IsSchemeLattice[Abs].inject[Addr, Abs2](x))
+    def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])): L = (Untainted, IsSchemeLattice[Abs].inject[Exp, Addr](x))
+    def injectSymbol(x: String): L = (Untainted, IsSchemeLattice[Abs].injectSymbol(x))
+    def cons[Addr : Address](car: Addr, cdr: Addr): L = (Untainted, IsSchemeLattice[Abs].cons[Addr](car, cdr))
+    def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)] = IsSchemeLattice[Abs].vector(addr, size._2, init).map({
       case (v, va) => ((Untainted, v), (Untainted, va)) })
-    def nil: L = (Untainted, abs.nil)
+    def nil: L = (Untainted, IsSchemeLattice[Abs].nil)
 
-    def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])] = abs.getClosures(x._2)
-    def getPrimitives[Addr : Address, Abs : JoinLattice](x: L): Set[Primitive[Addr, Abs]] = abs.getPrimitives(x._2)
-    def getVectors[Addr : Address](x: L): Set[Addr] = abs.getVectors(x._2)
+    def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])] = IsSchemeLattice[Abs].getClosures(x._2)
+    def getPrimitives[Addr : Address, Abs2 : JoinLattice](x: L): Set[Primitive[Addr, Abs2]] = IsSchemeLattice[Abs].getPrimitives(x._2)
+    def getVectors[Addr : Address](x: L): Set[Addr] = IsSchemeLattice[Abs].getVectors(x._2)
   }
   val isSchemeLattice: IsSchemeLattice[L] = isTaintLattice
 }
@@ -108,21 +111,20 @@ case class TaintError(sources: Set[Position], sink: Position) extends SemanticEr
 
 /* We need to extend the language with primitives representing sources, sinks, and sanitizers */
 class TSchemePrimitives[Addr : Address, Abs : IsTaintLattice] extends SchemePrimitives[Addr, Abs] {
-  val tabs = implicitly[IsTaintLattice[Abs]]
   object Taint extends Primitive[Addr, Abs] {
     val name = "taint"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case (_, x) :: Nil => MayFailSuccess((tabs.taint(x, Expression[Exp].pos(fexp)), store, Set()))
+      case (_, x) :: Nil => MayFailSuccess((IsTaintLattice[Abs].taint(x, Expression[Exp].pos(fexp)), store, Set()))
       case l => MayFailError(List(ArityError(name, 1, l.size)))
     }
   }
   object Sink extends Primitive[Addr, Abs] {
     val name = "sink"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case (_, x) :: Nil => tabs.taintStatus(x) match {
+      case (_, x) :: Nil => IsTaintLattice[Abs].taintStatus(x) match {
         case Untainted => MayFailSuccess((x, store, Set()))
-        case MaybeTainted(sources) => MayFailBoth((x, store, Set()), List(TaintError(sources, implicitly[Expression[Exp]].pos(fexp))))
-        case Tainted(sources) => MayFailError(List(TaintError(sources, implicitly[Expression[Exp]].pos(fexp))))
+        case MaybeTainted(sources) => MayFailBoth((x, store, Set()), List(TaintError(sources, Expression[Exp].pos(fexp))))
+        case Tainted(sources) => MayFailError(List(TaintError(sources, Expression[Exp].pos(fexp))))
         case BottomTaint => MayFailSuccess(x, store, Set())
       }
       case l => MayFailError(List(ArityError(name, 1, l.size)))
@@ -131,7 +133,7 @@ class TSchemePrimitives[Addr : Address, Abs : IsTaintLattice] extends SchemePrim
   object Sanitize extends Primitive[Addr, Abs] {
     val name = "sanitize"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case (_, x) :: Nil => MayFailSuccess((tabs.sanitize(x), store, Set()))
+      case (_, x) :: Nil => MayFailSuccess((IsTaintLattice[Abs].sanitize(x), store, Set()))
       case l => MayFailError(List(ArityError(name, 1, l.size)))
     }
   }

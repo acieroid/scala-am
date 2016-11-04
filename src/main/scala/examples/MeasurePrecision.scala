@@ -30,7 +30,6 @@ class CallSitePrecisionAnalysis[Exp : Expression, Abs : JoinLattice, Addr : Addr
 class VarRefPrecisionAnalysis[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   (ref: (Exp, Environment[Addr], Store[Addr, Abs]) => Option[(String, Position, Abs)])
     extends Analysis[Map[(String, Position), Abs], Exp, Abs, Addr, Time] {
-  // val abs = implicitly[JoinLattice[Abs]]
   type FlowSet = Map[(String, Position), Abs]
   object FlowSet {
     def apply(): FlowSet = Map[(String, Position), Abs]().withDefaultValue(JoinLattice[Abs].bottom)

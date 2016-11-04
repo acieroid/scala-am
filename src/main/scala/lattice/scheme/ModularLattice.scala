@@ -419,7 +419,7 @@ class MakeSchemeLattice[
     def cardinality(x: LSet): Cardinality = foldMapLSet(x, isSchemeLattice.cardinality(_))
     def unaryOp(op: UnaryOperator)(x: LSet): MayFail[LSet] = foldMapLSet(x, x => isSchemeLattice.unaryOp(op)(x).map(x => wrap(x)))
     def binaryOp(op: BinaryOperator)(x: LSet, y: LSet): MayFail[LSet] = foldMapLSet(x, x => foldMapLSet(y, y => isSchemeLattice.binaryOp(op)(x, y).map(x => wrap(x))))
-    def join(x: LSet, y: LSet): LSet = implicitly[Monoid[LSet]].append(x, y)
+    def join(x: LSet, y: LSet): LSet = Monoid[LSet].append(x, y)
     /* if we need to define meet at some point, a different representation might be
      * more practical. Using a product of all the domains used is probably thea
      * best, i.e., Value(int: I, bool: B, ..., prims: Set[Primitive]) */

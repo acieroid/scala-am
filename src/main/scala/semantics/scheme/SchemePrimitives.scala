@@ -264,7 +264,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
   object Error extends NoStoreOperation("error", Some(1)) {
     override def call[Exp : Expression](fexp: Exp, x: (Exp, Abs)) =
-      MayFailError(List(UserError(x._2.toString, implicitly[Expression[Exp]].pos(fexp))))
+      MayFailError(List(UserError(x._2.toString, Expression[Exp].pos(fexp))))
   }
 
   val mfmon = MayFail.monoid[(Abs, Set[Effect[Addr]])]
