@@ -6,6 +6,10 @@ trait IsASchemeLattice[L] extends IsSchemeLattice[L] {
   def getPids[PID : ThreadIdentifier](x: L): Set[PID]
 }
 
+object IsASchemeLattice {
+  def apply[L : IsASchemeLattice]: IsASchemeLattice[L] = implicitly
+}
+
 trait ASchemeLattice extends SchemeLattice {
   val isASchemeLattice: IsASchemeLattice[L]
   lazy val isSchemeLattice: IsSchemeLattice[L] = isASchemeLattice

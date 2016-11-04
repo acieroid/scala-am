@@ -4,8 +4,6 @@ import scalaz._
 class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
     extends SchemeSemantics[Abs, Addr, Time](primitives) {
   def cabs = implicitly[IsCSchemeLattice[Abs]]
-  def aabs = implicitly[IsSchemeLattice[Abs]]
-  def thread = implicitly[ThreadIdentifier[TID]]
 
   case class FrameJoin(env: Env) extends SchemeFrame
   case class FrameCasIndex(variable: Identifier, eold: SchemeExp, enew: SchemeExp, env: Env) extends SchemeFrame
@@ -16,8 +14,8 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
 
   override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = e match {
     case SchemeSpawn(exp, _) =>
-      val tid = thread.thread[SchemeExp, Time](exp, t)
-      Action.spawn(tid, exp, env, store, Action.value(cabs.injectTid(tid), store))
+      val tid = ThreadIdentifier[TID].thread[SchemeExp, Time](exp, t)
+      Action.spawn(tid, exp, env, store, Action.value(IsCSchemeLattice[Abs].injectTid(tid), store))
     case SchemeJoin(exp, _) => optimizeAtomic(Action.push(FrameJoin(env), exp, env, store), t)
     case SchemeCas(variable, eold, enew, _) => Action.push(FrameCasOld(variable, None, enew, env), eold, env, store)
     case SchemeCasVector(variable, index, eold, enew, _) => Action.push(FrameCasIndex(variable, eold, enew, env), index, env, store)
@@ -28,7 +26,7 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
 
   override def stepKont(v: Abs, frame: Frame, store: Sto, t: Time) = frame match {
     case FrameJoin(env) =>
-      val tids = cabs.getTids(v)
+      val tids = IsCSchemeLattice[Abs].getTids(v)
       if (tids.isEmpty) {
         Action.error(TypeError("join", "first operand", "tid value", s"non-tid value ($v)"))
       } else {
@@ -46,36 +44,36 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
           case None => store.lookup(a) match {
             case None => Action.error(UnboundAddress(a.toString))
             case Some(vcomp) =>
-              for { cond <- cabs.binaryOp(SchemeOps.Eq)(vcomp, old) }
+              for { cond <- IsCSchemeLattice[Abs].binaryOp(SchemeOps.Eq)(vcomp, old) }
               yield
                 conditional(cond,
                   /* Compare and swap succeeds */
-                  Action.value(aabs.inject(true), store.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
+                  Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
                   /* Compare and swap fails */
-                  Action.value(aabs.inject(false), store, Set(EffectReadVariable(a))))
+                  Action.value(IsSchemeLattice[Abs].inject(false), store, Set(EffectReadVariable(a))))
           }
           /* Compare and swap on vector element */
           case Some(i) => store.lookup(a) match {
             case None => Action.error(UnboundAddress(a.toString))
             case Some(vs) =>
-              val vectors = aabs.getVectors(vs)
-              if (vectors.isEmpty && vectors != aabs.bottom) {
+              val vectors = IsSchemeLattice[Abs].getVectors(vs)
+              if (vectors.isEmpty && vectors != JoinLattice[Abs].bottom) {
                 Action.error(TypeError("cas-vector", "first operand", "vector", s"non-vector: $vs"))
               } else {
                 vectors.flatMap(va => store.lookup(va) match {
                   case None => Action.error(UnboundAddress(va.toString))
                   case Some(vec) =>
                     val mfmon = implicitly[Monoid[MayFail[Actions]]]
-                    for { oldvals <- aabs.vectorRef(vec, i) }
+                    for { oldvals <- IsSchemeLattice[Abs].vectorRef(vec, i) }
                     yield {
                       val success: Actions = for {
-                        (newvec, addrs) <- aabs.vectorSet(vec, i, Address[Addr].cell(enew, t))
-                      } yield Action.value(cabs.inject(true), addrs.foldLeft(store.update(va, newvec))((acc, a) => acc.updateOrExtend(a, v)),
+                        (newvec, addrs) <- IsSchemeLattice[Abs].vectorSet(vec, i, Address[Addr].cell(enew, t))
+                      } yield Action.value(IsCSchemeLattice[Abs].inject(true), addrs.foldLeft(store.update(va, newvec))((acc, a) => acc.updateOrExtend(a, v)),
                         addrs.flatMap(a => Set(EffectWriteVector(a), EffectReadVector(a))))
-                      val fail: Actions = Action.value(cabs.inject(false), store, Set(EffectReadVector(a)))
+                      val fail: Actions = Action.value(IsCSchemeLattice[Abs].inject(false), store, Set(EffectReadVector(a)))
                       oldvals.foldLeft(Set[Action[SchemeExp, Abs, Addr]]())((acc, a) => store.lookup(a) match {
                         case None => acc + (Action.error(UnboundAddress(a.toString)))
-                        case Some(oldval) => for { cond <- cabs.binaryOp(SchemeOps.Eq)(oldval, old) }
+                        case Some(oldval) => for { cond <- IsCSchemeLattice[Abs].binaryOp(SchemeOps.Eq)(oldval, old) }
                         yield conditional(cond, success, fail)
                       })
                     }
@@ -85,15 +83,15 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
         }
       }
     case FrameAcquire(env) =>
-      val locks = cabs.getLocks(v)
-      if (locks.isEmpty && locks != cabs.bottom) {
+      val locks = IsCSchemeLattice[Abs].getLocks(v)
+      if (locks.isEmpty && locks != JoinLattice[Abs].bottom) {
         Action.error(TypeError("acquire", "first operand", "lock value", s"non-lock value: $v"))
       } else {
         locks.flatMap(a => store.lookup(a) match {
           case None => Action.error(UnboundAddress(a.toString))
-          case Some(v) => if (cabs.isTrue(cabs.isLock(v))) {
-            if (cabs.isFalse(cabs.isLocked(v))) {
-              Action.value(cabs.inject(true), store.update(a, cabs.lockedValue), Set(EffectAcquire(a)))
+          case Some(v) => if (IsCSchemeLattice[Abs].isTrue(IsCSchemeLattice[Abs].isLock(v))) {
+            if (IsSchemeLattice[Abs].isFalse(IsCSchemeLattice[Abs].isLocked(v))) {
+              Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, IsCSchemeLattice[Abs].lockedValue), Set(EffectAcquire(a)))
             } else {
               Action.none
             }
@@ -103,18 +101,18 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
         })
       }
     case FrameRelease(env) =>
-      val locks = cabs.getLocks(v)
-      if (locks.isEmpty && locks != cabs.bottom) {
+      val locks = IsCSchemeLattice[Abs].getLocks(v)
+      if (locks.isEmpty && locks != JoinLattice[Abs].bottom) {
         Action.error(TypeError("release", "first operand", "lock value", s"non-lock value: $v"))
       } else {
         locks.flatMap(a => store.lookup(a) match {
           case None => Action.error(UnboundAddress(a.toString))
-          case Some(v) => if (cabs.isTrue(cabs.isLock(v))) {
-            if (cabs.isTrue(cabs.isLocked(v))) {
-              Action.value(cabs.inject(true), store.update(a, cabs.unlockedValue), Set(EffectRelease(a)))
+          case Some(v) => if (IsSchemeLattice[Abs].isTrue(IsCSchemeLattice[Abs].isLock(v))) {
+            if (IsSchemeLattice[Abs].isTrue(IsCSchemeLattice[Abs].isLocked(v))) {
+              Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, IsCSchemeLattice[Abs].unlockedValue), Set(EffectRelease(a)))
             } else {
               /* Lock is already released */
-              Action.value(cabs.inject(true), store)
+              Action.value(IsSchemeLattice[Abs].inject(true), store)
             }
           } else {
             Action.error(TypeError("release", "first operand", "lock value", s"non-lock value: $v"))

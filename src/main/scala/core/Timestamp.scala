@@ -6,7 +6,7 @@ trait Timestamp[T] {
 }
 
 object Timestamp {
-  def apply[T : Timestamp]: Timestamp[T] = implicitly[Timestamp[T]]
+  def apply[T : Timestamp]: Timestamp[T] = implicitly
 }
 
 trait TimestampWrapper {

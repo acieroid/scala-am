@@ -18,6 +18,9 @@ trait IsCSchemeLattice[L] extends IsSchemeLattice[L] {
   def unlockedValue: L
 }
 
+object IsCSchemeLattice {
+  def apply[L : IsCSchemeLattice]: IsCSchemeLattice[L] = implicitly
+}
 trait CSchemeLattice extends SchemeLattice {
   val isCSchemeLattice: IsCSchemeLattice[L]
   lazy val isSchemeLattice: IsSchemeLattice[L] = isCSchemeLattice

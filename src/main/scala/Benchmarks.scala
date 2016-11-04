@@ -51,21 +51,20 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
 
       val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
 
-      val program = fileContent(s"$dir/${config.program}.scm")
-      if (program != null || program.size > 0) {
-        try {
-          val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {
-            machine.eval(sem.parse(program), sem, false, timeout)
-          }
-          MachineOutput(output.time, output.numberOfStates, output.timedOut)
-        } catch {
-          case e: Throwable => {
-            println(s"Benchmark ${config.program} failed! (config: $config, error: $e)")
+      fileContent(s"$dir/${config.program}.scm") match {
+        case Some(program) if program.size > 0 =>
+          try {
+            val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {
+              machine.eval(sem.parse(program), sem, false, timeout)
+            }
+            MachineOutput(output.time, output.numberOfStates, output.timedOut)
+          } catch {
+            case e: Throwable => {
+              println(s"Benchmark ${config.program} failed! (config: $config, error: $e)")
               MachineOutput(0, 0, false)
+            }
           }
-        }
-      } else {
-        MachineOutput(0, 0, false) // TODO: error output
+        case _ => MachineOutput(0, 0, false) // TODO: error output
       }
     }
 

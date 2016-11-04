@@ -32,7 +32,7 @@ trait JoinLattice[L] extends Monoid[L] with PartialOrdering[L] {
 }
 
 object JoinLattice {
-  def apply[L : JoinLattice]: JoinLattice[L] = implicitly[JoinLattice[L]]
+  def apply[L : JoinLattice]: JoinLattice[L] = implicitly
 }
 
 /** Cardinality represents how much information a lattice value represents */
@@ -82,7 +82,7 @@ trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
 }
 
 object LatticeElement {
-  def apply[L : LatticeElement]: LatticeElement[L] = implicitly[LatticeElement[L]]
+  def apply[L : LatticeElement]: LatticeElement[L] = implicitly
 
   implicit def ofSet[A]: LatticeElement[Set[A]] = new LatticeElement[Set[A]] {
     def name = "OfSet"
@@ -108,7 +108,7 @@ trait StringLattice[S] extends LatticeElement[S] {
 }
 
 object StringLattice {
-  def apply[S : StringLattice]: StringLattice[S] = implicitly[StringLattice[S]]
+  def apply[S : StringLattice]: StringLattice[S] = implicitly
 }
 
 /** A lattice for booleans */
@@ -120,7 +120,7 @@ trait BoolLattice[B] extends LatticeElement[B] {
 }
 
 object BoolLattice {
-  def apply[B : BoolLattice]: BoolLattice[B] = implicitly[BoolLattice[B]]
+  def apply[B : BoolLattice]: BoolLattice[B] = implicitly
 }
 
 /** A lattice for integers */
@@ -139,7 +139,7 @@ trait IntLattice[I] extends LatticeElement[I] {
 }
 
 object IntLattice {
-  def apply[I : IntLattice]: IntLattice[I] = implicitly[IntLattice[I]]
+  def apply[I : IntLattice]: IntLattice[I] = implicitly
 }
 
 /** A lattice for floats */
@@ -157,7 +157,7 @@ trait FloatLattice[F] extends LatticeElement[F] {
 }
 
 object FloatLattice {
-  def apply[F : FloatLattice]: FloatLattice[F] = implicitly[FloatLattice[F]]
+  def apply[F : FloatLattice]: FloatLattice[F] = implicitly
 }
 
 /** A lattice for characters */
@@ -166,7 +166,7 @@ trait CharLattice[C] extends LatticeElement[C] {
 }
 
 object CharLattice {
-  def apply[C : CharLattice]: CharLattice[C] = implicitly[CharLattice[C]]
+  def apply[C : CharLattice]: CharLattice[C] = implicitly
 }
 
 /** A lattice for symbols */
@@ -175,7 +175,7 @@ trait SymbolLattice[Sym] extends LatticeElement[Sym] {
 }
 
 object SymbolLattice {
-  def apply[Sym : SymbolLattice]: SymbolLattice[Sym] = implicitly[SymbolLattice[Sym]]
+  def apply[Sym : SymbolLattice]: SymbolLattice[Sym] = implicitly
 }
 
 /**
@@ -219,7 +219,7 @@ object ConcreteBoolean {
     def not(b: B): B = b.map(x => !x)
     def eql[B1 : BoolLattice](b1: B, b2: B): B1 = b1.foldMap(b1 => b2.foldMap(b2 => BoolLattice[B1].inject(b1 == b2)))
 
-    def order(x: B, y: B): Ordering = implicitly[Order[ISet[Boolean]]].order(x, y)
+    def order(x: B, y: B): Ordering = Order[ISet[Boolean]].order(x, y)
     def cardinality(x: B): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
@@ -247,7 +247,7 @@ object ConcreteInteger {
     def eql[B : BoolLattice](n1: I, n2: I): B = n1.foldMap(n1 => n2.foldMap(n2 => BoolLattice[B].inject(n1 == n2)))
     def toString[S : StringLattice](n: I): S = n.foldMap(n => StringLattice[S].inject(n.toString))
 
-    def order(x: I, y: I): Ordering = implicitly[Order[ISet[Int]]].order(x, y)
+    def order(x: I, y: I): Ordering = Order[ISet[Int]].order(x, y)
     def cardinality(x: I): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
@@ -314,7 +314,7 @@ object ConcreteSymbol {
     def inject(x: String): Sym = ISet.singleton(x)
     def eql[B : BoolLattice](s1: Sym, s2: Sym): B = s1.foldMap(s1 => s2.foldMap(s2 => BoolLattice[B].inject(s1 == s2)))
 
-    def order(x: Sym, y: Sym): Ordering = implicitly[Order[ISet[String]]].order(x, y)
+    def order(x: Sym, y: Sym): Ordering = Order[ISet[String]].order(x, y)
     def cardinality(x: Sym): Cardinality = CardinalityPrimitiveLikeNumber(x.toList.length)
   }
 }
@@ -340,9 +340,9 @@ class BoundedInteger(bound: Int) {
       case Set(xs) => "{" + xs.elems.mkString(",") + "}"
       case Top => "Int"
     }
-    val bottom: I = implicitly[Monoid[I]].zero
+    val bottom: I = Monoid[I].zero
     val top: I = Top
-    def join(x: I, y: => I) = implicitly[Monoid[I]].append(x, y)
+    def join(x: I, y: => I) = Monoid[I].append(x, y)
     def subsumes(x: I, y: => I) = x match {
       case Set(xs) => y match {
         case Set(ys) => ys.isSubsetOf(xs)
@@ -379,7 +379,7 @@ class BoundedInteger(bound: Int) {
     def toString[S : StringLattice](n: I): S = fold(n, n => StringLattice[S].inject(n.toString))
 
     def order(x: I, y: I): Ordering = (x, y) match {
-      case (Set(xs), Set(ys)) => implicitly[Order[ISet[Int]]].order(xs, ys)
+      case (Set(xs), Set(ys)) => Order[ISet[Int]].order(xs, ys)
       case (Top, _: Set) => Ordering.GT
       case (_: Set, Top) => Ordering.LT
       case (Top, Top) => Ordering.EQ

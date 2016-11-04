@@ -3,5 +3,5 @@ trait Expression[E] {
 }
 
 object Expression {
-  def apply[E : Expression]: Expression[E] = implicitly[Expression[E]]
+  def apply[E : Expression]: Expression[E] = implicitly
 }

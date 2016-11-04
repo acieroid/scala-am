@@ -76,6 +76,17 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
 
 }
 
+object IsSchemeLattice {
+  def apply[L : IsSchemeLattice]: IsSchemeLattice[L] = implicitly
+}
+
+/* TODO: something like that:
+import scala.language.higherKinds
+trait Wrapper[F[_]] {
+  type T
+  val isInstance: F[T]
+}
+ */
 trait SchemeLattice {
   type L
   val isSchemeLattice: IsSchemeLattice[L]

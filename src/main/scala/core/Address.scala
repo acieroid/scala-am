@@ -8,7 +8,7 @@ trait Address[A] {
 }
 
 object Address {
-  def apply[A : Address]: Address[A] = implicitly[Address[A]]
+  def apply[A : Address]: Address[A] = implicitly
 }
 
 trait AddressWrapper {

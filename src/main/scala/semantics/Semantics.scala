@@ -20,10 +20,7 @@ import scalaz.Scalaz._
  * language. A more complex definition resides in SchemeSemantics.scala.
  */
 
-trait Semantics[Exp, Abs, Addr, Time] {
-  implicit def abs: JoinLattice[Abs]
-  implicit def exp: Expression[Exp]
-  implicit def time: Timestamp[Time]
+abstract class Semantics[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp] {
   /**
    * Defines what actions should be taken when an expression e needs to be
    * evaluated, in environment env with store store
@@ -35,6 +32,7 @@ trait Semantics[Exp, Abs, Addr, Time] {
    */
   def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
 
+  /** WIP */
   def stepReceive(self: Any /* TODO */, mname: String, margsv: List[Abs], d: Exp, env: Environment[Addr], store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]] =
     throw new Exception("Semantics do not support message-based concurrency")
 
@@ -47,6 +45,35 @@ trait Semantics[Exp, Abs, Addr, Time] {
   def initialBindings: Iterable[(String, Addr, Abs)] = List()
   def initialEnv: Iterable[(String, Addr)] = initialBindings.map({ case (name, a, _) => (name, a) })
   def initialStore: Iterable[(Addr, Abs)] = initialBindings.map({ case (_, a, v) => (a, v) })
+
+  object Action extends ActionHelpers[Exp, Abs, Addr]
+
+  /* Some helper methods */
+  import scala.language.implicitConversions
+  implicit def mfToActions(mf: MayFail[Set[Action[Exp, Abs, Addr]]]): Set[Action[Exp, Abs, Addr]] =
+    mf match {
+      case MayFailSuccess(l) => l
+      case MayFailError(errs) => errs.toSet.map((err: SemanticError) => ActionError(err))
+      case MayFailBoth(l, errs) => l ++ errs.toSet.map((err: SemanticError) => ActionError(err))
+    }
+  implicit def mfActionToActions(mf: MayFail[Action[Exp, Abs, Addr]]): Set[Action[Exp, Abs, Addr]] =
+    /* mf.map does not use the correct map apparently? */
+    mfToActions(MayFail.isFunctor.map(mf)(x => Set[Action[Exp, Abs, Addr]](x)))
+  implicit def actionToSet(action: Action[Exp, Abs, Addr]): Set[Action[Exp, Abs, Addr]] =
+    Set(action)
+
+  /**
+   * Binds arguments in the environment and store. Arguments are given as a list
+   * of triple, where each triple is made of:
+   *   - the name of the argument
+   *   - the position of the argument
+   *   - the value of the argument
+   */
+  protected def bindArgs(l: List[(Identifier, Abs)], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
+    l.foldLeft((env, store))({ case ((env, store), (id, value)) => {
+      val a = Address[Addr].variable(id, value, t)
+      (env.extend(id.name, a), store.extend(a, value))
+    }})
 }
 
 /**
@@ -273,44 +300,4 @@ case class ActorActionTerminate[Exp : Expression, Abs : JoinLattice, Addr : Addr
   (effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
-}
-
-
-/**
- * Base class for semantics that define some helper methods
- */
-abstract class BaseSemantics[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
-    extends Semantics[Exp, Abs, Addr, Time] {
-  def abs = implicitly[JoinLattice[Abs]]
-  def addr = implicitly[Address[Addr]]
-  def exp = implicitly[Expression[Exp]]
-  def time = implicitly[Timestamp[Time]]
-
-  object Action extends ActionHelpers[Exp, Abs, Addr]
-
-  import scala.language.implicitConversions
-  implicit def mfToActions(mf: MayFail[Set[Action[Exp, Abs, Addr]]]): Set[Action[Exp, Abs, Addr]] =
-    mf match {
-      case MayFailSuccess(l) => l
-      case MayFailError(errs) => errs.toSet.map((err: SemanticError) => ActionError(err))
-      case MayFailBoth(l, errs) => l ++ errs.toSet.map((err: SemanticError) => ActionError(err))
-    }
-  implicit def mfActionToActions(mf: MayFail[Action[Exp, Abs, Addr]]): Set[Action[Exp, Abs, Addr]] =
-    /* TODO: mf.map does not use the correct map apparently? */
-    mfToActions(MayFail.isFunctor.map(mf)(x => Set[Action[Exp, Abs, Addr]](x)))
-  implicit def actionToSet(action: Action[Exp, Abs, Addr]): Set[Action[Exp, Abs, Addr]] =
-    Set(action)
-
-  /**
-   * Binds arguments in the environment and store. Arguments are given as a list
-   * of triple, where each triple is made of:
-   *   - the name of the argument
-   *   - the position of the argument
-   *   - the value of the argument
-   */
-  protected def bindArgs(l: List[(Identifier, Abs)], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
-    l.foldLeft((env, store))({ case ((env, store), (id, value)) => {
-      val a = Address[Addr].variable(id, value, t)
-      (env.extend(id.name, a), store.extend(a, value))
-    }})
 }

@@ -74,7 +74,7 @@ object LamLatticeImpl {
 
 /** This defines the semantics of call-by-value lambda expressions */
 class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
-    extends BaseSemantics[LamExp, Abs, Addr, Time] {
+    extends Semantics[LamExp, Abs, Addr, Time] {
   /** We inherit the value abs that is bound to a JoinLattice[Abs], but we need
     * access to our inject and getClosures, so we need a LamLattice[Abs] as
     * well. */

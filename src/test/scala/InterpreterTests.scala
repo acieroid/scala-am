@@ -60,7 +60,9 @@ abstract class OneResultTests[Exp : Expression, Addr : Address, Time : Timestamp
 
   def check(file: String, expected: Abs): Unit =
     file should s"have only one final state in concrete mode and return $expected" in {
-      val result = machine.eval(sem.parse(Util.fileContent(s"test/$file")), sem, false, None)
+      val program = fileContent(s"test/$file")
+      program.isDefined should equal (true)
+      val result = machine.eval(sem.parse(program.get), sem, false, None)
       result.finalValues.size should equal (1)
       result.finalValues.head should equal (expected)
     }

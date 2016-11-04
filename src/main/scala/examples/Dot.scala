@@ -93,7 +93,7 @@ class DotLanguage[Addr : Address] {
   }
 
   class DotSemantics[Abs : DotLattice, Time : Timestamp]
-      extends BaseSemantics[Term, Abs, Addr, Time] {
+      extends Semantics[Term, Abs, Addr, Time] {
     def dabs = implicitly[DotLattice[Abs]]
     type Sto = Store[Addr, Abs]
     trait DotFrame extends Frame

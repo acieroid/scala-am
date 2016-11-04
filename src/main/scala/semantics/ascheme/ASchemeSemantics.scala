@@ -3,9 +3,6 @@ import scalaz._
 
 class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier](primitives: Primitives[Addr, Abs])
     extends SchemeSemantics[Abs, Addr, Time](primitives) {
-  def aabs = implicitly[IsASchemeLattice[Abs]]
-  def pid = implicitly[ThreadIdentifier[PID]]
-
   object ActorAction extends ActorActionHelpers[SchemeExp, Abs, Addr, Time, PID]
 
   case class FrameSendTarget(message: Identifier, args: List[SchemeExp], env: Env) extends SchemeFrame
@@ -14,12 +11,12 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
   case class FrameBecome(argsv: List[Abs], args: List[SchemeExp], env: Env) extends SchemeFrame
 
   override def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[(Abs, Set[Effect[Addr]])] = e match {
-    case a: SchemeActor => Some((aabs.injectActor[SchemeExp, Addr](a, env), Set()))
+    case a: SchemeActor => Some((IsASchemeLattice[Abs].injectActor[SchemeExp, Addr](a, env), Set()))
     case _ => super.atomicEval(e, env, store)
   }
 
   override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = optimizeAtomic(e match {
-    case a: SchemeActor => Action.value(aabs.injectActor[SchemeExp, Addr](a, env), store)
+    case a: SchemeActor => Action.value(IsASchemeLattice[Abs].injectActor[SchemeExp, Addr](a, env), store)
     case SchemeSend(target, message, args, _) => Action.push(FrameSendTarget(message, args, env), target, env, store)
     case SchemeCreate(beh, args, _) => Action.push(FrameCreate(List(), args, beh, env), beh, env, store)
     case SchemeBecome(beh, args, _) => Action.push(FrameBecome(List(), args, env), beh, env, store)
@@ -36,8 +33,8 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
           } else {
             val (env2, store2) = bindArgs(margs.zip(margsv), env, store, t)
             val pself = self.asInstanceOf[PID]
-            val vself = aabs.injectPid(pself)
-            val aself = addr.variable(Identifier("self", Position.none), vself, t)
+            val vself = IsASchemeLattice[Abs].injectPid(pself)
+            val aself = Address[Addr].variable(Identifier("self", Position.none), vself, t)
             Action.eval(if (body.size == 1) { body.head } else { SchemeBegin(body, body.head.pos) },
               env2.extend("self", aself), store2.extend(aself, vself))
           }
@@ -47,11 +44,11 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
   }
 
   private def send(target: Abs, message: String, args: List[Abs]): Set[Action[SchemeExp, Abs, Addr]] = {
-    val pids = aabs.getPids(target)
+    val pids = IsASchemeLattice[Abs].getPids(target)
     if (pids.isEmpty) {
       Action.error(TypeError("send", "first operand", "pid value", s"non-pid value ($target)"))
     } else {
-      pids.map(p => ActorAction.send(p, message, args, aabs.injectPid(p)))
+      pids.map(p => ActorAction.send(p, message, args, IsASchemeLattice[Abs].injectPid(p)))
     }
   }
 
@@ -67,7 +64,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       Action.push(FrameSend(message, target, v :: argsv, rest, env), first, env, store)
     case FrameCreate(revargsv, List(), exp, env) =>
       val act :: argsv = (v :: revargsv).reverse
-      val actors = aabs.getActors[SchemeExp, Addr](act)
+      val actors = IsASchemeLattice[Abs].getActors[SchemeExp, Addr](act)
       if (actors.isEmpty) {
         Action.error(TypeError("create", "first operand", "actor", s"non-actor value ($act)"))
       } else {
@@ -76,7 +73,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
             Action.error(ArityError(s"create actor $name", xs.size, argsv.size))
           } else {
             val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
-            ActorAction.create(actd, exp, env2, store2, aabs.injectPid _)
+            ActorAction.create(actd, exp, env2, store2, IsASchemeLattice[Abs].injectPid _)
           }
         })
       }
@@ -84,7 +81,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       Action.push(FrameCreate(v :: argsv, rest, exp, env), first, env, store)
     case FrameBecome(revargsv, List(), env) =>
       val act :: argsv = (v :: revargsv).reverse
-      val actors = aabs.getActors[SchemeExp, Addr](act)
+      val actors = IsASchemeLattice[Abs].getActors[SchemeExp, Addr](act)
       if (actors.isEmpty) {
         Action.error(TypeError("become", "first operand", "actor", s"non-actor value ($act)"))
       } else {
@@ -93,7 +90,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
             Action.error(ArityError("become behavior", xs.size, argsv.size))
           } else {
             val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
-            ActorAction.become(actd, env2, store2, aabs.inject(false))
+            ActorAction.become(actd, env2, store2, IsASchemeLattice[Abs].inject(false))
           }
         })
       }

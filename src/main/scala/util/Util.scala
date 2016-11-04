@@ -1,11 +1,11 @@
 import scala.io.StdIn
 
 object Util {
-  def fileContent(file: String): String = {
+  def fileContent(file: String): Option[String] = {
     val f = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
     f.close()
-    content
+    Option(content)
   }
 
   def writeToFile(path: String, content: String): Unit = {
@@ -21,17 +21,15 @@ object Util {
   def replOrFile(file: Option[String], cb: String => Unit): Unit = {
     lazy val reader = new jline.console.ConsoleReader()
     @scala.annotation.tailrec
-    def loop(): Unit = {
-      val program = reader.readLine(">>> ")
-      if (program != null) {
-        if (program.size > 0) {
-          cb(program)
-        }
-        loop()
-      }
+    def loop(): Unit = Option(reader.readLine(">>> ")) match {
+      case Some(program) if program.size > 0 => cb(program)
+      case _ => loop()
     }
     file match {
-      case Some(file) => cb(fileContent(file))
+      case Some(file) => fileContent(file) match {
+        case Some(program) => cb(program)
+        case None => println(s"Input file doesn't exists ($file)")
+      }
       case None => loop()
     }
   }
@@ -45,7 +43,10 @@ object Util {
     def format(table: Seq[Seq[Any]]) = table match {
       case Seq() => ""
       case _ =>
-        val sizes = for (row <- table) yield (for (cell <- row) yield if (cell == null) 0 else cell.toString.length)
+        val sizes = for (row <- table) yield (for (cell <- row) yield Option(cell) match {
+          case Some(content) => content.toString.length
+          case None => 0
+        })
         val colSizes = for (col <- sizes.transpose) yield col.max
         val rows = for (row <- table) yield formatRow(row, colSizes)
         formatRows(rowSeparator(colSizes), rows)

@@ -5,7 +5,7 @@ trait ThreadIdentifier[TID] {
 }
 
 object ThreadIdentifier {
-  def apply[T : ThreadIdentifier]: ThreadIdentifier[T] = implicitly[ThreadIdentifier[T]]
+  def apply[T : ThreadIdentifier]: ThreadIdentifier[T] = implicitly
 }
 
 trait ContextSensitiveTID
