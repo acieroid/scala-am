@@ -318,17 +318,17 @@ trait IntLattice[I] extends LatticeElement[I] { self =>
     def timesIsCommutative(a: I, b: I): Boolean =
       times(a, b) == times(b, a)
     def divPreservesBottom(a: I): Boolean =
-      div(a, bottom) == bottom && div(bottom, a) == bottom
+      div(a, bottom) == bottom && conditional(!subsumes(a, inject(0)), div(bottom, a) == bottom)
     def divIsMonotone(a: I, b: I, c: I): Boolean =
-      conditional(subsumes(c, b),
+      conditional(subsumes(c, b) && !subsumes(b, inject(0)) && !subsumes(c, inject(0)),
         subsumes(div(a, c), div(a, b)))
     def divIsSound(a: Int, b: Int): Boolean =
       conditional(b != 0,
         subsumes(div(inject(a), inject(b)), inject(a / b)))
     def moduloPreservesBottom(a: I): Boolean =
-      modulo(a, bottom) == bottom && modulo(bottom, a) == bottom
+      modulo(a, bottom) == bottom && conditional(!subsumes(a, inject(0)), modulo(bottom, a) == bottom)
     def moduloIsMonotone(a: I, b: I, c: I): Boolean =
-      conditional(subsumes(c, b),
+      conditional(subsumes(c, b) && !subsumes(c, inject(0)) && !subsumes(b, inject(0)),
         subsumes(modulo(a, c), modulo(a, b)))
     def moduloIsSound(a: Int, b: Int): Boolean =
       conditional(b != 0,
@@ -429,9 +429,9 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
       subsumes(times(inject(a), inject(b)), inject(a * b))
     /* Times isn't required to be associative and commutative on floats */
     def divPreservesBottom(a: F): Boolean =
-      div(a, bottom) == bottom && div(bottom, a) == bottom
+      div(a, bottom) == bottom && conditional(!subsumes(a, inject(0)), div(bottom, a) == bottom)
     def divIsMonotone(a: F, b: F, c: F): Boolean =
-      conditional(subsumes(c, b),
+      conditional(subsumes(c, b) && !subsumes(b, inject(0)) && !subsumes(c, inject(0)),
         subsumes(div(a, c), div(a, b)))
     def divIsSound(a: Float, b: Float): Boolean =
       conditional(b != 0,
