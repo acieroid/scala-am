@@ -164,7 +164,7 @@ class MakeSchemeLattice[
         case _ => False /* any value is true */
       }
       case Ceiling => x match {
-        case Int(n) => Int(IntLattice[I].ceiling(n))
+        case Int(n) => Int(n)
         case Float(n) => Float(FloatLattice[F].ceiling(n))
         case _ => OperatorNotApplicable("ceiling", List(x.toString))
       }

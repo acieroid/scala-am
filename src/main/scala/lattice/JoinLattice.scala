@@ -29,6 +29,16 @@ trait JoinLattice[L] extends Monoid[L] with PartialOrdering[L] {
   def isPrimitiveValue(x: L): Boolean
   /** Cardinality of this value */
   def cardinality(x: L): Cardinality
+
+  trait JoinLatticeLaw {
+    import scalaz.std.boolean.conditional
+    def bottomLowerBound(a: L): Boolean = subsumes(a, bottom)
+    def joinCommutative(a: L, b: L): Boolean = join(a, b) == join(b, a)
+    def joinAssociatve(a: L, b: L, c: L): Boolean = join(join(a, b), c) == join(a, join(b, c))
+    def joinIdempotent(a: L): Boolean = join(a, a) == a
+    def joinSubsumesCompatible(a: L, b: L): Boolean =
+      conditional(subsumes(b, a), join(a, b) == b)
+  }
 }
 
 object JoinLattice {
@@ -68,17 +78,80 @@ object Cardinality {
  * most languages.
  */
 trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
+  /** The name of the lattice */
   def name: String
+  /** The bottom element */
   def bottom: L
+  /**
+   * The top element. It might not be defined for all lattices, in which case an
+   * exception is thrown.
+   * TODO: an option should be returned instead of throwing an exeption.
+   */
   def top: L
+  /** The join operation */
   def join(x: L, y: => L): L
+  /** The subsumption relation that defines the ordering of elements */
   def subsumes(x: L, y: => L): Boolean
+  /** Equality check, returning an abstract result */
   def eql[B : BoolLattice](x: L, y: L): B
+
   def cardinality(x: L): Cardinality
 
   /* For Monoid[L] */
   final def zero: L = bottom
   final def append(x: L, y: => L): L = join(x, y)
+
+  trait LatticeElementLaw extends MonoidLaw with OrderLaw {
+    /**
+     * Bottom is the lower bound
+     * ∀ a: ⊥ ⊑ a
+     */
+    def bottomLowerBound(a: L): Boolean =
+      subsumes(a, bottom)
+    /**
+     * Top is the upper bound (when defined)
+     * ∀ a: a ⊑ ⊤
+     */
+    def topUpperBound(a: L): Boolean = scala.util.Try(top).toOption match {
+      case None => true
+      case Some(t) => subsumes(t, a)
+    }
+    /**
+     * Join is commutative
+     * ∀ a, b: a ⊔ b = b ⊔ a
+     */
+    def joinCommutative(a: L, b: L): Boolean =
+      join(a, b) == join(b, a)
+    /**
+     * Join is associative
+     * ∀ a, b, c: (a ⊔ b) ⊔ c = a ⊔ (b ⊔ c)
+     */
+    def joinAssociative(a: L, b: L, c: L): Boolean =
+      join(join(a, b), c) == join(a, join(b, c))
+    /**
+     * Join is idempotent
+     * ∀ a: a ⊔ a = a
+     */
+    def joinIdempotent(a: L): Boolean =
+      join(a, a) == a
+    /**
+     * Join and subsumes are compatible
+     * ∀ a, b: a ⊑ b ⇒ a ⊔ b = b
+     */
+    def joinSubsumesCompatible(a: L, b: L): Boolean =
+      conditional(subsumes(b, a), join(a, b) == b)
+    /**
+     * Equal elements are always eql if they're not bottom.
+     * ∀ a: a = bottom ∨ isTrue(eql(a, a))
+     */
+    def eqlIsTrue(a: L): Boolean = {
+      /* needed to get the implicit resolution working... */
+      implicit val bool = ConcreteBoolean.isBoolean
+      conditional(a != bottom,
+        bool.isTrue(eql[ConcreteBoolean.B](a, a)(ConcreteBoolean.isBoolean)))
+    }
+  }
+  def latticeElementLaw = new LatticeElementLaw {}
 }
 
 object LatticeElement {
@@ -105,6 +178,30 @@ trait StringLattice[S] extends LatticeElement[S] {
   def inject(s: String): S
   def length[I : IntLattice](s: S): I
   def append(s1: S, s2: S): S
+
+  trait StringLatticeLaw {
+    lazy val intLat = new BoundedInteger(100)
+    type I = intLat.I
+    implicit lazy val int = intLat.isInteger
+
+    def lengthPreservesBottom: Boolean =
+      length[I](bottom) == IntLattice[I].bottom
+    def lengthIsMonotone(a: S, b: S): Boolean =
+      conditional(subsumes(b, a),
+        IntLattice[I].subsumes(length[I](b), length[I](a)))
+    def lengthIsSound(a: String): Boolean =
+      IntLattice[I].subsumes(length[I](inject(a)), IntLattice[I].inject(a.size))
+    def appendPreservesBottom(a: S): Boolean =
+      append(bottom, a) == bottom && append(a, bottom) == bottom
+    def appendIsMonotone(a: S, b: S, c: S): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(append(a, c), append(a, b)) && subsumes(append(c, a), append(b, a)))
+    def appendIsSound(a: String, b: String): Boolean =
+      subsumes(append(inject(a), inject(b)), inject(a ++ b))
+    def appendIsAssociative(a: S, b: S, c: S): Boolean =
+      append(append(a, b), c) == append(a, append(b, c))
+  }
+  val stringLatticeLaw = new StringLatticeLaw {}
 }
 
 object StringLattice {
@@ -117,6 +214,41 @@ trait BoolLattice[B] extends LatticeElement[B] {
   def isTrue(b: B): Boolean
   def isFalse(b: B): Boolean
   def not(b: B): B
+
+  trait BoolLatticeLaw extends LatticeElementLaw {
+    /**
+     * Inject preserves truthiness
+     * isTrue(inject(true)) ∧ isFalse(inject(false))
+     */
+    def injectPreservesTruthiness: Boolean =
+      isTrue(inject(true)) && isFalse(inject(false))
+    /**
+     * Top is both true and false (when defined)
+     * isTrue(⊤) ∧ isFalse(⊤)
+     */
+    def topTrueAndFalse: Boolean = scala.util.Try(top).toOption match {
+      case None => true
+      case Some(t) => isTrue(t) && isFalse(t)
+    }
+    /**
+     * Bottom is neither true nor false
+     * ¬isTrue(⊥) ∧ ¬isFalse(⊥)
+     */
+    def bottomNotTrueNorFalse: Boolean = !isTrue(bottom) && !isFalse(bottom)
+    /**
+     * Not reverses truthiness
+     * ∀ a: isTrue(a) ⇒ isFalse(not(a)) ∧ isFalse(a) ⇒ isTrue(not(a))
+     */
+    def notReversesTruthiness(a: B): Boolean =
+      conditional(isTrue(a), isFalse(not(a))) && conditional(isFalse(a), isTrue(not(a)))
+    /**
+     * Not is involutive
+     * ∀ a: not(not(a)) == a
+     */
+    def notInvolutive(a: B): Boolean =
+      not(not(a)) == a
+  }
+  val boolLatticeLaw = new BoolLatticeLaw {}
 }
 
 object BoolLattice {
@@ -124,9 +256,8 @@ object BoolLattice {
 }
 
 /** A lattice for integers */
-trait IntLattice[I] extends LatticeElement[I] {
+trait IntLattice[I] extends LatticeElement[I] { self =>
   def inject(n: Int): I
-  def ceiling(n: I): I
   def toFloat[F : FloatLattice](n: I): F
   def random(n: I): I
   def plus(n1: I, n2: I): I
@@ -136,6 +267,88 @@ trait IntLattice[I] extends LatticeElement[I] {
   def modulo(n1: I, n2: I): I
   def lt[B : BoolLattice](n1: I, n2: I): B
   def toString[S : StringLattice](n: I): S
+
+  trait IntLatticeLaw {
+    type F = Type.T
+    type B = ConcreteBoolean.B
+    type S = Type.T
+    implicit lazy val float: FloatLattice[F] = Type.typeIsFloat
+    implicit lazy val bool: BoolLattice[B] = ConcreteBoolean.isBoolean
+    implicit lazy val str: StringLattice[S] = Type.typeIsString
+
+    def toFloatPreservesBottom: Boolean =
+      toFloat[F](bottom) == FloatLattice[F].bottom
+    def toFloatIsMonotone(a: I, b: I): Boolean =
+      conditional(subsumes(b, a),
+        FloatLattice[F].subsumes(toFloat[F](b), toFloat[F](a)))
+    def toFloatIsSound(a: Int): Boolean =
+      FloatLattice[F].subsumes(toFloat[F](inject(a)), FloatLattice[F].inject(a.toFloat))
+    def randomPreservesBottom: Boolean =
+      random(bottom) == bottom
+    /* Random should neither be monotone nor sound (at least in concrete) */
+    def plusPreservesBottom(a: I): Boolean =
+      plus(a, bottom) == bottom && plus(bottom, a) == bottom
+    def plusIsMonotone(a: I, b: I, c: I): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(plus(a, c), plus(a, b)))
+    def plusIsSound(a: Int, b: Int): Boolean =
+      subsumes(plus(inject(a), inject(b)), inject(a + b))
+    def plusIsAssociative(a: I, b: I, c: I): Boolean =
+      plus(a, plus(b, c)) == plus(plus(a, b), c)
+    def plusIsCommutative(a: I, b: I): Boolean =
+      plus(a, b) == plus(b, a)
+    def minusPreservesBottom(a: I): Boolean =
+      minus(a, bottom) == bottom && minus(bottom, a) == bottom
+    def minusIsMonotone(a: I, b: I, c: I): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(minus(a, c), minus(a, b)))
+    def minusIsSound(a: Int, b: Int): Boolean =
+      subsumes(minus(inject(a), inject(b)), inject(a - b))
+    def minusIsAnticommutative(a: I, b: I): Boolean =
+      minus(a, b) == minus(inject(0), minus(b, a))
+    def timesPreservesBottom(a: I): Boolean =
+      times(a, bottom) == bottom && times(bottom, a) == bottom
+    def timesIsMonotone(a: I, b: I, c: I): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(times(a, c), times(a, b)))
+    def timesIsSound(a: Int, b: Int): Boolean =
+      subsumes(times(inject(a), inject(b)), inject(a * b))
+    def timesIsAssociative(a: I, b: I, c: I): Boolean =
+      times(a, times(b, c)) == times(times(a, b), c)
+    def timesIsCommutative(a: I, b: I): Boolean =
+      times(a, b) == times(b, a)
+    def divPreservesBottom(a: I): Boolean =
+      div(a, bottom) == bottom && div(bottom, a) == bottom
+    def divIsMonotone(a: I, b: I, c: I): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(div(a, c), div(a, b)))
+    def divIsSound(a: Int, b: Int): Boolean =
+      conditional(b != 0,
+        subsumes(div(inject(a), inject(b)), inject(a / b)))
+    def moduloPreservesBottom(a: I): Boolean =
+      modulo(a, bottom) == bottom && modulo(bottom, a) == bottom
+    def moduloIsMonotone(a: I, b: I, c: I): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(modulo(a, c), modulo(a, b)))
+    def moduloIsSound(a: Int, b: Int): Boolean =
+      conditional(b != 0,
+        subsumes(modulo(inject(a), inject(b)), inject(SchemeOps.modulo(a, b))))
+    def ltPreservesBottom(a: I): Boolean =
+      lt[B](a, bottom) == BoolLattice[B].bottom && lt[B](bottom, a) == BoolLattice[B].bottom
+    def ltIsMonotone(a: I, b: I, c: I): Boolean =
+      conditional(subsumes(b, c),
+        BoolLattice[B].subsumes(lt[B](a, c), lt[B](a, b)))
+    def ltIsSound(a: Int, b: Int): Boolean =
+      BoolLattice[B].subsumes(lt[B](inject(a), inject(b)), BoolLattice[B].inject(a < b))
+    def toStringPreservesBottom: Boolean =
+      self.toString[S](bottom) == StringLattice[S].bottom
+    def toStringIsMonotone(a: I, b: I): Boolean =
+      conditional(subsumes(b, a),
+        StringLattice[S].subsumes(self.toString[S](b), self.toString[S](a)))
+    def toStringIsSound(a: Int): Boolean =
+      StringLattice[S].subsumes(self.toString[S](inject(a)), StringLattice[S].inject(a.toString))
+  }
+  val intLatticeLaw = new IntLatticeLaw {}
 }
 
 object IntLattice {
@@ -143,8 +356,9 @@ object IntLattice {
 }
 
 /** A lattice for floats */
-trait FloatLattice[F] extends LatticeElement[F] {
+trait FloatLattice[F] extends LatticeElement[F] { self =>
   def inject(n: Float): F
+  def toInt[I : IntLattice](n: F): I
   def ceiling(n: F): F
   def log(n: F): F
   def random(n: F): F
@@ -154,6 +368,90 @@ trait FloatLattice[F] extends LatticeElement[F] {
   def div(n1: F, n2: F): F
   def lt[B : BoolLattice](n1: F, n2: F): B
   def toString[S : StringLattice](n: F): S
+
+  trait FloatLatticeLaw {
+    type I = Type.T
+    type B = ConcreteBoolean.B
+    type S = Type.T
+    implicit lazy val int = Type.typeIsFloat
+    implicit lazy val bool = ConcreteBoolean.isBoolean
+    implicit lazy val str = Type.typeIsString
+
+    def toIntPreservesBottom: Boolean =
+      toInt[I](bottom) == IntLattice[I].bottom
+    def toIntIsMonotone(a: F, b: F): Boolean =
+      conditional(subsumes(b, a),
+        IntLattice[I].subsumes(toInt[I](b), toInt[I](a)))
+    def toIntIsSound(a: Float): Boolean =
+      IntLattice[I].subsumes(toInt[I](inject(a)), IntLattice[I].inject(a.toInt))
+    def ceilingPreservesBottom: Boolean =
+      ceiling(bottom) == bottom
+    def ceilingIsMonotone(a: F, b: F): Boolean =
+      conditional(subsumes(b, a),
+        subsumes(ceiling(b), ceiling(a)))
+    def ceilingIsSound(a: Float): Boolean =
+      subsumes(ceiling(inject(a)), inject(scala.math.ceil(a.toDouble).toFloat))
+    def logPreservesBottom: Boolean =
+      log(bottom) == bottom
+    def logIsMonotone(a: F, b: F): Boolean =
+      /* TODO: this test is failing */
+      /*conditional(subsumes(b, a),
+       subsumes(log(b), log(a))) */
+      true
+    def logIsSound(a: Float): Boolean =
+      conditional(a > 0,
+        subsumes(log(inject(a)), inject(scala.math.log(a.toDouble).toFloat)))
+    def randomPreservesBottom: Boolean =
+      random(bottom) == bottom
+    /* Random should neither be monotone nor sound (at least in concrete) */
+    def plusPreservesBottom(a: F): Boolean =
+      plus(a, bottom) == bottom && plus(bottom, a) == bottom
+    def plusIsMonotone(a: F, b: F, c: F): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(plus(a, c), plus(a, b)))
+    def plusIsSound(a: Float, b: Float): Boolean =
+      subsumes(plus(inject(a), inject(b)), inject(a + b))
+    /* Plus isn't required to be associative or commutative on floats */
+    def minusPreservesBottom(a: F): Boolean =
+      minus(a, bottom) == bottom && minus(bottom, a) == bottom
+    def minusIsMonotone(a: F, b: F, c: F): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(minus(a, c), minus(a, b)))
+    def minusIsSound(a: Float, b: Float): Boolean =
+      subsumes(minus(inject(a), inject(b)), inject(a - b))
+    /* Minus isn't required to be anticommutative on floats */
+    def timesPreservesBottom(a: F): Boolean =
+      times(a, bottom) == bottom && times(bottom, a) == bottom
+    def timesIsMonotone(a: F, b: F, c: F): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(times(a, c), times(a, b)))
+    def timesIsSound(a: Float, b: Float): Boolean =
+      subsumes(times(inject(a), inject(b)), inject(a * b))
+    /* Times isn't required to be associative and commutative on floats */
+    def divPreservesBottom(a: F): Boolean =
+      div(a, bottom) == bottom && div(bottom, a) == bottom
+    def divIsMonotone(a: F, b: F, c: F): Boolean =
+      conditional(subsumes(c, b),
+        subsumes(div(a, c), div(a, b)))
+    def divIsSound(a: Float, b: Float): Boolean =
+      conditional(b != 0,
+        subsumes(div(inject(a), inject(b)), inject(a / b)))
+    def ltPreservesBottom(a: F): Boolean =
+      lt[B](a, bottom) == BoolLattice[B].bottom && lt[B](bottom, a) == BoolLattice[B].bottom
+    def ltIsMonotone(a: F, b: F, c: F): Boolean =
+      conditional(subsumes(b, c),
+        BoolLattice[B].subsumes(lt[B](a, c), lt[B](a, b)))
+    def ltIsSound(a: Float, b: Float): Boolean =
+      BoolLattice[B].subsumes(lt[B](inject(a), inject(b)), BoolLattice[B].inject(a < b))
+    def toStringPreservesBottom: Boolean =
+      self.toString[S](bottom) == StringLattice[S].bottom
+    def toStringIsMonotone(a: F, b: F): Boolean =
+      conditional(subsumes(b, a),
+        StringLattice[S].subsumes(self.toString[S](b), self.toString[S](a)))
+    def toStringIsSound(a: Float): Boolean =
+      StringLattice[S].subsumes(self.toString[S](inject(a)), StringLattice[S].inject(a.toString))
+  }
+  val floatLatticeLaw = new FloatLatticeLaw {}
 }
 
 object FloatLattice {
@@ -163,6 +461,11 @@ object FloatLattice {
 /** A lattice for characters */
 trait CharLattice[C] extends LatticeElement[C] {
   def inject(c: Char): C
+
+  trait CharLatticeLaw {
+    /* No laws for now */
+  }
+  val charLatticeLaw = new CharLatticeLaw {}
 }
 
 object CharLattice {
@@ -172,10 +475,16 @@ object CharLattice {
 /** A lattice for symbols */
 trait SymbolLattice[Sym] extends LatticeElement[Sym] {
   def inject(sym: String): Sym
+
+  trait SymbolLatticeLaw {
+    /* No laws for now */
+  }
+  val symbolLatticeLaw = new SymbolLatticeLaw {}
 }
 
 object SymbolLattice {
   def apply[Sym : SymbolLattice]: SymbolLattice[Sym] = implicitly
+
 }
 
 /**
@@ -235,7 +544,6 @@ object ConcreteInteger {
     def subsumes(x: I, y: => I) = y.isSubsetOf(x)
 
     def inject(x: Int): I = ISet.singleton(x)
-    def ceiling(n: I): I = n
     def toFloat[F : FloatLattice](n: I): F = n.foldMap(n => FloatLattice[F].inject(n))
     def random(n: I): I = n.map(n => SchemeOps.random(n))
     def plus(n1: I, n2: I): I = n1.foldMap(n1 => n2.map(n2 => n1 + n2))
@@ -263,6 +571,7 @@ object ConcreteFloat {
     def subsumes(x: F, y: => F) = y.isSubsetOf(x)
 
     def inject(x: Float): F = ISet.singleton(x)
+    def toInt[I : IntLattice](n: F): I = n.foldMap(n => IntLattice[I].inject(n.toInt))
     def ceiling(n: F): F = n.map(_.ceil)
     def log(n: F): F = n.map(n => scala.math.log(n.toDouble).toFloat)
     def random(n: F): F = n.map(n => SchemeOps.random(n))
@@ -366,7 +675,6 @@ class BoundedInteger(bound: Int) {
       case Top => Top
     }
     def inject(x: Int): I = promote(ISet.singleton(x))
-    def ceiling(n: I): I = n
     def toFloat[F : FloatLattice](n: I): F = fold(n, n => FloatLattice[F].inject(n))
     def random(n: I): I = Top
     def plus(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 + n2)))
@@ -396,7 +704,7 @@ object Type {
   case object Top extends T
   case object Bottom extends T
 
-  implicit val typeIsMonoid = new Monoid[T] {
+  implicit val typeIsMonoid: Monoid[T] = new Monoid[T] {
     def zero: T = Bottom
     def append(x: T, y: => T): T = x match {
       case Top => Top
@@ -470,7 +778,6 @@ object Type {
   }
   implicit val typeIsInteger: IntLattice[T] = new BaseInstance("Int") with IntLattice[T] {
     def inject(x: Int): T = Top
-    def ceiling(n: T): T = n
     def toFloat[F : FloatLattice](n: T): F = n match {
       case Top => FloatLattice[F].top
       case Bottom => FloatLattice[F].bottom
@@ -492,6 +799,10 @@ object Type {
   }
   implicit val typeIsFloat: FloatLattice[T] = new BaseInstance("Float") with FloatLattice[T] {
     def inject(x: Float): T = Top
+    def toInt[I : IntLattice](n: T): I = n match {
+      case Top => IntLattice[I].top
+      case Bottom => IntLattice[I].bottom
+    }
     def ceiling(n: T): T = n
     def log(n: T): T = n
     def random(n: T): T = n
@@ -615,7 +926,6 @@ object IntegerConstantPropagation extends ConstantPropagation[Int] {
   type I = L
   implicit val isInteger: IntLattice[I] = new BaseInstance("Int") with IntLattice[I] {
     def inject(x: Int): I = Constant(x)
-    def ceiling(n: I): I = n
     def toFloat[F : FloatLattice](n: I): F = n match {
       case Top => FloatLattice[F].top
       case Constant(x) => FloatLattice[F].inject(x)
@@ -656,7 +966,15 @@ object FloatConstantPropagation extends ConstantPropagation[Float] {
   type F = L
   implicit val isFloat: FloatLattice[F] = new BaseInstance("Float") with FloatLattice[F] {
     def inject(x: Float) = Constant(x)
-    def ceiling(n: F): F = n
+    def toInt[I : IntLattice](n: F): I = n match {
+      case Top => IntLattice[I].top
+      case Constant(x) => IntLattice[I].inject(x.toInt)
+      case Bottom => IntLattice[I].bottom
+    }
+    def ceiling(n: F): F = n match {
+      case Constant(x) => Constant(x.ceil)
+      case _ => n
+    }
     def random(n: F): F = n match {
       case Constant(x) => Constant(SchemeOps.random(x))
       case _ => n

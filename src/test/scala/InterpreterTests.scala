@@ -9,7 +9,7 @@ abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](va
   val machine: AbstractMachine[Exp, lattice.L, Addr, Time]
 
   def checkResult(file: String, expected: Abs): Unit = {
-    val result = machine.eval(sem.parse(Util.fileContent(s"test/$file")), sem, false, None)
+    val result = machine.eval(sem.parse(Util.fileContent(s"test/$file").get), sem, false, None)
     assert(result.containsFinalValue(expected))
     println(s"${machine.name}, $file: ${result.numberOfStates}, ${result.time}")
   }
@@ -60,7 +60,7 @@ abstract class OneResultTests[Exp : Expression, Addr : Address, Time : Timestamp
 
   def check(file: String, expected: Abs): Unit =
     file should s"have only one final state in concrete mode and return $expected" in {
-      val program = fileContent(s"test/$file")
+      val program = Util.fileContent(s"test/$file")
       program.isDefined should equal (true)
       val result = machine.eval(sem.parse(program.get), sem, false, None)
       result.finalValues.size should equal (1)

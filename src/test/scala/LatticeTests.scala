@@ -2,10 +2,8 @@ import org.scalatest._
 import org.scalatest.prop._
 import org.scalatest.prop.TableDrivenPropertyChecks._
 
-import org.scalacheck.Gen
-import org.scalacheck.Arbitrary
-import org.scalacheck.Prop._
-import org.scalacheck.Properties
+import org.scalacheck.{Arbitrary, Gen, Prop, Properties}
+import Prop.forAll
 
 import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
@@ -106,450 +104,349 @@ abstract class JoinLatticePropSpec(lattice: SchemeLattice)
   }
 }
 
-case class ISetGen[A](g: Gen[A])(implicit val order: Order[A]) {
-  implicit val buildable = new org.scalacheck.util.Buildable[A, ISet[A]] {
-    def builder = new scala.collection.mutable.Builder[A, ISet[A]] {
-      var buff: ISet[A] = ISet.empty
-      def clear() { buff = ISet.empty }
-      def +=(x: A) = { buff = buff.union(ISet.singleton(x)); this }
-      def result = buff
-    }
+
+object LatticeProperties {
+  private def newProperties(name: String)(f: Properties => Unit): Properties = {
+    /* Code taken from Scalaz's test suite */
+    val p = new Properties(name)
+    f(p)
+    p
   }
-  implicit val toTraversable = (s: ISet[A]) => new Traversable[A] {
-    def foreach[U](f: A => U): Unit = s.map({ x => f(x); () })
-  }
-  val gen: Gen[ISet[A]] = Gen.buildableOfN[ISet[A], A](10, g)
-  def genSubset(set: ISet[A]): Gen[ISet[A]] = {
-    val list = set.toList
-    for { n <- Gen.choose(0, set.size) } yield ISet.fromList(scala.util.Random.shuffle(list).take(n))
-  }
-}
 
-trait LatticeGenerator[L] {
-  def any: Gen[L]
-  def le(l: L): Gen[L]
-}
+  /* TODO: import scalaz properties for monoids */
 
-object Generators {
-  val str: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr, Gen.numStr))
-  val int: Gen[Int] = Gen.choose(-1000, 1000)
-  val float: Gen[Float] = Gen.choose(-1000.toFloat, 1000.toFloat)
-  val char: Gen[Char] = Gen.choose(0.toChar, 255.toChar)
-  val sym: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr))
-}
-
-object ConcreteBooleanGenerator extends LatticeGenerator[ConcreteBoolean.B] {
-  /** ConcreteBool is a finite lattice with four elements */
-  val bool = ConcreteBoolean.isBoolean
-  val bot = bool.bottom
-  val t = bool.inject(true)
-  val f = bool.inject(false)
-  val top = bool.top
-
-  def any = Gen.oneOf(bot, t, f, top)
-  def le(l: ConcreteBoolean.B) =
-    if (l == bot) { Gen.const(bot) }
-    else if (l == top) { Gen.oneOf(bot, t, f) }
-    else { Gen.oneOf(l, bot) }
-}
-
-object TypeGenerator extends LatticeGenerator[Type.T] {
-  /** Type lattice is a finite lattice with two elements */
-  def any = Gen.oneOf(Type.Top, Type.Bottom)
-  def le(l: Type.T) = l match {
-    case Type.Top => any
-    case Type.Bottom => Gen.const(Type.Bottom)
-  }
-}
-
-object ConcreteStringGenerator extends LatticeGenerator[ConcreteString.S] {
-  val isetgen = ISetGen[String](Generators.str)
-  def any = isetgen.gen
-  def le(l: ConcreteString.S) = isetgen.genSubset(l)
-}
-
-object ConcreteIntegerGenerator extends LatticeGenerator[ConcreteInteger.I] {
-  val isetgen = ISetGen[Int](Generators.int)
-  def any = isetgen.gen
-  def le(l: ConcreteInteger.I) = isetgen.genSubset(l)
-}
-
-object ConcreteFloatGenerator extends LatticeGenerator[ConcreteFloat.F] {
-  val isetgen = ISetGen[Float](Generators.float)
-  def any = isetgen.gen
-  def le(l: ConcreteFloat.F) = isetgen.genSubset(l)
-}
-
-object ConcreteCharGenerator extends LatticeGenerator[ConcreteChar.C] {
-  implicit val charOrder: Order[Char] = Order.fromScalaOrdering[Char]
-  val isetgen = ISetGen[Char](Generators.char)
-  def any = isetgen.gen
-  def le(l: ConcreteChar.C) = isetgen.genSubset(l)
-}
-
-object ConcreteSymbolGenerator extends LatticeGenerator[ConcreteSymbol.Sym] {
-  val isetgen = ISetGen[String](Generators.sym)
-  def any = isetgen.gen
-  def le(l: ConcreteSymbol.Sym) = isetgen.genSubset(l)
-}
-
-// TODO: bounded ints, constant propagation
-
-abstract class ConstantPropagationGenerator[X, L](gen: Gen[X])(const: X => L, bot: L, top: L) extends LatticeGenerator[L] {
-  def constgen: Gen[L] = for { x <- gen } yield const(x)
-  def botgen: Gen[L] = bot
-  def topgen: Gen[L] = top
-  def any: Gen[L] = Gen.oneOf(constgen, botgen, topgen)
-  def le(l: L) = if (l == top) { any } else if (l == bot) { bot } else { Gen.oneOf(l, bot) }
-}
-
-object StringConstantPropagationGenerator extends ConstantPropagationGenerator[String, StringConstantPropagation.S](Generators.str)(StringConstantPropagation.Constant, StringConstantPropagation.Bottom, StringConstantPropagation.Top)
-object IntegerConstantPropagationGenerator extends ConstantPropagationGenerator[Int, IntegerConstantPropagation.I](Generators.int)(IntegerConstantPropagation.Constant, IntegerConstantPropagation.Bottom, IntegerConstantPropagation.Top)
-object FloatConstantPropagationGenerator extends ConstantPropagationGenerator[Float, FloatConstantPropagation.F](Generators.float)(FloatConstantPropagation.Constant, FloatConstantPropagation.Bottom, FloatConstantPropagation.Top)
-object CharConstantPropagationGenerator extends ConstantPropagationGenerator[Char, CharConstantPropagation.C](Generators.char)(CharConstantPropagation.Constant, CharConstantPropagation.Bottom, CharConstantPropagation.Top)
-object SymbolConstantPropagationGenerator extends ConstantPropagationGenerator[String, SymbolConstantPropagation.Sym](Generators.sym)(SymbolConstantPropagation.Constant, SymbolConstantPropagation.Bottom, SymbolConstantPropagation.Top)
-
-abstract class LatticeElementSpecification[L : LatticeElement](gen: LatticeGenerator[L])
-    extends PropSpec with GeneratorDrivenPropertyChecks {
-  val abs = LatticeElement[L]
-  val bot = abs.bottom
-  implicit val arbL: Arbitrary[L] = Arbitrary(gen.any)
-
-  type B = ConcreteBoolean.B
-  implicit val bool = ConcreteBoolean.isBoolean
-
-  // ∀ a: ⊥ ⊑ a
-  property("Bottom is a lower bound") {
-    forAll { (a: L) =>
-      assert(abs.subsumes(a, bot))
-    }
-  }
-  // ∀ a: a ⊑ ⊤
-  property("Top is an upper bound (when defined)") {
-    scala.util.Try(abs.top).toOption match {
-      case None => ()
-      case Some(top) => forAll { (a: L) =>
-        assert(abs.subsumes(top, a))
+  object latticeElement {
+    def laws[L](implicit l: LatticeElement[L], gen: LatticeGenerator[L]): Properties = {
+      implicit val arb = gen.anyArb
+      newProperties("LatticeElement") { p =>
+        p.property("∀ a: ⊥ ⊑ a") =
+          forAll(l.latticeElementLaw.bottomLowerBound _)
+        p.property("∀ a: a ⊑ ⊤") =
+          forAll(l.latticeElementLaw.topUpperBound _)
+        p.property("∀ a, b: a ⊔ b = b ⊔ a") =
+          forAll(l.latticeElementLaw.joinCommutative _)
+        p.property("∀ a, b, c: (a ⊔ b) ⊔ c = a ⊔ (b ⊔ c)") =
+          forAll(l.latticeElementLaw.joinAssociative _)
+        p.property("∀ a: a ⊔ a = a") =
+          forAll(l.latticeElementLaw.joinIdempotent _)
+        p.property("∀ a, b: a ⊑ b ⇒ a ⊔ b = b") = forAll { (b: L) =>
+          forAll(gen.le(b)) { (a: L) =>
+            l.latticeElementLaw.joinSubsumesCompatible(a, b)
+          }
+        }
+        p.property("∀ a: a = bottom ∨ isTrue(eql(a, a))") =
+          forAll(l.latticeElementLaw.eqlIsTrue _)
       }
     }
   }
-  // ∀ a, b: a ⊔ b = b ⊔ a
-  property("Join is commutative") {
-    forAll { (a: L, b: L) =>
-      assert(abs.join(a, b) == abs.join(b, a))
-    }
-  }
-  // ∀ a, b, c: (a ⊔ b) ⊔ c = a ⊔ (b ⊔ c)
-  property("Join is associative") {
-    forAll { (a: L, b: L, c: L) =>
-      assert(abs.join(abs.join(a, b), c) == abs.join(a, abs.join(b, c)))
-    }
-  }
-  // ∀ a: a ⊔ a = a
-  property("Join is idempotent") {
-    forAll { (a: L) =>
-      assert(abs.join(a, a) == a)
-    }
-  }
-  // ∀ a, b: a ⊑ b ⇒ a ⊔ b = b
-  property("Join and subsumes are compatible") {
-    forAll { (b: L) =>
-      forAll(gen.le(b)) { (a: L) =>
-        assert(abs.subsumes(b, a) && abs.join(a, b) == b)
+  object boolLattice {
+    def laws[B](implicit l: BoolLattice[B], gen: LatticeGenerator[B]): Properties = {
+      implicit val arb = gen.anyArb
+      newProperties("BoolLattice") { p =>
+        p.include(latticeElement.laws[B])
+        p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") =
+          l.boolLatticeLaw.injectPreservesTruthiness
+        p.property("isTrue(⊤) ∧ isFalse(⊤)") =
+          l.boolLatticeLaw.topTrueAndFalse
+        p.property("¬isTrue(⊥) ∧ ¬isFalse(⊥)") =
+          l.boolLatticeLaw.bottomNotTrueNorFalse
+        p.property("∀ a: isTrue(a) ⇒ isFalse(not(a)) ∧ isFalse(a) ⇒ isTrue(not(a))") =
+          forAll(l.boolLatticeLaw.notReversesTruthiness _)
+        p.property("∀ a: not(not(a)) == a") =
+          forAll(l.boolLatticeLaw.notInvolutive _)
       }
     }
   }
-  // ∀ a: a = bot ∨ isTrue(eql(a, a))
-  property("Equal elements are always eql if not bottom") {
-    forAll { (a: L) =>
-      assert(a == bot || bool.isTrue(abs.eql[B](a, a)))
-    }
-  }
-}
-
-abstract class BooleanSpecification[B : BoolLattice](gen: LatticeGenerator[B])
-    extends PropSpec with GeneratorDrivenPropertyChecks {
-  val bool = BoolLattice[B]
-  implicit val arbB: Arbitrary[B] = Arbitrary(gen.any)
-  // ∀ a: (a ⇒ isTrue(inject(a))) && (¬a => isFalse(inject(a)))
-  property("Inject preserves truthiness") {
-    forAll { (a: Boolean) =>
-      if (a) { assert(bool.isTrue(bool.inject(a))) } else { assert(bool.isFalse(bool.inject(false))) }
-    }
-  }
-  // isTrue(⊤) ∧ isFalse(⊤)
-  property("Top is true and false (when defined)") {
-    scala.util.Try(bool.top).toOption match {
-      case None => ()
-      case Some(top) => assert(bool.isTrue(top) && bool.isFalse(top))
-    }
-  }
-  // ¬isTrue(⊥) ∧ ¬isFalse(⊥)
-  property("Bottom is neither true nor false") {
-    assert(!bool.isTrue(bool.bottom) && !bool.isFalse(bool.bottom))
-  }
-  // ∀ a: isTrue(a) ⇒ isFalse(not(a)) ∧ isFalse(a) ⇒ isTrue(not(a))
-  property("Not reserves truthiness") {
-    forAll { (a: B) =>
-      if (bool.isTrue(a)) { assert(bool.isFalse(bool.not(a))) }
-      if (bool.isFalse(a)) { assert(bool.isTrue(bool.not(a))) }
-    }
-  }
-}
-
-abstract class StringSpecification[S : StringLattice](gen: LatticeGenerator[S])
-    extends PropSpec with GeneratorDrivenPropertyChecks {
-  val str = StringLattice[S]
-  implicit val arbS: Arbitrary[S] = Arbitrary(gen.any)
-
-  val boundedInt = new BoundedInteger(1000)
-  type I = boundedInt.I
-  implicit val int = boundedInt.isInteger
-
-  // length(⊥) = ⊥
-  property("bot length is bot") {
-    assert(str.length[I](str.bottom) == int.bottom)
-  }
-
-  // ∀ a: append(⊥, a) = ⊥
-  property("bot appended with something is bot") {
-    forAll { (a: S) =>
-      assert(str.append(str.bottom, a) == str.bottom)
-    }
-  }
-  // ∀ a: append(a, ⊥) = ⊥
-  property("bot appended to something is bot") {
-    forAll { (a: S) =>
-      assert(str.append(a, str.bottom) == str.bottom)
-    }
-  }
-  // ∀ a, b: a ⊑ b ⇒ length(a) ⊑ length(b)
-  property("length is monotone") {
-    forAll { (b: S) =>
-      forAll(gen.le(b)) { (a: S) =>
-        assert(str.subsumes(b, a) && int.subsumes(str.length[I](b), str.length[I](a)))
+  object stringLattice {
+    def laws[S](implicit l: StringLattice[S], gen: LatticeGenerator[S]): Properties = {
+      implicit val arb = gen.anyArb
+      newProperties("StringLattice") { p =>
+        p.include(latticeElement.laws[S])
+        p.property("length(⊥) = ⊥") =
+          l.stringLatticeLaw.lengthPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ length(a) ⊑ length(b)") = forAll { (b: S) =>
+          forAll(gen.le(b)) { (a: S) =>
+            l.stringLatticeLaw.lengthIsMonotone(a, b)
+          }
+        }
+        p.property("∀ a: length(inject(a)) ⊑ inject(length(a))") =
+          forAll(l.stringLatticeLaw.lengthIsSound _)
+        p.property("∀ a: append(a, ⊥) = ⊥ = append(⊥, a)") =
+          forAll(l.stringLatticeLaw.appendPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ append(a, b) ⊑ append(b, c)") = forAll { (a: S, c: S) =>
+          forAll(gen.le(c)) { (b: S) =>
+            l.stringLatticeLaw.appendIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b: append(inject(a), inject(b)) ⊑ inject(append(a, b))") =
+          forAll(l.stringLatticeLaw.appendIsSound _)
+        p.property("∀ a, b, c: append(a, append(b, c)) == append(append(a, b), c)") =
+          forAll(l.stringLatticeLaw.appendIsAssociative _)
       }
     }
   }
-  // ∀ a, b, c: b ⊑ c ⇒ append(a, b) ⊑ append(a, c)
-  // ∀ a, b, c: b ⊑ c ⇒ append(b, a) ⊑ append(c, a)
-  property("append is monotone") {
-    forAll { (a: S, c: S) =>
-      forAll(gen.le(c)) { (b: S) =>
-        assert(str.subsumes(c, b) && str.subsumes(str.append(a, c), str.append(a, b)) && str.subsumes(str.append(c, a), str.append(b, a)))
+  object intLattice {
+    def laws[I](implicit l: IntLattice[I], gen: LatticeGenerator[I]): Properties = {
+      implicit val arb = gen.anyArb
+      newProperties("IntLattice") { p =>
+        p.include(latticeElement.laws[I])
+        p.property("toFloat(⊥) = ⊥") =
+          l.intLatticeLaw.toFloatPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ toFloat(a) ⊑ toFloat(b)") = forAll { (b: I) =>
+          forAll(gen.le(b)) { (a: I) =>
+            l.intLatticeLaw.toFloatIsMonotone(a, b)
+          }
+        }
+        p.property("∀ a: a.toFloat ⊑ toFloat(inject(a))") =
+          forAll(l.intLatticeLaw.toFloatIsSound _)
+        p.property("random(⊥) = ⊥") =
+          l.intLatticeLaw.randomPreservesBottom
+        p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
+          forAll(l.intLatticeLaw.plusPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c)") = forAll { (a: I, c: I) =>
+          forAll(gen.le(c)) { (b: I) =>
+            l.intLatticeLaw.plusIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b: inject(a + b) ⊑ plus(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.plusIsSound _)
+        p.property("∀ a, b, c: plus(a, plus(b, c)) == plus(plus(a, b), c)") =
+          forAll(l.intLatticeLaw.plusIsAssociative _)
+        p.property("∀ a, b: plus(a, b) == plus(b, a)") =
+          forAll(l.intLatticeLaw.plusIsCommutative _)
+        p.property("minus(a, ⊥) = ⊥ = minus(⊥, a)") =
+          forAll(l.intLatticeLaw.minusPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ minus(a, b) ⊑ minus(a, c)") = forAll { (a: I, c: I) =>
+          forAll(gen.le(c)) { (b: I) =>
+            l.intLatticeLaw.minusIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b: inject(a - b) ⊑ minus(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.minusIsSound _)
+        p.property("∀ a, b: minus(a, b) == minus(inject(0), minus(b, a))") =
+          forAll(l.intLatticeLaw.minusIsAnticommutative _)
+        p.property("times(a, ⊥) = ⊥ = times(⊥, a)") =
+          forAll(l.intLatticeLaw.timesPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ times(a, b) ⊑ times(a, c)") = forAll { (a: I, c: I) =>
+          forAll(gen.le(c)) { (b: I) =>
+            l.intLatticeLaw.timesIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b: inject(a + b) ⊑ times(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.timesIsSound _)
+        p.property("∀ a, b, c: times(a, times(b, c)) == times(times(a, b), c)") =
+          forAll(l.intLatticeLaw.timesIsAssociative _)
+        p.property("∀ a, b: times(a, b) == times(b, a)") =
+          forAll(l.intLatticeLaw.timesIsCommutative _)
+        p.property("div(a, ⊥) = ⊥ = div(⊥, a)") =
+          forAll(l.intLatticeLaw.divPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ div(a, b) ⊑ div(a, c)") = forAll { (a: I, c: I) =>
+          forAll(gen.le(c)) { (b: I) =>
+            l.intLatticeLaw.divIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ div(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.divIsSound _)
+        p.property("modulo(a, ⊥) = ⊥ = modulo(⊥, a)") =
+          forAll(l.intLatticeLaw.moduloPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ modulo(a, b) ⊑ modulo(a, c)") = forAll { (a: I, c: I) =>
+          forAll(gen.le(c)) { (b: I) =>
+            l.intLatticeLaw.moduloIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ modulo(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.moduloIsSound _)
+        p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") =
+          forAll(l.intLatticeLaw.ltPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c)") = forAll { (a: I, c: I) =>
+          forAll(gen.le(c)) { (b: I) =>
+            l.intLatticeLaw.ltIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b ≠ 0: inject(a < b) ⊑ lt(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.ltIsSound _)
+        p.property("toString(⊥) = ⊥") =
+          l.intLatticeLaw.toStringPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ toString(a) ⊑ toString(b)") = forAll { (b: I) =>
+          forAll(gen.le(b)) { (a: I) =>
+            l.intLatticeLaw.toStringIsMonotone(a, b)
+          }
+        }
+        p.property("∀ a: inject(a.toString) ⊑ toString(inject(a))") =
+          forAll(l.intLatticeLaw.toStringIsSound _)
       }
     }
   }
 
-  // ∀ a: inject(length(a)) ⊑ length(inject(a))
-  property("length is a sound over-approximation") {
-    forAll { (a: String) =>
-      assert(int.subsumes(str.length[I](str.inject(a)), int.inject(a.size)))
+  object floatLattice {
+    def laws[F](implicit l: FloatLattice[F], gen: LatticeGenerator[F]): Properties = {
+      implicit val arb = gen.anyArb
+      newProperties("FloatLattice") { p =>
+        p.include(latticeElement.laws[F])
+        p.property("toInt(⊥) = ⊥") =
+          l.floatLatticeLaw.toIntPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ toInt(a) ⊑ toInt(b)") = forAll { (b: F) =>
+          forAll(gen.le(b)) { (a: F) =>
+            l.floatLatticeLaw.toIntIsMonotone(a, b)
+          }
+        }
+        p.property("∀ a: a.toInt ⊑ toInt(inject(a))") =
+          forAll(l.floatLatticeLaw.toIntIsSound _)
+        p.property("ceiling(⊥) = ⊥") =
+          l.floatLatticeLaw.ceilingPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ ceiling(a) ⊑ ceiling(b)") = forAll { (b: F) =>
+          forAll(gen.le(b)) { (a: F) =>
+            l.floatLatticeLaw.ceilingIsMonotone(a, b)
+          }
+        }
+        p.property("∀ a: inject(a.ceil) ⊑ ceiling(inject(a))") =
+          forAll(l.floatLatticeLaw.ceilingIsSound _)
+        p.property("log(⊥) = ⊥") =
+          l.floatLatticeLaw.logPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ log(a) ⊑ log(b)") = forAll { (b: F) =>
+          forAll(gen.le(b)) { (a: F) =>
+            l.floatLatticeLaw.logIsMonotone(a, b)
+          }
+        }
+        p.property("∀ a: inject(a.log) ⊑ log(inject(a))") =
+          forAll(l.floatLatticeLaw.logIsSound _)
+        p.property("random(⊥) = ⊥") =
+          l.floatLatticeLaw.randomPreservesBottom
+        p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
+          forAll(l.floatLatticeLaw.plusPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c)") = forAll { (a: F, c: F) =>
+          forAll(gen.le(c)) { (b: F) =>
+            l.floatLatticeLaw.plusIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b: inject(a + b) ⊑ float(inject(a), inject(b))") =
+          forAll(l.floatLatticeLaw.plusIsSound _)
+        p.property("minus(a, ⊥) = ⊥ = minus(⊥, a)") =
+          forAll(l.floatLatticeLaw.minusPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ minus(a, b) ⊑ minus(a, c)") = forAll { (a: F, c: F) =>
+          forAll(gen.le(c)) { (b: F) =>
+            l.floatLatticeLaw.minusIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b: inject(a - b) ⊑ minus(inject(a), inject(b))") =
+          forAll(l.floatLatticeLaw.minusIsSound _)
+        p.property("times(a, ⊥) = ⊥ = times(⊥, a)") =
+          forAll(l.floatLatticeLaw.timesPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ times(a, b) ⊑ times(a, c)") = forAll { (a: F, c: F) =>
+          forAll(gen.le(c)) { (b: F) =>
+            l.floatLatticeLaw.timesIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b: inject(a + b) ⊑ times(inject(a), inject(b))") =
+          forAll(l.floatLatticeLaw.timesIsSound _)
+        p.property("div(a, ⊥) = ⊥ = div(⊥, a)") =
+          forAll(l.floatLatticeLaw.divPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ div(a, b) ⊑ div(a, c)") = forAll { (a: F, c: F) =>
+          forAll(gen.le(c)) { (b: F) =>
+            l.floatLatticeLaw.divIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ div(inject(a), inject(b))") =
+          forAll(l.floatLatticeLaw.divIsSound _)
+        p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") =
+          forAll(l.floatLatticeLaw.ltPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c)") = forAll { (a: F, c: F) =>
+          forAll(gen.le(c)) { (b: F) =>
+            l.floatLatticeLaw.ltIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b ≠ 0: inject(a < b) ⊑ lt(inject(a), inject(b))") =
+          forAll(l.floatLatticeLaw.ltIsSound _)
+        p.property("toString(⊥) = ⊥") =
+          l.floatLatticeLaw.toStringPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ toString(a) ⊑ toString(b)") = forAll { (b: F) =>
+          forAll(gen.le(b)) { (a: F) =>
+            l.floatLatticeLaw.toStringIsMonotone(a, b)
+          }
+        }
+        p.property("∀ a: inject(a.toString) ⊑ toString(inject(a))") =
+          forAll(l.floatLatticeLaw.toStringIsSound _)
+      }
     }
   }
-  // ∀ a, b: inject(append(a, b)) ⊑ append(inject(a), inject(b))
-  property("append is a sound over-approximation") {
-    forAll { (a: String, b: String) =>
-      assert(str.subsumes(str.append(str.inject(a), str.inject(b)), str.inject(a ++ b)))
+
+  object charLattice {
+    def laws[C](implicit l: CharLattice[C], gen: LatticeGenerator[C]): Properties = {
+      implicit val arb = gen.anyArb
+      newProperties("CharLattice") { p =>
+        p.include(latticeElement.laws[C])
+      }
+    }
+  }
+
+  object symbolLattice {
+    def laws[Sym](implicit l: SymbolLattice[Sym], gen: LatticeGenerator[Sym]): Properties = {
+      implicit val arb = gen.anyArb
+      newProperties("SymbolLattice") { p =>
+        p.include(latticeElement.laws[Sym])
+      }
     }
   }
 }
 
-case class IntegerSpecification[I : IntLattice](gen: LatticeGenerator[I])
-    extends PropSpec with GeneratorDrivenPropertyChecks {
-  val int = IntLattice[I]
-  implicit val arbI: Arbitrary[I] = Arbitrary(gen.any)
-
-  type B = ConcreteBoolean.B
-  implicit val bool = ConcreteBoolean.isBoolean
-  type S = Type.T
-  implicit val str = Type.typeIsString
-
-  // TODO: toFloat not tested (toFloat(⊥) = ⊥; ∀ a b: a ⊑ b ⇒ toFloat(a) ⊑ toFloat(b); ∀ a: inject(toFloat(a)) ⊑ toFloat(inject(a)))
-  // TODO: test div behavior with 0 ?
-  // TODO: random is not tested
-
-  // ceiling(⊥) = ⊥
-  property("ceiling of bottom is bottom") {
-    assert(int.ceiling(int.bottom) == int.bottom)
-  }
-  // random(⊥) = ⊥
-  property("random of bottom is bottom") {
-    assert(int.random(int.bottom) == int.bottom)
-  }
-  // toString(⊥) = ⊥
-  property("toString of bottom is bottom") {
-    assert(int.toString[S](int.bottom) == str.bottom)
-  }
-  // ∀ a, op2: op2(⊥, a) = ⊥ ∧ op2(a, ⊥) = ⊥
-  property("binary operation on bottom is bottom") {
-    forAll { (a: I) =>
-      assert(int.plus(int.bottom, a) == int.bottom &&
-        int.plus(a, int.bottom) == int.bottom &&
-        int.minus(int.bottom, a) == int.bottom &&
-        int.minus(a, int.bottom) == int.bottom &&
-        int.times(int.bottom, a) == int.bottom &&
-        int.times(a, int.bottom) == int.bottom &&
-        int.div(int.bottom, a) == int.bottom &&
-        int.div(a, int.bottom) == int.bottom &&
-        int.modulo(int.bottom, a) == int.bottom &&
-        int.modulo(a, int.bottom) == int.bottom &&
-        int.lt(int.bottom, a) == bool.bottom &&
-        int.lt(a, int.bottom) == bool.bottom)
-    }
-  }
-
-  // ∀ a, b: a ⊑ b ⇒ ceiling(a) ⊑ ceiling(b)
-  property("ceiling is monotone") {
-    forAll { (b: I) =>
-      forAll(gen.le(b)) { (a: I) =>
-        assert(int.subsumes(b, a) && int.subsumes(int.ceiling(b), int.ceiling(a)))
-      }
-    }
-  }
-  // ∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c) ∧ plus(b, a) ⊑ plus(c, b)
-  property("plus is monotone") {
-    forAll { (a: I, c: I) =>
-      forAll(gen.le(c)) { (b: I) =>
-        assert(int.subsumes(c, b) && int.subsumes(int.plus(a, c), int.plus(a, b)) && int.subsumes(int.plus(c, a), int.plus(b, a)))
-      }
-    }
-  }
-  // ∀ a, b, c: b ⊑ c ⇒ minus(a, b) ⊑ minus(a, c) ∧ minus(b, a) ⊑ minus(c, b)
-  property("minus is monotone") {
-    forAll { (a: I, c: I) =>
-      forAll(gen.le(c)) { (b: I) =>
-        assert(int.subsumes(c, b) && int.subsumes(int.minus(a, c), int.minus(a, b)) && int.subsumes(int.minus(c, a), int.minus(b, a)))
-      }
-    }
-  }
-  // ∀ a, b, c: b ⊑ c ⇒ times(a, b) ⊑ times(a, c) ∧ times(b, a) ⊑ times(c, b)
-  property("times is monotone") {
-    forAll { (a: I, c: I) =>
-      forAll(gen.le(c)) { (b: I) =>
-        assert(int.subsumes(c, b) && int.subsumes(int.times(a, c), int.times(a, b)) && int.subsumes(int.times(c, a), int.times(b, a)))
-      }
-    }
-  }
-  // ∀ a, b, c: b ⊑ c ⇒ div(a, b) ⊑ div(a, c) ∧ div(b, a) ⊑ div(c, b)
-  // TODO: div is a special beast
-  //property("div is monotone") {
-  //  forAll { (a: I, c: I) =>
-  //    forAll(gen.le(c)) { (b: I) =>
-  //      assert(int.subsumes(c, b) && int.subsumes(int.div(a, c), int.div(a, b)) && int.subsumes(int.div(c, a), int.div(b, a)))
-  //    }
-  //  }
-  //}
-  // ∀ a, b, c: b ⊑ c ⇒ modulo(a, b) ⊑ modulo(a, c) ∧ modulo(b, a) ⊑ modulo(c, b)
-  // TODO: modulo is as special as div
-  //property("modulo is monotone") {
-  //  forAll { (a: I, c: I) =>
-  //    forAll(gen.le(c)) { (b: I) =>
-  //      assert(int.subsumes(c, b) && int.subsumes(int.modulo(a, c), int.modulo(a, b)) && int.subsumes(int.modulo(c, a), int.modulo(b, a)))
-  //    }
-  //  }
-  //}
-  // ∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c) ∧ lt(b, a) ⊑ lt(c, b)
-  property("lt is monotone") {
-    forAll { (a: I, c: I) =>
-      forAll(gen.le(c)) { (b: I) =>
-        assert(int.subsumes(c, b) && bool.subsumes(int.lt[B](a, c), int.lt[B](a, b)) && bool.subsumes(int.lt[B](c, a), int.lt[B](b, a)))
-      }
-    }
-  }
-
-  // ∀ a: inject(ceiling(a)) ⊑ ceiling(inject(a))
-  property("ceiling is a sound over-approximation") {
-    forAll { (a: Int) =>
-      assert(int.subsumes(int.ceiling(int.inject(a)), int.inject(a))) // ceiling of an int is the same int
-    }
-  }
-  // ∀ a b: inject(a + b) ⊑ plus(inject(a), inject(b))
-  property("plus is a sound over-approximation") {
-    forAll { (a: Int, b: Int) =>
-      assert(int.subsumes(int.plus(int.inject(a), int.inject(b)), int.inject(a + b)))
-    }
-  }
-  // ∀ a b: inject(a - b) ⊑ minus(inject(a), inject(b))
-  property("minus is a sound over-approximation") {
-    forAll { (a: Int, b: Int) =>
-      assert(int.subsumes(int.minus(int.inject(a), int.inject(b)), int.inject(a - b)))
-    }
-  }
-  // ∀ a b: inject(a * b) ⊑ times(inject(a), inject(b))
-  property("times is a sound over-approximation") {
-    forAll { (a: Int, b: Int) =>
-      assert(int.subsumes(int.times(int.inject(a), int.inject(b)), int.inject(a * b)))
-    }
-  }
-
-  // ∀ a b: inject(a / b) ⊑ div(inject(a), inject(b))
-  property("div is a sound over-approximation") {
-    forAll { (a: Int, b: Int) =>
-      if (b != 0) { // TODO: exclude b from the generator?
-        assert(int.subsumes(int.div(int.inject(a), int.inject(b)), int.inject(a / b)))
-      }
-    }
-  }
-  // ∀ a b: inject(modulo(a, b)) ⊑ modulo(inject(a), inject(b))
-  property("modulo is a sound over-approximation") {
-    forAll { (a: Int, b: Int) =>
-      if (b != 0) {
-        assert(int.subsumes(int.modulo(int.inject(a), int.inject(b)), int.inject(SchemeOps.modulo(a, b))))
-      }
-    }
-  }
-  // ∀ a b: inject(a < b) ⊑ lt(inject(a), inject(b))
-  property("lt is a sound over-approximation") {
-    forAll { (a: Int, b: Int) =>
-      assert(bool.subsumes(int.lt[B](int.inject(a), int.inject(b)), bool.inject(a < b)))
+abstract class Specification extends Properties("") {
+  /* Taken from Scalaz's SpecLite class */
+  override val name = this.getClass.getName.stripSuffix("$")
+  def checkAll(props: Properties) {
+    for ((name, prop) <- props.properties) yield {
+      property(name) = prop
     }
   }
 }
 
-case class FloatSpecification[F : FloatLattice](gen: LatticeGenerator[F])
-    extends PropSpec with GeneratorDrivenPropertyChecks {
-  // No specification (yet). TODO
+abstract class BoolLatticeTest[B : BoolLattice](gen: LatticeGenerator[B]) extends Specification {
+  implicit val g = gen
+  checkAll(LatticeProperties.boolLattice.laws[B])
 }
 
-case class CharSpecification[C : CharLattice](gen: LatticeGenerator[C])
-    extends PropSpec with GeneratorDrivenPropertyChecks {
-  // No specification
+abstract class StringLatticeTest[S : StringLattice](gen: LatticeGenerator[S]) extends Specification {
+  implicit val g = gen
+  checkAll(LatticeProperties.stringLattice.laws[S])
 }
 
-case class SymbolSpecification[Sym : SymbolLattice](gen: LatticeGenerator[Sym])
-    extends PropSpec with GeneratorDrivenPropertyChecks {
-  // No specification
+abstract class IntLatticeTest[I : IntLattice](gen: LatticeGenerator[I]) extends Specification {
+  implicit val g = gen
+  checkAll(LatticeProperties.intLattice.laws[I])
 }
 
-class TypeLatticeTest extends LatticeElementSpecification[Type.T](TypeGenerator)(Type.typeIsLatticeElement)
-class TypeBooleanTest extends BooleanSpecification[Type.T](TypeGenerator)(Type.typeIsBoolean)
-class TypeStringTest extends StringSpecification[Type.T](TypeGenerator)(Type.typeIsString)
-class TypeIntegerTest extends IntegerSpecification[Type.T](TypeGenerator)(Type.typeIsInteger)
-class TypeFloatTest extends FloatSpecification[Type.T](TypeGenerator)(Type.typeIsFloat)
-class TypeCharTest extends CharSpecification[Type.T](TypeGenerator)(Type.typeIsChar)
-class TypeSymbolTest extends SymbolSpecification[Type.T](TypeGenerator)(Type.typeIsSymbol)
+abstract class FloatLatticeTest[F : FloatLattice](gen: LatticeGenerator[F]) extends Specification {
+  implicit val g = gen
+  checkAll(LatticeProperties.floatLattice.laws[F])
+}
 
-class ConcreteBooleanLatticeTest extends LatticeElementSpecification[ConcreteBoolean.B](ConcreteBooleanGenerator)(ConcreteBoolean.isBoolean)
-class ConcreteStringLatticeTest extends LatticeElementSpecification[ConcreteString.S](ConcreteStringGenerator)(ConcreteString.isString)
-class ConcreteIntegerLatticeTest extends LatticeElementSpecification[ConcreteInteger.I](ConcreteIntegerGenerator)(ConcreteInteger.isInteger)
-class ConcreteFloatLatticeTest extends LatticeElementSpecification[ConcreteFloat.F](ConcreteFloatGenerator)(ConcreteFloat.isFloat)
-class ConcreteCharLatticeTest extends LatticeElementSpecification[ConcreteChar.C](ConcreteCharGenerator)(ConcreteChar.isChar)
-class ConcreteSymbolLatticeTest extends LatticeElementSpecification[ConcreteSymbol.Sym](ConcreteSymbolGenerator)(ConcreteSymbol.isSymbol)
+abstract class CharLatticeTest[C : CharLattice](gen: LatticeGenerator[C]) extends Specification {
+  implicit val g = gen
+  checkAll(LatticeProperties.charLattice.laws[C])
+}
 
-class ConcreteBooleanTest extends BooleanSpecification[ConcreteBoolean.B](ConcreteBooleanGenerator)(ConcreteBoolean.isBoolean)
-class ConcreteStringTest extends StringSpecification[ConcreteString.S](ConcreteStringGenerator)(ConcreteString.isString)
-class ConcreteIntegerTest extends IntegerSpecification[ConcreteInteger.I](ConcreteIntegerGenerator)(ConcreteInteger.isInteger)
-class ConcreteFloatTest extends FloatSpecification[ConcreteFloat.F](ConcreteFloatGenerator)(ConcreteFloat.isFloat)
-class ConcreteCharTest extends CharSpecification[ConcreteChar.C](ConcreteCharGenerator)(ConcreteChar.isChar)
-class ConcreteSymbolTest extends SymbolSpecification[ConcreteSymbol.Sym](ConcreteSymbolGenerator)(ConcreteSymbol.isSymbol)
+abstract class SymbolLatticeTest[Sym : SymbolLattice](gen: LatticeGenerator[Sym]) extends Specification {
+  implicit val g = gen
+  checkAll(LatticeProperties.symbolLattice.laws[Sym])
+}
 
-class StringConstantPropagationLatticeTest extends LatticeElementSpecification[StringConstantPropagation.S](StringConstantPropagationGenerator)(StringConstantPropagation.isString)
-class IntegerConstantPropagationLatticeTest extends LatticeElementSpecification[IntegerConstantPropagation.I](IntegerConstantPropagationGenerator)(IntegerConstantPropagation.isInteger)
-class FloatConstantPropagationLatticeTest extends LatticeElementSpecification[FloatConstantPropagation.F](FloatConstantPropagationGenerator)(FloatConstantPropagation.isFloat)
-class CharConstantPropagationLatticeTest extends LatticeElementSpecification[CharConstantPropagation.C](CharConstantPropagationGenerator)(CharConstantPropagation.isChar)
-class SymbolConstantPropagationLatticeTest extends LatticeElementSpecification[SymbolConstantPropagation.Sym](SymbolConstantPropagationGenerator)(SymbolConstantPropagation.isSymbol)
+class ConcreteBoolTest extends BoolLatticeTest(ConcreteBooleanGenerator)(ConcreteBoolean.isBoolean)
+class ConcreteStringTest extends StringLatticeTest(ConcreteStringGenerator)(ConcreteString.isString)
+class ConcreteIntTest extends IntLatticeTest(ConcreteIntegerGenerator)(ConcreteInteger.isInteger)
+class ConcreteFloatTest extends FloatLatticeTest(ConcreteFloatGenerator)(ConcreteFloat.isFloat)
+class ConcreteCharTest extends CharLatticeTest(ConcreteCharGenerator)(ConcreteChar.isChar)
+class ConcreteSymbolTest extends SymbolLatticeTest(ConcreteSymbolGenerator)(ConcreteSymbol.isSymbol)
 
+class TypeStringTest extends StringLatticeTest(TypeGenerator)(Type.typeIsString)
+class TypeIntTest extends IntLatticeTest(TypeGenerator)(Type.typeIsInteger)
+class TypeFloatTest extends FloatLatticeTest(TypeGenerator)(Type.typeIsFloat)
+class TypeCharTest extends CharLatticeTest(TypeGenerator)(Type.typeIsChar)
+class TypeSymbolTest extends SymbolLatticeTest(TypeGenerator)(Type.typeIsSymbol)
+
+class ConstantPropagationStringTest extends StringLatticeTest(StringConstantPropagationGenerator)(StringConstantPropagation.isString)
+class ConstantPropagationIntTest extends IntLatticeTest(IntegerConstantPropagationGenerator)(IntegerConstantPropagation.isInteger)
+class ConstantPropagationFloatTest extends FloatLatticeTest(FloatConstantPropagationGenerator)(FloatConstantPropagation.isFloat)
+class ConstantPropagationCharTest extends CharLatticeTest(CharConstantPropagationGenerator)(CharConstantPropagation.isChar)
+class ConstantPropagationSymbolTest extends SymbolLatticeTest(SymbolConstantPropagationGenerator)(SymbolConstantPropagation.isSymbol)
 
 class ConcreteCountingTest extends LatticePropSpec(new ConcreteLattice(true))
 class ConcreteNoCountingTest extends JoinLatticePropSpec(new ConcreteLattice(false))
