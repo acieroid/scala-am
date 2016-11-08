@@ -79,6 +79,7 @@ case class MultisetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.map(_._2).sum)
+    override def toString = messages.map({ case ((_, s, _), n) => s"$s: $n" }).mkString(", ")
   }
   def empty = M(Set.empty)
 }
@@ -192,16 +193,24 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def macrostepStopper: Boolean
   }
   case class ActorEffectSend(target: PID, name: String) extends ActorEffect {
-    def macrostepStopper = true
+    def macrostepStopper = false
     override def toString = s"$target ! $name"
   }
   case class ActorEffectSendSelf(target: PID, name: String) extends ActorEffect {
-    def macrostepStopper = true
+    def macrostepStopper = false
     override def toString = s"self ! $name"
   }
   case class ActorEffectTerminate(p: PID) extends ActorEffect {
     def macrostepStopper = true
     override def toString = s"x"
+  }
+  case class ActorEffectCreate(p: PID, name: String) extends ActorEffect {
+    def macrostepStopper = false
+    override def toString = s"create $name"
+  }
+  case class ActorEffectBecome(p: PID, name: String) extends ActorEffect {
+    def macrostepStopper = true
+    override def toString = s"become $name"
   }
 
   case class State(procs: Procs, store: Store[Addr, Abs], kstore: KontStore[KontAddr]) {
@@ -248,16 +257,16 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         Set((this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push((p, name, msg)), t = Timestamp[Time].tick(ctx.t)))),
           p, Some(ActorEffectSendSelf(p, name))))
-      case ActorActionCreate(actd, exp, env2, store2, fres : (PID => Abs), effs) =>
+      case ActorActionCreate(name, actd, exp, env2, store2, fres : (PID => Abs), effs) =>
         val p2 = ThreadIdentifier[PID].thread(exp, ctx.t)
         Set((this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(fres(p2)), t = Timestamp[Time].tick(ctx.t)))
           .extend(p2 -> Context.create(p2, actd, env2)),
-          store = store2), p, None))
-      case ActorActionBecome(actd, env2, store2, vres, effs) =>
+          store = store2), p, Some(ActorEffectCreate(p, name))))
+      case ActorActionBecome(name, actd, env2, store2, vres, effs) =>
         Set((this.copy(procs = procs
           .update(p -> Context.create(p, actd, env2).copy(t = Timestamp[Time].tick(ctx.t), mbox = ctx.mbox)),
-          store = store2), p, None))
+          store = store2), p, Some(ActorEffectBecome(p, name))))
       case ActorActionTerminate(_) =>
         Set((this.copy(procs = procs.terminate(p)), p, Some(ActorEffectTerminate(p))))
     }
@@ -326,30 +335,35 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
      * because we need to keep track of the edge. */
     /* TODO: computing the graph can be disabled when it is not required by the main loop. */
     def macrostepPid(p: PID, sem: Semantics[Exp, Abs, Addr, Time]): Option[(G, Set[(State, Option[ActorEffect])])] = {
+      println(s"Macrostepping thread $p")
       def loop(todo: Set[State], visited: Set[State], finals: Set[(State, Option[ActorEffect])], graph: G): (G, Set[(State, Option[ActorEffect])]) = {
         todo.headOption match {
           case Some(s) =>
             if (visited.contains(s)) {
+              //println("visited")
               /* Already explored this state, skip it */
               loop(todo.tail, visited, finals, graph)
             } else if (s.halted) {
+              //println("halted")
               /* The state is halted. It's therefore part of the final states (although it
                * doesn't produce any effect) */
               loop(todo.tail, visited, finals + ((s, None)), graph)
             } else {
               /* Otherwise, step this state */
+              //println("visiting")
               val succs = s.stepPid(p, sem)
-              /* if (succs.isEmpty) {
+              //println(succs.size)
+              if (succs.isEmpty) {
                 /* No state produced, this state is stuck for this actor, treat it as a final state */
                 loop(todo.tail, visited + s, finals + ((s, None)), graph)
-              } else { */
+              } else {
                 /* add the successors to the graph */
                 val newGraph = graph.addEdges(succs.map({ case (s2, _, eff) => (s, (p, eff), s2) }))
                 /* schedule the successors that did not produce effects for exploration, and add
                  * the ones that did produce effects to the finals set */
                 val (succsEff, succsNoEff) = succs.partition({ case (_, _, eff) => eff.map(_.macrostepStopper).getOrElse(false) })
                 loop(todo.tail ++ succsNoEff.map(_._1), visited + s, finals ++ succsEff.map({ case (s2, _, eff) => (s2, eff) }), newGraph)
-            /* } */
+              }
             }
           case None =>
             /* Nothing more to explore */
@@ -357,6 +371,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         }
       }
       val succs = stepPid(p, sem)
+      println(s"Successors ${succs.size}")
       if (succs.isEmpty) {
         None
       } else {
@@ -526,15 +541,19 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         todo.headOption match {
           case Some(s) =>
             if (visited.contains(s)) {
+              //println("Already visited")
               loopMacrostep(todo.tail, visited, halted, graph)
             } else if (s.halted) {
+              //println("halted")
               loopMacrostep(todo.tail, visited + s, halted + s, graph)
             } else {
-              // println(s"Macrostepping from state ${id(graph, s)}")
-              val succs = s.macrostepAll(sem)
-              /* println(s"Macrostep produced ${succs.size} successors")
-              succs.headOption match {
-                case Some((s, p, g)) => g.toDotFile("foo.dot", _.toXml,
+              println(s"Macrostepping from state ${id(graph, s)}")
+              val succs: Set[(Set[(State, Option[ActorEffect])], PID, G)] = s.macrostepAll(sem)
+              //println(s"Macrostep produced ${succs.size} successors")
+              /*succs.headOption match {
+                case Some((s, p, g)) =>
+                  println(s)
+                  g.toDotFile("foo.dot", _.toXml,
                   (s) => if (s.hasError) {
                     Colors.Red
                   } else if (halted.contains(s)) {

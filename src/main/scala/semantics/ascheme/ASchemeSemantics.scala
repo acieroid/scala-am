@@ -73,7 +73,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
             Action.error(ArityError(s"create actor $name", xs.size, argsv.size))
           } else {
             val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
-            ActorAction.create(actd, exp, env2, store2, IsASchemeLattice[Abs].injectPid _)
+            ActorAction.create(name, actd, exp, env2, store2, IsASchemeLattice[Abs].injectPid _)
           }
         })
       }
@@ -90,7 +90,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
             Action.error(ArityError("become behavior", xs.size, argsv.size))
           } else {
             val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
-            ActorAction.become(actd, env2, store2, IsASchemeLattice[Abs].inject(false))
+            ActorAction.become(name, actd, env2, store2, IsASchemeLattice[Abs].inject(false))
           }
         })
       }

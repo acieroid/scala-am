@@ -12,6 +12,7 @@ case class SomePosition(p: scala.util.parsing.input.Position) extends Position {
   def <(that: Position) = that match {
     case SomePosition(p2) => p < p2
   }
+  override def toString = p.toString
 }
 
 object Position {
