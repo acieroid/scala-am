@@ -34,7 +34,7 @@ object ValueNil extends Value {
  * resides in the input file, and as tagging information for the abstract
  * machine.
  */
-trait SExp extends {
+trait SExp {
   val pos: Position
 }
 /**
