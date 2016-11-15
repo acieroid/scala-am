@@ -177,12 +177,15 @@ object Main {
             implicit val isAddress = address.isAddress
 
             val machine = config.machine match {
-              case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](new MultisetMboxImpl[ContextSensitiveTID, lattice.L])
+              case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](new PowersetMboxImpl[ContextSensitiveTID, lattice.L])
+              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](new MultisetMboxImpl[ContextSensitiveTID, lattice.L])
               case _ => throw new Exception(s"unsupported machine for AScheme: ${config.machine}")
             }
 
-            val sem = new ASchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, lattice.L])
+            val visitor = new RecordActorVisitor[lattice.L]
+            val sem = new ASchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, lattice.L], visitor)
             replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
+            visitor.print
         }
       }
       case None => ()
