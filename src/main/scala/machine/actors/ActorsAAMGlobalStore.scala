@@ -36,8 +36,10 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
       case None => throw new Exception("GlobalStore should be used with a store that supports delta!")
     }
     def push(a: KontAddr, kont: Kont[KontAddr]): GlobalStore =
-      this.copy(kstoreDelta = kstoreDelta + (a -> (kstoreDelta(a) + kont)),
-        mainKStoreDelta = mainKStoreDelta + (a -> (mainKStoreDelta(a) + kont)))
+      if (kstore.lookup(a).contains(kont)) { this } else {
+        this.copy(kstoreDelta = kstoreDelta + (a -> (kstoreDelta(a) + kont)),
+          mainKStoreDelta = mainKStoreDelta + (a -> (mainKStoreDelta(a) + kont)))
+      }
     def isUnchanged = storeDelta.isEmpty && kstoreDelta.isEmpty
     def mainIsUnchanged = mainStoreDelta.isEmpty && mainKStoreDelta.isEmpty
     private def addKStoreDelta(kstore: TimestampedKontStore[KontAddr], kstoreDelta: KStoreDelta): TimestampedKontStore[KontAddr] =
@@ -47,14 +49,15 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def commit = if (isUnchanged) { this } else {
       this.copy(store = store.addDelta(storeDelta), storeDelta = StoreDelta.empty,
         kstore = addKStoreDelta(kstore, kstoreDelta), kstoreDelta = KStoreDelta.empty)
-    }
+      }
     def commitMain = if (mainIsUnchanged) { this } else {
       val newStore = oldStore.addDelta(mainStoreDelta)
       val newKStore = addKStoreDelta(oldKStore, mainKStoreDelta)
       this.copy(store = newStore, oldStore = newStore, storeDelta = StoreDelta.empty, mainStoreDelta = StoreDelta.empty,
         kstore = newKStore, oldKStore = newKStore, kstoreDelta = KStoreDelta.empty, mainKStoreDelta = KStoreDelta.empty)
     }
-    def restore = this.copy(store = oldStore, kstore = oldKStore, storeDelta = StoreDelta.empty, kstoreDelta = KStoreDelta.empty)
+    def restore =
+      this.copy(store = oldStore, kstore = oldKStore, storeDelta = StoreDelta.empty, kstoreDelta = KStoreDelta.empty)
   }
   object GlobalStore {
     def initial(storeMappings: Iterable[(Addr, Abs)]): GlobalStore = {
@@ -260,15 +263,11 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         if (todo.isEmpty) {
           (graph, finals, store)
         } else {
-          println(s"Stepping frontier of ${todo.length} states")
           val (edges, newFinals, store2) = todo.foldLeft((Set[(State, (PID, Option[ActorEffect]), State)](), Set[(State, Option[ActorEffect])](), store))((acc, s) => {
-            println(s"Stepping state ${id(graph, s)}")
             s.stepPid(p, sem, acc._3) match {
               case (next, _) if next.isEmpty =>
-                println("No successor")
                 (acc._1, acc._2 + ((s, None)), acc._3)
               case (next, store2) =>
-                println(s"${next.size} successors")
                 (acc._1 ++ next.map({ case (s2, p, eff) => (s, (p, eff), s2) }), acc._2 ++ next.collect({
                   case (s2, _, _) if s2.halted => (s2, None)
                   case (s2, _, Some(eff)) if eff.macrostepStopper => (s2, Some(eff))
@@ -294,7 +293,6 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def macrostepAll(store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time]):
         (Set[(Set[(State, Option[ActorEffect])], PID, G)], GlobalStore) =
       procs.pids.foldLeft((Set[(Set[(State, Option[ActorEffect])], PID, G)](), store))((acc, p) => {
-        println(s"macrostepping $p")
         macrostepPid(p, acc._2, sem) match {
           case Some((graph, states, store2)) => {
             graph.toDotFile("foo.dot", _.toXml,
@@ -306,7 +304,6 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
                 case (p, None) => List(scala.xml.Text(p.toString))
                 case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
               })
-            scala.io.StdIn.readLine()
             (acc._1 + ((states, p, graph)), store2)
           }
           case None => acc
@@ -356,11 +353,9 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         ActorsAAMOutput(halted, reallyVisited.size, Util.timeElapsed(startingTime), graph, !todo.isEmpty)
       } else {
         val (edges, store2) = todo.foldLeft((Set[(State, (PID, Option[ActorEffect]), State)](), store))((acc, s) => {
-          println(s"Macrostepping from state ${id(graph, s)}")
           s.macrostepAll(acc._2.restore, sem) match {
             case (next, store2) =>
               (acc._1 ++ next.flatMap({ case (ss, p, _) =>
-                println(s"Results in ${ss.length} states")
                 ss.map({ case (s2, eff) => (s, (p, eff), s2) })
               }), store2)
           }
