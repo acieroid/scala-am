@@ -26,6 +26,7 @@ case class PowersetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
     def size = if (messages.isEmpty) { MboxSizeN(0) } else { MboxSizeUnbounded }
+    override def toString = messages.map({ case (_, s, _) => s }).mkString(" + ")
   }
   def empty = M(Set.empty)
 }
@@ -57,12 +58,14 @@ case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, A
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.length)
+    override def toString = messages.map({ case (_, s, _) => s }).mkString(", ")
   }
   case class MUnordered(messages: Set[Message]) extends T {
     def pop = messages.map(m => (m, this))
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
     def size = MboxSizeUnbounded
+    override def toString = messages.map({ case (_, s, _) => s }).mkString(" + ")
   }
   def empty = MOrdered(List.empty)
 }
@@ -79,7 +82,7 @@ case class MultisetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.map(_._2).sum)
-    override def toString = messages.map({ case ((_, s, _), n) => s"$s: $n" }).mkString(", ")
+    override def toString = messages.map({ case ((_, s, _), n) => s"$s: $n" }).mkString(" + ")
   }
   def empty = M(Set.empty)
 }
