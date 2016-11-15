@@ -365,7 +365,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
               }), store2)
           }
         })
-        if (store2.isUnchanged) {
+        if (store2.mainIsUnchanged) {
           loopMacrostep(edges.map(_._3).diff(visited), visited ++ todo, reallyVisited ++ todo, halted ++ todo.filter(_.halted),
             store2, graph.map(_.addEdges(edges)))
         } else {
