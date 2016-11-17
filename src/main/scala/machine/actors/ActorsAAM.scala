@@ -58,14 +58,14 @@ case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, A
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.length)
-    override def toString = messages.map({ case (_, s, _) => s }).mkString(", ")
+    override def toString = messages.map({ case (_, s, vs) => s + "(" + vs.mkString(",") + ")" }).mkString(", ")
   }
   case class MUnordered(messages: Set[Message]) extends T {
     def pop = messages.map(m => (m, this))
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
     def size = MboxSizeUnbounded
-    override def toString = messages.map({ case (_, s, _) => s }).mkString(" + ")
+    override def toString = messages.map({ case (_, s, vs) => s + "(" + vs.mkString(",") + ")" }).mkString(" + ")
   }
   def empty = MOrdered(List.empty)
 }
@@ -196,15 +196,15 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def macrostepStopper: Boolean
   }
   case class ActorEffectSend(target: PID, name: String) extends ActorEffect {
-    def macrostepStopper = false
+    def macrostepStopper = true
     override def toString = s"$target ! $name"
   }
   case class ActorEffectSendSelf(target: PID, name: String) extends ActorEffect {
-    def macrostepStopper = false
+    def macrostepStopper = true
     override def toString = s"self ! $name"
   }
   case class ActorEffectTerminate(p: PID) extends ActorEffect {
-    def macrostepStopper = true
+    def macrostepStopper = false
     override def toString = s"x"
   }
   case class ActorEffectCreate(p: PID, name: String) extends ActorEffect {
@@ -212,7 +212,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     override def toString = s"create $name"
   }
   case class ActorEffectBecome(p: PID, name: String) extends ActorEffect {
-    def macrostepStopper = true
+    def macrostepStopper = false
     override def toString = s"become $name"
   }
 

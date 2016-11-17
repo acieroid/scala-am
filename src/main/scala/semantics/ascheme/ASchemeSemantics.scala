@@ -11,7 +11,6 @@ class RecordActorVisitor[Abs : JoinLattice] extends ActorVisitor[Abs] {
   var targetVals = Map.empty[Position, Abs].withDefaultValue(JoinLattice[Abs].bottom)
   var argsVals = Map.empty[Position, List[Abs]]
   def send(pos: Position, target: Abs, message: String, args: List[Abs]): Unit = {
-    println(s"send $pos")
     targetVals += (pos -> (JoinLattice[Abs].join(targetVals(pos), target)))
     argsVals += (pos -> (argsVals.get(pos) match {
       case Some(vs) if vs.length == args.length => vs.zip(args).map({ case (x, y) => JoinLattice[Abs].join(x, y) })
