@@ -11,6 +11,10 @@ case object MboxSizeUnbounded extends MboxSize {
 
 trait MboxImpl[PID, Abs] {
   type Message = (PID, String, List[Abs])
+  def mToString(m: Message) = m match {
+    case (sender, message, vs) =>
+      message + (if (vs.isEmpty) { "" } else { "(" + vs.mkString(",") + ")" })
+  }
   trait T {
     def pop: Set[(Message, T)]
     def push(m: Message): T
@@ -22,11 +26,11 @@ trait MboxImpl[PID, Abs] {
 
 case class PowersetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
   case class M(messages: Set[Message]) extends T {
-    def pop = messages.map(m => (m, this))
+    def pop = messages.flatMap(m => Set((m, this), (m, this.copy(messages = messages - m))))
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
     def size = if (messages.isEmpty) { MboxSizeN(0) } else { MboxSizeUnbounded }
-    override def toString = messages.map({ case (_, s, _) => s }).mkString(" + ")
+    override def toString = messages.map(mToString).mkString(" + ")
   }
   def empty = M(Set.empty)
 }
@@ -40,7 +44,7 @@ case class ListMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     def push(m: Message) = this.copy(messages = messages :+ m)
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.length)
-    override def toString = messages.map({ case (_, s, _) => s }).mkString(", ")
+    override def toString = messages.map(mToString).mkString(", ")
   }
   def empty = M(List.empty)
 }
@@ -58,14 +62,14 @@ case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, A
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.length)
-    override def toString = messages.map({ case (_, s, vs) => s + "(" + vs.mkString(",") + ")" }).mkString(", ")
+    override def toString = messages.map(mToString).mkString(", ")
   }
   case class MUnordered(messages: Set[Message]) extends T {
     def pop = messages.map(m => (m, this))
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
     def size = MboxSizeUnbounded
-    override def toString = messages.map({ case (_, s, vs) => s + "(" + vs.mkString(",") + ")" }).mkString(" + ")
+    override def toString = messages.map(mToString).mkString(" + ")
   }
   def empty = MOrdered(List.empty)
 }
@@ -82,7 +86,7 @@ case class MultisetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.map(_._2).sum)
-    override def toString = messages.map({ case ((_, s, _), n) => s"$s: $n" }).mkString(" + ")
+    override def toString = messages.map(m => mToString(m._1)).mkString(" + ")
   }
   def empty = M(Set.empty)
 }
@@ -104,6 +108,12 @@ case class BoundedMultisetMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PI
     }
     def isEmpty = messages.isEmpty && noCountMessages.isEmpty
     def size = if (noCountMessages.isEmpty) { MboxSizeN(messages.map(_._2).sum) } else { MboxSizeUnbounded }
+    override def toString = {
+      val unord = if (messages.isEmpty) { "" } else { "O(" + messages.map(m => mToString(m._1)).mkString(", ") + ")" }
+      val sep = if (!messages.isEmpty && !noCountMessages.isEmpty) { ", " } else { "" }
+      val ord = if (noCountMessages.isEmpty) { "" } else { "(U(" + noCountMessages.map(mToString).mkString(" + ") + ")" }
+      unord + sep + ord
+    }
   }
   def empty = M(Set.empty, Set.empty)
 }
