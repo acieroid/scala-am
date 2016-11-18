@@ -184,10 +184,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         case ControlError(_) => (Set.empty, store)
         case ControlWait => inst match {
           case ActorInstanceActor(actd, env) =>
-            Logger.log(s"stepReceive $actd")
             mbox.pop.foldLeft(init)((acc, m) => m match {
               case (message @ (sender, name, values), mbox2) =>
-                Logger.log(s"got message $m")
                 sem.stepReceive(p, name, values, actd, env, acc._2.store, t).foldLeft(acc)((acc, action) =>
                   this.copy(mbox = mbox2).integrate(p, action, acc._2) match {
                     case ((s, n, eff, sent, recv), store2) =>
@@ -312,10 +310,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def macrostepPid(p: PID, store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time]):
         Option[(Set[(State, Option[ActorEffect])], GlobalStore)] = {
       val init: (Set[(State, Option[ActorEffect])], GlobalStore) = (Set.empty, store)
-      Logger.log(s"Stepping $p")
       val res = procs.get(p).foldLeft(init)((acc, ctx) => {
         val (res, store2) = ctx.macrostep(p, acc._2, sem)
-        Logger.log(s"Stepping ${ctx.control}, ${res.length}")
         val next = res.map({
           case (ctx2, created, eff, sent, recv) =>
             val withCtx = ctx2 match {
@@ -403,15 +399,10 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         ActorsAAMOutput(halted, reallyVisited.size, Util.timeElapsed(startingTime), graph, !todo.isEmpty)
       } else {
         val (edges, store2) = todo.foldLeft((Set[(State, (PID, Option[ActorEffect]), State)](), store))((acc, s) => {
-          println(s"Stepping ${id(graph, s)}")
-          Logger.withLog(id(graph, s) == 2) {
-            val (next, store2) = s.macrostepAll(acc._2.restore, sem)
-          println(s"Successors: ${next.length}")
-            (acc._1 ++ next.flatMap({ case (ss, p) =>
-              println(s"Successors for $p: ${ss.length}")
+          val (next, store2) = s.macrostepAll(acc._2.restore, sem)
+          (acc._1 ++ next.flatMap({ case (ss, p) =>
             ss.map({ case (s2, eff) => (s, (p, eff), s2) })
-            }), store2)
-          }
+          }), store2)
         })
         if (store2.mainIsUnchanged) {
           loopMacrostep(edges.map(_._3).diff(visited), visited ++ todo, reallyVisited ++ todo, halted ++ todo.filter(_.halted),
