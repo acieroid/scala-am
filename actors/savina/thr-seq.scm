@@ -18,17 +18,10 @@
                            (send next-actor exit (- exits-left 1))
                            #f)
                        (terminate))))
-         (build-vector (lambda (n f)
-                         (letrec ((v (make-vector n #f))
-                                  (loop (lambda (i)
-                                          (if (< i n)
-                                              (begin
-                                                (vector-set! v i (f i))
-                                                (loop (+ i 1)))
-                                              v))))
-                           (loop 0))))
-         (ring-actors (build-vector N
-                                    (lambda (i) (create threadring-actor i N #f))))
+         (ring-actors (vector
+                       (create threadring-actor 0 3 #f)
+                       (create threadring-actor 1 3 #f)
+                       (create threadring-actor 2 3 #f)))
          (loop-next (lambda (i)
                       (if (= i N)
                           'done

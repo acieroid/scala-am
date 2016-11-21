@@ -11,16 +11,9 @@
                           (if (= (+ processed 1) N)
                               (terminate)
                               (become throughput-actor (+ processed 1))))))
-         (build-vector (lambda (n f)
-                         (letrec ((v (make-vector n #f))
-                                  (loop (lambda (i)
-                                          (if (< i n)
-                                              (begin
-                                                (vector-set! v i (f i))
-                                                (loop (+ i 1)))
-                                              v))))
-                           (loop 0))))
-         (actors (vector-build (lambda (i) (create throughput-actor 0)) A))
+         (actors (vector (create throughput-actor 0)
+                         (create throughput-actor 0)
+                         (create throughput-actor 0)))
          (vector-foreach (lambda (f v)
                            (letrec ((loop (lambda (i)
                                             (if (< i (vector-length v))
@@ -33,6 +26,7 @@
                  (if (= n N)
                      'done
                      (begin
-                       (vector-foreach (lambda (a) (send a message)) actors)
+                       (vector-foreach (lambda (a)
+                                         (send a message)) actors)
                        (loop (+ n 1)))))))
   (loop 0))

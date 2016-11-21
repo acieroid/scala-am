@@ -7,11 +7,7 @@
           (actor "forkjoin" ()
                  (message ()
                           (perform-computation 37.2)
-                          (terminate))))
-          (loop (lambda (n)
-                  (if (= n N)
-                      'done
-                      (begin
-                        (send (create forkjoin-actor) message)
-                        (loop (+ n 1)))))))
-  (loop 0))
+                          (terminate)))))
+  (send (create forkjoin-actor) message)
+  (send (create forkjoin-actor) message)
+  (send (create forkjoin-actor) message))
