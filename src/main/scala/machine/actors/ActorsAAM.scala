@@ -156,7 +156,7 @@ case class BoundedMultisetMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PI
     override def toString = {
       val unord = if (messages.isEmpty) { "" } else { "O(" + messages.map(m => mToString(m._1)).mkString(", ") + ")" }
       val sep = if (!messages.isEmpty && !noCountMessages.isEmpty) { ", " } else { "" }
-      val ord = if (noCountMessages.isEmpty) { "" } else { "(U(" + noCountMessages.map(mToString).mkString(" + ") + ")" }
+      val ord = if (noCountMessages.isEmpty) { "" } else { "U(" + noCountMessages.map(mToString).mkString(" + ") + ")" }
       unord + sep + ord
     }
   }
