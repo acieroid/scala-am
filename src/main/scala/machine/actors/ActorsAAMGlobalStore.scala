@@ -187,6 +187,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
           case ActorInstanceActor(actd, env) =>
             mbox.pop.foldLeft(init)((acc, m) => m match {
               case (message @ (sender, name, values), mbox2) =>
+                Logger.log(s"Mailbox has message $message")
                 sem.stepReceive(p, name, values, actd, env, acc._2.store, t).foldLeft(acc)((acc, action) =>
                   this.copy(mbox = mbox2).integrate(p, action, acc._2) match {
                     case ((s, n, eff, sent, recv), store2) =>
@@ -211,10 +212,12 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         } else {
           val (next, newFinals, store2) = todo.foldLeft((Set[MacrostepState](), Set[MacrostepState](), store))((acc, s) => s match {
             case (None, _, _, _, _) => throw new RuntimeException("Terminated context in frontier of macrostep!")
-            case (Some(ctx), cr, eff, sent, recv) =>
+            case st @ (Some(ctx), cr, eff, sent, recv) =>
               val (next, store2) = ctx.step(p, sem, acc._3)
+              Logger.log(s"Stepping ${ctx.control}")
+              Logger.log(s"next is: ${next.length}")
               if (next.isEmpty) {
-                (acc._1, acc._2, store)
+                (acc._1, acc._2 + ((Some(ctx), cr, eff, sent, recv)), store)
               } else {
                 val (newTodo, newFinals) = next.partition({
                   case (Some(ctx2), cr2, eff2, sent2, recv2) =>
@@ -242,7 +245,12 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
           }
         }
       }
-      loop(Set((Some(this), Set.empty, ActorEffect.empty, None, None)), Set(), Set(), store)
+      this.step(p, sem, store) match {
+        case (next, store2) if !next.isEmpty =>
+          loop(next, Set(), Set(), store2)
+        case _ =>
+          (Set(), store)
+      }
     }
   }
   object Context {
@@ -303,7 +311,6 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
      * as every final state and the effect that stopped the macrostep for that
      * state. The final states *are* in the graph (unlike macrostepTrace),
      * because we need to keep track of the edge. */
-    /* TODO: computing the graph can be disabled (it's mainly there for debugging purposes). */
     /* TODO: commits done to the store here should not be the same kind of commit as from the general loop */
     def macrostepPid(p: PID, store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time]):
         Option[(Set[(State, ActorEffect)], GlobalStore)] = {
@@ -348,7 +355,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
           case Some((states, store2)) => {
             (acc._1 + ((states, p)), store2)
           }
-          case None => acc
+          case None =>
+            acc
         }
       })
   }
@@ -436,5 +444,4 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     val gs = if (graph) { Some(Map[PID, Graph[Set[Context], ActorEffect]]().withDefaultValue(new Graph[Set[Context], ActorEffect]())) } else { None }
     loopMacrostep(Set(initialState), Set(), Set(), Set(), store, g, gs)
   }
-  /* TODO: graph of each actor separately */
 }

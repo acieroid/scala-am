@@ -24,6 +24,51 @@ trait MboxImpl[PID, Abs] {
   def empty: T
 }
 
+object IdGen {
+  var i = 0;
+  def next: Int = {
+    i += 1
+    i
+  }
+}
+case class GraphMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
+  /* messages are pushed on the top of the queue, popped from the bottom */
+  case class M(top: Option[Message], bot: Option[Message], nodes: Map[Message, Set[Message]]) extends T {
+    def toDot(): Unit = {
+      val file = s"mbox-${IdGen.next}.dot"
+      println(s"Outputting to $file (${nodes.keySet.length} nodes)")
+      nodes.keys.foldLeft(new Graph[Message, Unit])((g, m) =>
+        nodes.get(m) match {
+          case None => g
+          case Some(nexts) => g.addNode(m).addEdges(nexts.map(m2 => (m, (), m2)))
+        }).toDotFile(file, m => List(scala.xml.Text(mToString(m))), n =>
+        if (top == Some(n)) { Colors.Pink } else if (bot == Some(n)) { Colors.Green } else { Colors.White }, _ => List())
+    }
+    def pop = bot match {
+      case None => Set[(Message, T)]()
+      case Some(m) => nodes.get(m) match {
+        case None => Set((m, this.copy(bot = None)))
+        case Some(nexts) if nexts.isEmpty => Set((m, this.copy(bot = None)))
+        case Some(nexts) => nexts.map(b => (m, this.copy(bot = Some(b))))
+      }
+    }
+    def push(m: Message) = top match {
+      case None => this.copy(top = Some(m), bot = bot.orElse(Some(m)), nodes)
+      case Some(t) => this.copy(top = Some(m), bot = bot.orElse(Some(m)), nodes = (nodes + (t -> (nodes(t) + m))))
+    }
+    def isEmpty = !top.isDefined
+    def size = if (top.isDefined) { MboxSizeUnbounded /* could be more precise when no cycle present */} else { MboxSizeN(0) }
+    override def toString = bot match {
+      case Some(m) =>
+        mToString(m) + (if (nodes.keySet.length > 1) { ", {" + (nodes.keySet - m).map(m => mToString(m)).mkString(" + ") + "}" } else { "" })
+      case None => ""
+    }
+  }
+  def empty = M(None, None, Map.empty.withDefaultValue(Set.empty))
+}
+
+
+
 case class PowersetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
   case class M(messages: Set[Message]) extends T {
     def pop = messages.flatMap(m => Set((m, this), (m, this.copy(messages = messages - m))))

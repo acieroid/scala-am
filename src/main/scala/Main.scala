@@ -176,9 +176,16 @@ object Main {
             }
             implicit val isAddress = address.isAddress
 
+            val bound = 3
+            val mbox =
+              // new BoundedListMboxImpl[ContextSensitiveTID, lattice.L](bound)
+              // new PowersetMboxImpl[ContextSensitiveTID, lattice.L]
+              // new BoundedMultisetMboxImpl[ContextSensitiveTID, lattice.L](bound)
+               new GraphMboxImpl[ContextSensitiveTID, lattice.L]
+
             val machine = config.machine match {
-              case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](new PowersetMboxImpl[ContextSensitiveTID, lattice.L])
-              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](new MultisetMboxImpl[ContextSensitiveTID, lattice.L])
+              case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](mbox)
+              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](mbox)
               case _ => throw new Exception(s"unsupported machine for AScheme: ${config.machine}")
             }
 

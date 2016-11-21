@@ -1,7 +1,7 @@
 ;; Adapted from Savina benchmarks ("Fork Join (throughput)" benchmark, coming from JGF)
 (letrec ((N 10)
          (perform-computation (lambda (theta)
-                                (let ((sint (sin theta)))
+                                (let ((sint (+ 1 theta)))
                                   (* sint sint))))
          (throughput-actor
           (actor "throughput" (processed)
