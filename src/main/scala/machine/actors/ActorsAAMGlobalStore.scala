@@ -23,7 +23,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ActorsAAMGlobalStore"
 
-  type G = Graph[State, (PID, Option[ActorEffect])]
+  type G = Graph[State, (PID, ActorEffect)]
   object G {
     def apply(): G = new Graph()
     def apply(s: State): G = new Graph(s)
@@ -123,46 +123,47 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
       case ControlError(_) => true
       case _ => false
     }
+    def trimMbox: Context = this.copy(mbox = M.empty)
     /** Returns: the new context (or None if it terminated), the processes created,
       * an optinoal effect, an optional message sent, and the updated global store */
     def integrate(p: PID, act: Act, store: GlobalStore):
         (MacrostepState, GlobalStore) = act match {
       case ActionReachedValue(v, store2, effs) =>
         ((Some(this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t))),
-          Set.empty, None, None, None),
+          Set.empty, ActorEffect.empty, None, None),
           store.includeDelta(store2.delta))
       case ActionPush(frame, e, env, store2, effs) =>
         val next = NormalKontAddress(p, e, t)
         ((Some(this.copy(control = ControlEval(e, env), kont = next, t = Timestamp[Time].tick(t))),
-          Set.empty, None, None, None),
+          Set.empty, ActorEffect.empty, None, None),
           store.includeDelta(store2.delta).push(next, Kont(frame, kont)))
       case ActionEval(e, env, store2, effs) =>
         ((Some(this.copy(control = ControlEval(e, env), t = Timestamp[Time].tick(t))),
-          Set.empty, None, None, None),
+          Set.empty, ActorEffect.empty, None, None),
           store.includeDelta(store2.delta))
       case ActionStepIn(fexp, clo, e, env, store2, argsv, effs) =>
         ((Some(this.copy(control = ControlEval(e, env), t = Timestamp[Time].tick(t, fexp))),
-          Set.empty, None, None, None),
+          Set.empty, ActorEffect.empty, None, None),
           store.includeDelta(store2.delta))
       case ActionError(err) =>
         ((Some(this.copy(control = ControlError(err))),
-          Set.empty, None, None, None),
+          Set.empty, ActorEffect.empty, None, None),
           store)
       case ActorActionBecome(name, actd, env2, store2, vres, effs) =>
         ((Some(Context.create(p, actd, env2).copy(t = Timestamp[Time].tick(t), mbox = mbox)),
-          Set.empty, Some(ActorEffectBecome(p, name)), None, None),
+          Set.empty, ActorEffect.become(p, name), None, None),
           store.includeDelta(store2.delta))
       case ActorActionTerminate(_) =>
-        ((None, Set.empty, Some(ActorEffectTerminate(p)), None, None),
+        ((None, Set.empty, ActorEffect.terminate(p), None, None),
           store)
       case ActorActionCreate(name, actd, exp, env2, store2, fres : (PID => Abs), effs) =>
         val p2 = ThreadIdentifier[PID].thread(exp, t)
         ((Some(this.copy(control = ControlKont(fres(p2)), t = Timestamp[Time].tick(t))),
-          Set(p2 -> Context.create(p2, actd, env2)), Some(ActorEffectCreate(p, name)), None, None),
+          Set(p2 -> Context.create(p2, actd, env2)), ActorEffect.create(p, name), None, None),
           store.includeDelta(store2.delta))
       case ActorActionSend(ptarget : PID @unchecked, name, msg, vres, effs) =>
         ((Some(this.copy(control = ControlKont(vres), t = Timestamp[Time].tick(t))),
-          Set.empty, Some(ActorEffectSend(ptarget, name, msg)), Some((ptarget, name, msg)), None),
+          Set.empty, ActorEffect.send(ptarget, name, msg), Some((ptarget, name, msg)), None),
           store)
     }
     def step(p: PID, sem: Semantics[Exp, Abs, Addr, Time], store: GlobalStore):
@@ -178,7 +179,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
               this.copy(kont = next).integrate(p, action, acc._2) match { case (s, store2) => (acc._1 + s, store2) })
           })
         case ControlKont(v) if kont == HaltKontAddress && inst != ActorInstanceMain =>
-          (Set((Some(this.copy(control = ControlWait, t = Timestamp[Time].tick(t))), Set.empty, None, None, None)), store)
+          (Set((Some(this.copy(control = ControlWait, t = Timestamp[Time].tick(t))), Set.empty, ActorEffect.empty, None, None)), store)
         case ControlKont(v) if kont == HaltKontAddress && inst == ActorInstanceMain =>
           (Set.empty, store)
         case ControlError(_) => (Set.empty, store)
@@ -189,8 +190,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
                 sem.stepReceive(p, name, values, actd, env, acc._2.store, t).foldLeft(acc)((acc, action) =>
                   this.copy(mbox = mbox2).integrate(p, action, acc._2) match {
                     case ((s, n, eff, sent, recv), store2) =>
-                      assert(eff == None && recv == None)
-                      (acc._1 + ((s, n, Option[ActorEffect](ActorEffectReceive(p, name, values)), sent, Some(message))), store2)
+                      assert(recv == None)
+                      (acc._1 + ((s, n, ActorEffect.combine(eff, ActorEffect.receive(p, name, values)), sent, Some(message))), store2)
                   })
             })
           case ActorInstanceMain =>
@@ -200,7 +201,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     }
 
     /* New context, created actors, effect, message sent, message received */
-    type MacrostepState = (Option[Context], Set[(PID, Context)], Option[ActorEffect], Option[M.Message], Option[M.Message])
+    type MacrostepState = (Option[Context], Set[(PID, Context)], ActorEffect, Option[M.Message], Option[M.Message])
     def macrostep(p: PID, store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time]):
         (Set[MacrostepState], GlobalStore) = {
       def loop(todo: Set[MacrostepState], visited: Set[MacrostepState], finals: Set[MacrostepState], store: GlobalStore):
@@ -223,12 +224,12 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
                 })
                 (acc._1 ++ newTodo.map({
                   case (Some(ctx2), cr2, eff2, sent2, recv2) =>
-                    (Some(ctx2), cr ++ cr2, eff2.orElse(eff) /* keep the most recent */, sent.orElse(sent2), recv.orElse(recv2))
+                    (Some(ctx2), cr ++ cr2, ActorEffect.combine(eff, eff2), sent.orElse(sent2), recv.orElse(recv2))
                   case (None, _, _, _, _) => throw new RuntimeException("Should not happen")
                 }),
                   acc._2 ++ newFinals.map({
                     case (ctx2, cr2, eff2, sent2, recv2) if !(sent.isDefined && sent2.isDefined) && !(recv.isDefined && recv2.isDefined) =>
-                      (ctx2, cr ++ cr2, eff2.orElse(eff), sent.orElse(sent2), recv.orElse(recv2))
+                      (ctx2, cr ++ cr2, ActorEffect.combine(eff, eff2), sent.orElse(sent2), recv.orElse(recv2))
                     case (_, _, _, sent2, recv2) if (sent.isDefined && sent2.isDefined) || (recv.isDefined && recv2.isDefined) =>
                       (Some(ctx), cr, eff, sent, recv)
                   }), store2)
@@ -241,7 +242,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
           }
         }
       }
-      loop(Set((Some(this), Set.empty, None, None, None)), Set(), Set(), store)
+      loop(Set((Some(this), Set.empty, ActorEffect.empty, None, None)), Set(), Set(), store)
     }
   }
   object Context {
@@ -272,26 +273,23 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def empty: Procs = Procs(CountingMap.empty[PID, Context])
   }
 
-  /* An effect will stop a macrostep if macrostepStopper is true, except in the
-   * case where the effect is generated on the first transition of a
-   * macrostep, and macrostepFirst is true */
-  abstract class ActorEffect(val macrostepStopper: Boolean = false, val macrostepFirst: Boolean = false)
-  case class ActorEffectSend(target: PID, name: String, args: List[Abs]) extends ActorEffect(true, false) {
-    val argss = args.mkString(",")
-    override def toString = s"$target ! $name $args"
-  }
-  case class ActorEffectTerminate(p: PID) extends ActorEffect(false, false) {
-    override def toString = s"x"
-  }
-  case class ActorEffectCreate(p: PID, name: String) extends ActorEffect(false, false) {
-    override def toString = s"create $name"
-  }
-  case class ActorEffectBecome(p: PID, name: String) extends ActorEffect(false, false) {
-    override def toString = s"become $name"
-  }
-  case class ActorEffectReceive(p: PID, name: String, args: List[Abs]) extends ActorEffect(true, true) {
-    val argss = args.mkString(",")
-    override def toString = s"? $name $argss"
+  type ActorEffect = List[String]
+  object ActorEffect {
+    def empty: ActorEffect = List.empty
+    def send(target: PID, name: String, args: List[Abs]): ActorEffect =
+      List(if (args.isEmpty) { s"$target ! $name" } else {
+        val argss = args.mkString(", ")
+        s"$target ! $name $argss"
+      })
+    def terminate(p: PID): ActorEffect = List("x")
+    def create(p: PID, name: String): ActorEffect = List(s"create $name")
+    def become(p: PID, name: String): ActorEffect = List(s"become $name")
+    def receive(p: PID, name: String, args: List[Abs]): ActorEffect =
+      List(if (args.isEmpty) { s"? $name" } else {
+        val argss = args.mkString(", ")
+        s"$p ? $name $argss"
+      })
+    def combine(eff1: ActorEffect, eff2: ActorEffect): ActorEffect = eff1 ++ eff2
   }
 
   case class State(procs: Procs) {
@@ -308,8 +306,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     /* TODO: computing the graph can be disabled (it's mainly there for debugging purposes). */
     /* TODO: commits done to the store here should not be the same kind of commit as from the general loop */
     def macrostepPid(p: PID, store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time]):
-        Option[(Set[(State, Option[ActorEffect])], GlobalStore)] = {
-      val init: (Set[(State, Option[ActorEffect])], GlobalStore) = (Set.empty, store)
+        Option[(Set[(State, ActorEffect)], GlobalStore)] = {
+      val init: (Set[(State, ActorEffect)], GlobalStore) = (Set.empty, store)
       val res = procs.get(p).foldLeft(init)((acc, ctx) => {
         val (res, store2) = ctx.macrostep(p, acc._2, sem)
         val next = res.map({
@@ -344,8 +342,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
       }
     }
     def macrostepAll(store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time]):
-        (Set[(Set[(State, Option[ActorEffect])], PID)], GlobalStore) =
-      procs.pids.foldLeft((Set[(Set[(State, Option[ActorEffect])], PID)](), store))((acc, p) => {
+        (Set[(Set[(State, ActorEffect)], PID)], GlobalStore) =
+      procs.pids.foldLeft((Set[(Set[(State, ActorEffect)], PID)](), store))((acc, p) => {
         macrostepPid(p, acc._2, sem) match {
           case Some((states, store2)) => {
             (acc._1 + ((states, p)), store2)
@@ -378,8 +376,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         } else {
           Colors.White
         }, {
-          case (p, None) => List(scala.xml.Text(p.toString))
-          case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
+          case (p, eff) if eff.isEmpty => List(scala.xml.Text(p.toString))
+          case (p, eff) => List(scala.xml.Text(p.toString), <font color="red">{eff.mkString(", ")}</font>)
         })
       case None =>
         println("Not generating graph because no graph was computed")
@@ -389,32 +387,54 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
     val startingTime = System.nanoTime
-    var iteration = 0
     def id(g: Option[G], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
     @scala.annotation.tailrec
     def loopMacrostep(todo: Set[State], visited: Set[State], reallyVisited: Set[State], halted: Set[State],
-      store: GlobalStore, graph: Option[G]): ActorsAAMOutput = {
-      iteration += 1
+      store: GlobalStore, graph: Option[G], graphs: Option[Map[PID, Graph[Set[Context], ActorEffect]]]): ActorsAAMOutput = {
       if (todo.isEmpty || Util.timeoutReached(timeout, startingTime)) {
+        var i = 0;
+        graphs.map(_.foreach({ case (p, g) =>
+          i += 1
+          println(s"$i is $p")
+          g.toDotFile(s"subgraph-$i.dot", ctxs =>
+            if (ctxs.isEmpty) { List(scala.xml.Text("x")) } else {
+              ctxs.map(_.toXml).toList.reduceLeft((acc, l) => acc ++ (scala.xml.Text(", ") :: l))
+            },
+            ctxs => Colors.Yellow, eff =>
+            if (eff.isEmpty) {
+              List()
+            } else {
+              List(<font color="red">{eff.mkString(", ")}</font>)
+            })
+        }))
         ActorsAAMOutput(halted, reallyVisited.size, Util.timeElapsed(startingTime), graph, !todo.isEmpty)
       } else {
-        val (edges, store2) = todo.foldLeft((Set[(State, (PID, Option[ActorEffect]), State)](), store))((acc, s) => {
+        val (edges, store2) = todo.foldLeft((Set[(State, (PID, ActorEffect), State)](), store))((acc, s) => {
           val (next, store2) = s.macrostepAll(acc._2.restore, sem)
           (acc._1 ++ next.flatMap({ case (ss, p) =>
             ss.map({ case (s2, eff) => (s, (p, eff), s2) })
           }), store2)
         })
+        val newTodo = edges.map(_._3)
+        val newGraph = graph.map(_.addEdges(edges))
+        val newGraphs = graphs.map(gs =>
+          edges.foldLeft(gs)((gs, edge) => edge match {
+            case (s1, (p, eff), s2) =>
+              (gs + (p -> gs(p).addEdge(s1.procs.get(p).map(_.trimMbox), eff, s2.procs.get(p).map(_.trimMbox))))
+          }))
         if (store2.mainIsUnchanged) {
-          loopMacrostep(edges.map(_._3).diff(visited), visited ++ todo, reallyVisited ++ todo, halted ++ todo.filter(_.halted),
-            store2, graph.map(_.addEdges(edges)))
+          loopMacrostep(newTodo.diff(visited), visited ++ todo, reallyVisited ++ todo, halted ++ todo.filter(_.halted),
+            store2, newGraph, newGraphs)
         } else {
-          loopMacrostep(edges.map(_._3), Set(), reallyVisited ++ todo, halted ++ todo.filter(_.halted),
-            store2.commitMain, graph.map(_.addEdges(edges)))
+          loopMacrostep(newTodo, Set(), reallyVisited ++ todo, halted ++ todo.filter(_.halted),
+            store2.commitMain, newGraph, newGraphs)
         }
       }
     }
     val (initialState, store) = State.inject(exp, sem.initialEnv, sem.initialStore)
     val g = if (graph) { Some(G()) } else { None }
-    loopMacrostep(Set(initialState), Set(), Set(), Set(), store, g)
+    val gs = if (graph) { Some(Map[PID, Graph[Set[Context], ActorEffect]]().withDefaultValue(new Graph[Set[Context], ActorEffect]())) } else { None }
+    loopMacrostep(Set(initialState), Set(), Set(), Set(), store, g, gs)
   }
+  /* TODO: graph of each actor separately */
 }
