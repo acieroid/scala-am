@@ -295,17 +295,9 @@ class MakeSchemeLattice[
       case (Vec(size, content: Map[I, Addr] @unchecked, init: Addr @unchecked), Int(index)) => {
         val comp = IntLattice[I].lt(index, size)
         val t: Set[Addr] = if (BoolLattice[B].isTrue(comp)) {
-          content.get(index) match {
-            case Some(a: Addr @unchecked) =>
-              if (BoolLattice[B].isTrue(IntLattice[I].eql(index, index)) && !BoolLattice[B].isFalse(IntLattice[I].eql(index, index))) {
-                /* we know index represents a concrete integer, we can return only one address */
-                Set(a)
-              } else {
-                /* otherwise, init should be returned as well for soundness */
-                Set(a, init)
-              }
-            case None => Set(init)
-          }
+          val vals = content.filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2))).values
+          /* init doesn't have to be included if we know for sure that index is precise enough */
+          vals.foldLeft(Set(init))((acc, v) => acc + v)
         } else { Set() }
         /* Don't perform bound checks here because we would get too many spurious flows */
         val f: Set[Addr] = Set()
