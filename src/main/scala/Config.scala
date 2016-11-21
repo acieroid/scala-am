@@ -24,6 +24,11 @@ object Config {
   }
   implicit val addressRead: scopt.Read[Address.Value] = scopt.Read.reads(Address withName _)
 
+  object Mbox extends Enumeration {
+    val Powerset, BoundedList, BoundedMultiset, Graph = Value
+  }
+  implicit val MboxRead: scopt.Read[Mbox.Value] = scopt.Read.reads(Mbox withName _)
+
   case class Config(machine: Machine.Value = Machine.Free,
     language: Language.Value = Language.Scheme,
     lattice: Lattice.Value = Lattice.TypeSet, concrete: Boolean = false,
@@ -33,7 +38,10 @@ object Config {
     counting: Boolean = false,
     bound: Int = 100,
     timeout: Option[Duration] = None,
-    workers: Int = 1)
+    workers: Int = 1,
+    mbox: Mbox.Value = Mbox.BoundedList,
+    mboxBound: Int = 1
+  )
 
   private val separator = ", "
   val parser = new scopt.OptionParser[Config]("scala-am") {
@@ -48,6 +56,8 @@ object Config {
     opt[Duration]('t', "timeout") action { (x, c) => c.copy(timeout = if (x.isFinite) Some(x) else None) } text("Timeout (none by default)")
     opt[Unit]('i', "inspect") action { (x, c) => c.copy(inspect = true) } text("Launch inspection REPL (disabled by default)")
     opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text(s"Addresses to use (${Address.values.mkString(separator)})")
+    opt[Mbox.Value]("mbox") action { (x, c) => c.copy(mbox = x) } text(s"Mailbox to use (${Mbox.values.mkString(separator)})")
+    opt[Int]("mbox-bound") action { (x, c) => c.copy(mboxBound = x) } text(s"Mailbox bound to use (defaults to 1)")
     opt[Unit]("counting") action { (x, c) => c.copy(counting = true) } text("Use absstract counting (on for concrete lattices)")
     opt[Int]('b', "bound") action { (x, c) => c.copy(bound = x) } text("Bound for bounded lattice (defaults to 100)")
     opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers (defaults to 1)")

@@ -176,12 +176,12 @@ object Main {
             }
             implicit val isAddress = address.isAddress
 
-            val bound = 3
-            val mbox =
-              // new BoundedListMboxImpl[ContextSensitiveTID, lattice.L](bound)
-              // new PowersetMboxImpl[ContextSensitiveTID, lattice.L]
-              // new BoundedMultisetMboxImpl[ContextSensitiveTID, lattice.L](bound)
-               new GraphMboxImpl[ContextSensitiveTID, lattice.L]
+            val mbox = config.mbox match {
+              case Config.Mbox.Powerset => new PowersetMboxImpl[ContextSensitiveTID, lattice.L]
+              case Config.Mbox.BoundedList => new BoundedListMboxImpl[ContextSensitiveTID, lattice.L](config.mboxBound)
+              case Config.Mbox.BoundedMultiset => new BoundedMultisetMboxImpl[ContextSensitiveTID, lattice.L](config.mboxBound)
+              case Config.Mbox.Graph => new GraphMboxImpl[ContextSensitiveTID, lattice.L]
+            }
 
             val machine = config.machine match {
               case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](mbox)
