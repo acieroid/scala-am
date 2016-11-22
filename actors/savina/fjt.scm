@@ -20,7 +20,7 @@
                                                 (loop (+ i 1)))
                                               v))))
                            (loop 0))))
-         (actors (vector-build (lambda (i) (create throughput-actor 0)) A))
+         (actors (build-vector A (lambda (i) (create throughput-actor 0))))
          (vector-foreach (lambda (f v)
                            (letrec ((loop (lambda (i)
                                             (if (< i (vector-length v))
