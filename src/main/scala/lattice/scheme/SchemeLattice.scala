@@ -74,6 +74,23 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
    * the vector value itsel */
   def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
 
+  object SchemeLatticeLaw {
+    def injectBoolPreservesTruth: Boolean = isTrue(inject(true)) && isFalse(inject(false))
+    def bottomNeitherTrueNorFalse: Boolean = !isTrue(bottom) && !isFalse(bottom)
+    def boolTopIsTrue: Boolean = {
+      val boolTop = join(inject(true), inject(false))
+      isTrue(boolTop) && isFalse(boolTop)
+    }
+    def unaryOpPreservesBottom(op: SchemeOps.UnaryOperator): Boolean =
+      unaryOp(op)(bottom).extract == Some(bottom)
+    def binaryOpPreservesBottom(op: SchemeOps.BinaryOperator, v: L): Boolean = {
+      binaryOp(op)(bottom, bottom).extract == Some(bottom) &&
+      binaryOp(op)(bottom, v).extract == Some(bottom) &&
+      binaryOp(op)(v, bottom).extract == Some(bottom)
+    }
+    /* TODO: more properties */
+  }
+
 }
 
 object IsSchemeLattice {
