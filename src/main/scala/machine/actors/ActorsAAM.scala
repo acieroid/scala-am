@@ -110,7 +110,7 @@ case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, A
     override def toString = messages.map(mToString).mkString(", ")
   }
   case class MUnordered(messages: Set[Message]) extends T {
-    def pop = messages.map(m => (m, this))
+    def pop = messages.flatMap(m => Set((m, this), (m, this.copy(messages = messages - m))))
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
     def size = MboxSizeUnbounded
@@ -141,7 +141,7 @@ case class BoundedMultisetMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PI
     def pop = messages.map({
       case (m, 1) => (m, this.copy(messages = messages - ((m, 1))))
       case (m, count) => (m, (this.copy(messages = messages - ((m, count)) + ((m, count - 1)))))
-    }) ++ noCountMessages.map(m => (m, this))
+    }) ++ noCountMessages.flatMap(m => Set((m, this), (m, this.copy(noCountMessages = noCountMessages - m))))
     def push(m: Message) = if (noCountMessages.contains(m)) { this } else {
       messages.find({ case (m2, count) => m2 == m }) match {
         case Some((_, count)) if count + 1 < bound => this.copy(messages = messages - ((m, count)) + ((m, count + 1)))
