@@ -193,71 +193,73 @@ class MakeSchemeLattice[
       }
     }}
 
-    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = op match {
-      case Plus => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(IntLattice[I].plus(n1, n2))
-        case (Int(n1), Float(n2)) => Float(FloatLattice[F].plus(IntLattice[I].toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Float(FloatLattice[F].plus(n1, IntLattice[I].toFloat(n2)))
-        case (Float(n1), Float(n2)) => Float(FloatLattice[F].plus(n1, n2))
-        case _ => OperatorNotApplicable("+", List(x.toString, y.toString))
-      }
-      case Minus => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(IntLattice[I].minus(n1, n2))
-        case (Int(n1), Float(n2)) => Float(FloatLattice[F].minus(IntLattice[I].toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Float(FloatLattice[F].minus(n1, IntLattice[I].toFloat(n2)))
-        case (Float(n1), Float(n2)) => Float(FloatLattice[F].minus(n1, n2))
-        case _ => OperatorNotApplicable("-", List(x.toString, y.toString))
-      }
-      case Times => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(IntLattice[I].times(n1, n2))
-        case (Int(n1), Float(n2)) => Float(FloatLattice[F].times(IntLattice[I].toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Float(FloatLattice[F].times(n1, IntLattice[I].toFloat(n2)))
-        case (Float(n1), Float(n2)) => Float(FloatLattice[F].times(n1, n2))
-        case _ => OperatorNotApplicable("*", List(x.toString, y.toString))
-      }
-      /* TODO: have a div for integer division (i.e., Scheme's quotient), and one for real division (/)). Also, handle division by zero. */
-      case Div => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(IntLattice[I].div(n1, n2))
-        case (Int(n1), Float(n2)) => Float(FloatLattice[F].div(IntLattice[I].toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Float(FloatLattice[F].div(n1, IntLattice[I].toFloat(n2)))
-        case (Float(n1), Float(n2)) => Float(FloatLattice[F].div(n1, n2))
-        case _ => OperatorNotApplicable("/", List(x.toString, y.toString))
-      }
-      case Modulo => (x, y) match {
-        case (Int(n1), Int(n2)) => Int(IntLattice[I].modulo(n1, n2))
-        case _ => OperatorNotApplicable("modulo", List(x.toString, y.toString))
-      }
-      case Lt => (x, y) match {
-        case (Int(n1), Int(n2)) => Bool(IntLattice[I].lt(n1, n2))
-        case (Int(n1), Float(n2)) => Bool(FloatLattice[F].lt(IntLattice[I].toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Bool(FloatLattice[F].lt(n1, IntLattice[I].toFloat(n2)))
-        case (Float(n1), Float(n2)) => Bool(FloatLattice[F].lt(n1, n2))
-        case _ => OperatorNotApplicable("<", List(x.toString, y.toString))
-      }
-      case NumEq => (x, y) match {
-        case (Int(n1), Int(n2)) => Bool(IntLattice[I].eql(n1, n2))
-        case (Int(n1), Float(n2)) => Bool(FloatLattice[F].eql(IntLattice[I].toFloat(n1), n2))
-        case (Float(n1), Int(n2)) => Bool(FloatLattice[F].eql(n1, IntLattice[I].toFloat(n2)))
-        case (Float(n1), Float(n2)) => Bool(FloatLattice[F].eql(n1, n2))
-        case _ => OperatorNotApplicable("number=", List(x.toString, y.toString))
-      }
-      case Eq => (x, y) match {
-        case (Str(s1), Str(s2)) => Bool(StringLattice[S].eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
-        case (Bool(b1), Bool(b2)) => Bool(BoolLattice[B].eql(b1, b2))
-        case (Int(n1), Int(n2)) => Bool(IntLattice[I].eql(n1, n2))
-        case (Float(n1), Float(n2)) => Bool(FloatLattice[F].eql(n1, n2))
-        case (Char(c1), Char(c2)) => Bool(CharLattice[C].eql(c1, c2))
-        case (Symbol(s1), Symbol(s2)) => Bool(SymbolLattice[Sym].eql(s1, s2))
-        case (Nil, Nil) => True
-        case (Prim(_), Prim(_)) => Bool(BoolLattice[B].inject(x == y))
-        case (Closure(_, _), Closure(_, _)) => Bool(BoolLattice[B].inject(x == y))
-        case (Cons(_, _), Cons(_, _)) => Bool(BoolLattice[B].inject(x == y))
-        case (VectorAddress(_), VectorAddress(_)) => Bool(BoolLattice[B].inject(x == y))
-        case _ => False
-      }
-      case StringAppend => (x, y) match {
-        case (Str(s1), Str(s2)) => Str(StringLattice[S].append(s1, s2))
-        case _ => OperatorNotApplicable("string-append", List(x.toString, y.toString))
+    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = if (x == Bot || y == Bot) { Bot } else {
+      op match {
+        case Plus => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].plus(n1, n2))
+          case (Int(n1), Float(n2)) => Float(FloatLattice[F].plus(IntLattice[I].toFloat(n1), n2))
+          case (Float(n1), Int(n2)) => Float(FloatLattice[F].plus(n1, IntLattice[I].toFloat(n2)))
+          case (Float(n1), Float(n2)) => Float(FloatLattice[F].plus(n1, n2))
+          case _ => OperatorNotApplicable("+", List(x.toString, y.toString))
+        }
+        case Minus => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].minus(n1, n2))
+          case (Int(n1), Float(n2)) => Float(FloatLattice[F].minus(IntLattice[I].toFloat(n1), n2))
+          case (Float(n1), Int(n2)) => Float(FloatLattice[F].minus(n1, IntLattice[I].toFloat(n2)))
+          case (Float(n1), Float(n2)) => Float(FloatLattice[F].minus(n1, n2))
+          case _ => OperatorNotApplicable("-", List(x.toString, y.toString))
+        }
+        case Times => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].times(n1, n2))
+          case (Int(n1), Float(n2)) => Float(FloatLattice[F].times(IntLattice[I].toFloat(n1), n2))
+          case (Float(n1), Int(n2)) => Float(FloatLattice[F].times(n1, IntLattice[I].toFloat(n2)))
+          case (Float(n1), Float(n2)) => Float(FloatLattice[F].times(n1, n2))
+          case _ => OperatorNotApplicable("*", List(x.toString, y.toString))
+        }
+        /* TODO: have a div for integer division (i.e., Scheme's quotient), and one for real division (/)). Also, handle division by zero. */
+        case Div => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].div(n1, n2))
+          case (Int(n1), Float(n2)) => Float(FloatLattice[F].div(IntLattice[I].toFloat(n1), n2))
+          case (Float(n1), Int(n2)) => Float(FloatLattice[F].div(n1, IntLattice[I].toFloat(n2)))
+          case (Float(n1), Float(n2)) => Float(FloatLattice[F].div(n1, n2))
+          case _ => OperatorNotApplicable("/", List(x.toString, y.toString))
+        }
+        case Modulo => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].modulo(n1, n2))
+          case _ => OperatorNotApplicable("modulo", List(x.toString, y.toString))
+        }
+        case Lt => (x, y) match {
+          case (Int(n1), Int(n2)) => Bool(IntLattice[I].lt(n1, n2))
+          case (Int(n1), Float(n2)) => Bool(FloatLattice[F].lt(IntLattice[I].toFloat(n1), n2))
+          case (Float(n1), Int(n2)) => Bool(FloatLattice[F].lt(n1, IntLattice[I].toFloat(n2)))
+          case (Float(n1), Float(n2)) => Bool(FloatLattice[F].lt(n1, n2))
+          case _ => OperatorNotApplicable("<", List(x.toString, y.toString))
+        }
+        case NumEq => (x, y) match {
+          case (Int(n1), Int(n2)) => Bool(IntLattice[I].eql(n1, n2))
+          case (Int(n1), Float(n2)) => Bool(FloatLattice[F].eql(IntLattice[I].toFloat(n1), n2))
+          case (Float(n1), Int(n2)) => Bool(FloatLattice[F].eql(n1, IntLattice[I].toFloat(n2)))
+          case (Float(n1), Float(n2)) => Bool(FloatLattice[F].eql(n1, n2))
+          case _ => OperatorNotApplicable("number=", List(x.toString, y.toString))
+        }
+        case Eq => (x, y) match {
+          case (Str(s1), Str(s2)) => Bool(StringLattice[S].eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
+          case (Bool(b1), Bool(b2)) => Bool(BoolLattice[B].eql(b1, b2))
+          case (Int(n1), Int(n2)) => Bool(IntLattice[I].eql(n1, n2))
+          case (Float(n1), Float(n2)) => Bool(FloatLattice[F].eql(n1, n2))
+          case (Char(c1), Char(c2)) => Bool(CharLattice[C].eql(c1, c2))
+          case (Symbol(s1), Symbol(s2)) => Bool(SymbolLattice[Sym].eql(s1, s2))
+          case (Nil, Nil) => True
+          case (Prim(_), Prim(_)) => Bool(BoolLattice[B].inject(x == y))
+          case (Closure(_, _), Closure(_, _)) => Bool(BoolLattice[B].inject(x == y))
+          case (Cons(_, _), Cons(_, _)) => Bool(BoolLattice[B].inject(x == y))
+          case (VectorAddress(_), VectorAddress(_)) => Bool(BoolLattice[B].inject(x == y))
+          case _ => False
+        }
+        case StringAppend => (x, y) match {
+          case (Str(s1), Str(s2)) => Str(StringLattice[S].append(s1, s2))
+          case _ => OperatorNotApplicable("string-append", List(x.toString, y.toString))
+        }
       }
     }
 

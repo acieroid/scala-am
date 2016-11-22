@@ -23,6 +23,9 @@ object SchemeOps {
   /* Conversions */
   case object NumberToString extends UnaryOperator
 
+  val unaryOps: Iterable[UnaryOperator] = Vector(IsNull, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsFloat, IsBoolean, IsVector,
+    Not, Ceiling, Log, Random, VectorLength, StringLength, NumberToString)
+
   /** Binary operations thatt should be supported by lattices */
   trait BinaryOperator
   /* Arithmetic operations */
@@ -38,6 +41,8 @@ object SchemeOps {
   case object Eq extends BinaryOperator /* physical equality */
   /* String operations */
   case object StringAppend extends BinaryOperator
+
+  val binaryOps: Iterable[BinaryOperator] = Vector(Plus, Minus, Times, Div, Modulo, Lt, NumEq, Eq, StringAppend)
 
   /** Modulo in Scheme and Scala are different. This implements the same behavior as Scheme's modulo */
   def modulo(n1: Int, n2: Int): Int =

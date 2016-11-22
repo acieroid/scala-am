@@ -85,21 +85,23 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     def isTrue(x: L) = lat.isTrue(x.seq) || x.t != tids.bottom || x.la != lockaddrs.bottom || x.l != locked.bottom
     def isFalse(x: L) = lat.isFalse(x.seq) && x.t == tids.bottom && x.la == lockaddrs.bottom && x.l == locked.bottom
     def unaryOp(op: UnaryOperator)(x: L): MayFail[L] = for { seq2 <- lat.unaryOp(op)(x.seq) } yield Value(seq = seq2)
-    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = op match {
-      case Eq => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield {
-        val nonseq = if (x == bottom) { lat.bottom } else {
-          if (!x.t.intersect(y.t).isEmpty || !x.la.intersect(y.la).isEmpty || locked.subsumes(x.l, y.l) || locked.subsumes(y.l, x.l)) {
-            if ((x.l == locked.bottom && y.l == locked.bottom && x.t.size + x.la.size == 1 && y.t.size + y.la.size == 1)
-              || (x.t.size + x.la.size == 0 && y.t.size + y.la.size == 0 && x.l == y.l && x.l != LockedTop)) {
-              lat.inject(true) /* are certainly equal (only one element) */
-            } else {
-              lat.join(lat.inject(true), lat.inject(false)) /* can be equal */
-            }
-          } else { lat.inject(false) /* are certainly not equal */ }
+    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = if (x == bottom || y == bottom) { bottom } else {
+      op match {
+        case Eq => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield {
+          val nonseq = if (x == bottom) { lat.bottom } else {
+            if (!x.t.intersect(y.t).isEmpty || !x.la.intersect(y.la).isEmpty || locked.subsumes(x.l, y.l) || locked.subsumes(y.l, x.l)) {
+              if ((x.l == locked.bottom && y.l == locked.bottom && x.t.size + x.la.size == 1 && y.t.size + y.la.size == 1)
+                || (x.t.size + x.la.size == 0 && y.t.size + y.la.size == 0 && x.l == y.l && x.l != LockedTop)) {
+                lat.inject(true) /* are certainly equal (only one element) */
+              } else {
+                lat.join(lat.inject(true), lat.inject(false)) /* can be equal */
+              }
+            } else { lat.inject(false) /* are certainly not equal */ }
+          }
+          Value(seq = lat.join(nonseq, seq2))
         }
-        Value(seq = lat.join(nonseq, seq2))
+        case _ => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield Value(seq = seq2)
       }
-      case _ => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield Value(seq = seq2)
     }
     def getClosures[Exp : Expression, Addr : Address](x: L) = lat.getClosures[Exp, Addr](x.seq)
     def getPrimitives[Addr : Address, Abs : JoinLattice](x: L) = lat.getPrimitives[Addr, Abs](x.seq)
