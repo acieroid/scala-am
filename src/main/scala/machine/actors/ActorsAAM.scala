@@ -53,8 +53,8 @@ case class GraphMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
       }
     }
     def push(m: Message) = top match {
-      case None => this.copy(top = Some(m), bot = bot.orElse(Some(m)), nodes)
-      case Some(t) => this.copy(top = Some(m), bot = bot.orElse(Some(m)), nodes = (nodes + (t -> (nodes(t) + m))))
+      case None => this.copy(top = Some(m), bot = bot.orElse(Some(m)), nodes + (m -> nodes(m)))
+      case Some(t) => this.copy(top = Some(m), bot = bot.orElse(Some(m)), nodes = (nodes + (t -> (nodes(t) + m))) + (m -> nodes(m)))
     }
     def isEmpty = !top.isDefined
     def size = if (top.isDefined) { MboxSizeUnbounded /* could be more precise when no cycle present */} else { MboxSizeN(0) }
