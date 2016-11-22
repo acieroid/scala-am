@@ -7,9 +7,9 @@
          ;; Note: it isn't the case right now but it will be (TODO). The problem comes from the fact that
          ;; it is the main process that allocates check-actor's constructor argument n, therefore c1, c2
          ;; and c3's n are allocated the same address, and 1, 2 and 3 are joined together, resulting in Int.
-         (c1 (create check-actor 1))
-         (c2 (create check-actor 2))
-         (c3 (create check-actor 3))
+         (c1 (new-check 1))
+         (c2 (new-check 2))
+         (c3 (new-check 3))
          )
   (send c1 check 1)
   (send c2 check 2)
