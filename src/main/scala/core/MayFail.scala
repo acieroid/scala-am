@@ -9,6 +9,11 @@ trait MayFail[L] {
   }
   /* We want to deconstruct in for loops, so we need filter (see https://issues.scala-lang.org/browse/SI-1336) */
   def withFilter(f: L => Boolean) = this
+  def extract: Option[L] = this match {
+    case MayFailSuccess(l) => Some(l)
+    case MayFailBoth(l, _) => Some(l)
+    case MayFailError(_) => None
+  }
 }
 case class MayFailSuccess[L](l: L) extends MayFail[L]
 case class MayFailError[L](errs: List[SemanticError]) extends MayFail[L]
