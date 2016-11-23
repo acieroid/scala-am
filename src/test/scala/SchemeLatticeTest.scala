@@ -16,8 +16,8 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
     forAll { (b: Boolean) => {
       val v = abs.inject(b)
       if (b) assert(abs.isTrue(v)) else assert(abs.isFalse(v))
-      val nottest = for { notv <- abs.unaryOp(Not)(v) } yield if (b) { abs.isFalse(notv) } else { abs.isTrue(notv) }
-      assert(nottest == true.point[MayFail])
+      val nottest = for { notv <- abs.unaryOp(UnaryOperator.Not)(v) } yield if (b) { abs.isFalse(notv) } else { abs.isTrue(notv) }
+      assert(nottest.extract == Some(true))
     }}
   }
   property("lattice should correctly implement boolean operations") {
@@ -32,11 +32,11 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
     forAll { (n1: Int, n2: Int) => {
       val v1 = abs.inject(n1)
       val v2 = abs.inject(n2)
-      val lttest = for { lt <- abs.binaryOp(Lt)(v1, v2) } yield if (n1 < n2) { abs.isTrue(lt) } else { abs.isFalse(lt) }
-      assert(lttest == true.point[MayFail])
+      val lttest = for { lt <- abs.binaryOp(BinaryOperator.Lt)(v1, v2) } yield if (n1 < n2) { abs.isTrue(lt) } else { abs.isFalse(lt) }
+      assert(lttest.extract == Some(true))
 
-      val eqtest = for { eq <- abs.binaryOp(NumEq)(v1, v2) } yield if (n1 == n2) { abs.isTrue(eq) } else { abs.isFalse(eq) }
-      assert(eqtest == true.point[MayFail])
+      val eqtest = for { eq <- abs.binaryOp(BinaryOperator.NumEq)(v1, v2) } yield if (n1 == n2) { abs.isTrue(eq) } else { abs.isFalse(eq) }
+      assert(eqtest.extract == Some(true))
     }}
   }
   def err(v: MayFail[Abs]): Unit = v match {
@@ -46,13 +46,13 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
   property("lattice should report errors on invalid operations") {
     val v1 = abs.inject(1)
     val v2 = abs.inject(true)
-    err(abs.binaryOp(Plus)(v1, v2)); err(abs.binaryOp(Plus)(v2, v1))
-    err(abs.binaryOp(Minus)(v1, v2)); err(abs.binaryOp(Minus)(v2, v1))
-    err(abs.binaryOp(Times)(v1, v2)); err(abs.binaryOp(Times)(v2, v1))
-    err(abs.binaryOp(Div)(v1, v2)); err(abs.binaryOp(Div)(v2, v1))
-    err(abs.binaryOp(Modulo)(v1, v2)); err(abs.binaryOp(Modulo)(v2, v1))
-    err(abs.binaryOp(Lt)(v1, v2)); err(abs.binaryOp(Lt)(v2, v1))
-    err(abs.binaryOp(NumEq)(v1, v2)); err(abs.binaryOp(NumEq)(v2, v1))
+    err(abs.binaryOp(BinaryOperator.Plus)(v1, v2));   err(abs.binaryOp(BinaryOperator.Plus)(v2, v1))
+    err(abs.binaryOp(BinaryOperator.Minus)(v1, v2));  err(abs.binaryOp(BinaryOperator.Minus)(v2, v1))
+    err(abs.binaryOp(BinaryOperator.Times)(v1, v2));  err(abs.binaryOp(BinaryOperator.Times)(v2, v1))
+    err(abs.binaryOp(BinaryOperator.Div)(v1, v2));    err(abs.binaryOp(BinaryOperator.Div)(v2, v1))
+    err(abs.binaryOp(BinaryOperator.Modulo)(v1, v2)); err(abs.binaryOp(BinaryOperator.Modulo)(v2, v1))
+    err(abs.binaryOp(BinaryOperator.Lt)(v1, v2));     err(abs.binaryOp(BinaryOperator.Lt)(v2, v1))
+    err(abs.binaryOp(BinaryOperator.NumEq)(v1, v2));  err(abs.binaryOp(BinaryOperator.NumEq)(v2, v1))
   }
   property("bottom should be subsumed by any other value") {
     val values = Table(
@@ -72,13 +72,13 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
     assert(abs.subsumes(abs.bottom, abs.bottom))
   }
   property("unary operation on bottom returns bottom") {
-    SchemeOps.unaryOps.foreach(op =>
+    SchemeOps.UnaryOperator.values.foreach(op =>
       for { res <- abs.unaryOp(op)(abs.bottom) } yield
         assert(res == abs.bottom))
   }
   property("binary operation on bottom returns bottom") {
     val v = abs.inject(1)
-    SchemeOps.binaryOps.foreach(op =>
+    SchemeOps.BinaryOperator.values.foreach(op =>
       for {
         res1 <- abs.binaryOp(op)(abs.bottom, abs.bottom)
         res2 <- abs.binaryOp(op)(v, abs.bottom)

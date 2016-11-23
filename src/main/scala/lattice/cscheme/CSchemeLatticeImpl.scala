@@ -87,7 +87,7 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     def unaryOp(op: UnaryOperator)(x: L): MayFail[L] = for { seq2 <- lat.unaryOp(op)(x.seq) } yield Value(seq = seq2)
     def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = if (x == bottom || y == bottom) { bottom } else {
       op match {
-        case Eq => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield {
+        case BinaryOperator.Eq => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield {
           val nonseq = if (x == bottom) { lat.bottom } else {
             if (!x.t.intersect(y.t).isEmpty || !x.la.intersect(y.la).isEmpty || locked.subsumes(x.l, y.l) || locked.subsumes(y.l, x.l)) {
               if ((x.l == locked.bottom && y.l == locked.bottom && x.t.size + x.la.size == 1 && y.t.size + y.la.size == 1)

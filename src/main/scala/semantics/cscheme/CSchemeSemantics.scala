@@ -42,7 +42,7 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
           case None => store.lookup(a) match {
             case None => Action.error(UnboundAddress(a.toString))
             case Some(vcomp) =>
-              for { cond <- IsCSchemeLattice[Abs].binaryOp(SchemeOps.Eq)(vcomp, old) }
+              for { cond <- IsCSchemeLattice[Abs].binaryOp(SchemeOps.BinaryOperator.Eq)(vcomp, old) }
               yield
                 conditional(cond,
                   /* Compare and swap succeeds */
@@ -71,7 +71,7 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
                       val fail: Actions = Action.value(IsCSchemeLattice[Abs].inject(false), store, Set(EffectReadVector(a)))
                       oldvals.foldLeft(Set[Action[SchemeExp, Abs, Addr]]())((acc, a) => store.lookup(a) match {
                         case None => acc + (Action.error(UnboundAddress(a.toString)))
-                        case Some(oldval) => for { cond <- IsCSchemeLattice[Abs].binaryOp(SchemeOps.Eq)(oldval, old) }
+                        case Some(oldval) => for { cond <- IsCSchemeLattice[Abs].binaryOp(SchemeOps.BinaryOperator.Eq)(oldval, old) }
                         yield conditional(cond, success, fail)
                       })
                     }

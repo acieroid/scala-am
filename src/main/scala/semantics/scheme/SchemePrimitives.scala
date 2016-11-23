@@ -1,37 +1,37 @@
-import scalaz.{Plus => _, _}
+import scalaz._
 import scalaz.Scalaz._
-
 
 /** This is where we define Scheme primitives */
 class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives[Addr, Abs] {
   import SchemeOps._
   val abs = implicitly[IsSchemeLattice[Abs]]
 
-  def isNull = abs.unaryOp(SchemeOps.IsNull) _
-  def isCons = abs.unaryOp(SchemeOps.IsCons) _
-  def isChar = abs.unaryOp(SchemeOps.IsChar) _
-  def isSymbol = abs.unaryOp(SchemeOps.IsSymbol) _
-  def isString = abs.unaryOp(SchemeOps.IsString) _
-  def isInteger = abs.unaryOp(SchemeOps.IsInteger) _
-  def isFloat = abs.unaryOp(SchemeOps.IsFloat) _
-  def isBoolean = abs.unaryOp(SchemeOps.IsBoolean) _
-  def isVector = abs.unaryOp(SchemeOps.IsVector) _
-  def ceiling = abs.unaryOp(SchemeOps.Ceiling) _
-  def log = abs.unaryOp(SchemeOps.Log) _
-  def not = abs.unaryOp(SchemeOps.Not) _
-  def random = abs.unaryOp(SchemeOps.Random) _
-  def plus = abs.binaryOp(SchemeOps.Plus) _
-  def minus = abs.binaryOp(SchemeOps.Minus) _
-  def times = abs.binaryOp(SchemeOps.Times) _
-  def div = abs.binaryOp(SchemeOps.Div) _
-  def modulo = abs.binaryOp(SchemeOps.Modulo) _
-  def lt = abs.binaryOp(SchemeOps.Lt) _
-  def numEq = abs.binaryOp(SchemeOps.NumEq) _
-  def eq = abs.binaryOp(SchemeOps.Eq) _
-  def vectorLength = abs.unaryOp(SchemeOps.VectorLength) _
-  def stringAppend = abs.binaryOp(SchemeOps.StringAppend) _
-  def stringLength = abs.unaryOp(SchemeOps.StringLength) _
-  def numberToString = abs.unaryOp(SchemeOps.NumberToString) _
+  def isNull = abs.unaryOp(UnaryOperator.IsNull) _
+  def isCons = abs.unaryOp(UnaryOperator.IsCons) _
+  def isChar = abs.unaryOp(UnaryOperator.IsChar) _
+  def isSymbol = abs.unaryOp(UnaryOperator.IsSymbol) _
+  def isString = abs.unaryOp(UnaryOperator.IsString) _
+  def isInteger = abs.unaryOp(UnaryOperator.IsInteger) _
+  def isFloat = abs.unaryOp(UnaryOperator.IsFloat) _
+  def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
+  def isVector = abs.unaryOp(UnaryOperator.IsVector) _
+  def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
+  def log = abs.unaryOp(UnaryOperator.Log) _
+  def not = abs.unaryOp(UnaryOperator.Not) _
+  def random = abs.unaryOp(UnaryOperator.Random) _
+  def vectorLength = abs.unaryOp(UnaryOperator.VectorLength) _
+  def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
+  def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
+
+  def plus = abs.binaryOp(BinaryOperator.Plus) _
+  def minus = abs.binaryOp(BinaryOperator.Minus) _
+  def times = abs.binaryOp(BinaryOperator.Times) _
+  def div = abs.binaryOp(BinaryOperator.Div) _
+  def modulo = abs.binaryOp(BinaryOperator.Modulo) _
+  def lt = abs.binaryOp(BinaryOperator.Lt) _
+  def numEq = abs.binaryOp(BinaryOperator.NumEq) _
+  def eqq = abs.binaryOp(BinaryOperator.Eq) _
+  def stringAppend = abs.binaryOp(BinaryOperator.StringAppend) _
 
   abstract class NoStoreOperation(val name: String, val nargs: Option[Int] = None) extends Primitive[Addr, Abs] {
     def call(args: List[Abs]): MayFail[Abs] = MayFailError(List(ArityError(name, nargs.getOrElse(-1), args.length)))
@@ -235,7 +235,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     override def call(x: Abs) = isVector(x)
   }
   object Eq extends NoStoreOperation("eq?", Some(2)) {
-    override def call(x: Abs, y: Abs) = abs.binaryOp(SchemeOps.Eq)(x, y)
+    override def call(x: Abs, y: Abs) = eqq(x, y)
   }
   object Not extends NoStoreOperation("not", Some(1)) {
     override def call(x: Abs) = not(x)
@@ -589,7 +589,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
           MayFailSuccess((abs.bottom, Set[Effect[Addr]]()))
         } else {
           val visited2 = visited + ((a, b))
-          abs.binaryOp(SchemeOps.Eq)(a, b) >>= (eqtest => {
+          eqq(a, b) >>= (eqtest => {
             val t = if (abs.isTrue(eqtest)) { MayFailSuccess((eqtest, Set[Effect[Addr]]())) } else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
             val f = if (abs.isFalse(eqtest)) {
               isNull(a) >>= (anull => isNull(b) >>= (bnull => {

@@ -5,9 +5,6 @@ import SchemeOps._
 class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
   val lat = lattice.isSchemeLattice
 
-  /* TODO: factor this somewhere else */
-
-
   type Pids = Set[Any]
   val pids: LatticeElement[Pids] = LatticeElement.ofSet[Any]
   type Behs = Set[Any]
@@ -44,7 +41,7 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
     def isFalse(x: L) = lat.isFalse(x.seq) && x.p == pids.bottom && x.b == behs.bottom
     def unaryOp(op: UnaryOperator)(x: L): MayFail[L] = for { seq2 <- lat.unaryOp(op)(x.seq) } yield Value(seq = seq2)
     def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L] = op match {
-      case Eq => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield {
+      case BinaryOperator.Eq => for { seq2 <- lat.binaryOp(op)(x.seq, y.seq) } yield {
         val nonseq = if (x == bottom) { lat.bottom } else {
           if (!x.p.intersect(y.p).isEmpty || x.b.intersect(y.b).isEmpty) {
             if (x.p.size + x.b.size == 1 && y.p.size + y.b.size == 1) {

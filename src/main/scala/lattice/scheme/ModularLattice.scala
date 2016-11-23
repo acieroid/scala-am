@@ -1,6 +1,8 @@
 import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
 import SchemeOps._
+import UnaryOperator._
+import BinaryOperator._
 
 class MakeSchemeLattice[
   S : StringLattice,
