@@ -32,23 +32,26 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
   def getNode(id: Int): Option[Node] = ids.find({ case (_, v) => id == v }).map(_._1)
   def nodeId(node: Node): Int = ids.getOrElse(node, -1)
   def emptyTooltip(node: Node): String = ""
-  def toDot(label: Node => List[scala.xml.Node],
+  private def toDot(label: Node => List[scala.xml.Node],
     color: Node => String,
     annotLabel: Annotation => List[scala.xml.Node],
-    tooltip: Node => String = emptyTooltip): String = {
-    val sb = new StringBuilder("digraph G {\n")
+    tooltip: Node => String)(writer: java.io.Writer): Unit = {
+    writer.append("digraph G {\n")
     nodes.foreach((n) => {
       val labelstr = label(n).mkString(" ")
-      sb.append(s"node_${ids(n)}[shape=box, xlabel=${ids(n)}, label=<$labelstr>, fillcolor=<${color(n)}> style=<filled>, tooltip=<${tooltip(n)}>];\n")
+      writer.append(s"node_${ids(n)}[shape=box, xlabel=${ids(n)}, label=<$labelstr>, fillcolor=<${color(n)}> style=<filled>, tooltip=<${tooltip(n)}>];\n")
     })
     edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) =>
       val annotstr = annotLabel(annot).mkString(" ")
-      sb.append(s"node_${ids(n1)} -> node_${ids(n2)} [label=<$annotstr>]\n")})})
-    sb.append("}")
-    return sb.toString
+      writer.append(s"node_${ids(n1)} -> node_${ids(n2)} [label=<$annotstr>]\n")})})
+    writer.append("}")
   }
-  def toDotFile(path: String, label: Node => List[scala.xml.Node], color: Node => String, annotLabel: Annotation => List[scala.xml.Node]): Unit = {
-    Util.writeToFile(path, toDot(label, color, annotLabel))
+  def toDotFile(path: String,
+    label: Node => List[scala.xml.Node],
+    color: Node => String,
+    annotLabel: Annotation => List[scala.xml.Node],
+    tooltip: Node => String = emptyTooltip): Unit = {
+    Util.withFileWriter(path) { w => toDot(label, color, annotLabel, tooltip)(w) }
   }
   def toJSONFile(path: String)(implicit nodeToJSON: Node => JValue, annotToJSON: Annotation => JValue): Unit =  {
     /* array of nodes, index in the array is the index of the node, e.g.
@@ -68,6 +71,6 @@ case class Graph[Node, Annotation](ids: Map[Node, Int], next: Int, nodes: Set[No
         })
       })
     val json = ("nodes" -> ns) ~ ("edges" -> es)
-    Util.writeToFile(path, pretty(render(json)))
+    Util.withFileWriter(path) { w => w.append(pretty(render(json))) }
   }
 }

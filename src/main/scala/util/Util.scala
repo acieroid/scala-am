@@ -8,11 +8,17 @@ object Util {
     Option(content)
   }
 
-  def writeToFile(path: String, content: String): Unit = {
+  def withFileWriter(path: String)(body: java.io.Writer => Unit): Unit = {
     val f = new java.io.File(path)
     val bw = new java.io.BufferedWriter(new java.io.FileWriter(f))
-    bw.write(content)
+    body(bw)
     bw.close()
+  }
+
+  def withStringWriter(body: java.io.Writer => Unit): String = {
+    val w = new java.io.StringWriter()
+    body(w)
+    w.toString()
   }
 
 
