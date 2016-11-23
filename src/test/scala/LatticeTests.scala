@@ -298,6 +298,11 @@ abstract class Specification extends Properties("") {
       property(name) = prop
     }
   }
+  def newProperties(name: String)(f: Properties => Unit): Properties = {
+    val p = new Properties(name)
+    f(p)
+    p
+  }
 }
 
 abstract class BoolLatticeTest[B : BoolLattice](gen: LatticeGenerator[B]) extends Specification {
@@ -348,4 +353,3 @@ class ConstantPropagationIntTest extends IntLatticeTest(IntegerConstantPropagati
 class ConstantPropagationFloatTest extends FloatLatticeTest(FloatConstantPropagationGenerator)(FloatConstantPropagation.isFloat)
 class ConstantPropagationCharTest extends CharLatticeTest(CharConstantPropagationGenerator)(CharConstantPropagation.isChar)
 class ConstantPropagationSymbolTest extends SymbolLatticeTest(SymbolConstantPropagationGenerator)(SymbolConstantPropagation.isSymbol)
-

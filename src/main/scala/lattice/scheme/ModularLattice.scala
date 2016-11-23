@@ -116,7 +116,7 @@ class MakeSchemeLattice[
     }
     def isFalse(x: L): Boolean = x match {
       case Bool(b) => BoolLattice[B].isFalse(b)
-      case Bot => true
+      case Bot => false
       case _ => false
     }
 

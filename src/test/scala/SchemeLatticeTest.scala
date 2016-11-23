@@ -1,31 +1,45 @@
-import org.scalatest._
-import org.scalatest.prop._
-
 import org.scalacheck.{Arbitrary, Gen, Prop, Properties}
 import Prop.forAll
-import scalaz.{Plus => _, _}
+
+import scalaz._
 import scalaz.Scalaz._
 
 import SchemeOps._
 
+abstract class SchemeLatticeProperties[L : IsSchemeLattice] extends Specification {
+  val abs = implicitly[IsSchemeLattice[L]]
+  implicit val arbitraryUnaryOp = Arbitrary(Gen.oneOf(UnaryOperator.values.toSeq))
+  implicit val arbitraryBinaryOp = Arbitrary(Gen.oneOf(BinaryOperator.values.toSeq))
+
+  checkAll(newProperties("SchemeLattice") { p =>
+    p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") = abs.schemeLatticeLaw.injectBoolPreservesTruth
+    p.property("!isTrue(⊥) ∧ !isFalse(⊥)") = abs.schemeLatticeLaw.bottomNeitherTrueNorFalse
+    p.property("isTrue(⊤) ∧ isFalse(⊤)") = abs.schemeLatticeLaw.boolTopIsTrueAndFalse
+    p.property("unOp(⊥) = ⊥") = forAll { (op: UnaryOperator) => abs.schemeLatticeLaw.unaryOpPreservesBottom(op) }
+    p.property("isFalse(not(inject(true))) ∧ isTrue(not(inject(false)))") = abs.schemeLatticeLaw.notIsSound
+  })
+}
+
+object ConcreteCountingLattice extends ConcreteLattice(true)
+object ConcreteNoCountingLattice extends ConcreteLattice(false)
+class SchemeConcreteLattice extends SchemeLatticeProperties[ConcreteCountingLattice.L]()(ConcreteCountingLattice.isSchemeLattice)
+class SchemeConcreteLatticeNoCounting extends SchemeLatticeProperties[ConcreteNoCountingLattice.L]()(ConcreteNoCountingLattice.isSchemeLattice)
+/* TODO: others */
+
+/* TODO: use ScalaCheck for (most of) this */
+import org.scalatest._
+import org.scalatest.prop._
 abstract class LatticePropSpec(val lattice: SchemeLattice)
     extends PropSpec with GeneratorDrivenPropertyChecks with Matchers with TableDrivenPropertyChecks {
   type Abs = lattice.L
   val abs = lattice.isSchemeLattice
-  property("lattice should preserve boolean value and correctly implement not") {
-    forAll { (b: Boolean) => {
-      val v = abs.inject(b)
-      if (b) assert(abs.isTrue(v)) else assert(abs.isFalse(v))
-      val nottest = for { notv <- abs.unaryOp(UnaryOperator.Not)(v) } yield if (b) { abs.isFalse(notv) } else { abs.isTrue(notv) }
-      assert(nottest.extract == Some(true))
-    }}
-  }
+
   property("lattice should correctly implement boolean operations") {
     forAll { (b1: Boolean, b2: Boolean) => {
       val v1 = abs.inject(b1)
       val v2 = abs.inject(b2)
       if (b1 && b2) assert(abs.isTrue(abs.and(v1, v2))) else assert(abs.isFalse(abs.and(v1, v2)))
-      if (b1 || b2) assert(abs.isTrue(abs.or(v1, v2))) else assert(abs.isFalse(abs.and(v1, v2)))
+      if (b1 || b2) assert(abs.isTrue(abs.or(v1, v2))) else assert(abs.isFalse(abs.or(v1, v2)))
     }}
   }
   property("lattice should correctly implement numerical comparisons") {
@@ -135,5 +149,3 @@ class CSchemeBoundedIntCountingTest extends JoinLatticePropSpec(new CSchemeBound
 class CSchemeBoundedIntNoCountingTest extends JoinLatticePropSpec(new CSchemeBoundedIntLattice(100, false))
 class CSchemeConstantPropagationCountingTest extends JoinLatticePropSpec(new CSchemeConstantPropagationLattice(true))
 class CSchemeConstantPropagationNoCountingTest extends JoinLatticePropSpec(new CSchemeConstantPropagationLattice(false))
-
-/* TODO: properties of Scheme lattice */
