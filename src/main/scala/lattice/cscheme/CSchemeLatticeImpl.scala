@@ -2,8 +2,8 @@ import scalaz.Scalaz._
 import scalaz._
 import SchemeOps._
 
-class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
-  val lat = lattice.isSchemeLattice
+class MakeCSchemeLattice[LSeq : IsSchemeLattice] extends CSchemeLattice {
+  val lat = implicitly[IsSchemeLattice[LSeq]]
   sealed trait Locked
   case object LockedBottom extends Locked
   case object LockedLocked extends Locked
@@ -67,7 +67,7 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
   val tids: LatticeElement[Tids] = LatticeElement.ofSet[Any]
   val lockaddrs: LatticeElement[LockAddrs] = LatticeElement.ofSet[Any]
 
-  case class Value(seq: lattice.L = lat.bottom, t: Tids = tids.bottom, la: LockAddrs = lockaddrs.bottom, l: Locked = locked.bottom)
+  case class Value(seq: LSeq = lat.bottom, t: Tids = tids.bottom, la: LockAddrs = lockaddrs.bottom, l: Locked = locked.bottom)
   type L = Value
 
   val isCSchemeLattice: IsCSchemeLattice[L] = new IsCSchemeLattice[L] {
@@ -151,8 +151,3 @@ class MakeCSchemeLattice(val lattice: SchemeLattice) extends CSchemeLattice {
     def unlockedValue = Value(l = LockedUnlocked)
   }
 }
-
-class CSchemeConcreteLattice(counting: Boolean) extends MakeCSchemeLattice(new ConcreteLattice(counting))
-class CSchemeTypeSetLattice(counting: Boolean) extends MakeCSchemeLattice(new TypeSetLattice(counting))
-class CSchemeBoundedIntLattice(bound: Int, counting: Boolean) extends MakeCSchemeLattice(new BoundedIntLattice(bound, counting))
-class CSchemeConstantPropagationLattice(counting: Boolean) extends MakeCSchemeLattice(new ConstantPropagationLattice(counting))

@@ -75,6 +75,7 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
   def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
 
   trait SchemeLatticeLaw {
+    def bottomSubsumesItself: Boolean = subsumes(bottom, bottom)
     def injectBoolPreservesTruth: Boolean = isTrue(inject(true)) && isFalse(inject(false))
     def bottomNeitherTrueNorFalse: Boolean = !isTrue(bottom) && !isFalse(bottom)
     def boolTopIsTrueAndFalse: Boolean = {
@@ -88,9 +89,19 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
       binaryOp(op)(bottom, v).extract == Some(bottom) &&
       binaryOp(op)(v, bottom).extract == Some(bottom)
     }
-    def notIsSound: Boolean = {
+    def notIsCorrect: Boolean = {
       unaryOp(UnaryOperator.Not)(inject(true)).map(isFalse).extract == Some(true) &&
       unaryOp(UnaryOperator.Not)(inject(false)).map(isTrue).extract == Some(true)
+    }
+    def andIsCorrect(b1: Boolean, b2: Boolean): Boolean = {
+      val v1 = inject(b1)
+      val v2 = inject(b2)
+      if (b1 && b2) isTrue(and(v1, v2)) else isFalse(and(v1, v2))
+    }
+    def orIsCorrect(b1: Boolean, b2: Boolean): Boolean = {
+      val v1 = inject(b1)
+      val v2 = inject(b2)
+      if (b1 || b2) isTrue(or(v1, v2)) else isFalse(or(v1, v2))
     }
     /* TODO: more properties */
   }

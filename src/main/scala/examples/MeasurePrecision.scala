@@ -53,8 +53,7 @@ class VarRefPrecisionAnalysis[Exp : Expression, Abs : JoinLattice, Addr : Addres
 object MeasurePrecision {
   def main(args: Array[String]) {
     val program = Util.fileContent("foo.scm").get
-    /* Changing the bound to less than 100 decrease precision */
-    val lattice = new ConcreteLattice(false) // new BoundedIntLattice(1000, false)
+    val lattice = new MakeSchemeLattice[Concrete.S, Concrete.B, Concrete.I, Concrete.F, Concrete.C, Concrete.Sym](false)
     implicit val isLattice = lattice.isSchemeLattice
     val address = ClassicalAddress
     val timestamp = ZeroCFA

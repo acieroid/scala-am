@@ -102,17 +102,18 @@ object Main {
     import scala.util.control.Breaks._
     Config.parser.parse(args, Config.Config()) match {
       case Some(config) => {
-        /* TODO: there's a lot of duplication, factor this out */
+        val lattice: SchemeLattice = config.lattice match {
+          case Config.Lattice.Concrete => new MakeSchemeLattice[Concrete.S, Concrete.B, Concrete.I, Concrete.F, Concrete.C, Concrete.Sym](config.counting)
+          case Config.Lattice.TypeSet => new MakeSchemeLattice[Type.S, Concrete.B, Type.I, Type.F, Type.C, Type.Sym](config.counting)
+          case Config.Lattice.BoundedInt =>
+            val bounded = new BoundedInteger(config.bound)
+                new MakeSchemeLattice[Type.S, Concrete.B, bounded.I, Type.F, Type.C, Type.Sym](config.counting)
+          case Config.Lattice.ConstantPropagation => new MakeSchemeLattice[ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.F, ConstantPropagation.C, ConstantPropagation.Sym](config.counting)
+        }
+        implicit val isSchemeLattice: IsSchemeLattice[lattice.L] = lattice.isSchemeLattice
+
         config.language match {
           case Config.Language.Scheme =>
-            val lattice: SchemeLattice = config.lattice match {
-              case Config.Lattice.Concrete => new ConcreteLattice(true)
-              case Config.Lattice.TypeSet => new TypeSetLattice(config.counting)
-              case Config.Lattice.BoundedInt => new BoundedIntLattice(config.bound, config.counting)
-              case Config.Lattice.ConstantPropagation => new ConstantPropagationLattice(config.counting)
-            }
-            implicit val isSchemeLattice = lattice.isSchemeLattice
-
             val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
             implicit val isTimestamp = time.isTimestamp
 
@@ -134,13 +135,8 @@ object Main {
 
             replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
           case Config.Language.CScheme =>
-            val lattice: CSchemeLattice = config.lattice match {
-              case Config.Lattice.Concrete => new CSchemeConcreteLattice(true)
-              case Config.Lattice.TypeSet => new CSchemeTypeSetLattice(config.counting)
-              case Config.Lattice.BoundedInt => new CSchemeBoundedIntLattice(config.bound, config.counting)
-              case Config.Lattice.ConstantPropagation => new CSchemeConstantPropagationLattice(config.counting)
-            }
-            implicit val isCSchemeLattice = lattice.isCSchemeLattice
+            val clattice: CSchemeLattice = new MakeCSchemeLattice[lattice.L]
+            implicit val isCSchemeLattice = clattice.isCSchemeLattice
 
             val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
             implicit val isTimestamp = time.isTimestamp
@@ -152,20 +148,15 @@ object Main {
             implicit val isAddress = address.isAddress
 
             val machine = config.machine match {
-              case Config.Machine.AAM => new ConcurrentAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](AllInterleavings)
+              case Config.Machine.AAM => new ConcurrentAAM[SchemeExp, clattice.L, address.A, time.T, ContextSensitiveTID](AllInterleavings)
               case _ => throw new Exception(s"unsupported machine for CScheme: ${config.machine}")
             }
 
-            val sem = new CSchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new CSchemePrimitives[address.A, lattice.L])
+            val sem = new CSchemeSemantics[clattice.L, address.A, time.T, ContextSensitiveTID](new CSchemePrimitives[address.A, clattice.L])
             replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
           case Config.Language.AScheme =>
-            val lattice: ASchemeLattice = config.lattice match {
-              case Config.Lattice.Concrete => new ASchemeConcreteLattice(true)
-              case Config.Lattice.TypeSet => new ASchemeTypeSetLattice(config.counting)
-              case Config.Lattice.BoundedInt => new ASchemeBoundedIntLattice(config.bound, config.counting)
-              case Config.Lattice.ConstantPropagation => new ASchemeConstantPropagationLattice(config.counting)
-            }
-            implicit val isASchemeLattice = lattice.isASchemeLattice
+            val alattice: ASchemeLattice = new MakeASchemeLattice[lattice.L]
+            implicit val isASchemeLattice = alattice.isASchemeLattice
 
             val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
             implicit val isTimestamp = time.isTimestamp
@@ -177,20 +168,20 @@ object Main {
             implicit val isAddress = address.isAddress
 
             val mbox = config.mbox match {
-              case Config.Mbox.Powerset => new PowersetMboxImpl[ContextSensitiveTID, lattice.L]
-              case Config.Mbox.BoundedList => new BoundedListMboxImpl[ContextSensitiveTID, lattice.L](config.mboxBound)
-              case Config.Mbox.BoundedMultiset => new BoundedMultisetMboxImpl[ContextSensitiveTID, lattice.L](config.mboxBound)
-              case Config.Mbox.Graph => new GraphMboxImpl[ContextSensitiveTID, lattice.L]
+              case Config.Mbox.Powerset => new PowersetMboxImpl[ContextSensitiveTID, alattice.L]
+              case Config.Mbox.BoundedList => new BoundedListMboxImpl[ContextSensitiveTID, alattice.L](config.mboxBound)
+              case Config.Mbox.BoundedMultiset => new BoundedMultisetMboxImpl[ContextSensitiveTID, alattice.L](config.mboxBound)
+              case Config.Mbox.Graph => new GraphMboxImpl[ContextSensitiveTID, alattice.L]
             }
 
             val machine = config.machine match {
-              case Config.Machine.AAM => new ActorsAAM[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](mbox)
-              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, lattice.L, address.A, time.T, ContextSensitiveTID](mbox)
+              case Config.Machine.AAM => new ActorsAAM[SchemeExp, alattice.L, address.A, time.T, ContextSensitiveTID](mbox)
+              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, alattice.L, address.A, time.T, ContextSensitiveTID](mbox)
               case _ => throw new Exception(s"unsupported machine for AScheme: ${config.machine}")
             }
 
-            val visitor = new RecordActorVisitor[lattice.L]
-            val sem = new ASchemeSemantics[lattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, lattice.L], visitor)
+            val visitor = new RecordActorVisitor[alattice.L]
+            val sem = new ASchemeSemantics[alattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, alattice.L], visitor)
             replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
             visitor.print
         }

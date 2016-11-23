@@ -27,11 +27,15 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
   class Worker(timeout: Option[Long]) extends Actor {
     def compute(config: MachineConfig): MachineOutput =  {
       val lattice: SchemeLattice = config.lattice match {
-        case Config.Lattice.Concrete => new ConcreteLattice(true)
-        case Config.Lattice.TypeSet => new TypeSetLattice(false)
-        case Config.Lattice.BoundedInt => new BoundedIntLattice(1000, true)
+        case Config.Lattice.Concrete => new MakeSchemeLattice[Concrete.S, Concrete.B, Concrete.I, Concrete.F, Concrete.C, Concrete.Sym](true)
+        case Config.Lattice.TypeSet => new MakeSchemeLattice[Type.S, Concrete.B, Type.I, Type.F, Type.C, Type.Sym](false)
+        case Config.Lattice.BoundedInt =>
+          val bounded = new BoundedInteger(1000)
+          new MakeSchemeLattice[Type.S, Concrete.B, bounded.I, Type.F, Type.C, Type.Sym](false)
+        case Config.Lattice.ConstantPropagation => new MakeSchemeLattice[ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.F, ConstantPropagation.C, ConstantPropagation.Sym](false)
       }
-      implicit val isSchemeLattice = lattice.isSchemeLattice
+      implicit val isSchemeLattice: IsSchemeLattice[lattice.L] = lattice.isSchemeLattice
+
       val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
       implicit val isTimestamp = time.isTimestamp
 

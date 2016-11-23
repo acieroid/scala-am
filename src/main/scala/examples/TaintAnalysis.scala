@@ -166,7 +166,7 @@ object TaintAnalysis {
   }
   def main(args: Array[String]) {
     if (args.length >= 1) {
-      val cpLattice = new ConstantPropagationLattice(false)
+      val cpLattice = new MakeSchemeLattice[ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.F, ConstantPropagation.C, ConstantPropagation.Sym](false)
       implicit val isSchemeLattice = cpLattice.isSchemeLattice
       val taintLattice = new TaintLattice[cpLattice.L]()
       implicit val isTaintLattice = taintLattice.isTaintLattice

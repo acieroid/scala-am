@@ -21,7 +21,11 @@
                                    ((faded) 'faded)))
                          ((faded) 'faded))))
          (pick-color (lambda (i)
-                       (vector-ref (vector 'red 'yellow 'blue 'faded) i)))
+                       (case i
+                         ((0) 'red)
+                         ((1) 'yellow)
+                         ((2) 'blue)
+                         ((3) 'faded))))
          (mall-actor
           (actor "mall" (waiting-chameneo n sum-meetings num-faded)
                  (meeting-count (count sender)

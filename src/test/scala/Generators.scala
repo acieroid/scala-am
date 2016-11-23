@@ -35,16 +35,15 @@ object Generators {
   val sym: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr))
 }
 
-object ConcreteBooleanGenerator extends LatticeGenerator[ConcreteBoolean.B] {
+object ConcreteBooleanGenerator extends LatticeGenerator[Concrete.B] {
   /** ConcreteBool is a finite lattice with four elements */
-  val bool = ConcreteBoolean.isBoolean
-  val bot = bool.bottom
-  val t = bool.inject(true)
-  val f = bool.inject(false)
-  val top = bool.top
+  val bot = BoolLattice[Concrete.B].bottom
+  val t = BoolLattice[Concrete.B].inject(true)
+  val f = BoolLattice[Concrete.B].inject(false)
+  val top = BoolLattice[Concrete.B].top
 
   def any = Gen.oneOf(bot, t, f, top)
-  def le(l: ConcreteBoolean.B) =
+  def le(l: Concrete.B) =
     if (l == bot) { Gen.const(bot) }
     else if (l == top) { Gen.oneOf(bot, t, f) }
     else { Gen.oneOf(l, bot) }
@@ -59,49 +58,34 @@ object TypeGenerator extends LatticeGenerator[Type.T] {
   }
 }
 
-object ConcreteStringGenerator extends LatticeGenerator[ConcreteString.S] {
-  val isetgen = ISetGen[String](Generators.str)
-  def any = isetgen.gen
-  def le(l: ConcreteString.S) = isetgen.genSubset(l)
+class ConcreteGenerator[T : Order](g: Gen[T])(implicit lat: LatticeElement[Concrete.L[T]]) extends LatticeGenerator[Concrete.L[T]] {
+  val isetgen = ISetGen[T](g)
+  val topgen: Gen[Concrete.L[T]] = lat.top
+  def any = Gen.oneOf(topgen, isetgen.gen.map(x => Concrete.Values(x)))
+  def le(l: Concrete.L[T]) = l match {
+    case Concrete.Top => any
+    case Concrete.Values(content) => isetgen.genSubset(content).map(x => Concrete.Values(x))
+  }
 }
 
-object ConcreteIntegerGenerator extends LatticeGenerator[ConcreteInteger.I] {
-  val isetgen = ISetGen[Int](Generators.int)
-  def any = isetgen.gen
-  def le(l: ConcreteInteger.I) = isetgen.genSubset(l)
-}
-
-object ConcreteFloatGenerator extends LatticeGenerator[ConcreteFloat.F] {
-  val isetgen = ISetGen[Float](Generators.float)
-  def any = isetgen.gen
-  def le(l: ConcreteFloat.F) = isetgen.genSubset(l)
-}
-
-object ConcreteCharGenerator extends LatticeGenerator[ConcreteChar.C] {
-  implicit val charOrder: Order[Char] = Order.fromScalaOrdering[Char]
-  val isetgen = ISetGen[Char](Generators.char)
-  def any = isetgen.gen
-  def le(l: ConcreteChar.C) = isetgen.genSubset(l)
-}
-
-object ConcreteSymbolGenerator extends LatticeGenerator[ConcreteSymbol.Sym] {
-  val isetgen = ISetGen[String](Generators.sym)
-  def any = isetgen.gen
-  def le(l: ConcreteSymbol.Sym) = isetgen.genSubset(l)
-}
+object ConcreteStringGenerator extends ConcreteGenerator[String](Generators.str)(Order[String], Concrete.L.stringConcrete)
+object ConcreteIntGenerator extends ConcreteGenerator[Int](Generators.int)
+object ConcreteFloatGenerator extends ConcreteGenerator[Float](Generators.float)
+object ConcreteCharGenerator extends ConcreteGenerator[Char](Generators.char)(Order.fromScalaOrdering[Char], implicitly[LatticeElement[Concrete.L[Char]]])
+object ConcreteSymbolGenerator extends ConcreteGenerator[String](Generators.sym)(Order[String], Concrete.L.symConcrete)
 
 // TODO: bounded ints, constant propagation
 
-abstract class ConstantPropagationGenerator[X, L](gen: Gen[X])(const: X => L, bot: L, top: L) extends LatticeGenerator[L] {
-  def constgen: Gen[L] = for { x <- gen } yield const(x)
-  def botgen: Gen[L] = bot
-  def topgen: Gen[L] = top
-  def any: Gen[L] = Gen.oneOf(constgen, botgen, topgen)
-  def le(l: L) = if (l == top) { any } else if (l == bot) { bot } else { Gen.oneOf(l, bot) }
+abstract class ConstantPropagationGenerator[X : Order](gen: Gen[X])(implicit lat: LatticeElement[ConstantPropagation.L[X]]) extends LatticeGenerator[ConstantPropagation.L[X]] {
+  def constgen: Gen[ConstantPropagation.L[X]] = for { x <- gen } yield ConstantPropagation.Constant(x)
+  def botgen: Gen[ConstantPropagation.L[X]] = lat.bottom
+  def topgen: Gen[ConstantPropagation.L[X]] = lat.top
+  def any: Gen[ConstantPropagation.L[X]] = Gen.oneOf(constgen, botgen, topgen)
+  def le(l: ConstantPropagation.L[X]) = if (l == lat.top) { any } else if (l == lat.bottom) { botgen } else { Gen.oneOf(l, lat.bottom) }
 }
 
-object StringConstantPropagationGenerator extends ConstantPropagationGenerator[String, StringConstantPropagation.S](Generators.str)(StringConstantPropagation.Constant, StringConstantPropagation.Bottom, StringConstantPropagation.Top)
-object IntegerConstantPropagationGenerator extends ConstantPropagationGenerator[Int, IntegerConstantPropagation.I](Generators.int)(IntegerConstantPropagation.Constant, IntegerConstantPropagation.Bottom, IntegerConstantPropagation.Top)
-object FloatConstantPropagationGenerator extends ConstantPropagationGenerator[Float, FloatConstantPropagation.F](Generators.float)(FloatConstantPropagation.Constant, FloatConstantPropagation.Bottom, FloatConstantPropagation.Top)
-object CharConstantPropagationGenerator extends ConstantPropagationGenerator[Char, CharConstantPropagation.C](Generators.char)(CharConstantPropagation.Constant, CharConstantPropagation.Bottom, CharConstantPropagation.Top)
-object SymbolConstantPropagationGenerator extends ConstantPropagationGenerator[String, SymbolConstantPropagation.Sym](Generators.sym)(SymbolConstantPropagation.Constant, SymbolConstantPropagation.Bottom, SymbolConstantPropagation.Top)
+object StringConstantPropagationGenerator extends ConstantPropagationGenerator[String](Generators.str)(Order[String], ConstantPropagation.L.stringCP)
+object IntegerConstantPropagationGenerator extends ConstantPropagationGenerator[Int](Generators.int)
+object FloatConstantPropagationGenerator extends ConstantPropagationGenerator[Float](Generators.float)
+object CharConstantPropagationGenerator extends ConstantPropagationGenerator[Char](Generators.char)
+object SymbolConstantPropagationGenerator extends ConstantPropagationGenerator[String](Generators.sym)(Order[String], ConstantPropagation.L.symCP)

@@ -2,15 +2,15 @@ import scalaz.Scalaz._
 import scalaz._
 import SchemeOps._
 
-class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
-  val lat = lattice.isSchemeLattice
+class MakeASchemeLattice[LSeq : IsSchemeLattice] extends ASchemeLattice {
+  val lat = implicitly[IsSchemeLattice[LSeq]]
 
   type Pids = Set[Any]
   val pids: LatticeElement[Pids] = LatticeElement.ofSet[Any]
   type Behs = Set[Any]
   val behs: LatticeElement[Behs] = LatticeElement.ofSet[Any]
 
-  case class Value(seq: lattice.L = lat.bottom, p: Pids = pids.bottom, b: Behs = behs.bottom) {
+  case class Value(seq: LSeq = lat.bottom, p: Pids = pids.bottom, b: Behs = behs.bottom) {
     override def toString = {
       val pcontent: Set[String] = p.map(_.toString) ++ b.map(_.toString)
       if (seq == lat.bottom) {
@@ -20,7 +20,6 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
       }
     }
   }
-
 
   type L = Value
 
@@ -91,8 +90,3 @@ class MakeASchemeLattice(val lattice: SchemeLattice) extends ASchemeLattice {
     def cardinality(x: L) = ??? /* TODO */
   }
 }
-
-class ASchemeConcreteLattice(counting: Boolean) extends MakeASchemeLattice(new ConcreteLattice(counting))
-class ASchemeTypeSetLattice(counting: Boolean) extends MakeASchemeLattice(new TypeSetLattice(counting))
-class ASchemeBoundedIntLattice(bound: Int, counting: Boolean) extends MakeASchemeLattice(new BoundedIntLattice(bound, counting))
-class ASchemeConstantPropagationLattice(counting: Boolean) extends MakeASchemeLattice(new ConstantPropagationLattice(counting))

@@ -12,18 +12,23 @@ abstract class SchemeLatticeProperties[L : IsSchemeLattice] extends Specificatio
   implicit val arbitraryBinaryOp = Arbitrary(Gen.oneOf(BinaryOperator.values.toSeq))
 
   checkAll(newProperties("SchemeLattice") { p =>
+    p.property("subsumes(⊥, ⊥)") = abs.schemeLatticeLaw.bottomSubsumesItself
     p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") = abs.schemeLatticeLaw.injectBoolPreservesTruth
     p.property("!isTrue(⊥) ∧ !isFalse(⊥)") = abs.schemeLatticeLaw.bottomNeitherTrueNorFalse
     p.property("isTrue(⊤) ∧ isFalse(⊤)") = abs.schemeLatticeLaw.boolTopIsTrueAndFalse
     p.property("unOp(⊥) = ⊥") = forAll { (op: UnaryOperator) => abs.schemeLatticeLaw.unaryOpPreservesBottom(op) }
-    p.property("isFalse(not(inject(true))) ∧ isTrue(not(inject(false)))") = abs.schemeLatticeLaw.notIsSound
+    p.property("isFalse(not(inject(true))) ∧ isTrue(not(inject(false)))") = abs.schemeLatticeLaw.notIsCorrect
+    p.property("∀ b1, b2: if (b1 ∧ b2) isTrue(and(inject(b1), inject(b2))) else isFalse(and(inject(b1), inject(b2))") =
+      forAll { (b1: Boolean, b2: Boolean) => abs.schemeLatticeLaw.andIsCorrect(b1, b2) }
+    p.property("∀ b1, b2: if (b1 ∨ b2) isTrue(or(inject(b1), inject(b2))) else isFalse(or(inject(b1), inject(b2))") =
+      forAll { (b1: Boolean, b2: Boolean) => abs.schemeLatticeLaw.orIsCorrect(b1, b2) }
   })
 }
 
-object ConcreteCountingLattice extends ConcreteLattice(true)
-object ConcreteNoCountingLattice extends ConcreteLattice(false)
-class SchemeConcreteLattice extends SchemeLatticeProperties[ConcreteCountingLattice.L]()(ConcreteCountingLattice.isSchemeLattice)
-class SchemeConcreteLatticeNoCounting extends SchemeLatticeProperties[ConcreteNoCountingLattice.L]()(ConcreteNoCountingLattice.isSchemeLattice)
+
+class SchemeConcreteLattice extends SchemeLatticeProperties[Lattices.ConcreteLattice.L]()
+class SchemeTypeLattice extends SchemeLatticeProperties[Lattices.TypeLattice.L]()
+class SchemeBoundedIntLattice extends SchemeLatticeProperties[Lattices.BoundedIntLattice.L]()
 /* TODO: others */
 
 /* TODO: use ScalaCheck for (most of) this */
@@ -34,14 +39,6 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
   type Abs = lattice.L
   val abs = lattice.isSchemeLattice
 
-  property("lattice should correctly implement boolean operations") {
-    forAll { (b1: Boolean, b2: Boolean) => {
-      val v1 = abs.inject(b1)
-      val v2 = abs.inject(b2)
-      if (b1 && b2) assert(abs.isTrue(abs.and(v1, v2))) else assert(abs.isFalse(abs.and(v1, v2)))
-      if (b1 || b2) assert(abs.isTrue(abs.or(v1, v2))) else assert(abs.isFalse(abs.or(v1, v2)))
-    }}
-  }
   property("lattice should correctly implement numerical comparisons") {
     forAll { (n1: Int, n2: Int) => {
       val v1 = abs.inject(n1)
@@ -82,14 +79,6 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
       assert(!abs.subsumes(abs.bottom, v))
     }
   }
-  property("bottom should subsume itself") {
-    assert(abs.subsumes(abs.bottom, abs.bottom))
-  }
-  property("unary operation on bottom returns bottom") {
-    SchemeOps.UnaryOperator.values.foreach(op =>
-      for { res <- abs.unaryOp(op)(abs.bottom) } yield
-        assert(res == abs.bottom))
-  }
   property("binary operation on bottom returns bottom") {
     val v = abs.inject(1)
     SchemeOps.BinaryOperator.values.foreach(op =>
@@ -101,11 +90,7 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
         assert(res1 == abs.bottom && res2 == abs.bottom && res3 == abs.bottom)
       })
   }
-}
-
-abstract class JoinLatticePropSpec(lattice: SchemeLattice)
-    extends LatticePropSpec(lattice) {
-  property("lattice should join values correctly") {
+    property("lattice should join values correctly") {
     val bot = abs.bottom
     val t = abs.inject(true)
     val f = abs.inject(false)
@@ -131,21 +116,3 @@ abstract class JoinLatticePropSpec(lattice: SchemeLattice)
     assert(abs.subsumes(joined, str))
   }
 }
-
-class ConcreteCountingTest extends LatticePropSpec(new ConcreteLattice(true))
-class ConcreteNoCountingTest extends JoinLatticePropSpec(new ConcreteLattice(false))
-class TypeSetCountingTest extends JoinLatticePropSpec(new TypeSetLattice(true))
-class TypeSetNoCountingTest extends JoinLatticePropSpec(new TypeSetLattice(false))
-class BoundedIntCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(100, true))
-class BoundedIntNoCountingTest extends JoinLatticePropSpec(new BoundedIntLattice(100, false))
-class ConstantPropagationCountingTest extends JoinLatticePropSpec(new ConstantPropagationLattice(true))
-class ConstantPropagationNoCountingTest extends JoinLatticePropSpec(new ConstantPropagationLattice(false))
-
-class CSchemeConcreteCountingTest extends LatticePropSpec(new CSchemeConcreteLattice(true))
-class CSchemeConcreteNoCountingTest extends JoinLatticePropSpec(new CSchemeConcreteLattice(false))
-class CSchemeTypeSetCountingTest extends JoinLatticePropSpec(new CSchemeTypeSetLattice(true))
-class CSchemeTypeSetNoCountingTest extends JoinLatticePropSpec(new CSchemeTypeSetLattice(false))
-class CSchemeBoundedIntCountingTest extends JoinLatticePropSpec(new CSchemeBoundedIntLattice(100, true))
-class CSchemeBoundedIntNoCountingTest extends JoinLatticePropSpec(new CSchemeBoundedIntLattice(100, false))
-class CSchemeConstantPropagationCountingTest extends JoinLatticePropSpec(new CSchemeConstantPropagationLattice(true))
-class CSchemeConstantPropagationNoCountingTest extends JoinLatticePropSpec(new CSchemeConstantPropagationLattice(false))
