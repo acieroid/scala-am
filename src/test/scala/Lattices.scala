@@ -5,5 +5,4 @@ object Lattices {
   val bounded = new BoundedInteger(100)
   object BoundedIntLattice extends MakeSchemeLattice[Type.S, Concrete.B, bounded.I, Type.F, Type.C, Type.Sym](false)
   object ConstantPropagationLattice extends MakeSchemeLattice[ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.F, ConstantPropagation.C, ConstantPropagation.Sym](false)
-  /* TODO: add constant propagation */
 }

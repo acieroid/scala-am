@@ -78,6 +78,17 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
     import scalaz.std.boolean.conditional
     def bottomSubsumesItself: Boolean = subsumes(bottom, bottom)
     def bottomAlwaysSubsumed(x: L): Boolean = subsumes(x, bottom) && conditional(x != bottom, !subsumes(bottom, x))
+    def joinedWithSubsumesRemainsEqual(x: L, y: L): Boolean = conditional(subsumes(x, y), join(x, y) == x)
+    def joinedWithBottomRemainsEqual(x: L): Boolean = join(x, bottom) == x
+    def joinedSubsumes(x: L, y: L): Boolean = {
+      val xy = join(x, y)
+      subsumes(xy, x) && subsumes(xy, y)
+    }
+    def joinedSubsumes3(x: L, y: L, z: L): Boolean = {
+      /* Due to a bug detected on commit 7546a519, where {#t, Str, Int} did not subsume Str */
+      val xyz = join(x, join(y, z))
+      subsumes(xyz, x) && subsumes(xyz, y) && subsumes(xyz, z)
+    }
     def injectBoolPreservesTruth: Boolean = isTrue(inject(true)) && isFalse(inject(false))
     def bottomNeitherTrueNorFalse: Boolean = !isTrue(bottom) && !isFalse(bottom)
     def boolTopIsTrueAndFalse: Boolean = {
@@ -104,6 +115,24 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
       val v1 = inject(b1)
       val v2 = inject(b2)
       if (b1 || b2) isTrue(or(v1, v2)) else isFalse(or(v1, v2))
+    }
+    def ltIsCorrect(n1: Int, n2: Int): Boolean = {
+      val v1 = inject(n1)
+      val v2 = inject(n2)
+      conditional(n1 < n2,
+        (binaryOp(BinaryOperator.Lt)(v1, v2).extract.map(isTrue).getOrElse(false)) &&
+          (binaryOp(BinaryOperator.Lt)(v2, v1).extract.map(isFalse).getOrElse(false)))
+    }
+    def eqIsCorrect(n1: Int, n2: Int): Boolean = {
+      val v1 = inject(n1)
+      val v2 = inject(n2)
+      if (n1 == n2) {
+        (binaryOp(BinaryOperator.Eq)(v1, v2).extract.map(isTrue).getOrElse(false) &&
+          binaryOp(BinaryOperator.Eq)(v2, v1).extract.map(isTrue).getOrElse(false))
+      } else {
+        (binaryOp(BinaryOperator.Eq)(v1, v2).extract.map(isFalse).getOrElse(false) &&
+          binaryOp(BinaryOperator.Eq)(v2, v1).extract.map(isFalse).getOrElse(false))
+      }
     }
     /* TODO: more properties */
   }
