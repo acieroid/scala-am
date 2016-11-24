@@ -33,7 +33,8 @@ abstract class Semantics[Exp : Expression, Abs : JoinLattice, Addr : Address, Ti
   def stepKont(v: Abs, frame: Frame, store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]]
 
   /** WIP */
-  def stepReceive(self: Any /* TODO */, mname: String, margsv: List[Abs], d: Exp, env: Environment[Addr], store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]] =
+  def stepReceive(self: Any /* TODO */, mname: String, margsv: List[Abs], d: Exp,
+    env: Environment[Addr], store: Store[Addr, Abs], t: Time): Set[Action[Exp, Abs, Addr]] =
     throw new Exception("Semantics do not support message-based concurrency")
 
   /**

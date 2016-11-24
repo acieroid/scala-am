@@ -91,7 +91,7 @@ object Main {
       replOrFile(None, input => input.indexOf(".") match {
         case -1 => println(s"Unknown inspection query: $input")
         case n => Try(input.subSequence(0, n).toString.toInt) match {
-          case Success(state) => result.inspect(state, input.subSequence(n+1, input.size).toString)
+          case Success(state) => result.inspect(state, input.subSequence(n + 1, input.size).toString)
           case Failure(e) => println(s"Cannot parse state number (${input.subSequence(0, n)}): $e")
         }
       })

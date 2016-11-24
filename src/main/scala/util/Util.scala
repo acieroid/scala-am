@@ -1,6 +1,6 @@
-import scala.io.StdIn
-
 object Util {
+  import scala.io.StdIn
+
   def fileContent(file: String): Option[String] = {
     val f = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
@@ -28,7 +28,7 @@ object Util {
     lazy val reader = new jline.console.ConsoleReader()
     @scala.annotation.tailrec
     def loop(): Unit = Option(reader.readLine(">>> ")) match {
-      case Some(program) if program.size > 0 => cb(program)
+      case Some(program) if program.length > 0 => cb(program)
       case _ => loop()
     }
     file match {
@@ -46,7 +46,7 @@ object Util {
 
   /* From http://stackoverflow.com/questions/7539831/scala-draw-table-to-console */
   object Tabulator {
-    def format(table: Seq[Seq[Any]]) = table match {
+    def format(table: Seq[Seq[Any]]): String = table match {
       case Seq() => ""
       case _ =>
         val sizes = for (row <- table) yield (for (cell <- row) yield Option(cell) match {
@@ -66,11 +66,11 @@ object Util {
         rowSeparator ::
         List()).mkString("\n")
 
-    def formatRow(row: Seq[Any], colSizes: Seq[Int]) = {
+    def formatRow(row: Seq[Any], colSizes: Seq[Int]): String = {
       val cells = (for ((item, size) <- row.zip(colSizes)) yield if (size == 0) "" else ("%" + size + "s").format(item))
       cells.mkString("|", "|", "|")
     }
 
-    def rowSeparator(colSizes: Seq[Int]) = colSizes map { "-" * _ } mkString("+", "+", "+")
+    def rowSeparator(colSizes: Seq[Int]): String = colSizes map { "-" * _ } mkString("+", "+", "+")
   }
 }

@@ -15,9 +15,11 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
     override def toString = s"${this.getClass.getSimpleName}"
   }
   case class FrameFuncallOperator(fexp: SchemeExp, args: List[SchemeExp], env: Env) extends SchemeFrame
-  case class FrameFuncallOperands(f: V, fexp: SchemeExp, cur: SchemeExp, args: List[(SchemeExp, V)], toeval: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameFuncallOperands(f: V, fexp: SchemeExp, cur: SchemeExp, args: List[(SchemeExp, V)],
+    toeval: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameIf(cons: SchemeExp, alt: SchemeExp, env: Env) extends SchemeFrame
-  case class FrameLet(variable: Identifier, bindings: List[(Identifier, V)], toeval: List[(Identifier, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameLet(variable: Identifier, bindings: List[(Identifier, V)],
+    toeval: List[(Identifier, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameLetStar(variable: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameLetrec(addr: Addr, bindings: List[(Addr, SchemeExp)], body: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameSet(variable: Identifier, env: Env) extends SchemeFrame
@@ -250,7 +252,8 @@ class SchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp](pri
     case action => action
   })
 
-  override protected def funcallArgs(f: V, fexp: SchemeExp, args: List[(SchemeExp, V)], toeval: List[SchemeExp], env: Env, store: Sto, t: Time): Actions = toeval match {
+  override protected def funcallArgs(f: V, fexp: SchemeExp, args: List[(SchemeExp, V)], toeval: List[SchemeExp],
+    env: Env, store: Sto, t: Time): Actions = toeval match {
     case Nil =>
       evalCall(f, fexp, args.reverse, store, t)
     case e :: rest => atomicEval(e, env, store) match {
