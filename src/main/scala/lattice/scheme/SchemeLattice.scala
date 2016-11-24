@@ -74,8 +74,10 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
    * the vector value itsel */
   def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
 
-  trait SchemeLatticeLaw {
+  trait SchemeLatticeLaw extends MonoidLaw {
+    import scalaz.std.boolean.conditional
     def bottomSubsumesItself: Boolean = subsumes(bottom, bottom)
+    def bottomAlwaysSubsumed(x: L): Boolean = subsumes(x, bottom) && conditional(x != bottom, !subsumes(bottom, x))
     def injectBoolPreservesTruth: Boolean = isTrue(inject(true)) && isFalse(inject(false))
     def bottomNeitherTrueNorFalse: Boolean = !isTrue(bottom) && !isFalse(bottom)
     def boolTopIsTrueAndFalse: Boolean = {

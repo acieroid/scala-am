@@ -379,6 +379,7 @@ class MakeSchemeLattice[
   }
 
   implicit val lsetMonoid = new Monoid[L] {
+    import scala.util.{Try, Success, Failure}
     def append(x: L, y: => L): L = x match {
       case Element(Bot) => y
       case Element(a) => y match {
@@ -395,10 +396,16 @@ class MakeSchemeLattice[
             if (acc.exists(x1 => isSchemeLatticeValue.subsumes(x1, x2))) {
               /* the set already contains an element that subsumes x2, don't add it to the set */
               acc
+            } else if (acc.exists(x1 => Try(isSchemeLatticeValue.join(x1, x2)).isSuccess)) {
+              /* merge x2 into another element of the set */
+              acc.map(x1 => Try(isSchemeLatticeValue.join(x1, x2)) match {
+                case Success(joined) => joined
+                case Failure(CannotJoin(_)) => x1
+                case Failure(e) => throw e
+              })
             } else {
-              /* remove all elements subsumed by x2 and add x2 to the set */
-              val subsumed = acc.filter(x1 => isSchemeLatticeValue.subsumes(x2, x1))
-              (acc -- subsumed) + x2
+              /* just add x2 to the set */
+              acc + x2
             }))
       }
     }

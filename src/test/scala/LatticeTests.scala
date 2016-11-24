@@ -14,12 +14,34 @@ object LatticeProperties {
     p
   }
 
-  /* TODO: import scalaz properties for monoids */
-
   object latticeElement {
     def laws[L](implicit l: LatticeElement[L], gen: LatticeGenerator[L]): Properties = {
       implicit val arb = gen.anyArb
       newProperties("LatticeElement") { p =>
+        p.property("satisfies Equal[_]'s commutativity") =
+          forAll(l.latticeElementLaw.commutative _)
+        p.property("satisfies Equal[_]'s reflexivity") =
+          forAll(l.latticeElementLaw.reflexive _)
+        p.property("satisfies Equal[_]'s transitivity") =
+          forAll(l.latticeElementLaw.transitive _)
+        p.property("satisfies Equal[_]'s naturality") =
+          forAll(l.latticeElementLaw.naturality _)
+        p.property("satisfies Order[_]'s antisymmetricity") =
+          forAll(l.latticeElementLaw.antisymmetric _)
+        p.property("satisfies Order[_]'s transitive order") =
+          forAll(l.latticeElementLaw.transitiveOrder _)
+        p.property("satisfies Order[_]'s order and equal consistency") =
+          forAll(l.latticeElementLaw.orderAndEqualConsistent _)
+        p.property("satisfies Semigroup[_]'s associativity") =
+          forAll(l.latticeElementLaw.associative _)
+        p.property("satisfies Monoid[_]'s left identity") =
+          forAll(l.latticeElementLaw.leftIdentity _)
+        p.property("satisfies Monoid[_]'s right identity") =
+          forAll(l.latticeElementLaw.rightIdentity _)
+        p.property("∀ a: a ⊑ a") =
+          forAll(l.latticeElementLaw.reflexive _)
+        p.property("∀ a: ⊥ ⊔ x = x ∧ x ⊔ ⊥") =
+          forAll(l.latticeElementLaw.leftIdentity _) && forAll(l.latticeElementLaw.rightIdentity _)
         p.property("∀ a: ⊥ ⊑ a") =
           forAll(l.latticeElementLaw.bottomLowerBound _)
         p.property("∀ a: a ⊑ ⊤") =
@@ -27,6 +49,8 @@ object LatticeProperties {
         p.property("∀ a, b: a ⊔ b = b ⊔ a") =
           forAll(l.latticeElementLaw.joinCommutative _)
         p.property("∀ a, b, c: (a ⊔ b) ⊔ c = a ⊔ (b ⊔ c)") =
+          /* This is the same requirement (from Monoid and from LatticeElement) */
+          forAll(l.latticeElementLaw.associative _) &&
           forAll(l.latticeElementLaw.joinAssociative _)
         p.property("∀ a: a ⊔ a = a") =
           forAll(l.latticeElementLaw.joinIdempotent _)

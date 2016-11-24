@@ -10,9 +10,7 @@ trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
   def name: String
   /** The bottom element */
   def bottom: L
-  /**
-   * The top element. 
-   */
+  /** The top element. */
   def top: L
   /** The join operation */
   def join(x: L, y: => L): L

@@ -11,12 +11,27 @@ abstract class SchemeLatticeProperties[L : IsSchemeLattice] extends Specificatio
   implicit val arbitraryUnaryOp = Arbitrary(Gen.oneOf(UnaryOperator.values.toSeq))
   implicit val arbitraryBinaryOp = Arbitrary(Gen.oneOf(BinaryOperator.values.toSeq))
 
+  /* TODO: use a better generator */
+  implicit val arbitraryL = Arbitrary(Gen.oneOf(abs.inject(1), abs.inject(2), abs.inject(-1), abs.inject(1000),
+    abs.inject(true), abs.inject(false), abs.inject("foo"), abs.injectSymbol("foo"),
+    abs.join(abs.inject(1), abs.inject(2)), abs.join(abs.inject(true), abs.inject(false)),
+    abs.join(abs.inject(1), abs.inject("foo")), abs.nil))
+
+  implicit val equalL = new Equal[L] {
+    def equal(x: L, y: L) = x == y
+  }
+
   checkAll(newProperties("SchemeLattice") { p =>
-    p.property("subsumes(⊥, ⊥)") = abs.schemeLatticeLaw.bottomSubsumesItself
+    p.property("satisfies Semigroup[_]'s associativity") = forAll(abs.schemeLatticeLaw.associative _)
+    p.property("satisfies Monoid[_]'s left identity") = forAll(abs.schemeLatticeLaw.leftIdentity _)
+    p.property("satisfies Monoid[_]'s right identity") = forAll(abs.schemeLatticeLaw.rightIdentity _)
+    p.property("⊥ ⊑ ⊥)") = abs.schemeLatticeLaw.bottomSubsumesItself
+    p.property("∀ x, ⊥ ⊑ x ∧ (x ≠ ⊥ ⇒ ¬(x ⊑ ⊥))") = forAll { abs.schemeLatticeLaw.bottomAlwaysSubsumed _ }
     p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") = abs.schemeLatticeLaw.injectBoolPreservesTruth
     p.property("!isTrue(⊥) ∧ !isFalse(⊥)") = abs.schemeLatticeLaw.bottomNeitherTrueNorFalse
     p.property("isTrue(⊤) ∧ isFalse(⊤)") = abs.schemeLatticeLaw.boolTopIsTrueAndFalse
     p.property("unOp(⊥) = ⊥") = forAll { (op: UnaryOperator) => abs.schemeLatticeLaw.unaryOpPreservesBottom(op) }
+    p.property("∀ x, binOp(⊥, x) = ⊥ = binop(x, ⊥)") = forAll { (op: BinaryOperator, x: L) => abs.schemeLatticeLaw.binaryOpPreservesBottom(op, x) }
     p.property("isFalse(not(inject(true))) ∧ isTrue(not(inject(false)))") = abs.schemeLatticeLaw.notIsCorrect
     p.property("∀ b1, b2: if (b1 ∧ b2) isTrue(and(inject(b1), inject(b2))) else isFalse(and(inject(b1), inject(b2))") =
       forAll { (b1: Boolean, b2: Boolean) => abs.schemeLatticeLaw.andIsCorrect(b1, b2) }
@@ -25,11 +40,9 @@ abstract class SchemeLatticeProperties[L : IsSchemeLattice] extends Specificatio
   })
 }
 
-
 class SchemeConcreteLattice extends SchemeLatticeProperties[Lattices.ConcreteLattice.L]()
 class SchemeTypeLattice extends SchemeLatticeProperties[Lattices.TypeLattice.L]()
 class SchemeBoundedIntLattice extends SchemeLatticeProperties[Lattices.BoundedIntLattice.L]()
-/* TODO: others */
 
 /* TODO: use ScalaCheck for (most of) this */
 import org.scalatest._
@@ -65,32 +78,7 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
     err(abs.binaryOp(BinaryOperator.Lt)(v1, v2));     err(abs.binaryOp(BinaryOperator.Lt)(v2, v1))
     err(abs.binaryOp(BinaryOperator.NumEq)(v1, v2));  err(abs.binaryOp(BinaryOperator.NumEq)(v2, v1))
   }
-  property("bottom should be subsumed by any other value") {
-    val values = Table(
-      ("v"),
-      (abs.inject(1)),
-      (abs.inject(2)),
-      (abs.inject(true)),
-      (abs.inject(false)),
-      (abs.inject("foo")),
-      (abs.injectSymbol("foo")))
-    forAll (values) { (v: Abs) =>
-      assert(abs.subsumes(v, abs.bottom))
-      assert(!abs.subsumes(abs.bottom, v))
-    }
-  }
-  property("binary operation on bottom returns bottom") {
-    val v = abs.inject(1)
-    SchemeOps.BinaryOperator.values.foreach(op =>
-      for {
-        res1 <- abs.binaryOp(op)(abs.bottom, abs.bottom)
-        res2 <- abs.binaryOp(op)(v, abs.bottom)
-        res3 <- abs.binaryOp(op)(abs.bottom, v)
-      } yield {
-        assert(res1 == abs.bottom && res2 == abs.bottom && res3 == abs.bottom)
-      })
-  }
-    property("lattice should join values correctly") {
+  property("lattice should join values correctly") { // TODO: prop: anything joined with bottom should remain the same
     val bot = abs.bottom
     val t = abs.inject(true)
     val f = abs.inject(false)
@@ -100,14 +88,14 @@ abstract class LatticePropSpec(val lattice: SchemeLattice)
     assert(abs.isTrue(tf2)); assert(abs.isFalse(tf2));
     assert(abs.subsumes(tf, tf2)); assert(abs.subsumes(tf2, tf)); assert(tf.equals(tf2))
   }
-  property("{#t, #f} joined with {#f} should give {#t, #f}") {
+  property("{#t, #f} joined with {#f} should give {#t, #f}") { // TODO: prop: anything joined with something it subsumes should remain the same
     /* bug detected on commit 1a31d78 */
     val tf = abs.join(abs.inject(true), abs.inject(false))
     val f = abs.inject(false)
     val tff = abs.join(f, tf)
     assert(abs.isTrue(tff)); assert(abs.isFalse(tff))
   }
-  property("{#t, Str, Int} should subsume Str") {
+  property("{#t, Str, Int} should subsume Str") { // TODO: prop: join(x, y) should subsume both x and y. Same with join(x, join(y, z))
     /* bug detected on commit 7546a519 */
     val str = abs.inject("foo")
     val t = abs.inject(true)
