@@ -15,10 +15,7 @@ abstract class Environment[Addr : Address] {
   def extend(values: Iterable[(String, Addr)]): Environment[Addr]
   /** Checks whether this environment subsumes another */
   def subsumes(that: Environment[Addr]) =
-    that.forall((binding: (String, Addr)) => lookup(binding._1) match {
-      case Some(a) => a == binding._2
-      case None => false
-    })
+    that.forall((binding: (String, Addr)) => lookup(binding._1).contains(binding._2))
 }
 
 /** Basic mapping from names to addresses */
@@ -38,10 +35,7 @@ case class CombinedEnvironment[Addr : Address](ro: Environment[Addr], w: Environ
     case Some(a) => p(name, a)
     case None => throw new Exception(s"shouldn't happen: an existing key is not bound in the environment (key: $name, env: $this)")
   })
-  def lookup(name: String) = w.lookup(name) match {
-    case Some(a) => Some(a)
-    case None => ro.lookup(name)
-  }
+  def lookup(name: String) = w.lookup(name).orElse(ro.lookup(name))
   def extend(name: String, a: Addr) = this.copy(w = w.extend(name, a))
   def extend(values: Iterable[(String, Addr)]) = this.copy(w = w.extend(values))
 }

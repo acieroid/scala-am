@@ -260,7 +260,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   }
   case class ActorEffectTerminate(p: PID) extends ActorEffect {
     def macrostepStopper = false
-    override def toString = s"x"
+    override def toString = "x"
   }
   case class ActorEffectCreate(p: PID, name: String) extends ActorEffect {
     def macrostepStopper = false

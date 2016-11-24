@@ -159,10 +159,7 @@ object TaintAnalysis {
     val sem = new SchemeSemantics[L, ClassicalAddress.A, ZeroCFA.T](new TSchemePrimitives[ClassicalAddress.A, L])
     val machine = new AAM[SchemeExp, L, ClassicalAddress.A, ZeroCFA.T]
     val analysis = TaintAnalysis[L, ClassicalAddress.A, ZeroCFA.T]
-    machine.analyze(sem.parse(program), sem, analysis, None) match {
-      case Some(v) => v
-      case None => println("Analysis did not succeed..."); Set()
-    }
+    machine.analyze(sem.parse(program), sem, analysis, None).getOrElse({ println("Analysis did not succeed..."); Set() })
   }
   def main(args: Array[String]) {
     if (args.length >= 1) {

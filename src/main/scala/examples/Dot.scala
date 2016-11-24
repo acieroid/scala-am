@@ -108,10 +108,7 @@ class DotLanguage[Addr : Address] {
     private def findTermMember(defs: Definition, a: TermMember): Option[Term] = defs match {
       case Field(a2, t, _) if a2 == a => Some(t)
       case Field(_, _, _) => None
-      case Aggregate(d1, d2, _) => findTermMember(d1, a) match {
-        case Some(t) => Some(t)
-        case None => findTermMember(d2, a)
-      }
+      case Aggregate(d1, d2, _) => findTermMember(d1, a).orElse(findTermMember(d2, a))
     }
 
     case class NoTermMember(member: Identifier, obj: String, pos: Position) extends SemanticError

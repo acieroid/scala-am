@@ -16,10 +16,7 @@ case class ValueFloat(value: Float) extends Value {
   override def toString = value.toString
 }
 case class ValueBoolean(value: Boolean) extends Value {
-  override def toString = value match {
-    case true => "#t"
-    case false => "#f"
-  }
+  override def toString = if (value) { "#t" } else { "#f" }
 }
 case class ValueCharacter(value: Character) extends Value {
   override def toString = s"#\\$value" // not entirely correct (eg. newline, ...)

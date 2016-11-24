@@ -15,7 +15,7 @@ object SchemeExp {
  * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
  */
 case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Position) extends SchemeExp {
-  assert(body.size >= 1)
+  require(body.nonEmpty)
   override def toString = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
@@ -247,7 +247,7 @@ case class SchemeBecome(actor: SchemeExp, args: List[SchemeExp], pos: Position) 
  * Terminate the execution of an actor
  */
 case class SchemeTerminate(pos: Position) extends SchemeExp {
-  override def toString = s"(terminate)"
+  override def toString = "(terminate)"
 }
 
 /**

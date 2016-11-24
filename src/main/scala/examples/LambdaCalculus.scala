@@ -204,10 +204,7 @@ object LamAnalysis {
     /* We can then analyze the given program using the machine, our semantics and our analysis */
     machine.analyze(sem.parse(program), sem, analysis,
       /* we don't include a timeout for the analysis */
-      None) match {
-      case Some(v) => v
-      case None => println("Analysis did not succeed..."); Set()
-    }
+      None).getOrElse({ println("Analysis did not succeed..."); Set() })
   }
   def main(args: Array[String]) {
     /* We run our analysis on a simple program */

@@ -201,7 +201,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
               case None => false
               case Some((top, rest)) => false
             }
-          }).union(G2.map(kont => kontCanBeEmpty(new LocalKont(), kont, kstore, GuG2))).foldLeft(false)((x, y) => x || y)
+          }).union(G2.map(kont => kontCanBeEmpty(new LocalKont(), kont, kstore, GuG2))).exists(x => x)
         }
       }
       case Some((top, rest)) => false

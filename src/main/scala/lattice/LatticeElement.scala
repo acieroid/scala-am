@@ -36,10 +36,7 @@ trait LatticeElement[L] extends Order[L] with Monoid[L] with Show[L] {
      * Top is the upper bound (when defined)
      * ∀ a: a ⊑ ⊤
      */
-    def topUpperBound(a: L): Boolean = scala.util.Try(top).toOption match {
-      case None => true
-      case Some(t) => subsumes(t, a)
-    }
+    def topUpperBound(a: L): Boolean = subsumes(top, a)
     /**
      * Join is commutative
      * ∀ a, b: a ⊔ b = b ⊔ a
@@ -147,10 +144,7 @@ trait BoolLattice[B] extends LatticeElement[B] {
      * Top is both true and false (when defined)
      * isTrue(⊤) ∧ isFalse(⊤)
      */
-    def topTrueAndFalse: Boolean = scala.util.Try(top).toOption match {
-      case None => true
-      case Some(t) => isTrue(t) && isFalse(t)
-    }
+    def topTrueAndFalse: Boolean = isTrue(top) && isFalse(top)
     /**
      * Bottom is neither true nor false
      * ¬isTrue(⊥) ∧ ¬isFalse(⊥)

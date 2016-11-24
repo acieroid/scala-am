@@ -100,8 +100,7 @@ object Main {
 
   def main(args: Array[String]) {
     import scala.util.control.Breaks._
-    Config.parser.parse(args, Config.Config()) match {
-      case Some(config) => {
+    Config.parser.parse(args, Config.Config()).foreach(config => {
         val lattice: SchemeLattice = config.lattice match {
           case Config.Lattice.Concrete => new MakeSchemeLattice[Concrete.S, Concrete.B, Concrete.I, Concrete.F, Concrete.C, Concrete.Sym](config.counting)
           case Config.Lattice.TypeSet => new MakeSchemeLattice[Type.S, Concrete.B, Type.I, Type.F, Type.C, Type.Sym](config.counting)
@@ -185,9 +184,7 @@ object Main {
             replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
             visitor.print
         }
-      }
-      case None => ()
-    }
+      })
     Profiler.print
   }
 }

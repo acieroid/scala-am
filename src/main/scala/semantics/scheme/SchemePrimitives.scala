@@ -310,7 +310,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     trait Spec
     case object Car extends Spec
     case object Cdr extends Spec
-    val spec: List[Spec] = name.drop(1).take(name.length - 2).toList.reverse.map(c =>
+    val spec: List[Spec] = name.drop(1).take(name.length - 2).toList.reverseMap(c =>
       if (c == 'a') { Car }
       else if (c == 'd') { Cdr }
       else { throw new Exception("Incorrect car/cdr operation: $name") })

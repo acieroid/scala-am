@@ -158,7 +158,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
     case FrameIf(cons, alt, env) =>
       conditional(v, Action.eval(cons, env, store), Action.eval(alt, env, store))
     case FrameLet(name, bindings, Nil, body, env) => {
-      val variables = name :: bindings.reverse.map(_._1)
+      val variables = name :: bindings.reverseMap(_._1)
       val addresses = variables.map(variable => Address[Addr].variable(variable, v, t))
       val (env1, store1) = ((name, v) :: bindings).zip(addresses).foldLeft((env, store))({
         case ((env, store), ((variable, value), a)) => (env.extend(variable.name, a), store.extend(a, value))
@@ -192,14 +192,12 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
         })
     case FrameCase(clauses, default, env) => {
       val fromClauses = clauses.flatMap({ case (values, body) =>
-        if (values.exists(v2 => evalValue(v2.value) match {
-          case None => false
-          case Some(v2) => IsSchemeLattice[V].subsumes(v, v2)
-        }))
+        if (values.exists(v2 => evalValue(v2.value).exists(v2 => IsSchemeLattice[V].subsumes(v, v2)))) {
           /* TODO: precision could be improved by restricting v to v2 */
           evalBody(body, env, store)
-        else
+        } else {
           Action.none
+        }
       })
       /* TODO: precision could be improved in cases where we know that default is not
        * reachable */
@@ -213,7 +211,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       conditional(v, Action.value(v, store), Action.value(IsSchemeLattice[V].inject(false), store))
     case FrameOr(e :: rest, env) =>
       conditional(v, Action.value(v, store), Action.push(FrameOr(rest, env), e, env, store))
-    case FrameDefine(name, env) => throw new Exception(s"TODO: define not handled (no global environment)")
+    case FrameDefine(name, env) => throw new Exception("TODO: define not handled (no global environment)")
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)

@@ -72,14 +72,8 @@ case class CombinedStore[Addr : Address, Abs : JoinLattice](ro: Store[Addr, Abs]
     case Some(v) => p((a, v))
     case None => throw new Exception(s"shouldn't happen: an existing key is not bound in the store (key: $a, store: $this)")
   })
-  def lookup(a: Addr) = w.lookup(a) match {
-    case Some(v) => Some(v)
-    case None => ro.lookup(a)
-  }
-  def lookupBot(a: Addr) = w.lookup(a) match {
-    case Some(v) => v
-    case None => ro.lookupBot(a)
-  }
+  def lookup(a: Addr) = w.lookup(a).orElse(ro.lookup(a))
+  def lookupBot(a: Addr) = w.lookup(a).getOrElse(ro.lookupBot(a))
   def extend(a: Addr, v: Abs) = this.copy(w = w.extend(a, v))
   def update(a: Addr, v: Abs) = updateOrExtend(a, v)
   def updateOrExtend(a: Addr, v: Abs) = this.copy(w = w.updateOrExtend(a, v))
@@ -95,14 +89,8 @@ case class DeltaStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs]
   override def toString = content.filterKeys(a => !Address[Addr].isPrimitive(a)).toString
   def keys = content.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
-  def lookup(a: Addr) = d.get(a) match {
-    case None => content.get(a)
-    case Some(v) => Some(v) /* information in the delta should always be as broad as the information in the store itself */
-  }
-  def lookupBot(a: Addr) = d.get(a) match {
-    case None => content.get(a).getOrElse(JoinLattice[Abs].bottom)
-    case Some(v) => v
-  }
+  def lookup(a: Addr) = d.get(a).orElse(content.get(a)) /* information in the delta should always be as broad as the information in the store itself */
+  def lookupBot(a: Addr) = d.get(a).orElse(content.get(a)).getOrElse(JoinLattice[Abs].bottom)
   def extend(a: Addr, v: Abs) = d.get(a) match {
     case Some(v2) => this.copy(d = d + (a -> JoinLattice[Abs].join(v2, v)))
     case None => content.get(a) match {

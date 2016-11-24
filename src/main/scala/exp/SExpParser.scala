@@ -57,10 +57,7 @@ trait SExpTokens extends Tokens {
     def chars = n.toString
   }
   case class TBoolean(b: Boolean) extends SExpToken {
-    def chars = b match {
-      case true => "#t"
-      case false => "#f"
-    }
+    def chars = if (b) { "#t" } else { "#f" }
   }
   case class TCharacter(c: Character) extends SExpToken {
     def chars = s"#\\$c"
