@@ -69,6 +69,12 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     }
   }
 
+  object BoolTop extends NoStoreOperation("bool-top") {
+    override def call(args: List[Abs]) = abs.boolTop
+  }
+  object IntTop extends NoStoreOperation("int-top") {
+    override def call(args: List[Abs]) = abs.intTop
+  }
   object Plus extends NoStoreOperation("+") {
     override def call(args: List[Abs]) = args match {
       case Nil => abs.inject(0)
@@ -660,6 +666,6 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     Cdddr, Caaaar, Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar, Cdaadr, Cdadar,
     Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr, SetCar, SetCdr, Length, Listp,
     MakeVector, VectorSet, Vector, VectorLength, VectorRef,
-    Equal /*, Lock */)
+    Equal, BoolTop, IntTop)
   def toVal(prim: Primitive[Addr, Abs]): Abs = abs.inject(prim)
 }

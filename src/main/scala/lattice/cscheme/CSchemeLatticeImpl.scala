@@ -109,6 +109,7 @@ class MakeCSchemeLattice[LSeq : IsSchemeLattice] extends CSchemeLattice {
     def cardinality(x: L) = ??? /* TODO */
 
     def inject(x: Int) = Value(seq = lat.inject(x))
+    def intTop = Value(seq = lat.intTop)
     def inject(x: Float) = Value(seq = lat.inject(x))
     def inject(x: String) = Value(seq = lat.inject(x))
     def inject(x: Boolean) = Value(seq = lat.inject(x))

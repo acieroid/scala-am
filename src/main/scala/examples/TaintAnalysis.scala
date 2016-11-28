@@ -88,6 +88,7 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
     def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): MayFail[(L, Set[Addr])] = IsSchemeLattice[Abs].vectorSet(vector._2, index._2, addr).map({
       case (res, addrs) => ((Untainted, res), addrs) })
     def inject(x: Int): L = (Untainted, IsSchemeLattice[Abs].inject(x))
+    def intTop: L = (Untainted, IsSchemeLattice[Abs].intTop)
     def inject(x: Float): L = (Untainted, IsSchemeLattice[Abs].inject(x))
     def inject(x: String): L = (Untainted, IsSchemeLattice[Abs].inject(x))
     def inject(x: Char): L = (Untainted, IsSchemeLattice[Abs].inject(x))

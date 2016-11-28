@@ -264,6 +264,7 @@ class MakeSchemeLattice[
     }
 
     def inject(x: scala.Int): Value = Int(IntLattice[I].inject(x))
+    def intTop: Value = Int(IntLattice[I].top)
     def inject(x: scala.Float): Value = Float(FloatLattice[F].inject(x))
     def inject(x: String): Value = Str(StringLattice[S].inject(x))
     def inject(x: scala.Char): Value = Char(CharLattice[C].inject(x))
@@ -444,6 +445,7 @@ class MakeSchemeLattice[
 
     def bottom: L = Element(isSchemeLatticeValue.bottom)
     def inject(x: scala.Int): L = Element(isSchemeLatticeValue.inject(x))
+    def intTop: L = Element(isSchemeLatticeValue.intTop)
     def inject(x: scala.Float): L = Element(isSchemeLatticeValue.inject(x))
     def inject(x: String): L = Element(isSchemeLatticeValue.inject(x))
     def inject(x: scala.Char): L = Element(isSchemeLatticeValue.inject(x))

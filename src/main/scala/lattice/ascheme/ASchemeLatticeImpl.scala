@@ -58,6 +58,7 @@ class MakeASchemeLattice[LSeq : IsSchemeLattice] extends ASchemeLattice {
     def getPrimitives[Addr : Address, Abs : JoinLattice](x: L) = lat.getPrimitives[Addr, Abs](x.seq)
 
     def inject(x: Int) = Value(seq = lat.inject(x))
+    def intTop = Value(seq = lat.intTop)
     def inject(x: Float) = Value(seq = lat.inject(x))
     def inject(x: String) = Value(seq = lat.inject(x))
     def inject(x: Boolean) = Value(seq = lat.inject(x))
