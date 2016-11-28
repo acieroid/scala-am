@@ -142,7 +142,7 @@ case class BoundedMultisetMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PI
       case (m, 1) => (m, this.copy(messages = messages - ((m, 1))))
       case (m, count) => (m, (this.copy(messages = messages - ((m, count)) + ((m, count - 1)))))
     }) ++ noCountMessages.flatMap(m => Set((m, this), (m, this.copy(noCountMessages = noCountMessages - m))))
-    def push(m: Message) = if (noCountMessages.contains(m)) { this } else {
+    def push(m: Message) = if (noCountMessages.contains(m)) { this } else if (bound >= 1) {
       messages.find({ case (m2, count) => m2 == m }) match {
         case Some((_, count)) if count + 1 < bound => this.copy(messages = messages - ((m, count)) + ((m, count + 1)))
         case Some((_, count)) => this.copy(
@@ -150,7 +150,7 @@ case class BoundedMultisetMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PI
           noCountMessages = noCountMessages + m)
         case None => this.copy(messages = messages + ((m, 1)))
       }
-    }
+    } else { this.copy(noCountMessages = noCountMessages + m) }
     def isEmpty = messages.isEmpty && noCountMessages.isEmpty
     def size = if (noCountMessages.isEmpty) { MboxSizeN(messages.map(_._2).sum) } else { MboxSizeUnbounded }
     override def toString = {
