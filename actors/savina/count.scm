@@ -15,7 +15,7 @@
                  (result (count)
                          (if (= count N)
                              (display "Success!")
-                             (display "Error!"))
+                             (error "Error!"))
                          (terminate))))
          (counting-actor
           (actor "counting" (count)
