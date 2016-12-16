@@ -9,7 +9,7 @@
                                        (error "popping an empty stack")
                                        (terminate))))
                             (push (v)
-                                  (become stack-node v (lambda ()  (create stack-node content link))))))
+                                  (become stack-node v (lambda () (become stack-node content link))))))
          (display-actor (actor "display" ()
                                (message (v) (display v) (become display-actor))))
          (disp (create display-actor))
