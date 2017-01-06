@@ -1,4 +1,5 @@
 ;; From SOTER benchmarks (pipe). Adapted to use a fixed number of actors that can be distinguished by the analyzer.
+;; Bound: pipe-node bounded by 1
 (letrec ((pipe-node (actor "pipe-node" (f next)
                            (message (m)
                                     (send next message (f m))

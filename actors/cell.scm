@@ -4,7 +4,7 @@
                  (get (act) (send act value content) (become cell content))))
          (display-actor
           (actor "display" ()
-                 (value (x) (display x))))
+                 (value (x) (if (= x 2) (terminate) (error "Error!")))))
          (disp (create display-actor))
          (c1 (create cell 1))
          (c2 (create cell 2)))

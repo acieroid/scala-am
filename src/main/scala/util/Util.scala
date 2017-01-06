@@ -24,17 +24,17 @@ object Util {
 
   object Done extends Exception
   /** Either run cb on the content of the given file, or run a REPL, each line being sent to cb */
-  def replOrFile(file: Option[String], cb: String => Unit): Unit = {
+  def replOrFile[A](file: Option[String], cb: String => A): A = {
     lazy val reader = new jline.console.ConsoleReader()
     @scala.annotation.tailrec
-    def loop(): Unit = Option(reader.readLine(">>> ")) match {
+    def loop(): A = Option(reader.readLine(">>> ")) match {
       case Some(program) if program.length > 0 => cb(program)
       case _ => loop()
     }
     file match {
       case Some(file) => fileContent(file) match {
         case Some(program) => cb(program)
-        case None => println(s"Input file doesn't exists ($file)")
+        case None => throw new RuntimeException(s"Input file doesn't exists ($file)")
       }
       case None => loop()
     }

@@ -79,8 +79,8 @@ import scala.util.{Try, Success, Failure}
 object Main {
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
-    * file. */
-  def run[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, outputDot: Option[String], outputJSON: Option[String], timeout: Option[Long], inspect: Boolean): Unit = {
+    * file. Return the number of states and time taken. */
+  def run[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, outputDot: Option[String], outputJSON: Option[String], timeout: Option[Long], inspect: Boolean): (Int, Double) = {
     println(s"Running ${machine.name} with lattice ${JoinLattice[Abs].name} and address ${Address[Addr].name}")
     val result = machine.eval(sem.parse(program), sem, !outputDot.isEmpty || !outputJSON.isEmpty, timeout)
     outputDot.foreach(result.toDotFile _)
@@ -96,6 +96,7 @@ object Main {
         }
       })
     }
+    (result.numberOfStates, result.time)
   }
 
   def main(args: Array[String]) {
@@ -179,10 +180,15 @@ object Main {
               case _ => throw new Exception(s"unsupported machine for AScheme: ${config.machine}")
             }
 
-            val visitor = new RecordActorVisitor[alattice.L]
-            val sem = new ASchemeSemantics[alattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, alattice.L], visitor)
-            replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))
-            visitor.print
+            val visitor = new RecordActorVisitor[SchemeExp, alattice.L, address.A]
+            val sem = new ASchemeSemanticsWithVisitorAndOptimization[alattice.L, address.A, time.T, ContextSensitiveTID](new SchemePrimitives[address.A, alattice.L], visitor)
+            val N = 1
+            val warmup = if (N > 1) 2 else 0 // 2 runs that are ignored to warm up
+            val (states, times) = (1 to N+warmup).map(i =>
+              replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))).unzip
+            println("States: " + states.mkString(", "))
+            println("Time: " + times.drop(warmup).mkString(","))
+            if (N == 1) visitor.print
         }
       })
     Profiler.print

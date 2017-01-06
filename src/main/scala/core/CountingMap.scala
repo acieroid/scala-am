@@ -23,6 +23,7 @@ case class CountingMap[A, B](content: Map[A, (Count, Set[B])]) {
   def keys: Set[A] = content.keySet
   def forall(p: (A, B) => Boolean): Boolean = content.forall({ case (a, (_, vs)) => vs.forall(v => p(a, v)) })
   def exists(p: (A, B) => Boolean): Boolean = content.exists({ case (a, (_, vs)) => vs.exists(v => p(a, v)) })
+  def foreach(p: (A, B) => Unit): Unit = content.foreach({ case (a, (_, vs)) => vs.foreach(v => p(a, v)) })
   def lookup(a: A): Set[B] = content.get(a) match {
     case None => Set[B]()
     case Some((_, bs)) => bs

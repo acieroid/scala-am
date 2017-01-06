@@ -1,4 +1,4 @@
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.1"
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
@@ -10,8 +10,11 @@ libraryDependencies += "jline" % "jline" % "2.14.2"
 libraryDependencies += "org.json4s" %% "json4s-native" % "3.5.0"
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.5.0"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
 
 maxErrors := 5
 mainClass in (Compile, run) := Some("Main")
+
+addCompilerPlugin("org.psywerx.hairyfotr" %% "linter" % "0.1.16")
+scalacOptions += "-P:linter:disable:UnusedParameter"

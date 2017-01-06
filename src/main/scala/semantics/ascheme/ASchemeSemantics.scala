@@ -1,15 +1,18 @@
 import scalaz.Scalaz._
 import scalaz._
 
-abstract class ActorVisitor[Abs : JoinLattice] {
+abstract class ActorVisitor[Exp : Expression, Abs : JoinLattice, Addr : Address] {
   def send(pos: Position, target: Abs, message: String, args: List[Abs]): Unit
+  def actions(as: Set[Action[Exp, Abs, Addr]]): Set[Action[Exp, Abs, Addr]]
 }
-class EmptyActorVisitor[Abs : JoinLattice] extends ActorVisitor[Abs] {
+class EmptyActorVisitor[Exp : Expression, Abs : JoinLattice, Addr : Address] extends ActorVisitor[Exp, Abs, Addr] {
   def send(pos: Position, target: Abs, message: String, args: List[Abs]) = ()
+  def actions(as: Set[Action[Exp, Abs, Addr]]) = as
 }
-class RecordActorVisitor[Abs : JoinLattice] extends ActorVisitor[Abs] {
+class RecordActorVisitor[Exp : Expression, Abs : JoinLattice, Addr : Address] extends ActorVisitor[Exp, Abs, Addr] {
   var targetVals = Map.empty[Position, Abs].withDefaultValue(JoinLattice[Abs].bottom)
   var argsVals = Map.empty[Position, List[Abs]]
+  var errors = Set.empty[SemanticError]
   def send(pos: Position, target: Abs, message: String, args: List[Abs]): Unit = {
     targetVals += (pos -> (JoinLattice[Abs].join(targetVals(pos), target)))
     argsVals += (pos -> (argsVals.get(pos) match {
@@ -18,20 +21,26 @@ class RecordActorVisitor[Abs : JoinLattice] extends ActorVisitor[Abs] {
       case None => args
     }))
   }
+  def actions(as: Set[Action[Exp, Abs, Addr]]) = {
+    errors ++= as.collect({ case ActionError(err) => err })
+    as
+  }
   def print = {
-    targetVals.foreach({ case (k, v) =>
+    println(s"${errors.length} errors are reachable:")
+    errors.foreach(println)
+    println("----------")
+    targetVals.toList.sortBy(_._1).foreach({ case (k, v) =>
       println(s"$k: $v")
     })
     println("----------")
-    argsVals.foreach({ case (k, v) =>
+    argsVals.toList.sortBy(_._1).foreach({ case (k, v) =>
       println(s"$k: $v")
     })
   }
 }
 
 class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
-  (primitives: Primitives[Addr, Abs],
-    visitor: ActorVisitor[Abs])
+  (primitives: Primitives[Addr, Abs])
     extends SchemeSemantics[Abs, Addr, Time](primitives) {
   object ActorAction extends ActorActionHelpers[SchemeExp, Abs, Addr, Time, PID]
 
@@ -41,18 +50,18 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
   case class FrameBecome(argsv: List[Abs], args: List[SchemeExp], env: Env) extends SchemeFrame
 
   override def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[(Abs, Set[Effect[Addr]])] = e match {
-    case a: SchemeActor => Some((IsASchemeLattice[Abs].injectActor[SchemeExp, Addr](a, env), Set()))
+    case a: SchemeActor => Some((IsASchemeLattice[Abs].injectActor[SchemeExp, Addr](a.name, a, env), Set()))
     case _ => super.atomicEval(e, env, store)
   }
 
-  override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = optimizeAtomic(e match {
-    case a: SchemeActor => Action.value(IsASchemeLattice[Abs].injectActor[SchemeExp, Addr](a, env), store)
+  override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = e match {
+    case a: SchemeActor => Action.value(IsASchemeLattice[Abs].injectActor[SchemeExp, Addr](a.name, a, env), store)
     case SchemeSend(target, message, args, pos) => Action.push(FrameSendTarget(pos, message, args, env), target, env, store)
     case SchemeCreate(beh, args, _) => Action.push(FrameCreate(List(), args, beh, env), beh, env, store)
     case SchemeBecome(beh, args, _) => Action.push(FrameBecome(List(), args, env), beh, env, store)
     case SchemeTerminate(_) => ActorAction.terminate
     case _ => super.stepEval(e, env, store, t)
-  }, t)
+  }
 
   override def stepReceive(self: Any, mname: String, margsv: List[Abs], actd: SchemeExp, env: Env, store: Sto, t: Time) = actd match {
     case SchemeActor(name, _, defs, _) =>
@@ -73,8 +82,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       }
   }
 
-  private def send(pos: Position, target: Abs, message: String, args: List[Abs]): Set[Action[SchemeExp, Abs, Addr]] = {
-    visitor.send(pos, target, message, args)
+  protected def send(pos: Position, target: Abs, message: String, args: List[Abs]): Set[Action[SchemeExp, Abs, Addr]] = {
     val pids = IsASchemeLattice[Abs].getPids(target)
     if (pids.isEmpty) {
       Action.error(TypeError("send", "first operand", "pid value", s"non-pid value ($target)"))
@@ -83,7 +91,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
     }
   }
 
-  override def stepKont(v: Abs, frame: Frame, store: Sto, t: Time) = optimizeAtomic(frame match {
+  override def stepKont(v: Abs, frame: Frame, store: Sto, t: Time) = frame match {
     case FrameSendTarget(pos, message, List(), env) =>
       send(pos, v, message.name, List())
     case FrameSendTarget(pos, message, first :: rest, env) =>
@@ -99,7 +107,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       if (actors.isEmpty) {
         Action.error(TypeError("create", "first operand", "actor", s"non-actor value ($act)"))
       } else {
-        actors.map({ case (actd @ SchemeActor(name, xs, defs, _), env) =>
+        actors.map({ case (name, actd @ SchemeActor(_, xs, defs, _), env) =>
           if (xs.size != argsv.size) {
             Action.error(ArityError(s"create actor $name", xs.size, argsv.size))
           } else {
@@ -116,7 +124,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
       if (actors.isEmpty) {
         Action.error(TypeError("become", "first operand", "actor", s"non-actor value ($act)"))
       } else {
-        actors.map({ case (actd @ SchemeActor(name, xs, defs, _), env) =>
+        actors.map({ case (name, actd @ SchemeActor(_, xs, defs, _), env) =>
           if (xs.size != argsv.size) {
             Action.error(ArityError("become behavior", xs.size, argsv.size))
           } else {
@@ -128,5 +136,20 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
     case FrameBecome(argsv, first :: rest, env) =>
       Action.push(FrameBecome(v :: argsv, rest, env), first, env, store)
     case _ => super.stepKont(v, frame, store, t)
-  }, t)
+  }
+}
+
+
+class ASchemeSemanticsWithVisitorAndOptimization[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
+  (primitives: Primitives[Addr, Abs],
+    visitor: ActorVisitor[SchemeExp, Abs, Addr])
+    extends ASchemeSemantics[Abs, Addr, Time, PID](primitives) {
+
+  override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = optimizeAtomic(visitor.actions(super.stepEval(e, env, store, t)), t)
+  override def stepReceive(self: Any, mname: String, margsv: List[Abs], actd: SchemeExp, env: Env, store: Sto, t: Time) = optimizeAtomic(visitor.actions(super.stepReceive(self, mname, margsv, actd, env, store, t)), t)
+  override def send(pos: Position, target: Abs, message: String, args: List[Abs])= {
+    visitor.send(pos, target, message, args)
+    super.send(pos, target, message, args)
+  }
+  override def stepKont(v: Abs, frame: Frame, store: Sto, t: Time) = optimizeAtomic(visitor.actions(super.stepKont(v, frame, store, t)), t)
 }

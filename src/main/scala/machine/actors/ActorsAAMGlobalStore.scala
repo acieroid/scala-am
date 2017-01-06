@@ -79,6 +79,27 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     }
     def restore =
       this.copy(store = oldStore, kstore = oldKStore, storeDelta = StoreDelta.empty, kstoreDelta = KStoreDelta.empty)
+
+    def print = {
+      var vars: Map[Position, Abs] = Map.empty.withDefaultValue(JoinLattice[Abs].bottom)
+      var pointers: Map[Position, Abs] = Map.empty.withDefaultValue(JoinLattice[Abs].bottom)
+      store.keys.foreach(a =>
+        Address[Addr].allocationSite(a) match {
+          case None => ()
+          case Some(Left(pos)) =>
+            vars += (pos -> (JoinLattice[Abs].join(vars(pos), store.lookupBot(a))))
+          case Some(Right(pos)) =>
+            pointers += (pos -> (JoinLattice[Abs].join(pointers(pos), store.lookupBot(a))))
+        })
+      println("------------ Values:")
+      vars.toList.sortBy(_._1).foreach({ case (pos, v) =>
+        println(s"$pos: $v")
+      })
+      println("------------ Pointers:")
+      pointers.toList.sortBy(_._1).foreach({ case (pos, v) =>
+        println(s"$pos: $v")
+      })
+    }
   }
   object GlobalStore {
     def initial(storeMappings: Iterable[(Addr, Abs)]): GlobalStore = {
@@ -115,7 +136,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
       case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
       case ControlError(err) => List(<font color="black">{err.toString}</font>)
       case ControlWait => List(<font color="skyblue">wait</font>)
-    }) ++ List(scala.xml.Text(mbox.toString.take(40)))
+    }) ++ List(scala.xml.Text(mbox.size.toString + ": " + mbox.toString.take(40)))
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
       case ControlKont(v) => inst == ActorInstanceMain && kont == HaltKontAddress
@@ -212,6 +233,9 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
 
     /* New context, created actors, effect, message sent, message received */
     type MacrostepState = (Option[Context], CreatedActors, ActorEffect, Option[M.Message], Option[M.Message])
+    def macrostepStopCondition(sent: Option[M.Message], sent2: Option[M.Message],
+      recv: Option[M.Message], recv2: Option[M.Message]): Boolean =
+      (sent.isDefined && sent2.isDefined) || (recv.isDefined && recv2.isDefined) || ((sent.isDefined || sent2.isDefined) && !recv.isDefined && recv2.isDefined)
     def macrostep(p: PID, store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time]):
         (Set[MacrostepState], GlobalStore) = {
       Logger.log(s"macrostepping thread $p, $control")
@@ -232,7 +256,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
               } else {
                 val (newTodo, newFinals) = next.partition({
                   case (Some(ctx2), cr2, eff2, sent2, recv2) =>
-                    !ctx2.halted && !(sent.isDefined && sent2.isDefined) && !(recv.isDefined && recv2.isDefined)
+                    !ctx2.halted && !macrostepStopCondition(sent, sent2, recv, recv2)
+                    // !ctx2.halted && !(sent.isDefined && sent2.isDefined) && !(recv.isDefined && recv2.isDefined) && !((sent.isDefined || sent2.isDefined) && !recv.isDefined && recv2.isDefined)
                   case (None, _, _, _, _) =>
                     false
                 })
@@ -242,15 +267,16 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
                   case (None, _, _, _, _) => throw new RuntimeException("Should not happen")
                 }),
                   acc._2 ++ newFinals.map({
-                    case (ctx2, cr2, eff2, sent2, recv2) if !(sent.isDefined && sent2.isDefined) && !(recv.isDefined && recv2.isDefined) =>
+                    case (ctx2, cr2, eff2, sent2, recv2) if !(macrostepStopCondition(sent, sent2, recv, recv2)) =>
                       (ctx2, cr ++ cr2, ActorEffect.combine(eff, eff2), sent.orElse(sent2), recv.orElse(recv2))
-                    case (_, _, _, sent2, recv2) if (sent.isDefined && sent2.isDefined) || (recv.isDefined && recv2.isDefined) =>
+                    case (_, _, _, sent2, recv2) if macrostepStopCondition(sent, sent2, recv, recv2) =>
                       (Some(ctx), cr, eff, sent, recv)
                   }), store2,
                 acc._4.addEdges(next.map({ case (ctx2, _, eff, _, _) => (Some(ctx), eff, ctx2) })))
               }
           })
           if (store2.isUnchanged) {
+            /*
             if (next.exists({ case (ctx, _, _, _, _) => Some(this) == ctx })) {
               Logger.alert(s"Self-loop detected in $p")
               newGraph.toDotFile("ctxgraph.dot", {
@@ -260,7 +286,10 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
                 case None => Colors.White
                 case Some(ctx) =>
                   if (ctx.hasError) { Colors.Red }
-                  else if ((finals ++ newFinals).exists({ case (Some(ctx2), _, _, _, _) => ctx2 == ctx })) { Colors.Yellow }
+                  else if ((finals ++ newFinals).exists({
+                    case (Some(ctx2), _, _, _, _) => ctx2 == ctx
+                    case _ => false
+                  })) { Colors.Yellow }
                   else { Colors.White }
               }, eff => if (eff.isEmpty) { List(scala.xml.Text(p.toString)) } else { List(scala.xml.Text(p.toString), <font color="red">{eff.mkString(", ")}</font>) })
               scala.io.StdIn.readLine()
@@ -268,6 +297,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
             if (!next.intersect(visited).isEmpty) {
               Logger.alert(s"Internal loop detected in $p")
             }
+             */
             loop(next.diff(visited), visited ++ todo, finals ++ newFinals, store2, newGraph)
           } else {
             loop(next, Set(), finals ++ newFinals, store2.commit, newGraph)
@@ -311,6 +341,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def pids: Set[PID] = content.keys
     def exists(p: (PID, Context) => Boolean): Boolean = content.exists(p)
     def forall(p: (PID, Context) => Boolean): Boolean = content.forall(p)
+    def foreach(p: (PID, Context) => Unit): Unit = content.foreach(p)
   }
   object Procs {
     def empty: Procs = Procs(CountingMap.empty[PID, Context])
@@ -426,15 +457,33 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         println("Not generating graph because no graph was computed")
     }
     import scala.util.{Try,Success,Failure}
+    override def inspect(stateNumber: Int, query: String) = graph.flatMap(_.getNode(stateNumber)) match {
+      case Some(state) => state.procs.foreach((p, ctx) => {
+        println(s"process $p")
+        ctx.mbox.toDot
+      })
+    }
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
     val startingTime = System.nanoTime
     def id(g: Option[G], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
+    var bounds = Map[PID, MboxSize]().withDefaultValue(MboxSizeN(0))
+    def todoAdded(states: Set[State]): Unit = {
+      states.foreach(s =>
+        s.procs.foreach((p, ctx) =>
+          if (ctx.mbox.size > bounds(p)) {
+            bounds += ((p, ctx.mbox.size))
+          }))
+    }
     @scala.annotation.tailrec
     def loopMacrostep(todo: Set[State], visited: Set[State], reallyVisited: Set[State], halted: Set[State],
       store: GlobalStore, graph: Option[G], graphs: Option[Map[PID, Graph[Set[Context], ActorEffect]]]): ActorsAAMOutput = {
       if (todo.isEmpty || Util.timeoutReached(timeout, startingTime)) {
+        println("Bounds:")
+        bounds.foreach({
+          case (p, size) => println(s"$p: $size")
+        })/*
         var i = 0;
         graphs.map(_.foreach({ case (p, g) =>
           i += 1
@@ -450,8 +499,10 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
               List(<font color="red">{eff.mkString(", ")}</font>)
             })
         }))
+        store.print */
         ActorsAAMOutput(halted, reallyVisited.size, Util.timeElapsed(startingTime), graph, !todo.isEmpty)
       } else {
+        //scala.io.StdIn.readLine()
         val (edges, store2) = todo.foldLeft((Set[(State, (PID, ActorEffect), State)](), store))((acc, s) => {
           val (next, store2) = s.macrostepAll(acc._2.restore, sem)
           (acc._1 ++ next.flatMap({ case (ss, p) =>
@@ -459,6 +510,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
           }), store2)
         })
         val newTodo = edges.map(_._3)
+        todoAdded(newTodo)
         val newGraph = graph.map(_.addEdges(edges))
         val newGraphs = graphs.map(gs =>
           edges.foldLeft(gs)((gs, edge) => edge match {

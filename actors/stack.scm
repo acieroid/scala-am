@@ -1,7 +1,7 @@
 ;; From Agha 1986, p. 52
 (letrec ((stack-node (actor "stack-node" (content link)
                             (pop (customer)
-                                 (if content
+                                 (if link
                                      (begin
                                        (send customer message content)
                                        (link))
@@ -14,7 +14,7 @@
                                (message (v) (display v) (become display-actor))))
          (disp (create display-actor))
          (act (create stack-node #f #f)))
-  (send act push 1)
-  (send act push 2)
+  (send act push (int-top))
+  (send act push (bool-top))
   (send act push 3)
   (send act pop disp))

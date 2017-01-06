@@ -1,4 +1,5 @@
 ;; Adapted from Savina benchmarks ("Counting Actor" benchmarks, coming from Theron)
+;; counting-actor will receive 10 increment and one retreive: bound is 11 (or N+1)
 (letrec ((N 10)
          (producer-actor
           (actor "producer" (counter)

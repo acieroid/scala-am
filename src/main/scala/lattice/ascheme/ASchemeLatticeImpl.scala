@@ -7,12 +7,12 @@ class MakeASchemeLattice[LSeq : IsSchemeLattice] extends ASchemeLattice {
 
   type Pids = Set[Any]
   val pids: LatticeElement[Pids] = LatticeElement.ofSet[Any]
-  type Behs = Set[Any]
-  val behs: LatticeElement[Behs] = LatticeElement.ofSet[Any]
+  type Behs = Set[(String, Any, Any)]
+  val behs: LatticeElement[Behs] = LatticeElement.ofSet[(String, Any, Any)]
 
   case class Value(seq: LSeq = lat.bottom, p: Pids = pids.bottom, b: Behs = behs.bottom) {
     override def toString = {
-      val pcontent: Set[String] = p.map(_.toString) ++ b.map(_.toString)
+      val pcontent: Set[String] = p.map(_.toString) ++ b.map(x => s"#<actd ${x._1}>")
       if (seq == lat.bottom) {
         if (pcontent.size == 1) { pcontent.head } else { "{" + pcontent.mkString(", ") + "}" }
       } else {
@@ -79,9 +79,9 @@ class MakeASchemeLattice[LSeq : IsSchemeLattice] extends ASchemeLattice {
       (v1, v2) <- lat.vector[Addr](addr, size.seq, init)
     } yield (Value(seq = v1), Value(seq = v2))
 
-    def injectActor[Exp : Expression, Addr : Address](e: Exp, env: Environment[Addr]) = Value(b = Set((e, env)))
-    def getActors[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])] = x.b.collect({
-      case act: (Exp, Environment[Addr]) @unchecked => act
+    def injectActor[Exp : Expression, Addr : Address](name: String, e: Exp, env: Environment[Addr]) = Value(b = Set((name, e, env)))
+    def getActors[Exp : Expression, Addr : Address](x: L): Set[(String, Exp, Environment[Addr])] = x.b.collect({
+      case act: (String, Exp, Environment[Addr]) @unchecked => act
     })
     def injectPid[PID : ThreadIdentifier](pid: PID) = Value(p = Set(pid))
     def getPids[PID : ThreadIdentifier](x: L): Set[PID] = x.p.collect({
