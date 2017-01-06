@@ -60,6 +60,9 @@ case class GraphMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
       case Some(m) => nodes.get(m) match {
         case None => Set((m, empty))
         case Some(nexts) if nexts.isEmpty => Set((m, empty))
+        case Some(nexts) if nexts.size == 1 && nodes.count({ case (_, vs) => vs.contains(m) }) == 0 =>
+          /* can garbage collect bottom (which is m), since nothing points to it */
+          Set((m, this.copy(bot = Some(nexts.head), nodes = nodes - m)))
         case Some(nexts) => nexts.map(b => (m, this.copy(bot = Some(b))))
       }
     }
