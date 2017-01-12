@@ -27,6 +27,10 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ActorsAAMGlobalStore"
 
+  var poppedPerBehavior = Map[(PID, Exp), Set[M.Message]]().withDefaultValue(Set[M.Message]())
+  var poppedPerBehaviorAndMailbox = Map[(PID, Exp, M.T), Set[M.Message]]().withDefaultValue(Set[M.Message]())
+  var poppedPerMailbox = Map[(PID, M.T), Set[M.Message]]().withDefaultValue(Set[M.Message]())
+
   type G = Graph[State, (PID, ActorEffect)]
   object G {
     def apply(): G = new Graph()
@@ -218,6 +222,9 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
           case ActorInstanceActor(actd, env) =>
             mbox.pop.foldLeft(init)((acc, m) => m match {
               case (message @ (sender, name, values), mbox2) =>
+                // poppedPerBehavior += (((p, actd), poppedPerBehavior((p, actd)) + message))
+                poppedPerBehaviorAndMailbox += (((p, actd, mbox), poppedPerBehaviorAndMailbox((p, actd, mbox)) + message))
+                // poppedPerMailbox += (((p, mbox), poppedPerMailbox((p, mbox)) + message))
                 sem.stepReceive(p, name, values, actd, env, acc._2.store, t).foldLeft(acc)((acc, action) =>
                   this.copy(mbox = mbox2).integrate(p, action, acc._2) match {
                     case ((s, n, eff, sent, recv), store2) =>
@@ -469,12 +476,21 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     val startingTime = System.nanoTime
     def id(g: Option[G], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
     var bounds = Map[PID, MboxSize]().withDefaultValue(MboxSizeN(0))
+    var mailboxTagsPerActor = Map[PID, Set[List[M.Message]]]().withDefaultValue(Set[List[M.Message]]())
+    var mailboxTagsPerBehavior = Map[(PID, Exp), Set[List[M.Message]]]().withDefaultValue(Set[List[M.Message]]())
     def todoAdded(states: Set[State]): Unit = {
       states.foreach(s =>
-        s.procs.foreach((p, ctx) =>
+        s.procs.foreach((p, ctx) => {
+          mailboxTagsPerActor += ((p, mailboxTagsPerActor(p) + ctx.mbox.messagesList))
+          ctx.inst match {
+            case ActorInstanceActor(actd, env) =>
+              mailboxTagsPerBehavior += (((p, actd), mailboxTagsPerBehavior((p, actd)) + ctx.mbox.messagesList))
+            case _ => ()
+          }
           if (ctx.mbox.size > bounds(p)) {
             bounds += ((p, ctx.mbox.size))
-          }))
+          }
+        }))
     }
     @scala.annotation.tailrec
     def loopMacrostep(todo: Set[State], visited: Set[State], reallyVisited: Set[State], halted: Set[State],
@@ -484,6 +500,37 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         bounds.foreach({
           case (p, size) => println(s"$p: $size")
         })/*
+        println("Tags per actor:")
+        mailboxTagsPerActor.foreach({
+          case (p, tags) => println(s"$p: ${tags.size} -> " + tags.map(t => t.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(",")).mkString(" | "))
+        })*/
+        /*
+        println("Tags per behavior:")
+        mailboxTagsPerBehavior.foreach({
+          case ((p, actd), tags) =>
+            println(s"$p, $actd")
+            println(tags.map(t => t.mkString(",")).mkString(" | "))
+        })*//*
+        println("Popped per behavior:")
+        poppedPerBehavior.foreach({
+          case ((p, actd), ms) =>
+            println(s"$p, $actd")
+            println(ms.mkString(", "))
+             })*/
+        println("Popped per behavior and mailbox:")
+        poppedPerBehaviorAndMailbox.foreach({
+          case ((p, actd, mb), ms) =>
+            println(s"$p, $actd, ${mb.size}, $mb")
+            println(ms.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(", "))
+        })
+        /*
+        println("Popped per mailbox:")
+        poppedPerMailbox.foreach({
+          case ((p, mbox), ms) =>
+            println(s"$p, $mbox")
+            println(ms.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(", "))
+        })*/
+        /*
         var i = 0;
         graphs.map(_.foreach({ case (p, g) =>
           i += 1

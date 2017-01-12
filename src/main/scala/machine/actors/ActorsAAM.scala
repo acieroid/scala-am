@@ -27,6 +27,7 @@ trait MboxImpl[PID, Abs] {
     def push(m: Message): T
     def isEmpty: Boolean
     def size: MboxSize
+    def messagesList: List[Message] /* only for information to the user */
     def toDot(): Unit = () /* TODO: for debug */
   }
   def empty: T
@@ -72,23 +73,17 @@ case class GraphMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     }
     def isEmpty = !top.isDefined
     def followPath(from: Message, n: Int, visited: Set[Message]): MboxSize = {
-      //println(s"follow path from $from")
       if (visited.contains(from)) {
         /* cycle */
-        // println("cycle")
         MboxSizeUnbounded
       } else if (Some(from) == top) {
         /* reached top */
-        //println(s"reached bottom after $n")
         MboxSizeN(n)
       } else {
         val next = nodes(from)
         if (next.size == 0) {
-          //println("No next, done?")
-          // MboxSizeN(n)
           throw new Exception("no next before bottom?")
         } else if (next.size == 1) {
-          //println("Only one next")
           followPath(next.head, n+1, visited + from)
         } else {
           MboxSizeUnbounded
@@ -96,7 +91,14 @@ case class GraphMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
       }
     }
     def size = if (top.isDefined) {
-      if (nodes.keySet.exists(k => nodes.count({ case (_, vs) => vs.contains(k) }) > 1)) {
+      if (nodes.forall({ case (_, ns) => ns.length <= 1 })) {
+        followPath(bot.get, 1, Set.empty)
+      } else {
+        MboxSizeUnbounded
+      }
+      /* old def.
+      if (nodes.keySet.exists(k => nodes.count({ case (_, vs) => vs.contains(k) }) > 1) ||
+        (bot.isDefined && nodes(bot.get).contains(bot.get))) {
         MboxSizeUnbounded
       } else {
         //mprintln("==========")
@@ -105,18 +107,41 @@ case class GraphMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
         } else {
           MboxSizeN(0)
         }
-      }
+      } */
     } else { MboxSizeN(0) }
     override def toString = bot match {
       case Some(m) =>
         mToString(m) + (if (nodes.keySet.length > 1) { ", {" + (nodes.keySet - m).map(m => mToString(m)).mkString(" + ") + "}" } else { "" })
       case None => ""
     }
+    def messagesList = {
+      def followPath(from: Message, acc: List[Message], visited: Set[Message]): List[Message] = {
+        if (visited.contains(from)) {
+          nodes.keySet.toList.sortBy(_._2)
+        } else if (Some(from) == top) {
+          acc.reverse
+        } else {
+          val next = nodes(from)
+          if (next.size == 0) {
+            throw new Exception("no next before bottom?")
+          } else if (next.size == 1) {
+            followPath(next.head, next.head :: acc, visited + from)
+          } else {
+            nodes.keySet.toList.sortBy(_._2)
+          }
+        }
+      }
+      if (bot.isDefined && nodes(bot.get).contains(bot.get)) {
+        nodes.keySet.toList.sortBy(_._2)
+      } else if (bot.isDefined) {
+        followPath(bot.get, List(bot.get), Set.empty)
+      } else {
+        List()
+      }
+    }
   }
   def empty = M(None, None, Map.empty.withDefaultValue(Set.empty))
 }
-
-
 
 case class PowersetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
   case class M(messages: Set[Message]) extends T {
@@ -124,6 +149,7 @@ case class PowersetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
     def size = if (messages.isEmpty) { MboxSizeN(0) } else { MboxSizeUnbounded }
+    def messagesList = messages.toList.sortBy(_._2)
     override def toString = messages.map(mToString).mkString(" + ")
   }
   def empty = M(Set.empty)
@@ -138,6 +164,7 @@ case class ListMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     def push(m: Message) = this.copy(messages = messages :+ m)
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.length)
+    def messagesList = messages
     override def toString = messages.map(mToString).mkString(", ")
   }
   def empty = M(List.empty)
@@ -156,6 +183,7 @@ case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, A
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.length)
+    def messagesList = messages.toList.sortBy(_._2)
     override def toString = messages.map(mToString).mkString(", ")
   }
   case class MUnordered(messages: Set[Message]) extends T {
@@ -168,7 +196,8 @@ case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, A
     def push(m: Message) = this.copy(messages = messages + m)
     def isEmpty = messages.isEmpty
     def size = MboxSizeUnbounded
-    override def toString = messages.map(mToString).mkString(" + ")
+    def messagesList = messages.toList.sortBy(_._2)
+    override def toString = "U(" + messages.map(mToString).mkString(" + ") + ")"
   }
   def empty = MOrdered(List.empty)
 }
@@ -185,6 +214,7 @@ case class MultisetMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.toList.map(_._2).sum)
+    def messagesList = ???
     override def toString = messages.map(m => s"${mToString(m._1)}: ${m._2}").mkString(" + ")
   }
   def empty = M(Set.empty)
@@ -206,6 +236,7 @@ case class BoundedMultisetMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PI
       }
     } else { this.copy(noCountMessages = noCountMessages + m) }
     def isEmpty = messages.isEmpty && noCountMessages.isEmpty
+    def messagesList = (messages.map(_._1).toList ++ noCountMessages.toList).sortBy(_._2)
     def size = if (noCountMessages.isEmpty) { MboxSizeN(messages.toList.map(_._2).sum) } else { MboxSizeUnbounded }
     override def toString = {
       val unord = if (messages.isEmpty) { "" } else { "O(" + messages.map(m => s"${mToString(m._1)}: ${m._2}").mkString(", ") + ")" }
