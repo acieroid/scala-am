@@ -16,5 +16,5 @@ libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
 maxErrors := 5
 mainClass in (Compile, run) := Some("Main")
 
-addCompilerPlugin("org.psywerx.hairyfotr" %% "linter" % "0.1.16")
+addCompilerPlugin("org.psywerx.hairyfotr" %% "linter" % "0.1.17")
 scalacOptions += "-P:linter:disable:UnusedParameter"
