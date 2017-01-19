@@ -86,29 +86,28 @@ object GraphDOTOutput {
 }
 
 object GraphJSONOutput {
-  /*
-  def toJSONFile(path: String): Unit =  {
-    throw new Exception("TODO")
-    /*
+  def toJSONFile[N : GraphNode, A : GraphAnnotation](g: Graph[N, A])(path: String): Unit =  {
+    import scala.language.implicitConversions
+    implicit def nodesToJSON(n: N): JValue =  ("label" -> GraphNode[N].label(n).mkString(" ")) ~ GraphNode[N].content(n)
+    implicit def annotToJSON(a: A): JValue = ("label" -> GraphAnnotation[A].label(a).mkString(" ")) ~ GraphAnnotation[A].content(a)
+    implicit def pairToJSON(x: (Int, A)): JValue = JArray(List(JInt(x._1), annotToJSON(x._2)))
+
     /* array of nodes, index in the array is the index of the node, e.g.
      * [a, b, c]: a has index 0, b index 1, etc. */
-    val ns: List[Node] = nodes.toList.sortBy(n => ids(n))
+    val ns: List[N] = g.nodes.toList.sortBy(n => g.ids(n))
+
     /* array of edges, index in the array is the source node, value is an array of
      * destination and annotation, e.g.:
      * [[[0 annotaa] [1 annotab]], ...]
      */
-    import scala.language.implicitConversions
-    implicit def pairToJSON(x: (Int, Annotation)) = JArray(List(JInt(x._1), annotToJSON(x._2)))
-    val es: List[List[(Int, Annotation)]] = edges.toList
-      .sortBy({ case (src, dests) => ids(src) })
-      .map({ case (src, dests: Set[(Annotation, Node)]) =>
+    val es: List[List[(Int, A)]] = g.edges.toList
+      .sortBy({ case (src, dests) => g.ids(src) })
+      .map({ case (src, dests: Set[(A, N)]) =>
         dests.toList.map({ case (annot, dest) =>
-          (ids(dest), annot)
+          (g.ids(dest), annot)
         })
       })
     val json = ("nodes" -> ns) ~ ("edges" -> es)
     Util.withFileWriter(path) { w => w.append(pretty(render(json))) }
-     */
   }
-   */
 }
