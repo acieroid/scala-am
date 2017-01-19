@@ -118,21 +118,20 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     import scala.language.implicitConversions
 
     implicit val graphNode = new GraphNode[State] {
-      def label(n: State) = List(scala.xml.Text(n.toString.take(40)))
-      override def color(n: State) = if (n.halted) { Colors.Yellow } else { n.control match {
+      def label(s: State) = List(scala.xml.Text(s.toString.take(40)))
+      override def color(s: State) = if (s.halted) { Colors.Yellow } else { s.control match {
         case _: ControlEval => Colors.Green
         case _: ControlKont => Colors.Pink
         case _: ControlError => Colors.Red
       }}
-    }
 
-    import org.json4s._
-    import org.json4s.JsonDSL._
-    import org.json4s.jackson.JsonMethods._
-    implicit val controlToJSON: Control => JValue = Control.controlToJSON // why?
-    import JSON._
-    implicit def stateToJSON(s: State): JValue = {
-      ("control" -> s.control) ~ ("store" -> s.store) ~ ("kstore" -> s.kstore) ~ ("kont" -> s.a.toString) ~ ("time" -> s.t.toString)
+      import org.json4s._
+      import org.json4s.JsonDSL._
+      import org.json4s.jackson.JsonMethods._
+      import JSON._
+      override def content(s: State): JObject = {
+        ("control" -> s.control) ~ ("store" -> s.store) ~ ("kstore" -> s.kstore) ~ ("kont" -> s.a.toString) ~ ("time" -> s.t.toString)
+      }
     }
   }
 
@@ -160,13 +159,11 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       case None =>
         println("Not generating graph because no graph was computed")
     }
-    /* TODO 
-    import JSON._
     override def toJSONFile(path: String) = graph match {
       case Some(g) => GraphJSONOutput.toJSONFile(g)(path)
       case None =>
         println("Not generating graph because no graph was computed")
-    } */
+    }
     override def joinedStore: Store[Addr, Abs] =
       halted.map(s => s.store).foldLeft(Store.empty[Addr, Abs])((acc, store) => acc.join(store))
   }

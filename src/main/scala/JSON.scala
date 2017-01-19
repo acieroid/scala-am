@@ -8,6 +8,9 @@ object JSON {
     s.keys
       .filter(a => !Address[Addr].isPrimitive(a)) /* Addresses of primitive do not provide us any useful information */
       .foldLeft(JObject())((acc, k) => ((k.toString -> s.lookup(k).get.toString) ~ acc))
+  implicit def envToJSON[Addr : Address](env: Environment[Addr]): JValue =
+    env.keys.foldLeft(JObject())((acc, k) =>
+      if (Address[Addr].isPrimitive(env.lookup(k).get)) { acc } else { (k.toString -> env.lookup(k).get.toString) ~ acc })
   implicit def kstoreToJSON[KontAddr : KontAddress](ks: KontStore[KontAddr]): JValue =
     ks.keys.foldLeft(JObject())((acc, k) => ((k.toString -> ks.lookup(k).toList.map(_.toString)) ~ acc))
   implicit def unitToJSON(x: Unit): JValue = ""

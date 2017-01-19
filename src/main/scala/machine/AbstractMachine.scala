@@ -94,7 +94,15 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
     import org.json4s.JsonDSL._
     import org.json4s.jackson.JsonMethods._
     import scala.language.implicitConversions
-    implicit def controlToJSON(c: Control) = c.toString
+    import JSON._
+    implicit def controlToJSON(c: Control): JValue = c match {
+      case ControlEval(exp, env) =>
+        ("type" -> "ev") ~ ("exp" -> exp.toString) ~ ("env" -> env)
+      case ControlKont(v) =>
+        ("type" -> "kont") ~ ("value" -> v.toString)
+      case ControlError(err) =>
+        ("type" -> "err") ~ ("error" -> err.toString)
+    }
   }
 
   /**
