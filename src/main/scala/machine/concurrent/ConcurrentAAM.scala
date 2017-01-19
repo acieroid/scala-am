@@ -174,8 +174,21 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
       State(ThreadMap(Context(ControlEval(exp, Environment.initial[Addr](env)), KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))),
         ThreadResults(Map[TID, Abs]()), Store.initial[Addr, Abs](store))
     }
+    implicit val graphNode = new GraphNode[State] {
+      def label(n: State) = List(scala.xml.Text(n.toString.take(40)))
+      override def color(n: State) = if (n.halted) {
+        Colors.Yellow
+      } else if (n.threads.content.values.exists(xs => xs.exists(x => x.control.isInstanceOf[ControlError] ))) {
+        Colors.Red
+      } else {
+        Colors.White
+      }
+    }
   }
 
+  implicit val annot = new GraphAnnotation[(TID, Effects)] {
+    override def label(annot: (TID, Effects)) = annot match { case (tid, eff) => scala.xml.Text(tid.toString) :: effectsToXml(eff) }
+  }
   case class ConcurrentAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, (TID, Effects)]], timedOut: Boolean)
       extends Output {
     def finalValues = halted.flatMap(st => st.threads.get(thread.initial).flatMap(ctx => ctx.control match {
@@ -184,16 +197,7 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
     }))
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
-        (s) => if (halted.contains(s)) {
-          Colors.Yellow
-        } else if (s.threads.content.values.exists(xs => xs.exists(x => x.control.isInstanceOf[ControlError] ))) {
-          Colors.Red
-        } else {
-          Colors.White
-        }, {
-          case (tid, eff) => scala.xml.Text(tid.toString) :: effectsToXml(eff)
-        })
+      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
       case None =>
         println("Not generating graph because no graph was computed")
     }

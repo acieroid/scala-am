@@ -49,12 +49,14 @@ case class GraphMboxImpl[PID, Abs]() extends MboxImpl[PID, Abs] {
       println(s"top: $top, bottom: $bot")
       println(s"Size: ${size}")
       println(s"nodes: $nodes")
+      /*
       nodes.keys.foldLeft(new Graph[Message, Unit])((g, m) =>
         nodes.get(m) match {
           case None => g
           case Some(nexts) => g.addNode(m).addEdges(nexts.map(m2 => (m, (), m2)))
         }).toDotFile(file, m => List(scala.xml.Text(mToString(m))), n =>
         if (top == Some(n)) { Colors.Pink } else if (bot == Some(n)) { Colors.Green } else { Colors.White }, _ => List())
+       */
     }
     def pop = bot match {
       case None => Set[(Message, T)]()
@@ -183,7 +185,7 @@ case class BoundedListMboxImpl[PID, Abs](val bound: Int) extends MboxImpl[PID, A
     }
     def isEmpty = messages.isEmpty
     def size = MboxSizeN(messages.length)
-    def messagesList = messages.toList.sortBy(_._2)
+    def messagesList = messages
     override def toString = messages.map(mToString).mkString(", ")
   }
   case class MUnordered(messages: Set[Message]) extends T {
@@ -253,9 +255,15 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   def name = "ActorsAAM"
 
   type G = Graph[State, (PID, Option[ActorEffect])]
+  implicit val annot = new GraphAnnotation[(PID, Option[ActorEffect])] {
+    override def label(annot: (PID, Option[ActorEffect])) = annot match {
+      case (p, None) => List(scala.xml.Text(p.toString))
+      case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
+    }
+  }
   object G {
-    def apply(): G = new Graph()
-    def apply(s: State): G = new Graph(s)
+    def apply(): G = new Graph[State, (PID, Option[ActorEffect])]()(State.graphNode, annot)
+    def apply(s: State): G = new Graph[State, (PID, Option[ActorEffect])](s)
   }
 
   trait KontAddr
@@ -535,6 +543,10 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         Procs.empty.extend(ThreadIdentifier[PID].initial -> Context.createMain(exp, Environment.initial[Addr](env))),
         Store.initial[Addr, Abs](store),
         KontStore.empty[KontAddr])
+    implicit val graphNode = new GraphNode[State] {
+      def label(n: State) = n.toXml
+      override def color(n: State) = if (n.halted) { Colors.Yellow } else if (n.hasError) { Colors.Red } else { Colors.White }
+    }
   }
 
   case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
@@ -546,17 +558,7 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def containsFinalValue(v: Abs): Boolean =
       finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, _.toXml,
-        (s) => if (s.hasError) {
-          Colors.Red
-        } else if (halted.contains(s)) {
-          Colors.Yellow
-        } else {
-          Colors.White
-        }, {
-          case (p, None) => List(scala.xml.Text(p.toString))
-          case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
-        })
+      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
       case None =>
         println("Not generating graph because no graph was computed")
     }

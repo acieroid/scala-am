@@ -116,6 +116,16 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       State(ControlEval(exp, Environment.initial[Addr](env)),
         Store.initial[Addr, Abs](store), KontStore.empty[KontAddr], HaltKontAddress, Timestamp[Time].initial(""))
     import scala.language.implicitConversions
+
+    implicit val graphNode = new GraphNode[State] {
+      def label(n: State) = List(scala.xml.Text(n.toString.take(40)))
+      override def color(n: State) = if (n.halted) { Colors.Yellow } else { n.control match {
+        case _: ControlEval => Colors.Green
+        case _: ControlKont => Colors.Pink
+        case _: ControlError => Colors.Red
+      }}
+    }
+
     import org.json4s._
     import org.json4s.JsonDSL._
     import org.json4s.jackson.JsonMethods._
@@ -146,21 +156,17 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
      * Outputs the graph in a dot file
      */
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
-        (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
-          case ControlEval(_, _) => Colors.Green
-          case ControlKont(_) => Colors.Pink
-          case ControlError(_) => Colors.Red
-        }}, _ => List())
+      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
       case None =>
         println("Not generating graph because no graph was computed")
     }
+    /* TODO 
     import JSON._
     override def toJSONFile(path: String) = graph match {
-      case Some(g) => g.toJSONFile(path)
+      case Some(g) => GraphJSONOutput.toJSONFile(g)(path)
       case None =>
         println("Not generating graph because no graph was computed")
-    }
+    } */
     override def joinedStore: Store[Addr, Abs] =
       halted.map(s => s.store).foldLeft(Store.empty[Addr, Abs])((acc, store) => acc.join(store))
   }

@@ -76,6 +76,15 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
       (State(ControlEval(exp, Environment.initial[Addr](env)), HaltKontAddress, Timestamp[Time].initial("")),
         GlobalStore(DeltaStore[Addr, Abs](store.toMap, Map()), Map()),
         TimestampedKontStore[KontAddr](Map(), 0))
+
+    implicit val graphNode = new GraphNode[State] {
+      def label(n: State) = List(scala.xml.Text(n.toString.take(40)))
+      override def color(n: State) = if (n.halted) { Colors.Yellow } else { n.control match {
+        case _: ControlEval => Colors.Green
+        case _: ControlKont => Colors.Pink
+        case _: ControlError => Colors.Red
+      }}
+    }
   }
 
   case class AAMOutput(halted: Set[State], store: Store[Addr, Abs], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
@@ -86,12 +95,7 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
     })
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
-        (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
-          case ControlEval(_, _) => Colors.Green
-          case ControlKont(_) => Colors.Pink
-          case ControlError(_) => Colors.Red
-        }}, _ => List())
+      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
       case None =>
         println("Not generating graph because no graph was computed")
     }

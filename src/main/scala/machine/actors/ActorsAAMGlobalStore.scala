@@ -32,8 +32,15 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
   var poppedPerMailbox = Map[(PID, M.T), Set[M.Message]]().withDefaultValue(Set[M.Message]())
 
   type G = Graph[State, (PID, ActorEffect)]
+  implicit val annot = new GraphAnnotation[(PID, ActorEffect)] {
+    override def label(annot: (PID, ActorEffect)) = annot match {
+      case (p, eff) if eff.isEmpty => List(scala.xml.Text(p.toString))
+      case (p, eff) => List(scala.xml.Text(p.toString), <font color="red">{eff.mkString(", ")}</font>)
+    }
+  }
+
   object G {
-    def apply(): G = new Graph()
+    def apply(): G = new Graph()(State.graphNode, annot)
     def apply(s: State): G = new Graph(s)
   }
 
@@ -243,23 +250,28 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def macrostepStopCondition(sent: Option[M.Message], sent2: Option[M.Message],
       recv: Option[M.Message], recv2: Option[M.Message]): Boolean =
       (sent.isDefined && sent2.isDefined) || (recv.isDefined && recv2.isDefined) || ((sent.isDefined || sent2.isDefined) && !recv.isDefined && recv2.isDefined)
+
+    /* implicit val annotEff = new GraphAnnotation[ActorEffect] {
+      override def label(eff: ActorEffect) =
+        if (eff.isEmpty) { List.empty } else { List(<font color="red">{eff.mkString(", ")}</font>) }
+    } */
     def macrostep(p: PID, store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time]):
         (Set[MacrostepState], GlobalStore) = {
       Logger.log(s"macrostepping thread $p, $control")
-      def loop(todo: Set[MacrostepState], visited: Set[MacrostepState], finals: Set[MacrostepState], store: GlobalStore, graph: Graph[Option[Context], ActorEffect]):
+      def loop(todo: Set[MacrostepState], visited: Set[MacrostepState], finals: Set[MacrostepState], store: GlobalStore /*, graph: Graph[Option[Context], ActorEffect] */):
           (Set[MacrostepState], GlobalStore) = {
         if (todo.isEmpty) {
           // Logger.log(s"todo is empty")
           (finals, store)
         } else {
-          val (next, newFinals, store2, newGraph) = todo.foldLeft((Set[MacrostepState](), Set[MacrostepState](), store, graph))((acc, s) => s match {
+          val (next, newFinals, store2 /* , newGraph */) = todo.foldLeft((Set[MacrostepState](), Set[MacrostepState](), store /*, graph */))((acc, s) => s match {
             case (None, _, _, _, _) => throw new RuntimeException("Terminated context in frontier of macrostep!")
             case (Some(ctx), cr, eff, sent, recv) =>
               Logger.log(s"Stepping ${ctx.control}, with ${cr.length} processes to create")
               val (next, store2) = ctx.step(p, sem, acc._3)
               // Logger.log(s"next is: ${next.length}")
               if (next.isEmpty) {
-                (acc._1, acc._2 + ((Some(ctx), cr, eff, sent, recv)), acc._3, acc._4)
+                (acc._1, acc._2 + ((Some(ctx), cr, eff, sent, recv)), acc._3 /*, acc._4 */)
               } else {
                 val (newTodo, newFinals) = next.partition({
                   case (Some(ctx2), cr2, eff2, sent2, recv2) =>
@@ -278,8 +290,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
                       (ctx2, cr ++ cr2, ActorEffect.combine(eff, eff2), sent.orElse(sent2), recv.orElse(recv2))
                     case (_, _, _, sent2, recv2) if macrostepStopCondition(sent, sent2, recv, recv2) =>
                       (Some(ctx), cr, eff, sent, recv)
-                  }), store2,
-                acc._4.addEdges(next.map({ case (ctx2, _, eff, _, _) => (Some(ctx), eff, ctx2) })))
+                  }), store2 /* ,
+                  acc._4.addEdges(next.map({ case (ctx2, _, eff, _, _) => (Some(ctx), eff, ctx2) })) */)
               }
           })
           if (store2.isUnchanged) {
@@ -305,16 +317,16 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
               Logger.alert(s"Internal loop detected in $p")
             }
              */
-            loop(next.diff(visited), visited ++ todo, finals ++ newFinals, store2, newGraph)
+            loop(next.diff(visited), visited ++ todo, finals ++ newFinals, store2 /*, newGraph */)
           } else {
-            loop(next, Set(), finals ++ newFinals, store2.commit, newGraph)
+            loop(next, Set(), finals ++ newFinals, store2.commit /*, newGraph */)
           }
         }
       }
       this.step(p, sem, store) match {
         case (next, store2) if !next.isEmpty =>
-          val g = new Graph[Option[Context], ActorEffect](Some(this))
-          loop(next, Set(), Set(), store2, g.addEdges(next.map({ case (ctx, _, eff, _, _) => (Some(this), eff, ctx) })))
+          // val g = new Graph[Option[Context], ActorEffect](Some(this))
+          loop(next, Set(), Set(), store2 /*, g.addEdges(next.map({ case (ctx, _, eff, _, _) => (Some(this), eff, ctx) })) */)
         case _ =>
           (Set(), store)
       }
@@ -438,6 +450,16 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (State, GlobalStore) =
       (State(Procs.empty.extend(ThreadIdentifier[PID].initial -> Context.createMain(exp, Environment.initial[Addr](env)))),
         GlobalStore.initial(store))
+    implicit val graphNode = new GraphNode[State] {
+      def label(n: State) = n.toXml
+      override def color(n: State) = if (n.hasError) {
+        Colors.Red
+      } else if (n.halted) {
+        Colors.Yellow
+      } else {
+        Colors.White
+      }
+    }
   }
 
   case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
@@ -449,17 +471,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def containsFinalValue(v: Abs): Boolean =
       finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, _.toXml,
-        (s) => if (s.hasError) {
-          Colors.Red
-        } else if (halted.contains(s)) {
-          Colors.Yellow
-        } else {
-          Colors.White
-        }, {
-          case (p, eff) if eff.isEmpty => List(scala.xml.Text(p.toString))
-          case (p, eff) => List(scala.xml.Text(p.toString), <font color="red">{eff.mkString(", ")}</font>)
-        })
+      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
       case None =>
         println("Not generating graph because no graph was computed")
     }
@@ -494,7 +506,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     }
     @scala.annotation.tailrec
     def loopMacrostep(todo: Set[State], visited: Set[State], reallyVisited: Set[State], halted: Set[State],
-      store: GlobalStore, graph: Option[G], graphs: Option[Map[PID, Graph[Set[Context], ActorEffect]]]): ActorsAAMOutput = {
+      store: GlobalStore, graph: Option[G] /*, graphs: Option[Map[PID, Graph[Set[Context], ActorEffect]]] */): ActorsAAMOutput = {
       if (todo.isEmpty || Util.timeoutReached(timeout, startingTime)) {
         println("Bounds:")
         bounds.foreach({
@@ -559,23 +571,25 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         val newTodo = edges.map(_._3)
         todoAdded(newTodo)
         val newGraph = graph.map(_.addEdges(edges))
+        /*
         val newGraphs = graphs.map(gs =>
           edges.foldLeft(gs)((gs, edge) => edge match {
             case (s1, (p, eff), s2) =>
               (gs + (p -> gs(p).addEdge(s1.procs.get(p).map(_.trimMbox), eff, s2.procs.get(p).map(_.trimMbox))))
           }))
+         */
         if (store2.mainIsUnchanged) {
           loopMacrostep(newTodo.diff(visited), visited ++ todo, reallyVisited ++ todo, halted ++ todo.filter(_.halted),
-            store2, newGraph, newGraphs)
+            store2, newGraph/* , newGraphs */)
         } else {
           loopMacrostep(newTodo, Set(), reallyVisited ++ todo, halted ++ todo.filter(_.halted),
-            store2.commitMain, newGraph, newGraphs)
+            store2.commitMain, newGraph /*, newGraphs */)
         }
       }
     }
     val (initialState, store) = State.inject(exp, sem.initialEnv, sem.initialStore)
     val g = if (graph) { Some(G()) } else { None }
-    val gs = if (graph) { Some(Map[PID, Graph[Set[Context], ActorEffect]]().withDefaultValue(new Graph[Set[Context], ActorEffect]())) } else { None }
-    loopMacrostep(Set(initialState), Set(), Set(), Set(), store, g, gs)
+    // val gs = if (graph) { Some(Map[PID, Graph[Set[Context], ActorEffect]]().withDefaultValue(new Graph[Set[Context], ActorEffect]())) } else { None }
+    loopMacrostep(Set(initialState), Set(), Set(), Set(), store, g /* , gs */)
   }
 }

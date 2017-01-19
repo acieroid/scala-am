@@ -77,27 +77,9 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     def this() = this(Map())
     def lookup(ctx: Context): Set[(LocalKont, Kont)] = content.getOrElse(ctx, Set())
     def extend(ctx: Context, v: (LocalKont, Kont)): KontStore = {
-      /*
-      content.get(ctx) match {
-        case Some(vals) if !vals.contains(v) => println(s"Joining at $ctx: $v + $vals")
-        case _ => ()
-      } */
       KontStore(content + (ctx -> (lookup(ctx) + v)))
     }
     def join(that: KontStore): KontStore = KontStore(content |+| that.content)
-    /** Useful for debugging purposes, in order to have a visualization of the
-      * kontinuation store */
-    def toDotFile(file: String): Unit = {
-      val graph = content.foldLeft(new Graph[Kont, LocalKont]())({ case (g, (ctx, succs)) =>
-        succs.foldLeft(g)({ case (g, (local, k)) =>
-          g.addEdge(KontCtx(ctx), local, k)
-        })
-      })
-      graph.toDotFile(file, {
-        case KontCtx(ctx) => List(scala.xml.Text(ctx.toString.take(40)))
-        case KontEmpty => List(scala.xml.Text("ε"))
-      }, x => Colors.White, x => List(scala.xml.Text(x.toString)))
-    }
   }
 
   /**
@@ -106,6 +88,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    */
   case class State(control: Control, store: Store[Addr, Abs], lkont: LocalKont, kont: Kont, t: Time) {
     override def toString = control.toString
+
     def subsumes(that: State): Boolean = control.subsumes(that.control) && store.subsumes(that.store) && lkont.subsumes(that.lkont) && kont.subsumes(that.kont) && t == that.t
 
     /* TODO: There are a few functions inspecting the continuation (pop,
@@ -256,6 +239,15 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]) =
       State(ControlEval(exp, Environment.initial[Addr](env)),
         Store.initial[Addr, Abs](store), new LocalKont(), KontEmpty, Timestamp[Time].initial(""))
+
+    implicit val graphNode = new GraphNode[State] {
+      def label(n: State) = List(scala.xml.Text(n.toString.take(40)))
+      override def color(n: State) = n.control match {
+        case _: ControlEval => Colors.Green
+        case _: ControlKont => Colors.Pink
+        case _: ControlError => Colors.Red
+      }
+    }
   }
 
   /**
@@ -269,12 +261,7 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     })
     def containsFinalValue(v: Abs) = finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
     def toDotFile(path: String) = graph match {
-      case Some(g) => g.toDotFile(path, node => List(scala.xml.Text(node.toString.take(40))),
-        (s) => if (halted.contains(s)) { Colors.Yellow } else { s.control match {
-          case ControlEval(_, _) => Colors.Green
-          case ControlKont(_) => Colors.Pink
-          case ControlError(_) => Colors.Red
-        }}, _ => List())
+      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
       case None =>
         println("Not generating graph because no graph was computed")
     }
