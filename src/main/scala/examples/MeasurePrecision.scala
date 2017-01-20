@@ -1,3 +1,4 @@
+/* That's WIP.
 import scalaz._
 import scalaz.Scalaz._
 
@@ -105,3 +106,4 @@ object MeasurePrecision {
      */
     }
 }
+ */

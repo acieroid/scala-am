@@ -59,7 +59,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
         case Some(program) if program.size > 0 =>
           try {
             val output = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) { } }) {
-              machine.eval(sem.parse(program), sem, false, timeout)
+              machine.eval(sem.parse(program), sem, false, Timeout.start(timeout))
             }
             MachineOutput(output.time, output.numberOfStates, output.timedOut)
           } catch {

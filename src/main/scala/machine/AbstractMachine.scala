@@ -27,7 +27,8 @@ abstract class AbstractMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
     /**
      * Checks if the set of final values contains a value that subsumes @param v
      */
-    def containsFinalValue(v: Abs): Boolean
+    def containsFinalValue(v: Abs): Boolean =
+      finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
 
     /**
      * Returns the number of states visited to evaluate the program
@@ -45,14 +46,9 @@ abstract class AbstractMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
     def timedOut: Boolean
 
     /**
-     * Outputs the graph computed by the machine in a dot file
+     * Outputs the graph computed by the machine in a file, according to the given output format
      */
-    def toDotFile(path: String): Unit
-
-    /**
-     * Output the graph computed by the machine in a JSON
-     */
-    def toJSONFile(path: String): Unit = ??? /* TODO: don't provide a default implementation */
+    def toFile(path: String)(output: GraphOutput): Unit
 
     /**
      * Inspects a specific state
@@ -70,9 +66,7 @@ abstract class AbstractMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    * evaluation. @param timeout is the timeout in ns, when reached, the
    * evaluation stops and the currently computed results are returned.
    */
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean = false, timeout: Option[Long] = None): Output
-
-  def analyze[L](exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], analysis: Analysis[L, Exp, Abs, Addr, Time], timeout: Option[Long] = None): Option[L] = throw new Exception(s"analyze method not handled by the following machine: $name")
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean = false, timeout: Timeout = Timeout.start(None)): Output
 }
 
 /**

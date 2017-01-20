@@ -31,17 +31,29 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
   var poppedPerBehaviorAndMailbox = Map[(PID, Exp, M.T), Set[M.Message]]().withDefaultValue(Set[M.Message]())
   var poppedPerMailbox = Map[(PID, M.T), Set[M.Message]]().withDefaultValue(Set[M.Message]())
 
-  type G = Graph[State, (PID, ActorEffect)]
-  implicit val annot = new GraphAnnotation[(PID, ActorEffect)] {
-    override def label(annot: (PID, ActorEffect)) = annot match {
-      case (p, eff) if eff.isEmpty => List(scala.xml.Text(p.toString))
-      case (p, eff) => List(scala.xml.Text(p.toString), <font color="red">{eff.mkString(", ")}</font>)
+  type Annot = (PID, ActorEffect)
+  type Ctx = Unit
+  type G = Graph[State, Annot, Ctx]
+  implicit val annot = new GraphAnnotation[Annot, Ctx] {
+    override def label(annot: Annot) = annot match {
+      case (p, eff) if eff.isEmpty => p.toString
+      case (p, eff) => List(scala.xml.Text(p.toString), <font color="red">{eff.mkString(", ")}</font>).mkString(" ")
+    }
+  }
+  implicit val graphNode = new GraphNode[State, Ctx] {
+    def label(n: State) = n.toXml.mkString("")
+    override def color(n: State) = if (n.hasError) {
+      Colors.Red
+    } else if (n.halted) {
+      Colors.Yellow
+    } else {
+      Colors.White
     }
   }
 
   object G {
-    def apply(): G = new Graph()(State.graphNode, annot)
-    def apply(s: State): G = new Graph(s)
+    def apply(): G = Graph.empty[State, Annot, Ctx]
+    def apply(s: State): G = Graph.node[State, Annot, Ctx](s)
   }
 
   trait KontAddr
@@ -450,16 +462,6 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (State, GlobalStore) =
       (State(Procs.empty.extend(ThreadIdentifier[PID].initial -> Context.createMain(exp, Environment.initial[Addr](env)))),
         GlobalStore.initial(store))
-    implicit val graphNode = new GraphNode[State] {
-      def label(n: State) = n.toXml
-      override def color(n: State) = if (n.hasError) {
-        Colors.Red
-      } else if (n.halted) {
-        Colors.Yellow
-      } else {
-        Colors.White
-      }
-    }
   }
 
   case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
@@ -468,10 +470,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     }))
-    def containsFinalValue(v: Abs): Boolean =
-      finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
-    def toDotFile(path: String) = graph match {
-      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
+    def toFile(path: String)(output: GraphOutput) = graph match {
+      case Some(g) => output.toFile(g, ())(path)
       case None =>
         println("Not generating graph because no graph was computed")
     }
@@ -484,7 +484,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Timeout): Output = {
     val startingTime = System.nanoTime
     def id(g: Option[G], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
     var bounds = Map[PID, MboxSize]().withDefaultValue(MboxSizeN(0))
@@ -507,7 +507,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     @scala.annotation.tailrec
     def loopMacrostep(todo: Set[State], visited: Set[State], reallyVisited: Set[State], halted: Set[State],
       store: GlobalStore, graph: Option[G] /*, graphs: Option[Map[PID, Graph[Set[Context], ActorEffect]]] */): ActorsAAMOutput = {
-      if (todo.isEmpty || Util.timeoutReached(timeout, startingTime)) {
+      if (todo.isEmpty || timeout.reached) {
         println("Bounds:")
         bounds.foreach({
           case (p, size) => println(s"$p: $size")
@@ -559,7 +559,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
             })
         }))
         store.print */
-        ActorsAAMOutput(halted, reallyVisited.size, Util.timeElapsed(startingTime), graph, !todo.isEmpty)
+        ActorsAAMOutput(halted, reallyVisited.size, timeout.time, graph, !todo.isEmpty)
       } else {
         //scala.io.StdIn.readLine()
         val (edges, store2) = todo.foldLeft((Set[(State, (PID, ActorEffect), State)](), store))((acc, s) => {

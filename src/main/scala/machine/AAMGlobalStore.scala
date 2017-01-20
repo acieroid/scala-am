@@ -1,3 +1,5 @@
+/* This code is currently not maintained, see AAMAACP4F for its up-to-date version */
+/*
 import scalaz._
 import scalaz.Scalaz._
 /**
@@ -144,3 +146,4 @@ class AAMGlobalStore[Exp : Expression, Abs : JoinLattice, Addr : Address, Time :
       sem)
   }
 }
+ */

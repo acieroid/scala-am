@@ -40,10 +40,6 @@ object Util {
     }
   }
 
-  def timeoutReached(timeout: Option[Long], startingTime: Long): Boolean =
-    timeout.map(System.nanoTime - startingTime > _).getOrElse(false)
-  def timeElapsed(startingTime: Long): Double = (System.nanoTime - startingTime) / Math.pow(10, 9)
-
   /* From http://stackoverflow.com/questions/7539831/scala-draw-table-to-console */
   object Tabulator {
     def format(table: Seq[Seq[Any]]): String = table match {
@@ -73,4 +69,13 @@ object Util {
 
     def rowSeparator(colSizes: Seq[Int]): String = colSizes map { "-" * _ } mkString("+", "+", "+")
   }
+}
+
+class Timeout(startingTime: Long, timeout: Option[Long]) {
+  def reached: Boolean = timeout.map(System.nanoTime - startingTime > _).getOrElse(false)
+  def time: Double = (System.nanoTime - startingTime) / Math.pow(10, 9)
+}
+object Timeout {
+  def start(timeout: Option[Long]): Timeout = new Timeout(System.nanoTime, timeout)
+  def none: Timeout = new Timeout(System.nanoTime, None)
 }

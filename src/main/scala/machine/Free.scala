@@ -1,3 +1,5 @@
+/* See current implementation in AAMAACP4F */
+/*
 /**
  * Implementation of "Pushdown Control-Flow Analysis for Free", which is
  * basically a variant of AAC with better complexity (Gilray, Thomas, et
@@ -174,3 +176,4 @@ class Free[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp
       loop(States.inject(exp, sem.initialEnv, sem.initialStore), Set(), Set(), System.nanoTime, timeout, sem)
     }
 }
+ */

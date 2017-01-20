@@ -174,32 +174,33 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
       State(ThreadMap(Context(ControlEval(exp, Environment.initial[Addr](env)), KontStore.empty[KontAddr], HaltKontAddress, time.initial(""))),
         ThreadResults(Map[TID, Abs]()), Store.initial[Addr, Abs](store))
     }
-    implicit val graphNode = new GraphNode[State] {
-      def label(n: State) = List(scala.xml.Text(n.toString.take(40)))
-      override def color(n: State) = if (n.halted) {
-        Colors.Yellow
-      } else if (n.threads.content.values.exists(xs => xs.exists(x => x.control.isInstanceOf[ControlError] ))) {
-        Colors.Red
-      } else {
-        Colors.White
-      }
+  }
+
+  type Annot = (TID, Effects)
+  type G = Graph[State, Annot, Unit]
+  implicit val annot = new GraphAnnotation[Annot, Unit] {
+    override def label(annot: (TID, Effects)) = annot match { case (tid, eff) => (scala.xml.Text(tid.toString) :: effectsToXml(eff)).mkString(" ") }
+  }
+  implicit val graphNode = new GraphNode[State, Unit] {
+    def label(n: State) = n.toString
+    override def color(n: State) = if (n.halted) {
+      Colors.Yellow
+    } else if (n.threads.content.values.exists(xs => xs.exists(x => x.control.isInstanceOf[ControlError] ))) {
+      Colors.Red
+    } else {
+      Colors.White
     }
   }
 
-  implicit val annot = new GraphAnnotation[(TID, Effects)] {
-    override def label(annot: (TID, Effects)) = annot match { case (tid, eff) => scala.xml.Text(tid.toString) :: effectsToXml(eff) }
-  }
-  case class ConcurrentAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, (TID, Effects)]], timedOut: Boolean)
+  case class ConcurrentAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
       extends Output {
     def finalValues = halted.flatMap(st => st.threads.get(thread.initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     }))
-    def containsFinalValue(v: Abs) = finalValues.exists(v2 => abs.subsumes(v2, v))
-    def toDotFile(path: String) = graph match {
-      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
-      case None =>
-        println("Not generating graph because no graph was computed")
+    def toFile(path: String)(output: GraphOutput) = graph match {
+      case Some(g) => output.toFile(g, ())(path)
+      case None => println("Not generating graph because no graph was computed")
     }
 
     import scala.util.{Try,Success,Failure}
@@ -246,24 +247,24 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
 
   @scala.annotation.tailrec
   private def loop(todo: Set[State], visited: Set[State],
-    halted: Set[State], startingTime: Long, timeout: Option[Long], graph: Option[Graph[State, (TID, Effects)]])
+    halted: Set[State], timeout: Timeout, graph: Option[G])
     (step: Exploration): ConcurrentAAMOutput =
-    if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-      ConcurrentAAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+    if (timeout.reached) {
+      ConcurrentAAMOutput(halted, visited.size, timeout.time, graph, true)
     } else {
       todo.headOption match {
         case Some(s) =>
           if (visited.contains(s)) {
-            loop(todo.tail, visited, halted, startingTime, timeout, graph)(step)
+            loop(todo.tail, visited, halted, timeout, graph)(step)
           } else if (s.halted) {
-            loop(todo.tail, visited + s, halted + s, startingTime, timeout, graph)(step)
+            loop(todo.tail, visited + s, halted + s, timeout, graph)(step)
           } else {
             val succs = step(s, todo)
             val newGraph = graph.map(_.addEdges(succs.map({ case (tid, eff, s2) => (s, (tid, eff), s2) })))
-            loop(todo.tail ++ succs.map(_._3), visited + s, halted, startingTime, timeout, newGraph)(step)
+            loop(todo.tail ++ succs.map(_._3), visited + s, halted, timeout, newGraph)(step)
           }
         case None => ConcurrentAAMOutput(halted, visited.size,
-          (System.nanoTime - startingTime) / Math.pow(10, 9), graph, false)
+          timeout.time, graph, false)
       }
     }
 
@@ -278,16 +279,16 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
   }
 
   @scala.annotation.tailrec
-  private def loopJoined(state: State, sem: Semantics[Exp, Abs, Addr, Time], startingTime: Long, timeout: Option[Long]): ConcurrentAAMOutput =
-    if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-      ConcurrentAAMOutput(Set.empty, 0, (System.nanoTime - startingTime) / Math.pow(10, 9), None, true)
+  private def loopJoined(state: State, sem: Semantics[Exp, Abs, Addr, Time], timeout: Timeout): ConcurrentAAMOutput =
+    if (timeout.reached) {
+      ConcurrentAAMOutput(Set.empty, 0, timeout.time, None, true)
     } else {
       println(state)
       val state2 = state.stepAll(sem).foldLeft(state)((acc, succ) => acc.join(succ._3))
       if (state2 == state) {
-        ConcurrentAAMOutput(Set.empty, 0, (System.nanoTime - startingTime) / Math.pow(10, 9), None, false)
+        ConcurrentAAMOutput(Set.empty, 0, timeout.time, None, false)
       } else {
-        loopJoined(state2, sem, startingTime, timeout)
+        loopJoined(state2, sem, timeout)
       }
     }
 
@@ -298,13 +299,8 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
   private def dependent(effs1: Effects, effs2: Effects): Boolean =
     (effs1.foldLeft(false)((acc, eff1) => effs2.foldLeft(acc)((acc, eff2) => acc || dependent(eff1, eff2))))
 
-  def id(graph: Option[Graph[State, (TID, Effects)]], s: State): Int = graph match {
-    case Some(g) => g.nodeId(s)
-    case None => -1
-  }
-
   case object CannotHandle extends Exception
-  private def dporExplore(s0: State, start: Long, timeout: Option[Long], graph: Option[Graph[State, (TID, Effects)]], sem: Semantics[Exp, Abs, Addr, Time]) = {
+  private def dporExplore(s0: State, start: Long, timeout: Timeout, graph: Option[G], sem: Semantics[Exp, Abs, Addr, Time]) = {
     import scala.util.control.Breaks._
     type Transition = (State, TID, Effects)
     type Stack = (scala.collection.immutable.Vector[Transition], State)
@@ -330,11 +326,11 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
     def happensBefore(clocks: ClockVectors, stack: Stack, i: Int, p: TID): Boolean = i <= clocks(Left(p))(proc(stack, i))
     var halted: Set[State] = Set[State]()
     var timedOut: Boolean = false
-    var g: Option[Graph[State, (TID, Effects)]] = graph
+    var g: Option[G] = graph
     var visited: Set[State] = Set[State]()
     /* DPOR: Explore(S, C) { */
     def explore(stack: Stack, clocks: ClockVectors): Unit = {
-      if (timeout.map(System.nanoTime - start > _).getOrElse(false)) {
+      if (timeout.reached) {
         timedOut = true
       } else {
         /* DPOR: let s = last(S) */
@@ -426,15 +422,15 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Timeout): Output = {
     val state = State.inject(exp, sem.initialEnv, sem.initialStore)
-    val g = if (graph) { Some (new Graph[State, (TID, Effects)]()) } else { None }
+    val g = if (graph) { Some (Graph.empty) } else { None }
     exploration match {
-      case AllInterleavings => loop(Set(state), Set(), Set(), System.nanoTime, timeout, g)(allInterleavings(sem))
-      case OneInterleaving => loop(Set(state), Set(), Set(), System.nanoTime, timeout, g)(oneInterleaving(sem))
-      case RandomInterleaving => loop(Set(state), Set(), Set(), System.nanoTime, timeout, g)(randomInterleaving(sem))
+      case AllInterleavings => loop(Set(state), Set(), Set(), timeout, g)(allInterleavings(sem))
+      case OneInterleaving => loop(Set(state), Set(), Set(), timeout, g)(oneInterleaving(sem))
+      case RandomInterleaving => loop(Set(state), Set(), Set(), timeout, g)(randomInterleaving(sem))
       case DPOR => dporExplore(state, System.nanoTime, timeout, g, sem)
-      case Joined => loopJoined(state, sem, System.nanoTime, timeout)
+      case Joined => loopJoined(state, sem, timeout)
     }
   }
 }

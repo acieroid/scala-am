@@ -254,16 +254,22 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ActorsAAM"
 
-  type G = Graph[State, (PID, Option[ActorEffect])]
-  implicit val annot = new GraphAnnotation[(PID, Option[ActorEffect])] {
-    override def label(annot: (PID, Option[ActorEffect])) = annot match {
-      case (p, None) => List(scala.xml.Text(p.toString))
-      case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
+  type Annot = (PID, Option[ActorEffect])
+  type G = Graph[State, Annot, Unit]
+  implicit val annot = new GraphAnnotation[Annot, Unit] {
+    override def label(annot: Annot) = annot match {
+      case (p, None) => p.toString
+      case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>).mkString(" ")
     }
   }
+  implicit val graphNode = new GraphNode[State, Unit] {
+    def label(n: State) = n.toXml.mkString(" ")
+    override def color(n: State) = if (n.halted) { Colors.Yellow } else if (n.hasError) { Colors.Red } else { Colors.White }
+  }
+
   object G {
-    def apply(): G = new Graph[State, (PID, Option[ActorEffect])]()(State.graphNode, annot)
-    def apply(s: State): G = new Graph[State, (PID, Option[ActorEffect])](s)
+    def apply(): G = Graph.empty[State, Annot, Unit]
+    def apply(s: State): G = Graph.node[State, Annot, Unit](s)
   }
 
   trait KontAddr
@@ -543,10 +549,6 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         Procs.empty.extend(ThreadIdentifier[PID].initial -> Context.createMain(exp, Environment.initial[Addr](env))),
         Store.initial[Addr, Abs](store),
         KontStore.empty[KontAddr])
-    implicit val graphNode = new GraphNode[State] {
-      def label(n: State) = n.toXml
-      override def color(n: State) = if (n.halted) { Colors.Yellow } else if (n.hasError) { Colors.Red } else { Colors.White }
-    }
   }
 
   case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
@@ -555,62 +557,18 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     }))
-    def containsFinalValue(v: Abs): Boolean =
-      finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
-    def toDotFile(path: String) = graph match {
-      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
-      case None =>
-        println("Not generating graph because no graph was computed")
-    }
-    import scala.util.{Try,Success,Failure}
-    override def inspect(stateNumber: Int, query: String) = graph.flatMap(_.getNode(stateNumber)) match {
-      case Some(state) => query.split('.') match {
-        case Array("store") => println(state.store)
-        case Array("hashCode") => println(state.hashCode)
-        case Array("equals", s) => Try(s.toInt) match {
-          case Success(state2Number) => graph.flatMap(_.getNode(state2Number)) match {
-            case Some(state2) =>
-              println(s"state == state2: ${state == state2}")
-              println(s"state.store == state2.store: ${state.store == state2.store}")
-              println(s"state.kstore == state2.kstore: ${state.kstore == state2.kstore}")
-              println(s"state.procs == state2.procs: ${state.procs == state2.procs}")
-              println(s"state.procs.keys == state2.procs.keys: ${state.procs.content.keys == state2.procs.content.keys}")
-              println(s"diff(state.procs, state2.procs): ${state.procs.content.diff(state2.procs.content)}")
-              state.procs.pids.foreach(p => {
-                val ctxs1 = state.procs.get(p)
-                val ctxs2 = state2.procs.get(p)
-                if (ctxs1 != ctxs2) {
-                  println(s"pid $p: ctxs1 != ctxs2, ctxs1.length = ${ctxs1.length}, ctxs2.length = ${ctxs2.length}")
-                  if (ctxs1.length == 1 && ctxs2.length == 1) {
-                    val ctx1 = ctxs1.head
-                    val ctx2 = ctxs2.head
-                    println(s"ctx1.control == ctx2.control: ${ctx1.control == ctx2.control}")
-                    println(s"ctx1.kont == ctx2.kont: ${ctx1.kont == ctx2.kont}")
-                    println(s"ctx1.inst == ctx2.inst: ${ctx1.inst == ctx2.inst}")
-                    println(s"ctx1.mbox == ctx2.mbox: ${ctx1.mbox == ctx2.mbox}")
-                    println(s"ctx1.t == ctx2.t: ${ctx1.t == ctx2.t}")
-                  }
-                }
-              })
-              println(state)
-              println("===")
-              println(state2)
-            case None => println(s"Graph doesn't contain state ${state2Number}")
-          }
-          case Failure(e) => println(s"Cannot parse state number ($s): $e")
-        }
-        case v => println(s"Unknown inspection query on $stateNumber: $query")
-      }
-      case None => println(s"Graph was either not generated, or doesn't contain state $stateNumber. I cannot query it")
+    def toFile(path: String)(output: GraphOutput) = graph match {
+      case Some(g) => output.toFile(g, ())(path)
+      case None => println("Not generating graph because no graph was computed")
     }
   }
 
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Timeout): Output = {
     val startingTime = System.nanoTime
     @scala.annotation.tailrec
     def loopAllInterleavings(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
-      if (Util.timeoutReached(timeout, startingTime)) {
-        ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
+      if (timeout.reached) {
+        ActorsAAMOutput(halted, visited.size, timeout.time, graph, true)
       } else {
         todo.headOption match {
           case Some(s) =>
@@ -625,14 +583,14 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
               loopAllInterleavings(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
             }
           case None =>
-            ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
+            ActorsAAMOutput(halted, visited.size, timeout.time, graph, false)
         }
       }
     }
     @scala.annotation.tailrec
     def loopSingleInterleaving(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
-      if (Util.timeoutReached(timeout, startingTime)) {
-        ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
+      if (timeout.reached) {
+        ActorsAAMOutput(halted, visited.size, timeout.time, graph, true)
       } else {
         todo.headOption match {
           case Some(s) =>
@@ -646,84 +604,13 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
               loopSingleInterleaving(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
             }
           case None =>
-            ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
-        }
-      }
-    }
-    @scala.annotation.tailrec
-    def loopMacrostepTrace(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
-      def id(g: Option[G], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
-      if (Util.timeoutReached(timeout, startingTime)) {
-        ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
-      } else {
-        todo.headOption match {
-          case Some(s) =>
-            if (visited.contains(s)) {
-              // println(s"State ${id(graph,s)} already visited (hashCode: ${s.hashCode})")
-              loopMacrostepTrace(todo.tail, visited, halted, graph)
-            } else if (s.halted) {
-              // println(s"State ${id(graph,s)} halted")
-              loopMacrostepTrace(todo.tail, visited + s, halted + s, graph)
-            } else {
-              // println(s"Macrostepping from state ${id(graph, s)}")
-              val succs = s.macrostepTraceAll(sem)
-              val newGraph = graph.map(_.addEdges(succs.map({ case (s2, p, trace) => (s, (p, None /* TODO: incorrect */), s2) })))
-              // val statesAndTraces = succs.map({ case (s2, p, trace) => s"${id(newGraph, s2)}: ${trace.map(s => s.hashCode)}" })
-              // println(s"Getting states and traces $statesAndTraces")
-              loopMacrostepTrace(todo.tail ++ succs.map(_._1), visited + s, halted, newGraph)
-            }
-          case None =>
-            ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
-        }
-      }
-    }
-    @scala.annotation.tailrec
-    def loopMacrostep(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[G]): ActorsAAMOutput = {
-      def id(g: Option[G], s: State): Int = g.map(_.nodeId(s)).getOrElse(-1)
-      if (Util.timeoutReached(timeout, startingTime)) {
-        ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, true)
-      } else {
-        todo.headOption match {
-          case Some(s) =>
-            if (visited.contains(s)) {
-              //println("Already visited")
-              loopMacrostep(todo.tail, visited, halted, graph)
-            } else if (s.halted) {
-              //println("halted")
-              loopMacrostep(todo.tail, visited + s, halted + s, graph)
-            } else {
-              println(s"Macrostepping from state ${id(graph, s)}")
-              val succs: Set[(Set[(State, Option[ActorEffect])], PID, G)] = s.macrostepAll(sem)
-              //println(s"Macrostep produced ${succs.size} successors")
-              /*succs.headOption match {
-                case Some((s, p, g)) =>
-                  println(s)
-                  g.toDotFile("foo.dot", _.toXml,
-                  (s) => if (s.hasError) {
-                    Colors.Red
-                  } else if (halted.contains(s)) {
-                    Colors.Yellow
-                  } else {
-                    Colors.White
-                  }, {
-                    case (p, None) => List(scala.xml.Text(p.toString))
-                    case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
-                  })
-                case None => ()
-              }*/
-              val newGraph = graph.map(_.addEdges(succs.flatMap({ case (ss, p, _) => ss.map({ case (s2, eff) => (s, (p, eff), s2) }) })))
-              loopMacrostep(todo.tail ++ succs.flatMap(_._1.map(_._1)), visited + s, halted, newGraph)
-            }
-          case None =>
-            ActorsAAMOutput(halted, visited.size, Util.timeElapsed(startingTime), graph, false)
+            ActorsAAMOutput(halted, visited.size, timeout.time, graph, false)
         }
       }
     }
     val initialState = State.inject(exp, sem.initialEnv, sem.initialStore)
     val g = if (graph) { Some(G()) } else { None }
     // loopAllInterleavings(Set(initialState), Set(), Set(), g)
-    // loopSingleInterleaving(Set(initialState), Set(), Set(), g)
-    // loopMacrostepTrace(Set(initialState), Set(), Set(), g)
-    loopMacrostep(Set(initialState), Set(), Set(), g)
+     loopSingleInterleaving(Set(initialState), Set(), Set(), g)
   }
 }

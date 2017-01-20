@@ -1,3 +1,5 @@
+/* This code is not currently maintained, see AAMAACP4F */
+/*
 import scalaz.Scalaz._
 
 /**
@@ -341,3 +343,4 @@ class AAC[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       if (graph) { Some(new Graph[State, Unit]()) } else { None },
       new KontStore(), sem)
 }
+*/

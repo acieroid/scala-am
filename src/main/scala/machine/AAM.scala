@@ -117,8 +117,8 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
         Store.initial[Addr, Abs](store), KontStore.empty[KontAddr], HaltKontAddress, Timestamp[Time].initial(""))
     import scala.language.implicitConversions
 
-    implicit val graphNode = new GraphNode[State] {
-      def label(s: State) = List(scala.xml.Text(s.toString.take(40)))
+    implicit val graphNode = new GraphNode[State, Unit] {
+      def label(s: State) = s.toString
       override def color(s: State) = if (s.halted) { Colors.Yellow } else { s.control match {
         case _: ControlEval => Colors.Green
         case _: ControlKont => Colors.Pink
@@ -129,40 +129,22 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       import org.json4s.JsonDSL._
       import org.json4s.jackson.JsonMethods._
       import JSON._
-      override def content(s: State): JObject = {
+      override def content(s: State) =
         ("control" -> s.control) ~ ("store" -> s.store) ~ ("kstore" -> s.kstore) ~ ("kont" -> s.a.toString) ~ ("time" -> s.t.toString)
-      }
     }
   }
 
-  case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[Graph[State, Unit]], timedOut: Boolean)
+  type G = Option[Graph[State, Unit, Unit]]
+  case class AAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: G, timedOut: Boolean)
       extends Output {
-
-    /**
-     * Returns the list of final values that can be reached
-     */
     def finalValues = halted.flatMap(st => st.control match {
       case ControlKont(v) => Set[Abs](v)
       case _ => Set[Abs]()
     })
 
-    /**
-     * Checks if a halted state contains a value that subsumes @param v
-     */
-    def containsFinalValue(v: Abs) = finalValues.exists(v2 => JoinLattice[Abs].subsumes(v2, v))
-
-    /**
-     * Outputs the graph in a dot file
-     */
-    def toDotFile(path: String) = graph match {
-      case Some(g) => GraphDOTOutput.toDotFile(g)(path)
-      case None =>
-        println("Not generating graph because no graph was computed")
-    }
-    override def toJSONFile(path: String) = graph match {
-      case Some(g) => GraphJSONOutput.toJSONFile(g)(path)
-      case None =>
-        println("Not generating graph because no graph was computed")
+    def toFile(path: String)(output: GraphOutput) = graph match {
+      case Some(g) => output.toFile(g, ())(path)
+      case None => println("Not generating graph because no graph was computed")
     }
     override def joinedStore: Store[Addr, Abs] =
       halted.map(s => s.store).foldLeft(Store.empty[Addr, Abs])((acc, store) => acc.join(store))
@@ -172,11 +154,11 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
    * Performs the evaluation of an expression, possibly writing the output graph
    * in a file, and returns the set of final states reached
    */
-  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Option[Long]): Output = {
-    val startingTime = System.nanoTime
-    def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: Option[Graph[State, Unit]]): AAMOutput = {
-      if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-        AAMOutput(halted, visited.size, (System.nanoTime - startingTime) / Math.pow(10, 9), graph, true)
+  def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Timeout): Output = {
+    @scala.annotation.tailrec
+    def loop(todo: Set[State], visited: Set[State], halted: Set[State], graph: G): AAMOutput = {
+      if (timeout.reached) {
+        AAMOutput(halted, visited.size, timeout.time, graph, true)
       } else {
         todo.headOption match {
           case Some(s) =>
@@ -197,37 +179,10 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
               val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, (), s2))))
               loop(todo.tail ++ succs, visited + s, halted, newGraph)
             }
-          case None => AAMOutput(halted, visited.size,
-            (System.nanoTime - startingTime) / Math.pow(10, 9), graph, false)
+          case None => AAMOutput(halted, visited.size, timeout.time, graph, false)
         }
       }
     }
-    loop(Set(State.inject(exp, sem.initialEnv, sem.initialStore)), Set(), Set(), if (graph) { Some(new Graph[State, Unit]()) } else { None })
-  }
-
-  override def analyze[L](exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], analysis: Analysis[L, Exp, Abs, Addr, Time], timeout: Option[Long]) = {
-    val startingTime = System.nanoTime
-    def loop(todo: Set[(State, L)], visited: Set[(State, L)], finalValue: Option[L]): Option[L] =
-      if (timeout.map(System.nanoTime - startingTime > _).getOrElse(false)) {
-        None
-      } else {
-        todo.headOption match {
-          case Some((s, l)) =>
-            if (visited.contains((s, l)) || visited.exists({ case (s2, _) => s2.subsumes(s) })) {
-              loop(todo.tail, visited, finalValue)
-            } else if (s.halted) {
-              loop(todo.tail, visited + ((s, l)), finalValue match {
-                case None => Some(s.stepAnalysis(analysis, l))
-                case Some(l2) => Some(analysis.join(l2, s.stepAnalysis(analysis, l)))
-              })
-            } else {
-              val succs = s.step(sem)
-              val l2 = s.stepAnalysis(analysis, l)
-              loop(todo.tail ++ succs.map(s2 => (s2, l2)), visited + ((s, l)), finalValue)
-            }
-          case None => finalValue
-        }
-      }
-    loop(Set((State.inject(exp, sem.initialEnv, sem.initialStore), analysis.init)), Set(), None)
+    loop(Set(State.inject(exp, sem.initialEnv, sem.initialStore)), Set(), Set(), if (graph) { Some(Graph.empty) } else { None })
   }
 }

@@ -82,9 +82,9 @@ object Main {
     * file. Return the number of states and time taken. */
   def run[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, outputDot: Option[String], outputJSON: Option[String], timeout: Option[Long], inspect: Boolean): (Int, Double) = {
     println(s"Running ${machine.name} with lattice ${JoinLattice[Abs].name} and address ${Address[Addr].name}")
-    val result = machine.eval(sem.parse(program), sem, !outputDot.isEmpty || !outputJSON.isEmpty, timeout)
-    outputDot.foreach(result.toDotFile _)
-    outputJSON.foreach(result.toJSONFile _)
+    val result = machine.eval(sem.parse(program), sem, !outputDot.isEmpty || !outputJSON.isEmpty, Timeout.start(timeout))
+    outputDot.foreach(result.toFile(_)(GraphDOTOutput))
+    outputJSON.foreach(result.toFile(_)(GraphJSONOutput))
     if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
     println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
     if (inspect) {

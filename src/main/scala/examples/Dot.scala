@@ -196,8 +196,8 @@ object Dot {
       val sem = new DotSemantics[lattice.L, ZeroCFA.T]
       val machine = new AAM[Term, lattice.L, ClassicalAddress.A, ZeroCFA.T]
       println(sem.parse(args(0)))
-      val res = machine.eval(sem.parse(args(0)), sem, true, None)
-      res.toDotFile("foo.dot")
+      val res = machine.eval(sem.parse(args(0)), sem, true, Timeout.none)
+      res.toFile("foo.dot")(GraphDOTOutput)
     } else {
       val example = """
 (let ((some-obj (nu (x) (id (lambda (x) x))))) (let ((f (sel some-obj id))) (let ((res1 (f some-obj))) (f f))))"""
