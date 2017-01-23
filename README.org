@@ -1,9 +1,8 @@
 Abstract Machine Experiments with Scala
 * Goal
 The goal of this artefact is to experiment with abstract machines and language
-semantics with the theoretical framework described by Might, Van Horn and
-Johnson (Abstracting Abstract Machines, Abstracting Abstract Control, Pushdown
-Control-Flow Analyses).
+semantics. Scala-AM is initially based on the theoretical framework of
+Abstracting Abstract Machines (see references).
 
 To see how the framework can be used to build static analyses or define language
 semantics, look at =src/main/scala/LambdaCalculus.scala=.
@@ -42,7 +41,7 @@ You can give a timeout parameter (=-t=, no timeout by default), and a number of
 workers threads to distribute the work(=-w=, 1 by default).
 * Test suite
 The test suite can be run using =sbt test=
-* Relevant publications
+* References and Relevant publications
 The idea behind Scala-AM comes from the AAM paper (Van Horn, David, and Matthew
 Might. "Abstracting abstract machines." ACM Sigplan
 Notices. Vol. 45. No. 9. ACM, 2010), and we have support for other machine
@@ -56,3 +55,4 @@ Symposium. Springer Berlin Heidelberg, 2011).
 
 This framework is described in the following publication:
   - Scala-AM: A Modular Static Analysis Framework, SCAM 2016, [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf][pdf]], [[https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am][doi]].
+  - Building a Modular Static Analysis Framework in Scala, [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf][pdf]].
