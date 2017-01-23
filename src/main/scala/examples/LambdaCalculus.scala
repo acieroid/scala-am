@@ -189,8 +189,6 @@ object LamAnalysis {
   /** Our analysis takes an input program as a string, and returns a set of
    *  expressions where unbound variables are evaluated.
    */
-  /* TODO: analyze has recently been removed from Scala-AM, this example needs to be adapted */
-  /*
   def analyze[L : LamLattice](program: String): Set[LamExp] = {
     /* We first instantiate our semantics. It needs to know which lattice to use (we
      * use the type parameter L for that), which addresses (we use classical
@@ -203,10 +201,12 @@ object LamAnalysis {
     val machine = new AAM[LamExp, L, ClassicalAddress.A, ZeroCFA.T]
     /* We finally instantiate our analysis itself */
     val analysis = UnboundVariablesAnalysis[L, ClassicalAddress.A, ZeroCFA.T]
-    /* We can then analyze the given program using the machine, our semantics and our analysis */
-    machine.analyze(sem.parse(program), sem, analysis,
-      /* we don't include a timeout for the analysis */
-      None).getOrElse({ println("Analysis did not succeed..."); Set() })
+    /* Combine analysis with semantics */
+    val analysisSem = new SemanticsWithAnalysis[Set[LamExp], LamExp, L, ClassicalAddress.A, ZeroCFA.T](sem, analysis)
+    /* We can then abstractly evaluate the given program using the machine, our semantics and our analysis */
+    machine.eval(sem.parse(program), analysisSem)
+    /* We can fially extract the analysis results */
+    analysisSem.analysisResult
   }
   def main(args: Array[String]) {
     /* We run our analysis on a simple program */
@@ -215,5 +215,4 @@ object LamAnalysis {
     val unboundstr = unbound.map(x => s"$x at position ${x.pos}").mkString("\n")
     println(s"Unbound variables:\n$unboundstr")
   }
-  */
 }
