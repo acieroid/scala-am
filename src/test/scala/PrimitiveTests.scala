@@ -16,7 +16,7 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
   val machine: AbstractMachine[Exp, Abs, Addr, Time]
 
   def checkResult(program: String, answer: Abs) = {
-    val result = machine.eval(sem.parse(program), sem, false, None)
+    val result = machine.eval(sem.parse(program), sem, false, Timeout.none)
     assert(result.containsFinalValue(answer))
   }
   def check(table: TableFor2[String, Abs]) =
@@ -250,19 +250,19 @@ abstract class AAMPrimitiveTests[Addr : Address, Time : Timestamp](override val 
 abstract class AAMGlobalStorePrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
-  val machine = new AAMGlobalStore[SchemeExp, lattice.L, Addr, Time]
+  val machine = new AAMAACP4F[SchemeExp, lattice.L, Addr, Time](AAMKAlloc)
 }
 
 abstract class AACPrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
-  val machine = new AAC[SchemeExp, lattice.L, Addr, Time]
+  val machine = new AAMAACP4F[SchemeExp, lattice.L, Addr, Time](AACKAlloc)
 }
 
 abstract class FreePrimitiveTests[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
     extends Tests[SchemeExp, Addr, Time](lattice) {
   val sem = new SchemeSemantics[lattice.L, Addr, Time](new SchemePrimitives[Addr, lattice.L])
-  val machine = new Free[SchemeExp, lattice.L, Addr, Time]
+  val machine = new AAMAACP4F[SchemeExp, lattice.L, Addr, Time](P4FKAlloc)
 }
 
 abstract class ConcreteMachinePrimitiveTests(override val lattice: SchemeLattice)
