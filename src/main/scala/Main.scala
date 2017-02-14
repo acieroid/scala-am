@@ -75,7 +75,6 @@ import scala.util.{Try, Success, Failure}
  *    that is suited for your analysis. You can use an existing lattice as an
  *    inspiration.
  */
-
 object Main {
   /** Run a machine on a program with the given semantics. If @param output is
     * set, generate a dot graph visualizing the computed graph in the given
@@ -87,15 +86,6 @@ object Main {
     outputJSON.foreach(result.toFile(_)(GraphJSONOutput))
     if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
     println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
-    if (inspect) {
-      replOrFile(None, input => input.indexOf(".") match {
-        case -1 => println(s"Unknown inspection query: $input")
-        case n => Try(input.subSequence(0, n).toString.toInt) match {
-          case Success(state) => result.inspect(state, input.subSequence(n + 1, input.size).toString)
-          case Failure(e) => println(s"Cannot parse state number (${input.subSequence(0, n)}): $e")
-        }
-      })
-    }
     (result.numberOfStates, result.time)
   }
 
@@ -158,8 +148,9 @@ object Main {
             val alattice: ASchemeLattice = new MakeASchemeLattice[lattice.L]
             implicit val isASchemeLattice = alattice.isASchemeLattice
 
-            val time: TimestampWrapper = if (config.concrete) ConcreteTimestamp else ZeroCFA
-            implicit val isTimestamp = time.isTimestamp
+            import ActorTimestamp.fromTime
+            val time: ActorTimestampWrapper = if (config.concrete) ConcreteTimestamp else KMessageTagSensitivity(1)
+            implicit val isTimestamp = time.isActorTimestamp
 
             val address: AddressWrapper = config.address match {
               case Config.Address.Classical => ClassicalAddress
@@ -193,4 +184,24 @@ object Main {
       })
     Profiler.print
   }
+}
+
+object ScalaAM {
+  /** Simply run a program and return the result. Compute the graph is @param graph is true. */
+  def run[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp](machine: AbstractMachine[Exp, Abs, Addr, Time], sem: Semantics[Exp, Abs, Addr, Time])(program: String, graph: Boolean = true, timeout: Option[Long] = None): AbstractMachine[Exp, Abs, Addr, Time]#Output = {
+    val result = machine.eval(sem.parse(program), sem, graph, Timeout.start(timeout))
+    if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
+    result
+  }
+  /** Some lattice instanciations */
+  val typeLattice = new MakeSchemeLattice[Type.S, Concrete.B, Type.I, Type.F, Type.C, Type.Sym](false)
+  val concreteLattice = new MakeSchemeLattice[Concrete.S, Concrete.B, Concrete.I, Concrete.F, Concrete.C, Concrete.Sym](false)
+  val cpLattice = new MakeSchemeLattice[ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.F, ConstantPropagation.C, ConstantPropagation.Sym](false)
+
+  /* You can then launch a console to load ScalaAM (sbt console), and perform the following:
+   * > import ScalaAM._
+   * > run(new AAM[SchemeExp, cpLattice.L, ClassicalAddress.A, ZeroCFA.T], new SchemeSemantics[cpLattice.L, ClassicalAddress.A, ZeroCFA.T](new SchemePrimitives[ClassicalAddress.A, cpLattice.L]))("(* 2 3)")
+   * From there on, you can inspect the result.
+   */
+
 }

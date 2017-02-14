@@ -146,8 +146,6 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       case Some(g) => output.toFile(g, ())(path)
       case None => println("Not generating graph because no graph was computed")
     }
-    override def joinedStore: Store[Addr, Abs] =
-      halted.map(s => s.store).foldLeft(Store.empty[Addr, Abs])((acc, store) => acc.join(store))
   }
 
   /**

@@ -17,17 +17,14 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
       Set()
     }
     def timedOut = false
-    override def joinedStore = store
   }
   case class ConcreteMachineOutputTimeout(store: Store[Addr, Abs], time: Double, numberOfStates: Int) extends ConcreteMachineOutput {
     def finalValues = Set()
     def timedOut = true
-    override def joinedStore = store
   }
   case class ConcreteMachineOutputValue(store: Store[Addr, Abs], time: Double, numberOfStates: Int, v: Abs) extends ConcreteMachineOutput {
     def finalValues = Set(v)
     def timedOut = false
-    override def joinedStore = store
   }
 
   /**

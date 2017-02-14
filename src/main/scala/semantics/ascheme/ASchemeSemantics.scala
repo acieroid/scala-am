@@ -39,7 +39,7 @@ class RecordActorVisitor[Exp : Expression, Abs : JoinLattice, Addr : Address] ex
   }
 }
 
-class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
+class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier]
   (primitives: Primitives[Addr, Abs])
     extends SchemeSemantics[Abs, Addr, Time](primitives) {
   object ActorAction extends ActorActionHelpers[SchemeExp, Abs, Addr, Time, PID]
@@ -140,7 +140,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp,
 }
 
 
-class ASchemeSemanticsWithVisitorAndOptimization[Abs : IsASchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
+class ASchemeSemanticsWithVisitorAndOptimization[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier]
   (primitives: Primitives[Addr, Abs],
     visitor: ActorVisitor[SchemeExp, Abs, Addr])
     extends ASchemeSemantics[Abs, Addr, Time, PID](primitives) {

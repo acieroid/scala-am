@@ -202,45 +202,6 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
       case Some(g) => output.toFile(g, ())(path)
       case None => println("Not generating graph because no graph was computed")
     }
-
-    import scala.util.{Try,Success,Failure}
-    override def inspect(stateNumber: Int, query: String) = graph.flatMap(_.getNode(stateNumber)) match {
-      case Some(state) => query.split('.') match {
-        case Array("store") => println(state.store)
-        case Array("hashCode") => println(state.hashCode)
-        case Array("equals", s) => Try(s.toInt) match {
-          case Success(state2Number) => graph.flatMap(_.getNode(state2Number)) match {
-            case Some(state2) => {
-              println(s"$stateNumber == $state2Number is ${state == state2}")
-              if (state != state2) {
-                println(s"$stateNumber.store == $state2Number.store is ${state.store == state2.store}")
-                println(s"$stateNumber.threads == $state2Number.threads is ${state.threads == state2.threads}")
-                if (state.threads != state2.threads) {
-                  println(s"$stateNumber.threads.keys == $state2Number.threads.keys is ${state.threads.content.keys == state2.threads.content.keys}")
-                  println(s"$stateNumber.threads.values == $state2Number.threads.values is ${state.threads.content.values == state2.threads.content.values}")
-                  println(s"$stateNumber.threads - $state2Number.threads == ${state.threads.content.toSet.diff(state2.threads.content.toSet).toMap}")
-                  println(s"$state2Number.threads - $stateNumber.threads == ${state2.threads.content.toSet.diff(state.threads.content.toSet).toMap}")
-                  val diff1 = state.threads.content.toSet.diff(state2.threads.content.toSet).toMap
-                  val diff2 = state2.threads.content.toSet.diff(state.threads.content.toSet).toMap
-                  val ctx1 = diff1.values.head.head
-                  val ctx2 = diff2.values.head.head
-                  println(s"ctx1 == ctx2 is ${ctx1 == ctx2}")
-                  println(s"ctx1.control == ctx2.control is ${ctx1.control == ctx2.control}")
-                  println(s"ctx1.kstore == ctx2.kstore is ${ctx1.kstore == ctx2.kstore}")
-                  println(s"ctx1.a == ctx2.a is ${ctx1.a == ctx2.a}")
-                }
-                println(s"$stateNumber.results == $state2Number.results is ${state.results == state2.results}")
-              }
-            }
-            case None => println(s"Graph doesn't contain state ${state2Number}")
-          }
-          case Failure(e) => println(s"Cannot parse state number ($s): $e")
-        }
-        case v => println(s"Unknown inspection query on state $stateNumber: $query")
-      }
-      case None =>
-        println(s"Graph was either not generated, or doesn't contain state $stateNumber. I cannot query it.")
-    }
   }
 
   type Exploration = (State, Set[State]) => Set[(TID, Effects, State)]

@@ -49,14 +49,6 @@ abstract class AbstractMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
      * Outputs the graph computed by the machine in a file, according to the given output format
      */
     def toFile(path: String)(output: GraphOutput): Unit
-
-    /**
-     * Inspects a specific state
-     */
-    def inspect(state: Int, query: String): Unit =
-      println("TODO: Inspection not implemented for this machine")
-
-    def joinedStore: Store[Addr, Abs] = ???
   }
 
   /**

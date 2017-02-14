@@ -95,13 +95,13 @@ object GraphDOTOutput extends GraphOutput {
     writer.append("digraph G {\n")
     graph.nodes.foreach((n) => {
       val id = graph.ids(n)
-      val label = GraphNode[N, C].label(n, ctx).take(40)
+      val label = GraphNode[N, C].label(n, ctx)
       val color = GraphNode[N, C].color(n, ctx)
       val tooltip = GraphNode[N, C].tooltip(n, ctx)
-      writer.append(s"node_$id[shape=box, xlabel=$id}, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n")
+      writer.append(s"node_$id[shape=box, xlabel=$id, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n")
     })
     graph.edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) =>
-      val annotstr = GraphAnnotation[A, C].label(annot, ctx).mkString(" ")
+      val annotstr = GraphAnnotation[A, C].label(annot, ctx)
       writer.append(s"node_${graph.ids(n1)} -> node_${graph.ids(n2)} [label=<$annotstr>]\n")})})
     writer.append("}")
   }

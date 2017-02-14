@@ -117,7 +117,6 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
       case Some(g) => output.toFile(g, halted)(path)
       case None => println("Not generating graph because no graph was computed")
     }
-    override def joinedStore: Store[Addr, Abs] = store
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], genGraph: Boolean, timeout: Timeout): Output = {
