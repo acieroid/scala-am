@@ -176,7 +176,7 @@ object Main {
             val N = 1
             val warmup = if (N > 1) 2 else 0 // 2 runs that are ignored to warm up
             val (states, times) = (1 to N+warmup).map(i =>
-              replOrFile(config.file, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))).unzip
+              runOnFile(config.file.get, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))).unzip
             println("States: " + states.mkString(", "))
             println("Time: " + times.drop(warmup).mkString(","))
             if (N == 1) visitor.print
@@ -204,4 +204,40 @@ object ScalaAM {
    * From there on, you can inspect the result.
    */
 
+  /* Or you can use one of the preinstantiated machines:
+   * > ScalaAM.FastConcrete.eval("(+ 1 2 3)")
+   * Or with a REPL:
+   * > ScalaAM.repl(ScalaAM.FastConcrete.eval _)
+   */
+  object FastConcrete {
+    def eval(program: String, timeout: Option[Long] = None): Option[concreteLattice.L] = {
+      val output = run[SchemeExp, concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T](
+        new ConcreteMachine[SchemeExp, concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T],
+        new SchemeSemantics[concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T](new SchemePrimitives[ClassicalAddress.A, concreteLattice.L]))(program, false, timeout)
+      assert(output.finalValues.size <= 1)
+      output.finalValues.headOption
+    }
+  }
+
+  object ConstantPropagationAAM {
+    def eval(program: String, timeout: Option[Long] = None): Set[cpLattice.L] = {
+      val output = run[SchemeExp, cpLattice.L, ClassicalAddress.A, ZeroCFA.T](
+        new AAM[SchemeExp, cpLattice.L, ClassicalAddress.A, ZeroCFA.T],
+        new SchemeSemantics[cpLattice.L, ClassicalAddress.A, ZeroCFA.T](new SchemePrimitives[ClassicalAddress.A, cpLattice.L]))(program, false, timeout)
+      output.finalValues
+    }
+  }
+
+  object TypeAAM {
+    def eval(program: String, timeout: Option[Long] = None): Set[typeLattice.L] = {
+      val output = run[SchemeExp, typeLattice.L, ClassicalAddress.A, ZeroCFA.T](
+        new AAM[SchemeExp, typeLattice.L, ClassicalAddress.A, ZeroCFA.T],
+        new SchemeSemantics[typeLattice.L, ClassicalAddress.A, ZeroCFA.T](new SchemePrimitives[ClassicalAddress.A, typeLattice.L]))(program, false, timeout)
+      output.finalValues
+    }
+  }
+
+  def repl[A](eval: (String, Option[Long]) => A): Unit = {
+    Util.replOrFile(None, p => println(eval(p, None)))
+  }
 }

@@ -24,20 +24,30 @@ object Util {
 
   object Done extends Exception
   /** Either run cb on the content of the given file, or run a REPL, each line being sent to cb */
-  def replOrFile[A](file: Option[String], cb: String => A): A = {
+  def replOrFile[A](file: Option[String], cb: String => A): Unit = {
     lazy val reader = new jline.console.ConsoleReader()
     @scala.annotation.tailrec
-    def loop(): A = Option(reader.readLine(">>> ")) match {
-      case Some(program) if program.length > 0 => cb(program)
-      case _ => loop()
+    def loop(): Unit = Option(reader.readLine(">>> ")) match {
+      case Some(program) if program.length == 0 =>
+        loop()
+      case Some(program) =>
+        cb(program)
+        loop()
+      case None => ()
     }
     file match {
-      case Some(file) => fileContent(file) match {
-        case Some(program) => cb(program)
-        case None => throw new RuntimeException(s"Input file doesn't exists ($file)")
-      }
+      case Some(file) =>
+        runOnFile[A](file, cb)
+        ()
       case None => loop()
     }
+  }
+  def runOnFile[A](file: String, cb: String => A): A = {
+    fileContent(file) match {
+        case Some(program) =>
+          cb(program)
+        case None => throw new RuntimeException(s"Input file doesn't exists ($file)")
+      }
   }
 
   /* From http://stackoverflow.com/questions/7539831/scala-draw-table-to-console */
