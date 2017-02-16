@@ -272,6 +272,7 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
   def inject(n: Float): F
   def toInt[I : IntLattice](n: F): I
   def ceiling(n: F): F
+  def round(n: F): F
   def log(n: F): F
   def random(n: F): F
   def plus(n1: F, n2: F): F

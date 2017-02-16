@@ -168,6 +168,11 @@ class MakeSchemeLattice[
         case Float(n) => Float(FloatLattice[F].ceiling(n))
         case _ => OperatorNotApplicable("ceiling", List(x.toString))
       }
+      case Round => x match {
+        case Int(n) => Int(n)
+        case Float(n) => Float(FloatLattice[F].round(n))
+        case _ => OperatorNotApplicable("round", List(x.toString))
+      }
       case Log => x match {
         case Int(n) => Float(FloatLattice[F].log(IntLattice[I].toFloat(n)))
         case Float(n) => Float(FloatLattice[F].log(n))

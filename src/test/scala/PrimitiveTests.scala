@@ -4,9 +4,9 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
 
 /** Tests that encodes Chapter 6 of R5RS (only for specified behaviour,
   * unspecified behaviour is not tested because it's... unspecified). This is
-  * only for test cases explicitely given in R5RS. Some primitives are therefore
+  * only for test cases explicitly given in R5RS. Some primitives are therefore
   * not tested (because they aren't given any test case in R5RS). Unsupported
-  * primitives with test cases defined in R5RS are explicitely stated in
+  * primitives with test cases defined in R5RS are explicitly stated in
   * comments. If you're bored, you can implement some of them. */
 abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: SchemeLattice)
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
@@ -123,7 +123,13 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(ceiling -4.3)", abs.inject(-4.toFloat)),
     ("(ceiling 3.5)", abs.inject(4.toFloat))))
   // truncate not implemented yet
-  // round not implemented yet
+  r5rs("round", Table(
+    ("program", "anwser"),
+    ("(round -4.3)", abs.inject(-4.toFloat)),
+    ("(round 3.5)", abs.inject(4.toFloat)),
+    //("(round 7/2)", abs.inject(4)),
+    ("(round 7)", abs.inject(7))
+  ))
   // rationalize not implemented yet
 
   // string->number not implemented yet

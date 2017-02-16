@@ -7,7 +7,7 @@ object SchemeOps {
       /* Negate a value */
       Not,
       /* Unary arithmetic operations */
-      Ceiling, Log, Random,
+      Ceiling, Round, Log, Random,
       /* Length operations */
       VectorLength, StringLength,
       /* Conversions */
@@ -43,4 +43,16 @@ object SchemeOps {
     }
   def random(n: Int): Int = scala.math.abs(scala.util.Random.nextInt % n)
   def random(n: Float): Float = scala.math.abs(scala.util.Random.nextFloat % n)
+
+  /** Round in Scheme and Scala are different. This implements the same behaviour as Scheme's round. */
+  def round(n: Float): Float = {
+    val frac = n % 1 /* Fractional part of n */
+    /* In the case of a fraction part equaling 0.5, rounding is done towards the even number. */
+    if ((scala.math.abs(frac) == 0.5) && (((n > 0) && ((scala.math.abs(n - frac) % 2) == 0)) || ((n < 0) && (((n - frac) % 2) == -1)))) {
+      scala.math.round(n) - 1
+    }
+    else {
+      scala.math.round(n)
+    }
+  }
 }

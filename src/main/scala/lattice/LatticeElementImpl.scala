@@ -116,6 +116,7 @@ object Concrete {
       def inject(x: Float): F = Values(ISet.singleton(x))
       def toInt[I : IntLattice](n: F): I = n.foldMap(n => IntLattice[I].inject(n.toInt))
       def ceiling(n: F): F = n.map(_.ceil)
+      def round(n: F): F = n.map(n => SchemeOps.round(n))
       def log(n: F): F = n.map(n => scala.math.log(n.toDouble).toFloat)
       def random(n: F): F = n.map(n => SchemeOps.random(n))
       def plus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 + n2)) }
@@ -395,6 +396,7 @@ object Type {
         case Bottom => IntLattice[I].bottom
       }
       def ceiling(n: T): T = n
+      def round(n: T): T = n
       def log(n: T): T = n
       def random(n: T): T = n
       def plus(n1: T, n2: T): T = meet(n1, n2)
@@ -561,6 +563,10 @@ object ConstantPropagation {
       }
       def ceiling(n: F): F = n match {
         case Constant(x) => Constant(x.ceil)
+        case _ => n
+      }
+      def round(n: F): F = n match {
+        case Constant(x) => Constant(SchemeOps.round(x))
         case _ => n
       }
       def random(n: F): F = n match {

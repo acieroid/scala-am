@@ -16,6 +16,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
   def isVector = abs.unaryOp(UnaryOperator.IsVector) _
   def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
+  def round = abs.unaryOp(UnaryOperator.Round) _
   def log = abs.unaryOp(UnaryOperator.Log) _
   def not = abs.unaryOp(UnaryOperator.Not) _
   def random = abs.unaryOp(UnaryOperator.Random) _
@@ -129,6 +130,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
   object Ceiling extends NoStoreOperation("ceiling", Some(1)) {
     override def call(x: Abs) = ceiling(x)
+  }
+  object Round extends NoStoreOperation("round", Some(1)) {
+    override def call(x: Abs) = round(x)
   }
   object Log extends NoStoreOperation("log", Some(1)) {
     override def call(x: Abs) = log(x)
@@ -659,7 +663,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   /** Bundles all the primitives together */
   def all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div, Quotient, LessThan, LessOrEqual, NumEq, GreaterThan, GreaterOrEqual,
-    Modulo, Random, Ceiling, Log, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
+    Modulo, Random, Ceiling, Round, Log, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
     Nullp, Pairp, Charp, Symbolp, Stringp, Integerp, Realp, Numberp, Booleanp, Vectorp, Eq,
     NumberToString, StringAppend, StringLength, Newline, Display, Error, Not,
     Cons, Car, Cdr, Caar, Cadr, Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar,
