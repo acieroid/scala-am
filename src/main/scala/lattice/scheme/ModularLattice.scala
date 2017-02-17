@@ -183,6 +183,21 @@ class MakeSchemeLattice[
         case Float(n) => Float(FloatLattice[F].random(n))
         case _ => OperatorNotApplicable("random", List(x.toString))
       }
+      case Sin => x match {
+        case Int(n) => Float(FloatLattice[F].sin(IntLattice[I].toFloat(n)))
+        case Float(n) => Float(FloatLattice[F].sin(n))
+        case _ => OperatorNotApplicable("sin", List(x.toString))
+      }
+      case Cos => x match {
+        case Int(n) => Float(FloatLattice[F].cos(IntLattice[I].toFloat(n)))
+        case Float(n) => Float(FloatLattice[F].cos(n))
+        case _ => OperatorNotApplicable("cos", List(x.toString))
+      }
+      case Tan => x match {
+        case Int(n) => Float(FloatLattice[F].tan(IntLattice[I].toFloat(n)))
+        case Float(n) => Float(FloatLattice[F].tan(n))
+        case _ => OperatorNotApplicable("tan", List(x.toString))
+      }
       case VectorLength => x match {
         case Vec(size, _, _) => Int(size)
         case _ => OperatorNotApplicable("vector-length", List(x.toString))

@@ -7,7 +7,9 @@ object SchemeOps {
       /* Negate a value */
       Not,
       /* Unary arithmetic operations */
-      Ceiling, Round, Log, Random,
+      Ceiling, Round, Random,
+      /* Transcendental functions */
+      Sin, Cos, Tan, Log,
       /* Length operations */
       VectorLength, StringLength,
       /* Conversions */

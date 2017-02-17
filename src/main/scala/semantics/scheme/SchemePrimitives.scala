@@ -20,6 +20,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def log = abs.unaryOp(UnaryOperator.Log) _
   def not = abs.unaryOp(UnaryOperator.Not) _
   def random = abs.unaryOp(UnaryOperator.Random) _
+  def sin = abs.unaryOp(UnaryOperator.Sin) _
+  def cos = abs.unaryOp(UnaryOperator.Cos) _
+  def tan = abs.unaryOp(UnaryOperator.Tan) _
   def vectorLength = abs.unaryOp(UnaryOperator.VectorLength) _
   def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
   def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
@@ -136,6 +139,15 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
   object Log extends NoStoreOperation("log", Some(1)) {
     override def call(x: Abs) = log(x)
+  }
+  object Sin extends NoStoreOperation("sin", Some(1)) {
+    override def call(x: Abs) = sin(x)
+  }
+  object Cos extends NoStoreOperation("cos", Some(1)) {
+    override def call(x: Abs) = cos(x)
+  }
+  object Tan extends NoStoreOperation("tan", Some(1)) {
+    override def call(x: Abs) = tan(x)
   }
   /** (define (zero? x) (= x 0)) */
   object Zerop extends NoStoreOperation("zero?", Some(1)) {
@@ -663,7 +675,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   /** Bundles all the primitives together */
   def all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div, Quotient, LessThan, LessOrEqual, NumEq, GreaterThan, GreaterOrEqual,
-    Modulo, Random, Ceiling, Round, Log, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
+    Modulo, Random, Ceiling, Round, Log, Sin, Cos, Tan, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
     Nullp, Pairp, Charp, Symbolp, Stringp, Integerp, Realp, Numberp, Booleanp, Vectorp, Eq,
     NumberToString, StringAppend, StringLength, Newline, Display, Error, Not,
     Cons, Car, Cdr, Caar, Cadr, Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar,

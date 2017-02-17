@@ -119,6 +119,9 @@ object Concrete {
       def round(n: F): F = n.map(n => SchemeOps.round(n))
       def log(n: F): F = n.map(n => scala.math.log(n.toDouble).toFloat)
       def random(n: F): F = n.map(n => SchemeOps.random(n))
+      def sin(n: F): F = n.map(n => scala.math.sin(n.toDouble).toFloat)
+      def cos(n: F): F = n.map(n => scala.math.cos(n.toDouble).toFloat)
+      def tan(n: F): F = n.map(n => scala.math.tan(n.toDouble).toFloat)
       def plus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 + n2)) }
       def minus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 - n2)) }
       def times(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 * n2)) }
@@ -399,6 +402,9 @@ object Type {
       def round(n: T): T = n
       def log(n: T): T = n
       def random(n: T): T = n
+      def sin(n: T): T = n
+      def cos(n: T): T = n
+      def tan(n: T): T = n
       def plus(n1: T, n2: T): T = meet(n1, n2)
       def minus(n1: T, n2: T): T = meet(n1, n2)
       def times(n1: T, n2: T): T = meet(n1, n2)
@@ -575,6 +581,18 @@ object ConstantPropagation {
       }
       def log(n: F): F = n match {
         case Constant(x) => Constant(scala.math.log(x.toDouble).toFloat)
+        case _ => n
+      }
+      def sin(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.sin(x.toDouble).toFloat)
+        case _ => n
+      }
+      def cos(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.cos(x.toDouble).toFloat)
+        case _ => n
+      }
+      def tan(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.tan(x.toDouble).toFloat)
         case _ => n
       }
       private def binop(op: (Float, Float) => Float, n1: F, n2: F) = (n1, n2) match {
