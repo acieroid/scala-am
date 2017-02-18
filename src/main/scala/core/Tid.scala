@@ -28,3 +28,18 @@ object ContextSensitiveTID {
     def thread[Exp : Expression, Time : Timestamp](exp: Exp, time: Time) = TID(exp, time)
   }
 }
+
+trait InsensitiveTID
+object InsensitiveTID {
+  object Initial extends InsensitiveTID {
+    override def toString = "main"
+  }
+  object OnlyTid extends InsensitiveTID {
+    override def toString = "t"
+  }
+  implicit object ITIDThreadIdentifier extends ThreadIdentifier[InsensitiveTID] {
+    def name = "Insensitive"
+    def initial = Initial
+    def thread[Exp : Expression, Time : Timestamp](exp: Exp, time: Time) = OnlyTid
+  }
+}

@@ -41,9 +41,16 @@ case class CountingMap[A, B](content: Map[A, (Count, Set[B])]) {
     case None => extend(a, b)
     case Some(_) => update(a, b)
   }
-  def remove(a: A) = content.get(a) match {
-    case Some((CountOne, _)) => this.copy(content = content - a)
-    case _ => this
+  def remove(a: A, b: B): Set[CountingMap[A, B]] = content.get(a) match {
+    case Some((CountOne, b2)) if b2 == Set(b) => Set(this.copy(content = content - a))
+    case Some((CountOne, _)) => Set(this)
+    case Some((CountInfinity, bs)) if (bs - b).isEmpty => Set(this, this.copy(content = content - a))
+    case Some((CountInfinity, bs)) => Set(this, this.copy(content = content + (a -> (CountInfinity, bs -  b))))
+    case None => Set(this)
+  }
+  def countOne(a: A) = content.get(a) match {
+    case Some((CountOne, _)) => true
+    case _ => false
   }
   def join(that: CountingMap[A, B]) =
     this.copy(content = content |+| that.content)

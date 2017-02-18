@@ -88,7 +88,8 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
     def extend(v: (PID, Context)): Procs =
       Procs(content = content.extend(v._1, v._2))
     def terminate(p: PID): Procs =
-      Procs(content = content.remove(p))
+      ???
+      // Procs(content = content.remove(p))
     def pids: Set[PID] = content.keys
     def exists(p: (PID, Context) => Boolean): Boolean = content.exists(p)
     def forall(p: (PID, Context) => Boolean): Boolean = content.forall(p)
