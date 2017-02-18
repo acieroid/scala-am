@@ -58,6 +58,9 @@ class Graph[N, A, C]
   /** Add multiple edges */
   def addEdges(l: Traversable[(N, A, N)]): Graph[N, A, C] =
     l.foldLeft(this)({ case (g, (n1, annot, n2)) => g.addEdge(n1, annot, n2) })
+  /** Remove a node from the graph */
+  def removeNode(node: N): Graph[N, A, C] =
+    new Graph(ids, next, nodes - node, edges = edges - node)
   /** Number of nodes in the graph */
   def size: Int = nodes.size
   /** Number of edges in the graph */
