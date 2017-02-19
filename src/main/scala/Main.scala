@@ -7,24 +7,17 @@ import scala.util.{Try, Success, Failure}
  * detailed example is available in LambdaCalculus.scala.
  *
  * This is the entry point. It parses the arguments, parses the input file and
- * launch an abstract machine on the parsed expression (or launches a REPL if no
- * input file is given). The code in this file isn't very clean and I'd like to
- * improve it at some point, but my scala-fu isn't good enough to do it now. The
- * pipeline goes as follows:
+ * launches an abstract machine on the parsed expression (or launches a REPL if no
+ * input file is given). The pipeline goes as follows:
  *   1. The input program is parsed. For Scheme programs, it is done by:
  *      - Parsing the file as a list of s-expressions (exp/SExp.scala,
  *        exp/SExpParser.scala)
  *      - Compiling these s-expressions into Scheme expressions
  *        (exp/scheme/Scheme.scala)
- *      - Optionally, converting Scheme expressions into ANF form
- *        (exp/anf/ANF.scala) to have a simpler interpreter (but longer
- *        programs)
 
- *   2. To run the program, we need an abstract machine and some semantics. For
- *      now, the only semantics available are for ANF Scheme and Scheme
- *      (semantics/anf/ANFSemantics.scala,
- *      semantics/scheme/SchemeSemantics.scala). Semantics definitions have to
- *      implement the Semantics interface (semantics/Semantics.scala).
+ *   2. To run the program, we need an abstract machine and some
+ *      semantics. Semantics definitions have to implement the Semantics
+ *      interface (semantics/Semantics.scala).
 
  *   3. Once the abstract machine is created and we have a semantics for the
  *      program we want to analyze, the abstract machine can perform its
@@ -38,39 +31,27 @@ import scala.util.{Try, Success, Failure}
  *      machine will then respectively evaluate the expression needed, push the
  *      continuation, or update the variable.
  *
- *      Multiple abstract machine implementations are available, including:
- *      - The classical Abstracting Abstract Machine of Might and Van Horn (machine/AAM.scala)
- *      - Johnson's Abstracting Abstract Control (machine/AAC.scala)
- *      - Gilrey's Pushdown Control-Flow Analysis for Free (machine/Free.scala)
- *      - A fast concrete interpreter (machine/ConcreteMachine.scala)
- *      Every abstract machine implementation has to implement the AbstractMachine
- *      interface (machine/AbstractMachine.scala).
+ *      Multiple abstract machine implementations are available, defined in the
+ *      machine/ directory. Every abstract machine implementation has to
+ *      implement the AbstractMachine interface (machine/AbstractMachine.scala).
  *
  *      The abstract machine also uses a lattice to represent values. Lattices
- *      should implement the AbstractValue trait that can be found in
- *      AbstractValue.scala. The following lattices are available:
- *      - A modular lattice (lattice/scheme/ModularLattice.scala) where every component
- *        (numbers, strings, ...) can be specified independently of each
- *        other. It can then automatically transform a lattice into a powerset
- *        lattice. There are implementations for concrete values, type
- *        representations of a value, and bounded integers.
- *      - A product lattice, combining two lattices together as a cartesian
- *        product. Example: one could combine the type lattice with a sign
- *        lattice, getting abstract values such as (Int, +), (String, bottom),
- *        ...
+ *      should implement the JoinLattice trait that can be found in
+ *      JoinLattice.scala, which provides the basic features of a lattice.
  *
  *  If you want to:
  *  - Support a new language: you will need:
- *    - A parser, you can look into exp/SExpParser.scala as an inspiration. If your
- *      language is s-expression based, you can use this parser and compile
- *      s-expressions into your abstract grammar. To do so, look at exp/scheme/Scheme.scala.
- *    - An abstract grammar, look at exp/SExp.scala or the SchemeExp class in exp/scheme/Scheme.scala.
+ *    - A parser, you can look into exp/SExpParser.scala as an inspiration. If
+ *      your language is s-expression based, you can use this parser and compile
+ *      s-expressions into your abstract grammar. To do so, look at
+ *      exp/scheme/Scheme.scala.
+ *    - An abstract grammar, look at exp/SExp.scala or the SchemeExp class in
+ *      exp/scheme/Scheme.scala.
  *    - A semantics, look at semantics/anf/ANFSemantics.scala for a simple example.
  *    - Support for your language operations at the lattice level. For this,
- *      you'll probably need to extend the lattices (lattice/AbstractValue.scala,
- *      lattice/ModularLattice.scala, ...)
- *  - Play with abstract machines, you can look into AAM.scala, AAC.scala or
- *    Free.scala (AAM is the simplest machine).
+ *      you'll probably need to extend the lattices (see
+ *      lattice/scheme/SchemeLattice.scala, lattice/scheme/ModularLattice.scala)
+ *  - Play with abstract machines, you can look into AAM.scala.
  *  - Implement some kind of analysis, you'll probably need to design a lattice
  *    that is suited for your analysis. You can use an existing lattice as an
  *    inspiration.
