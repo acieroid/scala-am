@@ -52,9 +52,8 @@ import scala.util.{Try, Success, Failure}
  *      you'll probably need to extend the lattices (see
  *      lattice/scheme/SchemeLattice.scala, lattice/scheme/ModularLattice.scala)
  *  - Play with abstract machines, you can look into AAM.scala.
- *  - Implement some kind of analysis, you'll probably need to design a lattice
- *    that is suited for your analysis. You can use an existing lattice as an
- *    inspiration.
+ *  - Implement some kind of analysis, look at examples/LambdaCalculus.scala and
+ *    examples/TaintAnalysis.scala.
  */
 object Main {
   /** Run a machine on a program with the given semantics. If @param output is

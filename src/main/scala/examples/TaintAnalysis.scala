@@ -156,13 +156,13 @@ case class TaintAnalysis[Abs : JoinLattice, Addr : Address, Time : Timestamp]()
 
 /* We can finally run the analysis and detect when a tainted value flows to a sink */
 object TaintAnalysis {
-  /* TODO: analyze has been removed, adapt this example */
-  /*
   def analyze[L : IsTaintLattice](program: String): Set[(Position, Position)] = {
     val sem = new SchemeSemantics[L, ClassicalAddress.A, ZeroCFA.T](new TSchemePrimitives[ClassicalAddress.A, L])
     val machine = new AAM[SchemeExp, L, ClassicalAddress.A, ZeroCFA.T]
     val analysis = TaintAnalysis[L, ClassicalAddress.A, ZeroCFA.T]
-    machine.analyze(sem.parse(program), sem, analysis, None).getOrElse({ println("Analysis did not succeed..."); Set() })
+    val analysisSem = new SemanticsWithAnalysis[Set[(Position, Position)], SchemeExp, L, ClassicalAddress.A, ZeroCFA.T](sem, analysis)
+    machine.eval(sem.parse(program), analysisSem)
+    analysisSem.analysisResult
   }
   def main(args: Array[String]) {
     if (args.length >= 1) {
@@ -180,5 +180,4 @@ object TaintAnalysis {
       println("Please provide input program as argument")
     }
   }
-   */
 }
