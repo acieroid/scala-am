@@ -7,7 +7,7 @@ object SchemeOps {
       /* Negate a value */
       Not,
       /* Unary arithmetic operations */
-      Ceiling, Round, Random,
+      Ceiling, Round, Random, Sqrt,
       /* Transcendental functions */
       Sin, Cos, Tan, Log,
       /* Length operations */

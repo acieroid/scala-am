@@ -278,6 +278,7 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
   def sin(n: F): F
   def cos(n: F): F
   def tan(n: F): F
+  def sqrt(n: F): F
   def plus(n1: F, n2: F): F
   def minus(n1: F, n2: F): F
   def times(n1: F, n2: F): F

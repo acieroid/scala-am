@@ -198,6 +198,11 @@ class MakeSchemeLattice[
         case Float(n) => Float(FloatLattice[F].tan(n))
         case _ => OperatorNotApplicable("tan", List(x.toString))
       }
+      case Sqrt => x match {
+        case Int(n) if BoolLattice[B].isFalse(IntLattice[I].lt(n, IntLattice[I].inject(0))) => Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n)))
+        case Float(n) if BoolLattice[B].isFalse(FloatLattice[F].lt(n, FloatLattice[F].inject(0))) => Float(FloatLattice[F].sqrt(n))
+        case _ => OperatorNotApplicable("sqrt", List(x.toString))
+      }
       case VectorLength => x match {
         case Vec(size, _, _) => Int(size)
         case _ => OperatorNotApplicable("vector-length", List(x.toString))

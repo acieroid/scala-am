@@ -122,6 +122,7 @@ object Concrete {
       def sin(n: F): F = n.map(n => scala.math.sin(n.toDouble).toFloat)
       def cos(n: F): F = n.map(n => scala.math.cos(n.toDouble).toFloat)
       def tan(n: F): F = n.map(n => scala.math.tan(n.toDouble).toFloat)
+      def sqrt(n: F): F = n.map(n => scala.math.sqrt(n.toDouble).toFloat)
       def plus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 + n2)) }
       def minus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 - n2)) }
       def times(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 * n2)) }
@@ -405,6 +406,7 @@ object Type {
       def sin(n: T): T = n
       def cos(n: T): T = n
       def tan(n: T): T = n
+      def sqrt(n: T): T = n
       def plus(n1: T, n2: T): T = meet(n1, n2)
       def minus(n1: T, n2: T): T = meet(n1, n2)
       def times(n1: T, n2: T): T = meet(n1, n2)
@@ -593,6 +595,10 @@ object ConstantPropagation {
       }
       def tan(n: F): F = n match {
         case Constant(x) => Constant(scala.math.tan(x.toDouble).toFloat)
+        case _ => n
+      }
+      def sqrt(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.sqrt(x.toDouble).toFloat)
         case _ => n
       }
       private def binop(op: (Float, Float) => Float, n1: F, n2: F) = (n1, n2) match {

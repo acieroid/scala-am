@@ -23,6 +23,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def sin = abs.unaryOp(UnaryOperator.Sin) _
   def cos = abs.unaryOp(UnaryOperator.Cos) _
   def tan = abs.unaryOp(UnaryOperator.Tan) _
+  def sqrt = abs.unaryOp(UnaryOperator.Sqrt) _
   def vectorLength = abs.unaryOp(UnaryOperator.VectorLength) _
   def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
   def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
@@ -148,6 +149,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
   object Tan extends NoStoreOperation("tan", Some(1)) {
     override def call(x: Abs) = tan(x)
+  }
+  object Sqrt extends NoStoreOperation("sqrt", Some(1)) {
+    override def call(x: Abs) = sqrt(x)
   }
   /** (define (zero? x) (= x 0)) */
   object Zerop extends NoStoreOperation("zero?", Some(1)) {
@@ -675,7 +679,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   /** Bundles all the primitives together */
   def all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div, Quotient, LessThan, LessOrEqual, NumEq, GreaterThan, GreaterOrEqual,
-    Modulo, Random, Ceiling, Round, Log, Sin, Cos, Tan, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
+    Modulo, Random, Ceiling, Round, Log, Sin, Cos, Tan, Sqrt, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
     Nullp, Pairp, Charp, Symbolp, Stringp, Integerp, Realp, Numberp, Booleanp, Vectorp, Eq,
     NumberToString, StringAppend, StringLength, Newline, Display, Error, Not,
     Cons, Car, Cdr, Caar, Cadr, Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar,
