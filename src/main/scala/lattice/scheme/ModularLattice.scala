@@ -199,9 +199,23 @@ class MakeSchemeLattice[
         case _ => OperatorNotApplicable("tan", List(x.toString))
       }
       case Sqrt => x match {
-        case Int(n) if BoolLattice[B].isFalse(IntLattice[I].lt(n, IntLattice[I].inject(0))) => Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n)))
-        case Float(n) if BoolLattice[B].isFalse(FloatLattice[F].lt(n, FloatLattice[F].inject(0))) => Float(FloatLattice[F].sqrt(n))
-        case _ => OperatorNotApplicable("sqrt", List(x.toString))
+        case Int(n) =>
+          val pos = BoolLattice[B].isFalse(IntLattice[I].lt(n, IntLattice[I].inject(0))) /* n >= 0 */
+          val neg = BoolLattice[B].isTrue(IntLattice[I].lt(n, IntLattice[I].inject(0))) /* n < 0 */
+          (pos, neg) match {
+            case (true, true) => MayFailBoth(Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n))), List(OperatorNotApplicable("sqrt", List(x.toString))))
+            case (true, false) => MayFailSuccess(Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n))))
+            case _ => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
+          }
+        case Float(n) =>
+          val pos = BoolLattice[B].isFalse(FloatLattice[F].lt(n, FloatLattice[F].inject(0)))
+          val neg = BoolLattice[B].isTrue(FloatLattice[F].lt(n, FloatLattice[F].inject(0)))
+          (pos, neg) match {
+            case (true, true) => MayFailBoth(Float(FloatLattice[F].sqrt(n)), List(OperatorNotApplicable("sqrt", List(x.toString))))
+            case (true, false) => MayFailSuccess(Float(FloatLattice[F].sqrt(n)))
+            case _ => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
+          }
+        case _ => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
       }
       case VectorLength => x match {
         case Vec(size, _, _) => Int(size)
