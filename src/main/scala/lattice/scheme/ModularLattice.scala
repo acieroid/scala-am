@@ -203,17 +203,17 @@ class MakeSchemeLattice[
           val pos = BoolLattice[B].isFalse(IntLattice[I].lt(n, IntLattice[I].inject(0))) /* n >= 0 */
           val neg = BoolLattice[B].isTrue(IntLattice[I].lt(n, IntLattice[I].inject(0))) /* n < 0 */
           (pos, neg) match {
-            case (true, true) => MayFailBoth(Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n))), List(OperatorNotApplicable("sqrt", List(x.toString))))
-            case (true, false) => MayFailSuccess(Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n))))
-            case _ => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
+            case (true, true) => MayFailBoth(Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n))), List(OperatorNotApplicable("sqrt", List(x.toString)))) /* Top */
+            case (false, true) => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString)))) /* Negative number */
+            case _ => MayFailSuccess(Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n)))) /* Positive number (true, false) or bottom (false, false) */
           }
         case Float(n) =>
           val pos = BoolLattice[B].isFalse(FloatLattice[F].lt(n, FloatLattice[F].inject(0)))
           val neg = BoolLattice[B].isTrue(FloatLattice[F].lt(n, FloatLattice[F].inject(0)))
           (pos, neg) match {
             case (true, true) => MayFailBoth(Float(FloatLattice[F].sqrt(n)), List(OperatorNotApplicable("sqrt", List(x.toString))))
-            case (true, false) => MayFailSuccess(Float(FloatLattice[F].sqrt(n)))
-            case _ => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
+            case (false, true) => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
+            case _ => MayFailSuccess(Float(FloatLattice[F].sqrt(n)))
           }
         case _ => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
       }
