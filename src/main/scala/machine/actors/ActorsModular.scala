@@ -171,7 +171,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
         val p2 = ThreadIdentifier[PID].thread(exp, t)
         (Some(this.copy(control = ControlKont(fres(p2)), t = ActorTimestamp[Time].actorCreated(t, p2))),
           store.includeDelta(store2.delta),
-          Some(ActorState(p2, ControlWait, HaltKontAddress, ActorInstanceActor(actd, env2), Timestamp[Time].initial(p2.toString))),
+          Some(ActorState(p2, ControlWait, HaltKontAddress, ActorInstanceActor(actd, env2), Timestamp[Time].initial(""))),
           None)
       case ActorActionSend(ptarget : PID @unchecked, name, msg, vres, effs) =>
         (Some(this.copy(control = ControlKont(vres), t = ActorTimestamp[Time].messageSent(t, ptarget, name, msg))),
@@ -338,7 +338,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
     val mainPid = ThreadIdentifier[PID].initial
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (ActorState, GlobalStore) = {
       val initEnv = Environment.initial[Addr](env)
-      (ActorState(mainPid, ControlEval(exp, initEnv), HaltKontAddress, ActorInstanceMain, Timestamp[Time].initial("main")),
+      (ActorState(mainPid, ControlEval(exp, initEnv), HaltKontAddress, ActorInstanceMain, Timestamp[Time].initial("")),
         GlobalStore.initial(store))
     }
     val (initialState, store) = inject(exp, sem.initialEnv, sem.initialStore)
