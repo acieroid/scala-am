@@ -5,7 +5,9 @@ import scalaz._
  * TODO: print name of the actor better
  * TODO: bring back annotations
  * TODO: just have to restart computation from wait states
- * TODO: incorporate different mailboxes, with happens-before relations */
+ * TODO: incorporate different mailboxes
+ *        -> first without ordering (powerset, multiset)
+ *        -> then with ordering: with happens-before relations */
 
 class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier]
     extends AbstractMachine[Exp, Abs, Addr, Time] {
