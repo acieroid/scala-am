@@ -46,7 +46,7 @@ object JoinLattice {
 }
 
 /** Cardinality represents how much information a lattice value represents */
-trait Cardinality
+sealed trait Cardinality
 case object CardinalityInf extends Cardinality
 case class CardinalityNumber(n: Int) extends Cardinality
 /* TODO: In some cases we might not want to have cardinalities for values such

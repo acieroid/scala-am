@@ -107,13 +107,16 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimes
       if (actors.isEmpty) {
         Action.error(TypeError("create", "first operand", "actor", s"non-actor value ($act)"))
       } else {
-        actors.map({ case (name, actd @ SchemeActor(_, xs, defs, _), env) =>
-          if (xs.size != argsv.size) {
-            Action.error(ArityError(s"create actor $name", xs.size, argsv.size))
-          } else {
-            val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
-            ActorAction.create(name, actd, exp, env2, store2, IsASchemeLattice[Abs].injectPid _)
+        actors.map({
+          case (name, actd @ SchemeActor(_, xs, defs, _), env) =>
+            if (xs.size != argsv.size) {
+              Action.error(ArityError(s"create actor $name", xs.size, argsv.size))
+            } else {
+              val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
+              ActorAction.create(name, actd, exp, env2, store2, IsASchemeLattice[Abs].injectPid _)
           }
+          case (name, actd, env) =>
+            Action.error(TypeError(actd.toString, "actor", "behavior", "not a behavior"))
         })
       }
     case FrameCreate(argsv, first :: rest, exp, env) =>
@@ -124,13 +127,16 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimes
       if (actors.isEmpty) {
         Action.error(TypeError("become", "first operand", "actor", s"non-actor value ($act)"))
       } else {
-        actors.map({ case (name, actd @ SchemeActor(_, xs, defs, _), env) =>
-          if (xs.size != argsv.size) {
-            Action.error(ArityError("become behavior", xs.size, argsv.size))
-          } else {
-            val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
-            ActorAction.become(name, actd, env2, store2, IsASchemeLattice[Abs].inject(false))
-          }
+        actors.map({
+          case (name, actd @ SchemeActor(_, xs, defs, _), env) =>
+            if (xs.size != argsv.size) {
+              Action.error(ArityError("become behavior", xs.size, argsv.size))
+            } else {
+              val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
+              ActorAction.become(name, actd, env2, store2, IsASchemeLattice[Abs].inject(false))
+            }
+          case (name, actd, env) =>
+            Action.error(TypeError(actd.toString, "actor", "behavior", "not a behavior"))
         })
       }
     case FrameBecome(argsv, first :: rest, env) =>

@@ -1,7 +1,7 @@
 import scalaz.Scalaz._
 import scalaz._
 
-trait MayFail[L] {
+sealed trait MayFail[L] {
   def addError(err: SemanticError): MayFail[L] = this match {
     case MayFailSuccess(l) => MayFailBoth(l, List(err))
     case MayFailBoth(l, errs) => MayFailBoth(l, errs :+ err)

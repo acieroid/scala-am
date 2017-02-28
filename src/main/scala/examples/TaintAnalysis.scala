@@ -8,7 +8,7 @@ import scalaz._
 /* We represent the taint status by a lattice, with the following ordering:
  * Bottom < Untainted | Tainted < MaybeTainted. Tainted values are associated
  * with the source position of their taint */
-trait TaintStatus
+sealed trait TaintStatus
 case class Tainted(sources: Set[Position]) extends TaintStatus
 case object Untainted extends TaintStatus
 case class MaybeTainted(sources: Set[Position]) extends TaintStatus
@@ -54,22 +54,22 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
       case (Tainted(s), MaybeTainted(s2)) => MaybeTainted(s ++ s2)
       case (Untainted, Tainted(s)) => MaybeTainted(s)
       case (Tainted(s), Untainted) => MaybeTainted(s)
+      case (Tainted(s), Tainted(s2)) => Tainted(s ++ s2)
     }
     def bottom = (BottomTaint, JoinLattice[Abs].bottom)
     def join(x: L, y: L) = (joinTaint(x._1, y._1), JoinLattice[Abs].join(x._2, y._2))
-    def subsumes(x: L, y: L) = JoinLattice[Abs].subsumes(x._2, y._2) && (if (x._1 == y._1) { true } else {
-      (x._1, y._1) match {
-        case (_, BottomTaint) => true
-        case (BottomTaint, _) => false
-        case (MaybeTainted(s), MaybeTainted(s2)) => s2.subsetOf(s)
-        case (Tainted(s), Tainted(s2)) => s2.subsetOf(s)
-        case (MaybeTainted(s), Tainted(s2)) => s2.subsetOf(s)
-        case (Tainted(_), MaybeTainted(_)) => false
-        case (MaybeTainted(_), Untainted) => true
-        case (Untainted, MaybeTainted(_)) => false
-        case (Untainted, Tainted(_)) => false
-        case (Tainted(_), Untainted) => false
-      }
+    def subsumes(x: L, y: L) = JoinLattice[Abs].subsumes(x._2, y._2) && ((x._1, y._1) match {
+      case (_, BottomTaint) => true
+      case (BottomTaint, _) => false
+      case (MaybeTainted(s), MaybeTainted(s2)) => s2.subsetOf(s)
+      case (Tainted(s), Tainted(s2)) => s2.subsetOf(s)
+      case (MaybeTainted(s), Tainted(s2)) => s2.subsetOf(s)
+      case (Tainted(_), MaybeTainted(_)) => false
+      case (MaybeTainted(_), Untainted) => true
+      case (Untainted, MaybeTainted(_)) => false
+      case (Untainted, Tainted(_)) => false
+      case (Tainted(_), Untainted) => false
+      case (Untainted, Untainted) => true
     })
     val name = "Taint(${JoinLattice[Abs].name})"
     val counting = JoinLattice[Abs].counting

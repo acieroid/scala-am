@@ -122,10 +122,11 @@ class LamSemantics[Abs : LamLattice, Addr : Address, Time : Timestamp]
      * have to evaluate their body by extending their environment with their
      * argument */
     case FrameFun(fun) => LamLattice[Abs].getClosures[LamExp, Addr](fun).map({
-      case (Lam(x, e, _), env) => {
+      case (Lam(x, e, _), env) =>
         val a = Address[Addr].variable(x, v, t)
         Action.eval(e, env.extend(x.name, a), store.extend(a, v))
-      }
+      case (lambda, env) =>
+        Action.error(TypeError(lambda.toString, "operator", "closure", "not a closure"))
     })
   }
 
