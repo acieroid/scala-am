@@ -130,6 +130,27 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     //("(round 7/2)", abs.inject(4)),
     ("(round 7)", abs.inject(7))
   ))
+
+  r5rs("sin", Table(
+    ("program", "answer"),
+    ("(sin 0)", abs.inject(0.toFloat))
+  ))
+
+  r5rs("cos", Table(
+    ("program", "answer"),
+    ("(cos 0)", abs.inject(1.toFloat))
+  ))
+
+  r5rs("tan", Table(
+    ("program", "answer"),
+    ("(tan 0)", abs.inject(0.toFloat)),
+    ("(= (tan 4) (/ (sin 4) (cos 4)))", abs.inject(true)) // Test whether this mathematical relationship holds.
+  ))
+
+  r5rs("sqrt", Table(
+    ("program", "answer"),
+    ("(sqrt 16)", abs.inject(4.toFloat))
+  ))
   // rationalize not implemented yet
 
   // string->number not implemented yet
