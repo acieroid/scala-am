@@ -11,7 +11,7 @@ libraryDependencies += "org.json4s" %% "json4s-native" % "3.5.0"
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.5.0"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.5" % "test"
 
 maxErrors := 5
 mainClass in (Compile, run) := Some("Main")
