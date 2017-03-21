@@ -433,6 +433,33 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       length(l, Set()).map({ case (v, effs) => (v, store, effs) })
     }
   }
+
+  object ListPrim extends StoreOperation("list", None) {
+    override def call[Exp: Expression, Time: Timestamp](fexp: Exp,
+                                                        args: List[(Exp, Abs)],
+                                                        store: Store[Addr, Abs],
+                                                        t: Time): MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])] = {
+      val pos = implicitly[Expression[Exp]].pos(fexp)
+
+      val nilv = abs.nil
+      val nila = Address[Addr].primitive(s"_nil_${pos}_") // Hack to make sure addresses use the position of fexp
+      val init: (Abs, Addr, Store[Addr, Abs]) = (nilv, nila, store)
+      /*
+       * If args is empty, the store should not be extended, so we allocate an address, but only forward it to
+       * the next iteration, so that this next iteration (if there is one) can use it to extend the store.
+       */
+      val result = args.zipWithIndex.reverse.foldLeft(init)({
+        case ((cdrv, cdra, store), ((argExp, argv), index)) =>
+          val cara = Address[Addr].cell(argExp, t)
+          val cons = abs.cons(cara, cdra)
+          val newStore = store.extend(cdra, cdrv).extend(cara, argv)
+          val paira = Address[Addr].primitive(s"_cons_${index}_${pos}_") // Hack to make sure addresses use the position of fexp
+          (abs.cons(cara, cdra), paira, newStore)
+      })
+      MayFailSuccess((result._1, result._3, Set()))
+    }
+  }
+
   /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
   object Listp extends StoreOperation("list?", Some(1)) {
     override def call(l: Abs, store: Store[Addr, Abs]) = {
@@ -684,7 +711,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     NumberToString, StringAppend, StringLength, Newline, Display, Error, Not,
     Cons, Car, Cdr, Caar, Cadr, Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar,
     Cdddr, Caaaar, Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar, Cdaadr, Cdadar,
-    Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr, SetCar, SetCdr, Length, Listp,
+    Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr, SetCar, SetCdr, Length, Listp, ListPrim,
     MakeVector, VectorSet, Vector, VectorLength, VectorRef,
     Equal, BoolTop, IntTop)
   def toVal(prim: Primitive[Addr, Abs]): Abs = abs.inject(prim)
