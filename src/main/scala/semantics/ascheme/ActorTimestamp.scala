@@ -41,7 +41,6 @@ case class KMessageTagSensitivity(k: Int) extends ActorTimestampWrapper {
     def actorCreated[PID](t: T, pid: PID) = t
     def messageReception[PID, Abs](t: T, sender: PID, tag: String, args: List[Abs]) = t match {
       case (t: Time) =>
-        println(s"new history: ${(tag :: t.history).take(k)}")
         Time(t.seed, (tag :: t.history).take(k))
     }
     def messageSent[PID, Abs](t: T, target: PID, tag: String, args: List[Abs]) = t
