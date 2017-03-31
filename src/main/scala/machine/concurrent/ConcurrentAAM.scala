@@ -179,10 +179,10 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
   type Annot = (TID, Effects)
   type G = Graph[State, Annot, Unit]
   implicit val annot = new GraphAnnotation[Annot, Unit] {
-    override def label(annot: (TID, Effects)) = annot match { case (tid, eff) => (scala.xml.Text(tid.toString) :: effectsToXml(eff)).mkString(" ") }
+    override def labelXml(annot: (TID, Effects)) = annot match { case (tid, eff) => (scala.xml.Text(tid.toString) :: effectsToXml(eff)) }
   }
   implicit val graphNode = new GraphNode[State, Unit] {
-    def label(n: State) = n.toString
+    override def label(n: State) = n.toString
     override def color(n: State) = if (n.halted) {
       Colors.Yellow
     } else if (n.threads.content.values.exists(xs => xs.exists(x => x.control.isInstanceOf[ControlError] ))) {

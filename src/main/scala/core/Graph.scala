@@ -18,8 +18,10 @@ object Colors {
 }
 
 trait GraphNode[N, C] {
-  def label(node: N): String
+  def label(node: N): String = labelXml(node).mkString(" ")
+  def labelXml(node: N): List[scala.xml.Node] = List(scala.xml.Text(label(node)))
   def label(node: N, ctx: C): String = label(node)
+  def labelXml(node: N, ctx: C): List[scala.xml.Node] = List(scala.xml.Text(label(node, ctx)))
   def tooltip(node: N): String = ""
   def tooltip(node: N, ctx: C): String = tooltip(node)
   def color(node: N): Color = Colors.White
@@ -32,7 +34,9 @@ object GraphNode {
 }
 trait GraphAnnotation[A, C] {
   def label(annot: A): String = ""
+  def labelXml(annot: A): List[scala.xml.Node] = List(scala.xml.Text(label(annot)))
   def label(annot: A, ctx: C): String = label(annot)
+  def labelXml(annot: A, ctx: C): List[scala.xml.Node] = List(scala.xml.Text(label(annot, ctx)))
   def color(annot: A): Color = Colors.Black
   def color(annot: A, ctx: C): Color = color(annot)
   def content(annot: A): JObject = JObject(Nil)
@@ -98,13 +102,13 @@ object GraphDOTOutput extends GraphOutput {
     writer.append("digraph G {\n")
     graph.nodes.foreach((n) => {
       val id = graph.ids(n)
-      val label = GraphNode[N, C].label(n, ctx)
+      val label = GraphNode[N, C].labelXml(n, ctx).mkString(" ")
       val color = GraphNode[N, C].color(n, ctx)
       val tooltip = GraphNode[N, C].tooltip(n, ctx)
       writer.append(s"node_$id[shape=box, xlabel=$id, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n")
     })
     graph.edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) =>
-      val annotstr = GraphAnnotation[A, C].label(annot, ctx)
+      val annotstr = GraphAnnotation[A, C].labelXml(annot, ctx).mkString(" ")
       writer.append(s"node_${graph.ids(n1)} -> node_${graph.ids(n2)} [label=<$annotstr>]\n")})})
     writer.append("}")
   }
@@ -114,9 +118,9 @@ object GraphJSONOutput extends GraphOutput {
   def out[N, A, C](graph: Graph[N, A, C], ctx: C)(w: java.io.Writer)(implicit g: GraphNode[N, C], a: GraphAnnotation[A, C]) = {
     import scala.language.implicitConversions
     implicit def nodesToJSON(node: N): JValue =
-      ("label" -> GraphNode[N, C].label(node, ctx)) ~ g.content(node, ctx)
+      ("label" -> GraphNode[N, C].labelXml(node, ctx).mkString(" ")) ~ g.content(node, ctx)
     implicit def annotToJSON(annot: A): JValue =
-      ("label" -> GraphAnnotation[A, C].label(annot)) ~ GraphAnnotation[A, C].content(annot)
+      ("label" -> GraphAnnotation[A, C].labelXml(annot, ctx).mkString(" ")) ~ GraphAnnotation[A, C].content(annot)
     implicit def pairToJSON(x: (Int, A)): JValue = JArray(List(JInt(x._1), annotToJSON(x._2)))
 
     /* array of nodes, index in the array is the index of the node, e.g.

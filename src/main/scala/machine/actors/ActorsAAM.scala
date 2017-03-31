@@ -8,13 +8,13 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
   type Annot = (PID, Option[ActorEffect])
   type G = Graph[State, Annot, Unit]
   implicit val annot = new GraphAnnotation[Annot, Unit] {
-    override def label(annot: Annot) = annot match {
-      case (p, None) => p.toString
-      case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>).mkString(" ")
+    override def labelXml(annot: Annot) = annot match {
+      case (p, None) => List(scala.xml.Text(p.toString))
+      case (p, Some(eff)) => List(scala.xml.Text(p.toString), <font color="red">{eff.toString}</font>)
     }
   }
   implicit val graphNode = new GraphNode[State, Unit] {
-    def label(n: State) = n.toXml.mkString(" ")
+    override def labelXml(n: State) = n.toXml
     override def color(n: State) = if (n.halted) { Colors.Yellow } else if (n.hasError) { Colors.Red } else { Colors.White }
   }
 

@@ -118,7 +118,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     import scala.language.implicitConversions
 
     implicit val graphNode = new GraphNode[State, Unit] {
-      def label(s: State) = s.toString
+      override def label(s: State) = s.toString
       override def color(s: State) = if (s.halted) { Colors.Yellow } else { s.control match {
         case _: ControlEval => Colors.Green
         case _: ControlKont => Colors.Pink
