@@ -35,7 +35,8 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
   r5rs("eq?", Table(
     ("program", "answer"),
     ("(eq? 'a 'a)", t),
-    ("(eq? (cons 'a '()) (cons 'a '()))", f), // was: ("(eq? (list 'a) (list 'a))", f), but list not implemented
+    ("(eq? (cons 'a '()) (cons 'a '()))", f), // equivalent to following benchmark
+    ("(eq? (list 'a) (list 'a))", f),
     ("(eq? '() '())", t),
     ("(eq? car car)", t),
     ("(let ((x '(a))) (eq? x x))", t),
@@ -159,12 +160,12 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
   r5rs("not", Table(
     ("program", "answer"),
     ("(not #t)", f),
-    ("(not 3)", f), // not currently only supports bool
-    ("(not (cons 3 '()))", f), // not currently only supports bool
+    ("(not 3)", f),
+    ("(not (cons 3 '()))", f),
     ("(not #f)", t),
-    ("(not '())", f), // not currently only supports bool
-    // ("not (list)", f), // list not implemented
-    ("(not 'nil)", f) // not currently only supports bool
+    ("(not '())", f),
+    ("(not (list))", f),
+    ("(not 'nil)", f)
   ))
 
   // boolean? not implemented
@@ -211,7 +212,12 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(let ((x '(a))) (set-cdr! x x) (list? x))", f)
   ))
 
-  // list not implemented
+  r5rs("list", Table(
+    ("program", "answer"),
+    ("(equal? (list 'a (+ 3 4) 'c) '(a 7 c))", t),
+    ("(list))", abs.nil)
+  ))
+
   r5rs("length", Table(
     ("program", "answer"),
     ("(length '(a b c))", abs.inject(3)),
