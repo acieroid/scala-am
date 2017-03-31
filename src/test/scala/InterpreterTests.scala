@@ -18,6 +18,7 @@ abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](va
 
   val concrete = abs.name.contains("Concrete")
 
+  check("nested-defines.scm", abs.inject(true))
   check("blur.scm", abs.inject(true))
   check("count.scm", abs.inject("done"))
   if (!concrete) { check("cpstak.scm", abs.inject(6)) }
