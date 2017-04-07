@@ -85,7 +85,7 @@ class SExpLexer extends Lexical with SExpTokens {
   def sign: Parser[Option[Char]] = opt(chr('+') | chr('-'))
   def stringContent: Parser[String] = {
     ('\\' ~ any ~ stringContent ^^ { case '\\' ~ c ~ s => "\\$c$s" } ) |
-    (rep(chrExcept('\"', '\n')) ^^ (_.mkString))
+    (rep(chrExcept('\"')) ^^ (_.mkString))
   }
 
   def bool: Parser[SExpToken] =
@@ -100,9 +100,9 @@ class SExpLexer extends Lexical with SExpTokens {
                           }
   def character: Parser[SExpToken] =
     '#' ~> '\\' ~> any ^^ (c => TCharacter(c))
-  def stringEnding: Parser[String] = chrExcept('\\', '\n') ^^ (_.toString)
+  def stringEnding: Parser[String] = chrExcept('\\') ^^ (_.toString)
   def string: Parser[SExpToken] = {
-    ('\"' ~> stringContent ~ chrExcept('\\', '\n') <~ '\"' ^^ { case s ~ ending => TString(s + ending) }) |
+    ('\"' ~> stringContent ~ chrExcept('\\') <~ '\"' ^^ { case s ~ ending => TString(s + ending) }) |
     ('\"' ~> stringContent <~ '\"' ^^ (s => TString(s)))
   }
   def identifier: Parser[SExpToken] =
@@ -183,8 +183,9 @@ object SExpParser extends TokenParsers {
   def expList: Parser[List[SExp]] = rep1(exp)
 
   def parse(s: String): List[SExp] = expList(new lexical.Scanner(s)) match {
-    case Success(res, _) => res
-    case Failure(msg, _) => throw new Exception(s"cannot parse expression: $msg")
-    case Error(msg, _) => throw new Exception(s"cannot parse expression: $msg")
+    case Success(res, next) if next.atEnd => res
+    case Success(res, next) if !next.atEnd => throw new Exception(s"cannot fully parse expression, stopped at ${next.pos} after parsing $res")
+    case Failure(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}")
+    case Error(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}")
   }
 }

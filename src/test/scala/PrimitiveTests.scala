@@ -215,7 +215,7 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
   r5rs("list", Table(
     ("program", "answer"),
     ("(equal? (list 'a (+ 3 4) 'c) '(a 7 c))", t),
-    ("(list))", abs.nil)
+    ("(list)", abs.nil)
   ))
 
   r5rs("length", Table(
