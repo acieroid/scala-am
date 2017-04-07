@@ -657,7 +657,7 @@ object SchemeUndefiner {
   def undefine(exps: List[SchemeExp], defs: List[(Identifier, SchemeExp)]): SchemeExp = exps match {
     case Nil => SchemeBegin(Nil, Position.none)
     case SchemeDefineFunction(name, args, body, pos) :: rest => undefine(SchemeDefineVariable(name, SchemeLambda(args, undefineBody(body), exps.head.pos), pos) :: rest, defs)
-    case SchemeDefineVariable(name, value, _) :: rest => undefine(rest, (name, value) :: defs)
+    case SchemeDefineVariable(name, value, _) :: rest => undefine(rest, (name, undefine1(value)) :: defs)
     case _ :: _ => if (defs.isEmpty) {
       undefineBody(exps) match {
         case Nil => SchemeBegin(Nil, Position.none)
