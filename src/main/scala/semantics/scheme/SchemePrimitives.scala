@@ -495,18 +495,22 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
 
   object MakeVector extends Primitive[Addr, Abs] {
     val name = "make-vector"
-    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case (_, size) :: (initexp, init) :: Nil =>
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
+      def createVec(size: Abs, init: Abs, initaddr: Addr): MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])]  = {
         isInteger(size) >>= (isint =>
           if (abs.isTrue(isint)) {
-            val a = Address[Addr].cell(fexp, t)
-            val initaddr = Address[Addr].cell(initexp, t)
-            abs.vector(a, size, initaddr).map({ case (va, vector) =>
-              (va, store.extend(a, vector).extend(initaddr, init), Set())})
+            val vaddr = Address[Addr].cell(fexp, t)
+            abs.vector(vaddr, size, initaddr).map({ case (va, vector) =>
+              (va, store.extend(vaddr, vector).extend(initaddr, init), Set.empty)})
           } else {
             MayFailError(List(TypeError("make-vector", "first operand", "integer", size.toString)))
           })
-      case l => MayFailError(List(ArityError(name, 2, l.size)))
+      }
+      args match {
+        case (_, size) :: Nil => createVec(size, abs.inject(false), Address[Addr].primitive("__undef-vec-element__"))
+        case (_, size) :: (initexp, init) :: Nil => createVec(size, init, Address[Addr].cell(initexp, t))
+        case l => MayFailError(List(ArityError(name, 1, l.size)))
+      }
     }
   }
   object VectorSet extends Primitive[Addr, Abs] {
