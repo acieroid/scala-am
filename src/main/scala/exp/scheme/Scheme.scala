@@ -181,42 +181,42 @@ case class SchemeValue(value: Value, pos: Position) extends SchemeExp {
  * Compare-and-swap, concurrency synchronization primitive.
  */
 case class SchemeCas(variable: Identifier, eold: SchemeExp, enew: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString = s"(cas $variable $eold $enew)"
+  override def toString = s"(c/cas $variable $eold $enew)"
 }
 
 /**
  * Compare-and-swap on a vector
  */
 case class SchemeCasVector(variable: Identifier, index: SchemeExp, eold: SchemeExp, enew: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString = s"(cas-vector $variable $index $eold $enew)"
+  override def toString = s"(c/cas-vector $variable $index $eold $enew)"
 }
 
 /**
  * Acquire a lock
  */
 case class SchemeAcquire(exp: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString = s"(acquire $exp)"
+  override def toString = s"(c/acquire $exp)"
 }
 
 /**
  * Release a lock
  */
 case class SchemeRelease(exp: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString = s"(release $exp)"
+  override def toString = s"(c/release $exp)"
 }
 
 /**
  * Spawn a new thread to compute an expression
  */
 case class SchemeSpawn(exp: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString = s"(spawn $exp)"
+  override def toString = s"(c/spawn $exp)"
 }
 
 /**
  * Wait for a thread (whose identifier is the value of exp) to terminate
  */
 case class SchemeJoin(exp: SchemeExp, pos: Position) extends SchemeExp {
-  override def toString = s"(join $exp)"
+  override def toString = s"(c/join $exp)"
 }
 
 /**
@@ -224,7 +224,7 @@ case class SchemeJoin(exp: SchemeExp, pos: Position) extends SchemeExp {
  */
 case class SchemeSend(target: SchemeExp, message: Identifier, args: List[SchemeExp], pos: Position) extends SchemeExp {
   val a = args.mkString(" ")
-  override def toString = if (args.isEmpty) s"(send $target $message)" else s"(send $target $message $a)"
+  override def toString = if (args.isEmpty) s"(a/send $target $message)" else s"(send $target $message $a)"
 }
 
 /**
@@ -232,7 +232,7 @@ case class SchemeSend(target: SchemeExp, message: Identifier, args: List[SchemeE
  */
 case class SchemeCreate(actor: SchemeExp, args: List[SchemeExp], pos: Position) extends SchemeExp {
   val a = (actor :: args).mkString(" ")
-  override def toString = s"(create $a)"
+  override def toString = s"(a/create $a)"
 }
 
 /**
@@ -240,14 +240,14 @@ case class SchemeCreate(actor: SchemeExp, args: List[SchemeExp], pos: Position) 
  */
 case class SchemeBecome(actor: SchemeExp, args: List[SchemeExp], pos: Position) extends SchemeExp {
   val a = (actor :: args).mkString(" ")
-  override def toString = s"(become $a)"
+  override def toString = s"(a/become $a)"
 }
 
 /**
  * Terminate the execution of an actor
  */
 case class SchemeTerminate(pos: Position) extends SchemeExp {
-  override def toString = "(terminate)"
+  override def toString = "(a/terminate)"
 }
 
 /**
@@ -260,7 +260,7 @@ case class SchemeActor(name: String, xs: List[Identifier], defs: Map[String, (Li
     val bodys = body.mkString(" ")
     s"($msg ($argss) $bodys)"
   }).mkString(" ")
-  override def toString = s"(actor $name ($xss) ($defss))"
+  override def toString = s"(a/actor $name ($xss) ($defss))"
 }
 
 /**
@@ -270,7 +270,7 @@ object SchemeCompiler {
   /**
     * Reserved keywords
     */
-  val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "cas", "acquire", "release", "cas-vector")
+  val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "c/cas", "c/acquire", "c/release", "c/cas-vector", "c/spawn", "c/join", "a/create", "a/become", "a/send", "a/terminate", "a/actor")
 
   def compile(exp: SExp): SchemeExp = exp match {
     case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(ValueNil, _), _), _) =>
@@ -330,56 +330,56 @@ object SchemeCompiler {
         SExpPair(first, rest, _), _), _) =>
       SchemeDefineFunction(name, compileArgs(args), compile(first) :: compileBody(rest), exp.pos)
 
-    case SExpPair(SExpId(Identifier("cas", _)),
+    case SExpPair(SExpId(Identifier("c/cas", _)),
       SExpPair(SExpId(variable),
         SExpPair(eold, SExpPair(enew, SExpValue(ValueNil, _), _), _), _), _) =>
       SchemeCas(variable, compile(eold), compile(enew), exp.pos)
-    case SExpPair(SExpId(Identifier("cas", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("c/cas", _)), _, _) =>
       throw new Exception(s"Invalid Scheme cas: $exp")
-    case SExpPair(SExpId(Identifier("cas-vector", _)),
+    case SExpPair(SExpId(Identifier("c/cas-vector", _)),
       SExpPair(SExpId(variable),
         SExpPair(index, SExpPair(eold, SExpPair(enew, SExpValue(ValueNil, _), _), _), _), _), _) =>
       SchemeCasVector(variable, compile(index), compile(eold), compile(enew), exp.pos)
-    case SExpPair(SExpId(Identifier("cas-vector", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("c/cas-vector", _)), _, _) =>
       throw new Exception(s"Indavil Scheme cas-vector: $exp")
-    case SExpPair(SExpId(Identifier("acquire", _)),
+    case SExpPair(SExpId(Identifier("c/acquire", _)),
       SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
       SchemeAcquire(compile(exp), exp.pos)
-    case SExpPair(SExpId(Identifier("acquire", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("c/acquire", _)), _, _) =>
       throw new Exception(s"Invalid Scheme acquire: $exp")
-    case SExpPair(SExpId(Identifier("release", _)),
+    case SExpPair(SExpId(Identifier("c/release", _)),
       SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
       SchemeRelease(compile(exp), exp.pos)
-  case SExpPair(SExpId(Identifier("release", _)), _, _) =>
+  case SExpPair(SExpId(Identifier("c/release", _)), _, _) =>
       throw new Exception(s"Invalid Scheme release: $exp")
-    case SExpPair(SExpId(Identifier("spawn", _)),
+    case SExpPair(SExpId(Identifier("c/spawn", _)),
       SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
       SchemeSpawn(compile(exp), exp.pos)
-    case SExpPair(SExpId(Identifier("spawn", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("c/spawn", _)), _, _) =>
       throw new Exception(s"Invalid Scheme spawn: $exp")
-    case SExpPair(SExpId(Identifier("join", _)),
+    case SExpPair(SExpId(Identifier("c/join", _)),
       SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
       SchemeJoin(compile(exp), exp.pos)
-    case SExpPair(SExpId(Identifier("join", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("c/join", _)), _, _) =>
       throw new Exception(s"Invalid Scheme join: $exp")
 
-    case SExpPair(SExpId(Identifier("send", _)), SExpPair(target, SExpPair(SExpId(message), args, _), _), _) =>
+    case SExpPair(SExpId(Identifier("a/send", _)), SExpPair(target, SExpPair(SExpId(message), args, _), _), _) =>
       SchemeSend(compile(target), message, compileBody(args), exp.pos)
-    case SExpPair(SExpId(Identifier("send", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("a/send", _)), _, _) =>
       throw new Exception(s"Invalid Scheme send: $exp (${exp.pos})")
-    case SExpPair(SExpId(Identifier("become", _)), SExpPair(actor, args, _), _) =>
+    case SExpPair(SExpId(Identifier("a/become", _)), SExpPair(actor, args, _), _) =>
       SchemeBecome(compile(actor), compileBody(args), exp.pos)
-    case SExpPair(SExpId(Identifier("become", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("a/become", _)), _, _) =>
       throw new Exception(s"Invalid Scheme become: $exp (${exp.pos})")
-    case SExpPair(SExpId(Identifier("create", _)), SExpPair(actor, args, _), _) =>
+    case SExpPair(SExpId(Identifier("a/create", _)), SExpPair(actor, args, _), _) =>
       SchemeCreate(compile(actor), compileBody(args), exp.pos)
-    case SExpPair(SExpId(Identifier("create", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("a/create", _)), _, _) =>
       throw new Exception(s"Invalid Scheme create: $exp (${exp.pos})")
-    case SExpPair(SExpId(Identifier("terminate", _)), SExpValue(ValueNil, _), _) =>
+    case SExpPair(SExpId(Identifier("a/terminate", _)), SExpValue(ValueNil, _), _) =>
       SchemeTerminate(exp.pos)
-    case SExpPair(SExpId(Identifier("actor", _)), SExpPair(SExpValue(ValueString(name), _), SExpPair(args, defs, _), _), _) =>
+    case SExpPair(SExpId(Identifier("a/actor", _)), SExpPair(SExpValue(ValueString(name), _), SExpPair(args, defs, _), _), _) =>
       SchemeActor(name, compileArgs(args), compileActorDefs(defs).map({ case (n, v) => (n.name, v) }).toMap, exp.pos)
-    case SExpPair(SExpId(Identifier("actor", _)), _, _) =>
+    case SExpPair(SExpId(Identifier("a/actor", _)), _, _) =>
       throw new Exception(s"Invalid Scheme actor: $exp (${exp.pos})")
 
     case SExpPair(f, args, _) =>
