@@ -83,9 +83,11 @@ class SExpLexer extends Lexical with SExpTokens {
   def any: Parser[Char] = chrExcept()
   def chr(c: Char): Parser[Char] = elem(s"character $c", _ == c)
   def sign: Parser[Option[Char]] = opt(chr('+') | chr('-'))
+  def stringContentNoEscape: Parser[String] =
+    rep(chrExcept('\\', '\"')) ^^ (_.mkString)
   def stringContent: Parser[String] = {
-    ('\\' ~ any ~ stringContent ^^ { case '\\' ~ c ~ s => "\\$c$s" } ) |
-    (rep(chrExcept('\"')) ^^ (_.mkString))
+    (stringContentNoEscape ~ '\\' ~ any ~ stringContent ^^ { case s1 ~ '\\' ~ c ~ s2 => s"$s1\\$c$s2" } ) |
+    stringContentNoEscape
   }
 
   def bool: Parser[SExpToken] =
@@ -100,10 +102,9 @@ class SExpLexer extends Lexical with SExpTokens {
                           }
   def character: Parser[SExpToken] =
     '#' ~> '\\' ~> any ^^ (c => TCharacter(c))
-  def stringEnding: Parser[String] = chrExcept('\\') ^^ (_.toString)
   def string: Parser[SExpToken] = {
     ('\"' ~> stringContent ~ chrExcept('\\') <~ '\"' ^^ { case s ~ ending => TString(s + ending) }) |
-    ('\"' ~> stringContent <~ '\"' ^^ (s => TString(s)))
+    ('\"' ~> stringContent <~ '\"' ^^ (s => TString(s))) 
   }
   def identifier: Parser[SExpToken] =
     rep1(chrExcept('#', '\'', '\"', '(', ')', ' ', ';', '\n', '\t')) ^^ (s => TIdentifier(s.mkString))

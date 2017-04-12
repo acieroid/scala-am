@@ -25,11 +25,33 @@ class ParserSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
     "sq.scm",
     "sym.scm",
     "widen.scm"
-    )
+  )
 
-  property("parser should parse without error") {
+  property("parser should parse Scheme files without error") {
     forAll (files) { (file: String) =>
       Scheme.parse("test/" + file)
+    }
+  }
+
+  val lexical = new SExpLexer
+
+  val characters = Table("character", "#\\a", "#\\b", /* "#\\u03BB", "#\\Whitespace", */  "#\\λ")
+  property("lexer should lex characters without error") {
+    forAll(characters) { (character: String) =>
+      lexical.character(new scala.util.parsing.input.CharArrayReader(character.toCharArray)) match {
+        case lexical.Success(res, next) => assert(next.atEnd); assert(res.chars == character)
+        case res => throw new Exception(s"Parse failure: $res")
+      }
+    }
+  }
+
+  val strings = Table("string", "\"foo\"", "\"foo\\\"bar\\\"foo\"", "\"foo\nbar\"")
+  property("lexer should lex strings without error") {
+    forAll(strings) { (string: String) =>
+      lexical.string(new scala.util.parsing.input.CharArrayReader(string.toCharArray)) match {
+        case lexical.Success(res, next) => assert(next.atEnd); assert(res.chars == string)
+        case res => throw new Exception(s"Parse failure: $res")
+      }
     }
   }
 }
