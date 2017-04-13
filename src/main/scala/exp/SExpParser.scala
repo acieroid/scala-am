@@ -71,10 +71,31 @@ trait SExpTokens extends Tokens {
   case class TRightParen() extends SExpToken {
     def chars = ")"
   }
+  case class THashParen() extends SExpToken {
+    def chars = "#("
+  }
+  case class TBackquote() extends SExpToken {
+    def chars = "`"
+  }
+  case class TUnquote() extends SExpToken {
+    def chars = ","
+  }
+  case class TUnquoteSplicing() extends SExpToken {
+    def chars = ",@"
+  }
+  case class TDot() extends SExpToken {
+    def chars = "."
+  }
 }
 
 class SExpLexer extends Lexical with SExpTokens {
   def whitespace: Parser[String] = rep(whitespaceChar) ^^ (_.mkString)
+  def eoi: Parser[Any] = new Parser[Any] {
+    def apply(in: Input) = {
+        if (in.atEnd) new Success("EOI", in)
+        else Failure("End of Input expected", in)
+    }
+  }
   def eol: Parser[Any] = acceptIf(n => n == '\n')(n => "")
   def notEol: Parser[Char] = acceptIf(n => n != '\n')(n => "")
   def comment: Parser[String] = ';' ~> rep(notEol) <~ eol ^^ (_.mkString)
@@ -90,40 +111,62 @@ class SExpLexer extends Lexical with SExpTokens {
     stringContentNoEscape
   }
 
-  def bool: Parser[SExpToken] =
-    '#' ~> ('t' ^^ (_ => TBoolean(true)) | 'f' ^^ (_ => TBoolean(false)))
+  /* R5RS: Tokens which require implicit termination (identifiers, numbers, characters, and dot) may be terminated by any <delimiter>, but not necessarily by anything else.  */
+  def delimiter: Parser[Unit] = (whitespaceChar | eol | eoi | chr(')') | chr(')') | chr('\"') | chr(';')) ^^ (_ => ())
+
+  def boolean: Parser[SExpToken] =
+    '#' ~> ('t' ^^^ TBoolean(true) | 'f' ^^^ TBoolean(false))
   def integer: Parser[SExpToken] =
-    sign ~ rep1(digit) ^^ { case s ~ n =>
+    sign ~ rep1(digit) <~ guard(delimiter) ^^ { case s ~ n =>
                             s match {
                               case Some('+') => TInteger(n.mkString.toInt)
                               case Some('-') => TInteger(- n.mkString.toInt)
                               case _ => TInteger(n.mkString.toInt)
                             }
-                          }
+    }
   def character: Parser[SExpToken] =
+    /* TODO: support #\Whitespace etc., and also #\\uxxxx where xxxx is some unicode value */
     '#' ~> '\\' ~> any ^^ (c => TCharacter(c))
   def string: Parser[SExpToken] = {
     ('\"' ~> stringContent ~ chrExcept('\\') <~ '\"' ^^ { case s ~ ending => TString(s + ending) }) |
     ('\"' ~> stringContent <~ '\"' ^^ (s => TString(s)))
   }
-  def identifier: Parser[SExpToken] =
-    rep1(chrExcept('#', '\'', '\"', '(', ')', ' ', ';', '\n', '\t')) ^^ (s => TIdentifier(s.mkString))
-  def quote: Parser[SExpToken] = chr('\'') ^^ { _ => TQuote() }
-  def leftParen: Parser[SExpToken] = chr('(') ^^ { _ => TLeftParen() }
-  def rightParen: Parser[SExpToken] = chr(')') ^^ { _ => TRightParen() }
+  def identifier: Parser[SExpToken] = {
+    def specialInitial: Parser[Char] = (chr('!') | chr('$') | chr('%') | chr('&') | chr('*') | chr('/') | chr(':') | chr('<') | chr('=') | chr('>') | chr('?') | chr('^') | chr('_') | chr('~')) ^^ (x => x)
+    def initial: Parser[Char] = letter | specialInitial
+    def specialSubsequent: Parser[Char] = chr('+') | chr('-') | chr('.') | chr('@')
+    def subsequent: Parser[Char] = initial | digit | specialSubsequent
+    def peculiarIdentifier: Parser[String] =
+      /* R5RS specifies + | - | ..., not clear what ... is supposed to be */
+      ((chr('+') | chr('-')) ^^ (_.toString)) |
+    ((chr('1') ~ chr('+') | chr('1') ~ chr('-')) ^^ { case c1 ~ c2 => s"$c1$c2" })
+    (initial ~ rep(subsequent) ^^ { case i ~ s => s"$i${s.mkString}" }
+      | peculiarIdentifier) <~ guard(delimiter) ^^ (s => TIdentifier(s))
+  }
+  def leftParen: Parser[SExpToken] = chr('(') ^^^ TLeftParen()
+  def rightParen: Parser[SExpToken] = chr(')') ^^^ TRightParen()
+  def hashParen: Parser[SExpToken] = chr('#') ~ chr('(') ^^^ THashParen()
+  def quote: Parser[SExpToken] = chr('\'') ^^^ TQuote()
+  def backquote: Parser[SExpToken] = chr('`') ^^^ TBackquote()
+  def unquote: Parser[SExpToken] = chr(',') ^^^ TUnquote()
+  def unquoteSplicing: Parser[SExpToken] = chr(',') ~ chr('@') ^^^ TUnquoteSplicing()
+  def dot: Parser[SExpToken] = chr('.') <~ guard(delimiter) ^^^ TDot()
   def float: Parser[SExpToken] =
-    sign ~ rep(digit) ~ '.' ~ rep(digit) ^^ { case s ~ pre ~ _ ~ post =>
+    sign ~ rep(digit) ~ '.' ~ rep(digit) <~ guard(delimiter) ^^ { case s ~ pre ~ _ ~ post =>
                                               val n = (pre.mkString + "." + post.mkString).toFloat
                                               s match {
                                                 case Some('+') => TFloat(n)
                                                 case Some('-') => TFloat(-n)
                                                 case _ => TFloat(n)
                                               }
-                                            }
+    }
+  def number: Parser[SExpToken] = float | integer
   def token: Parser[SExpToken] =
     nonRelevant ~> positioned ({
-      bool | float | integer | character | string | identifier |
-      quote | leftParen | rightParen
+      boolean | number | identifier |
+      character | string |
+      leftParen | rightParen | hashParen | quote | backquote |
+      unquote | unquoteSplicing | dot
     }) <~ nonRelevant
 }
 
@@ -147,7 +190,7 @@ object SExpParser extends TokenParsers {
   def string: Parser[Value] = elem("string", _.isInstanceOf[TString]) ^^ {
     case TString(s) => ValueString(s)
   }
-  def nil: Parser[Value] = leftParen ~ rightParen ^^ (_ => ValueNil)
+  def nil: Parser[Value] = leftParen ~ rightParen ^^^ ValueNil
 
   def value: Parser[SExp] = Parser { in =>
     (bool | float | integer | character | string | nil)(in) match {

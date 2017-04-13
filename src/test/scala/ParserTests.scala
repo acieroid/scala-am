@@ -29,7 +29,8 @@ class ParserSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
 
   property("parser should parse Scheme files without error") {
     forAll (files) { (file: String) =>
-      Scheme.parse("test/" + file)
+      Util.fileContent("test/" + file).foreach(content =>
+        Scheme.parse(content).toString)
     }
   }
 }
@@ -38,18 +39,21 @@ class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
   val lexical = new SExpLexer
   def check(parser: lexical.Parser[lexical.SExpToken])(input: String) =
     parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray)) match {
-      case lexical.Success(res, next) => assert(next.atEnd); assert(res.chars == input)
+      case lexical.Success(res, next) =>
+        if (!next.atEnd) { println(s"Parsed $res from $input, incorrect") }
+        assert(next.atEnd); assert(res.chars == input)
       case res => throw new Exception(s"Parse failure: $res")
     }
 
   val bools = Table("boolean", "#t","#f")
   property("lexer should lex booleans without error") {
-    forAll(bools) { s => check(lexical.bool)(s); check(lexical.token)(s) }
+    forAll(bools) { s => check(lexical.boolean)(s); check(lexical.token)(s) }
   }
 
   val integers = Table("integer", "100", "-231")
   property("lexer should lex integers without error") {
-    forAll(integers) { s => check(lexical.integer)(s); check(lexical.token)(s) }
+    forAll(integers) { s =>
+      check(lexical.integer)(s); check(lexical.token)(s) }
   }
 
   val floats = Table("floats", "1.0", /* "1e10", "1e-5", */ "0.843" /* ".234", "-.08" */)
@@ -67,7 +71,7 @@ class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
     forAll(strings) { s => check(lexical.string)(s); check(lexical.token)(s) }
   }
 
-  val identifiers = Table("identifier", "foo", "+")
+  val identifiers = Table("identifier", "foo", "+", "1+", "1-")
   property("lexer should lex identifiers without error") {
     forAll(identifiers) { s => check(lexical.identifier)(s); check(lexical.token)(s) }
   }
