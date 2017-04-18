@@ -435,37 +435,13 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         println("Bounds:")
         bounds.foreach({
           case (p, size) => println(s"$p: $size")
-        })/*
-        println("Tags per actor:")
-        mailboxTagsPerActor.foreach({
-          case (p, tags) => println(s"$p: ${tags.size} -> " + tags.map(t => t.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(",")).mkString(" | "))
-        })*/
-        /*
-        println("Tags per behavior:")
-        mailboxTagsPerBehavior.foreach({
-          case ((p, actd), tags) =>
-            println(s"$p, $actd")
-            println(tags.map(t => t.mkString(",")).mkString(" | "))
-        })*//*
-        println("Popped per behavior:")
-        poppedPerBehavior.foreach({
-          case ((p, actd), ms) =>
-            println(s"$p, $actd")
-            println(ms.mkString(", "))
-             })*/
-        println("Popped per behavior and mailbox:")
+        })
+        println("Dequeued per behavior and mailbox:")
         poppedPerBehaviorAndMailbox.foreach({
           case ((p, actd, mb), ms) =>
             println(s"$p, $actd, ${mb.size}, $mb")
             println(ms.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(", "))
         })
-        /*
-        println("Popped per mailbox:")
-        poppedPerMailbox.foreach({
-          case ((p, mbox), ms) =>
-            println(s"$p, $mbox")
-            println(ms.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(", "))
-        })*/
         ActorsAAMOutput(halted, reallyVisited.size, timeout.time, graph, !todo.isEmpty)
       } else {
         val (edges, store2) = todo.foldLeft((Set[(State, (PID, ActorEffect), State)](), store))((acc, s) => {

@@ -26,16 +26,22 @@ class RecordActorVisitor[Exp : Expression, Abs : JoinLattice, Addr : Address] ex
     as
   }
   def print = {
-    println(s"${errors.length} errors are reachable:")
+    if (errors.size == 0) {
+      println("No error reachable!")
+    } else if (errors.size == 1) {
+      println("One error is reachable:")
+    } else {
+      println(s"${errors.size} errors are reachable:")
+    }
     errors.foreach(println)
-    println("----------")
+/*    println("----------")
     targetVals.toList.sortBy(_._1).foreach({ case (k, v) =>
       println(s"$k: $v")
     })
     println("----------")
     argsVals.toList.sortBy(_._1).foreach({ case (k, v) =>
       println(s"$k: $v")
-    })
+    })*/
   }
 }
 

@@ -177,8 +177,8 @@ object Main {
             val warmup = if (N > 1) 2 else 0 // 2 runs that are ignored to warm up
             val (states, times) = (1 to N+warmup).map(i =>
               runOnFile(config.file.get, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))).unzip
-            println("States: " + states.mkString(", "))
-            println("Time: " + times.drop(warmup).mkString(","))
+            // println("States: " + states.mkString(", "))
+            // println("Time: " + times.drop(warmup).mkString(","))
             if (N == 1) visitor.print
         }
       })

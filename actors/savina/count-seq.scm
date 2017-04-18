@@ -1,4 +1,4 @@
-;; Bound: producter-actor: 1, counting-actor: 2
+;; Bound: producer-actor: 1, counting-actor: 2
 ;; Error: not reachable
 (letrec ((producer-actor
           (actor "producer" (counter)
