@@ -395,7 +395,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         GlobalStore.initial(store))
   }
 
-  case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean)
+  case class ActorsAAMOutput(halted: Set[State], numberOfStates: Int, time: Double, graph: Option[G], timedOut: Boolean, bounds: Map[PID, MboxSize])
       extends Output {
     def finalValues: Set[Abs] = halted.flatMap(st => st.procs.get(ThreadIdentifier[PID].initial).flatMap(ctx => ctx.control match {
       case ControlKont(v) => Set[Abs](v)
@@ -442,7 +442,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
             println(s"$p, $actd, ${mb.size}, $mb")
             println(ms.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(", "))
         })
-        ActorsAAMOutput(halted, reallyVisited.size, timeout.time, graph, !todo.isEmpty)
+        ActorsAAMOutput(halted, reallyVisited.size, timeout.time, graph, !todo.isEmpty, bounds)
       } else {
         val (edges, store2) = todo.foldLeft((Set[(State, (PID, ActorEffect), State)](), store))((acc, s) => {
           val (next, store2) = s.macrostepAll(acc._2.restore, sem)
