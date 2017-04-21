@@ -17,7 +17,7 @@ trait BenchmarkFiles {
       // TODO: diviter (do notation)
       Benchmark("divrec", "test/gabriel/divrec.scm", abs.inject(true)),
       // TODO: puzzle (do notation)
-      Benchmark("takl", "test/gabriel/takl.scm", abs.inject(true)),
+      Benchmark("takl", "test/gabriel/takl.scm", abs.inject(true), slow=true),
       // TODO: puzzle (do notation)
 
       /* Kernighan and Van Wyk benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
