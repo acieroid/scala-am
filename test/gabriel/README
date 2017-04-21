@@ -1,0 +1,7 @@
+This directory includes the Gabriel benchmarks, retrieved from http://www.larcenists.org/Twobit/benchmarksAbout.html
+
+Some benchmarks are slightly (or not-so-slightly) modified:
+  - added definitions of some Scheme primitives (e.g., assq, member)
+  - only run the benchmark for a single iteration, or run on smaller input
+  - defines might be desugared to letrecs
+  - cond desugared to ifs

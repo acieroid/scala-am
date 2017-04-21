@@ -1,38 +1,10 @@
 import org.scalatest._
 import org.scalatest.prop._
 
-class ParserSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
-  val files = Table(
-    "file",
-    "blur.scm",
-    "church.scm",
-    "count.scm",
-    "cpstak.scm",
-    "eta.scm",
-    "fact.scm",
-    "fib.scm",
-    "gcipd.scm",
-    "inc.scm",
-    "infinite-1.scm",
-    "infinite-2.scm",
-    "kcfa2.scm",
-    "kcfa3.scm",
-    "letrec-begin.scm",
-    "loop2.scm",
-    "mj09.scm",
-    "mut-rec.scm",
-    "rotate.scm",
-    "sq.scm",
-    "sym.scm",
-    "widen.scm"
-  )
-
-  property("parser should parse Scheme files without error") {
-    forAll (files) { (file: String) =>
-      Util.fileContent("test/" + file).foreach(content =>
-        Scheme.parse(content).toString)
-    }
-  }
+class ParserSpec extends FlatSpec with Matchers with BenchmarkFiles {
+  benchmarks(SchemeLattices.WithCounting(true).ConcreteLattice).foreach(bench =>
+      Util.fileContent(bench.file).foreach(content =>
+        Scheme.parse(content).toString))
 }
 
 class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
