@@ -36,6 +36,19 @@ trait BenchmarkFiles {
       // TODO: Benchmark("conform2", "test/conform2.scm", ???),
       // TODO: most of the benchmarks need to be investigated
 
+      /* Benchmarks originating from Rosetta code */
+      // Benchmark("easter", "test/rosetta/easter.scm", abs.inject(true)), // TODO: use remainder
+      Benchmark("quadratic", "test/rosetta/quadratic.scm", abs.inject(true)),
+
+      /* Benchmarks from https://github.com/uim/sigscheme */
+      Benchmark("arithint", "test/sigscheme/arithint.scm", abs.inject(20001)),
+      // Benchmark("case", "test/sigscheme/case.scm", abs.inject(20000)), // TODO: case doesn't have full precision in concrete
+      Benchmark("let-loop", "test/sigscheme/let-loop.scm", abs.inject(20000)),
+      Benchmark("loop", "test/sigscheme/loop.scm", abs.inject(8000)),
+      Benchmark("mem", "test/sigscheme/mem.scm", abs.inject(false), slow=true), // TODO: #f in guile, #t in racket
+      Benchmark("rec", "test/sigscheme/rec.scm", abs.inject(true)),
+      Benchmark("takr", "test/sigscheme/takr.scm", abs.inject(7), slow=true),
+
       /* Other benchmarks, handwritten or common */
       Benchmark("fact", "test/fact.scm", abs.inject(120)),
       Benchmark("fib", "test/fib.scm", abs.inject(3)),
@@ -55,8 +68,10 @@ trait BenchmarkFiles {
       Benchmark("sq", "test/sq.scm", abs.inject(9)),
       Benchmark("sym", "test/sym.scm", abs.injectSymbol("foo")),
       Benchmark("widen", "test/widen.scm", abs.inject(10)),
+      // Benchmark("looping", "test/looping.scm", abs.inject(true)), // TODO: require named let, do notation
+      Benchmark("work", "test/work.scm", abs.inject(362880)),
 
-      /* Benchmarks from unknown sources */
+      /* Benchmarks from unknown sources, used in papers such as Introspective Pushdown Analysis of Higher-Order Programs, Earl et al. (2012) */
       Benchmark("blur", "test/blur.scm", abs.inject(true)),
       Benchmark("collatz", "test/collatz.scm", abs.inject(5)),
       Benchmark("eta", "test/eta.scm", abs.inject(false)),
@@ -77,17 +92,12 @@ trait BenchmarkFiles {
 
     // TODO: import from jevdplas:
     // test/
-    //   easter
-    //   looping
-    //   quadractic
     //   quasiquoting
     //   quasiquoting-simple
     //   SICP-compiler
     //   Streams
-    //   work
     // AD/: whole directory
     // Gambit_bench: whole directory
-    // sigscheme_bench: whole directory
     // SCP1: whole directory
 }
 
