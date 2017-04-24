@@ -75,11 +75,11 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
         /* When a value needs to be evaluated, we go to an eval state */
         case ActionEval(e, env, store, _) => Set(State(ControlEval(e, env), store, kstore, a, Timestamp[Time].tick(t)))
         /* When a function is stepped in, we also go to an eval state */
-        case ActionStepIn(fexp, _, e, env, store, _, _) => {
+        case ActionStepIn(fexp, _, e, env, store, args, _) => {
           // Set(State(ControlEval(e, env), store, kstore, a, Timestamp[Time].tick(t, fexp)))
           val next = FunctionKontAddress(fexp, e, t)
           val frame = FunctionMarkerFrame(fexp)
-          Set(State(ControlCall(fexp, e, env), store, kstore.extend(next, Kont(frame, a)), next, Timestamp[Time].tick(t)))
+          Set(State(ControlCall(fexp, args.map(_._2), e, env), store, kstore.extend(next, Kont(frame, a)), next, Timestamp[Time].tick(t)))
         }
         /* When an error is reached, we go to an error state */
         case ActionError(err) => Set(State(ControlError(err), store, kstore, a, Timestamp[Time].tick(t)))
@@ -99,7 +99,7 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
       })
       /* In an error state, the state is not able to make a step */
       case ControlError(_) => Set()
-      case ControlCall(fexp, e, env) =>
+      case ControlCall(fexp, _, e, env) =>
         Set(State(ControlEval(e, env), store, kstore, a, Timestamp[Time].tick(t, fexp)))
       case ControlReturn(fexp, v) =>
         if (a == HaltKontAddress) {
