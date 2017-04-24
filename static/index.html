@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+<script>
+    $(document).ready(function(){
+        $("#send").click(function(){
+            $.ajax({
+                url: "/",
+                type: "POST",
+                data: JSON.stringify({ concrete: $("#configuration").val() == "concrete", program: $("#program").val() }),
+                dataType: "json",
+                contentType: "application/json; charset=utf-8",
+                success: function(data, status) {
+                    $("#output").empty().
+                        append("<p>Output generated in " + data.time + " seconds<br/></p>").
+                        append("<textarea id=\"out\" rows=\"10\" cols=\"80\" readonly=\"readonly\" onclick=\"this.select()\">" + data.graph + "</textarea>");
+                    $("#out").focus(function() {
+                        var $this = $(this);
+                        $this.select();
+                        $this.mouseup(function() {
+                            $this.unbind("mouseup");
+                            return false;
+                        })
+                    });
+                }});
+        });
+    });
+</script>
+</head>
+<body>
+
+<textarea id="program" rows="10" cols="80">(+ 1 1)</textarea><br/>
+<select id="configuration">
+<option value="concrete">Concrete</option>
+<option value="abstract">Abstract</option>
+</select><br/>
+<button id="send">Generate JSON</button><br/>
+
+<div id="output"></div>
+</body>
+</html>

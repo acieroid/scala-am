@@ -5,7 +5,17 @@ libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % 
 libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
 libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.2.11"
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.5.0"
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % (if (sys.props("java.specification.version") == "1.8") "2.4.17" else "2.3.16")
+libraryDependencies ++= {
+  val akkaV       = (if (sys.props("java.specification.version") == "1.8") "2.5.0" else "2.3.16")
+  val akkaHttpV   = "10.0.5"
+  Seq(
+    "com.typesafe.akka" %% "akka-actor" % akkaV,
+    "com.typesafe.akka" %% "akka-stream" % akkaV,
+    "com.typesafe.akka" %% "akka-testkit" % akkaV,
+    "com.typesafe.akka" %% "akka-http" % akkaHttpV,
+    "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpV,
+    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV)
+}
 libraryDependencies += "jline" % "jline" % "2.14.3"
 libraryDependencies += "org.json4s" %% "json4s-native" % "3.5.1"
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.5.1"
