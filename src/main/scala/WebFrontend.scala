@@ -31,28 +31,33 @@ object WebFrontend extends DefaultJsonProtocol {
       get { complete { HttpResponse(OK, entity = HttpEntity(c, Files.readAllBytes(Paths.get("static/index.html")))) } } ~
       (post & entity(as[RunRequest])) { req =>
         complete {
-          if (req.concrete) {
-            val machine = new AAM[SchemeExp, ScalaAM.concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
-            val res = ScalaAM.run[SchemeExp, ScalaAM.concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T](machine,
-              new SchemeSemantics[ScalaAM.concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T](
-                new SchemePrimitives[ClassicalAddress.A, ScalaAM.concreteLattice.L]))(
-              req.program, true, timeout)
-            val graph = res.asInstanceOf[machine.AAMOutput].graph match {
-              case Some(g) => Util.withStringWriter { GraphJSONOutput.out(g, ()) }
-              case None => ""
+          try {
+            if (req.concrete) {
+              val machine = new AAM[SchemeExp, ScalaAM.concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T]
+              val res = ScalaAM.run[SchemeExp, ScalaAM.concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T](machine,
+                new SchemeSemantics[ScalaAM.concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T](
+                  new SchemePrimitives[ClassicalAddress.A, ScalaAM.concreteLattice.L]))(
+                req.program, true, timeout)
+              val graph = res.asInstanceOf[machine.AAMOutput].graph match {
+                case Some(g) => Util.withStringWriter { GraphJSONOutput.out(g, ()) }
+                case None => ""
+              }
+              Answer(graph, res.time, res.timedOut)
+            } else {
+              val machine = new AAM[SchemeExp, ScalaAM.typeLattice.L, ClassicalAddress.A, ZeroCFA.T]
+              val res = ScalaAM.run[SchemeExp, ScalaAM.typeLattice.L, ClassicalAddress.A, ZeroCFA.T](machine,
+                new SchemeSemantics[ScalaAM.typeLattice.L, ClassicalAddress.A, ZeroCFA.T](
+                  new SchemePrimitives[ClassicalAddress.A, ScalaAM.typeLattice.L]))(
+                req.program, true, timeout)
+              val graph = res.asInstanceOf[machine.AAMOutput].graph match {
+                case Some(g) => Util.withStringWriter { GraphJSONOutput.out(g, ()) }
+                case None => ""
+              }
+              Answer(graph, res.time, res.timedOut)
             }
-            Answer(graph, res.time, res.timedOut)
-          } else {
-            val machine = new AAM[SchemeExp, ScalaAM.typeLattice.L, ClassicalAddress.A, ZeroCFA.T]
-            val res = ScalaAM.run[SchemeExp, ScalaAM.typeLattice.L, ClassicalAddress.A, ZeroCFA.T](machine,
-              new SchemeSemantics[ScalaAM.typeLattice.L, ClassicalAddress.A, ZeroCFA.T](
-                new SchemePrimitives[ClassicalAddress.A, ScalaAM.typeLattice.L]))(
-              req.program, true, timeout)
-            val graph = res.asInstanceOf[machine.AAMOutput].graph match {
-              case Some(g) => Util.withStringWriter { GraphJSONOutput.out(g, ()) }
-              case None => ""
-            }
-            Answer(graph, res.time, res.timedOut)
+          } catch {
+            case e: Exception =>
+              Answer(e.toString, 0, false)
           }
         }
       }
