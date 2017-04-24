@@ -1,4 +1,4 @@
-scalaVersion := "2.12.2"
+scalaVersion := (if (sys.props("java.specification.version") == "1.8") "2.12.2" else "2.11.11")
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.5"
