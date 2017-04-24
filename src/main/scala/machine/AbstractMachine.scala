@@ -88,6 +88,10 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
         ("type" -> "kont") ~ ("value" -> v.toString)
       case ControlError(err) =>
         ("type" -> "err") ~ ("error" -> err.toString)
+      case ControlCall(fexp, _, _) =>
+        ("type" -> "call") ~ ("fexp" -> fexp.toString)
+      case ControlReturn(fexp, v) =>
+        ("type" -> "return") ~ ("fexp" -> fexp.toString) ~ ("value" -> v.toString)
     }
   }
 
@@ -119,6 +123,14 @@ abstract class EvalKontMachine[Exp : Expression, Abs : JoinLattice, Addr : Addre
    */
   case class ControlError(err: SemanticError) extends Control {
     override def toString = s"err($err)"
+    def subsumes(that: Control) = that.equals(this)
+  }
+  case class ControlCall(fexp: Exp, e: Exp, env: Environment[Addr]) extends Control {
+    override def toString = s"call($fexp)"
+    def subsumes(that: Control) = that.equals(this)
+  }
+  case class ControlReturn(fexp: Exp, v: Abs) extends Control {
+    override def toString = s"return($fexp, $v)"
     def subsumes(that: Control) = that.equals(this)
   }
 }

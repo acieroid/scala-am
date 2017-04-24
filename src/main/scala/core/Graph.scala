@@ -15,6 +15,8 @@ object Colors {
   object Red extends Color("#FF0000")
   object White extends Color("#FFFFFF")
   object Black extends Color("#000000")
+  object DarkGreen extends Color("#AACCAA")
+  object DarkPink extends Color("#CCAAAA")
 }
 
 trait GraphNode[N, C] {
