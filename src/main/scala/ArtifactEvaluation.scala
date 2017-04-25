@@ -62,7 +62,7 @@ object ArtifactEvaluation {
   def timesize(): Unit = {
     val benchs = List(
       ("pp", List(("PS", 0), ("MS", 1), ("L", 1), ("G", 0))),
-      ("count", List(("PS", 0), ("MS", 1), ("G", 0))),
+      ("count", List(("PS", 0), ("MS", 1), ("L", 1), ("G", 0))),
       ("count-seq", List(("PS", 0), ("MS", 1), ("L", 2), ("G", 0))),
       ("fjt-seq", List(("PS", 0), ("MS", 1), ("L", 1), ("G", 0))),
       ("fjc-seq", List(("PS", 0), ("MS", 1), ("L", 1), ("G", 0))),
