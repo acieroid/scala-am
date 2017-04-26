@@ -1,23 +1,30 @@
 import org.scalatest._
 import org.scalatest.prop._
+import scala.concurrent.duration.Duration
 
-case class Benchmark[Abs : JoinLattice](name: String, file: String, expected: Abs, slow: Boolean = false, dontterminate: Boolean = false)
+case class Benchmark[Abs : JoinLattice](name: String, file: String, expected: Abs,
+  slowconcrete: Boolean = false, slowabstract: Boolean = false, terminates: Boolean = true, works: Boolean = true) {
+  def runnable(concrete: Boolean): Boolean =
+    works && (if (concrete) { !slowconcrete && terminates } else { !slowabstract })
+}
 trait BenchmarkFiles {
+  val timeout: Duration = Duration(2, "seconds")
+
   def benchmarks(lattice: SchemeLattice): List[Benchmark[lattice.L]] = {
     implicit val abs = lattice.isSchemeLattice
     List(
       /* Gabriel benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
       // Benchmark("boyer", "test/boyer.scm", abs.inject(true), slow = true), // takes too long to finish
       // TODO: browse (do notation)
-      Benchmark("cpstak", "test/gabriel/cpstak.scm", abs.inject(6), slow=true),
+      Benchmark("cpstak", "test/gabriel/cpstak.scm", abs.inject(6)),
       // TODO: ctak (call/cc)
-      Benchmark("dderiv", "test/gabriel/dderiv.scm", abs.inject(true), slow=true),
-      Benchmark("deriv", "test/gabriel/deriv.scm", abs.inject(true), slow=true),
+      Benchmark("dderiv", "test/gabriel/dderiv.scm", abs.inject(true)),
+      Benchmark("deriv", "test/gabriel/deriv.scm", abs.inject(true)),
       // TODO: destruc (do notation)
       // TODO: diviter (do notation)
       Benchmark("divrec", "test/gabriel/divrec.scm", abs.inject(true)),
       // TODO: puzzle (do notation)
-      Benchmark("takl", "test/gabriel/takl.scm", abs.inject(true), slow=true),
+      Benchmark("takl", "test/gabriel/takl.scm", abs.inject(true)),
       // TODO: puzzle (do notation)
 
       /* Kernighan and Van Wyk benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
@@ -31,7 +38,7 @@ trait BenchmarkFiles {
       // TODO: wc (input/output)
 
       /* Gambit benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html, and http://github.com/gambit/gambit */
-      Benchmark("nqueens", "test/gambit/nqueens.scm", abs.inject(92), slow=true),
+      Benchmark("nqueens", "test/gambit/nqueens.scm", abs.inject(92)),
       // Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)), // named let
       // Benchmark("browse", "test/gambit/browse.scm", abs.inject(1101)), // named let
       // Benchmark("cat", "test/gambit/cat.scm", ???) // rely on file io
@@ -72,9 +79,9 @@ trait BenchmarkFiles {
       // Benchmark("case", "test/sigscheme/case.scm", abs.inject(20000)), // TODO: case doesn't have full precision in concrete
       Benchmark("let-loop", "test/sigscheme/let-loop.scm", abs.inject(20000)),
       Benchmark("loop", "test/sigscheme/loop.scm", abs.inject(8000)),
-      Benchmark("mem", "test/sigscheme/mem.scm", abs.inject(false), slow=true), // TODO: #f in guile, #t in racket
+      Benchmark("mem", "test/sigscheme/mem.scm", abs.inject(false)), // TODO: #f in guile, #t in racket
       Benchmark("rec", "test/sigscheme/rec.scm", abs.inject(true)),
-      Benchmark("takr", "test/sigscheme/takr.scm", abs.inject(7), slow=true),
+      Benchmark("takr", "test/sigscheme/takr.scm", abs.inject(7)),
 
       /* Benchmarks from http://soft.vub.ac.be/SCPI/ */
       Benchmark("2.1", "test/scp1/2.1.scm", abs.inject(true)),
@@ -160,17 +167,17 @@ trait BenchmarkFiles {
       Benchmark("fact", "test/fact.scm", abs.inject(120)),
       Benchmark("fib", "test/fib.scm", abs.inject(3)),
       Benchmark("bound-precision", "test/bound-precision.scm", abs.inject(true)),
-      Benchmark("church", "test/church.scm", abs.inject(true), slow=true),
+      Benchmark("church", "test/church.scm", abs.inject(true)),
       // TODO: church-0, church-1 and church-2 should be removed
       Benchmark("church-2", "test/church-2-num.scm", abs.inject(2)),
       Benchmark("church-6", "test/church-6.scm", abs.inject(6)),
       Benchmark("count", "test/count.scm", abs.inject("done")),
       Benchmark("inc", "test/inc.scm", abs.inject(4)),
-      Benchmark("infinite-1", "test/infinite-1.scm", abs.bottom, dontterminate=true),
-      Benchmark("infinite-2", "test/infinite-2.scm", abs.bottom, dontterminate=true),
-      Benchmark("infinite-3", "test/infinite-3.scm", abs.bottom, dontterminate=true),
+      Benchmark("infinite-1", "test/infinite-1.scm", abs.bottom),
+      Benchmark("infinite-2", "test/infinite-2.scm", abs.bottom),
+      Benchmark("infinite-3", "test/infinite-3.scm", abs.bottom),
       Benchmark("letrec-begin", "test/letrec-begin.scm", abs.inject(1)), // TODO: not R5RS due to letrec being used as letrec*
-      Benchmark("mceval", "test/mceval.scm", abs.inject(40320), slow=true),
+      Benchmark("mceval", "test/mceval.scm", abs.inject(40320)),
       Benchmark("mut-rec", "test/mut-rec.scm", abs.inject(true)),
       Benchmark("sq", "test/sq.scm", abs.inject(9)),
       Benchmark("sym", "test/sym.scm", abs.injectSymbol("foo")),
@@ -183,17 +190,17 @@ trait BenchmarkFiles {
       Benchmark("collatz", "test/collatz.scm", abs.inject(5)),
       Benchmark("eta", "test/eta.scm", abs.inject(false)),
       Benchmark("gcipd", "test/gcipd.scm", abs.inject(36)),
-      Benchmark("grid", "test/grid.scm", abs.inject(true), slow=true),
+      Benchmark("grid", "test/grid.scm", abs.inject(true)),
       Benchmark("kcfa2", "test/kcfa2.scm", abs.inject(false)),
       Benchmark("kcfa3", "test/kcfa3.scm", abs.inject(false)),
       Benchmark("loop2", "test/loop2.scm", abs.inject(550)),
       Benchmark("mj09", "test/mj09.scm", abs.inject(2)),
       Benchmark("primtest", "test/primtest.scm", abs.inject(1)),
-      Benchmark("regex", "test/regex.scm", abs.inject(false), slow=true),
+      Benchmark("regex", "test/regex.scm", abs.inject(false)),
       Benchmark("rsa", "test/rsa.scm", abs.inject(true)),
       Benchmark("sat", "test/sat.scm", abs.inject(true)),
       // Benchmark("scm2c", "test/scm2c", abs.inject("TODO")),
-      Benchmark("scm2java", "test/scm2java.scm", abs.inject("public class BOut extends RuntimeEnvironment {\n public static void main (String[] args) {\\nnew IntValue(3) ;\\n }\\n}\\n"), slow=true)
+      Benchmark("scm2java", "test/scm2java.scm", abs.inject("public class BOut extends RuntimeEnvironment {\\n public static void main (String[] args) {\\nnew IntValue(3) ;\\n }\\n}\\n"))
     )
   }
 
@@ -213,9 +220,14 @@ abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](va
   val machine: AbstractMachine[Exp, lattice.L, Addr, Time]
 
   def checkResult(file: String, expected: Abs): Unit = {
-    val result = machine.eval(sem.parse(Util.fileContent(s"$file").get), sem, false, Timeout.none)
-    assert(result.containsFinalValue(expected))
-    println(s"${machine.name}, $file: ${result.numberOfStates}, ${result.time}")
+    val result = machine.eval(sem.parse(Util.fileContent(s"$file").get), sem, false, Timeout.start(timeout))
+    if (result.timedOut) {
+      println(s"${machine.name}, $file: TIMEOUT, ${result.numberOfStates}, ${result.time}")
+      cancel(s"Benchmark $file timed out with ${machine.name}")
+    } else {
+      if (expected != abs.bottom) { assert(result.containsFinalValue(expected)) }
+      println(s"${machine.name}, $file: ${result.numberOfStates}, ${result.time}")
+    }
   }
   def check(file: String, expected: Abs): Unit =
     file should s"eval to $expected" in { checkResult(file, expected) }
@@ -223,7 +235,7 @@ abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](va
   val concrete = abs.name.contains("Concrete")
 
   benchmarks(lattice).foreach(bench =>
-    if (!bench.slow && !(concrete && bench.dontterminate)) {
+    if (bench.runnable(concrete)) {
       check(bench.file, bench.expected)
     })
 }
@@ -239,14 +251,18 @@ abstract class OneResultTests[Exp : Expression, Addr : Address, Time : Timestamp
     file should s"have only one final state in concrete mode and return $expected" in {
       val program = Util.fileContent(s"$file")
       program.isDefined should equal (true)
-      val result = machine.eval(sem.parse(program.get), sem, false, Timeout.none)
-      result.finalValues.size should equal (1)
-      result.finalValues.head should equal (expected)
+      val result = machine.eval(sem.parse(program.get), sem, false, Timeout.start(timeout))
+      if (result.timedOut) {
+        cancel(s"Benchmark $file timed out with ${machine.name}")
+      } else {
+        result.finalValues.size should equal (1)
+        result.finalValues.head should equal (expected)
+      }
     }
 
 
   benchmarks(lattice).foreach(bench =>
-    if (!bench.slow && !bench.dontterminate) {
+    if (bench.runnable(true)) {
       check(bench.file, bench.expected)
     })
 }
