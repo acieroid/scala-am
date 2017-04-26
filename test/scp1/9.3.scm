@@ -1,0 +1,31 @@
+(define result '())
+(define display (lambda (i) (set! result (cons i result))))
+
+(define (make-ring n)
+  (let ((last (cons 0 '())))
+    (define (build-list n)
+      (if (= n 0)
+          last
+          (cons n (build-list (- n 1)))))
+    (let ((ring (build-list n)))
+      (set-cdr! last ring)
+      ring)))
+
+(define (print-ring r)
+  (define (aux l)
+    (if (not (null? l))
+        (if (eq? (cdr l) r)
+            (begin (display " ")
+                   (display (car l))
+                   (display "..."))
+            (begin (display " ")
+                   (display (car l))
+                   (aux (cdr l))))))
+  (aux r)
+  #t)
+
+
+(define r (make-ring 3))
+(print-ring r)
+(print-ring (cdr r))
+(equal? result '("..." 3 " " 0 " " 1 " " 2 " " "..." 0 " " 1 " " 2 " " 3 " "))
