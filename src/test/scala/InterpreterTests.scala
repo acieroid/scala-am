@@ -30,11 +30,38 @@ trait BenchmarkFiles {
       // TODO: tail (input/output)
       // TODO: wc (input/output)
 
-      /* Gambit benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
+      /* Gambit benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html, and http://github.com/gambit/gambit */
       Benchmark("nqueens", "test/gambit/nqueens.scm", abs.inject(92), slow=true),
-      // TODO: Benchmark("conform", "test/conform.scm", ???),
-      // TODO: Benchmark("conform2", "test/conform2.scm", ???),
-      // TODO: most of the benchmarks need to be investigated
+      // Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)), // named let
+      // Benchmark("browse", "test/gambit/browse.scm", abs.inject(1101)), // named let
+      // Benchmark("cat", "test/gambit/cat.scm", ???) // rely on file io
+      // Benchmark("compiler", "test/gambit/compiler.scm", ???)
+      // Benchmark("ctak.scm", "test/gambit/ctak.scm", abs.inject(true)) // call/cc
+      // Benchmark("destruc", "test/gambit/destruc.scm", abs.inject(true)), // named let
+      // Benchmark("diviter", "test/gambit/diviter.scm", abs.inject(true)), // do notation
+      // Benchmark("earley", "test/gambit/earley.scm", abs.inject(true)), // named let
+      // Benchmark("fibc", "test/gambit/fibc.scm", abs.inject(true)), // call/cc
+      // Benchmark("graphs", "test/gambit/graphs.scm", abs.inject(true)), // named let
+      // Benchmark("lattice", "test/gambit/lattice.scm", abs.inject(true)), // missing primitives
+      // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // named let
+      // Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives
+      // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
+      // Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true)), // named let
+      // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // missing primitives
+      // Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // named let
+      Benchmark("primes", "test/gambit/primes.scm", abs.inject(true)),
+      // Benchmark("puzzle", "test/gambit/puzzle.scm", abs.inject(true)), // missing primitives
+      // Benchmark("sboyer", "test/gambit/sboyer.scm", abs.inject(true)), // dot notation
+      // Benchmark("scheme", "test/gambit/scheme.scm", abs.inject(true)), // dot notation
+      // Benchmark("slatex", "test/gambit/slatex.scm", ???), // rely on call-with-output-file/truncate (non-R5RS?)
+      // Benchmark("string", "test/gambit/string.scm", abs.inject(true)), // missing primitives
+      // Benchmark("sum", "test/gambit/sum.scm", abs.inject(true)), // named let
+      // Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)), // missing primitives
+      // Benchmark("tail", "test/gambit/tail.scm", ???), // rely on file io
+      Benchmark("tak", "test/gambit/tak.scm", abs.inject(true)),
+      // Benchmark("trav1", "test/gambit/trav1.scm", abs.inject(true)), // fail to parse
+      // Benchmark("triangl", "test/gambit/triangl.scm", abs.inject(true)), // missing primitives
+      // Benchmark("wc", "test/gambit/wc.scm", ???), // rely on file io
 
       /* Benchmarks originating from Rosetta code */
       // Benchmark("easter", "test/rosetta/easter.scm", abs.inject(true)), // TODO: use remainder
@@ -107,6 +134,28 @@ trait BenchmarkFiles {
       Benchmark("9.8", "test/scp1/9.8.scm", abs.inject(true)),
       // Benchmark("9.9", "test/scp1/9.9.scm", abs.inject(true)), // TODO: fail
 
+      /* Benchmarks from ftp://cw.vub.ac.be/pub/courses/curriculum/AlgoDat1/programmacode/ */
+      Benchmark("abstrct", "test/ad/abstrct.scm", abs.inject(true)),
+      // Benchmark("bfirst", "test/ad/bfirst.scm", abs.inject(true)), // dot notation
+      // Benchmark("bst", "test/ad/bst.scm", abs.inject(true)), // dot notation
+      // Benchmark("bubsort", "test/ad/bubsort.scm", abs.inject(true)), // fail to parse
+      // Benchmark("dict", "test/ad/dict.scm", abs.inject(true)), // dot notation
+      // Benchmark("graf", "test/ad/graf.scm", abs.inject(true)), // TODO: no file
+      // Benchmark("heap", "test/ad/heap.scm", abs.inject(true)), // fail to parse
+      Benchmark("inssort", "test/ad/inssort.scm", abs.inject(true)),
+      // Benchmark("linear", "test/ad/linear.scm", abs.inject(true)), // dot notation
+      // Benchmark("list", "test/ad/list.scm", abs.inject(true)), // dot notation
+      // Benchmark("mesort", "test/ad/mesort.scm", abs.inject(true)), // fail to parse
+      Benchmark("prioq", "test/ad/prioq.scm", abs.injectSymbol("Patrick")),
+      // Benchmark("qsort", "test/ad/qsort.scm", abs.inject(true)), // fail to parse
+      Benchmark("qstand", "test/ad/qstand.scm", abs.inject(true)),
+      // Benchmark("queue", "test/ad/queue.scm", abs.inject(true)), // dot notation
+      // Benchmark("quick", "test/ad/quick.scm", abs.inject(true)), // fail to parse
+      // Benchmark("RBtreeADT", "test/ad/RBtreeADT.scm", abs.inject(true)), // dot notation
+      // Benchmark("selsort", "test/ad/selsort.scm", abs.inject(true)), // fail to parse
+      Benchmark("stack", "test/ad/stack.scm", abs.inject(true)),
+      // Benchmark("stspaceCODE", "test/ad/stspaceCODE.scm", abs.inject(true)), // dot notation
+
       /* Other benchmarks, handwritten or common */
       Benchmark("fact", "test/fact.scm", abs.inject(120)),
       Benchmark("fib", "test/fib.scm", abs.inject(3)),
@@ -154,9 +203,6 @@ trait BenchmarkFiles {
     //   quasiquoting-simple
     //   SICP-compiler
     //   Streams
-    // AD/: whole directory
-    // Gambit_bench: whole directory
-    // SCP1: whole directory
 }
 
 abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: SchemeLattice)
