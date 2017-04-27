@@ -12,6 +12,7 @@
     ((< a 0) (iter-add (1+ a) (1- b)))
     ((> a 0) (iter-add (1- a) (1+ b)))))
 
-(= 9
-   (rec-add 4 5)
-   (iter-add 4 5))
+(and (= 9
+        (rec-add 4 5))
+     (= 9
+        (iter-add 4 5)))

@@ -1,3 +1,20 @@
+(define (map f l)
+  (if (null? l)
+      l
+      (if (pair? l)
+          (cons (f (car l)) (map f (cdr l)))
+          (error "Cannot map over a non-list"))))
+(define (append l m)
+  (if (null? l)
+      m
+      (cons (car l) (append (cdr l) m))))
+(define (member x list)
+  (if (null? list)
+      #f
+      (if (equal? x (car list))
+          #t
+          (member x (cdr list)))))
+(define (remainder x y) (modulo x y)) ; incorrect implementation with negative numbers
 ;;; MAZEFUN -- Constructs a maze in a purely functional way,
 ;;; written by Marc Feeley.
 
@@ -175,15 +192,17 @@
           (append (if (and (> i 0) (matrix-read cave (- i 1) j))
                       (list (cons (- i 1) j))
                       '())
-                  (if (and (< i (- n 1)) (matrix-read cave (+ i 1) j))
-                      (list (cons (+ i 1) j))
-                      '())
-                  (if (and (> j 0) (matrix-read cave i (- j 1)))
-                      (list (cons i (- j 1)))
-                      '())
-                  (if (and (< j (- m 1)) (matrix-read cave i (+ j 1)))
-                      (list (cons i (+ j 1)))
-                      '())))))))
+                  (append
+                   (if (and (< i (- n 1)) (matrix-read cave (+ i 1) j))
+                       (list (cons (+ i 1) j))
+                       '())
+                   (append
+                    (if (and (> j 0) (matrix-read cave i (- j 1)))
+                        (list (cons i (- j 1)))
+                        '())
+                    (if (and (< j (- m 1)) (matrix-read cave i (+ j 1)))
+                        (list (cons i (+ j 1)))
+                        '())))))))))
 
 (define expected-result
   '((_ * _ _ _ _ _ _ _ _ _)

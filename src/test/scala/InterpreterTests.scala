@@ -16,68 +16,67 @@ trait BenchmarkFiles {
     List(
       /* Gabriel benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
       // Benchmark("boyer", "test/boyer.scm", abs.inject(true), slow = true), // takes too long to finish
-      // TODO: browse (do notation)
+      // browse (do notation)
       Benchmark("cpstak", "test/gabriel/cpstak.scm", abs.inject(6)),
-      // TODO: ctak (call/cc)
+      // ctak (call/cc)
       Benchmark("dderiv", "test/gabriel/dderiv.scm", abs.inject(true)),
       Benchmark("deriv", "test/gabriel/deriv.scm", abs.inject(true)),
-      // TODO: destruc (do notation)
-      // TODO: diviter (do notation)
+      // destruc (do notation)
+      // diviter (do notation)
       Benchmark("divrec", "test/gabriel/divrec.scm", abs.inject(true)),
-      // TODO: puzzle (do notation)
+      // puzzle (do notation)
       Benchmark("takl", "test/gabriel/takl.scm", abs.inject(true)),
-      // TODO: puzzle (do notation)
 
       /* Kernighan and Van Wyk benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
       Benchmark("ack", "test/kernighanvanwyk/ack.scm", abs.inject(4)),
-      // TODO: array1 (do notation)
-      // TODO: cat (input/output)
-      // TODO: string (do notation, substring)
-      // TODO: sum1: (input/output)
-      // TODO: sumloop (do notation)
-      // TODO: tail (input/output)
-      // TODO: wc (input/output)
+      // array1 (do notation)
+      // cat (input/output)
+      // string (do notation, substring)
+      // sum1: (input/output)
+      // sumloop (do notation)
+      // tail (input/output)
+      // wc (input/output)
 
       /* Gambit benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html, and http://github.com/gambit/gambit */
       Benchmark("nqueens", "test/gambit/nqueens.scm", abs.inject(92)),
       // Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)), // named let
       // Benchmark("browse", "test/gambit/browse.scm", abs.inject(1101)), // named let
       // Benchmark("cat", "test/gambit/cat.scm", ???) // rely on file io
-      // Benchmark("compiler", "test/gambit/compiler.scm", ???)
+      // Benchmark("compiler", "test/gambit/compiler.scm", ???) // dot notation
       // Benchmark("ctak.scm", "test/gambit/ctak.scm", abs.inject(true)) // call/cc
       // Benchmark("destruc", "test/gambit/destruc.scm", abs.inject(true)), // named let
       // Benchmark("diviter", "test/gambit/diviter.scm", abs.inject(true)), // do notation
       // Benchmark("earley", "test/gambit/earley.scm", abs.inject(true)), // named let
       // Benchmark("fibc", "test/gambit/fibc.scm", abs.inject(true)), // call/cc
       // Benchmark("graphs", "test/gambit/graphs.scm", abs.inject(true)), // named let
-      // Benchmark("lattice", "test/gambit/lattice.scm", abs.inject(true)), // missing primitives
+      Benchmark("lattice", "test/gambit/lattice.scm", abs.inject(true), worksconcrete=false), // missing primitives: map, memq (implemented in the benchmark) // nondeterminism in concrete due to imprecision in case
       // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // named let
-      // Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives
+      Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives: append, remainder
       // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
       // Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true)), // named let
-      // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // missing primitives
+      // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // do notation
       // Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // named let
       Benchmark("primes", "test/gambit/primes.scm", abs.inject(true)),
-      // Benchmark("puzzle", "test/gambit/puzzle.scm", abs.inject(true)), // missing primitives
+      // Benchmark("puzzle", "test/gambit/puzzle.scm", abs.inject(true)), // do notation, missing primitives: for-each
       // Benchmark("sboyer", "test/gambit/sboyer.scm", abs.inject(true)), // dot notation
       // Benchmark("scheme", "test/gambit/scheme.scm", abs.inject(true)), // dot notation
       // Benchmark("slatex", "test/gambit/slatex.scm", ???), // rely on call-with-output-file/truncate (non-R5RS?)
-      // Benchmark("string", "test/gambit/string.scm", abs.inject(true)), // missing primitives
+      // Benchmark("string", "test/gambit/string.scm", abs.inject(true)), // do notation, missing primitives
       // Benchmark("sum", "test/gambit/sum.scm", abs.inject(true)), // named let
-      // Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)), // missing primitives
+      // Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)), // do notation, missing primitives
       // Benchmark("tail", "test/gambit/tail.scm", ???), // rely on file io
       Benchmark("tak", "test/gambit/tak.scm", abs.inject(true)),
       // Benchmark("trav1", "test/gambit/trav1.scm", abs.inject(true)), // fail to parse
-      // Benchmark("triangl", "test/gambit/triangl.scm", abs.inject(true)), // missing primitives
+      // Benchmark("triangl", "test/gambit/triangl.scm", abs.inject(true)), // missing primitives: list->vector
       // Benchmark("wc", "test/gambit/wc.scm", ???), // rely on file io
 
       /* Benchmarks originating from Rosetta code */
-      // Benchmark("easter", "test/rosetta/easter.scm", abs.inject(true)), // TODO: use remainder
+      Benchmark("easter", "test/rosetta/easter.scm", abs.inject(true)), // missing primitives: remainder
       Benchmark("quadratic", "test/rosetta/quadratic.scm", abs.inject(true)),
 
       /* Benchmarks from https://github.com/uim/sigscheme */
       Benchmark("arithint", "test/sigscheme/arithint.scm", abs.inject(20001)),
-      // Benchmark("case", "test/sigscheme/case.scm", abs.inject(20000)), // TODO: case doesn't have full precision in concrete
+      Benchmark("case", "test/sigscheme/case.scm", abs.inject(20000), worksconcrete=false), // TODO: case doesn't have full precision in concrete
       Benchmark("let-loop", "test/sigscheme/let-loop.scm", abs.inject(20000)),
       Benchmark("loop", "test/sigscheme/loop.scm", abs.inject(8000)),
       Benchmark("mem", "test/sigscheme/mem.scm", abs.inject(false)), // TODO: #f in guile, #t in racket
@@ -86,8 +85,8 @@ trait BenchmarkFiles {
 
       /* Benchmarks from http://soft.vub.ac.be/SCPI/ */
       Benchmark("2.1", "test/scp1/2.1.scm", abs.inject(true)),
-      // Benchmark("2.4", "test/scp1/2.4.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("3.1", "test/scp1/3.1.scm", abs.inject(true)), // TODO: fail
+      // Benchmark("2.4", "test/scp1/2.4.scm", abs.inject(true)), // missing primitives: exact->inexact
+      Benchmark("3.1", "test/scp1/3.1.scm", abs.inject(true)), // = with 3 arguments
       Benchmark("3.2.1", "test/scp1/3.2.1.scm", abs.inject(true)),
       // Benchmark("3.2", "test/scp1/3.2.scm", abs.inject(true)), // TODO: fail
       // Benchmark("3.3", "test/scp1/3.3.scm", abs.inject(true)), // TODO: fail

@@ -1,3 +1,15 @@
+(define (map f l)
+  (if (null? l)
+      l
+      (if (pair? l)
+          (cons (f (car l)) (map f (cdr l)))
+          (error "Cannot map over a non-list"))))
+(define (memq x ls)
+  (if (null? ls)
+      #f
+      (if (eq? (car ls) x)
+          ls
+          (memq x (cdr ls)))))
 ;;; LATTICE -- Obtained from Andrew Wright.
 
 ; Given a comparison routine that returns one of
@@ -177,16 +189,18 @@
 (define (run)
   (let* ((l2
             (make-lattice '(low high)
-                (lambda (lhs rhs)
+                          (lambda (lhs rhs)
+                            (display lhs) (newline) (display rhs) (newline)
                     (case lhs
-                        ((low)
+                      ((low)
+                       (display rhs)
                             (case rhs
                                 ((low)
                                     'equal)
                                 ((high)
                                     'less)
                                 (else
-                                    (fatal-error 'make-lattice "base" rhs))))
+                                    (error "make-lattice base"))))
                         ((high)
                             (case rhs
                                 ((low)
@@ -194,9 +208,9 @@
                                 ((high)
                                     'equal)
                                 (else
-                                    (fatal-error 'make-lattice "base" rhs))))
-                        (else
-                            (fatal-error 'make-lattice "base" lhs))))))
+                                    (error "make-lattice base"))))
+                        (else (display "not low nor high")
+                            (error "make-lattice base"))))))
         (l3 (maps l2 l2))
         (l4 (maps l3 l3)))
     (count-maps l2 l2)
@@ -205,5 +219,4 @@
     (count-maps l3 l2)
     (count-maps l4 l4)))
 
-(define fatal-error error)
 (= (run) 120549)

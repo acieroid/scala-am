@@ -1,3 +1,9 @@
+(define (for-each f l)
+  (if (null? l)
+      #t
+      (if (pair? l)
+          (begin (f (car l)) (for-each f (cdr l)))
+          (error "Cannot for-each over a non-list"))))
 ;;; PUZZLE -- Forest Baskett's Puzzle benchmark, originally written in Pascal.
 
 (define (my-iota n)
