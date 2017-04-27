@@ -217,25 +217,27 @@ abstract class Benchmarks[Exp : Expression, Addr : Address, Time : Timestamp](va
   val sem: Semantics[Exp, lattice.L, Addr, Time]
   val machine: AbstractMachine[Exp, lattice.L, Addr, Time]
 
-  def checkResult(file: String, expected: Abs): Unit = {
+  def checkResult(i: Int, n: Int, file: String, expected: Abs): Unit = {
     val result = machine.eval(sem.parse(Util.fileContent(s"$file").get), sem, false, Timeout.start(timeout))
     if (result.timedOut) {
-      println(s"${machine.name}, $file: TIMEOUT, ${result.numberOfStates}, ${result.time}")
+      println(s"${machine.name}, $file [$i/$n]: TIMEOUT, ${result.numberOfStates}, ${result.time}")
       cancel(s"Benchmark $file timed out with ${machine.name}")
     } else {
       if (expected != abs.bottom) { assert(result.containsFinalValue(expected)) }
-      println(s"${machine.name}, $file: ${result.numberOfStates}, ${result.time}")
+      println(s"${machine.name}, $file [$i/$n]: ${result.numberOfStates}, ${result.time}")
     }
   }
-  def check(file: String, expected: Abs): Unit =
-    file should s"eval to $expected" in { checkResult(file, expected) }
+  def check(i: Int, n: Int, file: String, expected: Abs): Unit =
+    file should s"eval to $expected" in { checkResult(i, n, file, expected) }
 
   val concrete = abs.name.contains("Concrete")
-
-  benchmarks(lattice).foreach(bench =>
-    if (bench.runnable(concrete)) {
-      check(bench.file, bench.expected)
-    })
+  val benchs = benchmarks(lattice).filter(_.runnable(concrete))
+  var i = 0
+  val n = benchs.size
+  benchs.foreach(bench => {
+    i += 1
+    check(i, n, bench.file, bench.expected)
+  })
 }
 
 abstract class OneResultTests[Exp : Expression, Addr : Address, Time : Timestamp](val lattice: SchemeLattice)
@@ -259,10 +261,8 @@ abstract class OneResultTests[Exp : Expression, Addr : Address, Time : Timestamp
     }
 
 
-  benchmarks(lattice).foreach(bench =>
-    if (bench.runnable(true)) {
-      check(bench.file, bench.expected)
-    })
+  val benchs = benchmarks(lattice).filter(_.runnable(true))
+  benchs.foreach(bench => check(bench.file, bench.expected))
 }
 
 abstract class AAMBenchmarks[Addr : Address, Time : Timestamp](override val lattice: SchemeLattice)
