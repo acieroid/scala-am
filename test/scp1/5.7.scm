@@ -1,3 +1,9 @@
+(define (reverse lst)
+  (define (go lst tail)
+    (if (null? lst) tail
+        (go (cdr lst) (cons (car lst) tail))))
+  (go lst '()))
+
 (define (append lst1 lst2)
   (define (loop lst res)
     (if (null? lst)

@@ -1,3 +1,9 @@
+(define (for-each f l)
+  (if (null? l)
+      #t
+      (if (pair? l)
+          (begin (f (car l)) (for-each f (cdr l)))
+          (error "Cannot for-each over a non-list"))))
 (define result '())
 (define display (lambda (i) (set! result (cons i result))))
 (define newline (lambda () (set! result (cons 'newline result))))
@@ -5,10 +11,10 @@
 (define VUBOrganigram
   '(VUB (academisch (rectoraat)
                     (faculteiten
-                     (rechten (bachelor(ba-rechten)
-                                       (ba-criminologie))
-                              (master(ma-rechten)
-                                     (ma-criminologie)))
+                     (rechten (bachelor (ba-rechten)
+                                        (ba-criminologie))
+                              (master (ma-rechten)
+                                      (ma-criminologie)))
                      (economie)
                      (wetenschappen (bachelor (ba-wiskunde)
                                               (ba-fysica)

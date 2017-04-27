@@ -1,3 +1,7 @@
+(define (append l m)
+  (if (null? l)
+      m
+      (cons (car l) (append (cdr l) m))))
 (define familieboom '(jan (piet (frans (tom)
                                        (roel))
                                 (mie))

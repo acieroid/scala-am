@@ -1,10 +1,17 @@
+(define (member x list)
+  (if (null? list)
+      #f
+      (if (equal? x (car list))
+          #t
+          (member x (cdr list)))))
+
 (define (atom? x)
   (not (pair? x)))
 
-(define mijn-vuurwerk '(groen(( blauw ( X ( blauw ( X X))  X X))
-                              (rood ((groen(X X))X))
+(define mijn-vuurwerk '(groen ((blauw (X (blauw (X X)) X X))
+                              (rood ((groen (X X)) X))
                               X
-                              ( geel ( X X)))))
+                              (geel (X X)))))
 
 (define (kleur vuurwerk) (car vuurwerk))
 (define (takken vuurwerk) (cadr vuurwerk))

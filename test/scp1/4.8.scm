@@ -13,5 +13,7 @@
     (/ (* h (sum term 0 incr n)) 3)))
 
 (define r (sqrt 2))
+(display (simp-int (lambda (x) x) 0 10 100)) (newline)
+(display (simp-int (lambda (x) (sqrt (- (* r r) (* x x)))) (- r) r 100))
 (and (= (simp-int (lambda (x) x) 0 10 100) 50)
      (= (simp-int (lambda (x) (sqrt (- (* r r) (* x x)))) (- r) r 100) 3.1402925778303366))

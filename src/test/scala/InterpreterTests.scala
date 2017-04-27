@@ -86,60 +86,60 @@ trait BenchmarkFiles {
       /* Benchmarks from http://soft.vub.ac.be/SCPI/ */
       Benchmark("2.1", "test/scp1/2.1.scm", abs.inject(true)),
       // Benchmark("2.4", "test/scp1/2.4.scm", abs.inject(true)), // missing primitives: exact->inexact
-      Benchmark("3.1", "test/scp1/3.1.scm", abs.inject(true)), // = with 3 arguments
+      Benchmark("3.1", "test/scp1/3.1.scm", abs.inject(true)),
       Benchmark("3.2.1", "test/scp1/3.2.1.scm", abs.inject(true)),
-      // Benchmark("3.2", "test/scp1/3.2.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("3.3", "test/scp1/3.3.scm", abs.inject(true)), // TODO: fail
+      Benchmark("3.2", "test/scp1/3.2.scm", abs.inject(true)),
+      // Benchmark("3.3", "test/scp1/3.3.scm", abs.inject(true)), // e-05 notation, missing primitives: exact->inexact
       Benchmark("3.4", "test/scp1/3.4.scm", abs.inject(true)),
-      // Benchmark("3.5", "test/scp1/3.5.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("3.6", "test/scp1/3.6.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("3.7", "test/scp1/3.7.scm", abs.inject(true)), // TODO: fail
+      // Benchmark("3.5", "test/scp1/3.5.scm", abs.inject(true)), // TODO: missing file
+      Benchmark("3.6", "test/scp1/3.6.scm", abs.inject(true)), // missing primitives: for-each
+      // Benchmark("3.7", "test/scp1/3.7.scm", abs.inject(true)), // TODO: missing file
       Benchmark("3.8", "test/scp1/3.8.scm", abs.inject(true)),
       Benchmark("3.9", "test/scp1/3.9.scm", abs.inject(true), works=false), // stack overflow
       Benchmark("4.1", "test/scp1/4.1.scm", abs.inject(true)),
-      // Benchmark("4.8", "test/scp1/4.8.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("5.14.3", "test/scp1/5.14.3.scm", abs.inject(true)), // TODO: fail
+      // Benchmark("4.8", "test/scp1/4.8.scm", abs.inject(true)), // return #f instead of #t, probably some floating point stuff going on
+      Benchmark("5.14.3", "test/scp1/5.14.3.scm", abs.inject(true)), // missing primitives: append
       Benchmark("5.20.4", "test/scp1/5.20.4.scm", abs.inject(true)),
-      // Benchmark("5.21", "test/scp1/5.21.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("5.22", "test/scp1/5.22.scm", abs.inject(true)), // TODO: fail
+      Benchmark("5.21", "test/scp1/5.21.scm", abs.inject(true)), // missing primitives: reverse
+      Benchmark("5.22", "test/scp1/5.22.scm", abs.inject(true)), // missing primitives: apply, map
       Benchmark("5.6", "test/scp1/5.6.scm", abs.inject(true)),
-      // Benchmark("5.7", "test/scp1/5.7.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.11", "test/scp1/7.11.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.12", "test/scp1/7.12.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.13", "test/scp1/7.13.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.14", "test/scp1/7.14.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.15", "test/scp1/7.15.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.16", "test/scp1/7.16.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.17", "test/scp1/7.17.scm", abs.inject(true)), // TODO: fail
+      Benchmark("5.7", "test/scp1/5.7.scm", abs.inject(true)), // missing primitives: reverse
+      Benchmark("7.11", "test/scp1/7.11.scm", abs.inject(true)), // missing primitives: member, append
+      Benchmark("7.12", "test/scp1/7.12.scm", abs.inject(true)), // missing primitives member
+      Benchmark("7.13", "test/scp1/7.13.scm", abs.inject(true)), // missing primitives: for-each // + parsing problems, e.g. for '(foo(bar)), with no space
+      Benchmark("7.14", "test/scp1/7.14.scm", abs.inject(true), worksconcrete=false), // missing primitives: append + execution not concrete
+      Benchmark("7.15", "test/scp1/7.15.scm", abs.inject(true)), // missing primitives: map, memq
+      Benchmark("7.16", "test/scp1/7.16.scm", abs.inject(true)), // missing primitives: append, apply, map
+      Benchmark("7.17", "test/scp1/7.17.scm", abs.inject(true)), // missing primitives: append
       Benchmark("7.2", "test/scp1/7.2.scm", abs.inject(true)),
-      // Benchmark("7.3", "test/scp1/7.3.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.4", "test/scp1/7.4.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.5", "test/scp1/7.5.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.7", "test/scp1/7.7.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("7.9", "test/scp1/7.9.scm", abs.inject(true)), // TODO: fail
+      Benchmark("7.3", "test/scp1/7.3.scm", abs.inject(true)), // missing primitives: append
+      // Benchmark("7.4", "test/scp1/7.4.scm", abs.inject(true)), // named let
+      // Benchmark("7.5", "test/scp1/7.5.scm", abs.inject(true)), // dot notation
+      // Benchmark("7.7", "test/scp1/7.7.scm", abs.inject(true)), // TODO: missing file
+      // Benchmark("7.9", "test/scp1/7.9.scm", abs.inject(true)), // dot notation
       Benchmark("8.1.1", "test/scp1/8.1.1.scm", abs.inject(true)),
       Benchmark("8.1.3", "test/scp1/8.1.3.scm", abs.inject(true)),
       Benchmark("8.10", "test/scp1/8.10.scm", abs.inject(true)),
-      // Benchmark("8.11", "test/scp1/8.11.scm", abs.inject(true)), // TODO: fail
+      // Benchmark("8.11", "test/scp1/8.11.scm", abs.inject(true)), // dot notation
       Benchmark("8.12", "test/scp1/8.12.scm", abs.inject(true)),
       Benchmark("8.13", "test/scp1/8.13.scm", abs.inject(true)),
-      // Benchmark("8.15", "test/scp1/8.15.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("8.16", "test/scp1/8.16.scm", abs.inject(true)), // TODO: fail
-      // Benchmark("8.5", "test/scp1/8.5.scm", abs.inject(true)), // TODO: fail
+      Benchmark("8.15", "test/scp1/8.15.scm", abs.inject(true)), // missing primitives: append, apply, list-ref
+      // Benchmark("8.16", "test/scp1/8.16.scm", abs.inject(true)), // dot notation
+      // Benchmark("8.5", "test/scp1/8.5.scm", abs.inject(true)), // dot notation
       Benchmark("8.6", "test/scp1/8.6.scm", abs.inject(true)),
       Benchmark("9.12", "test/scp1/9.12.scm", abs.inject(true)),
-      // Benchmark("9.13", "test/scp1/9.13.scm", abs.inject(true)), // TODO: fail
+      Benchmark("9.13", "test/scp1/9.13.scm", abs.inject(true), worksconcrete=false), // not concrete execution
       Benchmark("9.15", "test/scp1/9.15.scm", abs.inject(true)),
       Benchmark("9.16", "test/scp1/9.16.scm", abs.inject(true)),
       Benchmark("9.17", "test/scp1/9.17.scm", abs.inject(true)),
-      // Benchmark("9.18", "test/scp1/9.18.scm", abs.inject(true)), // TODO: fail
+      // Benchmark("9.18", "test/scp1/9.18.scm", abs.inject(true)), // missing primitives: string<?
       Benchmark("9.2", "test/scp1/9.2.scm", abs.inject(true)),
       Benchmark("9.3", "test/scp1/9.3.scm", abs.inject(true)),
       Benchmark("9.5", "test/scp1/9.5.scm", abs.inject(true)),
-      // Benchmark("9.6", "test/scp1/9.6.scm", abs.inject(true)), // TODO: fail
+      Benchmark("9.6", "test/scp1/9.6.scm", abs.inject(true)),
       Benchmark("9.7", "test/scp1/9.7.scm", abs.inject(true)),
       Benchmark("9.8", "test/scp1/9.8.scm", abs.inject(true)),
-      // Benchmark("9.9", "test/scp1/9.9.scm", abs.inject(true)), // TODO: fail
+      Benchmark("9.9", "test/scp1/9.9.scm", abs.inject(true)),
 
       /* Benchmarks from ftp://cw.vub.ac.be/pub/courses/curriculum/AlgoDat1/programmacode/ */
       Benchmark("abstrct", "test/ad/abstrct.scm", abs.inject(true)),

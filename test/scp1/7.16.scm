@@ -1,3 +1,21 @@
+(define foldr ; replace (apply + ...) by (foldr + 0 ...)
+  (lambda (f base lst)
+    (define foldr-aux
+      (lambda (lst)
+        (if (null? lst)
+            base
+            (f (car lst) (foldr-aux (cdr lst))))))
+    (foldr-aux lst)))
+(define (append l m)
+  (if (null? l)
+      m
+      (cons (car l) (append (cdr l) m))))
+(define (map f l)
+  (if (null? l)
+      l
+      (if (pair? l)
+          (cons (f (car l)) (map f (cdr l)))
+          (error "Cannot map over a non-list"))))
 (define (atom? x)
   (not (pair? x)))
 
@@ -61,7 +79,7 @@
 
 (define (verdeel-democratisch bedrijf budget)
   (let* ((pairs (collect-pairs bedrijf))
-         (total (apply + (map cadr pairs)))
+         (total (foldr + 0 (map cadr pairs)))
          (factor (/ budget total)))
     (map (lambda (x) (list (car x) (* factor (cadr x))))
          pairs)))

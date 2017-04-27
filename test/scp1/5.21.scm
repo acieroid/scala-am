@@ -1,3 +1,9 @@
+(define (reverse lst)
+  (define (go lst tail)
+    (if (null? lst) tail
+        (go (cdr lst) (cons (car lst) tail))))
+  (go lst '()))
+
 (define (comprimeer metingen)
   (define (hulp lst prev count)
     (cond ((null? lst) (list (list prev count)))

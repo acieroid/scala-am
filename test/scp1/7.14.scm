@@ -1,3 +1,13 @@
+(define (append l m)
+  (if (null? l)
+      m
+      (cons (car l) (append (cdr l) m))))
+(define (memq x ls)
+  (if (null? ls)
+      #f
+      (if (eq? (car ls) x)
+          ls
+          (memq x (cdr ls)))))
 (define (atom? x)
   (not (pair? x)))
 

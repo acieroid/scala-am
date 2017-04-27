@@ -1,14 +1,20 @@
+(define (memq x ls)
+  (if (null? ls)
+      #f
+      (if (eq? (car ls) x)
+          ls
+          (memq x (cdr ls)))))
 (define (count-pairs lst)
   (let ((path '()))
     (define (count current)
       (cond
-        ((null? current) 0)
-        ((not (pair? current)) 0)
-        ((memq current path) 0)
-        (else
-         (set! path (cons current path))
-         (+ 1 (count (car current))
-            (count (cdr current))))))
+       ((null? current) 0)
+       ((not (pair? current)) 0)
+       ((memq current path) 0)
+       (else
+        (set! path (cons current path))
+        (+ 1 (count (car current))
+           (count (cdr current))))))
     (count lst)))
 
 (define ret3 (cons 'a (cons 'b (cons 'c '()))))

@@ -118,7 +118,19 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     } yield abs.or(ltres, eqres)
   }
   object NumEq extends NoStoreOperation("=", Some(2)) {
-    override def call(x: Abs, y: Abs) = numEq(x, y)
+    def eq(first: Abs, l: List[Abs]): MayFail[Abs] = l match {
+      case Nil => abs.inject(true)
+      case x :: rest => numEq(first, x) >>= (feqx => {
+        for {
+          t <- if (abs.isTrue(feqx)) { eq(first, rest) } else { abs.bottom.point[MayFail] }
+          f = if (abs.isFalse(feqx)) { abs.inject(false) } else { abs.bottom }
+        } yield abs.join(t, f)
+      })
+    }
+    override def call(args: List[Abs]) = args match {
+      case Nil => abs.inject(true)
+      case x :: rest => eq(x, rest)
+    }
   }
   object GreaterThan extends NoStoreOperation(">", Some(2)) {
     override def call(x: Abs, y: Abs) = LessOrEqual.call(x, y) >>= not

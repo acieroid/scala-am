@@ -1,12 +1,29 @@
+(define (map f l)
+  (if (null? l)
+      l
+      (if (pair? l)
+          (cons (f (car l)) (map f (cdr l)))
+          (error "Cannot map over a non-list"))))
+;; replaced (apply + l) by (foldr + 0 l) + def of foldr
+(define foldr
+  (lambda (f base lst)
+
+    (define foldr-aux
+      (lambda (lst)
+        (if (null? lst)
+            base
+            (f (car lst) (foldr-aux (cdr lst))))))
+
+    (foldr-aux lst)))
+
 (define (totaal aankopen kortingen)
 
   (define (zoek-korting kortingen artikel)
-    (apply +
+    (foldr + 0
            (map
             (lambda (x) (if (eq? (car x) artikel)
                             (cadr x)
-                            0))
-            kortingen)))
+                            0)) kortingen)))
 
   (if (null? aankopen)
       0
@@ -19,11 +36,11 @@
 (define (totaal-iter aankopen kortingen)
 
   (define (zoek-korting kortingen artikel)
-    (apply + (map
-              (lambda (x) (if (eq? (car x) artikel)
-                              (cadr x)
-                              0))
-              kortingen)))
+    (foldr + 0
+           (map
+            (lambda (x) (if (eq? (car x) artikel)
+                            (cadr x)
+                            0)) kortingen)))
 
   (define (loop lst res)
     (if (null? lst)

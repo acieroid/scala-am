@@ -1,3 +1,9 @@
+(define (memq x ls)
+  (if (null? ls)
+      #f
+      (if (eq? (car ls) x)
+          ls
+          (memq x (cdr ls)))))
 (define ret4
   (let ((last (cons 'c '())))
     (cons last (cons 'b last))))

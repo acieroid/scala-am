@@ -1,3 +1,14 @@
+(define (member x list)
+  (if (null? list)
+      #f
+      (if (equal? x (car list))
+          #t
+          (member x (cdr list)))))
+(define (append l m)
+  (if (null? l)
+      m
+      (cons (car l) (append (cdr l) m))))
+
 (define organigram
   '(directeur
     (hoofd-verkoop (verkoopsleider-vlaanderen)

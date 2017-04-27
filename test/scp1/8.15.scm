@@ -1,3 +1,21 @@
+(define (append l m)
+  (if (null? l)
+      m
+      (cons (car l) (append (cdr l) m))))
+(define foldr
+  (lambda (f base lst)
+    (define foldr-aux
+      (lambda (lst)
+        (if (null? lst)
+            base
+            (f (car lst) (foldr-aux (cdr lst))))))
+    (foldr-aux lst)))
+(define (list-ref l n)
+  (if (= n 0)
+      (car l)
+      (if (null? l)
+          (error "list-ref: empty list")
+          (list-ref (cdr l) (- n 1)))))
 (define result '())
 (define display (lambda (i) (set! result (cons i result))))
 (define newline (lambda () (set! result (cons 'newline result))))
@@ -11,7 +29,7 @@
       (set! inhoud (append inhoud (list value))))
 
     (define (returnSum)
-      (apply + inhoud))
+      (foldr + 0 inhoud))
 
     (define (flush)
       (set! inhoud '()))
