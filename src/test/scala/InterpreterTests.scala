@@ -168,7 +168,6 @@ trait BenchmarkFiles {
       Benchmark("fib", "test/fib.scm", abs.inject(3)),
       Benchmark("bound-precision", "test/bound-precision.scm", abs.inject(true)),
       Benchmark("church", "test/church.scm", abs.inject(true)),
-      // TODO: church-0, church-1 and church-2 should be removed
       Benchmark("church-2", "test/church-2-num.scm", abs.inject(2)),
       Benchmark("church-6", "test/church-6.scm", abs.inject(6)),
       Benchmark("count", "test/count.scm", abs.inject("done")),
