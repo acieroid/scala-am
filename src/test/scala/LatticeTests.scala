@@ -181,6 +181,15 @@ object LatticeProperties {
         }
         p.property("∀ a, b ≠ 0: inject(a / b) ⊑ modulo(inject(a), inject(b))") =
           forAll(l.intLatticeLaw.moduloIsSound _)
+        p.property("remainder(a, ⊥) = ⊥ = remainder(⊥, a)") =
+          forAll(l.intLatticeLaw.remainderPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ remainder(a, b) ⊑ remainder(a, c)") = forAll { (a: I, c: I) =>
+          forAll(gen.le(c)) { (b: I) =>
+            l.intLatticeLaw.remainderIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ remainder(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.remainderIsSound _)
         p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") =
           forAll(l.intLatticeLaw.ltPreservesBottom _)
         p.property("∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c)") = forAll { (a: I, c: I) =>

@@ -22,7 +22,7 @@ object SchemeOps {
   object BinaryOperator extends Enumeration {
     val
       /* Arithmetic operations */
-      Plus, Minus, Times, Div, Modulo,
+      Plus, Minus, Times, Div, Modulo, Remainder,
       /* Arithmetic comparison */
       Lt,
       /* Equality checking */
@@ -43,6 +43,8 @@ object SchemeOps {
       /* same sign, same behaviour */
       n1 % n2
     }
+  /** Remainder in Scheme has the same behavior of Scala's modulo. */
+  def remainder(n1: Int, n2: Int): Int = n1 % n2
   def random(n: Int): Int = scala.math.abs(scala.util.Random.nextInt % n)
   def random(n: Float): Float = scala.math.abs(scala.util.Random.nextFloat % n)
 

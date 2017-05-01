@@ -14,7 +14,6 @@
       (if (equal? x (car list))
           #t
           (member x (cdr list)))))
-(define (remainder x y) (modulo x y)) ; incorrect implementation with negative numbers
 ;;; MAZEFUN -- Constructs a maze in a purely functional way,
 ;;; written by Marc Feeley.
 

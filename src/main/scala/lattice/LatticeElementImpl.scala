@@ -108,6 +108,7 @@ object Concrete {
       def times(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 * n2)) }
       def div(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 / n2)) }
       def modulo(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => SchemeOps.modulo(n1, n2))) }
+      def remainder(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => SchemeOps.remainder(n1, n2))) }
       def lt[B : BoolLattice](n1: I, n2: I): B = n2.guardBot { n1.foldMap(n1 => n2.foldMap(n2 => BoolLattice[B].inject(n1 < n2))) }
       def toString[S : StringLattice](n: I): S = n.foldMap(n => StringLattice[S].inject(n.toString))
     }
@@ -270,6 +271,7 @@ class BoundedInteger(bound: Int) {
       def times(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 * n2)))
       def div(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 / n2)))
       def modulo(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(SchemeOps.modulo(n1, n2))))
+      def remainder(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(SchemeOps.remainder(n1, n2))))
       def lt[B : BoolLattice](n1: I, n2: I): B = fold(n1, n1 => fold(n2, n2 => BoolLattice[B].inject(n1 < n2)))
       def eql[B : BoolLattice](n1: I, n2: I): B = fold(n1, n1 => fold(n2, n2 => BoolLattice[B].inject(n1 == n2)))
       def toString[S : StringLattice](n: I): S = fold(n, n => StringLattice[S].inject(n.toString))
@@ -384,6 +386,7 @@ object Type {
       def times(n1: T, n2: T): T = meet(n1, n2)
       def div(n1: T, n2: T): T = meet(n1, n2)
       def modulo(n1: T, n2: T): T = meet(n1, n2)
+      def remainder(n1: T, n2: T): T = meet(n1, n2)
       def lt[B : BoolLattice](n1: T, n2: T): B = (n1, n2) match {
         case (Top, Top) => BoolLattice[B].top
         case _ => BoolLattice[B].bottom
@@ -549,6 +552,7 @@ object ConstantPropagation {
       def times(n1: I, n2: I): I = binop(_ * _, n1, n2)
       def div(n1: I, n2: I): I = binop(_ / _, n1, n2)
       def modulo(n1: I, n2: I): I = binop(SchemeOps.modulo _, n1, n2)
+      def remainder(n1: I, n2: I): I = binop(SchemeOps.remainder _, n1, n2)
       def lt[B : BoolLattice](n1: I, n2: I): B = (n1, n2) match {
         case (Top, Top) => BoolLattice[B].top
         case (Top, Constant(_)) => BoolLattice[B].top

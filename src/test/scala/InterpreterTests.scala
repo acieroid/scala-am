@@ -13,6 +13,25 @@ trait BenchmarkFiles {
 
   def benchmarks(lattice: SchemeLattice): List[Benchmark[lattice.L]] = {
     implicit val abs = lattice.isSchemeLattice
+    /* Missing features:
+     * - do notation
+     * - call/cc
+     * - input/output
+     * - substring
+     * - named let
+     * - dot notation
+     * - map
+     * - memq
+     * - append
+     * - for-each
+     * - list->vector
+     * - exact->inexact
+     * - reverse
+     * - member
+     * - apply
+     * - list-ref
+     * - string<?
+     */
     List(
       /* Gabriel benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
       // Benchmark("boyer", "test/boyer.scm", abs.inject(true), slow = true), // takes too long to finish
@@ -50,12 +69,12 @@ trait BenchmarkFiles {
       // Benchmark("fibc", "test/gambit/fibc.scm", abs.inject(true)), // call/cc
       // Benchmark("graphs", "test/gambit/graphs.scm", abs.inject(true)), // named let
       Benchmark("lattice", "test/gambit/lattice.scm", abs.inject(true), worksconcrete=false), // missing primitives: map, memq (implemented in the benchmark) // nondeterminism in concrete due to imprecision in case
-      // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // named let
-      Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives: append, remainder
-      // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
-      // Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true)), // named let
-      // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // do notation
-      // Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // named let
+                                                                                              // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // named let
+      Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives: append
+                                                                         // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
+                                                                         // Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true)), // named let
+                                                                         // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // do notation
+                                                                         // Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // named let
       Benchmark("primes", "test/gambit/primes.scm", abs.inject(true)),
       // Benchmark("puzzle", "test/gambit/puzzle.scm", abs.inject(true)), // do notation, missing primitives: for-each
       // Benchmark("sboyer", "test/gambit/sboyer.scm", abs.inject(true)), // dot notation
@@ -71,7 +90,7 @@ trait BenchmarkFiles {
       // Benchmark("wc", "test/gambit/wc.scm", ???), // rely on file io
 
       /* Benchmarks originating from Rosetta code */
-      Benchmark("easter", "test/rosetta/easter.scm", abs.inject(true)), // missing primitives: remainder
+      Benchmark("easter", "test/rosetta/easter.scm", abs.inject(true)),
       Benchmark("quadratic", "test/rosetta/quadratic.scm", abs.inject(true)),
 
       /* Benchmarks from https://github.com/uim/sigscheme */
@@ -123,7 +142,7 @@ trait BenchmarkFiles {
       // Benchmark("8.11", "test/scp1/8.11.scm", abs.inject(true)), // dot notation
       Benchmark("8.12", "test/scp1/8.12.scm", abs.inject(true)),
       Benchmark("8.13", "test/scp1/8.13.scm", abs.inject(true)),
-      Benchmark("8.15", "test/scp1/8.15.scm", abs.inject(true)), // missing primitives: append, apply, list-ref
+      Benchmark("8.15", "test/scp1/8.15.scm", abs.inject(true), worksconcrete=false), // missing primitives: append, apply, list-ref // stack overflow in concrete
       // Benchmark("8.16", "test/scp1/8.16.scm", abs.inject(true)), // dot notation
       // Benchmark("8.5", "test/scp1/8.5.scm", abs.inject(true)), // dot notation
       Benchmark("8.6", "test/scp1/8.6.scm", abs.inject(true)),

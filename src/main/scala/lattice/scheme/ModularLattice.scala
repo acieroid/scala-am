@@ -267,6 +267,10 @@ class MakeSchemeLattice[
           case (Int(n1), Int(n2)) => Int(IntLattice[I].modulo(n1, n2))
           case _ => OperatorNotApplicable("modulo", List(x.toString, y.toString))
         }
+        case Remainder => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].remainder(n1, n2))
+          case _ => OperatorNotApplicable("modulo", List(x.toString, y.toString))
+        }
         case Lt => (x, y) match {
           case (Int(n1), Int(n2)) => Bool(IntLattice[I].lt(n1, n2))
           case (Int(n1), Float(n2)) => Bool(FloatLattice[F].lt(IntLattice[I].toFloat(n1), n2))

@@ -33,6 +33,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def times = abs.binaryOp(BinaryOperator.Times) _
   def div = abs.binaryOp(BinaryOperator.Div) _
   def modulo = abs.binaryOp(BinaryOperator.Modulo) _
+  def remainder = abs.binaryOp(BinaryOperator.Remainder) _
   def lt = abs.binaryOp(BinaryOperator.Lt) _
   def numEq = abs.binaryOp(BinaryOperator.NumEq) _
   def eqq = abs.binaryOp(BinaryOperator.Eq) _
@@ -140,6 +141,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
   object Modulo extends NoStoreOperation("modulo", Some(2)) {
     override def call(x: Abs, y: Abs) = modulo(x, y)
+  }
+  object Remainder extends NoStoreOperation("remainder", Some(2)) {
+    override def call(x: Abs, y: Abs) = remainder(x, y)
   }
   object Random extends NoStoreOperation("random", Some(1)) {
     override def call(x: Abs) = random(x)
@@ -722,7 +726,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   /** Bundles all the primitives together */
   def all: List[Primitive[Addr, Abs]] = List(
     Plus, Minus, Times, Div, Quotient, LessThan, LessOrEqual, NumEq, GreaterThan, GreaterOrEqual,
-    Modulo, Random, Ceiling, Round, Log, Sin, Cos, Tan, Sqrt, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
+    Modulo, Remainder, Random, Ceiling, Round, Log, Sin, Cos, Tan, Sqrt, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
     Nullp, Pairp, Charp, Symbolp, Stringp, Integerp, Realp, Numberp, Booleanp, Vectorp, Eq,
     NumberToString, StringAppend, StringLength, Newline, Display, Error, Not,
     Cons, Car, Cdr, Caar, Cadr, Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar,

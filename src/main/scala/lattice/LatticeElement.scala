@@ -180,6 +180,7 @@ trait IntLattice[I] extends LatticeElement[I] { self =>
   def times(n1: I, n2: I): I
   def div(n1: I, n2: I): I
   def modulo(n1: I, n2: I): I
+  def remainder(n1: I, n2: I): I
   def lt[B : BoolLattice](n1: I, n2: I): B
   def toString[S : StringLattice](n: I): S
 
@@ -245,6 +246,14 @@ trait IntLattice[I] extends LatticeElement[I] { self =>
     def moduloIsSound(a: Int, b: Int): Boolean =
       conditional(b != 0,
         subsumes(modulo(inject(a), inject(b)), inject(SchemeOps.modulo(a, b))))
+    def remainderPreservesBottom(a: I): Boolean =
+      remainder(a, bottom) == bottom && conditional(!subsumes(a, inject(0)), remainder(bottom, a) == bottom)
+    def remainderIsMonotone(a: I, b: I, c: I): Boolean =
+      conditional(subsumes(c, b) && !subsumes(c, inject(0)) && !subsumes(b, inject(0)),
+        subsumes(remainder(a, c), remainder(a, b)))
+    def remainderIsSound(a: Int, b: Int): Boolean =
+      conditional(b != 0,
+        subsumes(remainder(inject(a), inject(b)), inject(SchemeOps.remainder(a, b))))
     def ltPreservesBottom(a: I): Boolean =
       lt[B](a, bottom) == BoolLattice[B].bottom && lt[B](bottom, a) == BoolLattice[B].bottom
     def ltIsMonotone(a: I, b: I, c: I): Boolean =
