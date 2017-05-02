@@ -1,3 +1,4 @@
+import scalaz._
 import scalaz.Scalaz._
 import scalaz.Semigroup
 
@@ -163,4 +164,10 @@ object Store {
   } else {
     BasicStore(values.toMap)
   }
+
+  implicit def monoid[Addr : Address, Abs : JoinLattice]: Monoid[Store[Addr, Abs]] =
+    new Monoid[Store[Addr, Abs]] {
+      def append(s1: Store[Addr, Abs], s2: => Store[Addr, Abs]): Store[Addr, Abs] = s1.join(s2)
+      def zero: Store[Addr, Abs] = empty[Addr, Abs]
+    }
 }
