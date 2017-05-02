@@ -67,6 +67,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
     case ValueInteger(n) => Some(IsSchemeLattice[V].inject(n))
     case ValueFloat(n) => Some(IsSchemeLattice[V].inject(n))
     case ValueBoolean(b) => Some(IsSchemeLattice[V].inject(b))
+    case ValueCharacter(c) => Some(IsSchemeLattice[V].inject(c))
     case _ => None
   }
 

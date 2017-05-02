@@ -9,11 +9,11 @@ object SchemeOps {
       /* Unary arithmetic operations */
       Ceiling, Round, Random, Sqrt,
       /* Transcendental functions */
-      Sin, Cos, Tan, Log,
+      Sin, ASin, Cos, ACos, Tan, ATan, Log,
       /* Length operations */
       VectorLength, StringLength,
       /* Conversions */
-      NumberToString
+      NumberToString, SymbolToString
     = Value
   }
   type UnaryOperator = UnaryOperator.Value

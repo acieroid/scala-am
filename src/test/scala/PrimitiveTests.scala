@@ -62,6 +62,30 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(real? 1.5)", t)))
   // rational? is not implemented
 
+  r5rs("integer?", Table(
+    ("program", "answer"),
+    // ("(integer? 3+0i)", t), // notation not supported
+    // ("(integer? 3.0)", t), // conversion not supported
+    // ("(integer? 8/4)", t), // notation not supported
+    ("(integer? 0)", t),
+    ("(integer? '())", f)
+  ))
+
+  r5rs("number?", Table(
+    ("program", "answer"),
+    ("(number? 0)", t),
+    ("(number? -1)", t),
+    ("(number? 0.5)", t),
+    ("(number? '())", f)
+  ))
+
+  r5rs("odd?", Table(
+    ("program", "answer"),
+    ("(odd? 0)", f),
+    ("(odd? 1)", t),
+    ("(odd? 101)", t)
+  ))
+
   r5rs("max", Table(
     ("program", "answer"),
     ("(max 3 4)", abs.inject(4)),
@@ -107,7 +131,23 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(modulo -13 -4)", abs.inject(-1))
   ))
 
-  // remainder not implemented
+
+  r5rs("quotient", Table(
+    ("program", "answer"),
+    ("(quotient 3 5)", abs.inject(0)),
+    ("(quotient 4 2)", abs.inject(2)),
+    ("(quotient -6 2)", abs.inject(-3))
+  ))
+
+  r5rs("remainder", Table(
+    ("program", "answer"),
+    ("(remainder 13 4)", abs.inject(1)),
+    ("(remainder -13 4)", abs.inject(-1)),
+    ("(remainder 13 -4)", abs.inject(1)),
+    ("(remainder -13 -4)", abs.inject(-1))
+    // ("(remainder -13 -4.0)", -1.0)
+  ))
+
 
   r5rs("gcd", Table(
     ("program", "answer")
@@ -137,9 +177,19 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(sin 0)", abs.inject(0.toFloat))
   ))
 
+  r5rs("asin", Table(
+    ("program", "answer"),
+    ("(asin 0)", abs.inject(0.toFloat))
+  ))
+
   r5rs("cos", Table(
     ("program", "answer"),
     ("(cos 0)", abs.inject(1.toFloat))
+  ))
+
+  r5rs("acos", Table(
+    ("program", "answer"),
+    ("(acos 1)", abs.inject(0.toFloat))
   ))
 
   r5rs("tan", Table(
@@ -148,13 +198,51 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(= (tan 4) (/ (sin 4) (cos 4)))", abs.inject(true)) // Test whether this mathematical relationship holds.
   ))
 
+  r5rs("atan", Table(
+    ("program", "answer"),
+    ("(atan 0)", abs.inject(0.toFloat))
+  ))
+
   r5rs("sqrt", Table(
     ("program", "answer"),
     ("(sqrt 16)", abs.inject(4.toFloat))
   ))
   // rationalize not implemented yet
 
+  r5rs("log", Table(
+    ("program", "answer"),
+    ("(log 1)", abs.inject(0.toFloat))
+  )) // TODO: (log 0) should raise an error
+
+  r5rs("negative?", Table(
+    ("program", "answer"),
+    ("(negative? 0)", f),
+    ("(negative? -1)", t),
+    ("(negative? 1)", f)
+  ))
+
+  r5rs("positive?", Table(
+    ("program", "answer"),
+    ("(positive? 0)", f),
+    ("(positive? -1)", f),
+    ("(positive? 1)", t)
+  ))
+
+  r5rs("zero?", Table(
+    ("program", "answer"),
+    ("(zero? 0)", t),
+    ("(zero? 1)", f),
+    ("(zero? -1)", f)
+  ))
+
   // string->number not implemented yet
+
+  r5rs("number->string", Table(
+    ("program", "answer"),
+    ("(number->string 0)", abs.inject("0")),
+    ("(number->string .5)", abs.inject("0.5")),
+    ("(number->string -123.456)", abs.inject("-123.456"))
+  ))
 
   /* 6.3 Other data types */
   r5rs("not", Table(
@@ -168,7 +256,12 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(not 'nil)", f)
   ))
 
-  // boolean? not implemented
+  r5rs("boolean?", Table(
+    ("program", "answer"),
+    ("(boolean? #f)", t),
+    ("(boolean? 0)", f),
+    ("(boolean? '())", f)
+  ))
 
   r5rs("pair?", Table(
     ("program", "answer"),
@@ -192,14 +285,21 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(equal? (car '(a b c)) 'a)", t),
     ("(equal? (car '((a) b c d)) '(a))", t),
     ("(equal? (car (cons 1 2)) 1)", t)
-    // TODO: (car '()) should raise an error
+      // TODO: (car '()) should raise an error
   ))
 
   r5rs("cdr", Table(
     ("program", "answer"),
     ("(equal? (cdr '((a) b c d)) '(b c d))", t),
     ("(equal? (cdr (cons 1 2)) 2)", t)
-    // TODO: (cdr '()) should raise an error
+      // TODO: (cdr '()) should raise an error
+  ))
+
+  r5rs("null?", Table(
+    ("program", "answer"),
+    ("(null? '())", t),
+    ("(null? (list))", t),
+    ("(null? '(1 2 3))", f)
   ))
 
   r5rs("list?", Table(
@@ -245,18 +345,50 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(symbol? #f)", f)
   ))
 
-  // symbol->string not implemented
+  r5rs("symbol->string", Table(
+    ("program", "answer"),
+    ("(symbol->string 'flying-fish)", abs.inject("flying-fish"))
+  ))
+
   // string->symbol not implemented
 
+  r5rs("char?", Table(
+    ("program", "answer"),
+    ("(char? #\\a)", t),
+    ("(char? 0)", f),
+    ("(char? '())", f)
+  ))
   // char->integer not implemented
   // integer->char not implemented
   // char<=? not implemented
+
+  r5rs("string-append", Table(
+    ("program", "answer"),
+    ("(string-append \"foo\" \"bar\")", abs.inject("foobar"))
+  ))
+
+  r5rs("string-length", Table(
+    ("program", "answer"),
+    ("(string-length \"foobar\")", abs.inject(6))
+  ))
 
   // 6.3.6: vector notation (#(1 2)) not supported
   r5rs("vector", Table(
     ("program", "answer"),
     ("(let ((vec (vector 'a 'b 'c))) (and (equal? (vector-ref vec 0) 'a) (equal? (vector-ref vec 1) 'b) (equal? (vector-ref vec 2) 'c)))", t),
     ("(let ((vec (vector 0 '(2 2 2 2) \"Anna\"))) (vector-set! vec 1 '(\"Sue\" \"Sue\")) (and (equal? (vector-ref vec 0) 0) (equal? (vector-ref vec 1) '(\"Sue\" \"Sue\")) (equal? (vector-ref vec 2) \"Anna\")))", t)
+  ))
+
+  r5rs("vector?", Table(
+    ("program", "answer"),
+    ("(vector? (vector 'a 'b 'c))", t),
+    ("(vector? 'a)", f)
+  ))
+
+  r5rs("vector-length", Table(
+    ("program", "answer"),
+    ("(vector-length (vector))", abs.inject(0)),
+    ("(vector-length (vector 0 1 0))", abs.inject(3))
   ))
 
   /* 6.4 Control features */

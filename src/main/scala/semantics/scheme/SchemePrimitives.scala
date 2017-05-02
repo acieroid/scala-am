@@ -21,12 +21,16 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def not = abs.unaryOp(UnaryOperator.Not) _
   def random = abs.unaryOp(UnaryOperator.Random) _
   def sin = abs.unaryOp(UnaryOperator.Sin) _
+  def asin = abs.unaryOp(UnaryOperator.ASin) _
   def cos = abs.unaryOp(UnaryOperator.Cos) _
+  def acos = abs.unaryOp(UnaryOperator.ACos) _
   def tan = abs.unaryOp(UnaryOperator.Tan) _
+  def atan = abs.unaryOp(UnaryOperator.ATan) _
   def sqrt = abs.unaryOp(UnaryOperator.Sqrt) _
   def vectorLength = abs.unaryOp(UnaryOperator.VectorLength) _
   def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
   def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
+  def symbolToString = abs.unaryOp(UnaryOperator.SymbolToString) _
 
   def plus = abs.binaryOp(BinaryOperator.Plus) _
   def minus = abs.binaryOp(BinaryOperator.Minus) _
@@ -160,11 +164,20 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Sin extends NoStoreOperation("sin", Some(1)) {
     override def call(x: Abs) = sin(x)
   }
+  object ASin extends NoStoreOperation("asin", Some(1)) {
+    override def call(x: Abs) = asin(x)
+  }
   object Cos extends NoStoreOperation("cos", Some(1)) {
     override def call(x: Abs) = cos(x)
   }
+  object ACos extends NoStoreOperation("acos", Some(1)) {
+    override def call(x: Abs) = acos(x)
+  }
   object Tan extends NoStoreOperation("tan", Some(1)) {
     override def call(x: Abs) = tan(x)
+  }
+  object ATan extends NoStoreOperation("atan", Some(1)) {
+    override def call(x: Abs) = atan(x)
   }
   object Sqrt extends NoStoreOperation("sqrt", Some(1)) {
     override def call(x: Abs) = sqrt(x)
@@ -284,6 +297,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
   object NumberToString extends NoStoreOperation("number->string", Some(1)) {
     override def call(x: Abs) = numberToString(x)
+  }
+  object SymbolToString extends NoStoreOperation("symbol->string", Some(1)) {
+    override def call(x: Abs) = symbolToString(x)
   }
   object StringAppend extends NoStoreOperation("string-append") {
     override def call(args: List[Abs]) = args match {
@@ -723,16 +739,193 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     }
   }
 
-  /** Bundles all the primitives together */
+  /** (define (member x list)
+        (if (null? list)
+            #f
+            (if (equal? x (car list))
+                #t
+                (member x (cdr list))))) */
+  /* TODO */
+
+  /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def all: List[Primitive[Addr, Abs]] = List(
-    Plus, Minus, Times, Div, Quotient, LessThan, LessOrEqual, NumEq, GreaterThan, GreaterOrEqual,
-    Modulo, Remainder, Random, Ceiling, Round, Log, Sin, Cos, Tan, Sqrt, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
-    Nullp, Pairp, Charp, Symbolp, Stringp, Integerp, Realp, Numberp, Booleanp, Vectorp, Eq,
-    NumberToString, StringAppend, StringLength, Newline, Display, Error, Not,
-    Cons, Car, Cdr, Caar, Cadr, Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar,
-    Cdddr, Caaaar, Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar, Cdaadr, Cdadar,
-    Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr, SetCar, SetCdr, Length, Listp, ListPrim,
-    MakeVector, VectorSet, Vector, VectorLength, VectorRef,
-    Equal, BoolTop, IntTop)
+    Times,          /* [vv] *: Arithmetic */
+    Plus,           /* [vv] +: Arithmetic */
+    Minus,          /* [vv] -: Arithmetic */
+    Div,            /* [vx] /: Arithmetic (no support for fractions) */
+    Abs,            /* [vv] abs: Arithmetic */
+    ACos,           /* [vv] acos: Scientific */
+                    /* [x]  angle: Complex */
+                    /* [x]  append: Append/Reverse */
+                    /* [x]  apply: Fly Evaluation */
+                    /* [x]  apply: Fly Evaluation */
+    ASin,           /* [vv] asin: Scientific */
+                    /* [x]  assoc: Retrieving Alist Entries */
+                    /* [x]  assq: Retrieving Alist Entries */
+                    /* [x]  assv: Retrieving Alist Entries */
+    ATan,           /* [vv] atan: Scientific [easy] */
+    Booleanp,       /* [vv] boolean?: Booleans */
+                    /* [x]  call-with-current-continuation: Continuations */
+                    /* [x]  call-with-input-file: File Ports */
+                    /* [x]  call-with-output-file: File Ports */
+                    /* [x]  call-with-values: Multiple Values */
+    Car,            /* [vv] car: Pairs */
+    Cdr,            /* [vv] cdr: Pairs */
+    Ceiling,        /* [vv] ceiling: Arithmetic */
+                    /* [x]  char->integer: Characters */
+                    /* [x]  char-alphabetic?: Characters */
+                    /* [x]  char-ci<=?: Characters */
+                    /* [x]  char-ci<?: Characters */
+                    /* [x]  char-ci=?: Characters */
+                    /* [x]  char-ci>=?: Characters */
+                    /* [x]  char-ci>?: Characters */
+                    /* [x]  char-downcase: Characters */
+                    /* [x]  char-lower-case?: Characters */
+                    /* [x]  char-numeric?: Characters */
+                    /* [x]  char-ready?: Reading */
+                    /* [x]  char-upcase: Characters */
+                    /* [x]  char-upper-case?: Characters */
+                    /* [x]  char-whitespace?: Characters */
+                    /* [x]  char<=?: Characters */
+                    /* [x]  char<?: Characters */
+                    /* [x]  char=?: Characters */
+                    /* [x]  char>=?: Characters */
+                    /* [x]  char>?: Characters */
+    Charp,          /* [vv] char?: Characters */
+                    /* [x]  close-input-port: Closing */
+                    /* [x]  close-output-port: Closing */
+                    /* [x]  complex?: Complex Numbers */
+    Cons,           /* [vv] cons: Pairs */
+    Cos,            /* [vv] cos: Scientific */
+                    /* [x]  current-input-port: Default Ports */
+                    /* [x]  current-output-port: Default Ports */
+    Display,        /* [v]  display: Writing */
+                    /* [x]  dynamic-wind: Dynamic Wind */
+                    /* [x]  eof-object?: Reading */
+    Eq,             /* [vv] eq?: Equality */
+    Equal,          /* [vv] equal?: Equality */
+                    /* [x]  eqv?: Equality */
+                    /* [x]  eval: Fly Evaluation */
+    Evenp,          /* [v]  even?: Integer Operations */
+                    /* [x]  exact->inexact: Exactness */
+                    /* [x]  exact?: Exactness */
+                    /* [x]  exp: Scientific */
+                    /* [x]  expt: Scientific */
+                    /* [x]  floor: Arithmetic */
+                    /* [x]  for-each: List Mapping */
+                    /* [x]  force: Delayed Evaluation */
+    Gcd,            /* [vx] gcd: Integer Operations */
+                    /* [x]  imag-part: Complex */
+                    /* [x]  inexact->exact: Exactness */
+                    /* [x]  inexact?: Exactness */
+                    /* [x]  input-port?: Ports */
+                    /* [x]  integer->char: Characters */
+    Integerp,       /* [vv] integer?: Integers */
+                    /* [x]  interaction-environment: Fly Evaluation */
+                    /* [x]  lcm: Integer Operations */
+    Length,         /* [vv] length: List Selection */
+    ListPrim,       /* [vv] list: List Constructors */
+                    /* [x]  list->string: String Constructors */
+                    /* [x]  list->vector: Vector Creation */
+                    /* [x]  list-ref: List Selection */
+                    /* [x]  list-tail: List Selection */
+    Listp,          /* [vv] list?: List Predicates */
+                    /* [x]  load: Loading */
+    Log,            /* [vv] log: Scientific */
+                    /* [x]  magnitude: Complex */
+                    /* [x]  make-polar: Complex */
+                    /* [x]  make-rectangular: Complex */
+                    /* [x]  make-string: String Constructors */
+    MakeVector,     /* [vv] make-vector: Vector Creation */
+                    /* [x]  map: List Mapping */
+    Max,            /* [vv] max: Arithmetic */
+                    /* [x]  member: List Searching */
+                    /* [x]  memq: List Searching */
+                    /* [x]  memv: List Searching */
+    Min,            /* [vv] min: Arithmetic */
+    Modulo,         /* [vv] modulo: Integer Operations */
+    Negativep,      /* [vv] negative?: Comparison */
+    Newline,        /* [v]  newline: Writing */
+    Not,            /* [vv] not: Booleans */
+    Nullp,          /* [vv] null?: List Predicates */
+    NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
+    Numberp,        /* [vv] number?: Numerical Tower */
+    Oddp,           /* [vv] odd?: Integer Operations */
+                    /* [x]  open-input-file: File Ports */
+                    /* [x]  open-output-file: File Ports */
+                    /* [x]  output-port?: Ports */
+    Pairp,          /* [vv] pair?: Pairs */
+                    /* [x]  peek-char?: Reading */
+    Positivep,      /* [vv] positive?: Comparison */
+                    /* [x]  procedure?: Procedure Properties */
+    Quotient,       /* [vv] quotient: Integer Operations */
+                    /* [x]  rational?: Reals and Rationals */
+                    /* [x]  read: Scheme Read */
+                    /* [x]  read-char?: Reading */
+                    /* [x]  real-part: Complex */
+    Realp,          /* [vv] real?: Reals and Rationals */
+    Remainder,      /* [vv] remainder: Integer Operations */
+                    /* [x]  reverse: Append/Reverse */
+    Round,          /* [vv] round: Arithmetic */
+    SetCar,         /* [vv] set-car!: Pairs */
+    SetCdr,         /* [vv] set-cdr!: Pairs */
+    Sin,            /* [vv] sin: Scientific */
+    Sqrt,           /* [vv] sqrt: Scientific */
+                    /* [x]  string: String Constructors */
+                    /* [x]  string->list: List/String Conversion */
+                    /* [x]  string->number: Conversion */
+                    /* [x]  string->symbol: Symbol Primitives */
+   StringAppend,    /* [vx] string-append: Appending Strings: only two arguments supported */
+                    /* [x]  string-ci<: String Comparison */
+                    /* [x]  string-ci=?: String Comparison */
+                    /* [x]  string-ci>=?: String Comparison */
+                    /* [x]  string-ci>?: String Comparison */
+                    /* [x]  string-copy: String Selection */
+                    /* [x]  string-fill!: String Modification */
+   StringLength,    /* [vv]  string-length: String Selection */
+                    /* [x]  string-ref: String Selection */
+                    /* [x]  string-set!: String Modification */
+                    /* [x]  string<=?: String Comparison */
+                    /* [x]  string<?: String Comparison */
+                    /* [x]  string=?: String Comparison */
+                    /* [x]  string>=?: String Comparison */
+                    /* [x]  string>?: String Comparison */
+    Stringp,        /* [x]  string?: String Predicates */
+                    /* [x]  substring: String Selection */
+    SymbolToString, /* [vv] symbol->string: Symbol Primitives */
+    Symbolp,        /* [vv] symbol?: Symbol Primitives */
+    Tan,            /* [vv] tan: Scientific */
+                    /* [x]  truncate: Arithmetic */
+                    /* [x]  values: Multiple Values */
+    Vector,         /* [vv] vector: Vector Creation */
+                    /* [x]  vector->list: Vector Creation */
+                    /* [x]  vector-fill!: Vector Accessors */
+    VectorLength,   /* [vv] vector-length: Vector Accessors */
+    VectorRef,      /* [vv] vector-ref: Vector Accessors */
+    VectorSet,      /* [vv] vector-set!: Vector Accessors */
+    Vectorp,        /* [vv] vector?: Vector Creation */
+                    /* [x]  with-input-from-file: File Ports */
+                    /* [x]  with-output-to-file: File Ports */
+                    /* [x]  write-char: Writing */
+    Zerop,          /* [vv] zero?: Comparison */
+    LessThan,       /* [v]  < */
+    LessOrEqual,    /* [v]  <= */
+    NumEq,          /* [v]  = */
+    GreaterThan,    /* [v]  > */
+    GreaterOrEqual, /* [v]  >= */
+                    /* [x]  numerator */
+                    /* [x]  denominator */
+                    /* [x]  rationalize-string */
+                    /* [x]  scheme-report-environment */
+                    /* [x]  null-environment */
+                    /* [x]  write transcript-on */
+                    /* [x]  transcript-off */
+    Caar, Cadr,     /* [v]  caar etc. */
+    Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar, Cdddr, Caaaar,
+    Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar,
+    Cdaadr, Cdadar, Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr,
+    /* Other primitives that are not R5RS */
+    Random, Error, BoolTop, IntTop)
+
   def toVal(prim: Primitive[Addr, Abs]): Abs = abs.inject(prim)
 }

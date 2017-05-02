@@ -121,8 +121,11 @@ object Concrete {
       def log(n: F): F = n.map(n => scala.math.log(n.toDouble).toFloat)
       def random(n: F): F = n.map(n => SchemeOps.random(n))
       def sin(n: F): F = n.map(n => scala.math.sin(n.toDouble).toFloat)
+      def asin(n: F): F = n.map(n => scala.math.asin(n.toDouble).toFloat)
       def cos(n: F): F = n.map(n => scala.math.cos(n.toDouble).toFloat)
+      def acos(n: F): F = n.map(n => scala.math.acos(n.toDouble).toFloat)
       def tan(n: F): F = n.map(n => scala.math.tan(n.toDouble).toFloat)
+      def atan(n: F): F = n.map(n => scala.math.atan(n.toDouble).toFloat)
       def sqrt(n: F): F = n.map(n => scala.math.sqrt(n.toDouble).toFloat)
       def plus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 + n2)) }
       def minus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 - n2)) }
@@ -140,6 +143,7 @@ object Concrete {
 
     implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym") with SymbolLattice[Sym] {
       def inject(x: String): Sym = Values(ISet.singleton(x))
+      def toString[S : StringLattice](s: Sym): S = s.foldMap(s => StringLattice[S].inject(s))
     }
   }
 }
@@ -407,8 +411,11 @@ object Type {
       def log(n: T): T = n
       def random(n: T): T = n
       def sin(n: T): T = n
+      def asin(n: T): T = n
       def cos(n: T): T = n
+      def acos(n: T): T = n
       def tan(n: T): T = n
+      def atan(n: T): T = n
       def sqrt(n: T): T = n
       def plus(n1: T, n2: T): T = meet(n1, n2)
       def minus(n1: T, n2: T): T = meet(n1, n2)
@@ -428,6 +435,7 @@ object Type {
     }
     implicit val typeIsSymbol: SymbolLattice[Sym] = new BaseInstance("Sym") with SymbolLattice[Sym] {
       def inject(sym: String): T = Top
+      def toString[S : StringLattice](s: T): S = StringLattice[S].top
     }
   }
 }
@@ -593,12 +601,24 @@ object ConstantPropagation {
         case Constant(x) => Constant(scala.math.sin(x.toDouble).toFloat)
         case _ => n
       }
+      def asin(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.asin(x.toDouble).toFloat)
+        case _ => n
+      }
       def cos(n: F): F = n match {
         case Constant(x) => Constant(scala.math.cos(x.toDouble).toFloat)
         case _ => n
       }
+      def acos(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.acos(x.toDouble).toFloat)
+        case _ => n
+      }
       def tan(n: F): F = n match {
         case Constant(x) => Constant(scala.math.tan(x.toDouble).toFloat)
+        case _ => n
+      }
+      def atan(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.atan(x.toDouble).toFloat)
         case _ => n
       }
       def sqrt(n: F): F = n match {
@@ -634,6 +654,11 @@ object ConstantPropagation {
     }
     implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol") with SymbolLattice[Sym] {
       def inject(x: String) = Constant(x)
+      def toString[S : StringLattice](s: Sym): S = s match {
+        case Top => StringLattice[S].top
+        case Constant(x) => StringLattice[S].inject(x)
+        case Bottom => StringLattice[S].bottom
+      }
     }
   }
 }

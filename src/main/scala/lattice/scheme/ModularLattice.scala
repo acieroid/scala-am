@@ -188,16 +188,32 @@ class MakeSchemeLattice[
         case Float(n) => Float(FloatLattice[F].sin(n))
         case _ => OperatorNotApplicable("sin", List(x.toString))
       }
+      case ASin => x match {
+        case Int(n) => Float(FloatLattice[F].asin(IntLattice[I].toFloat(n)))
+        case Float(n) => Float(FloatLattice[F].asin(n))
+        case _ => OperatorNotApplicable("asin", List(x.toString))
+      }
       case Cos => x match {
         case Int(n) => Float(FloatLattice[F].cos(IntLattice[I].toFloat(n)))
         case Float(n) => Float(FloatLattice[F].cos(n))
         case _ => OperatorNotApplicable("cos", List(x.toString))
+      }
+      case ACos => x match {
+        case Int(n) => Float(FloatLattice[F].acos(IntLattice[I].toFloat(n)))
+        case Float(n) => Float(FloatLattice[F].acos(n))
+        case _ => OperatorNotApplicable("acos", List(x.toString))
       }
       case Tan => x match {
         case Int(n) => Float(FloatLattice[F].tan(IntLattice[I].toFloat(n)))
         case Float(n) => Float(FloatLattice[F].tan(n))
         case _ => OperatorNotApplicable("tan", List(x.toString))
       }
+      case ATan => x match {
+        case Int(n) => Float(FloatLattice[F].atan(IntLattice[I].toFloat(n)))
+        case Float(n) => Float(FloatLattice[F].atan(n))
+        case _ => OperatorNotApplicable("atan", List(x.toString))
+      }
+
       case Sqrt => x match {
         case Int(n) =>
           val pos = BoolLattice[B].isFalse(IntLattice[I].lt(n, IntLattice[I].inject(0))) /* n >= 0 */
@@ -229,6 +245,10 @@ class MakeSchemeLattice[
         case Int(n) => Str(IntLattice[I].toString(n))
         case Float(n) => Str(FloatLattice[F].toString(n))
         case _ => OperatorNotApplicable("number->string", List(x.toString))
+      }
+      case SymbolToString => x match {
+        case Symbol(s) => Str(SymbolLattice[Sym].toString(s))
+        case _ => OperatorNotApplicable("symbol->string", List(x.toString))
       }
     }}
 

@@ -285,8 +285,11 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
   def log(n: F): F
   def random(n: F): F
   def sin(n: F): F
+  def asin(n: F): F
   def cos(n: F): F
+  def acos(n: F): F
   def tan(n: F): F
+  def atan(n: F): F
   def sqrt(n: F): F
   def plus(n1: F, n2: F): F
   def minus(n1: F, n2: F): F
@@ -398,6 +401,7 @@ object CharLattice {
 /** A lattice for symbols */
 trait SymbolLattice[Sym] extends LatticeElement[Sym] {
   def inject(sym: String): Sym
+  def toString[S : StringLattice](n: Sym): S
 
   trait SymbolLatticeLaw {
     /* No laws for now */
