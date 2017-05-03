@@ -700,7 +700,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                                 })
                               })
                             } else { MayFailSuccess((abs.bottom, effects1 ++ effects2 ++ effects3)) }
-                            val fftf = if (abs.isFalse(cartest)) { MayFailSuccess((abs.inject(true)), effects1 ++ effects2 ++ effects3) } else { MayFailSuccess((abs.bottom, effects1 ++ effects2 ++ effects3)) }
+                            val fftf = if (abs.isFalse(cartest)) { MayFailSuccess((abs.inject(false)), effects1 ++ effects2 ++ effects3) } else { MayFailSuccess((abs.bottom, effects1 ++ effects2 ++ effects3)) }
                             MayFail.monoid[(Abs, Set[Effect[Addr]])].append(fftt, fftf)
                           }})})})} else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
                     val fff = if (abs.isFalse(constest)) {
@@ -739,13 +739,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     }
   }
 
-  /** (define (member x list)
-        (if (null? list)
-            #f
-            (if (equal? x (car list))
-                #t
-                (member x (cdr list))))) */
-  /* TODO */
+  val x: Monoid[MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])]] = implicitly
 
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def all: List[Primitive[Addr, Abs]] = List(

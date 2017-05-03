@@ -51,7 +51,12 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(equal? '(a (b) c) '(a (b) c))", t),
     ("(equal? \"abc\" \"abc\")", t),
     ("(equal? 2 2)", t),
-    ("(equal? (make-vector 5 'a) (make-vector 5 'a))", t)
+    ("(equal? (make-vector 5 'a) (make-vector 5 'a))", t),
+    ("(equal? 1 2)", f),
+    ("(equal? #\\a #\\b)", f),
+    ("(equal? '(a b c) '(a b))", f),
+    ("(equal? (cons 'a (cons 'b (cons 'c '()))) '(a b c))", t),
+    ("(equal? '(a b c) '(a c b))", f)
   ))
 
   /* 6.2 Numbers */
