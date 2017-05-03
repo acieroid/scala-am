@@ -512,7 +512,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
           val cara = Address[Addr].cell(argExp, t)
           val cons = abs.cons(cara, cdra)
           val newStore = store.extend(cdra, cdrv).extend(cara, argv)
-          val paira = Address[Addr].primitive(s"_cons_${index}_${pos}_") // Hack to make sure addresses use the position of fexp
+          val paira = Address[Addr].variable(Identifier(s"_cons_${index}", pos), abs.bottom, t) // Hack to make sure addresses use the position of fexp
           (abs.cons(cara, cdra), paira, newStore)
       })
       MayFailSuccess((result._1, result._3, Set()))
