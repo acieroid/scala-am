@@ -16,6 +16,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
   def isVector = abs.unaryOp(UnaryOperator.IsVector) _
   def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
+  def floor = abs.unaryOp(UnaryOperator.Floor) _
   def round = abs.unaryOp(UnaryOperator.Round) _
   def log = abs.unaryOp(UnaryOperator.Log) _
   def not = abs.unaryOp(UnaryOperator.Not) _
@@ -31,6 +32,8 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
   def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
   def symbolToString = abs.unaryOp(UnaryOperator.SymbolToString) _
+  def inexactToExact = abs.unaryOp(UnaryOperator.InexactToExact) _
+  def exactToInexact = abs.unaryOp(UnaryOperator.ExactToInexact) _
 
   def plus = abs.binaryOp(BinaryOperator.Plus) _
   def minus = abs.binaryOp(BinaryOperator.Minus) _
@@ -155,6 +158,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Ceiling extends NoStoreOperation("ceiling", Some(1)) {
     override def call(x: Abs) = ceiling(x)
   }
+  object Floor extends NoStoreOperation("floor", Some(1)) {
+    override def call(x: Abs) = floor(x)
+  }
   object Round extends NoStoreOperation("round", Some(1)) {
     override def call(x: Abs) = round(x)
   }
@@ -180,7 +186,28 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     override def call(x: Abs) = atan(x)
   }
   object Sqrt extends NoStoreOperation("sqrt", Some(1)) {
-    override def call(x: Abs) = sqrt(x)
+    override def call(x: Abs) = lt(x, abs.inject(0)) >>= { signtest =>
+      val t: MayFail[Abs] = if (abs.isFalse(signtest) /* n >= 0 */) {
+        for {
+          r <- sqrt(x)
+          fl <- floor(r)
+          isexact <- eqq(r, fl)
+          exr <- inexactToExact(r)
+        } yield {
+          val tt = if (abs.isTrue(isexact)) { exr } else { abs.bottom }
+          val tf = if (abs.isFalse(isexact)) { r } else { abs.bottom }
+          abs.join(tt, tf)
+        }
+      } else { abs.bottom.point[MayFail] }
+      val f: MayFail[Abs] = if (abs.isTrue(signtest) /* n < 0 */ ) { MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString)))) } else { MayFailSuccess(abs.bottom) }
+      MayFail.monoid[Abs].append(t, f)
+    }
+  }
+  object ExactToInexact extends NoStoreOperation("exact->inexact", Some(1)) {
+    override def call(x: Abs) = exactToInexact(x)
+  }
+  object InexactToExact extends NoStoreOperation("inexact->exact", Some(1)) {
+    override def call(x: Abs) = inexactToExact(x)
   }
   /** (define (zero? x) (= x 0)) */
   object Zerop extends NoStoreOperation("zero?", Some(1)) {
@@ -801,16 +828,16 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     /* [x]  eqv?: Equality */
                     /* [x]  eval: Fly Evaluation */
     Evenp,          /* [v]  even?: Integer Operations */
-                    /* [x]  exact->inexact: Exactness */
+    ExactToInexact, /* [vv] exact->inexact: Exactness */
                     /* [x]  exact?: Exactness */
                     /* [x]  exp: Scientific */
                     /* [x]  expt: Scientific */
-                    /* [x]  floor: Arithmetic */
+    Floor,          /* [vv] floor: Arithmetic */
                     /* [x]  for-each: List Mapping */
                     /* [x]  force: Delayed Evaluation */
     Gcd,            /* [vx] gcd: Integer Operations */
                     /* [x]  imag-part: Complex */
-                    /* [x]  inexact->exact: Exactness */
+    InexactToExact, /* [vv] inexact->exact: Exactness */
                     /* [x]  inexact?: Exactness */
                     /* [x]  input-port?: Ports */
                     /* [x]  integer->char: Characters */

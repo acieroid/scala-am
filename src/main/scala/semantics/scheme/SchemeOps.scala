@@ -7,13 +7,13 @@ object SchemeOps {
       /* Negate a value */
       Not,
       /* Unary arithmetic operations */
-      Ceiling, Round, Random, Sqrt,
+      Ceiling, Floor, Round, Random, Sqrt,
       /* Transcendental functions */
       Sin, ASin, Cos, ACos, Tan, ATan, Log,
       /* Length operations */
       VectorLength, StringLength,
       /* Conversions */
-      NumberToString, SymbolToString
+      NumberToString, SymbolToString, ExactToInexact, InexactToExact
     = Value
   }
   type UnaryOperator = UnaryOperator.Value

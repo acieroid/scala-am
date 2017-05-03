@@ -168,6 +168,11 @@ class MakeSchemeLattice[
         case Float(n) => Float(FloatLattice[F].ceiling(n))
         case _ => OperatorNotApplicable("ceiling", List(x.toString))
       }
+      case Floor => x match {
+        case Int(n) => Int(n)
+        case Float(n) => Float(FloatLattice[F].floor(n))
+        case _ => OperatorNotApplicable("floor", List(x.toString))
+      }
       case Round => x match {
         case Int(n) => Int(n)
         case Float(n) => Float(FloatLattice[F].round(n))
@@ -213,25 +218,10 @@ class MakeSchemeLattice[
         case Float(n) => Float(FloatLattice[F].atan(n))
         case _ => OperatorNotApplicable("atan", List(x.toString))
       }
-
       case Sqrt => x match {
-        case Int(n) =>
-          val pos = BoolLattice[B].isFalse(IntLattice[I].lt(n, IntLattice[I].inject(0))) /* n >= 0 */
-          val neg = BoolLattice[B].isTrue(IntLattice[I].lt(n, IntLattice[I].inject(0))) /* n < 0 */
-          (pos, neg) match {
-            case (true, true) => MayFailBoth(Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n))), List(OperatorNotApplicable("sqrt", List(x.toString)))) /* Top */
-            case (false, true) => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString)))) /* Negative number */
-            case _ => MayFailSuccess(Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n)))) /* Positive number (true, false) or bottom (false, false) */
-          }
-        case Float(n) =>
-          val pos = BoolLattice[B].isFalse(FloatLattice[F].lt(n, FloatLattice[F].inject(0)))
-          val neg = BoolLattice[B].isTrue(FloatLattice[F].lt(n, FloatLattice[F].inject(0)))
-          (pos, neg) match {
-            case (true, true) => MayFailBoth(Float(FloatLattice[F].sqrt(n)), List(OperatorNotApplicable("sqrt", List(x.toString))))
-            case (false, true) => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
-            case _ => MayFailSuccess(Float(FloatLattice[F].sqrt(n)))
-          }
-        case _ => MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString))))
+        case Int(n) => Float(FloatLattice[F].sqrt(IntLattice[I].toFloat(n)))
+        case Float(n) => Float(FloatLattice[F].sqrt(n))
+        case _ => OperatorNotApplicable("sqrt", List(x.toString))
       }
       case VectorLength => x match {
         case Vec(size, _, _) => Int(size)
@@ -249,6 +239,16 @@ class MakeSchemeLattice[
       case SymbolToString => x match {
         case Symbol(s) => Str(SymbolLattice[Sym].toString(s))
         case _ => OperatorNotApplicable("symbol->string", List(x.toString))
+      }
+      case ExactToInexact => x match {
+        case Int(n) => Float(IntLattice[I].toFloat(n))
+        case Float(n) => Float(n)
+        case _ => OperatorNotApplicable("exact->inexact", List(x.toString))
+      }
+      case InexactToExact => x match {
+        case Int(n) => Int(n)
+        case Float(n) => Int(FloatLattice[F].toInt[I](n)) /* should introduce fractions */
+        case _ => OperatorNotApplicable("inexact->exact", List(x.toString))
       }
     }}
 

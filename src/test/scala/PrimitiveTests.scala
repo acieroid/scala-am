@@ -176,6 +176,12 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     //("(round 7/2)", abs.inject(4)),
     ("(round 7)", abs.inject(7))
   ))
+  r5rs("floor", Table(
+    ("program", "answer"),
+    ("(floor -4.3)", abs.inject(-5.toFloat)),
+    ("(floor 3.5)", abs.inject(3.toFloat)),
+    ("(floor 7)", abs.inject(7))
+  ))
 
   r5rs("sin", Table(
     ("program", "answer"),
@@ -210,7 +216,8 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
 
   r5rs("sqrt", Table(
     ("program", "answer"),
-    ("(sqrt 16)", abs.inject(4.toFloat))
+    ("(sqrt 4)", abs.inject(2)), // R5RS: It is desirable (but not required) for potentially inexact operations such as `sqrt', when applied to exact arguments, to produce exact answers whenever possible (for example the square root of an exact 4 ought to be an exact 2).
+    ("(sqrt 16)", abs.inject(4))
   ))
   // rationalize not implemented yet
 
@@ -238,6 +245,18 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(zero? 0)", t),
     ("(zero? 1)", f),
     ("(zero? -1)", f)
+  ))
+
+  r5rs("exact->inexact", Table(
+    ("program", "answer"),
+    ("(exact->inexact 5)", abs.inject(5.toFloat)),
+    ("(exact->inexact 0)", abs.inject(0.toFloat))
+  ))
+
+  r5rs("inexact->exact", Table(
+    ("program", "answer"),
+    ("(inexact->exact 5.0)", abs.inject(5)),
+    ("(inexact->exact 0.000)", abs.inject(0))
   ))
 
   // string->number not implemented yet
