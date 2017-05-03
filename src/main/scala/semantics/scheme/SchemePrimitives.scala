@@ -661,6 +661,41 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       vectorRef(v, index, store).map({ case (v, effs) => (v, store, effs) })
   }
 
+  /** (define (list-ref l index)
+        (if (pair? l)
+          (if (= index 0)
+            (car l)
+            (list-ref (cdr l) (- index 1)))
+          (error "list-ref applied to a non-list"))) */
+  object ListRef extends StoreOperation("list-ref", Some(2)) {
+    def listRef(l: Abs, index: Abs, visited: Set[(Abs, Abs)], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+      if (visited.contains((l, index))) {
+        (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+      } else {
+        isCons(l) >>= { constest => {
+          val t: MayFail[(Abs, Set[Effect[Addr]])] = if (abs.isTrue(constest)) {
+            numEq(index, abs.inject(0)) >>= { indextest =>
+              val tt = if (abs.isTrue(indextest)) {
+                car(l, store)
+              } else { (abs.bottom, Set.empty[Effect[Addr]]).point[MayFail] }
+              val tf = if (abs.isFalse(indextest)) {
+                minus(index, abs.inject(1)) >>= { index2 => cdr(l, store) >>= {
+                  case (cdrl, effcdr) => listRef(cdrl, index2, visited + ((l, index)), store).map({ case (v, effs) => (v, effs ++ effcdr) }) } }
+              } else { (abs.bottom, Set.empty[Effect[Addr]]).point[MayFail] }
+              MayFail.monoid[(Abs, Set[Effect[Addr]])].append(tt, tf)
+            }
+          } else { (abs.bottom, Set.empty[Effect[Addr]]).point[MayFail] }
+          val f: MayFail[(Abs, Set[Effect[Addr]])] = if (abs.isFalse(constest)) {
+            MayFailError(List(OperatorNotApplicable("list-ref: first argument not a list or index out of bounds", List(l.toString, index.toString))))
+          } else { (abs.bottom, Set.empty[Effect[Addr]]).point[MayFail] }
+          MayFail.monoid[(Abs, Set[Effect[Addr]])].append(t, f)
+        }}
+      }
+    }
+    override def call(l: Abs, index: Abs, store: Store[Addr, Abs]) =
+      listRef(l, index, Set.empty, store).map({ case (v, effs) => (v, store, effs) })
+  }
+
   /** (define (equal? a b)
         (or (eq? a b)
           (and (null? a) (null? b))
@@ -848,7 +883,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     ListPrim,       /* [vv] list: List Constructors */
                     /* [x]  list->string: String Constructors */
                     /* [x]  list->vector: Vector Creation */
-                    /* [x]  list-ref: List Selection */
+    ListRef,        /* [vv] list-ref: List Selection */
                     /* [x]  list-tail: List Selection */
     Listp,          /* [vv] list?: List Predicates */
                     /* [x]  load: Loading */

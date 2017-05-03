@@ -351,6 +351,11 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
 
   // append not implemented
   // reverse not implemented
+  r5rs("list-ref", Table(
+    ("program", "answer"),
+    ("(list-ref '(a b c d) 2)", abs.injectSymbol("c")),
+    ("(list-ref '(a b c d) (inexact->exact (round 1.8)))", abs.injectSymbol("c"))
+  ))
   // list-ref not implemented
   // memq not implemented
   // member not implemented
