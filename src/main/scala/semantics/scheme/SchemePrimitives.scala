@@ -501,7 +501,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       val pos = implicitly[Expression[Exp]].pos(fexp)
 
       val nilv = abs.nil
-      val nila = Address[Addr].primitive(s"_nil_${pos}_") // Hack to make sure addresses use the position of fexp
+      val nila = Address[Addr].variable(Identifier("_nil_", pos), abs.bottom, t) // Hack to make sure addresses use the position of fexp
       val init: (Abs, Addr, Store[Addr, Abs]) = (nilv, nila, store)
       /*
        * If args is empty, the store should not be extended, so we allocate an address, but only forward it to
