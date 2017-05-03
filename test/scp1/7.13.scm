@@ -97,7 +97,7 @@
           academisch
           " "
           newline
-          vub
+          VUB
           newline
           ma-criminologie
           " "

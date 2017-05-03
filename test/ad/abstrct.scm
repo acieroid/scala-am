@@ -83,7 +83,7 @@
                           36
                           "[Leeftijd:"
                           "]"
-                          veronique
+                          Veronique
                           "[Naam:"
                           "]"
                           6
@@ -96,7 +96,7 @@
                           26
                           "[Leeftijd:"
                           "]"
-                          tom
+                          Tom
                           "[Naam:"
                           "]"
                           9
@@ -109,7 +109,7 @@
                           25
                           "[Leeftijd:"
                           "]"
-                          piet
+                          Piet
                           "[Naam:"
                           "]"
                           2
@@ -122,7 +122,7 @@
                           33
                           "[Leeftijd:"
                           "]"
-                          peter
+                          Peter
                           "[Naam:"
                           "]"
                           4
@@ -135,7 +135,7 @@
                           21
                           "[Leeftijd:"
                           "]"
-                          mauranne
+                          Mauranne
                           "[Naam:"
                           "]"
                           5
@@ -148,7 +148,7 @@
                           18
                           "[Leeftijd:"
                           "]"
-                          kaat
+                          Kaat
                           "[Naam:"
                           "]"
                           1
@@ -161,7 +161,7 @@
                           27
                           "[Leeftijd:"
                           "]"
-                          greet
+                          Greet
                           "[Naam:"
                           "]"
                           6
@@ -174,7 +174,7 @@
                           48
                           "[Leeftijd:"
                           "]"
-                          george
+                          George
                           "[Naam:"
                           "]"
                           6
@@ -187,7 +187,7 @@
                           26
                           "[Leeftijd:"
                           "]"
-                          dirk
+                          Dirk
                           "[Naam:"
                           "]"
                           3
@@ -200,7 +200,7 @@
                           45
                           "[Leeftijd:"
                           "]"
-                          bernard
+                          Bernard
                           "[Naam:"
                           "]"
                           8
