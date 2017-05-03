@@ -142,7 +142,7 @@ trait BenchmarkFiles {
       // Benchmark("8.11", "test/scp1/8.11.scm", abs.inject(true)), // dot notation
       Benchmark("8.12", "test/scp1/8.12.scm", abs.inject(true)),
       Benchmark("8.13", "test/scp1/8.13.scm", abs.inject(true)),
-      Benchmark("8.15", "test/scp1/8.15.scm", abs.inject(true)), // missing primitives: append, apply, list-ref // stack overflow in concrete
+      Benchmark("8.15", "test/scp1/8.15.scm", abs.inject(true)), // missing primitives: append, apply
       // Benchmark("8.16", "test/scp1/8.16.scm", abs.inject(true)), // dot notation
       // Benchmark("8.5", "test/scp1/8.5.scm", abs.inject(true)), // dot notation
       Benchmark("8.6", "test/scp1/8.6.scm", abs.inject(true)),
