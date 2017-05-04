@@ -357,7 +357,11 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(list-ref '(a b c d) (inexact->exact (round 1.8)))", abs.injectSymbol("c"))
   ))
   // memq not implemented
-  // member not implemented
+  r5rs("member", Table(
+    ("program", "answer"),
+    ("(equal? (member (list 'a) '(b (a) c)) '((a) c))", t),
+    ("(member 'd '(a b c))", f)
+  ))
   // memv not implemented
   // assq not implemented
   // assoc not implemented

@@ -805,7 +805,45 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     }
   }
 
-  val x: Monoid[MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])]] = implicitly
+  /** (define (member e l)
+       (if (null? l)
+         #f
+         (if (equal? (car l) e)
+           l
+           (member e (cdr l))))) */
+  object Member extends StoreOperation("member", Some(2)) {
+    def member(e: Abs, l: Abs, visited: Set[Abs], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+      if (visited.contains(l)) {
+        (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+      } else {
+        isNull(l) >>= { nulltest => {
+          val t = if (abs.isTrue(nulltest)) {
+            (abs.inject(false), Set[Effect[Addr]]()).point[MayFail]
+          } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+          val f = if (abs.isFalse(nulltest)) {
+            car(l, store) >>= { case (carl, careff) =>
+              Equal.call(e, carl, store) >>= { case (equaltest, _ /* store returned is unchanged */, equaleff) =>
+                val ft = if (abs.isTrue(equaltest)) {
+                  (l, careff ++ equaleff).point[MayFail]
+                } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                val ff = if (abs.isFalse(equaltest)) {
+                  cdr(l, store) >>= { case (cdrl, cdreff) =>
+                    member(e, cdrl, visited + l, store).map({ case (res, effs) => (res, effs ++ careff ++ cdreff) })
+                  }
+                } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                MayFail.monoid[(Abs, Set[Effect[Addr]])].append(ft, ff)
+              }
+            }
+          } else {
+            (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+          }
+          MayFail.monoid[(Abs, Set[Effect[Addr]])].append(t, f)
+        }}
+      }
+    }
+    override def call(e: Abs, l: Abs, store: Store[Addr, Abs]) =
+      member(e, l, Set.empty, store).map({ case (v, effs) => (v, store, effs) })
+  }
 
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def all: List[Primitive[Addr, Abs]] = List(
@@ -899,7 +937,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     MakeVector,     /* [vv] make-vector: Vector Creation */
                     /* [x]  map: List Mapping */
     Max,            /* [vv] max: Arithmetic */
-                    /* [x]  member: List Searching */
+    Member,         /* [vv] member: List Searching */
                     /* [x]  memq: List Searching */
                     /* [x]  memv: List Searching */
     Min,            /* [vv] min: Arithmetic */
