@@ -179,7 +179,8 @@ trait IntLattice[I] extends LatticeElement[I] { self =>
   def plus(n1: I, n2: I): I
   def minus(n1: I, n2: I): I
   def times(n1: I, n2: I): I
-  def div(n1: I, n2: I): I
+  def quotient(n1: I, n2: I): I
+  def div[F : FloatLattice](n1: I, n2: I): F
   def modulo(n1: I, n2: I): I
   def remainder(n1: I, n2: I): I
   def lt[B : BoolLattice](n1: I, n2: I): B
@@ -231,14 +232,14 @@ trait IntLattice[I] extends LatticeElement[I] { self =>
       times(a, times(b, c)) == times(times(a, b), c)
     def timesIsCommutative(a: I, b: I): Boolean =
       times(a, b) == times(b, a)
-    def divPreservesBottom(a: I): Boolean =
-      div(a, bottom) == bottom && conditional(!subsumes(a, inject(0)), div(bottom, a) == bottom)
-    def divIsMonotone(a: I, b: I, c: I): Boolean =
+    def quotientPreservesBottom(a: I): Boolean =
+      quotient(a, bottom) == bottom && conditional(!subsumes(a, inject(0)), quotient(bottom, a) == bottom)
+    def quotientIsMonotone(a: I, b: I, c: I): Boolean =
       conditional(subsumes(c, b) && !subsumes(b, inject(0)) && !subsumes(c, inject(0)),
-        subsumes(div(a, c), div(a, b)))
-    def divIsSound(a: Int, b: Int): Boolean =
+        subsumes(quotient(a, c), quotient(a, b)))
+    def quotientIsSound(a: Int, b: Int): Boolean =
       conditional(b != 0,
-        subsumes(div(inject(a), inject(b)), inject(a / b)))
+        subsumes(quotient(inject(a), inject(b)), inject(a / b)))
     def moduloPreservesBottom(a: I): Boolean =
       modulo(a, bottom) == bottom && conditional(!subsumes(a, inject(0)), modulo(bottom, a) == bottom)
     def moduloIsMonotone(a: I, b: I, c: I): Boolean =

@@ -24,11 +24,8 @@ trait BenchmarkFiles {
      * - append
      * - for-each
      * - list->vector
-     * - exact->inexact
      * - reverse
      * - apply
-     * - list-ref
-     * - string<?
      */
     List(
       /* Gabriel benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
@@ -83,7 +80,7 @@ trait BenchmarkFiles {
       // Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)), // do notation, missing primitives
       // Benchmark("tail", "test/gambit/tail.scm", ???), // rely on file io
       Benchmark("tak", "test/gambit/tak.scm", abs.inject(true)),
-      // Benchmark("trav1", "test/gambit/trav1.scm", abs.inject(true)), // fail to parse
+      // Benchmark("trav1", "test/gambit/trav1.scm", abs.inject(true)), // quasiquoting
       // Benchmark("triangl", "test/gambit/triangl.scm", abs.inject(true)), // missing primitives: list->vector
       // Benchmark("wc", "test/gambit/wc.scm", ???), // rely on file io
 
@@ -124,7 +121,7 @@ trait BenchmarkFiles {
       Benchmark("7.11", "test/scp1/7.11.scm", abs.inject(true)), // missing primitives: append
       Benchmark("7.12", "test/scp1/7.12.scm", abs.inject(true)),
       Benchmark("7.13", "test/scp1/7.13.scm", abs.inject(true)), // missing primitives: for-each // + parsing problems, e.g. for '(foo(bar)), with no space
-      Benchmark("7.14", "test/scp1/7.14.scm", abs.inject(true), worksconcrete=false), // missing primitives: append + execution not concrete
+      Benchmark("7.14", "test/scp1/7.14.scm", abs.inject(true)), // missing primitives: append
       Benchmark("7.15", "test/scp1/7.15.scm", abs.inject(true)), // missing primitives: map
       Benchmark("7.16", "test/scp1/7.16.scm", abs.inject(true)), // missing primitives: append, apply, map
       Benchmark("7.17", "test/scp1/7.17.scm", abs.inject(true)), // missing primitives: append

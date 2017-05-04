@@ -39,6 +39,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def minus = abs.binaryOp(BinaryOperator.Minus) _
   def times = abs.binaryOp(BinaryOperator.Times) _
   def div = abs.binaryOp(BinaryOperator.Div) _
+  def quotient = abs.binaryOp(BinaryOperator.Quotient) _
   def modulo = abs.binaryOp(BinaryOperator.Modulo) _
   def remainder = abs.binaryOp(BinaryOperator.Remainder) _
   def lt = abs.binaryOp(BinaryOperator.Lt) _
@@ -111,11 +112,21 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Div extends NoStoreOperation("/") {
     override def call(args: List[Abs]) = args match {
       case Nil => MayFailError(List(VariadicArityError(name, 1, 0)))
-      case x :: rest => Times.call(rest) >>= (div(x, _))
+      case x :: rest => for {
+        multrest <- Times.call(rest)
+        r <- div(x, multrest)
+        fl <- floor(r)
+        isexact <- eqq(r, fl)
+        exr <- inexactToExact(r)
+      } yield {
+        val t = if (abs.isTrue(isexact)) { exr } else { abs.bottom }
+        val f = if (abs.isFalse(isexact)) { r } else { abs.bottom }
+        abs.join(t, f)
+      }
     }
   }
   object Quotient extends NoStoreOperation("quotient", Some(2)) {
-    override def call(x: Abs, y: Abs) = div(x, y)
+    override def call(x: Abs, y: Abs) = quotient(x, y)
   }
   object LessThan extends NoStoreOperation("<", Some(2)) {
     override def call(x: Abs, y: Abs) = lt(x, y) /* TODO: < should accept any number of arguments (same for <= etc.) */

@@ -163,15 +163,15 @@ object LatticeProperties {
           forAll(l.intLatticeLaw.timesIsAssociative _)
         p.property("∀ a, b: times(a, b) == times(b, a)") =
           forAll(l.intLatticeLaw.timesIsCommutative _)
-        p.property("div(a, ⊥) = ⊥ = div(⊥, a)") =
-          forAll(l.intLatticeLaw.divPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ div(a, b) ⊑ div(a, c)") = forAll { (a: I, c: I) =>
+        p.property("quotient(a, ⊥) = ⊥ = quotient(⊥, a)") =
+          forAll(l.intLatticeLaw.quotientPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ quotient(a, b) ⊑ quotient(a, c)") = forAll { (a: I, c: I) =>
           forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.divIsMonotone(a, b, c)
+            l.intLatticeLaw.quotientIsMonotone(a, b, c)
           }
         }
-        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ div(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.divIsSound _)
+        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ quotient(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.quotientIsSound _)
         p.property("modulo(a, ⊥) = ⊥ = modulo(⊥, a)") =
           forAll(l.intLatticeLaw.moduloPreservesBottom _)
         p.property("∀ a, b, c: b ⊑ c ⇒ modulo(a, b) ⊑ modulo(a, c)") = forAll { (a: I, c: I) =>

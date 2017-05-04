@@ -22,7 +22,7 @@ object SchemeOps {
   object BinaryOperator extends Enumeration {
     val
       /* Arithmetic operations */
-      Plus, Minus, Times, Div, Modulo, Remainder,
+      Plus, Minus, Times, Div, Quotient, Modulo, Remainder,
       /* Arithmetic comparison */
       Lt,
       /* Equality checking */

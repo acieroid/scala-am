@@ -275,9 +275,12 @@ class MakeSchemeLattice[
           case (Float(n1), Float(n2)) => Float(FloatLattice[F].times(n1, n2))
           case _ => OperatorNotApplicable("*", List(x.toString, y.toString))
         }
-        /* TODO: have a div for integer division (i.e., Scheme's quotient), and one for real division (/)). Also, handle division by zero. */
+        case Quotient => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].quotient(n1, n2))
+          case _ => OperatorNotApplicable("quotient", List(x.toString, y.toString))
+        }
         case Div => (x, y) match {
-          case (Int(n1), Int(n2)) => Int(IntLattice[I].div(n1, n2))
+          case (Int(n1), Int(n2)) => Float(IntLattice[I].div[F](n1, n2))
           case (Int(n1), Float(n2)) => Float(FloatLattice[F].div(IntLattice[I].toFloat(n1), n2))
           case (Float(n1), Int(n2)) => Float(FloatLattice[F].div(n1, IntLattice[I].toFloat(n2)))
           case (Float(n1), Float(n2)) => Float(FloatLattice[F].div(n1, n2))

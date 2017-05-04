@@ -122,6 +122,12 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
   ))
 
   // division (/) is implemented BUT we don't support fractions yet
+  r5rs("/", Table(
+    ("program", "answer"),
+    ("(/ 4 2)", abs.inject(2)),
+    ("(/ 1 2)", abs.inject(0.5.toFloat))
+  ))
+
   r5rs("abs", Table(
     ("program", "answer"),
     ("(abs -7)", abs.inject(7)),
