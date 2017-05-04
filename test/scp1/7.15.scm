@@ -4,12 +4,6 @@
       (if (pair? l)
           (cons (f (car l)) (map f (cdr l)))
           (error "Cannot map over a non-list"))))
-(define (memq x ls)
-  (if (null? ls)
-      #f
-      (if (eq? (car ls) x)
-          ls
-          (memq x (cdr ls)))))
 (define (atom? x)
   (not (pair? x)))
 

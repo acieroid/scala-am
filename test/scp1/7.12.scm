@@ -1,10 +1,3 @@
-(define (member x list)
-  (if (null? list)
-      #f
-      (if (equal? x (car list))
-          #t
-          (member x (cdr list)))))
-
 (define (atom? x)
   (not (pair? x)))
 

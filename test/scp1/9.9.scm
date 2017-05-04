@@ -1,9 +1,3 @@
-(define (memq x ls)
-  (if (null? ls)
-      #f
-      (if (eq? (car ls) x)
-          ls
-          (memq x (cdr ls)))))
 (define (count-pairs lst)
   (let ((path '()))
     (define (count current)

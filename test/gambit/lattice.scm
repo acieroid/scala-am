@@ -4,12 +4,6 @@
       (if (pair? l)
           (cons (f (car l)) (map f (cdr l)))
           (error "Cannot map over a non-list"))))
-(define (memq x ls)
-  (if (null? ls)
-      #f
-      (if (eq? (car ls) x)
-          ls
-          (memq x (cdr ls)))))
 ;;; LATTICE -- Obtained from Andrew Wright.
 
 ; Given a comparison routine that returns one of

@@ -1,11 +1,6 @@
 (define false #f)
 (define true #t)
 
-(define (member e l)
-  (cond ((null? l) #f)
-        ((equal? (car l) e) l)
-        (else (member e (cdr l)))))
-
 (define (create-stack eq-fnct)
   (let ((content '()))
     (define (empty?)

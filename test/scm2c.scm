@@ -24,13 +24,6 @@
                                   "$"
                                   (number->string gensym-count)))))
 
-(define (member sym S)
-  (if (not (pair? S))
-      #f
-      (if (eq? sym (car S))
-          #t
-          (member sym (cdr S)))))
-
 (define (symbol<? sym1 sym2)
   (string<? (symbol->string sym1)
             (symbol->string sym2)))

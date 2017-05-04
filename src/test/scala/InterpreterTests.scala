@@ -21,13 +21,11 @@ trait BenchmarkFiles {
      * - named let
      * - dot notation
      * - map
-     * - memq
      * - append
      * - for-each
      * - list->vector
      * - exact->inexact
      * - reverse
-     * - member
      * - apply
      * - list-ref
      * - string<?
@@ -68,7 +66,7 @@ trait BenchmarkFiles {
       // Benchmark("earley", "test/gambit/earley.scm", abs.inject(true)), // named let
       // Benchmark("fibc", "test/gambit/fibc.scm", abs.inject(true)), // call/cc
       // Benchmark("graphs", "test/gambit/graphs.scm", abs.inject(true)), // named let
-      Benchmark("lattice", "test/gambit/lattice.scm", abs.inject(true), worksconcrete=false), // missing primitives: map, memq (implemented in the benchmark) // nondeterminism in concrete due to imprecision in case
+      Benchmark("lattice", "test/gambit/lattice.scm", abs.inject(true), worksconcrete=false), // missing primitives: map (implemented in the benchmark) // nondeterminism in concrete due to imprecision in case
                                                                                               // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // named let
       Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives: append
                                                                          // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
@@ -123,11 +121,11 @@ trait BenchmarkFiles {
       Benchmark("5.22", "test/scp1/5.22.scm", abs.inject(true)), // missing primitives: apply, map
       Benchmark("5.6", "test/scp1/5.6.scm", abs.inject(true)),
       Benchmark("5.7", "test/scp1/5.7.scm", abs.inject(true)), // missing primitives: reverse
-      Benchmark("7.11", "test/scp1/7.11.scm", abs.inject(true)), // missing primitives: member, append
-      Benchmark("7.12", "test/scp1/7.12.scm", abs.inject(true)), // missing primitives member
+      Benchmark("7.11", "test/scp1/7.11.scm", abs.inject(true)), // missing primitives: append
+      Benchmark("7.12", "test/scp1/7.12.scm", abs.inject(true)),
       Benchmark("7.13", "test/scp1/7.13.scm", abs.inject(true)), // missing primitives: for-each // + parsing problems, e.g. for '(foo(bar)), with no space
       Benchmark("7.14", "test/scp1/7.14.scm", abs.inject(true), worksconcrete=false), // missing primitives: append + execution not concrete
-      Benchmark("7.15", "test/scp1/7.15.scm", abs.inject(true)), // missing primitives: map, memq
+      Benchmark("7.15", "test/scp1/7.15.scm", abs.inject(true)), // missing primitives: map
       Benchmark("7.16", "test/scp1/7.16.scm", abs.inject(true)), // missing primitives: append, apply, map
       Benchmark("7.17", "test/scp1/7.17.scm", abs.inject(true)), // missing primitives: append
       Benchmark("7.2", "test/scp1/7.2.scm", abs.inject(true)),
@@ -179,7 +177,7 @@ trait BenchmarkFiles {
       // Benchmark("quick", "test/ad/quick.scm", abs.inject(true)), // fail to parse
       // Benchmark("RBtreeADT", "test/ad/RBtreeADT.scm", abs.inject(true)), // dot notation
       // Benchmark("selsort", "test/ad/selsort.scm", abs.inject(true)), // fail to parse
-      Benchmark("stack", "test/ad/stack.scm", abs.inject(true)), // returns two results due to approximation in cond
+      Benchmark("stack", "test/ad/stack.scm", abs.inject(true)),
       // Benchmark("stspaceCODE", "test/ad/stspaceCODE.scm", abs.inject(true)), // dot notation
 
       /* Other benchmarks, handwritten or common */
