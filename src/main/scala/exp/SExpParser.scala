@@ -152,13 +152,16 @@ class SExpLexer extends Lexical with SExpTokens {
   def unquoteSplicing: Parser[SExpToken] = chr(',') ~ chr('@') ^^^ TUnquoteSplicing()
   def dot: Parser[SExpToken] = chr('.') <~ guard(delimiter) ^^^ TDot()
   def float: Parser[SExpToken] =
-    sign ~ rep(digit) ~ '.' ~ rep(digit) <~ guard(delimiter) ^^ { case s ~ pre ~ _ ~ post =>
-                                              val n = (pre.mkString + "." + post.mkString).toFloat
-                                              s match {
-                                                case Some('+') => TFloat(n)
-                                                case Some('-') => TFloat(-n)
-                                                case _ => TFloat(n)
-                                              }
+    sign ~ rep(digit) ~ opt('.' ~ rep(digit)) ~ opt('e' ~ integer) <~ guard(delimiter) ^? {
+      case s ~ pre ~ post ~ exp if (pre.size + post.size + exp.size >= 2) /* we need at least two of the three options */ =>
+        val signstr = s.map(_.toString).getOrElse("")
+        val poststr = post.map({ case _ ~ digits => s".${digits.mkString}" }).getOrElse("")
+        val expstr = exp.map({
+          case e ~ TInteger(n) => s"e$n"
+          case _ => throw new Exception(s"cannot parse float ($exp)")
+        }).getOrElse("")
+        val n = s"$signstr${pre.mkString}$poststr$expstr"
+        TFloat(n.toFloat)
     }
   def number: Parser[SExpToken] = float | integer
   def token: Parser[SExpToken] =

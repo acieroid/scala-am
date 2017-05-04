@@ -108,7 +108,7 @@ trait BenchmarkFiles {
       Benchmark("3.1", "test/scp1/3.1.scm", abs.inject(true)),
       Benchmark("3.2.1", "test/scp1/3.2.1.scm", abs.inject(true)),
       Benchmark("3.2", "test/scp1/3.2.scm", abs.inject(true)),
-      // Benchmark("3.3", "test/scp1/3.3.scm", abs.inject(true)), // e-05 notation
+      // Benchmark("3.3", "test/scp1/3.3.scm", abs.inject(true)), // return #f, probably due to some float imprecision
       Benchmark("3.4", "test/scp1/3.4.scm", abs.inject(true)),
       // Benchmark("3.5", "test/scp1/3.5.scm", abs.inject(true)), // TODO: missing file
       Benchmark("3.6", "test/scp1/3.6.scm", abs.inject(true)), // missing primitives: for-each
