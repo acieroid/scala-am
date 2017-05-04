@@ -805,14 +805,14 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     }
   }
 
-  /** (define (member e l)
+  /** (define (member e l) ; member, memq and memv are similar, the difference lies in the comparison function used
        (if (null? l)
          #f
          (if (equal? (car l) e)
            l
            (member e (cdr l))))) */
-  object Member extends StoreOperation("member", Some(2)) {
-    def member(e: Abs, l: Abs, visited: Set[Abs], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+  abstract class MemberLike(val n: String, eqFn: (Abs, Abs, Store[Addr, Abs]) => MayFail[(Abs, Set[Effect[Addr]])]) extends StoreOperation(n, Some(2)) {
+    def mem(e: Abs, l: Abs, visited: Set[Abs], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
       if (visited.contains(l)) {
         (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
       } else {
@@ -822,13 +822,13 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
           } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
           val f = if (abs.isFalse(nulltest)) {
             car(l, store) >>= { case (carl, careff) =>
-              Equal.call(e, carl, store) >>= { case (equaltest, _ /* store returned is unchanged */, equaleff) =>
+              eqFn(e, carl, store) >>= { case (equaltest, equaleff) =>
                 val ft = if (abs.isTrue(equaltest)) {
                   (l, careff ++ equaleff).point[MayFail]
                 } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
                 val ff = if (abs.isFalse(equaltest)) {
                   cdr(l, store) >>= { case (cdrl, cdreff) =>
-                    member(e, cdrl, visited + l, store).map({ case (res, effs) => (res, effs ++ careff ++ cdreff) })
+                    mem(e, cdrl, visited + l, store).map({ case (res, effs) => (res, effs ++ careff ++ cdreff) })
                   }
                 } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
                 MayFail.monoid[(Abs, Set[Effect[Addr]])].append(ft, ff)
@@ -842,8 +842,63 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       }
     }
     override def call(e: Abs, l: Abs, store: Store[Addr, Abs]) =
-      member(e, l, Set.empty, store).map({ case (v, effs) => (v, store, effs) })
+      mem(e, l, Set.empty, store).map({ case (v, effs) => (v, store, effs) })
   }
+
+  object Member extends MemberLike("member",
+    (x: Abs, y: Abs, store: Store[Addr, Abs]) => Equal.call(x, y, store).map({ case (res, _ /* unchanged store */, eff) => (res, eff) }))
+  object Memq extends MemberLike("memq",
+    (x: Abs, y: Abs, store: Store[Addr, Abs]) => Eq.call(x, y).map(res => (res, Set.empty)))
+
+  abstract class AssocLike(val n: String, eqFn: (Abs, Abs, Store[Addr, Abs]) => MayFail[(Abs, Set[Effect[Addr]])]) extends StoreOperation(n, Some(2)) {
+    def assoc(e: Abs, l: Abs, visited: Set[Abs], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+      if (visited.contains(l)) {
+        (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+      } else {
+        isNull(l) >>= { nulltest => {
+          val t = if (abs.isTrue(nulltest)) {
+            (abs.inject(false), Set[Effect[Addr]]()).point[MayFail]
+          } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+          val f = if (abs.isFalse(nulltest)) {
+            car(l, store) >>= { case (carl, careff) =>
+              isCons(carl) >>= { constest =>
+                val ft = if (abs.isTrue(constest)) {
+                  car(carl, store) >>= { case (caarl, caareff) =>
+                    eqFn(e, caarl, store) >>= { case (equaltest, equaleff) =>
+                      val ftt = if (abs.isTrue(equaltest)) {
+                        (carl, careff ++ caareff ++ equaleff).point[MayFail]
+                      } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                      val ftf = if (abs.isFalse(equaltest)) {
+                        cdr(l, store) >>= { case (cdrl, cdreff) =>
+                          assoc(e, cdrl, visited + l, store).map({ case (res, effs) => (res, effs ++ careff ++ cdreff ++ equaleff) })
+                        }
+                      } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                      MayFail.monoid[(Abs, Set[Effect[Addr]])].append(ftt, ftf)
+                    }
+                  }
+                } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                val ff = if (abs.isFalse(constest)) {
+                  (abs.inject(false), Set[Effect[Addr]]()).point[MayFail] /* or error? because it's not an alist */
+                } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                MayFail.monoid[(Abs, Set[Effect[Addr]])].append(ft, ff)
+              }
+            }
+          } else {
+            (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+          }
+          MayFail.monoid[(Abs, Set[Effect[Addr]])].append(t, f)
+        }}
+      }
+    }
+    override def call(e: Abs, l: Abs, store: Store[Addr, Abs]) =
+      assoc(e, l, Set.empty, store).map({ case (v, effs) => (v, store, effs) })
+  }
+
+  object Assoc extends AssocLike("assoc",
+    (x: Abs, y: Abs, store: Store[Addr, Abs]) => Equal.call(x, y, store).map({ case (res, _ /* unchanged store */, eff) => (res, eff) }))
+  object Assq extends AssocLike("assq",
+    (x: Abs, y: Abs, store: Store[Addr, Abs]) => Eq.call(x, y).map(res => (res, Set.empty)))
+
 
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def all: List[Primitive[Addr, Abs]] = List(
@@ -858,8 +913,8 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     /* [x]  apply: Fly Evaluation */
                     /* [x]  apply: Fly Evaluation */
     ASin,           /* [vv] asin: Scientific */
-                    /* [x]  assoc: Retrieving Alist Entries */
-                    /* [x]  assq: Retrieving Alist Entries */
+    Assoc,          /* [vv] assoc: Retrieving Alist Entries */
+    Assq,           /* [vv] assq: Retrieving Alist Entries */
                     /* [x]  assv: Retrieving Alist Entries */
     ATan,           /* [vv] atan: Scientific [easy] */
     Booleanp,       /* [vv] boolean?: Booleans */
@@ -938,7 +993,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     /* [x]  map: List Mapping */
     Max,            /* [vv] max: Arithmetic */
     Member,         /* [vv] member: List Searching */
-                    /* [x]  memq: List Searching */
+    Memq,           /* [v]  memq: List Searching */
                     /* [x]  memv: List Searching */
     Min,            /* [vv] min: Arithmetic */
     Modulo,         /* [vv] modulo: Integer Operations */
