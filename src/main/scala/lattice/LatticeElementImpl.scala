@@ -79,6 +79,12 @@ object Concrete {
         case (Top, _) | (_, Top) => Top
         case (Values(content1), Values(content2)) => Values(content1.foldMap(s1 => content2.map(s2 => s1 + s2)))
       }
+      def lt[B : BoolLattice](s1: S, s2: S): B = (s1, s2) match {
+        case (Values(bot), _) if bot.length == 0 => BoolLattice[B].bottom
+        case (_, Values(bot)) if bot.length == 0 => BoolLattice[B].bottom
+        case (Top, _) | (_, Top) => BoolLattice[B].top
+        case (Values(content1), Values(content2)) => content1.foldMap(s1 => content2.foldMap(s2 => BoolLattice[B].inject(s1 < s2)))
+      }
     }
     val boolShow: Show[Boolean] = new Show[Boolean] {
       override def shows(b: Boolean): String = if (b) { "#t" } else { "#f" }
@@ -359,10 +365,12 @@ object Type {
         case Bottom => IntLattice[I].bottom
       }
       def append(s1: T, s2: T) = (s1, s2) match {
-        case (Bottom, _) => Bottom
-        case (_, Bottom) => Bottom
-        case (Top, _) => Top
-        case (_, Top) => Top
+        case (Bottom, _) | (_, Bottom) => Bottom
+        case (Top, _) | (Top, _) => Top
+      }
+      def lt[B : BoolLattice](s1: T, s2: T) = (s1, s2) match {
+        case (Bottom, _) | (_, Bottom) => BoolLattice[B].bottom
+        case (Top, _) | (Top, _) => BoolLattice[B].top
       }
     }
     implicit val typeIsBoolean: BoolLattice[B] = new BaseInstance("Bool") with BoolLattice[B] {
@@ -532,11 +540,14 @@ object ConstantPropagation {
         case Bottom => IntLattice[I].bottom
       }
       def append(s1: S, s2: S) = (s1, s2) match {
-        case (Bottom, _) => Bottom
-        case (_, Bottom) => Bottom
-        case (Top, _) => Top
-        case (_, Top) => Top
+        case (Bottom, _) | (_, Bottom) => Bottom
+        case (Top, _) | (_, Top) => Top
         case (Constant(x), Constant(y)) => Constant(x ++ y)
+      }
+      def lt[B : BoolLattice](s1: S, s2: S) = (s1, s2) match {
+        case (Bottom, _) | (_, Bottom) => BoolLattice[B].bottom
+        case (Top, _) | (_, Top) => BoolLattice[B].top
+        case (Constant(x), Constant(y)) => BoolLattice[B].inject(x < y)
       }
     }
     implicit val intCP: IntLattice[I] = new BaseInstance[Int]("Int") with IntLattice[I] {

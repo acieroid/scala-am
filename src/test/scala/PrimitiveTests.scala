@@ -356,7 +356,6 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
     ("(list-ref '(a b c d) 2)", abs.injectSymbol("c")),
     ("(list-ref '(a b c d) (inexact->exact (round 1.8)))", abs.injectSymbol("c"))
   ))
-  // list-ref not implemented
   // memq not implemented
   // member not implemented
   // memv not implemented
@@ -399,6 +398,14 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
   r5rs("string-length", Table(
     ("program", "answer"),
     ("(string-length \"foobar\")", abs.inject(6))
+  ))
+
+  r5rs("string?", Table(
+    ("program", "answer"),
+    ("(string<? \"foo\" \"bar\")", f),
+    ("(string<? \"bar\" \"foo\")", t),
+    ("(string<? \"foo\" \"foo\")", f),
+    ("(string<? \"f\" \"foo\")", t)
   ))
 
   // 6.3.6: vector notation (#(1 2)) not supported

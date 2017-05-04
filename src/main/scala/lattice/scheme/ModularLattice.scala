@@ -323,6 +323,10 @@ class MakeSchemeLattice[
           case (Str(s1), Str(s2)) => Str(StringLattice[S].append(s1, s2))
           case _ => OperatorNotApplicable("string-append", List(x.toString, y.toString))
         }
+        case StringLt => (x, y) match {
+          case (Str(s1), Str(s2)) => Bool(StringLattice[S].lt(s1, s2))
+          case  _ => OperatorNotApplicable("string<?", List(x.toString, y.toString))
+        }
       }
     }
 

@@ -104,11 +104,11 @@ trait BenchmarkFiles {
 
       /* Benchmarks from http://soft.vub.ac.be/SCPI/ */
       Benchmark("2.1", "test/scp1/2.1.scm", abs.inject(true)),
-      // Benchmark("2.4", "test/scp1/2.4.scm", abs.inject(true)), // missing primitives: exact->inexact
+      Benchmark("2.4", "test/scp1/2.4.scm", abs.inject(true)),
       Benchmark("3.1", "test/scp1/3.1.scm", abs.inject(true)),
       Benchmark("3.2.1", "test/scp1/3.2.1.scm", abs.inject(true)),
       Benchmark("3.2", "test/scp1/3.2.scm", abs.inject(true)),
-      // Benchmark("3.3", "test/scp1/3.3.scm", abs.inject(true)), // e-05 notation, missing primitives: exact->inexact
+      // Benchmark("3.3", "test/scp1/3.3.scm", abs.inject(true)), // e-05 notation
       Benchmark("3.4", "test/scp1/3.4.scm", abs.inject(true)),
       // Benchmark("3.5", "test/scp1/3.5.scm", abs.inject(true)), // TODO: missing file
       Benchmark("3.6", "test/scp1/3.6.scm", abs.inject(true)), // missing primitives: for-each
@@ -151,7 +151,7 @@ trait BenchmarkFiles {
       Benchmark("9.15", "test/scp1/9.15.scm", abs.inject(true)),
       Benchmark("9.16", "test/scp1/9.16.scm", abs.inject(true)),
       Benchmark("9.17", "test/scp1/9.17.scm", abs.inject(true)),
-      // Benchmark("9.18", "test/scp1/9.18.scm", abs.inject(true)), // missing primitives: string<?
+      Benchmark("9.18", "test/scp1/9.18.scm", abs.inject(true)),
       Benchmark("9.2", "test/scp1/9.2.scm", abs.inject(true)),
       Benchmark("9.3", "test/scp1/9.3.scm", abs.inject(true)),
       Benchmark("9.5", "test/scp1/9.5.scm", abs.inject(true)),

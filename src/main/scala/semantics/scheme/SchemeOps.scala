@@ -29,7 +29,7 @@ object SchemeOps {
       NumEq, /* number equality */
       Eq, /* physical equality */
       /* String operations */
-      StringAppend
+      StringAppend, StringLt
     = Value
   }
   type BinaryOperator = BinaryOperator.Value

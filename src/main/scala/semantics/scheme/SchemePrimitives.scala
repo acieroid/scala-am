@@ -45,6 +45,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def numEq = abs.binaryOp(BinaryOperator.NumEq) _
   def eqq = abs.binaryOp(BinaryOperator.Eq) _
   def stringAppend = abs.binaryOp(BinaryOperator.StringAppend) _
+  def stringLt = abs.binaryOp(BinaryOperator.StringLt) _
 
   abstract class NoStoreOperation(val name: String, val nargs: Option[Int] = None) extends Primitive[Addr, Abs] {
     def call(args: List[Abs]): MayFail[Abs] = MayFailError(List(ArityError(name, nargs.getOrElse(-1), args.length)))
@@ -333,6 +334,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       case Nil => MayFailSuccess(abs.inject(""))
       case x :: rest => call(rest) >>= (stringAppend(x, _))
     }
+  }
+  object StringLt extends NoStoreOperation("string<?", Some(2)) {
+    override def call(x: Abs, y: Abs) = stringLt(x, y)
   }
   object StringLength extends NoStoreOperation("string-length", Some(1)) {
     override def call(x: Abs) = stringLength(x)
@@ -931,18 +935,18 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     /* [x]  string->list: List/String Conversion */
                     /* [x]  string->number: Conversion */
                     /* [x]  string->symbol: Symbol Primitives */
-   StringAppend,    /* [vx] string-append: Appending Strings: only two arguments supported */
+    StringAppend,   /* [vx] string-append: Appending Strings: only two arguments supported */
                     /* [x]  string-ci<: String Comparison */
                     /* [x]  string-ci=?: String Comparison */
                     /* [x]  string-ci>=?: String Comparison */
                     /* [x]  string-ci>?: String Comparison */
                     /* [x]  string-copy: String Selection */
                     /* [x]  string-fill!: String Modification */
-   StringLength,    /* [vv]  string-length: String Selection */
+    StringLength,   /* [vv] string-length: String Selection */
                     /* [x]  string-ref: String Selection */
                     /* [x]  string-set!: String Modification */
                     /* [x]  string<=?: String Comparison */
-                    /* [x]  string<?: String Comparison */
+    StringLt,       /* [vv]  string<?: String Comparison */
                     /* [x]  string=?: String Comparison */
                     /* [x]  string>=?: String Comparison */
                     /* [x]  string>?: String Comparison */
