@@ -9,13 +9,15 @@ class ParserSpec extends FlatSpec with Matchers with BenchmarkFiles {
 
 class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
   val lexical = new SExpLexer
-  def check(parser: lexical.Parser[lexical.SExpToken])(input: String) =
+  def checkExpected(parser: lexical.Parser[lexical.SExpToken])(input: String, expected: String) =
     parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray)) match {
       case lexical.Success(res, next) =>
         if (!next.atEnd) { println(s"Parsed $res from $input, incorrect") }
-        assert(next.atEnd); assert(res.chars == input)
+        assert(next.atEnd); assert(res.chars == expected)
       case res => throw new Exception(s"Parse failure: $res")
     }
+  def check(parser: lexical.Parser[lexical.SExpToken])(input: String) = checkExpected(parser)(input, input)
+
 
   val bools = Table("boolean", "#t","#f")
   property("lexer should lex booleans without error") {
@@ -28,9 +30,11 @@ class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
       check(lexical.integer)(s); check(lexical.token)(s) }
   }
 
-  val floats = Table("floats", "1.0", /* "1e10", "1e-5", */ "0.843" /* ".234", "-.08" */)
+  val floats = Table(("floats", "output"),
+    ("1.0", "1.0"), ("1e10", "1.0E10"), ("1e-5", "1.0E-5"), ("1.3e-5", "1.3E-5"),
+    ("0.843", "0.843"), (".234", "0.234"), ("-.08", "-0.08"))
   property("lexer should lex floats without error") {
-    forAll(floats) { s => check(lexical.float)(s); check(lexical.token)(s) }
+    forAll(floats) { (s, exp) => checkExpected(lexical.float)(s, exp); checkExpected(lexical.token)(s, exp) }
   }
 
   val characters = Table("character", "#\\a", "#\\b", /* "#\\u03BB", "#\\Whitespace", */  "#\\λ")

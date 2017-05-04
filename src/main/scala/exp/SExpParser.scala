@@ -153,7 +153,7 @@ class SExpLexer extends Lexical with SExpTokens {
   def dot: Parser[SExpToken] = chr('.') <~ guard(delimiter) ^^^ TDot()
   def float: Parser[SExpToken] =
     sign ~ rep(digit) ~ opt('.' ~ rep(digit)) ~ opt('e' ~ integer) <~ guard(delimiter) ^? {
-      case s ~ pre ~ post ~ exp if (pre.size + post.size + exp.size >= 2) /* we need at least two of the three options */ =>
+      case s ~ pre ~ post ~ exp if (exp.isDefined || post.isDefined) =>
         val signstr = s.map(_.toString).getOrElse("")
         val poststr = post.map({ case _ ~ digits => s".${digits.mkString}" }).getOrElse("")
         val expstr = exp.map({
