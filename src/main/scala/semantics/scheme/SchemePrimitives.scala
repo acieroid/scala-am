@@ -117,10 +117,13 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
         r <- div(x, multrest)
         fl <- floor(r)
         isexact <- eqq(r, fl)
+        xisint <- isInteger(x)
+        multrestisint <- isInteger(multrest)
+        convert = abs.and(isexact, abs.and(xisint, multrestisint))
         exr <- inexactToExact(r)
       } yield {
-        val t = if (abs.isTrue(isexact)) { exr } else { abs.bottom }
-        val f = if (abs.isFalse(isexact)) { r } else { abs.bottom }
+        val t = if (abs.isTrue(convert)) { exr } else { abs.bottom }
+        val f = if (abs.isFalse(convert)) { r } else { abs.bottom }
         abs.join(t, f)
       }
     }
@@ -203,11 +206,13 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
         for {
           r <- sqrt(x)
           fl <- floor(r)
-          isexact <- eqq(r, fl)
+          argisexact <- isInteger(x)
+          resisexact <- eqq(r, fl)
+          convert = abs.and(argisexact, resisexact)
           exr <- inexactToExact(r)
         } yield {
-          val tt = if (abs.isTrue(isexact)) { exr } else { abs.bottom }
-          val tf = if (abs.isFalse(isexact)) { r } else { abs.bottom }
+          val tt = if (abs.isTrue(convert)) { exr } else { abs.bottom }
+          val tf = if (abs.isFalse(convert)) { r } else { abs.bottom }
           abs.join(tt, tf)
         }
       } else { abs.bottom.point[MayFail] }
