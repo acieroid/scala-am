@@ -40,7 +40,7 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
   /** The top integer */
   def intTop: L
   /** Injection of a float */
-  def inject(x: Float): L
+  def inject(x: Double): L
   /** Injection of a string */
   def inject(x: String): L
   /** Injection of a boolean */

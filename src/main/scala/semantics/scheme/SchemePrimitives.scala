@@ -12,7 +12,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def isSymbol = abs.unaryOp(UnaryOperator.IsSymbol) _
   def isString = abs.unaryOp(UnaryOperator.IsString) _
   def isInteger = abs.unaryOp(UnaryOperator.IsInteger) _
-  def isFloat = abs.unaryOp(UnaryOperator.IsFloat) _
+  def isReal = abs.unaryOp(UnaryOperator.IsReal) _
   def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
   def isVector = abs.unaryOp(UnaryOperator.IsVector) _
   def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
@@ -321,8 +321,8 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Realp extends NoStoreOperation("real?", Some(1)) {
     override def call(x: Abs) = for {
       isint <- isInteger(x)
-      isfloat <- isFloat(x)
-    } yield abs.or(isint, isfloat)
+      isreal <- isReal(x)
+    } yield abs.or(isint, isreal)
   }
   object Numberp extends NoStoreOperation("number?", Some(1)) {
     override def call(x: Abs) = Realp.call(x) /* No support for complex number, so number? is equivalent as real? */

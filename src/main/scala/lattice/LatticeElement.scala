@@ -174,13 +174,13 @@ object BoolLattice {
 /** A lattice for integers */
 trait IntLattice[I] extends LatticeElement[I] { self =>
   def inject(n: Int): I
-  def toFloat[F : FloatLattice](n: I): F
+  def toReal[F : RealLattice](n: I): F
   def random(n: I): I
   def plus(n1: I, n2: I): I
   def minus(n1: I, n2: I): I
   def times(n1: I, n2: I): I
   def quotient(n1: I, n2: I): I
-  def div[F : FloatLattice](n1: I, n2: I): F
+  def div[F : RealLattice](n1: I, n2: I): F
   def modulo(n1: I, n2: I): I
   def remainder(n1: I, n2: I): I
   def lt[B : BoolLattice](n1: I, n2: I): B
@@ -191,13 +191,13 @@ trait IntLattice[I] extends LatticeElement[I] { self =>
      type B = Concrete.B
      type S = Type.S
 
-    def toFloatPreservesBottom: Boolean =
-      toFloat[F](bottom) == FloatLattice[F].bottom
-    def toFloatIsMonotone(a: I, b: I): Boolean =
+    def toRealPreservesBottom: Boolean =
+      toReal[F](bottom) == RealLattice[F].bottom
+    def toRealIsMonotone(a: I, b: I): Boolean =
       conditional(subsumes(b, a),
-        FloatLattice[F].subsumes(toFloat[F](b), toFloat[F](a)))
-    def toFloatIsSound(a: Int): Boolean =
-      FloatLattice[F].subsumes(toFloat[F](inject(a)), FloatLattice[F].inject(a.toFloat))
+        RealLattice[F].subsumes(toReal[F](b), toReal[F](a)))
+    def toRealIsSound(a: Int): Boolean =
+      RealLattice[F].subsumes(toReal[F](inject(a)), RealLattice[F].inject(a))
     def randomPreservesBottom: Boolean =
       random(bottom) == bottom
     /* Random should neither be monotone nor sound (at least in concrete) */
@@ -279,8 +279,8 @@ object IntLattice {
 }
 
 /** A lattice for floats */
-trait FloatLattice[F] extends LatticeElement[F] { self =>
-  def inject(n: Float): F
+trait RealLattice[F] extends LatticeElement[F] { self =>
+  def inject(n: Double): F
   def toInt[I : IntLattice](n: F): I
   def ceiling(n: F): F
   def floor(n: F): F
@@ -301,7 +301,7 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
   def lt[B : BoolLattice](n1: F, n2: F): B
   def toString[S : StringLattice](n: F): S
 
-  trait FloatLatticeLaw {
+  trait RealLatticeLaw {
     type I = Type.I
     type B = Concrete.B
     type S = Type.S
@@ -311,15 +311,15 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
     def toIntIsMonotone(a: F, b: F): Boolean =
       conditional(subsumes(b, a),
         IntLattice[I].subsumes(toInt[I](b), toInt[I](a)))
-    def toIntIsSound(a: Float): Boolean =
+    def toIntIsSound(a: Double): Boolean =
       IntLattice[I].subsumes(toInt[I](inject(a)), IntLattice[I].inject(a.toInt))
     def ceilingPreservesBottom: Boolean =
       ceiling(bottom) == bottom
     def ceilingIsMonotone(a: F, b: F): Boolean =
       conditional(subsumes(b, a),
         subsumes(ceiling(b), ceiling(a)))
-    def ceilingIsSound(a: Float): Boolean =
-      subsumes(ceiling(inject(a)), inject(scala.math.ceil(a.toDouble).toFloat))
+    def ceilingIsSound(a: Double): Boolean =
+      subsumes(ceiling(inject(a)), inject(scala.math.ceil(a)))
     def logPreservesBottom: Boolean =
       log(bottom) == bottom
     def logIsMonotone(a: F, b: F): Boolean =
@@ -327,9 +327,9 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
       /*conditional(subsumes(b, a),
        subsumes(log(b), log(a))) */
       true
-    def logIsSound(a: Float): Boolean =
+    def logIsSound(a: Double): Boolean =
       conditional(a > 0,
-        subsumes(log(inject(a)), inject(scala.math.log(a.toDouble).toFloat)))
+        subsumes(log(inject(a)), inject(scala.math.log(a))))
     def randomPreservesBottom: Boolean =
       random(bottom) == bottom
     /* Random should neither be monotone nor sound (at least in concrete) */
@@ -338,7 +338,7 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
     def plusIsMonotone(a: F, b: F, c: F): Boolean =
       conditional(subsumes(c, b),
         subsumes(plus(a, c), plus(a, b)))
-    def plusIsSound(a: Float, b: Float): Boolean =
+    def plusIsSound(a: Double, b: Double): Boolean =
       subsumes(plus(inject(a), inject(b)), inject(a + b))
     /* Plus isn't required to be associative or commutative on floats */
     def minusPreservesBottom(a: F): Boolean =
@@ -346,7 +346,7 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
     def minusIsMonotone(a: F, b: F, c: F): Boolean =
       conditional(subsumes(c, b),
         subsumes(minus(a, c), minus(a, b)))
-    def minusIsSound(a: Float, b: Float): Boolean =
+    def minusIsSound(a: Double, b: Double): Boolean =
       subsumes(minus(inject(a), inject(b)), inject(a - b))
     /* Minus isn't required to be anticommutative on floats */
     def timesPreservesBottom(a: F): Boolean =
@@ -354,7 +354,7 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
     def timesIsMonotone(a: F, b: F, c: F): Boolean =
       conditional(subsumes(c, b),
         subsumes(times(a, c), times(a, b)))
-    def timesIsSound(a: Float, b: Float): Boolean =
+    def timesIsSound(a: Double, b: Double): Boolean =
       subsumes(times(inject(a), inject(b)), inject(a * b))
     /* Times isn't required to be associative and commutative on floats */
     def divPreservesBottom(a: F): Boolean =
@@ -362,7 +362,7 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
     def divIsMonotone(a: F, b: F, c: F): Boolean =
       conditional(subsumes(c, b) && !subsumes(b, inject(0)) && !subsumes(c, inject(0)),
         subsumes(div(a, c), div(a, b)))
-    def divIsSound(a: Float, b: Float): Boolean =
+    def divIsSound(a: Double, b: Double): Boolean =
       conditional(b != 0,
         subsumes(div(inject(a), inject(b)), inject(a / b)))
     def ltPreservesBottom(a: F): Boolean =
@@ -370,21 +370,21 @@ trait FloatLattice[F] extends LatticeElement[F] { self =>
     def ltIsMonotone(a: F, b: F, c: F): Boolean =
       conditional(subsumes(b, c),
         BoolLattice[B].subsumes(lt[B](a, c), lt[B](a, b)))
-    def ltIsSound(a: Float, b: Float): Boolean =
+    def ltIsSound(a: Double, b: Double): Boolean =
       BoolLattice[B].subsumes(lt[B](inject(a), inject(b)), BoolLattice[B].inject(a < b))
     def toStringPreservesBottom: Boolean =
       self.toString[S](bottom) == StringLattice[S].bottom
     def toStringIsMonotone(a: F, b: F): Boolean =
       conditional(subsumes(b, a),
         StringLattice[S].subsumes(self.toString[S](b), self.toString[S](a)))
-    def toStringIsSound(a: Float): Boolean =
+    def toStringIsSound(a: Double): Boolean =
       StringLattice[S].subsumes(self.toString[S](inject(a)), StringLattice[S].inject(a.toString))
   }
-  val floatLatticeLaw = new FloatLatticeLaw {}
+  val floatLatticeLaw = new RealLatticeLaw {}
 }
 
-object FloatLattice {
-  def apply[F : FloatLattice]: FloatLattice[F] = implicitly
+object RealLattice {
+  def apply[F : RealLattice]: RealLattice[F] = implicitly
 }
 
 /** A lattice for characters */

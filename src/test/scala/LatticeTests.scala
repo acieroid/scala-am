@@ -115,15 +115,15 @@ object LatticeProperties {
       implicit val arb = gen.anyArb
       newProperties("IntLattice") { p =>
         p.include(latticeElement.laws[I])
-        p.property("toFloat(⊥) = ⊥") =
-          l.intLatticeLaw.toFloatPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ toFloat(a) ⊑ toFloat(b)") = forAll { (b: I) =>
+        p.property("toReal(⊥) = ⊥") =
+          l.intLatticeLaw.toRealPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ toReal(a) ⊑ toReal(b)") = forAll { (b: I) =>
           forAll(gen.le(b)) { (a: I) =>
-            l.intLatticeLaw.toFloatIsMonotone(a, b)
+            l.intLatticeLaw.toRealIsMonotone(a, b)
           }
         }
-        p.property("∀ a: a.toFloat ⊑ toFloat(inject(a))") =
-          forAll(l.intLatticeLaw.toFloatIsSound _)
+        p.property("∀ a: a.toReal ⊑ toReal(inject(a))") =
+          forAll(l.intLatticeLaw.toRealIsSound _)
         p.property("random(⊥) = ⊥") =
           l.intLatticeLaw.randomPreservesBottom
         p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
@@ -213,9 +213,9 @@ object LatticeProperties {
   }
 
   object floatLattice {
-    def laws[F](implicit l: FloatLattice[F], gen: LatticeGenerator[F]): Properties = {
+    def laws[F](implicit l: RealLattice[F], gen: LatticeGenerator[F]): Properties = {
       implicit val arb = gen.anyArb
-      newProperties("FloatLattice") { p =>
+      newProperties("RealLattice") { p =>
         p.include(latticeElement.laws[F])
         p.property("toInt(⊥) = ⊥") =
           l.floatLatticeLaw.toIntPreservesBottom
@@ -353,7 +353,7 @@ abstract class IntLatticeTest[I : IntLattice](gen: LatticeGenerator[I]) extends 
   checkAll(LatticeProperties.intLattice.laws[I])
 }
 
-abstract class FloatLatticeTest[F : FloatLattice](gen: LatticeGenerator[F]) extends Specification {
+abstract class RealLatticeTest[F : RealLattice](gen: LatticeGenerator[F]) extends Specification {
   implicit val g = gen
   checkAll(LatticeProperties.floatLattice.laws[F])
 }
@@ -371,18 +371,18 @@ abstract class SymbolLatticeTest[Sym : SymbolLattice](gen: LatticeGenerator[Sym]
 class ConcreteBoolTest extends BoolLatticeTest(ConcreteBooleanGenerator)
 class ConcreteStringTest extends StringLatticeTest(ConcreteStringGenerator)
 class ConcreteIntTest extends IntLatticeTest(ConcreteIntGenerator)
-class ConcreteFloatTest extends FloatLatticeTest(ConcreteFloatGenerator)
+class ConcreteRealTest extends RealLatticeTest(ConcreteDoubleGenerator)
 class ConcreteCharTest extends CharLatticeTest(ConcreteCharGenerator)
 class ConcreteSymbolTest extends SymbolLatticeTest(ConcreteSymbolGenerator)
 
 class TypeStringTest extends StringLatticeTest(TypeGenerator)
 class TypeIntTest extends IntLatticeTest(TypeGenerator)
-class TypeFloatTest extends FloatLatticeTest(TypeGenerator)
+class TypeRealTest extends RealLatticeTest(TypeGenerator)
 class TypeCharTest extends CharLatticeTest(TypeGenerator)
 class TypeSymbolTest extends SymbolLatticeTest(TypeGenerator)
 
 class ConstantPropagationStringTest extends StringLatticeTest(StringConstantPropagationGenerator)
 class ConstantPropagationIntTest extends IntLatticeTest(IntegerConstantPropagationGenerator)
-class ConstantPropagationFloatTest extends FloatLatticeTest(FloatConstantPropagationGenerator)
+class ConstantPropagationRealTest extends RealLatticeTest(DoubleConstantPropagationGenerator)
 class ConstantPropagationCharTest extends CharLatticeTest(CharConstantPropagationGenerator)
 class ConstantPropagationSymbolTest extends SymbolLatticeTest(SymbolConstantPropagationGenerator)

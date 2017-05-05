@@ -53,13 +53,13 @@ trait SExpTokens extends Tokens {
   case class TInteger(n: Int) extends SExpToken {
     def chars = n.toString
   }
-  case class TFloat(n: Float) extends SExpToken {
+  case class TReal(n: Double) extends SExpToken {
     def chars = n.toString
   }
   case class TBoolean(b: Boolean) extends SExpToken {
     def chars = if (b) { "#t" } else { "#f" }
   }
-  case class TCharacter(c: Character) extends SExpToken {
+  case class TCharacter(c: Char) extends SExpToken {
     def chars = s"#\\$c"
   }
   case class TQuote() extends SExpToken {
@@ -125,7 +125,6 @@ class SExpLexer extends Lexical with SExpTokens {
                             }
     }
   def character: Parser[SExpToken] =
-    /* TODO: support #\Whitespace etc., and also #\\uxxxx where xxxx is some unicode value */
     '#' ~> '\\' ~> any ^^ (c => TCharacter(c))
   def string: Parser[SExpToken] = {
     ('\"' ~> stringContent ~ chrExcept('\\') <~ '\"' ^^ { case s ~ ending => TString(s + ending) }) |
@@ -151,19 +150,19 @@ class SExpLexer extends Lexical with SExpTokens {
   def unquote: Parser[SExpToken] = chr(',') ^^^ TUnquote()
   def unquoteSplicing: Parser[SExpToken] = chr(',') ~ chr('@') ^^^ TUnquoteSplicing()
   def dot: Parser[SExpToken] = chr('.') <~ guard(delimiter) ^^^ TDot()
-  def float: Parser[SExpToken] =
+  def real: Parser[SExpToken] =
     sign ~ rep(digit) ~ opt('.' ~ rep(digit)) ~ opt('e' ~ integer) <~ guard(delimiter) ^? {
       case s ~ pre ~ post ~ exp if (exp.isDefined || post.isDefined) =>
         val signstr = s.map(_.toString).getOrElse("")
         val poststr = post.map({ case _ ~ digits => s".${digits.mkString}" }).getOrElse("")
         val expstr = exp.map({
           case e ~ TInteger(n) => s"e$n"
-          case _ => throw new Exception(s"cannot parse float ($exp)")
+          case _ => throw new Exception(s"cannot parse real ($exp)")
         }).getOrElse("")
         val n = s"$signstr${pre.mkString}$poststr$expstr"
-        TFloat(n.toFloat)
+        TReal(n.toDouble)
     }
-  def number: Parser[SExpToken] = float | integer
+  def number: Parser[SExpToken] = real | integer
   def token: Parser[SExpToken] =
     nonRelevant ~> positioned ({
       boolean | number | identifier |
@@ -184,8 +183,8 @@ object SExpParser extends TokenParsers {
   def integer: Parser[Value] = elem("integer", _.isInstanceOf[TInteger]) ^^ {
     case TInteger(n) => ValueInteger(n)
   }
-  def float: Parser[Value] = elem("float", _.isInstanceOf[TFloat]) ^^ {
-    case TFloat(n) => ValueFloat(n)
+  def real: Parser[Value] = elem("real", _.isInstanceOf[TReal]) ^^ {
+    case TReal(n) => ValueReal(n)
   }
   def character: Parser[Value] = elem("character", _.isInstanceOf[TCharacter]) ^^ {
     case TCharacter(c) => ValueCharacter(c)
@@ -196,7 +195,7 @@ object SExpParser extends TokenParsers {
   def nil: Parser[Value] = leftParen ~ rightParen ^^^ ValueNil
 
   def value: Parser[SExp] = Parser { in =>
-    (bool | float | integer | character | string | nil)(in) match {
+    (bool | real | integer | character | string | nil)(in) match {
       case Success(t, in1) => Success(SExpValue(t, Position(in.pos)), in1)
       case ns: NoSuccess => ns
     }

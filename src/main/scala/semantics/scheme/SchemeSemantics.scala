@@ -65,7 +65,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
   protected def evalValue(v: Value): Option[V] = v match {
     case ValueString(s) => Some(IsSchemeLattice[V].inject(s))
     case ValueInteger(n) => Some(IsSchemeLattice[V].inject(n))
-    case ValueFloat(n) => Some(IsSchemeLattice[V].inject(n))
+    case ValueReal(n) => Some(IsSchemeLattice[V].inject(n))
     case ValueBoolean(b) => Some(IsSchemeLattice[V].inject(b))
     case ValueCharacter(c) => Some(IsSchemeLattice[V].inject(c))
     case _ => None
@@ -95,7 +95,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       case ValueCharacter(c) => IsSchemeLattice[V].inject(c)
       case ValueSymbol(sym) => IsSchemeLattice[V].injectSymbol(sym) /* shouldn't happen */
       case ValueInteger(n) => IsSchemeLattice[V].inject(n)
-      case ValueFloat(n) => IsSchemeLattice[V].inject(n)
+      case ValueReal(n) => IsSchemeLattice[V].inject(n)
       case ValueBoolean(b) => IsSchemeLattice[V].inject(b)
       case ValueNil => IsSchemeLattice[V].nil
     }, store)

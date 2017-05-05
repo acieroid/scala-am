@@ -29,7 +29,7 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
     }
     case ANFValue(ValueString(s), _) => (IsSchemeLattice[Abs].inject(s), Effect.none).point[MayFail]
     case ANFValue(ValueInteger(n), _) => (IsSchemeLattice[Abs].inject(n), Effect.none).point[MayFail]
-    case ANFValue(ValueFloat(n), _) => (IsSchemeLattice[Abs].inject(n), Effect.none).point[MayFail]
+    case ANFValue(ValueReal(n), _) => (IsSchemeLattice[Abs].inject(n), Effect.none).point[MayFail]
     case ANFValue(ValueBoolean(b), _) => (IsSchemeLattice[Abs].inject(b), Effect.none).point[MayFail]
     case ANFValue(v, _) => NotSupported(s"Unhandled value: ${v}")
   }

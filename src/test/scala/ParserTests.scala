@@ -30,11 +30,11 @@ class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
       check(lexical.integer)(s); check(lexical.token)(s) }
   }
 
-  val floats = Table(("floats", "output"),
+  val reals = Table(("real", "output"),
     ("1.0", "1.0"), ("1e10", "1.0E10"), ("1e-5", "1.0E-5"), ("1.3e-5", "1.3E-5"),
     ("0.843", "0.843"), (".234", "0.234"), ("-.08", "-0.08"))
-  property("lexer should lex floats without error") {
-    forAll(floats) { (s, exp) => checkExpected(lexical.float)(s, exp); checkExpected(lexical.token)(s, exp) }
+  property("lexer should lex reals without error") {
+    forAll(reals) { (s, exp) => checkExpected(lexical.real)(s, exp); checkExpected(lexical.token)(s, exp) }
   }
 
   val characters = Table("character", "#\\a", "#\\b", /* "#\\u03BB", "#\\Whitespace", */  "#\\λ")

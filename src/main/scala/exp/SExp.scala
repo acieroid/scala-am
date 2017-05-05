@@ -12,14 +12,14 @@ case class ValueSymbol(sym: String) extends Value {
 case class ValueInteger(value: Int) extends Value {
   override def toString = value.toString
 }
-case class ValueFloat(value: Float) extends Value {
+case class ValueReal(value: Double) extends Value {
   override def toString = value.toString
 }
 case class ValueBoolean(value: Boolean) extends Value {
   override def toString = if (value) { "#t" } else { "#f" }
 }
-case class ValueCharacter(value: Character) extends Value {
-  override def toString = s"#\\$value" // not entirely correct (eg. newline, ...)
+case class ValueCharacter(value: Char) extends Value {
+  override def toString = s"#\\$value"
 }
 object ValueNil extends Value {
   override def toString = "()"
