@@ -170,6 +170,12 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
   ))
 
   // lcm not implemented yet
+  r5rs("expt", Table(
+    ("program", "answer"),
+    ("(expt 5 2)", abs.inject(25)),
+    ("(expt 1 0)", abs.inject(1)),
+    ("(expt 0 0)", abs.inject(1))
+  ))
   // numerator not implemented yet
   // denominator not implemented yet
   // floor not implemented yet

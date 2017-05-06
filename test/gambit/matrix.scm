@@ -1,7 +1,3 @@
-(define (expt x y)
-  (if (= y 0)
-      1
-      (* x (expt x (- y 1)))))
 ;;; MATRIX -- Obtained from Andrew Wright.
 
 ; Chez-Scheme compatibility stuff:

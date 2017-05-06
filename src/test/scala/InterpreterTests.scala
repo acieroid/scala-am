@@ -63,7 +63,7 @@ trait BenchmarkFiles {
       // Benchmark("fibc", "test/gambit/fibc.scm", abs.inject(true)), // call/cc
       Benchmark("graphs", "test/gambit/graphs.scm", abs.inject(true), worksconcrete=false), // execution not concrete (case)
       Benchmark("lattice", "test/gambit/lattice.scm", abs.inject(true), worksconcrete=false), // missing primitives: map (implemented in the benchmark) // nondeterminism in concrete due to imprecision in case
-      // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // do notation, missing primitives: expt
+      // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // do notation
       Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives: append, map
       // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
       Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true), worksconcrete=false), // execution not concrete

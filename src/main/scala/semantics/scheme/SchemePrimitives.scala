@@ -131,6 +131,22 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Quotient extends NoStoreOperation("quotient", Some(2)) {
     override def call(x: Abs, y: Abs) = quotient(x, y)
   }
+  object Expt extends NoStoreOperation("expt") {
+    def expt(x: Abs, y: Abs, visited: Set[Abs]): MayFail[Abs] =
+      numEq(y, abs.inject(0)) >>= { yiszero =>
+        val t = if (abs.isTrue(yiszero)) { abs.inject(1).point[MayFail] } else { abs.bottom.point[MayFail] }
+        val f = if (abs.isFalse(yiszero)) {
+          minus(y, abs.inject(1)) >>= { y1 =>
+            expt(x, y1, visited + y) >>= { exptrest =>
+              times(x, exptrest)
+            }
+          }
+        } else { abs.bottom.point[MayFail] }
+        MayFail.monoid[Abs].append(t, f)
+      }
+    override def call(x: Abs, y: Abs) = expt(x, y, Set())
+  }
+
   object LessThan extends NoStoreOperation("<", Some(2)) {
     override def call(x: Abs, y: Abs) = lt(x, y) /* TODO: < should accept any number of arguments (same for <= etc.) */
   }
@@ -979,7 +995,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     ExactToInexact, /* [vv] exact->inexact: Exactness */
                     /* [x]  exact?: Exactness */
                     /* [x]  exp: Scientific */
-                    /* [x]  expt: Scientific */
+    Expt,           /* [vv] expt: Scientific */
     Floor,          /* [vv] floor: Arithmetic */
                     /* [x]  for-each: List Mapping */
                     /* [x]  force: Delayed Evaluation */
