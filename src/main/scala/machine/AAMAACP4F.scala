@@ -45,6 +45,11 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
     case P4FKAlloc => P4FKontAddress(e, env, t)
   }
 
+  implicit val stateWithKey = new WithKey[State] {
+    type K = KontAddr
+    def key(st: State) = st.a
+  }
+
   case class State(control: Control, a: KontAddr, t: Time) {
     override def toString = control.toString
     def subsumes(that: State): Boolean = control.subsumes(that.control) && a == that.a && t == that.t
@@ -120,8 +125,9 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], genGraph: Boolean, timeout: Timeout): Output = {
+    import scala.language.higherKinds
     @scala.annotation.tailrec
-    def loop(todo: Set[State], visited: Set[State], store: GlobalStore, kstore: KontStore[KontAddr],
+    def loop[VS[_]: VisitedSet](todo: Set[State], visited: VS[State], store: GlobalStore, kstore: KontStore[KontAddr],
       halted: Set[State], graph: G, reallyVisited: Set[State]): AAMAACP4FOutput =
     if (todo.isEmpty || timeout.reached) {
       AAMAACP4FOutput(halted, store.commit.store,
@@ -134,8 +140,8 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
         })
       if (store2.isUnchanged && kstore.fastEq(kstore2)) {
         //assert(store2.commit.store == store2.store)
-        loop(edges.map({ case (s1, s2) => s2 }).diff(visited),
-          visited ++ todo,
+        loop(edges.map({ case (s1, s2) => s2 }).filter(s2 => !VisitedSet[VS].contains(visited, s2)),
+          VisitedSet[VS].append(visited, todo),
           store2, kstore2,
           halted ++ todo.filter(_.halted),
           graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
@@ -143,7 +149,7 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
       } else {
         //assert(!(!store2.isUnchanged && store2.commit.store == store2.store))
         loop(edges.map({ case (s1, s2) => s2 }),
-          Set(),
+          VisitedSet[VS].empty,
           store2.commit, kstore2,
           halted ++ todo.filter(_.halted),
           graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
@@ -151,8 +157,9 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
       }
     }
 
-
     val (state, store, kstore) = State.inject(exp, sem.initialEnv, sem.initialStore)
-    loop(Set(state), Set(), store, kstore, Set(), if (genGraph) { Some(Graph.empty) } else { None }, Set())
+    loop(Set(state),
+      VisitedSet.MapVisitedSet.empty,
+      store, kstore, Set(), if (genGraph) { Some(Graph.empty) } else { None }, Set())
   }
 }

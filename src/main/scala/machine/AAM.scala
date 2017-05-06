@@ -187,7 +187,9 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
         }
       }
     }
-    loop(Vector(State.inject(exp, sem.initialEnv, sem.initialStore)),
-      KeyMap(), Set(), if (graph) { Some(Graph.empty) } else { None })
+    loop(
+      Vector(State.inject(exp, sem.initialEnv, sem.initialStore)).toSeq,
+      VisitedSet.MapVisitedSet.empty,
+      Set(), if (graph) { Some(Graph.empty) } else { None })
   }
 }

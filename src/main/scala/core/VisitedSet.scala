@@ -17,18 +17,19 @@ trait VisitedSet[L[_]] {
   def contains[A : WithKey](v: L[A], a: A): Boolean
   def exists[A : WithKey](v: L[A], a: A, p: A => Boolean): Boolean
   def add[A : WithKey](v: L[A], a: A): L[A]
+  def append[A : WithKey](v: L[A], as: Set[A]): L[A] = as.foldLeft(v)((v, a) => add(v, a))
   def size[A : WithKey](v: L[A]): Int
 }
 object VisitedSet {
   def apply[VS[_] : VisitedSet]: VisitedSet[VS] = implicitly
-  implicit val setVisitedSet = new VisitedSet[Set] {
+  implicit object SetVisitedSet extends VisitedSet[Set] {
     def empty[A : WithKey] = Set.empty
     def contains[A : WithKey](v: Set[A], a: A) = v.contains(a)
     def exists[A : WithKey](v: Set[A], a: A, p: A => Boolean) = v.exists(p)
     def add[A : WithKey](v: Set[A], a: A) = v + a
     def size[A : WithKey](v: Set[A]) = v.size
   }
-  implicit val mapVisitedSet = new VisitedSet[KeyMap] {
+  implicit object MapVisitedSet extends VisitedSet[KeyMap] {
     def empty[A : WithKey] = KeyMap[A]()
     def contains[A : WithKey](v: KeyMap[A], a: A) =
       v.content(WithKey[A].key(a)).contains(a)
