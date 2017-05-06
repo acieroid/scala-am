@@ -73,6 +73,17 @@ case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)], body: List[Sche
     s"(letrec ($bi) $bo)"
   }
 }
+
+/**
+ * Named-let: (let name ((v1 e1) ...) body...)
+ */
+case class SchemeNamedLet(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
+  override def toString = {
+    val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
+    val bo = body.mkString(" ")
+    s"(let $name ($bi) $bo)"
+  }
+}
 /**
  * A set! expression: (set! variable value)
  */
@@ -291,6 +302,9 @@ object SchemeCompiler {
       SchemeIf(compile(cond), compile(cons), SchemeValue(ValueBoolean(false), exp.pos), exp.pos)
     case SExpPair(SExpId(Identifier("if", _)), _, _) =>
         throw new Exception(s"Invalid Scheme if: $exp (${exp.pos})")
+    case SExpPair(SExpId(Identifier("let", _)),
+      SExpPair(SExpId(name), SExpPair(bindings, SExpPair(first, rest, _), _), _), _) =>
+      SchemeNamedLet(name, compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
     case SExpPair(SExpId(Identifier("let", _)),
       SExpPair(bindings, SExpPair(first, rest, _), _), _) =>
       SchemeLet(compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
@@ -520,6 +534,14 @@ object SchemeRenamer {
           }
         }
       }
+    case SchemeNamedLet(name, bindings, body, pos) =>
+      countl(bindings.map(_._1), names, count) match {
+        case (variables, names1, count1) => renameList(bindings.map(_._2), names1, count1) match {
+          case (exps, count2) => renameList(body, names1, count2) match {
+            case (body1, count3) => (SchemeNamedLet(name /* TODO: rename it as well */, variables.zip(exps), body1, pos), count2)
+          }
+        }
+      }
     case SchemeSet(variable, value, pos) =>
       rename(value, names, count) match {
         case (value1, count1) => (SchemeSet(names.get(variable.name) match {
@@ -683,6 +705,7 @@ object SchemeUndefiner {
         case SchemeLet(bindings, body, pos) => SchemeLet(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body), pos)
         case SchemeLetStar(bindings, body, pos) => SchemeLetStar(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body), pos)
         case SchemeLetrec(bindings, body, pos) => SchemeLetrec(bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body), pos)
+        case SchemeNamedLet(name, bindings, body, pos) => SchemeNamedLet(name, bindings.map({ case (b, v) => (b, undefine1(v)) }), undefineBody(body), pos)
         case SchemeSet(variable, value, pos) => SchemeSet(variable, undefine1(value), pos)
         case SchemeBegin(exps, pos) => SchemeBegin(undefineBody(exps), pos)
         case SchemeCond(clauses, pos) => SchemeCond(clauses.map({ case (cond, body) => (undefine1(cond), undefineBody(body)) }), pos)

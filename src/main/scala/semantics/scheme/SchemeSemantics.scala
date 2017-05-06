@@ -120,6 +120,12 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       })
       val exp = bindings.head._2
       Action.push(FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1), exp, env1, store1)
+    case SchemeNamedLet(name, bindings, body, pos) =>
+      val fexp = SchemeLambda(bindings.map(_._1), body, pos)
+      val a = Address[Addr].variable(name, JoinLattice[V].bottom, t)
+      val env2 = env.extend(name.name, a)
+      val f = IsSchemeLattice[V].inject[SchemeExp, Addr]((fexp, env2))
+      funcallArgs(f, fexp, List(), bindings.map(_._2), env2, store.extend(a, f), t)
     case SchemeSet(variable, exp, _) => Action.push(FrameSet(variable, env), exp, env, store)
     case SchemeBegin(body, _) => evalBody(body, env, store)
     case SchemeCond(Nil, _) => Action.error(NotSupported("cond without clauses"))
