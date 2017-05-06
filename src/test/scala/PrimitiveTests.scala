@@ -416,7 +416,7 @@ abstract class Tests[Exp : Expression, Addr : Address, Time : Timestamp](val lat
 
   r5rs("string->symbol", Table(
     ("program", "answer"),
-    ("(string->symbol \"flying-fish\"), abs.injectSymbol("flying-fish")
+    ("(string->symbol \"flying-fish\")", abs.injectSymbol("flying-fish"))
   ))
 
   r5rs("char?", Table(
