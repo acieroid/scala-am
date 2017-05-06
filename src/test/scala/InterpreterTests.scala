@@ -18,7 +18,6 @@ trait BenchmarkFiles {
      * - call/cc
      * - input/output
      * - substring
-     * - named let
      * - dot notation
      * - map
      * - append
@@ -53,30 +52,30 @@ trait BenchmarkFiles {
 
       /* Gambit benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html, and http://github.com/gambit/gambit */
       Benchmark("nqueens", "test/gambit/nqueens.scm", abs.inject(92)),
-      // Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)), // named let
-      // Benchmark("browse", "test/gambit/browse.scm", abs.inject(1101)), // named let
+      // Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)), // do notation
+      // Benchmark("browse", "test/gambit/browse.scm", abs.inject(1101)), // do notation
       // Benchmark("cat", "test/gambit/cat.scm", ???) // rely on file io
       // Benchmark("compiler", "test/gambit/compiler.scm", ???) // dot notation
       // Benchmark("ctak.scm", "test/gambit/ctak.scm", abs.inject(true)) // call/cc
-      // Benchmark("destruc", "test/gambit/destruc.scm", abs.inject(true)), // named let
+      // Benchmark("destruc", "test/gambit/destruc.scm", abs.inject(true)), // do notation
       // Benchmark("diviter", "test/gambit/diviter.scm", abs.inject(true)), // do notation
-      // Benchmark("earley", "test/gambit/earley.scm", abs.inject(true)), // named let
+      // Benchmark("earley", "test/gambit/earley.scm", abs.inject(true)), // missing primitive: list->vector
       // Benchmark("fibc", "test/gambit/fibc.scm", abs.inject(true)), // call/cc
-      // Benchmark("graphs", "test/gambit/graphs.scm", abs.inject(true)), // named let
+      Benchmark("graphs", "test/gambit/graphs.scm", abs.inject(true), worksconcrete=false), // execution not concrete (case)
       Benchmark("lattice", "test/gambit/lattice.scm", abs.inject(true), worksconcrete=false), // missing primitives: map (implemented in the benchmark) // nondeterminism in concrete due to imprecision in case
-                                                                                              // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // named let
-      Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives: append
-                                                                         // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
-                                                                         // Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true)), // named let
-                                                                         // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // do notation
-                                                                         // Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // named let
+      // Benchmark("matrix", "test/gambit/matrix.scm", abs.inject(true)), // do notation, missing primitives: expt
+      Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives: append, map
+      // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
+      Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true), worksconcrete=false), // execution not concrete
+      // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // do notation
+      // Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // missing primitives: append, map, string->symbol
       Benchmark("primes", "test/gambit/primes.scm", abs.inject(true)),
       // Benchmark("puzzle", "test/gambit/puzzle.scm", abs.inject(true)), // do notation, missing primitives: for-each
       // Benchmark("sboyer", "test/gambit/sboyer.scm", abs.inject(true)), // dot notation
       // Benchmark("scheme", "test/gambit/scheme.scm", abs.inject(true)), // dot notation
       // Benchmark("slatex", "test/gambit/slatex.scm", ???), // rely on call-with-output-file/truncate (non-R5RS?)
       // Benchmark("string", "test/gambit/string.scm", abs.inject(true)), // do notation, missing primitives
-      // Benchmark("sum", "test/gambit/sum.scm", abs.inject(true)), // named let
+      Benchmark("sum", "test/gambit/sum.scm", abs.inject(true)),
       // Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)), // do notation, missing primitives
       // Benchmark("tail", "test/gambit/tail.scm", ???), // rely on file io
       Benchmark("tak", "test/gambit/tak.scm", abs.inject(true)),
@@ -127,7 +126,7 @@ trait BenchmarkFiles {
       Benchmark("7.17", "test/scp1/7.17.scm", abs.inject(true)), // missing primitives: append
       Benchmark("7.2", "test/scp1/7.2.scm", abs.inject(true)),
       Benchmark("7.3", "test/scp1/7.3.scm", abs.inject(true)), // missing primitives: append
-      // Benchmark("7.4", "test/scp1/7.4.scm", abs.inject(true)), // named let
+      Benchmark("7.4", "test/scp1/7.4.scm", abs.inject(true)),
       // Benchmark("7.5", "test/scp1/7.5.scm", abs.inject(true)), // dot notation
       // Benchmark("7.7", "test/scp1/7.7.scm", abs.inject(true)), // TODO: missing file
       // Benchmark("7.9", "test/scp1/7.9.scm", abs.inject(true)), // dot notation
@@ -189,13 +188,13 @@ trait BenchmarkFiles {
       Benchmark("infinite-1", "test/infinite-1.scm", abs.bottom),
       Benchmark("infinite-2", "test/infinite-2.scm", abs.bottom),
       Benchmark("infinite-3", "test/infinite-3.scm", abs.bottom),
-      Benchmark("letrec-begin", "test/letrec-begin.scm", abs.inject(1)), // TODO: not R5RS due to letrec being used as letrec*
+      Benchmark("letrec-begin", "test/letrec-begin.scm", abs.inject(1)), // not conform to R5RS due to letrec being used as letrec*
       Benchmark("mceval", "test/mceval.scm", abs.inject(40320)),
       Benchmark("mut-rec", "test/mut-rec.scm", abs.inject(true)),
       Benchmark("sq", "test/sq.scm", abs.inject(9)),
       Benchmark("sym", "test/sym.scm", abs.injectSymbol("foo")),
       Benchmark("widen", "test/widen.scm", abs.inject(10)),
-      // Benchmark("looping", "test/looping.scm", abs.inject(true)), // TODO: require named let, do notation
+      // Benchmark("looping", "test/looping.scm", abs.inject(true)), // missing file? do notation
       Benchmark("work", "test/work.scm", abs.inject(362880)),
       // Benchmark("SICP-compiler", "test/SICP-compiler.scm", abs.inject(true)), // does not parse
       // Benchmark("quasiquoting-simple", "test/quasiquoting-simple", abs.inject(true)), // quasiquotes
