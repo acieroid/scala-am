@@ -85,6 +85,7 @@ object Concrete {
         case (Top, _) | (_, Top) => BoolLattice[B].top
         case (Values(content1), Values(content2)) => content1.foldMap(s1 => content2.foldMap(s2 => BoolLattice[B].inject(s1 < s2)))
       }
+      def toSymbol[Sym : SymbolLattice](s: S): Sym = s.foldMap(s => SymbolLattice[Sym].inject(s))
     }
     val boolShow: Show[Boolean] = new Show[Boolean] {
       override def shows(b: Boolean): String = if (b) { "#t" } else { "#f" }
@@ -374,6 +375,10 @@ object Type {
         case (Bottom, _) | (_, Bottom) => BoolLattice[B].bottom
         case (Top, _) | (Top, _) => BoolLattice[B].top
       }
+      def toSymbol[Sym : SymbolLattice](s: S) = s match {
+        case Bottom => SymbolLattice[Sym].bottom
+        case Top => SymbolLattice[Sym].top
+      }
     }
     implicit val typeIsBoolean: BoolLattice[B] = new BaseInstance("Bool") with BoolLattice[B] {
       def inject(x: Boolean): T = Top
@@ -554,6 +559,11 @@ object ConstantPropagation {
         case (Bottom, _) | (_, Bottom) => BoolLattice[B].bottom
         case (Top, _) | (_, Top) => BoolLattice[B].top
         case (Constant(x), Constant(y)) => BoolLattice[B].inject(x < y)
+      }
+      def toSymbol[Sym : SymbolLattice](s: S) = s match {
+        case Bottom => SymbolLattice[Sym].bottom
+        case Top => SymbolLattice[Sym].top
+        case Constant(x) => SymbolLattice[Sym].inject(x)
       }
     }
     implicit val intCP: IntLattice[I] = new BaseInstance[Int]("Int") with IntLattice[I] {

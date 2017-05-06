@@ -240,6 +240,10 @@ class MakeSchemeLattice[
         case Symbol(s) => Str(SymbolLattice[Sym].toString(s))
         case _ => OperatorNotApplicable("symbol->string", List(x.toString))
       }
+      case StringToSymbol => x match {
+        case Str(s) => Symbol(StringLattice[S].toSymbol(s))
+        case _ => OperatorNotApplicable("string->symbol", List(x.toString))
+      }
       case ExactToInexact => x match {
         case Int(n) => Real(IntLattice[I].toReal(n))
         case Real(n) => Real(n)

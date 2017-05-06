@@ -13,7 +13,7 @@ object SchemeOps {
       /* Length operations */
       VectorLength, StringLength,
       /* Conversions */
-      NumberToString, SymbolToString, ExactToInexact, InexactToExact
+      NumberToString, SymbolToString, StringToSymbol, ExactToInexact, InexactToExact
     = Value
   }
   type UnaryOperator = UnaryOperator.Value

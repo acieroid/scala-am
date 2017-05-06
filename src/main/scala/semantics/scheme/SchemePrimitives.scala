@@ -32,6 +32,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
   def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
   def symbolToString = abs.unaryOp(UnaryOperator.SymbolToString) _
+  def stringToSymbol = abs.unaryOp(UnaryOperator.StringToSymbol) _
   def inexactToExact = abs.unaryOp(UnaryOperator.InexactToExact) _
   def exactToInexact = abs.unaryOp(UnaryOperator.ExactToInexact) _
 
@@ -360,6 +361,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
   object SymbolToString extends NoStoreOperation("symbol->string", Some(1)) {
     override def call(x: Abs) = symbolToString(x)
+  }
+  object StringToSymbol extends NoStoreOperation("string->symbol", Some(1)) {
+    override def call(x: Abs) = stringToSymbol(x)
   }
   object StringAppend extends NoStoreOperation("string-append") {
     override def call(args: List[Abs]) = args match {
@@ -1059,7 +1063,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     /* [x]  string: String Constructors */
                     /* [x]  string->list: List/String Conversion */
                     /* [x]  string->number: Conversion */
-                    /* [x]  string->symbol: Symbol Primitives */
+    StringToSymbol, /* [vv] string->symbol: Symbol Primitives */
     StringAppend,   /* [vx] string-append: Appending Strings: only two arguments supported */
                     /* [x]  string-ci<: String Comparison */
                     /* [x]  string-ci=?: String Comparison */
@@ -1106,7 +1110,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     /* [x]  write transcript-on */
                     /* [x]  transcript-off */
     Caar, Cadr,     /* [v]  caar etc. */
-    Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar, Cdddr, Caaaar,
+    Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar, Cdddr, Caaaar,
     Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar,
     Cdaadr, Cdadar, Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr,
     /* Other primitives that are not R5RS */

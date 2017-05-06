@@ -68,15 +68,15 @@ trait BenchmarkFiles {
       // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
       Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true), worksconcrete=false), // execution not concrete
       // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // do notation
-      // Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // missing primitives: append, map, string->symbol
+      Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // missing primitives: append, map, for-each
       Benchmark("primes", "test/gambit/primes.scm", abs.inject(true)),
       // Benchmark("puzzle", "test/gambit/puzzle.scm", abs.inject(true)), // do notation, missing primitives: for-each
       // Benchmark("sboyer", "test/gambit/sboyer.scm", abs.inject(true)), // dot notation
       // Benchmark("scheme", "test/gambit/scheme.scm", abs.inject(true)), // dot notation
       // Benchmark("slatex", "test/gambit/slatex.scm", ???), // rely on call-with-output-file/truncate (non-R5RS?)
-      // Benchmark("string", "test/gambit/string.scm", abs.inject(true)), // do notation, missing primitives
+      // Benchmark("string", "test/gambit/string.scm", abs.inject(true)), // do notation, missing primitives: substsring
       Benchmark("sum", "test/gambit/sum.scm", abs.inject(true)),
-      // Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)), // do notation, missing primitives
+      // Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)), // do notation
       // Benchmark("tail", "test/gambit/tail.scm", ???), // rely on file io
       Benchmark("tak", "test/gambit/tak.scm", abs.inject(true)),
       // Benchmark("trav1", "test/gambit/trav1.scm", abs.inject(true)), // quasiquoting
@@ -216,7 +216,7 @@ trait BenchmarkFiles {
       Benchmark("regex", "test/regex.scm", abs.inject(false)),
       Benchmark("rsa", "test/rsa.scm", abs.inject(true)),
       Benchmark("sat", "test/sat.scm", abs.inject(true)),
-      // Benchmark("scm2c", "test/scm2c", abs.inject("TODO")),
+      // Benchmark("scm2c", "test/scm2c.scm", abs.inject("TODO")),
       Benchmark("scm2java", "test/scm2java.scm", abs.inject("public class BOut extends RuntimeEnvironment {\\n public static void main (String[] args) {\\nnew IntValue(3) ;\\n }\\n}\\n"))
     )
   }
