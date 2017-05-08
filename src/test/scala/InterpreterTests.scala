@@ -27,8 +27,8 @@ trait BenchmarkFiles {
      */
     List(
       /* Gabriel benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
-      /* Benchmarks ignored because common with gambit: browse, ctak, destruc, diviterpuzzle */
-      Benchmark("boyer", "test/boyer.scm", abs.inject(true)),
+      /* Benchmarks ignored because common with gambit: browse, ctak, destruc, diviter, puzzle */
+      Benchmark("boyer", "test/gabriel/boyer.scm", abs.inject(true)),
       Benchmark("cpstak", "test/gabriel/cpstak.scm", abs.inject(6)),
       Benchmark("dderiv", "test/gabriel/dderiv.scm", abs.inject(true)),
       Benchmark("deriv", "test/gabriel/deriv.scm", abs.inject(true)),
