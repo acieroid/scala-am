@@ -1,3 +1,9 @@
+(define (map f l)
+  (if (null? l)
+      l
+      (if (pair? l)
+          (cons (f (car l)) (map f (cdr l)))
+          (error "Cannot map over a non-list"))))
 ;;; MATRIX -- Obtained from Andrew Wright.
 
 ; Chez-Scheme compatibility stuff:
