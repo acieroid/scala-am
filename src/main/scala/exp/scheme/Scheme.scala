@@ -164,6 +164,18 @@ case class SchemeDefineFunction(name: Identifier, args: List[Identifier], body: 
     s"(define ($name $a) $b)"
   }
 }
+
+/**
+ * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...)
+ */
+case class SchemeDo(vars: List[(Identifier, SchemeExp, Option[SchemeExp])], test: SchemeExp, finals: List[SchemeExp], commands: List[SchemeExp], pos: Position) extends SchemeExp {
+  override def toString = {
+    val varsstr = vars.map({ case (v, i, s) => s"($v $i $s)" }).mkString(" ")
+    val finalsstr = finals.mkString(" ")
+    val commandsstr = commands.mkString(" ")
+    s"(do ($varsstr) ($test $finalsstr) $commandsstr)"
+  }
+}
 /**
  * An identifier: name
  */
@@ -281,7 +293,7 @@ object SchemeCompiler {
   /**
     * Reserved keywords
     */
-  val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "c/cas", "c/acquire", "c/release", "c/cas-vector", "c/spawn", "c/join", "a/create", "a/become", "a/send", "a/terminate", "a/actor")
+  val reserved: List[String] = List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do", "c/cas", "c/acquire", "c/release", "c/cas-vector", "c/spawn", "c/join", "a/create", "a/become", "a/send", "a/terminate", "a/actor")
 
   def compile(exp: SExp): SchemeExp = exp match {
     case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(ValueNil, _), _), _) =>
@@ -343,7 +355,9 @@ object SchemeCompiler {
       SExpPair(SExpPair(SExpId(name), args, _),
         SExpPair(first, rest, _), _), _) =>
       SchemeDefineFunction(name, compileArgs(args), compile(first) :: compileBody(rest), exp.pos)
-
+    case SExpPair(SExpId(Identifier("do", _)),
+      SExpPair(bindings, SExpPair(SExpPair(test, finals, _), commands, _), _), _) =>
+      SchemeDo(compileDoBindings(bindings), compile(test), compileBody(finals), compileBody(commands), exp.pos)
     case SExpPair(SExpId(Identifier("c/cas", _)),
       SExpPair(SExpId(variable),
         SExpPair(eold, SExpPair(enew, SExpValue(ValueNil, _), _), _), _), _) =>
@@ -436,6 +450,25 @@ object SchemeCompiler {
       }
     case SExpValue(ValueNil, _) => Nil
     case _ => throw new Exception(s"Invalid Scheme bindings: $bindings (${bindings.pos})")
+  }
+
+  def compileDoBindings(bindings: SExp): List[(Identifier, SchemeExp, Option[SchemeExp])] = bindings match {
+    case SExpPair(SExpPair(SExpId(v),
+      SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
+      if (reserved.contains(v.name)) {
+        throw new Exception(s"Invalid Scheme identifier (reserved): $v (${bindings.pos})")
+      } else {
+        (v, compile(value), None) :: compileDoBindings(rest)
+      }
+    case SExpPair(SExpPair(SExpId(v),
+      SExpPair(value, SExpPair(step, SExpValue(ValueNil, _), _), _), _), rest, _) =>
+      if (reserved.contains(v.name)) {
+        throw new Exception(s"Invalid Scheme identifier (reserved): $v (${bindings.pos})")
+      } else {
+        (v, compile(value), Some(compile(step))) :: compileDoBindings(rest)
+      }
+    case SExpValue(ValueNil, _) => Nil
+    case _ => throw new Exception(s"Invalid Scheme do-bindings: $bindings (${bindings.pos})")
   }
 
   def compileCondClauses(clauses: SExp): List[(SchemeExp, List[SchemeExp])] = clauses match {
@@ -712,6 +745,9 @@ object SchemeUndefiner {
         case SchemeCase(key, clauses, default, pos) => SchemeCase(undefine1(key), clauses.map({ case (vs, body) => (vs, undefineBody(body)) }), undefineBody(default), pos)
         case SchemeAnd(args, pos) => SchemeAnd(args.map(undefine1), pos)
         case SchemeOr(args, pos) => SchemeOr(args.map(undefine1), pos)
+        case SchemeDo(vars, test, finals, commands, pos) => SchemeDo(
+          vars.map({ case (id, init, step) => (id, undefine1(init), step.map(undefine1)) }),
+          undefine1(test), undefineBody(finals), undefineBody(commands), pos)
         case SchemeVar(id) => SchemeVar(id)
         case SchemeQuoted(quoted, pos) => SchemeQuoted(quoted, pos)
         case SchemeValue(value, pos) => SchemeValue(value, pos)
