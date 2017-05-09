@@ -1,4 +1,5 @@
 ;;; SUMLOOP -- One of the Kernighan and Van Wyk benchmarks.
+;; reduced number of iterations from 1000000 to 1000
 
 (define sum 0)
 
@@ -18,4 +19,4 @@
       ((>= i n) sum)
     (set! sum (+ sum 1))))
 
-(= (do-loop 100000000) 100000000)
+(= (do-loop 1000) 1000)

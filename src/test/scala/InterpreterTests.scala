@@ -42,7 +42,7 @@ trait BenchmarkFiles {
 
       /* Gambit benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html, and http://github.com/gambit/gambit */
       Benchmark("nqueens", "test/gambit/nqueens.scm", abs.inject(92)),
-      // Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)), // do notation
+      Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)),
       // Benchmark("browse", "test/gambit/browse.scm", abs.inject(1101)), // missing primitive: string-ref
       // Benchmark("cat", "test/gambit/cat.scm", ???) // rely on file io
       // Benchmark("compiler", "test/gambit/compiler.scm", ???) // dot notation
@@ -57,7 +57,7 @@ trait BenchmarkFiles {
       Benchmark("mazefun", "test/gambit/mazefun.scm", abs.inject(true)), // missing primitives: append, map
       // Benchmark("nboyer", "test/gambit/nboyer.scm", abs.inject(true)), // dot notation
       Benchmark("paraffins", "test/gambit/paraffins.scm", abs.inject(true), worksconcrete=false), // execution not concrete
-      // Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)), // do notation
+      Benchmark("perm9", "test/gambit/perm9.scm", abs.inject(true)),
       Benchmark("peval", "test/gambit/peval.scm", abs.inject(true)), // missing primitives: append, map, for-each
       Benchmark("primes", "test/gambit/primes.scm", abs.inject(true)),
       // Benchmark("puzzle", "test/gambit/puzzle.scm", abs.inject(true)), // missing primitives: for-each, execution not concrete (vector)
@@ -66,7 +66,7 @@ trait BenchmarkFiles {
       // Benchmark("slatex", "test/gambit/slatex.scm", ???), // rely on call-with-output-file/truncate (non-R5RS?)
       // Benchmark("string", "test/gambit/string.scm", abs.inject(true)), // missing primitives: substring
       Benchmark("sum", "test/gambit/sum.scm", abs.inject(true)),
-      // Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)), // do notation
+      Benchmark("sumloop", "test/gambit/sumloop.scm", abs.inject(true)),
       // Benchmark("tail", "test/gambit/tail.scm", ???), // rely on file io
       Benchmark("tak", "test/gambit/tak.scm", abs.inject(true)),
       // Benchmark("trav1", "test/gambit/trav1.scm", abs.inject(true)), // quasiquoting
@@ -94,14 +94,13 @@ trait BenchmarkFiles {
       Benchmark("3.2", "test/scp1/3.2.scm", abs.inject(true)),
       // Benchmark("3.3", "test/scp1/3.3.scm", abs.inject(true)), // return #f, probably due to some float imprecision
       Benchmark("3.4", "test/scp1/3.4.scm", abs.inject(true)),
-      // Benchmark("3.5", "test/scp1/3.5.scm", abs.inject(true)), // TODO: missing file
       Benchmark("3.6", "test/scp1/3.6.scm", abs.inject(true)), // missing primitives: for-each
-      // Benchmark("3.7", "test/scp1/3.7.scm", abs.inject(true)), // TODO: missing file
       Benchmark("3.8", "test/scp1/3.8.scm", abs.inject(true)),
       Benchmark("3.9", "test/scp1/3.9.scm", abs.inject(true), works=false), // stack overflow
       Benchmark("4.1", "test/scp1/4.1.scm", abs.inject(true)),
       // Benchmark("4.8", "test/scp1/4.8.scm", abs.inject(true)), // return #f instead of #t, probably some floating point stuff going on
       Benchmark("5.14.3", "test/scp1/5.14.3.scm", abs.inject(true)), // missing primitives: append
+      Benchmark("5.19", "test/scp1/5.19.scm", abs.inject(true)),
       Benchmark("5.20.4", "test/scp1/5.20.4.scm", abs.inject(true)),
       Benchmark("5.21", "test/scp1/5.21.scm", abs.inject(true)), // missing primitives: reverse
       Benchmark("5.22", "test/scp1/5.22.scm", abs.inject(true)), // missing primitives: apply, map
@@ -118,7 +117,6 @@ trait BenchmarkFiles {
       Benchmark("7.3", "test/scp1/7.3.scm", abs.inject(true)), // missing primitives: append
       Benchmark("7.4", "test/scp1/7.4.scm", abs.inject(true)),
       // Benchmark("7.5", "test/scp1/7.5.scm", abs.inject(true)), // dot notation
-      // Benchmark("7.7", "test/scp1/7.7.scm", abs.inject(true)), // TODO: missing file
       // Benchmark("7.9", "test/scp1/7.9.scm", abs.inject(true)), // dot notation
       Benchmark("8.1.1", "test/scp1/8.1.1.scm", abs.inject(true)),
       Benchmark("8.1.3", "test/scp1/8.1.3.scm", abs.inject(true)),

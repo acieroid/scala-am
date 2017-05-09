@@ -1,4 +1,5 @@
 ;;; ARRAY1 -- One of the Kernighan and Van Wyk benchmarks.
+;; reduced number of iterations from 200000 to 200
 
 (define (create-x n)
   (define result (make-vector n))
@@ -23,4 +24,4 @@
         (loop (- repeat 1) (my-try n))
         result)))
 
-(= 200000 (go 200000))
+(= 200 (go 200))
