@@ -81,11 +81,13 @@ object Util {
   }
 }
 
+import scala.concurrent.duration.Duration
 class Timeout(startingTime: Long, timeout: Option[Long]) {
   def reached: Boolean = timeout.map(System.nanoTime - startingTime > _).getOrElse(false)
   def time: Double = (System.nanoTime - startingTime) / Math.pow(10, 9)
 }
 object Timeout {
   def start(timeout: Option[Long]): Timeout = new Timeout(System.nanoTime, timeout)
+  def start(timeout: Duration): Timeout = new Timeout(System.nanoTime, if (timeout.isFinite) { Some(timeout.toNanos) } else None)
   def none: Timeout = new Timeout(System.nanoTime, None)
 }

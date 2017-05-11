@@ -29,11 +29,36 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
   case class FrameAnd(rest: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameOr(rest: List[SchemeExp], env: Env) extends SchemeFrame
   case class FrameDefine(variable: Identifier, env: Env) extends SchemeFrame
+  case class FrameDoInit(vars: List[(Identifier, V, Option[SchemeExp])], variable: Identifier, step: Option[SchemeExp], toeval: List[(Identifier, SchemeExp, Option[SchemeExp])], test: SchemeExp, finals: List[SchemeExp], commands: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameDoBody(toeval: List[SchemeExp], vars: List[(Identifier, V, Option[SchemeExp])], test: SchemeExp, finals: List[SchemeExp], commands: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameDoStep(vars: List[(Identifier, V, Option[SchemeExp])], variable: Identifier, step: Option[SchemeExp], toeval: List[(Identifier, V, Option[SchemeExp])], test: SchemeExp, finals: List[SchemeExp], commands: List[SchemeExp], env: Env) extends SchemeFrame
+  case class FrameDoTest(vars: List[(Identifier, V, Option[SchemeExp])], test: SchemeExp, finals: List[SchemeExp], commands: List[SchemeExp], env: Env) extends SchemeFrame
 
   protected def evalBody(body: List[SchemeExp], env: Env, store: Sto): Actions = body match {
     case Nil => Action.value(IsSchemeLattice[V].inject(false), store)
     case List(exp) => Action.eval(exp, env, store)
     case exp :: rest => Action.push(FrameBegin(rest, env), exp, env, store)
+  }
+
+  def evalDoBody(toeval: List[SchemeExp], vars: List[(Identifier, V, Option[SchemeExp])], test: SchemeExp, finals: List[SchemeExp], commands: List[SchemeExp], t: Time, env: Env, store: Sto): Actions = toeval match {
+    case Nil => evalDoStep(Nil, vars, test, finals, commands, t, env, store)
+    case exp :: rest => Action.push(FrameDoBody(rest, vars, test, finals, commands, env), exp, env, store)
+  }
+  def evalDoStep(vars: List[(Identifier, V, Option[SchemeExp])], toeval: List[(Identifier, V, Option[SchemeExp])], test: SchemeExp, finals: List[SchemeExp], commands: List[SchemeExp], t: Time, env: Env, store: Sto): Actions = toeval match {
+    case Nil =>
+      val vars2 = vars.reverse
+      val store2 = vars2.foldLeft(store)({
+        case (store, (variable, value, None)) => store
+        case (store, (variable, value, Some(step))) => env.lookup(variable.name) match {
+          case Some(a) => store.update(a, value)
+          case None => throw new Exception(s"unbounded variable $variable") // TODO: it SHOULD be bound
+        }
+      })
+      Action.push(FrameDoTest(vars, test, finals, commands, env), test, env, store2)
+    case (variable, v, None) :: rest =>
+      evalDoStep((variable, v, None) :: vars, rest, test, finals, commands, t, env, store)
+    case (variable, _, Some(step)) :: rest =>
+      Action.push(FrameDoStep(vars, variable, Some(step), rest, test, finals, commands, env), step, env, store)
   }
 
   def conditional(v: V, t: => Actions, f: => Actions): Actions =
@@ -65,8 +90,9 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
   protected def evalValue(v: Value): Option[V] = v match {
     case ValueString(s) => Some(IsSchemeLattice[V].inject(s))
     case ValueInteger(n) => Some(IsSchemeLattice[V].inject(n))
-    case ValueFloat(n) => Some(IsSchemeLattice[V].inject(n))
+    case ValueReal(n) => Some(IsSchemeLattice[V].inject(n))
     case ValueBoolean(b) => Some(IsSchemeLattice[V].inject(b))
+    case ValueCharacter(c) => Some(IsSchemeLattice[V].inject(c))
     case _ => None
   }
 
@@ -94,7 +120,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       case ValueCharacter(c) => IsSchemeLattice[V].inject(c)
       case ValueSymbol(sym) => IsSchemeLattice[V].injectSymbol(sym) /* shouldn't happen */
       case ValueInteger(n) => IsSchemeLattice[V].inject(n)
-      case ValueFloat(n) => IsSchemeLattice[V].inject(n)
+      case ValueReal(n) => IsSchemeLattice[V].inject(n)
       case ValueBoolean(b) => IsSchemeLattice[V].inject(b)
       case ValueNil => IsSchemeLattice[V].nil
     }, store)
@@ -119,6 +145,12 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       })
       val exp = bindings.head._2
       Action.push(FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1), exp, env1, store1)
+    case SchemeNamedLet(name, bindings, body, pos) =>
+      val fexp = SchemeLambda(bindings.map(_._1), body, pos)
+      val a = Address[Addr].variable(name, JoinLattice[V].bottom, t)
+      val env2 = env.extend(name.name, a)
+      val f = IsSchemeLattice[V].inject[SchemeExp, Addr]((fexp, env2))
+      funcallArgs(f, fexp, List(), bindings.map(_._2), env2, store.extend(a, f), t)
     case SchemeSet(variable, exp, _) => Action.push(FrameSet(variable, env), exp, env, store)
     case SchemeBegin(body, _) => evalBody(body, env, store)
     case SchemeCond(Nil, _) => Action.error(NotSupported("cond without clauses"))
@@ -136,6 +168,10 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       val store1 = store.extend(a, v)
       Action.value(v, store)
     }
+    case SchemeDo(Nil, test, finals, commands, pos) =>
+      Action.push(FrameDoTest(Nil, test, finals, commands, env), test, env, store)
+    case SchemeDo((name, init, step) :: vars, test, finals, commands, pos) =>
+      Action.push(FrameDoInit(List(), name, step, vars, test, finals, commands, env), init, env, store)
     case SchemeVar(variable) => env.lookup(variable.name) match {
       case Some(a) => store.lookup(a) match {
         case Some(v) => Action.value(v, store, Set(EffectReadVariable(a)))
@@ -192,7 +228,10 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
         })
     case FrameCase(clauses, default, env) => {
       val fromClauses = clauses.flatMap({ case (values, body) =>
-        if (values.exists(v2 => evalValue(v2.value).exists(v2 => IsSchemeLattice[V].subsumes(v, v2)))) {
+        if (values.exists({
+          case SchemeValue(ValueSymbol(s), _) =>
+            IsSchemeLattice[V].subsumes(IsSchemeLattice[V].injectSymbol(s), v)
+          case v2 => evalValue(v2.value).exists(v2 => IsSchemeLattice[V].subsumes(v, v2)) })) {
           /* TODO: precision could be improved by restricting v to v2 */
           evalBody(body, env, store)
         } else {
@@ -212,6 +251,25 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
     case FrameOr(e :: rest, env) =>
       conditional(v, Action.value(v, store), Action.push(FrameOr(rest, env), e, env, store))
     case FrameDefine(name, env) => throw new Exception("TODO: define not handled (no global environment)")
+    case FrameDoInit(vars, name, step, Nil, test, finals, commands, env) =>
+      val vars2 = ((name, v, step) :: vars).reverse
+      val addresses = vars2.map({ case (variable, value, _) => Address[Addr].variable(variable, value, t) })
+      val (env2, store2) = vars2.zip(addresses).foldLeft((env, store))({
+        case ((env, store), ((variable, value, _), a)) => (env.extend(variable.name, a), store.extend(a, value))
+      })
+      Action.push(FrameDoTest(vars2, test, finals, commands, env2), test, env2, store2)
+    case FrameDoInit(vars, name, step, (name2, init, step2) :: toeval, test, finals, commands, env) =>
+      Action.push(FrameDoInit((name, v, step) :: vars, name2, step2, toeval, test, finals, commands, env), init, env, store)
+    case FrameDoTest(vars, test, finals, commands, env) =>
+      conditional(v,
+        /* eval to true, run finals */
+        evalBody(finals, env, store),
+        /* eval to false, run commands and keep iterating */
+        evalDoBody(commands, vars, test, finals, commands, t, env, store))
+    case FrameDoBody(toeval, vars, test, finals, commands, env) =>
+      evalDoBody(toeval, vars, test, finals, commands, t, env, store)
+    case FrameDoStep(vars, variable, step, toeval, test, finals, commands, env) =>
+      evalDoStep((variable, v, step) :: vars, toeval, test, finals, commands, t, env, store)
   }
 
   def parse(program: String): SchemeExp = Scheme.parse(program)

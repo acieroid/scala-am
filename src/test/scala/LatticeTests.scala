@@ -115,15 +115,15 @@ object LatticeProperties {
       implicit val arb = gen.anyArb
       newProperties("IntLattice") { p =>
         p.include(latticeElement.laws[I])
-        p.property("toFloat(⊥) = ⊥") =
-          l.intLatticeLaw.toFloatPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ toFloat(a) ⊑ toFloat(b)") = forAll { (b: I) =>
+        p.property("toReal(⊥) = ⊥") =
+          l.intLatticeLaw.toRealPreservesBottom
+        p.property("∀ a, b: a ⊑ b ⇒ toReal(a) ⊑ toReal(b)") = forAll { (b: I) =>
           forAll(gen.le(b)) { (a: I) =>
-            l.intLatticeLaw.toFloatIsMonotone(a, b)
+            l.intLatticeLaw.toRealIsMonotone(a, b)
           }
         }
-        p.property("∀ a: a.toFloat ⊑ toFloat(inject(a))") =
-          forAll(l.intLatticeLaw.toFloatIsSound _)
+        p.property("∀ a: a.toReal ⊑ toReal(inject(a))") =
+          forAll(l.intLatticeLaw.toRealIsSound _)
         p.property("random(⊥) = ⊥") =
           l.intLatticeLaw.randomPreservesBottom
         p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
@@ -163,15 +163,15 @@ object LatticeProperties {
           forAll(l.intLatticeLaw.timesIsAssociative _)
         p.property("∀ a, b: times(a, b) == times(b, a)") =
           forAll(l.intLatticeLaw.timesIsCommutative _)
-        p.property("div(a, ⊥) = ⊥ = div(⊥, a)") =
-          forAll(l.intLatticeLaw.divPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ div(a, b) ⊑ div(a, c)") = forAll { (a: I, c: I) =>
+        p.property("quotient(a, ⊥) = ⊥ = quotient(⊥, a)") =
+          forAll(l.intLatticeLaw.quotientPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ quotient(a, b) ⊑ quotient(a, c)") = forAll { (a: I, c: I) =>
           forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.divIsMonotone(a, b, c)
+            l.intLatticeLaw.quotientIsMonotone(a, b, c)
           }
         }
-        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ div(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.divIsSound _)
+        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ quotient(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.quotientIsSound _)
         p.property("modulo(a, ⊥) = ⊥ = modulo(⊥, a)") =
           forAll(l.intLatticeLaw.moduloPreservesBottom _)
         p.property("∀ a, b, c: b ⊑ c ⇒ modulo(a, b) ⊑ modulo(a, c)") = forAll { (a: I, c: I) =>
@@ -181,6 +181,15 @@ object LatticeProperties {
         }
         p.property("∀ a, b ≠ 0: inject(a / b) ⊑ modulo(inject(a), inject(b))") =
           forAll(l.intLatticeLaw.moduloIsSound _)
+        p.property("remainder(a, ⊥) = ⊥ = remainder(⊥, a)") =
+          forAll(l.intLatticeLaw.remainderPreservesBottom _)
+        p.property("∀ a, b, c: b ⊑ c ⇒ remainder(a, b) ⊑ remainder(a, c)") = forAll { (a: I, c: I) =>
+          forAll(gen.le(c)) { (b: I) =>
+            l.intLatticeLaw.remainderIsMonotone(a, b, c)
+          }
+        }
+        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ remainder(inject(a), inject(b))") =
+          forAll(l.intLatticeLaw.remainderIsSound _)
         p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") =
           forAll(l.intLatticeLaw.ltPreservesBottom _)
         p.property("∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c)") = forAll { (a: I, c: I) =>
@@ -204,9 +213,9 @@ object LatticeProperties {
   }
 
   object floatLattice {
-    def laws[F](implicit l: FloatLattice[F], gen: LatticeGenerator[F]): Properties = {
+    def laws[F](implicit l: RealLattice[F], gen: LatticeGenerator[F]): Properties = {
       implicit val arb = gen.anyArb
-      newProperties("FloatLattice") { p =>
+      newProperties("RealLattice") { p =>
         p.include(latticeElement.laws[F])
         p.property("toInt(⊥) = ⊥") =
           l.floatLatticeLaw.toIntPreservesBottom
@@ -344,7 +353,7 @@ abstract class IntLatticeTest[I : IntLattice](gen: LatticeGenerator[I]) extends 
   checkAll(LatticeProperties.intLattice.laws[I])
 }
 
-abstract class FloatLatticeTest[F : FloatLattice](gen: LatticeGenerator[F]) extends Specification {
+abstract class RealLatticeTest[F : RealLattice](gen: LatticeGenerator[F]) extends Specification {
   implicit val g = gen
   checkAll(LatticeProperties.floatLattice.laws[F])
 }
@@ -362,18 +371,18 @@ abstract class SymbolLatticeTest[Sym : SymbolLattice](gen: LatticeGenerator[Sym]
 class ConcreteBoolTest extends BoolLatticeTest(ConcreteBooleanGenerator)
 class ConcreteStringTest extends StringLatticeTest(ConcreteStringGenerator)
 class ConcreteIntTest extends IntLatticeTest(ConcreteIntGenerator)
-class ConcreteFloatTest extends FloatLatticeTest(ConcreteFloatGenerator)
+class ConcreteRealTest extends RealLatticeTest(ConcreteDoubleGenerator)
 class ConcreteCharTest extends CharLatticeTest(ConcreteCharGenerator)
 class ConcreteSymbolTest extends SymbolLatticeTest(ConcreteSymbolGenerator)
 
 class TypeStringTest extends StringLatticeTest(TypeGenerator)
 class TypeIntTest extends IntLatticeTest(TypeGenerator)
-class TypeFloatTest extends FloatLatticeTest(TypeGenerator)
+class TypeRealTest extends RealLatticeTest(TypeGenerator)
 class TypeCharTest extends CharLatticeTest(TypeGenerator)
 class TypeSymbolTest extends SymbolLatticeTest(TypeGenerator)
 
 class ConstantPropagationStringTest extends StringLatticeTest(StringConstantPropagationGenerator)
 class ConstantPropagationIntTest extends IntLatticeTest(IntegerConstantPropagationGenerator)
-class ConstantPropagationFloatTest extends FloatLatticeTest(FloatConstantPropagationGenerator)
+class ConstantPropagationRealTest extends RealLatticeTest(DoubleConstantPropagationGenerator)
 class ConstantPropagationCharTest extends CharLatticeTest(CharConstantPropagationGenerator)
 class ConstantPropagationSymbolTest extends SymbolLatticeTest(SymbolConstantPropagationGenerator)

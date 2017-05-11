@@ -49,7 +49,7 @@ object Config {
     opt[Machine.Value]('m', "machine") action { (x, c) => c.copy(machine = x) } text(s"Abstract machine to use (${Machine.values.mkString(separator)})")
     opt[Lattice.Value]('l', "lattice") action { (x, c) => c.copy(lattice = x) } text(s"Lattice to use (${Lattice.values.mkString(separator)})")
     opt[Language.Value]("lang") action { (x, c) => c.copy(language = x) } text(s"Language to analyze (${Language.values.mkString(separator)})")
-    opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true) } text("Run in concrete mode")
+    opt[Unit]('c', "concrete") action { (_, c) => c.copy(concrete = true, counting = true) } text("Run in concrete mode")
     opt[String]('d', "dotfile") action { (x, c) => c.copy(dotfile = Some(x)) } text("Dot file to output graph to")
     opt[String]('j', "jsonfile") action { (x, c) => c.copy(jsonfile = Some(x)) } text("JSON file to output graph to")
     opt[String]('f', "file") action { (x, c) => c.copy(file = Some(x)) } text("File to read program from")

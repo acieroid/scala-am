@@ -114,16 +114,14 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
   }
 
   class Dispatcher(bound: Option[Int]) extends Actor {
-    import scala.collection.immutable.Queue
+    private case class State(computing: Int, work: List[MachineConfig], results: Results)
 
-    private case class State(computing: Int, work: Queue[MachineConfig], results: Results)
-
-    private def sendWork(actor: ActorRef, state: State): Receive = state.work.dequeueOption match {
-      case Some((item, remainingWork)) =>
+    private def sendWork(actor: ActorRef, state: State): Receive = state.work match {
+      case item :: remainingWork =>
         actor ! Computation(item)
-        val newState = state.copy(computing = state.computing + 1, work = remainingWork)
+        val newState = state.copy(computing = state.computing + 1, work = state.work.tail)
         active(newState)
-      case None => {
+      case Nil => {
         if (state.computing == 0) {
           scala.Console.withOut(logging) {
             /* no more work to do, nothing is computing, stop */
@@ -144,7 +142,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
         context.become(sendWork(sender, newState))
     }
 
-    def receive = active(State(0, Queue[MachineConfig](), Results()))
+    def receive = active(State(0, List[MachineConfig](), Results()))
   }
 
   def run(nworkers: Int, timeout: Option[Long]) {
@@ -158,7 +156,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
     println(s"Scheduling ${work.size} items of work")
     val workers = (1 to nworkers).map(i => system.actorOf(Props(new Worker(timeout)), s"worker-$i"))
     val dispatcher = system.actorOf(Props(new Dispatcher(None)), "dispatcher")
-    dispatcher ! AddWork(work)
+    dispatcher ! AddWork(work.toSet)
     workers.foreach(dispatcher ! SendWork(_))
   }
   def main(args: Array[String]) {
@@ -170,7 +168,7 @@ abstract class Benchmarks(dir: String, inputs: Iterable[MachineConfig], classify
 }
 
 object SimpleBenchmarks extends Benchmarks("test", {
-  val programs = List("ack", "blur", "church", "collatz", "count", "cpstak", "dderiv", "divrec", "eta", "fact", "fib", "gcipd", "grid", "inc", "kcfa2", "kcfa3", "loop2", "mceval", "mut-rec", "mj09", "nqueens", "primtest", "regex", "rotate", "rsa", "scm2java", "sq", "takl", "widen")
+  val programs = List("fact", "fib", "church", "church-2", "church-6", "count", "mceval")
   import Config._
   programs.flatMap(p => Set(MachineConfig(p, machine = Machine.AAM)))
   }, (config => config.machine match {
@@ -200,56 +198,3 @@ object AAMAACP4FBenchmarks extends Benchmarks("test", {
   case Config.Machine.AAC => "AAC"
   case Config.Machine.Free => "P4F"
 }))
-
-/*
-object ConcurrentMonoBenchmarks extends Benchmarks("concurrent", {
-  val programs = List("count2", "count3", "count4", "count5", "count6", "count7", "count8", "count9", "count10", "count11", "count12", "count13", "count14", "count15",
-    "dekker", "fact2",
-    "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "writewriteorderviolation",
-    "fs2", "fs3", "fs4", "fs5", "fs6", "fs7", "fs8", "fs9", "fs10", "fs11", "fs12", "fs13", "fs14", "fs15",
-    "incdec2", "incdec3", "incdec4", "incdec5", "incdec6",
-    "indexer2", "indexer3", "indexer4", "indexer5", "indexer6", "indexer7", "indexer8", "indexer9", "indexer10", "indexer11", "indexer12", "indexer13", "indexer14", "indexer15",
-    "mutex2", "mutex3", "mutex4", "mutex5", "mutex6",
-    "pcounter2", "pcounter3", "pcounter4", "pcounter5", "pcounter6", "pcounter7", "pcounter8", "pcounter9", "pcounter10", "pcounter11", "pcounter12", "pcounter13", "pcounter14", "pcounter15",
-    "philosophers2", "philosophers3", "philosophers4", "philosophers5", "philosophers6",
-    "producer",
-    "race2", "race3", "race4", "race5", "race6",
-    "readers2",
-    "lastzero2"
-  )
-  import Config._
-  programs.flatMap(p =>
-    Set(MachineConfig(p, machine = Machine.ConcurrentAAM),
-      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore)))
-}, (config => config.machine match {
-  case Config.Machine.ConcurrentAAM => "base"
-  case Config.Machine.ConcurrentAAMGlobalStore => "base+GS"
-}))
-
-object ConcurrentExplorationBenchmarks extends Benchmarks("concurrent", {
-  val programs = List("count2", "count3", "count4",
-    "dekker", "fact2",
-    "atomicityviolation", "atomicityviolation2", "mysqlatomicity", "orderviolation", "writewriteorderviolation",
-    "fs2", "fs3", "fs4", "indexer2", "indexer3", "indexer4",
-    "incdec2", "incdec3", "incdec3", "incdec4",
-    "mutex2", "mutex3", "mutex4",
-    "pcounter2", "pcounter3", "pcounter4",
-    "philosophers2", "philosophers3", "producer", "race2", "race3", "race4", "race5",
-    "readers2", "lastzero2"
-  )
-  import Config._
-  programs.flatMap(p =>
-    Set(MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = OneInterleaving),
-      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = AllInterleavings),
-      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingNaive),
-      MachineConfig(p, machine = Machine.ConcurrentAAMGlobalStore, exploration = InterferenceTrackingPath(Some(2))))
-  )},
-  (config => config.exploration match {
-    case OneInterleaving => "one"
-    case AllInterleavings => "all"
-    case InterferenceTrackingNaive => "naive"
-    case InterferenceTrackingSet => "set"
-    case InterferenceTrackingPath(Some(n)) => s"path($n)"
-    case InterferenceTrackingPath(None) => "path"
-  }))
- */

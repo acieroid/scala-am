@@ -1,0 +1,52 @@
+(define (copy from-vector to-vector from-index to-index)
+  (vector-set! to-vector to-index (vector-ref from-vector from-index)))
+
+(define (move from-vector to-vector from-low from-high to-index)
+  (define (move-iter n)
+    (if (<= (+ from-low n) from-high)
+        (begin
+          (copy from-vector to-vector (+ from-low n) (+ to-index n))
+          (move-iter (+ n 1)))))
+  (move-iter 0))
+
+(define (merge vector1 vector2 vector low1 high1 low2 high2 to-index)
+  (define (merge-iter index index1 index2)
+    (cond
+      ((> index1 high1)
+       (move vector2 vector index2 high2 index))
+      ((> index2 high2)
+       (move vector1 vector index1 high1 index))
+      ((< (vector-ref vector1 index1) (vector-ref vector2 index2))
+       (copy vector1 vector index1 index)
+       (merge-iter (+ index 1) (+ index1 1) index2))
+      (else
+        (copy vector2 vector index2 index)
+        (merge-iter (+ index 1) index1 (+ index2 1)))))
+  (merge-iter to-index low1 low2))
+
+(define (bottom-up-merge-sort vector)
+  (define (merge-subs len)
+    (let ((aux-vector (make-vector (vector-length vector))))
+      (define (merge-subs-iter index)
+        (cond
+          ((< index (- (vector-length vector) (* 2 len)))
+           (merge vector vector aux-vector index (+ index len -1) (+ index len)
+                  (+ index len len -1) index)
+           (move aux-vector vector index (+ index len len -1) index)
+           (merge-subs-iter (+ index len len)))
+          ((< index (- (vector-length vector) len))
+           (merge vector vector aux-vector index (+ index len -1) (+ index len)
+                  (- (vector-length vector) 1) index)
+           (move aux-vector vector index (- (vector-length vector) 1) index))
+          (else #f)))
+      (merge-subs-iter 0)))
+  (define (merge-sort-iter len)
+    (if(< len (vector-length vector))
+       (begin
+	 (merge-subs len)
+	 (merge-sort-iter (* 2 len)))))
+  (merge-sort-iter 1))
+
+(let ((aVector (vector 8 3 6 6 0 5 4 2 9 6)))
+  (bottom-up-merge-sort aVector)
+  (equal? aVector (vector 0 2 3 4 5 6 6 6 8 9)))

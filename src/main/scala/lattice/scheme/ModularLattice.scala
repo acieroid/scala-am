@@ -8,7 +8,7 @@ class MakeSchemeLattice[
   S : StringLattice,
   B : BoolLattice,
   I : IntLattice,
-  F : FloatLattice,
+  F : RealLattice,
   C : CharLattice,
   Sym : SymbolLattice
 ](supportsCounting: Boolean) extends SchemeLattice {
@@ -25,8 +25,8 @@ class MakeSchemeLattice[
   case class Int(i: I) extends Value {
     override def toString = IntLattice[I].shows(i)
   }
-  case class Float(f: F) extends Value {
-    override def toString = FloatLattice[F].shows(f)
+  case class Real(f: F) extends Value {
+    override def toString = RealLattice[F].shows(f)
   }
   case class Char(c: C) extends Value {
     override def toString = CharLattice[C].shows(c)
@@ -71,7 +71,7 @@ class MakeSchemeLattice[
         case (Str(s1), Str(s2)) => Str(StringLattice[S].join(s1, s2))
         case (Bool(b1), Bool(b2)) => Bool(BoolLattice[B].join(b1, b2))
         case (Int(i1), Int(i2)) => Int(IntLattice[I].join(i1, i2))
-        case (Float(f1), Float(f2)) => Float(FloatLattice[F].join(f1, f2))
+        case (Real(f1), Real(f2)) => Real(RealLattice[F].join(f1, f2))
         case (Char(c1), Char(c2)) => Char(CharLattice[C].join(c1, c2))
         case _ => throw new CannotJoin[Value](Set(x, y))
       }
@@ -82,16 +82,16 @@ class MakeSchemeLattice[
         case (Str(s1), Str(s2)) => StringLattice[S].subsumes(s1, s2)
         case (Bool(b1), Bool(b2)) => BoolLattice[B].subsumes(b1, b2)
         case (Int(i1), Int(i2)) => IntLattice[I].subsumes(i1, i2)
-        case (Float(f1), Float(f2)) => FloatLattice[F].subsumes(f1, f2)
+        case (Real(f1), Real(f2)) => RealLattice[F].subsumes(f1, f2)
         case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
         case _ => false
       }
     }
-    val name = s"Lattice(${StringLattice[S].name}, ${BoolLattice[B].name}, ${IntLattice[I].name}, ${FloatLattice[F].name}, ${CharLattice[C].name}, ${SymbolLattice[Sym].name})"
+    val name = s"Lattice(${StringLattice[S].name}, ${BoolLattice[B].name}, ${IntLattice[I].name}, ${RealLattice[F].name}, ${CharLattice[C].name}, ${SymbolLattice[Sym].name})"
     val counting = supportsCounting
 
     def isPrimitiveValue(x: Value): Boolean = x match {
-      case Bot | Str(_) | Bool(_) | Int(_) | Float(_) | Char(_) | Symbol(_) | Nil => true
+      case Bot | Str(_) | Bool(_) | Int(_) | Real(_) | Char(_) | Symbol(_) | Nil => true
       case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) => false
     }
 
@@ -100,7 +100,7 @@ class MakeSchemeLattice[
       case Str(s) => StringLattice[S].cardinality(s)
       case Bool(b) => BoolLattice[B].cardinality(b)
       case Int(i) => IntLattice[I].cardinality(i)
-      case Float(f) => FloatLattice[F].cardinality(f)
+      case Real(f) => RealLattice[F].cardinality(f)
       case Char(c) => CharLattice[C].cardinality(c)
       case Symbol(s) => SymbolLattice[Sym].cardinality(s)
       case Nil => CardinalityNumber(1)
@@ -146,8 +146,8 @@ class MakeSchemeLattice[
         case Int(_) => True
         case _ => False
       }
-      case IsFloat => x match {
-        case Float(_) => True
+      case IsReal => x match {
+        case Real(_) => True
         case _ => False
       }
       case IsBoolean => x match {
@@ -165,18 +165,63 @@ class MakeSchemeLattice[
       }
       case Ceiling => x match {
         case Int(n) => Int(n)
-        case Float(n) => Float(FloatLattice[F].ceiling(n))
+        case Real(n) => Real(RealLattice[F].ceiling(n))
         case _ => OperatorNotApplicable("ceiling", List(x.toString))
       }
+      case Floor => x match {
+        case Int(n) => Int(n)
+        case Real(n) => Real(RealLattice[F].floor(n))
+        case _ => OperatorNotApplicable("floor", List(x.toString))
+      }
+      case Round => x match {
+        case Int(n) => Int(n)
+        case Real(n) => Real(RealLattice[F].round(n))
+        case _ => OperatorNotApplicable("round", List(x.toString))
+      }
       case Log => x match {
-        case Int(n) => Float(FloatLattice[F].log(IntLattice[I].toFloat(n)))
-        case Float(n) => Float(FloatLattice[F].log(n))
+        case Int(n) => Real(RealLattice[F].log(IntLattice[I].toReal(n)))
+        case Real(n) => Real(RealLattice[F].log(n))
         case _ => OperatorNotApplicable("log", List(x.toString))
       }
       case Random => x match {
         case Int(n) => Int(IntLattice[I].random(n))
-        case Float(n) => Float(FloatLattice[F].random(n))
+        case Real(n) => Real(RealLattice[F].random(n))
         case _ => OperatorNotApplicable("random", List(x.toString))
+      }
+      case Sin => x match {
+        case Int(n) => Real(RealLattice[F].sin(IntLattice[I].toReal(n)))
+        case Real(n) => Real(RealLattice[F].sin(n))
+        case _ => OperatorNotApplicable("sin", List(x.toString))
+      }
+      case ASin => x match {
+        case Int(n) => Real(RealLattice[F].asin(IntLattice[I].toReal(n)))
+        case Real(n) => Real(RealLattice[F].asin(n))
+        case _ => OperatorNotApplicable("asin", List(x.toString))
+      }
+      case Cos => x match {
+        case Int(n) => Real(RealLattice[F].cos(IntLattice[I].toReal(n)))
+        case Real(n) => Real(RealLattice[F].cos(n))
+        case _ => OperatorNotApplicable("cos", List(x.toString))
+      }
+      case ACos => x match {
+        case Int(n) => Real(RealLattice[F].acos(IntLattice[I].toReal(n)))
+        case Real(n) => Real(RealLattice[F].acos(n))
+        case _ => OperatorNotApplicable("acos", List(x.toString))
+      }
+      case Tan => x match {
+        case Int(n) => Real(RealLattice[F].tan(IntLattice[I].toReal(n)))
+        case Real(n) => Real(RealLattice[F].tan(n))
+        case _ => OperatorNotApplicable("tan", List(x.toString))
+      }
+      case ATan => x match {
+        case Int(n) => Real(RealLattice[F].atan(IntLattice[I].toReal(n)))
+        case Real(n) => Real(RealLattice[F].atan(n))
+        case _ => OperatorNotApplicable("atan", List(x.toString))
+      }
+      case Sqrt => x match {
+        case Int(n) => Real(RealLattice[F].sqrt(IntLattice[I].toReal(n)))
+        case Real(n) => Real(RealLattice[F].sqrt(n))
+        case _ => OperatorNotApplicable("sqrt", List(x.toString))
       }
       case VectorLength => x match {
         case Vec(size, _, _) => Int(size)
@@ -188,8 +233,26 @@ class MakeSchemeLattice[
       }
       case NumberToString => x match {
         case Int(n) => Str(IntLattice[I].toString(n))
-        case Float(n) => Str(FloatLattice[F].toString(n))
+        case Real(n) => Str(RealLattice[F].toString(n))
         case _ => OperatorNotApplicable("number->string", List(x.toString))
+      }
+      case SymbolToString => x match {
+        case Symbol(s) => Str(SymbolLattice[Sym].toString(s))
+        case _ => OperatorNotApplicable("symbol->string", List(x.toString))
+      }
+      case StringToSymbol => x match {
+        case Str(s) => Symbol(StringLattice[S].toSymbol(s))
+        case _ => OperatorNotApplicable("string->symbol", List(x.toString))
+      }
+      case ExactToInexact => x match {
+        case Int(n) => Real(IntLattice[I].toReal(n))
+        case Real(n) => Real(n)
+        case _ => OperatorNotApplicable("exact->inexact", List(x.toString))
+      }
+      case InexactToExact => x match {
+        case Int(n) => Int(n)
+        case Real(n) => Int(RealLattice[F].toInt[I](n)) /* should introduce fractions */
+        case _ => OperatorNotApplicable("inexact->exact", List(x.toString))
       }
     }}
 
@@ -197,56 +260,63 @@ class MakeSchemeLattice[
       op match {
         case Plus => (x, y) match {
           case (Int(n1), Int(n2)) => Int(IntLattice[I].plus(n1, n2))
-          case (Int(n1), Float(n2)) => Float(FloatLattice[F].plus(IntLattice[I].toFloat(n1), n2))
-          case (Float(n1), Int(n2)) => Float(FloatLattice[F].plus(n1, IntLattice[I].toFloat(n2)))
-          case (Float(n1), Float(n2)) => Float(FloatLattice[F].plus(n1, n2))
+          case (Int(n1), Real(n2)) => Real(RealLattice[F].plus(IntLattice[I].toReal(n1), n2))
+          case (Real(n1), Int(n2)) => Real(RealLattice[F].plus(n1, IntLattice[I].toReal(n2)))
+          case (Real(n1), Real(n2)) => Real(RealLattice[F].plus(n1, n2))
           case _ => OperatorNotApplicable("+", List(x.toString, y.toString))
         }
         case Minus => (x, y) match {
           case (Int(n1), Int(n2)) => Int(IntLattice[I].minus(n1, n2))
-          case (Int(n1), Float(n2)) => Float(FloatLattice[F].minus(IntLattice[I].toFloat(n1), n2))
-          case (Float(n1), Int(n2)) => Float(FloatLattice[F].minus(n1, IntLattice[I].toFloat(n2)))
-          case (Float(n1), Float(n2)) => Float(FloatLattice[F].minus(n1, n2))
+          case (Int(n1), Real(n2)) => Real(RealLattice[F].minus(IntLattice[I].toReal(n1), n2))
+          case (Real(n1), Int(n2)) => Real(RealLattice[F].minus(n1, IntLattice[I].toReal(n2)))
+          case (Real(n1), Real(n2)) => Real(RealLattice[F].minus(n1, n2))
           case _ => OperatorNotApplicable("-", List(x.toString, y.toString))
         }
         case Times => (x, y) match {
           case (Int(n1), Int(n2)) => Int(IntLattice[I].times(n1, n2))
-          case (Int(n1), Float(n2)) => Float(FloatLattice[F].times(IntLattice[I].toFloat(n1), n2))
-          case (Float(n1), Int(n2)) => Float(FloatLattice[F].times(n1, IntLattice[I].toFloat(n2)))
-          case (Float(n1), Float(n2)) => Float(FloatLattice[F].times(n1, n2))
+          case (Int(n1), Real(n2)) => Real(RealLattice[F].times(IntLattice[I].toReal(n1), n2))
+          case (Real(n1), Int(n2)) => Real(RealLattice[F].times(n1, IntLattice[I].toReal(n2)))
+          case (Real(n1), Real(n2)) => Real(RealLattice[F].times(n1, n2))
           case _ => OperatorNotApplicable("*", List(x.toString, y.toString))
         }
-        /* TODO: have a div for integer division (i.e., Scheme's quotient), and one for real division (/)). Also, handle division by zero. */
+        case Quotient => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].quotient(n1, n2))
+          case _ => OperatorNotApplicable("quotient", List(x.toString, y.toString))
+        }
         case Div => (x, y) match {
-          case (Int(n1), Int(n2)) => Int(IntLattice[I].div(n1, n2))
-          case (Int(n1), Float(n2)) => Float(FloatLattice[F].div(IntLattice[I].toFloat(n1), n2))
-          case (Float(n1), Int(n2)) => Float(FloatLattice[F].div(n1, IntLattice[I].toFloat(n2)))
-          case (Float(n1), Float(n2)) => Float(FloatLattice[F].div(n1, n2))
+          case (Int(n1), Int(n2)) => Real(IntLattice[I].div[F](n1, n2))
+          case (Int(n1), Real(n2)) => Real(RealLattice[F].div(IntLattice[I].toReal(n1), n2))
+          case (Real(n1), Int(n2)) => Real(RealLattice[F].div(n1, IntLattice[I].toReal(n2)))
+          case (Real(n1), Real(n2)) => Real(RealLattice[F].div(n1, n2))
           case _ => OperatorNotApplicable("/", List(x.toString, y.toString))
         }
         case Modulo => (x, y) match {
           case (Int(n1), Int(n2)) => Int(IntLattice[I].modulo(n1, n2))
           case _ => OperatorNotApplicable("modulo", List(x.toString, y.toString))
         }
+        case Remainder => (x, y) match {
+          case (Int(n1), Int(n2)) => Int(IntLattice[I].remainder(n1, n2))
+          case _ => OperatorNotApplicable("modulo", List(x.toString, y.toString))
+        }
         case Lt => (x, y) match {
           case (Int(n1), Int(n2)) => Bool(IntLattice[I].lt(n1, n2))
-          case (Int(n1), Float(n2)) => Bool(FloatLattice[F].lt(IntLattice[I].toFloat(n1), n2))
-          case (Float(n1), Int(n2)) => Bool(FloatLattice[F].lt(n1, IntLattice[I].toFloat(n2)))
-          case (Float(n1), Float(n2)) => Bool(FloatLattice[F].lt(n1, n2))
+          case (Int(n1), Real(n2)) => Bool(RealLattice[F].lt(IntLattice[I].toReal(n1), n2))
+          case (Real(n1), Int(n2)) => Bool(RealLattice[F].lt(n1, IntLattice[I].toReal(n2)))
+          case (Real(n1), Real(n2)) => Bool(RealLattice[F].lt(n1, n2))
           case _ => OperatorNotApplicable("<", List(x.toString, y.toString))
         }
         case NumEq => (x, y) match {
           case (Int(n1), Int(n2)) => Bool(IntLattice[I].eql(n1, n2))
-          case (Int(n1), Float(n2)) => Bool(FloatLattice[F].eql(IntLattice[I].toFloat(n1), n2))
-          case (Float(n1), Int(n2)) => Bool(FloatLattice[F].eql(n1, IntLattice[I].toFloat(n2)))
-          case (Float(n1), Float(n2)) => Bool(FloatLattice[F].eql(n1, n2))
+          case (Int(n1), Real(n2)) => Bool(RealLattice[F].eql(IntLattice[I].toReal(n1), n2))
+          case (Real(n1), Int(n2)) => Bool(RealLattice[F].eql(n1, IntLattice[I].toReal(n2)))
+          case (Real(n1), Real(n2)) => Bool(RealLattice[F].eql(n1, n2))
           case _ => OperatorNotApplicable("number=", List(x.toString, y.toString))
         }
         case Eq => (x, y) match {
           case (Str(s1), Str(s2)) => Bool(StringLattice[S].eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
           case (Bool(b1), Bool(b2)) => Bool(BoolLattice[B].eql(b1, b2))
           case (Int(n1), Int(n2)) => Bool(IntLattice[I].eql(n1, n2))
-          case (Float(n1), Float(n2)) => Bool(FloatLattice[F].eql(n1, n2))
+          case (Real(n1), Real(n2)) => Bool(RealLattice[F].eql(n1, n2))
           case (Char(c1), Char(c2)) => Bool(CharLattice[C].eql(c1, c2))
           case (Symbol(s1), Symbol(s2)) => Bool(SymbolLattice[Sym].eql(s1, s2))
           case (Nil, Nil) => True
@@ -260,12 +330,16 @@ class MakeSchemeLattice[
           case (Str(s1), Str(s2)) => Str(StringLattice[S].append(s1, s2))
           case _ => OperatorNotApplicable("string-append", List(x.toString, y.toString))
         }
+        case StringLt => (x, y) match {
+          case (Str(s1), Str(s2)) => Bool(StringLattice[S].lt(s1, s2))
+          case  _ => OperatorNotApplicable("string<?", List(x.toString, y.toString))
+        }
       }
     }
 
     def inject(x: scala.Int): Value = Int(IntLattice[I].inject(x))
     def intTop: Value = Int(IntLattice[I].top)
-    def inject(x: scala.Float): Value = Float(FloatLattice[F].inject(x))
+    def inject(x: Double): Value = Real(RealLattice[F].inject(x))
     def inject(x: String): Value = Str(StringLattice[S].inject(x))
     def inject(x: scala.Char): Value = Char(CharLattice[C].inject(x))
     def inject(x: Boolean): Value = Bool(BoolLattice[B].inject(x))
@@ -414,7 +488,7 @@ class MakeSchemeLattice[
   }
 
   val isSchemeLattice = new IsSchemeLattice[L] {
-    val name = s"SetLattice(${StringLattice[S].name}, ${BoolLattice[B].name}, ${IntLattice[I].name}, ${FloatLattice[F].name}, ${CharLattice[C].name}, ${SymbolLattice[Sym].name})"
+    val name = s"SetLattice(${StringLattice[S].name}, ${BoolLattice[B].name}, ${IntLattice[I].name}, ${RealLattice[F].name}, ${CharLattice[C].name}, ${SymbolLattice[Sym].name})"
     val counting = supportsCounting
 
     def isTrue(x: L): Boolean = foldMapL(x, isSchemeLatticeValue.isTrue(_))(boolOrMonoid)
@@ -446,7 +520,7 @@ class MakeSchemeLattice[
     def bottom: L = Element(isSchemeLatticeValue.bottom)
     def inject(x: scala.Int): L = Element(isSchemeLatticeValue.inject(x))
     def intTop: L = Element(isSchemeLatticeValue.intTop)
-    def inject(x: scala.Float): L = Element(isSchemeLatticeValue.inject(x))
+    def inject(x: Double): L = Element(isSchemeLatticeValue.inject(x))
     def inject(x: String): L = Element(isSchemeLatticeValue.inject(x))
     def inject(x: scala.Char): L = Element(isSchemeLatticeValue.inject(x))
     def inject(x: Boolean): L = Element(isSchemeLatticeValue.inject(x))

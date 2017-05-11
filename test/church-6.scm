@@ -5,4 +5,4 @@
          (plus (lambda (m n)
                  (lambda (f x)
                    (m f (n f x))))))
-  (plus (inc (inc (inc zero))) (plus (inc (inc zero)) (inc zero))))
+  ((plus (inc (inc (inc zero))) (plus (inc (inc zero)) (inc zero))) (lambda (x) (+ x 1)) 0))

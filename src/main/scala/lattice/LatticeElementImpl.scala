@@ -27,7 +27,7 @@ object Concrete {
   type S = L[String]
   type B = L[Boolean]
   type I = L[Int]
-  type F = L[Float]
+  type F = L[Double]
   type C = L[Char]
   type Sym = L[String]
 
@@ -79,6 +79,13 @@ object Concrete {
         case (Top, _) | (_, Top) => Top
         case (Values(content1), Values(content2)) => Values(content1.foldMap(s1 => content2.map(s2 => s1 + s2)))
       }
+      def lt[B : BoolLattice](s1: S, s2: S): B = (s1, s2) match {
+        case (Values(bot), _) if bot.length == 0 => BoolLattice[B].bottom
+        case (_, Values(bot)) if bot.length == 0 => BoolLattice[B].bottom
+        case (Top, _) | (_, Top) => BoolLattice[B].top
+        case (Values(content1), Values(content2)) => content1.foldMap(s1 => content2.foldMap(s2 => BoolLattice[B].inject(s1 < s2)))
+      }
+      def toSymbol[Sym : SymbolLattice](s: S): Sym = s.foldMap(s => SymbolLattice[Sym].inject(s))
     }
     val boolShow: Show[Boolean] = new Show[Boolean] {
       override def shows(b: Boolean): String = if (b) { "#t" } else { "#f" }
@@ -98,26 +105,37 @@ object Concrete {
 
     implicit val intConcrete: IntLattice[I] = new BaseInstance[Int]("Int") with IntLattice[I] {
       def inject(x: Int): I = Values(ISet.singleton(x))
-      def toFloat[F : FloatLattice](n: I): F = n match {
-        case Top => FloatLattice[F].top
-        case Values(content) => content.foldMap(n => FloatLattice[F].inject(n))
+      def toReal[F : RealLattice](n: I): F = n match {
+        case Top => RealLattice[F].top
+        case Values(content) => content.foldMap(n => RealLattice[F].inject(n))
       }
       def random(n: I): I = n.map(n => SchemeOps.random(n))
       def plus(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 + n2)) }
       def minus(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 - n2)) }
       def times(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 * n2)) }
-      def div(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 / n2)) }
+      def quotient(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 / n2)) }
+      def div[F : RealLattice](n1: I, n2: I): F = n2.guardBot { n1.foldMap(n1 => n2.foldMap(n2 => RealLattice[F].inject(n1 / n2.toDouble))) }
       def modulo(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => SchemeOps.modulo(n1, n2))) }
+      def remainder(n1: I, n2: I): I = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => SchemeOps.remainder(n1, n2))) }
       def lt[B : BoolLattice](n1: I, n2: I): B = n2.guardBot { n1.foldMap(n1 => n2.foldMap(n2 => BoolLattice[B].inject(n1 < n2))) }
       def toString[S : StringLattice](n: I): S = n.foldMap(n => StringLattice[S].inject(n.toString))
     }
 
-    implicit val floatConcrete: FloatLattice[F] = new BaseInstance[Float]("Float") with FloatLattice[F] {
-      def inject(x: Float): F = Values(ISet.singleton(x))
+    implicit val floatConcrete: RealLattice[F] = new BaseInstance[Double]("Real") with RealLattice[F] {
+      def inject(x: Double): F = Values(ISet.singleton(x))
       def toInt[I : IntLattice](n: F): I = n.foldMap(n => IntLattice[I].inject(n.toInt))
       def ceiling(n: F): F = n.map(_.ceil)
-      def log(n: F): F = n.map(n => scala.math.log(n.toDouble).toFloat)
+      def floor(n: F): F = n.map(_.floor)
+      def round(n: F): F = n.map(n => SchemeOps.round(n))
+      def log(n: F): F = n.map(n => scala.math.log(n))
       def random(n: F): F = n.map(n => SchemeOps.random(n))
+      def sin(n: F): F = n.map(n => scala.math.sin(n))
+      def asin(n: F): F = n.map(n => scala.math.asin(n))
+      def cos(n: F): F = n.map(n => scala.math.cos(n))
+      def acos(n: F): F = n.map(n => scala.math.acos(n))
+      def tan(n: F): F = n.map(n => scala.math.sin(n) / scala.math.cos(n)) /* scala.math.tan isn't precise enough */
+      def atan(n: F): F = n.map(n => scala.math.atan(n))
+      def sqrt(n: F): F = n.map(n => scala.math.sqrt(n))
       def plus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 + n2)) }
       def minus(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 - n2)) }
       def times(n1: F, n2: F): F = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 * n2)) }
@@ -134,6 +152,7 @@ object Concrete {
 
     implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym") with SymbolLattice[Sym] {
       def inject(x: String): Sym = Values(ISet.singleton(x))
+      def toString[S : StringLattice](s: Sym): S = s.foldMap(s => StringLattice[S].inject(s))
     }
   }
 }
@@ -258,13 +277,15 @@ class BoundedInteger(bound: Int) {
         case Top => Top
       }
       def inject(x: Int): I = promote(ISet.singleton(x))
-      def toFloat[F : FloatLattice](n: I): F = fold(n, n => FloatLattice[F].inject(n))
+      def toReal[F : RealLattice](n: I): F = fold(n, n => RealLattice[F].inject(n))
       def random(n: I): I = Top
       def plus(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 + n2)))
       def minus(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 - n2)))
       def times(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 * n2)))
-      def div(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 / n2)))
+      def div[F : RealLattice](n1: I, n2: I): F = fold(n1, n1 => fold(n2, n2 => RealLattice[F].inject(n1 / n2.toDouble)))
+      def quotient(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(n1 / n2)))
       def modulo(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(SchemeOps.modulo(n1, n2))))
+      def remainder(n1: I, n2: I): I = foldI(n1, n1 => foldI(n2, n2 => inject(SchemeOps.remainder(n1, n2))))
       def lt[B : BoolLattice](n1: I, n2: I): B = fold(n1, n1 => fold(n2, n2 => BoolLattice[B].inject(n1 < n2)))
       def eql[B : BoolLattice](n1: I, n2: I): B = fold(n1, n1 => fold(n2, n2 => BoolLattice[B].inject(n1 == n2)))
       def toString[S : StringLattice](n: I): S = fold(n, n => StringLattice[S].inject(n.toString))
@@ -347,10 +368,16 @@ object Type {
         case Bottom => IntLattice[I].bottom
       }
       def append(s1: T, s2: T) = (s1, s2) match {
-        case (Bottom, _) => Bottom
-        case (_, Bottom) => Bottom
-        case (Top, _) => Top
-        case (_, Top) => Top
+        case (Bottom, _) | (_, Bottom) => Bottom
+        case (Top, _) | (Top, _) => Top
+      }
+      def lt[B : BoolLattice](s1: T, s2: T) = (s1, s2) match {
+        case (Bottom, _) | (_, Bottom) => BoolLattice[B].bottom
+        case (Top, _) | (Top, _) => BoolLattice[B].top
+      }
+      def toSymbol[Sym : SymbolLattice](s: S) = s match {
+        case Bottom => SymbolLattice[Sym].bottom
+        case Top => SymbolLattice[Sym].top
       }
     }
     implicit val typeIsBoolean: BoolLattice[B] = new BaseInstance("Bool") with BoolLattice[B] {
@@ -369,16 +396,21 @@ object Type {
     }
     implicit val typeIsInteger: IntLattice[I] = new BaseInstance("Int") with IntLattice[I] {
       def inject(x: Int): T = Top
-      def toFloat[F : FloatLattice](n: T): F = n match {
-        case Top => FloatLattice[F].top
-        case Bottom => FloatLattice[F].bottom
+      def toReal[F : RealLattice](n: T): F = n match {
+        case Top => RealLattice[F].top
+        case Bottom => RealLattice[F].bottom
       }
       def random(n: T): T = n
       def plus(n1: T, n2: T): T = meet(n1, n2)
       def minus(n1: T, n2: T): T = meet(n1, n2)
       def times(n1: T, n2: T): T = meet(n1, n2)
-      def div(n1: T, n2: T): T = meet(n1, n2)
+      def div[F : RealLattice](n1: T, n2: T): F = (n1, n2) match {
+        case(Top, Top) => RealLattice[F].top
+        case _ => RealLattice[F].bottom
+      }
+      def quotient(n1: T, n2: T): T = meet(n1, n2)
       def modulo(n1: T, n2: T): T = meet(n1, n2)
+      def remainder(n1: T, n2: T): T = meet(n1, n2)
       def lt[B : BoolLattice](n1: T, n2: T): B = (n1, n2) match {
         case (Top, Top) => BoolLattice[B].top
         case _ => BoolLattice[B].bottom
@@ -388,15 +420,24 @@ object Type {
         case Bottom => StringLattice[S].bottom
       }
     }
-    implicit val typeIsFloat: FloatLattice[F] = new BaseInstance("Float") with FloatLattice[F] {
-      def inject(x: Float): T = Top
+    implicit val typeIsReal: RealLattice[F] = new BaseInstance("Real") with RealLattice[F] {
+      def inject(x: Double): T = Top
       def toInt[I : IntLattice](n: T): I = n match {
         case Top => IntLattice[I].top
         case Bottom => IntLattice[I].bottom
       }
       def ceiling(n: T): T = n
+      def floor(n: T): T = n
+      def round(n: T): T = n
       def log(n: T): T = n
       def random(n: T): T = n
+      def sin(n: T): T = n
+      def asin(n: T): T = n
+      def cos(n: T): T = n
+      def acos(n: T): T = n
+      def tan(n: T): T = n
+      def atan(n: T): T = n
+      def sqrt(n: T): T = n
       def plus(n1: T, n2: T): T = meet(n1, n2)
       def minus(n1: T, n2: T): T = meet(n1, n2)
       def times(n1: T, n2: T): T = meet(n1, n2)
@@ -415,6 +456,7 @@ object Type {
     }
     implicit val typeIsSymbol: SymbolLattice[Sym] = new BaseInstance("Sym") with SymbolLattice[Sym] {
       def inject(sym: String): T = Top
+      def toString[S : StringLattice](s: T): S = StringLattice[S].top
     }
   }
 }
@@ -427,7 +469,7 @@ object ConstantPropagation {
 
   type S = L[String]
   type I = L[Int]
-  type F = L[Float]
+  type F = L[Double]
   type C = L[Char]
   type Sym = L[String]
 
@@ -509,19 +551,27 @@ object ConstantPropagation {
         case Bottom => IntLattice[I].bottom
       }
       def append(s1: S, s2: S) = (s1, s2) match {
-        case (Bottom, _) => Bottom
-        case (_, Bottom) => Bottom
-        case (Top, _) => Top
-        case (_, Top) => Top
+        case (Bottom, _) | (_, Bottom) => Bottom
+        case (Top, _) | (_, Top) => Top
         case (Constant(x), Constant(y)) => Constant(x ++ y)
+      }
+      def lt[B : BoolLattice](s1: S, s2: S) = (s1, s2) match {
+        case (Bottom, _) | (_, Bottom) => BoolLattice[B].bottom
+        case (Top, _) | (_, Top) => BoolLattice[B].top
+        case (Constant(x), Constant(y)) => BoolLattice[B].inject(x < y)
+      }
+      def toSymbol[Sym : SymbolLattice](s: S) = s match {
+        case Bottom => SymbolLattice[Sym].bottom
+        case Top => SymbolLattice[Sym].top
+        case Constant(x) => SymbolLattice[Sym].inject(x)
       }
     }
     implicit val intCP: IntLattice[I] = new BaseInstance[Int]("Int") with IntLattice[I] {
       def inject(x: Int): I = Constant(x)
-      def toFloat[F : FloatLattice](n: I): F = n match {
-        case Top => FloatLattice[F].top
-        case Constant(x) => FloatLattice[F].inject(x)
-        case Bottom => FloatLattice[F].bottom
+      def toReal[F : RealLattice](n: I): F = n match {
+        case Top => RealLattice[F].top
+        case Constant(x) => RealLattice[F].inject(x)
+        case Bottom => RealLattice[F].bottom
       }
       def random(n: I): I = n match {
         case Constant(x) => Constant(SchemeOps.random(x))
@@ -537,8 +587,14 @@ object ConstantPropagation {
       def plus(n1: I, n2: I): I = binop(_ + _, n1, n2)
       def minus(n1: I, n2: I): I = binop(_ - _, n1, n2)
       def times(n1: I, n2: I): I = binop(_ * _, n1, n2)
-      def div(n1: I, n2: I): I = binop(_ / _, n1, n2)
+      def div[F : RealLattice](n1: I, n2: I): F = (n1, n2) match {
+        case (Top, _) | (_, Top) => RealLattice[F].top
+        case (Constant(x), Constant(y)) => RealLattice[F].inject(x / y.toDouble)
+        case _ => RealLattice[F].bottom
+      }
+      def quotient(n1: I, n2: I): I = binop(_ / _, n1, n2)
       def modulo(n1: I, n2: I): I = binop(SchemeOps.modulo _, n1, n2)
+      def remainder(n1: I, n2: I): I = binop(SchemeOps.remainder _, n1, n2)
       def lt[B : BoolLattice](n1: I, n2: I): B = (n1, n2) match {
         case (Top, Top) => BoolLattice[B].top
         case (Top, Constant(_)) => BoolLattice[B].top
@@ -552,8 +608,8 @@ object ConstantPropagation {
         case Bottom => StringLattice[S].bottom
       }
     }
-    implicit val floatCP: FloatLattice[F] = new BaseInstance[Float]("Float") with FloatLattice[F] {
-      def inject(x: Float) = Constant(x)
+    implicit val floatCP: RealLattice[F] = new BaseInstance[Double]("Real") with RealLattice[F] {
+      def inject(x: Double) = Constant(x)
       def toInt[I : IntLattice](n: F): I = n match {
         case Top => IntLattice[I].top
         case Constant(x) => IntLattice[I].inject(x.toInt)
@@ -563,15 +619,51 @@ object ConstantPropagation {
         case Constant(x) => Constant(x.ceil)
         case _ => n
       }
+      def floor(n: F): F = n match {
+        case Constant(x) => Constant(x.floor)
+        case _ => n
+      }
+      def round(n: F): F = n match {
+        case Constant(x) => Constant(SchemeOps.round(x))
+        case _ => n
+      }
       def random(n: F): F = n match {
         case Constant(x) => Constant(SchemeOps.random(x))
         case _ => n
       }
       def log(n: F): F = n match {
-        case Constant(x) => Constant(scala.math.log(x.toDouble).toFloat)
+        case Constant(x) => Constant(scala.math.log(x))
         case _ => n
       }
-      private def binop(op: (Float, Float) => Float, n1: F, n2: F) = (n1, n2) match {
+      def sin(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.sin(x))
+        case _ => n
+      }
+      def asin(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.asin(x))
+        case _ => n
+      }
+      def cos(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.cos(x))
+        case _ => n
+      }
+      def acos(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.acos(x))
+        case _ => n
+      }
+      def tan(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.tan(x))
+        case _ => n
+      }
+      def atan(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.atan(x))
+        case _ => n
+      }
+      def sqrt(n: F): F = n match {
+        case Constant(x) => Constant(scala.math.sqrt(x))
+        case _ => n
+      }
+      private def binop(op: (Double, Double) => Double, n1: F, n2: F) = (n1, n2) match {
         case (Top, Top) => Top
         case (Top, Constant(_)) => Top
         case (Constant(_), Top) => Top
@@ -600,6 +692,11 @@ object ConstantPropagation {
     }
     implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol") with SymbolLattice[Sym] {
       def inject(x: String) = Constant(x)
+      def toString[S : StringLattice](s: Sym): S = s match {
+        case Top => StringLattice[S].top
+        case Constant(x) => StringLattice[S].inject(x)
+        case Bottom => StringLattice[S].bottom
+      }
     }
   }
 }

@@ -89,7 +89,7 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
       case (res, addrs) => ((Untainted, res), addrs) })
     def inject(x: Int): L = (Untainted, IsSchemeLattice[Abs].inject(x))
     def intTop: L = (Untainted, IsSchemeLattice[Abs].intTop)
-    def inject(x: Float): L = (Untainted, IsSchemeLattice[Abs].inject(x))
+    def inject(x: Double): L = (Untainted, IsSchemeLattice[Abs].inject(x))
     def inject(x: String): L = (Untainted, IsSchemeLattice[Abs].inject(x))
     def inject(x: Char): L = (Untainted, IsSchemeLattice[Abs].inject(x))
     def inject(x: Boolean): L = (Untainted, IsSchemeLattice[Abs].inject(x))

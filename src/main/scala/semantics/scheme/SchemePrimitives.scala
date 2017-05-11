@@ -12,26 +12,42 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def isSymbol = abs.unaryOp(UnaryOperator.IsSymbol) _
   def isString = abs.unaryOp(UnaryOperator.IsString) _
   def isInteger = abs.unaryOp(UnaryOperator.IsInteger) _
-  def isFloat = abs.unaryOp(UnaryOperator.IsFloat) _
+  def isReal = abs.unaryOp(UnaryOperator.IsReal) _
   def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
   def isVector = abs.unaryOp(UnaryOperator.IsVector) _
   def ceiling = abs.unaryOp(UnaryOperator.Ceiling) _
+  def floor = abs.unaryOp(UnaryOperator.Floor) _
+  def round = abs.unaryOp(UnaryOperator.Round) _
   def log = abs.unaryOp(UnaryOperator.Log) _
   def not = abs.unaryOp(UnaryOperator.Not) _
   def random = abs.unaryOp(UnaryOperator.Random) _
+  def sin = abs.unaryOp(UnaryOperator.Sin) _
+  def asin = abs.unaryOp(UnaryOperator.ASin) _
+  def cos = abs.unaryOp(UnaryOperator.Cos) _
+  def acos = abs.unaryOp(UnaryOperator.ACos) _
+  def tan = abs.unaryOp(UnaryOperator.Tan) _
+  def atan = abs.unaryOp(UnaryOperator.ATan) _
+  def sqrt = abs.unaryOp(UnaryOperator.Sqrt) _
   def vectorLength = abs.unaryOp(UnaryOperator.VectorLength) _
   def stringLength = abs.unaryOp(UnaryOperator.StringLength) _
   def numberToString = abs.unaryOp(UnaryOperator.NumberToString) _
+  def symbolToString = abs.unaryOp(UnaryOperator.SymbolToString) _
+  def stringToSymbol = abs.unaryOp(UnaryOperator.StringToSymbol) _
+  def inexactToExact = abs.unaryOp(UnaryOperator.InexactToExact) _
+  def exactToInexact = abs.unaryOp(UnaryOperator.ExactToInexact) _
 
   def plus = abs.binaryOp(BinaryOperator.Plus) _
   def minus = abs.binaryOp(BinaryOperator.Minus) _
   def times = abs.binaryOp(BinaryOperator.Times) _
   def div = abs.binaryOp(BinaryOperator.Div) _
+  def quotient = abs.binaryOp(BinaryOperator.Quotient) _
   def modulo = abs.binaryOp(BinaryOperator.Modulo) _
+  def remainder = abs.binaryOp(BinaryOperator.Remainder) _
   def lt = abs.binaryOp(BinaryOperator.Lt) _
   def numEq = abs.binaryOp(BinaryOperator.NumEq) _
   def eqq = abs.binaryOp(BinaryOperator.Eq) _
   def stringAppend = abs.binaryOp(BinaryOperator.StringAppend) _
+  def stringLt = abs.binaryOp(BinaryOperator.StringLt) _
 
   abstract class NoStoreOperation(val name: String, val nargs: Option[Int] = None) extends Primitive[Addr, Abs] {
     def call(args: List[Abs]): MayFail[Abs] = MayFailError(List(ArityError(name, nargs.getOrElse(-1), args.length)))
@@ -97,12 +113,45 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Div extends NoStoreOperation("/") {
     override def call(args: List[Abs]) = args match {
       case Nil => MayFailError(List(VariadicArityError(name, 1, 0)))
-      case x :: rest => Times.call(rest) >>= (div(x, _))
+      case x :: rest => for {
+        multrest <- Times.call(rest)
+        r <- div(x, multrest)
+        fl <- floor(r)
+        isexact <- eqq(r, fl)
+        xisint <- isInteger(x)
+        multrestisint <- isInteger(multrest)
+        convert = abs.and(isexact, abs.and(xisint, multrestisint))
+        exr <- inexactToExact(r)
+      } yield {
+        val t = if (abs.isTrue(convert)) { exr } else { abs.bottom }
+        val f = if (abs.isFalse(convert)) { r } else { abs.bottom }
+        abs.join(t, f)
+      }
     }
   }
   object Quotient extends NoStoreOperation("quotient", Some(2)) {
-    override def call(x: Abs, y: Abs) = div(x, y)
+    override def call(x: Abs, y: Abs) = quotient(x, y)
   }
+  object Expt extends NoStoreOperation("expt") {
+    def expt(x: Abs, y: Abs, visited: Set[Abs]): MayFail[Abs] =
+      if (visited.contains(y)) {
+        abs.bottom.point[MayFail]
+      } else {
+        numEq(y, abs.inject(0)) >>= { yiszero =>
+          val t = if (abs.isTrue(yiszero)) { abs.inject(1).point[MayFail] } else { abs.bottom.point[MayFail] }
+          val f = if (abs.isFalse(yiszero)) {
+            minus(y, abs.inject(1)) >>= { y1 =>
+              expt(x, y1, visited + y) >>= { exptrest =>
+                times(x, exptrest)
+              }
+            }
+          } else { abs.bottom.point[MayFail] }
+          MayFail.monoid[Abs].append(t, f)
+        }
+      }
+    override def call(x: Abs, y: Abs) = expt(x, y, Set())
+  }
+
   object LessThan extends NoStoreOperation("<", Some(2)) {
     override def call(x: Abs, y: Abs) = lt(x, y) /* TODO: < should accept any number of arguments (same for <= etc.) */
   }
@@ -113,7 +162,19 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     } yield abs.or(ltres, eqres)
   }
   object NumEq extends NoStoreOperation("=", Some(2)) {
-    override def call(x: Abs, y: Abs) = numEq(x, y)
+    def eq(first: Abs, l: List[Abs]): MayFail[Abs] = l match {
+      case Nil => abs.inject(true)
+      case x :: rest => numEq(first, x) >>= (feqx => {
+        for {
+          t <- if (abs.isTrue(feqx)) { eq(first, rest) } else { abs.bottom.point[MayFail] }
+          f = if (abs.isFalse(feqx)) { abs.inject(false) } else { abs.bottom }
+        } yield abs.join(t, f)
+      })
+    }
+    override def call(args: List[Abs]) = args match {
+      case Nil => abs.inject(true)
+      case x :: rest => eq(x, rest)
+    }
   }
   object GreaterThan extends NoStoreOperation(">", Some(2)) {
     override def call(x: Abs, y: Abs) = LessOrEqual.call(x, y) >>= not
@@ -124,14 +185,67 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Modulo extends NoStoreOperation("modulo", Some(2)) {
     override def call(x: Abs, y: Abs) = modulo(x, y)
   }
+  object Remainder extends NoStoreOperation("remainder", Some(2)) {
+    override def call(x: Abs, y: Abs) = remainder(x, y)
+  }
   object Random extends NoStoreOperation("random", Some(1)) {
     override def call(x: Abs) = random(x)
   }
   object Ceiling extends NoStoreOperation("ceiling", Some(1)) {
     override def call(x: Abs) = ceiling(x)
   }
+  object Floor extends NoStoreOperation("floor", Some(1)) {
+    override def call(x: Abs) = floor(x)
+  }
+  object Round extends NoStoreOperation("round", Some(1)) {
+    override def call(x: Abs) = round(x)
+  }
   object Log extends NoStoreOperation("log", Some(1)) {
     override def call(x: Abs) = log(x)
+  }
+  object Sin extends NoStoreOperation("sin", Some(1)) {
+    override def call(x: Abs) = sin(x)
+  }
+  object ASin extends NoStoreOperation("asin", Some(1)) {
+    override def call(x: Abs) = asin(x)
+  }
+  object Cos extends NoStoreOperation("cos", Some(1)) {
+    override def call(x: Abs) = cos(x)
+  }
+  object ACos extends NoStoreOperation("acos", Some(1)) {
+    override def call(x: Abs) = acos(x)
+  }
+  object Tan extends NoStoreOperation("tan", Some(1)) {
+    override def call(x: Abs) = tan(x)
+  }
+  object ATan extends NoStoreOperation("atan", Some(1)) {
+    override def call(x: Abs) = atan(x)
+  }
+  object Sqrt extends NoStoreOperation("sqrt", Some(1)) {
+    override def call(x: Abs) = lt(x, abs.inject(0)) >>= { signtest =>
+      val t: MayFail[Abs] = if (abs.isFalse(signtest) /* n >= 0 */) {
+        for {
+          r <- sqrt(x)
+          fl <- floor(r)
+          argisexact <- isInteger(x)
+          resisexact <- eqq(r, fl)
+          convert = abs.and(argisexact, resisexact)
+          exr <- inexactToExact(r)
+        } yield {
+          val tt = if (abs.isTrue(convert)) { exr } else { abs.bottom }
+          val tf = if (abs.isFalse(convert)) { r } else { abs.bottom }
+          abs.join(tt, tf)
+        }
+      } else { abs.bottom.point[MayFail] }
+      val f: MayFail[Abs] = if (abs.isTrue(signtest) /* n < 0 */ ) { MayFailError(List(OperatorNotApplicable("sqrt", List(x.toString)))) } else { MayFailSuccess(abs.bottom) }
+      MayFail.monoid[Abs].append(t, f)
+    }
+  }
+  object ExactToInexact extends NoStoreOperation("exact->inexact", Some(1)) {
+    override def call(x: Abs) = exactToInexact(x)
+  }
+  object InexactToExact extends NoStoreOperation("inexact->exact", Some(1)) {
+    override def call(x: Abs) = inexactToExact(x)
   }
   /** (define (zero? x) (= x 0)) */
   object Zerop extends NoStoreOperation("zero?", Some(1)) {
@@ -228,8 +342,8 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Realp extends NoStoreOperation("real?", Some(1)) {
     override def call(x: Abs) = for {
       isint <- isInteger(x)
-      isfloat <- isFloat(x)
-    } yield abs.or(isint, isfloat)
+      isreal <- isReal(x)
+    } yield abs.or(isint, isreal)
   }
   object Numberp extends NoStoreOperation("number?", Some(1)) {
     override def call(x: Abs) = Realp.call(x) /* No support for complex number, so number? is equivalent as real? */
@@ -249,11 +363,20 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object NumberToString extends NoStoreOperation("number->string", Some(1)) {
     override def call(x: Abs) = numberToString(x)
   }
+  object SymbolToString extends NoStoreOperation("symbol->string", Some(1)) {
+    override def call(x: Abs) = symbolToString(x)
+  }
+  object StringToSymbol extends NoStoreOperation("string->symbol", Some(1)) {
+    override def call(x: Abs) = stringToSymbol(x)
+  }
   object StringAppend extends NoStoreOperation("string-append") {
     override def call(args: List[Abs]) = args match {
       case Nil => MayFailSuccess(abs.inject(""))
       case x :: rest => call(rest) >>= (stringAppend(x, _))
     }
+  }
+  object StringLt extends NoStoreOperation("string<?", Some(2)) {
+    override def call(x: Abs, y: Abs) = stringLt(x, y)
   }
   object StringLength extends NoStoreOperation("string-length", Some(1)) {
     override def call(x: Abs) = stringLength(x)
@@ -413,6 +536,33 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       length(l, Set()).map({ case (v, effs) => (v, store, effs) })
     }
   }
+
+  object ListPrim extends StoreOperation("list", None) {
+    override def call[Exp: Expression, Time: Timestamp](fexp: Exp,
+                                                        args: List[(Exp, Abs)],
+                                                        store: Store[Addr, Abs],
+                                                        t: Time): MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])] = {
+      val pos = implicitly[Expression[Exp]].pos(fexp)
+
+      val nilv = abs.nil
+      val nila = Address[Addr].variable(Identifier("_nil_", pos), abs.bottom, t) // Hack to make sure addresses use the position of fexp
+      val init: (Abs, Addr, Store[Addr, Abs]) = (nilv, nila, store)
+      /*
+       * If args is empty, the store should not be extended, so we allocate an address, but only forward it to
+       * the next iteration, so that this next iteration (if there is one) can use it to extend the store.
+       */
+      val result = args.zipWithIndex.reverse.foldLeft(init)({
+        case ((cdrv, cdra, store), ((argExp, argv), index)) =>
+          val cara = Address[Addr].cell(argExp, t)
+          val cons = abs.cons(cara, cdra)
+          val newStore = store.extend(cdra, cdrv).extend(cara, argv)
+          val paira = Address[Addr].variable(Identifier(s"_cons_${index}", pos), abs.bottom, t) // Hack to make sure addresses use the position of fexp
+          (abs.cons(cara, cdra), paira, newStore)
+      })
+      MayFailSuccess((result._1, result._3, Set()))
+    }
+  }
+
   /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
   object Listp extends StoreOperation("list?", Some(1)) {
     override def call(l: Abs, store: Store[Addr, Abs]) = {
@@ -448,18 +598,22 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
 
   object MakeVector extends Primitive[Addr, Abs] {
     val name = "make-vector"
-    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
-      case (_, size) :: (initexp, init) :: Nil =>
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = {
+      def createVec(size: Abs, init: Abs, initaddr: Addr): MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])]  = {
         isInteger(size) >>= (isint =>
           if (abs.isTrue(isint)) {
-            val a = Address[Addr].cell(fexp, t)
-            val initaddr = Address[Addr].cell(initexp, t)
-            abs.vector(a, size, initaddr).map({ case (va, vector) =>
-              (va, store.extend(a, vector).extend(initaddr, init), Set())})
+            val vaddr = Address[Addr].cell(fexp, t)
+            abs.vector(vaddr, size, initaddr).map({ case (va, vector) =>
+              (va, store.extend(vaddr, vector).extend(initaddr, init), Set.empty)})
           } else {
             MayFailError(List(TypeError("make-vector", "first operand", "integer", size.toString)))
           })
-      case l => MayFailError(List(ArityError(name, 2, l.size)))
+      }
+      args match {
+        case (_, size) :: Nil => createVec(size, abs.inject(false), Address[Addr].primitive("__undef-vec-element__"))
+        case (_, size) :: (initexp, init) :: Nil => createVec(size, init, Address[Addr].cell(initexp, t))
+        case l => MayFailError(List(ArityError(name, 1, l.size)))
+      }
     }
   }
   object VectorSet extends Primitive[Addr, Abs] {
@@ -551,6 +705,41 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       vectorRef(v, index, store).map({ case (v, effs) => (v, store, effs) })
   }
 
+  /** (define (list-ref l index)
+        (if (pair? l)
+          (if (= index 0)
+            (car l)
+            (list-ref (cdr l) (- index 1)))
+          (error "list-ref applied to a non-list"))) */
+  object ListRef extends StoreOperation("list-ref", Some(2)) {
+    def listRef(l: Abs, index: Abs, visited: Set[(Abs, Abs)], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+      if (visited.contains((l, index))) {
+        (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+      } else {
+        isCons(l) >>= { constest => {
+          val t: MayFail[(Abs, Set[Effect[Addr]])] = if (abs.isTrue(constest)) {
+            numEq(index, abs.inject(0)) >>= { indextest =>
+              val tt = if (abs.isTrue(indextest)) {
+                car(l, store)
+              } else { (abs.bottom, Set.empty[Effect[Addr]]).point[MayFail] }
+              val tf = if (abs.isFalse(indextest)) {
+                minus(index, abs.inject(1)) >>= { index2 => cdr(l, store) >>= {
+                  case (cdrl, effcdr) => listRef(cdrl, index2, visited + ((l, index)), store).map({ case (v, effs) => (v, effs ++ effcdr) }) } }
+              } else { (abs.bottom, Set.empty[Effect[Addr]]).point[MayFail] }
+              MayFail.monoid[(Abs, Set[Effect[Addr]])].append(tt, tf)
+            }
+          } else { (abs.bottom, Set.empty[Effect[Addr]]).point[MayFail] }
+          val f: MayFail[(Abs, Set[Effect[Addr]])] = if (abs.isFalse(constest)) {
+            MayFailError(List(OperatorNotApplicable("list-ref: first argument not a list or index out of bounds", List(l.toString, index.toString))))
+          } else { (abs.bottom, Set.empty[Effect[Addr]]).point[MayFail] }
+          MayFail.monoid[(Abs, Set[Effect[Addr]])].append(t, f)
+        }}
+      }
+    }
+    override def call(l: Abs, index: Abs, store: Store[Addr, Abs]) =
+      listRef(l, index, Set.empty, store).map({ case (v, effs) => (v, store, effs) })
+  }
+
   /** (define (equal? a b)
         (or (eq? a b)
           (and (null? a) (null? b))
@@ -617,7 +806,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                                 })
                               })
                             } else { MayFailSuccess((abs.bottom, effects1 ++ effects2 ++ effects3)) }
-                            val fftf = if (abs.isFalse(cartest)) { MayFailSuccess((abs.inject(true)), effects1 ++ effects2 ++ effects3) } else { MayFailSuccess((abs.bottom, effects1 ++ effects2 ++ effects3)) }
+                            val fftf = if (abs.isFalse(cartest)) { MayFailSuccess((abs.inject(false)), effects1 ++ effects2 ++ effects3) } else { MayFailSuccess((abs.bottom, effects1 ++ effects2 ++ effects3)) }
                             MayFail.monoid[(Abs, Set[Effect[Addr]])].append(fftt, fftf)
                           }})})})} else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
                     val fff = if (abs.isFalse(constest)) {
@@ -656,16 +845,280 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     }
   }
 
-  /** Bundles all the primitives together */
+  /** (define (member e l) ; member, memq and memv are similar, the difference lies in the comparison function used
+       (if (null? l)
+         #f
+         (if (equal? (car l) e)
+           l
+           (member e (cdr l))))) */
+  abstract class MemberLike(val n: String, eqFn: (Abs, Abs, Store[Addr, Abs]) => MayFail[(Abs, Set[Effect[Addr]])]) extends StoreOperation(n, Some(2)) {
+    def mem(e: Abs, l: Abs, visited: Set[Abs], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+      if (visited.contains(l)) {
+        (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+      } else {
+        isNull(l) >>= { nulltest => {
+          val t = if (abs.isTrue(nulltest)) {
+            (abs.inject(false), Set[Effect[Addr]]()).point[MayFail]
+          } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+          val f = if (abs.isFalse(nulltest)) {
+            car(l, store) >>= { case (carl, careff) =>
+              eqFn(e, carl, store) >>= { case (equaltest, equaleff) =>
+                val ft = if (abs.isTrue(equaltest)) {
+                  (l, careff ++ equaleff).point[MayFail]
+                } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                val ff = if (abs.isFalse(equaltest)) {
+                  cdr(l, store) >>= { case (cdrl, cdreff) =>
+                    mem(e, cdrl, visited + l, store).map({ case (res, effs) => (res, effs ++ careff ++ cdreff) })
+                  }
+                } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                MayFail.monoid[(Abs, Set[Effect[Addr]])].append(ft, ff)
+              }
+            }
+          } else {
+            (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+          }
+          MayFail.monoid[(Abs, Set[Effect[Addr]])].append(t, f)
+        }}
+      }
+    }
+    override def call(e: Abs, l: Abs, store: Store[Addr, Abs]) =
+      mem(e, l, Set.empty, store).map({ case (v, effs) => (v, store, effs) })
+  }
+
+  object Member extends MemberLike("member",
+    (x: Abs, y: Abs, store: Store[Addr, Abs]) => Equal.call(x, y, store).map({ case (res, _ /* unchanged store */, eff) => (res, eff) }))
+  object Memq extends MemberLike("memq",
+    (x: Abs, y: Abs, store: Store[Addr, Abs]) => Eq.call(x, y).map(res => (res, Set.empty)))
+
+  abstract class AssocLike(val n: String, eqFn: (Abs, Abs, Store[Addr, Abs]) => MayFail[(Abs, Set[Effect[Addr]])]) extends StoreOperation(n, Some(2)) {
+    def assoc(e: Abs, l: Abs, visited: Set[Abs], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+      if (visited.contains(l)) {
+        (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+      } else {
+        isNull(l) >>= { nulltest => {
+          val t = if (abs.isTrue(nulltest)) {
+            (abs.inject(false), Set[Effect[Addr]]()).point[MayFail]
+          } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+          val f = if (abs.isFalse(nulltest)) {
+            car(l, store) >>= { case (carl, careff) =>
+              isCons(carl) >>= { constest =>
+                val ft = if (abs.isTrue(constest)) {
+                  car(carl, store) >>= { case (caarl, caareff) =>
+                    eqFn(e, caarl, store) >>= { case (equaltest, equaleff) =>
+                      val ftt = if (abs.isTrue(equaltest)) {
+                        (carl, careff ++ caareff ++ equaleff).point[MayFail]
+                      } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                      val ftf = if (abs.isFalse(equaltest)) {
+                        cdr(l, store) >>= { case (cdrl, cdreff) =>
+                          assoc(e, cdrl, visited + l, store).map({ case (res, effs) => (res, effs ++ careff ++ cdreff ++ equaleff) })
+                        }
+                      } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                      MayFail.monoid[(Abs, Set[Effect[Addr]])].append(ftt, ftf)
+                    }
+                  }
+                } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                val ff = if (abs.isFalse(constest)) {
+                  (abs.inject(false), Set[Effect[Addr]]()).point[MayFail] /* or error? because it's not an alist */
+                } else { (abs.bottom, Set[Effect[Addr]]()).point[MayFail] }
+                MayFail.monoid[(Abs, Set[Effect[Addr]])].append(ft, ff)
+              }
+            }
+          } else {
+            (abs.bottom, Set[Effect[Addr]]()).point[MayFail]
+          }
+          MayFail.monoid[(Abs, Set[Effect[Addr]])].append(t, f)
+        }}
+      }
+    }
+    override def call(e: Abs, l: Abs, store: Store[Addr, Abs]) =
+      assoc(e, l, Set.empty, store).map({ case (v, effs) => (v, store, effs) })
+  }
+
+  object Assoc extends AssocLike("assoc",
+    (x: Abs, y: Abs, store: Store[Addr, Abs]) => Equal.call(x, y, store).map({ case (res, _ /* unchanged store */, eff) => (res, eff) }))
+  object Assq extends AssocLike("assq",
+    (x: Abs, y: Abs, store: Store[Addr, Abs]) => Eq.call(x, y).map(res => (res, Set.empty)))
+
+
+  /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def all: List[Primitive[Addr, Abs]] = List(
-    Plus, Minus, Times, Div, Quotient, LessThan, LessOrEqual, NumEq, GreaterThan, GreaterOrEqual,
-    Modulo, Random, Ceiling, Log, Zerop, Positivep, Negativep, Oddp, Evenp, Max, Min, Abs, Gcd,
-    Nullp, Pairp, Charp, Symbolp, Stringp, Integerp, Realp, Numberp, Booleanp, Vectorp, Eq,
-    NumberToString, StringAppend, StringLength, Newline, Display, Error, Not,
-    Cons, Car, Cdr, Caar, Cadr, Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar,
-    Cdddr, Caaaar, Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar, Cdaadr, Cdadar,
-    Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr, SetCar, SetCdr, Length, Listp,
-    MakeVector, VectorSet, Vector, VectorLength, VectorRef,
-    Equal, BoolTop, IntTop)
+    Times,          /* [vv] *: Arithmetic */
+    Plus,           /* [vv] +: Arithmetic */
+    Minus,          /* [vv] -: Arithmetic */
+    Div,            /* [vx] /: Arithmetic (no support for fractions) */
+    Abs,            /* [vv] abs: Arithmetic */
+    ACos,           /* [vv] acos: Scientific */
+                    /* [x]  angle: Complex */
+                    /* [x]  append: Append/Reverse */
+                    /* [x]  apply: Fly Evaluation */
+                    /* [x]  apply: Fly Evaluation */
+    ASin,           /* [vv] asin: Scientific */
+    Assoc,          /* [vv] assoc: Retrieving Alist Entries */
+    Assq,           /* [vv] assq: Retrieving Alist Entries */
+                    /* [x]  assv: Retrieving Alist Entries */
+    ATan,           /* [vv] atan: Scientific [easy] */
+    Booleanp,       /* [vv] boolean?: Booleans */
+                    /* [x]  call-with-current-continuation: Continuations */
+                    /* [x]  call-with-input-file: File Ports */
+                    /* [x]  call-with-output-file: File Ports */
+                    /* [x]  call-with-values: Multiple Values */
+    Car,            /* [vv] car: Pairs */
+    Cdr,            /* [vv] cdr: Pairs */
+    Ceiling,        /* [vv] ceiling: Arithmetic */
+                    /* [x]  char->integer: Characters */
+                    /* [x]  char-alphabetic?: Characters */
+                    /* [x]  char-ci<=?: Characters */
+                    /* [x]  char-ci<?: Characters */
+                    /* [x]  char-ci=?: Characters */
+                    /* [x]  char-ci>=?: Characters */
+                    /* [x]  char-ci>?: Characters */
+                    /* [x]  char-downcase: Characters */
+                    /* [x]  char-lower-case?: Characters */
+                    /* [x]  char-numeric?: Characters */
+                    /* [x]  char-ready?: Reading */
+                    /* [x]  char-upcase: Characters */
+                    /* [x]  char-upper-case?: Characters */
+                    /* [x]  char-whitespace?: Characters */
+                    /* [x]  char<=?: Characters */
+                    /* [x]  char<?: Characters */
+                    /* [x]  char=?: Characters */
+                    /* [x]  char>=?: Characters */
+                    /* [x]  char>?: Characters */
+    Charp,          /* [vv] char?: Characters */
+                    /* [x]  close-input-port: Closing */
+                    /* [x]  close-output-port: Closing */
+                    /* [x]  complex?: Complex Numbers */
+    Cons,           /* [vv] cons: Pairs */
+    Cos,            /* [vv] cos: Scientific */
+                    /* [x]  current-input-port: Default Ports */
+                    /* [x]  current-output-port: Default Ports */
+    Display,        /* [v]  display: Writing */
+                    /* [x]  dynamic-wind: Dynamic Wind */
+                    /* [x]  eof-object?: Reading */
+    Eq,             /* [vv] eq?: Equality */
+    Equal,          /* [vv] equal?: Equality */
+                    /* [x]  eqv?: Equality */
+                    /* [x]  eval: Fly Evaluation */
+    Evenp,          /* [v]  even?: Integer Operations */
+    ExactToInexact, /* [vv] exact->inexact: Exactness */
+                    /* [x]  exact?: Exactness */
+                    /* [x]  exp: Scientific */
+    Expt,           /* [vv] expt: Scientific */
+    Floor,          /* [vv] floor: Arithmetic */
+                    /* [x]  for-each: List Mapping */
+                    /* [x]  force: Delayed Evaluation */
+    Gcd,            /* [vx] gcd: Integer Operations */
+                    /* [x]  imag-part: Complex */
+    InexactToExact, /* [vv] inexact->exact: Exactness */
+                    /* [x]  inexact?: Exactness */
+                    /* [x]  input-port?: Ports */
+                    /* [x]  integer->char: Characters */
+    Integerp,       /* [vv] integer?: Integers */
+                    /* [x]  interaction-environment: Fly Evaluation */
+                    /* [x]  lcm: Integer Operations */
+    Length,         /* [vv] length: List Selection */
+    ListPrim,       /* [vv] list: List Constructors */
+                    /* [x]  list->string: String Constructors */
+                    /* [x]  list->vector: Vector Creation */
+    ListRef,        /* [vv] list-ref: List Selection */
+                    /* [x]  list-tail: List Selection */
+    Listp,          /* [vv] list?: List Predicates */
+                    /* [x]  load: Loading */
+    Log,            /* [vv] log: Scientific */
+                    /* [x]  magnitude: Complex */
+                    /* [x]  make-polar: Complex */
+                    /* [x]  make-rectangular: Complex */
+                    /* [x]  make-string: String Constructors */
+    MakeVector,     /* [vv] make-vector: Vector Creation */
+                    /* [x]  map: List Mapping */
+    Max,            /* [vv] max: Arithmetic */
+    Member,         /* [vv] member: List Searching */
+    Memq,           /* [v]  memq: List Searching */
+                    /* [x]  memv: List Searching */
+    Min,            /* [vv] min: Arithmetic */
+    Modulo,         /* [vv] modulo: Integer Operations */
+    Negativep,      /* [vv] negative?: Comparison */
+    Newline,        /* [v]  newline: Writing */
+    Not,            /* [vv] not: Booleans */
+    Nullp,          /* [vv] null?: List Predicates */
+    NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
+    Numberp,        /* [vv] number?: Numerical Tower */
+    Oddp,           /* [vv] odd?: Integer Operations */
+                    /* [x]  open-input-file: File Ports */
+                    /* [x]  open-output-file: File Ports */
+                    /* [x]  output-port?: Ports */
+    Pairp,          /* [vv] pair?: Pairs */
+                    /* [x]  peek-char?: Reading */
+    Positivep,      /* [vv] positive?: Comparison */
+                    /* [x]  procedure?: Procedure Properties */
+    Quotient,       /* [vv] quotient: Integer Operations */
+                    /* [x]  rational?: Reals and Rationals */
+                    /* [x]  read: Scheme Read */
+                    /* [x]  read-char?: Reading */
+                    /* [x]  real-part: Complex */
+    Realp,          /* [vv] real?: Reals and Rationals */
+    Remainder,      /* [vv] remainder: Integer Operations */
+                    /* [x]  reverse: Append/Reverse */
+    Round,          /* [vv] round: Arithmetic */
+    SetCar,         /* [vv] set-car!: Pairs */
+    SetCdr,         /* [vv] set-cdr!: Pairs */
+    Sin,            /* [vv] sin: Scientific */
+    Sqrt,           /* [vv] sqrt: Scientific */
+                    /* [x]  string: String Constructors */
+                    /* [x]  string->list: List/String Conversion */
+                    /* [x]  string->number: Conversion */
+    StringToSymbol, /* [vv] string->symbol: Symbol Primitives */
+    StringAppend,   /* [vx] string-append: Appending Strings: only two arguments supported */
+                    /* [x]  string-ci<: String Comparison */
+                    /* [x]  string-ci=?: String Comparison */
+                    /* [x]  string-ci>=?: String Comparison */
+                    /* [x]  string-ci>?: String Comparison */
+                    /* [x]  string-copy: String Selection */
+                    /* [x]  string-fill!: String Modification */
+    StringLength,   /* [vv] string-length: String Selection */
+                    /* [x]  string-ref: String Selection */
+                    /* [x]  string-set!: String Modification */
+                    /* [x]  string<=?: String Comparison */
+    StringLt,       /* [vv]  string<?: String Comparison */
+                    /* [x]  string=?: String Comparison */
+                    /* [x]  string>=?: String Comparison */
+                    /* [x]  string>?: String Comparison */
+    Stringp,        /* [x]  string?: String Predicates */
+                    /* [x]  substring: String Selection */
+    SymbolToString, /* [vv] symbol->string: Symbol Primitives */
+    Symbolp,        /* [vv] symbol?: Symbol Primitives */
+    Tan,            /* [vv] tan: Scientific */
+                    /* [x]  truncate: Arithmetic */
+                    /* [x]  values: Multiple Values */
+    Vector,         /* [vv] vector: Vector Creation */
+                    /* [x]  vector->list: Vector Creation */
+                    /* [x]  vector-fill!: Vector Accessors */
+    VectorLength,   /* [vv] vector-length: Vector Accessors */
+    VectorRef,      /* [vv] vector-ref: Vector Accessors */
+    VectorSet,      /* [vv] vector-set!: Vector Accessors */
+    Vectorp,        /* [vv] vector?: Vector Creation */
+                    /* [x]  with-input-from-file: File Ports */
+                    /* [x]  with-output-to-file: File Ports */
+                    /* [x]  write-char: Writing */
+    Zerop,          /* [vv] zero?: Comparison */
+    LessThan,       /* [v]  < */
+    LessOrEqual,    /* [v]  <= */
+    NumEq,          /* [v]  = */
+    GreaterThan,    /* [v]  > */
+    GreaterOrEqual, /* [v]  >= */
+                    /* [x]  numerator */
+                    /* [x]  denominator */
+                    /* [x]  rationalize-string */
+                    /* [x]  scheme-report-environment */
+                    /* [x]  null-environment */
+                    /* [x]  write transcript-on */
+                    /* [x]  transcript-off */
+    Caar, Cadr,     /* [v]  caar etc. */
+    Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar, Cdddr, Caaaar,
+    Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar,
+    Cdaadr, Cdadar, Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr,
+    /* Other primitives that are not R5RS */
+    Random, Error, BoolTop, IntTop)
+
   def toVal(prim: Primitive[Addr, Abs]): Abs = abs.inject(prim)
 }

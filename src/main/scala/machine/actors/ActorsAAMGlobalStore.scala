@@ -13,13 +13,13 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
   type Ctx = Unit
   type G = Graph[State, Annot, Ctx]
   implicit val annot = new GraphAnnotation[Annot, Ctx] {
-    override def label(annot: Annot) = annot match {
-      case (p, eff) if eff.isEmpty => p.toString
-      case (p, eff) => List(scala.xml.Text(p.toString), <font color="red">{eff.mkString(", ")}</font>).mkString(" ")
+    override def labelXml(annot: Annot) = annot match {
+      case (p, eff) if eff.isEmpty => List(scala.xml.Text(p.toString))
+      case (p, eff) => List(scala.xml.Text(p.toString), <font color="red">{eff.mkString(", ")}</font>)
     }
   }
   implicit val graphNode = new GraphNode[State, Ctx] {
-    def label(n: State) = n.toXml.mkString("")
+    override def labelXml(n: State) = n.toXml
     override def color(n: State) = if (n.hasError) {
       Colors.Red
     } else if (n.halted) {

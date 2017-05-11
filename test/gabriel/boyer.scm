@@ -1,12 +1,3 @@
-(define (assq k l)
-  (cond ((null? l) #f)
-        ((eq? (caar l) k) (car l))
-        (else (assq k (cdr l)))))
-(define (member v l)
-  (cond ((null? l) #f)
-        ((equal? v (car l)) l)
-        (else (member v (cdr l)))))
-
 (define *namelist* '())
 (define *lastlook* '(xxx ()))
 
