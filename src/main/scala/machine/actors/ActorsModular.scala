@@ -15,7 +15,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
 
   type G = Graph[ActorState, Unit, Unit]
   implicit val graphNode = new GraphNode[ActorState, Unit] {
-    def label(n: ActorState) = n.toXml.mkString("")
+    override def labelXml(n: ActorState) = n.toXml
     override def color(n: ActorState) = if (n.hasError) {
       Colors.Red
     } else if (n.halted) {
@@ -308,8 +308,18 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
           acc._2 + (st.pid -> (acc._2(st.pid) + inner)))
       })
     def fromSent(sent: Set[Message], pids: Map[PID, Set[InnerLoopState]], mailboxes: Map[PID, Mailbox]): (Set[InnerLoopState], Map[PID, Mailbox]) =
-      sent.foldLeft((Set[InnerLoopState](), mailboxes))((acc, m) =>
-        (acc._1 ++ pids(m._1), acc._2 + (m._1 -> (acc._2(m._1).push(m)))))
+      sent.foldLeft((Set[InnerLoopState](), mailboxes))((acc, m) => {
+        // was: (acc._1 ++ pids(m._1), acc._2 + (m._1 -> (acc._2(m._1).push(m))))
+        val oldmbox = acc._2(m._1)
+        val newmbox = oldmbox.push(m)
+        if (newmbox == oldmbox) {
+          /* nothing changed */
+          acc
+        } else {
+          (acc._1 ++ pids(m._1), acc._2 + (m._1 -> newmbox))
+        }
+      })
+
     @scala.annotation.tailrec
     def outerLoop(st: OuterLoopState): Output = {
       if (st.todo.isEmpty || timeout.reached) {

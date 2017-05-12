@@ -1,17 +1,15 @@
 ;; Adapted from Savina benchmarks ("Frok Join (actor creation)" benchmark, coming from JGF
-(letrec ((N 3)
-         (perform-computation (lambda (theta)
-                                (let ((sint (+ 1 theta))) ; was (sint (sin theta)) in the original implementation
-                                  (* sint sint))))
+(letrec ((N (int-top))
+         (perform-computation (lambda (theta) theta))
          (forkjoin-actor
-          (actor "forkjoin" ()
+          (a/actor "forkjoin" ()
                  (message ()
                           (perform-computation 37.2)
-                          (terminate))))
+                          (a/terminate))))
           (loop (lambda (n)
                   (if (= n N)
                       'done
                       (begin
-                        (send (create forkjoin-actor) message)
+                        (a/send (a/create forkjoin-actor) message)
                         (loop (+ n 1)))))))
   (loop 0))

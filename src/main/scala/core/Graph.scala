@@ -21,7 +21,7 @@ trait GraphNode[N, C] {
   def label(node: N): String = labelXml(node).mkString(" ")
   def labelXml(node: N): List[scala.xml.Node] = List(scala.xml.Text(label(node)))
   def label(node: N, ctx: C): String = label(node)
-  def labelXml(node: N, ctx: C): List[scala.xml.Node] = List(scala.xml.Text(label(node, ctx)))
+  def labelXml(node: N, ctx: C): List[scala.xml.Node] = labelXml(node)
   def tooltip(node: N): String = ""
   def tooltip(node: N, ctx: C): String = tooltip(node)
   def color(node: N): Color = Colors.White

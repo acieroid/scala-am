@@ -1,18 +1,16 @@
 %-module(count).
 %-export([main/0]).
+-soter_config(peano).
 -uncoverable("producer_mail > 1").
 -uncoverable("counting_mail > 11").
 
--define(N, 10).
+-define(N, ?any_nat).
 
-loop_send(Cur, Target) ->
-    if
-        Cur > 0 ->
-            Target ! {increment},
-            loop_send(Cur - 1, Target);
-        true ->
-            done
-    end.
+loop_send(0, _) -> done;
+loop_send(N, Target) ->
+    Target ! {increment},
+    loop_send(N-1, Target).
+
 
 producer(Counter) ->
     ?label_mail("producer_mail"),
@@ -24,18 +22,18 @@ producer(Counter) ->
             producer(Counter);
         {result, Res} ->
             io:format("received result~n"),
-            if
-                Res == ?N -> done;
-                true -> io:format("error~n"), ?soter_error("Error!")
+            case Res == ?N of
+              true -> done;
+              false -> io:format("error~n"), ?soter_error("Error!")
             end
     end.
 
 counting(Count) ->
     ?label_mail("counting_mail"),
-    receive 
+    receive
         {increment} ->
             io:format("count received increment~n"),
-            counting(Count + 1);
+            counting({s, Count});
         {retrieve, To} ->
             io:format("count received retrieve~n"),
             To ! {result, Count},
@@ -43,6 +41,6 @@ counting(Count) ->
     end.
 
 main() ->
-    Counter = spawn(fun() -> counting(0) end),
+    Counter = spawn(fun() -> counting(zero) end),
     Producer = spawn(fun() -> producer(Counter) end),
     Producer ! {increment}.
