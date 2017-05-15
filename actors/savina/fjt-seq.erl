@@ -8,16 +8,6 @@ perform_computation(Theta) ->
     Sint = Theta + 1,
     Sint * Sint.
 
-throughput(Processed) ->
-    ?label_mail("throughput_mail"),
-    receive
-        {message} when Processed + 1 == ?N ->
-            perform_computation(37), done;
-        {message} ->
-            perform_computation(37),
-            throughput(Processed + 1)
-    end.
-
 throughput(9) ->
     ?label_mail("throughput_mail"),
     receive

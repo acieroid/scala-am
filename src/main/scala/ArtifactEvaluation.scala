@@ -76,6 +76,7 @@ object ArtifactEvaluation {
       ("state-factory", List(("PS", 0), ("MS", 1), ("L", 1), ("G", 0))),
       ("stutter", List(("PS", 0), ("MS", 1), ("L", 1), ("G", 0)))
     )
+    println("benchmark | powerset | multiset | list | graph |")
     for ((name, cfgs) <- benchs) {
       val sname = name.padTo(15, " ").mkString
       print(s"$sname | ")
@@ -128,6 +129,7 @@ object ArtifactEvaluation {
       ("count-seq", List(("PS", 0), ("MS", 1), ("L", 2), ("G", 0))),
       ("cell", List(("PS", 0), ("MS", 1), ("L", 2), ("G", 0)))
     )
+    println("benchmark | powerset | multiset | list | graph |")
     for ((name, cfgs) <- benchs) {
       val sname = name.padTo(15, " ").mkString
       print(s"$sname | ")
@@ -182,6 +184,7 @@ object ArtifactEvaluation {
       ("fjc-seq", List(("PS", 0), ("MS", 1), ("L", 1), ("G", 0)), List(("forkjoin-actor", 1))),
       ("fjt-seq", List(("PS", 0), ("MS", 1), ("L", 1), ("G", 0)), List(("throughput-actor", 1)))
     )
+    println("benchmark | powerset | multiset | list | graph |")
     for ((name, cfgs, boundsToCheck) <- benchs) {
       val sname = name.padTo(15, " ").mkString
       print(s"$sname | ")
@@ -203,7 +206,7 @@ object ArtifactEvaluation {
   }
   def main(args: Array[String]) {
     if (args.size < 1) {
-      println("Please provide one of the following command: timesize, bounds")
+      println("Please provide one of the following command: timesize, errors, bounds")
     } else {
       args(0) match {
         case "timesize" => timesize()
