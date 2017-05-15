@@ -1,6 +1,6 @@
 ;; Adapted from Savina benchmarks ("Big" benchmark, from BenchErl)
-(letrec ((num-messages 10)
-         (num-workers 2)
+(letrec ((num-messages (int-top))
+         (num-workers (int-top))
          (vector-foreach (lambda (f v)
                            (letrec ((loop (lambda (i)
                                             (if (< i (vector-length v))
@@ -24,7 +24,7 @@
                                  (a/send target ping id)
                                  (a/become id (+ num-pings 1) sink target neighbors)))
                            (error (format "expected ~a, but received ping from ~a" exp-pinger sender))))
-                 (exit () (terminate))
+                 (exit () (a/terminate))
                  (neighbors (new-neighbors) (a/become big-actor id num-messages sink exp-pinger new-neighbors))))
          (sink-actor
           (a/actor "sink" (num-messages neighbors)
@@ -32,7 +32,7 @@
                        (if (= (+ num-messages 1) num-workers)
                            (begin
                              (vector-foreach (lambda (a) (a/send a exit)) neighbors)
-                             (terminate))
+                             (a/terminate))
                            (a/become sink-actor (+ num-messages 1) neighbors)))
                  (neighbors (new-neighbors)
                             (a/become sink-actor num-messages new-neighbors))))

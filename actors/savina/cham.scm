@@ -1,7 +1,7 @@
 ;; Adapted from Savina benchmarks ("Chameneos" benchmark, coming from Haller)
-(letrec ((n-meetings 3)
-         (n-chameneos 10)
-         (n-mailboxes 1)
+(letrec ((n-meetings (int-top))
+         (n-chameneos (int-top))
+;         (n-mailboxes 1)
          (complement (lambda (color other-color)
                        (case color
                          ((red) (case other-color
@@ -30,7 +30,7 @@
           (a/actor "mall" (waiting-chameneo n sum-meetings num-faded)
                  (meeting-count (count sender)
                                 (if (= (+ num-faded 1) n-chameneos)
-                                    (begin (log "mall done~n") (terminate))
+                                    (begin (log "mall done~n") (a/terminate))
                                     (a/become mall-actor waiting-chameneo n (+ sum-meetings count) (+ num-faded 1))))
                  (meet (color sender)
                        (if (> n 0)
