@@ -33,7 +33,7 @@ list_ref(0, []) -> error;
 list_ref(0, [X | _]) -> X;
 list_ref(N, [_ | Xs]) -> list_ref(N-1, Xs).
 
-minus(X, zero) -> X;
+minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
 
 modulo(X, Y) ->

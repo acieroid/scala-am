@@ -30,7 +30,7 @@
           (a/actor "mall" (waiting-chameneo n sum-meetings num-faded)
                  (meeting-count (count sender)
                                 (if (= (+ num-faded 1) n-chameneos)
-                                    (begin (log "mall done~n") (a/terminate))
+                                    (a/terminate)
                                     (a/become mall-actor waiting-chameneo n (+ sum-meetings count) (+ num-faded 1))))
                  (meet (color sender)
                        (if (> n 0)
