@@ -32,7 +32,7 @@
                                (let ((target (random (vector-length neighbors))))
                                  (a/send (vector-ref neighbors target) ping id)
                                  (a/become big-actor id (+ num-pings 1) sink target neighbors)))
-                           (error (format "expected ~a, but received ping from ~a" exp-pinger sender))))
+                           (error "wrong sender")))
                  (exit () (a/terminate))
                  (neighbors (new-neighbors) (a/become big-actor id num-pings sink exp-pinger new-neighbors))))
          (sink-actor
