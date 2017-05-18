@@ -53,7 +53,7 @@
                      (a/send waiting-room-actor enter customer)
                      (a/become customer-factory hairs-cut-so-far (+ id-gen 1)))
            (done ()
-                 (if (= hairs-cut-so-far Haircuts)
+                 (if (= (+ hairs-cut-so-far 1) Haircuts)
                      (begin
                        (a/send waiting-room-actor exit)
                        (a/terminate))
