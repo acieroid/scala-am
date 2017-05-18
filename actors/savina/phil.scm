@@ -35,13 +35,14 @@
                    (a/become philosopher id rounds-so-far (+ local-counter 1)))
            (eat ()
                 (a/send counter-actor add local-counter)
+                (a/send arbitrator-actor done id)
                 (if (< (+ rounds-so-far 1) Rounds)
                     (begin
                       ;; was: (a/send self start)
                       (a/send arbitrator-actor hungry self id)
                       (a/become philosopher id (+ rounds-so-far 1) local-counter))
                     (begin
-                      (a/send arbitrator-actor done id)
+                      (a/send arbitrator-actor exit)
                       (a/terminate))))
            (start ()
                   (a/send arbitrator-actor hungry self id)
