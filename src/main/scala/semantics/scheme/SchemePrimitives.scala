@@ -533,6 +533,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
           })
         }
       }
+      // Note: if l is the join of '() and some non-empty list, length will return a type error (because isCons(l) may be false, and isNull(l) as well)
       length(l, Set()).map({ case (v, effs) => (v, store, effs) })
     }
   }

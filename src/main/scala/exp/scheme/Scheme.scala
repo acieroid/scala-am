@@ -413,7 +413,7 @@ object SchemeCompiler {
     case SExpPair(f, args, _) =>
       SchemeFuncall(compile(f), compileBody(args), exp.pos)
     case SExpId(v) => if (reserved.contains(v.name)) {
-      throw new Exception(s"Invalid Scheme identifier (reserved): $exp")
+      throw new Exception(s"Invalid Scheme identifier (reserved): $exp at ${exp.pos}")
     } else {
       SchemeVar(v)
     }
