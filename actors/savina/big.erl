@@ -28,8 +28,8 @@ modulo(X, Y) ->
     end.
 
 random(X) ->
-    rand:uniform(X)-1.
-    %modulo(?any_nat(), X).
+    %rand:uniform(X)-1.
+    modulo(?any_nat(), X).
 
 big_actor(Id, NumPings, Sink, ExpPinger, Neighbors) ->
     receive
