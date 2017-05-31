@@ -952,7 +952,6 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     /* [x]  angle: Complex */
                     /* [x]  append: Append/Reverse */
                     /* [x]  apply: Fly Evaluation */
-                    /* [x]  apply: Fly Evaluation */
     ASin,           /* [vv] asin: Scientific */
     Assoc,          /* [vv] assoc: Retrieving Alist Entries */
     Assq,           /* [vv] assq: Retrieving Alist Entries */

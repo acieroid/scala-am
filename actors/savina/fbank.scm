@@ -113,7 +113,8 @@
                           ;; TODO: the list has to be copied when sent, instead we compute the sum here
                           (letrec ((make-values (lambda (i acc) (if (= i NumChannels) acc (make-values (+ i 1) (cons (int-top) acc))))))
                             (if (bool-top)
-                                (a/send next collection (foldl (lambda (v acc) (+ v acc)) 0 (make-values 0 '()))))
+                                (a/send next collection (make-values 0 '()) ;; (foldl (lambda (v acc) (+ v acc)) 0 (make-values 0 '()))
+                                        ))
                             (a/become integrator next data exits-received)))
            (exit ()
                  (if (= (+ exits-received 1) NumChannels)
@@ -121,8 +122,8 @@
                      (a/become integrator next data (+ exits-received 1))))))
 (define combine
   (a/actor "combine" (next)
-           (collection (sum)
-                       (a/send next value sum)
+           (collection (vs)
+                       (a/send next value (foldl (lambda (v acc) (+ v acc)) 0 vs))
                        (a/become combine next))
            (exit () (a/terminate))))
 (define sink

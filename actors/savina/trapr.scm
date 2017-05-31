@@ -3,6 +3,29 @@
 (define L (int-top))
 (define R (int-top))
 
+(define (exp x)
+  (expt 2.718281828459045 x))
+
+(define (fx x)
+  (let* ((a (sin (- (expt x 3) 1)))
+         (b (+ x 1))
+         (c (/ a b))
+         (d (sqrt (+ 1 (exp (sqrt (* 2 x))))))
+         (r (* c d)))
+    r))
+
+(define (compute-area l r h)
+  (let ((n (/ (- r l) h)))
+    (letrec ((loop (lambda (i acc)
+                     (if (= i n)
+                         acc
+                         (let* ((lx (+ (* i h) l))
+                                (rx (+ lx h))
+                                (ly (fx lx))
+                                (ry (fx rx)))
+                           (loop (+ i 1) (+ acc (* 0.5 (+ ly ry) h))))))))
+      (loop 0 0))))
+
 (define (build-vector n f)
   (letrec ((v (make-vector n #f))
            (loop (lambda (i)
@@ -32,7 +55,7 @@
 (define worker-actor
   (a/actor "worker-actor" (master id)
             (work (l r h)
-                  (let ((area (int-top))) ;; TODO: model this
+                  (let ((area (compute-area l r h)))
                     (a/send master result area id)
                     (a/terminate)))))
 (define master (a/create master-actor

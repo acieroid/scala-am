@@ -1,14 +1,13 @@
 import scalaz.Scalaz._
 import scalaz._
 
-/* TODO: print state of the actor in wait nodes.
+/*
+ * TODO: copy structures (clo, vec, cons)
+ * TODO: print state of the actor in wait nodes.
  * TODO: print name of the actor better
  * TODO: bring back annotations
  * TODO: just have to restart computation from wait states
- * TODO: incorporate different mailboxes
- *        -> first without ordering (powerset, multiset)
- *        -> then with ordering: with happens-before relations */
-
+ */
 class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier]
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ActorsModular"
@@ -247,22 +246,23 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
       visited: Set[ActorState],
       /* Set of seen states that cannot be cleared (only used to count number of actual states visited) */
       reallyVisited: Set[ActorState],
-      /* The global store (value and continuation) */
-      store: GlobalStore,
       /* The graph computed */
       graph: Option[G],
       /* Actors created */
       created: Set[ActorState],
       /* Messages sent */
       sent: Set[Message]
-    )
+    ) {
+      //override def toString =
+        //s"InnerLoopState($pid, ${todo.size}, ${visited.size}, ${reallyVisited.size}, ...)"
+    }
     @scala.annotation.tailrec
-    def innerLoop(st: InnerLoopState, mailbox: Mailbox):
-        (/* "Final" state */ InnerLoopState) =
+    def innerLoop(st: InnerLoopState, mailbox: Mailbox, store: GlobalStore):
+        (/* "Final" state */ InnerLoopState, /* Resulting store */ GlobalStore) =
       if (st.todo.isEmpty || timeout.reached) {
-        st
+        (st, store)
       } else {
-        val (edges, store2, created, sent) = st.todo.foldLeft((Set[(ActorState, Unit, ActorState)](), st.store, Set[ActorState](), Set[Message]()))((acc, state) =>
+        val (edges, store2, created, sent) = st.todo.foldLeft((Set[(ActorState, Unit, ActorState)](), store, Set[ActorState](), Set[Message]()))((acc, state) =>
           state.step(sem, acc._2, mailbox) match {
             case (succs, created, sent, store2) =>
               (acc._1 ++ succs.map(state2 => (state, (), state2)), store2, acc._3 ++ created, acc._4 ++ sent)
@@ -274,20 +274,18 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
             todo = newTodo.diff(st.visited),
             visited = st.visited ++ st.todo,
             reallyVisited = st.reallyVisited ++ st.todo,
-            store = store2,
             graph = newGraph,
             sent = st.sent ++ sent,
             created = st.created ++ created
-          ), mailbox)
+          ), mailbox, store2)
         } else {
           innerLoop(st.copy(
             todo = newTodo.diff(st.visited),
             visited = Set(),
             reallyVisited = st.reallyVisited ++ st.todo,
-            store = store2.commitMain,
             graph = newGraph,
             sent = st.sent ++ sent,
-            created = st.created ++ created), mailbox)
+            created = st.created ++ created), mailbox, store2.commitMain)
         }
       }
     case class OuterLoopState(
@@ -297,15 +295,21 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
       pids: Map[PID, Set[InnerLoopState]],
       /* Which mailbox corresponds to which pid */
       mailboxes: Map[PID, Mailbox],
+      /* Global store */
+      store: GlobalStore,
       /* Graphs for each actor */
       graphs: Map[PID, Option[G]]
     )
-    def fromCreated(created: Set[ActorState], store: GlobalStore, pids: Map[PID, Set[InnerLoopState]]):
+    def fromCreated(created: Set[ActorState], pids: Map[PID, Set[InnerLoopState]]):
         (Set[InnerLoopState], Map[PID, Set[InnerLoopState]]) =
       created.foldLeft((Set[InnerLoopState](), pids))((acc, st) => {
-        val inner = InnerLoopState(st.pid, Set(st), Set.empty, Set.empty, store, Option(G()), Set.empty, Set.empty)
-        (acc._1 + inner,
-          acc._2 + (st.pid -> (acc._2(st.pid) + inner)))
+        if (acc._2(st.pid).exists((inner: InnerLoopState) => inner.todo.contains(st))) {
+          /* already spawned this actor, nothing changed */
+          acc
+        } else {
+          val inner = InnerLoopState(st.pid, Set(st), Set.empty, Set.empty, Option(G()), Set.empty, Set.empty)
+          (acc._1 + inner, acc._2 + (st.pid -> (acc._2(st.pid) + inner)))
+        }
       })
     def fromSent(sent: Set[Message], pids: Map[PID, Set[InnerLoopState]], mailboxes: Map[PID, Mailbox]): (Set[InnerLoopState], Map[PID, Mailbox]) =
       sent.foldLeft((Set[InnerLoopState](), mailboxes))((acc, m) => {
@@ -329,16 +333,16 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
         })
         new ActorModularOutput(timeout.time, st.graphs, timeout.reached)
       } else {
-        val succ = st.todo.foldLeft(Set[InnerLoopState](), st.pids, st.mailboxes, st.graphs)((acc, actorState) => {
+        val succ = st.todo.foldLeft(Set[InnerLoopState](), st.pids, st.mailboxes, st.store, st.graphs)((acc, actorState) => {
           println(s"Exploring actor ${actorState.pid} with mailbox ${st.mailboxes(actorState.pid)}")
-          val ist = innerLoop(actorState, st.mailboxes(actorState.pid))
-          val (todoCreated, pidsCreated) = fromCreated(ist.created, ist.store, acc._2)
+          val (ist, store2) = innerLoop(actorState, st.mailboxes(actorState.pid), acc._4)
+          val (todoCreated, pidsCreated) = fromCreated(ist.created, acc._2)
           println(s"Created pids: ${ist.created.map(_.pid)}")
           val (todoSent, mailboxesSent) = fromSent(ist.sent, acc._2, acc._3)
           println(s"Messages sent: ${ist.sent.map(_._1)}")
-          (acc._1 ++ todoCreated ++ todoSent, pidsCreated, mailboxesSent, acc._4 + (ist.pid -> ist.graph))
+          (acc._1 ++ todoCreated ++ todoSent, pidsCreated, mailboxesSent, store2, acc._5 + (ist.pid -> ist.graph))
         })
-        val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4)
+        val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5)
         if (newOuter.mailboxes == st.mailboxes && newOuter.pids == st.pids) {
           /* if it didn't change, we skip the todos */
           outerLoop(newOuter.copy(todo = Set.empty))
@@ -354,10 +358,11 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
         GlobalStore.initial(store))
     }
     val (initialState, store) = inject(exp, sem.initialEnv, sem.initialStore)
-    val initialInner = InnerLoopState(initialState.pid, Set(initialState), Set.empty, Set.empty, store, Option(G()), Set.empty, Set.empty)
+    val initialInner = InnerLoopState(initialState.pid, Set(initialState), Set.empty, Set.empty, Option(G()), Set.empty, Set.empty)
     outerLoop(OuterLoopState(Set(initialInner),
       Map[PID, Set[InnerLoopState]]().withDefaultValue(Set.empty) + (mainPid -> Set(initialInner)),
       Map[PID, Mailbox]().withDefaultValue(Mailbox.empty),
+      store,
       Map[PID, Option[G]]().withDefaultValue(Option(G()))))
   }
 }
