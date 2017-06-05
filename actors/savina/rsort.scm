@@ -1,6 +1,11 @@
 (define NumValues (int-top))
 (define MaxValue (int-top))
-
+(define (for-each f l)
+  (if (null? l)
+      #t
+      (if (pair? l)
+          (begin (f (car l)) (for-each f (cdr l)))
+          (error "Cannot for-each over a non-list"))))
 (define (logand x y) (int-top))       ; logand not in r5rs
 
 (define int-source
@@ -16,22 +21,21 @@
                          (a/terminate)))))
 
 (define sort
-  (a/actor "sort" (radix next-actor array values-so-far j)
+  (a/actor "sort" (radix next-actor array values-so-far)
            (value (v)
-                  (let ((newj (if (= (logand v radix) 0)
-                                  (begin (a/send next-actor value v) j)
-                                  (begin (vector-set! array j v) (+ 1 j)))))
-                    (if (= (+ values-so-far 1) NumValues)
+                  (let ((check-values (lambda (array)
+                                        (if (= (+ values-so-far 1) NumValues)
+                                            (begin
+                                              (for-each (lambda (v) (a/send next-actor value v)) array)
+                                              (a/terminate))
+                                            (a/become sort radix next-actor array (+ values-so-far 1))))))
+                    (if (= (logand v radix) 0)
                         (begin
-                          (letrec ((loop (lambda (i)
-                                           (if (= i j)
-                                               #t
-                                               (begin
-                                                 (a/send next-actor value (vector-ref array i))
-                                                 (loop (+ i 1)))))))
-                            (loop 0)
-                            (a/terminate)))
-                        (a/become sort radix next-actor array (+ values-so-far 1) newj))))))
+                          (a/send next-actor value v)
+                          (check-values array))
+                        (begin
+                          (check-values (cons v array))))))))
+
 (define validation
   (a/actor "validation" (sum-so-far values-so-far prev-value error-value)
            (value (v)
@@ -50,7 +54,7 @@
 (define source-actor (a/create int-source))
 (define (main-loop radix next-actor)
   (if (> radix 0)
-      (let ((sort-actor (a/create sort radix next-actor (make-vector NumValues 0) 0 0)))
+      (let ((sort-actor (a/create sort radix next-actor '() 0)))
         (main-loop (inexact->exact (/ radix 2)) sort-actor))
       next-actor))
 (a/send source-actor next-actor (main-loop (int-top) validation-actor))
