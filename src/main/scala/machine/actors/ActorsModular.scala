@@ -115,6 +115,10 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
   object Mailbox {
     def empty: Mailbox = Mailbox(Set.empty)
   }
+  implicit val stateWithKey = new WithKey[ActorState] {
+    type K = KontAddr
+    def key(st: ActorState) = st.kont
+  }
   case class ActorState(pid: PID, control: Control, kont: KontAddr, inst: ActorInstance, t: Time) {
     def toXml: List[scala.xml.Node] = (control match {
       case ControlEval(e, _) => List(<font color="forestgreen">{e.toString.take(40)}</font>)
@@ -236,25 +240,28 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
   }
 
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Timeout): Output = {
+    type WL[A] = Set[A]
+    type VS[A] = KeyMap[A]
     val startingTime = System.nanoTime
     case class InnerLoopState(
       /* Which PID this corresponds to */
       pid: PID,
       /* What's still to visit */
-      todo: Set[ActorState],
+      todo: WL[ActorState],
       /* Set of seen states (can be cleared due to global store) */
-      visited: Set[ActorState],
+      visited: VS[ActorState],
       /* Set of seen states that cannot be cleared (only used to count number of actual states visited) */
-      reallyVisited: Set[ActorState],
+      reallyVisited: VS[ActorState],
       /* The graph computed */
       graph: Option[G],
       /* Actors created */
       created: Set[ActorState],
       /* Messages sent */
       sent: Set[Message]
-    ) {
-      //override def toString =
-        //s"InnerLoopState($pid, ${todo.size}, ${visited.size}, ${reallyVisited.size}, ...)"
+    )
+    implicit val innerLoopStateWithKey = new WithKey[InnerLoopState] {
+      type K = PID
+      def key(st: InnerLoopState) = st.pid
     }
     @scala.annotation.tailrec
     def innerLoop(st: InnerLoopState, mailbox: Mailbox, store: GlobalStore):
@@ -271,18 +278,18 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
         val newGraph = st.graph.map(_.addEdges(edges))
         if (store2.mainIsUnchanged) {
           innerLoop(st.copy(
-            todo = newTodo.diff(st.visited),
-            visited = st.visited ++ st.todo,
-            reallyVisited = st.reallyVisited ++ st.todo,
+            todo = newTodo.filter(s => !VisitedSet[VS].contains(st.visited, s)),
+            visited = VisitedSet[VS].append(st.visited, st.todo),
+            reallyVisited = VisitedSet[VS].append(st.reallyVisited, st.todo),
             graph = newGraph,
             sent = st.sent ++ sent,
             created = st.created ++ created
           ), mailbox, store2)
         } else {
           innerLoop(st.copy(
-            todo = newTodo.diff(st.visited),
-            visited = Set(),
-            reallyVisited = st.reallyVisited ++ st.todo,
+            todo = newTodo.filter(s => !VisitedSet[VS].contains(st.visited, s)),
+            visited = VisitedSet[VS].empty,
+            reallyVisited = VisitedSet[VS].append(st.reallyVisited, st.todo),
             graph = newGraph,
             sent = st.sent ++ sent,
             created = st.created ++ created), mailbox, store2.commitMain)
@@ -290,7 +297,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
       }
     case class OuterLoopState(
       /* What's still to visit */
-      todo: Set[InnerLoopState],
+      todo: WL[InnerLoopState],
       /* Which inner loop states corresponds to which pid */
       pids: Map[PID, Set[InnerLoopState]],
       /* Which mailbox corresponds to which pid */
@@ -307,7 +314,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
           /* already spawned this actor, nothing changed */
           acc
         } else {
-          val inner = InnerLoopState(st.pid, Set(st), Set.empty, Set.empty, Option(G()), Set.empty, Set.empty)
+          val inner = InnerLoopState(st.pid, Set(st), VisitedSet[VS].empty, VisitedSet[VS].empty, Option(G()), Set.empty, Set.empty)
           (acc._1 + inner, acc._2 + (st.pid -> (acc._2(st.pid) + inner)))
         }
       })
@@ -358,7 +365,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
         GlobalStore.initial(store))
     }
     val (initialState, store) = inject(exp, sem.initialEnv, sem.initialStore)
-    val initialInner = InnerLoopState(initialState.pid, Set(initialState), Set.empty, Set.empty, Option(G()), Set.empty, Set.empty)
+    val initialInner = InnerLoopState(initialState.pid, Set(initialState), VisitedSet[VS].empty, VisitedSet[VS].empty, Option(G()), Set.empty, Set.empty)
     outerLoop(OuterLoopState(Set(initialInner),
       Map[PID, Set[InnerLoopState]]().withDefaultValue(Set.empty) + (mainPid -> Set(initialInner)),
       Map[PID, Mailbox]().withDefaultValue(Mailbox.empty),

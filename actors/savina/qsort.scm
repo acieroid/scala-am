@@ -43,7 +43,7 @@
                  (if (< (length data) T)
                      (let ((result (if (= (length data) 1) data (qsort-seq data))))
                        (if parent
-                           (a/send parent result resultposition-relative-to-parent))
+                           (a/send parent result result position-relative-to-parent))
                        (a/terminate))
                      (let* ((data-length-half (inexact->exact (round (/ (length data) 2))))
                             (pivot (list-ref data data-length-half))
@@ -66,7 +66,7 @@
                      (if (= (+ num-fragments 1) 3)
                          (begin
                            (if parent
-                               (a/send parent result2 position-relative-to-parent))
+                               (a/send parent result result2 position-relative-to-parent))
                            (a/terminate))
                          (a/become quicksort-actor parent position-relative-to-parent result2 (+ num-fragments 1)))))))
 (define root

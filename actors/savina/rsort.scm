@@ -1,6 +1,5 @@
 (define NumValues (int-top))
 (define MaxValue (int-top))
-(define Seed (int-top))
 
 (define (logand x y) (int-top))       ; logand not in r5rs
 
