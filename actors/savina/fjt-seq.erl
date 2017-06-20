@@ -5,8 +5,7 @@
 -define(N, 10).
 
 perform_computation(Theta) ->
-    Sint = Theta + 1,
-    Sint * Sint.
+    Theta.
 
 throughput(9) ->
     ?label_mail("throughput_mail"),
@@ -32,13 +31,4 @@ main() ->
     A1 = spawn(fun() -> throughput(0) end),
     A2 = spawn(fun() -> throughput(0) end),
     A3 = spawn(fun() -> throughput(0) end),
-    A1 ! {message},
-    A2 ! {message},
-    A3 ! {message},
-    A1 ! {message},
-    A2 ! {message},
-    A3 ! {message},
-    A1 ! {message},
-    A2 ! {message},
-    A3 ! {message}.
-    % loop_send(?N, A1, A2, A3).
+    loop_send(?N, A1, A2, A3).
