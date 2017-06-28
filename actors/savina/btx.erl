@@ -1,12 +1,12 @@
--soter_config(peano).
--define(NumAccounts, ?any_nat()).
--define(NumBankings, ?any_nat()).
--define(InitialBalance, ?any_nat()).
-%-module(btx).
-%-export([main/0]).
-%-define(NumAccounts, 5).
-%-define(NumBankings, 5).
-%-define(InitialBalance, 5).
+%-soter_config(peano).
+%-define(NumAccounts, ?any_nat()).
+%-define(NumBankings, ?any_nat()).
+%-define(InitialBalance, ?any_nat()).
+-module(btx).
+-export([main/0]).
+-define(NumAccounts, 5).
+-define(NumBankings, 5).
+-define(InitialBalance, 5).
 
 plus(X, 0) -> X;
 plus(X, Y) -> plus(X+1, Y-1).
@@ -43,6 +43,7 @@ generate_work(I, Accounts) ->
             Source = list_ref(SourceId, Accounts),
             Dest = list_ref(DestId, Accounts),
             Amount = random(1000),
+            Source ! {foo},
             Source ! {credit, Amount, self(), Dest},
             generate_work(I+1, Accounts)
     end.
@@ -70,7 +71,9 @@ account(Master, Id, Balance) ->
             Recipient ! {debit, Amount, Sender},
             Master ! {reply},
             account(Master, Id, minus(Balance,Amount));
-        {stop} -> done
+        {nevercalled} ->
+            1+2;
+        {stop} -> self ! {foo}, done
     end.
 
 create_accounts(I, Master) ->

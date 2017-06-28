@@ -332,12 +332,13 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
       })
 
     @scala.annotation.tailrec
-    def outerLoop(st: OuterLoopState): Output = {
+    def outerLoop(st: OuterLoopState, iteration: Int): Output = {
       if (st.todo.isEmpty || timeout.reached) {
         println("Final mailboxes:")
         st.mailboxes.foreach({ case (k, v) =>
           println(s"$k -> $v")
         })
+        println(s"Number of iterations: $iteration")
         new ActorModularOutput(timeout.time, st.graphs, timeout.reached)
       } else {
         val succ = st.todo.foldLeft(Set[InnerLoopState](), st.pids, st.mailboxes, st.store, st.graphs)((acc, actorState) => {
@@ -350,11 +351,15 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
           (acc._1 ++ todoCreated ++ todoSent, pidsCreated, mailboxesSent, store2, acc._5 + (ist.pid -> ist.graph))
         })
         val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5)
+        newOuter.graphs.foreach({
+          case (k, Some(g)) => GraphDOTOutput.toFile(g, ())(s"iteration-$iteration-$k.dot")
+          case (_, None) => ()
+        })
         if (newOuter.mailboxes == st.mailboxes && newOuter.pids == st.pids) {
           /* if it didn't change, we skip the todos */
-          outerLoop(newOuter.copy(todo = Set.empty))
+          outerLoop(newOuter.copy(todo = Set.empty), iteration+1)
         } else {
-          outerLoop(newOuter)
+          outerLoop(newOuter, iteration+1)
         }
       }
     }
@@ -370,6 +375,6 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
       Map[PID, Set[InnerLoopState]]().withDefaultValue(Set.empty) + (mainPid -> Set(initialInner)),
       Map[PID, Mailbox]().withDefaultValue(Mailbox.empty),
       store,
-      Map[PID, Option[G]]().withDefaultValue(Option(G()))))
+      Map[PID, Option[G]]().withDefaultValue(Option(G()))), 0)
   }
 }
