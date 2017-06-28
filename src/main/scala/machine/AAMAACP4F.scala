@@ -124,38 +124,63 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
     }
   }
 
+  /**
+   * Evaluate a program represented by an expression, under the given
+   * semantics. A graph can be generated if @genGraph is true, and a timeout
+   * can be given.
+   */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], genGraph: Boolean, timeout: Timeout): Output = {
     import scala.language.higherKinds
+    /* @param todo is the worklist, @param visited is the set of visited states that
+     * don't need to be revisited, @param halted the set of halted
+     * states, @param graph the graph visited up to now, and @param
+     * reallyVisited is the set of states that have been visited (but might
+     * include states that have to be revisited, to account for changes in the
+     * global store. The global store is composed of a global value store
+     * (@param store) and a global continuation store (@param kstore). */
+    /* Note: this loop is different from AAM's loop. AAM's loop explores the state
+     * space in a state-by-state fashion, one state at a time. Here we explore
+     * the state space using a frontier-based approach, where we explore all the
+     * elements in the worklist at each iteration */
     @scala.annotation.tailrec
     def loop[VS[_]: VisitedSet](todo: Set[State], visited: VS[State], store: GlobalStore, kstore: KontStore[KontAddr],
       halted: Set[State], graph: G, reallyVisited: Set[State]): AAMAACP4FOutput =
-    if (todo.isEmpty || timeout.reached) {
-      AAMAACP4FOutput(halted, store.commit.store,
-        reallyVisited.size, timeout.time, graph, timeout.reached)
-    } else {
-      val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), store, kstore)((acc, state) =>
-        state.step(sem, acc._2, acc._3) match {
-          case (next, store2, kstore2) =>
-            (acc._1 ++ next.map(state2 => (state, state2)), store2, kstore2)
-        })
-      if (store2.isUnchanged && kstore.fastEq(kstore2)) {
-        //assert(store2.commit.store == store2.store)
-        loop(edges.map({ case (s1, s2) => s2 }).filter(s2 => !VisitedSet[VS].contains(visited, s2)),
-          VisitedSet[VS].append(visited, todo),
-          store2, kstore2,
-          halted ++ todo.filter(_.halted),
-          graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
-          reallyVisited ++ todo)
+      if (todo.isEmpty || timeout.reached) {
+        /* Worklist is empty or we reached the timeout, we return what we have computed */
+        AAMAACP4FOutput(halted, store.commit.store,
+          reallyVisited.size, timeout.time, graph, timeout.reached)
       } else {
-        //assert(!(!store2.isUnchanged && store2.commit.store == store2.store))
-        loop(edges.map({ case (s1, s2) => s2 }),
-          VisitedSet[VS].empty,
-          store2.commit, kstore2,
-          halted ++ todo.filter(_.halted),
-          graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
-          reallyVisited ++ todo)
+        /* For every element in the worklist, explore them and keep the updated store and kstore */
+        val (edges, store2, kstore2) = todo.foldLeft(Set[(State, State)](), store, kstore)((acc, state) =>
+          state.step(sem, acc._2, acc._3) match {
+            case (next, store2, kstore2) =>
+              (acc._1 ++ next.map(state2 => (state, state2)), store2, kstore2)
+          })
+        if (store2.isUnchanged && kstore.fastEq(kstore2)) {
+          /* If the store and kstore have not changed, we can safely keep the visited
+           * states, add the states from the worklist to these visited states
+           * and proceed the computation with the new successors we
+           * discovered */
+          //assert(store2.commit.store == store2.store)
+          loop(edges.map({ case (s1, s2) => s2 }).filter(s2 => !VisitedSet[VS].contains(visited, s2)),
+            VisitedSet[VS].append(visited, todo),
+            store2, kstore2,
+            halted ++ todo.filter(_.halted),
+            graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
+            reallyVisited ++ todo)
+        } else {
+          /* If the store or the kstore changed, we have to clean the set of visited
+           * states. If we ever encounter a state we already visited, because
+           * the store has been updated, we have to reexplore it. */
+          //assert(!(!store2.isUnchanged && store2.commit.store == store2.store))
+          loop(edges.map({ case (s1, s2) => s2 }),
+            VisitedSet[VS].empty,
+            store2.commit, kstore2,
+            halted ++ todo.filter(_.halted),
+            graph.map(_.addEdges(edges.map({ case (s1, s2) => (s1, (), s2) }))),
+            reallyVisited ++ todo)
+        }
       }
-    }
 
     val (state, store, kstore) = State.inject(exp, sem.initialEnv, sem.initialStore)
     loop(Set(state),

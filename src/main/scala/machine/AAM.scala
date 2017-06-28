@@ -154,23 +154,40 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
   }
 
   /**
-   * Performs the evaluation of an expression, possibly writing the output graph
-   * in a file, and returns the set of final states reached
+   * Performs the evaluation of an expression @param exp (more generally, a
+   * program) under the given semantics @param sem. If @param graph is true, it
+   * will compute and generate the graph corresponding to the execution of the
+   * program (otherwise it will just visit every reachable state). A @param
+   * timeout can also be given.
    */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Timeout): Output = {
     import scala.language.higherKinds
+    /* The fixpoint computation loop. @param todo is the set of states that need to
+     * be visited (the worklist). @param visited is the set of states that have
+     * already been visited. @param halted is the set of "final" states, where
+     * the program has finished its execution (it is only needed so that it can
+     * be included in the output, to return the final values computed by the
+     * program). @param graph is the current graph that has been computed (if we
+     * need to compute it). If we don't need to compute the graph, @param graph
+     * is None (see type definition for G above in this file).  Note that the
+     * worklist and visited set are "parameterized" and not tied to concrete
+     * implementations; but they are basically similar as Set[State].
+     */
     @scala.annotation.tailrec
     def loop[WL[_] : WorkList, VS[_] : VisitedSet](todo: WL[State], visited: VS[State], halted: Set[State], graph: G): AAMOutput = {
       if (timeout.reached) {
+        /* If we exceeded the maximal time allowed, we stop the evaluation and return what we computed up to now */
         AAMOutput(halted, VisitedSet[VS].size(visited), timeout.time, graph, true)
       } else {
+        /* Pick an element from the worklist */
         WorkList[WL].pick(todo) match {
+          /* We have an element, hence pick returned a pair consisting of the state to visit, and the new worklist */
           case Some((s, newTodo)) =>
             if (VisitedSet[VS].contains(visited, s) || VisitedSet[VS].exists(visited, s, (s2: State) => s2.subsumes(s))) {
               /* If we already visited the state, or if it is subsumed by another already
-               * visited state, we ignore it. The subsumption part reduces the
-               * number of visited states but leads to non-determinism due to the
-               * non-determinism of Scala's headOption (it seems so at least). */
+               * visited state (i.e., we already visited a state that contains
+               * more information than this one), we ignore it. The subsumption
+               * part reduces the number of visited states. */
               loop(newTodo, visited, halted, graph)
             } else if (s.halted) {
               /* If the state is a final state, add it to the list of final states and
@@ -179,17 +196,24 @@ class AAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
             } else {
               /* Otherwise, compute the successors of this state, update the graph, and push
                * the new successors on the todo list */
-              val succs = s.step(sem)
-              val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, (), s2))))
+              val succs = s.step(sem) /* s.step returns the set of successor states for s */
+              val newGraph = graph.map(_.addEdges(succs.map(s2 => (s, (), s2)))) /* add the new edges to the graph: from s to every successor */
+              /* then, add new successors to the worklist, add s to the visited set, and loop with the new graph */
               loop(WorkList[WL].append(newTodo, succs), VisitedSet[VS].add(visited, s), halted, newGraph)
             }
+          /* No element returned by pick, this means the worklist is empty and we have visited every reachable state */
           case None => AAMOutput(halted, VisitedSet[VS].size(visited), timeout.time, graph, false)
         }
       }
     }
     loop(
+      /* Start with the initial state resulting from injecting the program */
       Vector(State.inject(exp, sem.initialEnv, sem.initialStore)).toSeq,
+      /* Initially we didn't visit any state */
       VisitedSet.MapVisitedSet.empty,
-      Set(), if (graph) { Some(Graph.empty) } else { None })
+      /* Initially no halted state has been visited */
+      Set(),
+      /* Graph is initially empty, and we wrap it into an Option */
+      if (graph) { Some(Graph.empty) } else { None })
   }
 }
