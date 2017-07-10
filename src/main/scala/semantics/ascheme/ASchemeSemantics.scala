@@ -73,9 +73,9 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimes
             val (env2, store2) = bindArgs(margs.zip(margsv), env, store, t)
             val pself = self.asInstanceOf[PID]
             val vself = IsASchemeLattice[Abs].injectPid(pself)
-            val aself = Address[Addr].variable(Identifier("self", actd.pos), vself, t)
+            val aself = Address[Addr].variable(Identifier("a/self", actd.pos), vself, t)
             Action.eval(if (body.size == 1) { body.head } else { SchemeBegin(body, body.head.pos) },
-              env2.extend("self", aself), store2.extend(aself, vself))
+              env2.extend("a/self", aself), store2.extend(aself, vself))
           }
         case None =>
           Action.error(MessageNotSupported(name, mname, defs.keys.toList))

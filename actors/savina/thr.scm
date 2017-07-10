@@ -17,7 +17,7 @@
                        (if (> exits-left 1) ; different from original benchmark (original will send an exit to a dead actor)
                            (a/send next-actor exit (- exits-left 1))
                            #f)
-                       (terminate))))
+                       (a/terminate))))
          (build-vector (lambda (n f)
                          (letrec ((v (make-vector n #f))
                                   (loop (lambda (i)

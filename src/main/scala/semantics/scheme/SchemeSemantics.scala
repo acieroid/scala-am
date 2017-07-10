@@ -230,7 +230,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       val fromClauses = clauses.flatMap({ case (values, body) =>
         if (values.exists({
           case SchemeValue(ValueSymbol(s), _) =>
-            IsSchemeLattice[V].subsumes(IsSchemeLattice[V].injectSymbol(s), v)
+            IsSchemeLattice[V].subsumes(v, IsSchemeLattice[V].injectSymbol(s))
           case v2 => evalValue(v2.value).exists(v2 => IsSchemeLattice[V].subsumes(v, v2)) })) {
           /* TODO: precision could be improved by restricting v to v2 */
           evalBody(body, env, store)

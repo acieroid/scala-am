@@ -52,7 +52,9 @@ class MakeSchemeLattice[
       s"Vec(${IntLattice[I].shows(size)}, {$els}, $init)"
     }
   }
-  case class VectorAddress[Addr : Address](a: Addr) extends Value
+  case class VectorAddress[Addr : Address](a: Addr) extends Value {
+    override def toString = "#<vector>"
+  }
 
   val True = Bool(BoolLattice[B].inject(true))
   val False = Bool(BoolLattice[B].inject(false))

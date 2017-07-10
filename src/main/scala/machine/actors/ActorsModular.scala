@@ -11,6 +11,9 @@ import scalaz._
 class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier]
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ActorsModular"
+  var recordedBecome: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
+  var recordedCreate: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
+  var recordedReceive: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
 
   type G = Graph[ActorState, Unit, Unit]
   implicit val graphNode = new GraphNode[ActorState, Unit] {
@@ -139,6 +142,13 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
       case ControlError(_) => true
       case _ => false
     }
+    def extractArgs(actd: Exp, env: Env, sto: Sto): List[Abs] = actd match {
+      case SchemeActor(name, xs, _, _) =>
+        xs.map(x => env.lookup(x.name) match {
+          case Some(a) => sto.lookupBot(a)
+          case None => throw new Error("unbound variable: $x")
+        })
+    }
     def integrate(act: Act, store: GlobalStore):
         (
           /* Successor state (None if actor terminated) */
@@ -168,12 +178,14 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
         (Some(this.copy(control = ControlError(err))),
           store, None, None)
       case ActorActionBecome(name, actd, env2, store2, vres, effs) =>
+        recordedBecome = recordedBecome + (pid -> (recordedBecome(pid) + ((name, extractArgs(actd, env2, store2)))))
         (Some(this.copy(control = ControlWait, inst = ActorInstanceActor(actd, env2), kont = HaltKontAddress, t =  ActorTimestamp[Time].actorBecome(t, actd))),
           store.includeDelta(store2.delta), None, None)
       case ActorActionTerminate(_) =>
         (None, store, None, None)
       case ActorActionCreate(name, actd, exp, env2, store2, fres : (PID => Abs), effs) =>
-        val p2 = ThreadIdentifier[PID].thread(exp, t)
+        recordedCreate = recordedCreate + (pid -> (recordedCreate(pid) + ((name, extractArgs(actd, env2, store2)))))
+        val p2 = ThreadIdentifier[PID].thread(exp, t, name)
         (Some(this.copy(control = ControlKont(fres(p2)), t = ActorTimestamp[Time].actorCreated(t, p2))),
           store.includeDelta(store2.delta),
           Some(ActorState(p2, ControlWait, HaltKontAddress, ActorInstanceActor(actd, env2), Timestamp[Time].initial(""))),
@@ -217,6 +229,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
             /* TODO: pop from mailbox */
             mailbox.pop.foldLeft(init)((acc, m) => m match {
               case message @ (sender, name, values) =>
+                recordedReceive = recordedReceive + (pid -> (recordedReceive(pid) + ((name, values))))
                 sem.stepReceive(pid, name, values, actd, env, acc._4.store, ActorTimestamp[Time].messageReception(t, sender, name, values)).foldLeft(acc)((acc, action) =>
                   integrate(action, acc._4) match {
                     case (s, store2, created, sent) =>
@@ -371,10 +384,39 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
     }
     val (initialState, store) = inject(exp, sem.initialEnv, sem.initialStore)
     val initialInner = InnerLoopState(initialState.pid, Set(initialState), VisitedSet[VS].empty, VisitedSet[VS].empty, Option(G()), Set.empty, Set.empty)
-    outerLoop(OuterLoopState(Set(initialInner),
+    val res = outerLoop(OuterLoopState(Set(initialInner),
       Map[PID, Set[InnerLoopState]]().withDefaultValue(Set.empty) + (mainPid -> Set(initialInner)),
       Map[PID, Mailbox]().withDefaultValue(Mailbox.empty),
       store,
       Map[PID, Option[G]]().withDefaultValue(Option(G()))), 0)
+
+    reportRecorded()
+    res
   }
+  def reportRecorded(): Unit = {
+    def surround(x: String) = "\"" + x + "\""
+    val keys = recordedCreate.keySet ++ recordedBecome.keySet ++ recordedReceive.keySet
+    val keysstr = keys.mkString(", ")
+    println(s"${keys.size} actor types: $keysstr")
+    println("=========")
+    keys.foreach(k => {
+      val created = recordedCreate(k).map({
+        case (name, args) =>
+          val argsstr = args.mkString(" ")
+          s"(create $name ($argsstr))"
+      }).mkString(" ")
+      val become = recordedBecome(k).map({
+        case (name, args) =>
+          val argsstr = args.mkString(" ")
+          s"(become $name ($argsstr))"
+      }).mkString(" ")
+      val received = recordedReceive(k).map({
+        case (name, args) =>
+          val argsstr = args.mkString(" ")
+          s"(received $name ($argsstr))"
+      }).mkString(" ")
+      println(s"(${k.toString} ($created $become $received))")
+    })
+  }
+
 }
