@@ -40,7 +40,9 @@ class MakeSchemeLattice[
   case class Closure[Exp : Expression, Addr : Address](lambda: Exp, env: Environment[Addr]) extends Value {
     override def toString = "#<clo>"
   }
-  case class Cons[Addr : Address](car: Addr, cdr: Addr) extends Value
+  case class Cons[Addr : Address](car: Addr, cdr: Addr) extends Value {
+    override def toString = "#<list>"
+  }
   case object Nil extends Value {
     override def toString = "()"
   }

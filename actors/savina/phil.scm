@@ -31,7 +31,7 @@
 (define philosopher
   (a/actor "philosopher" (id rounds-so-far local-counter)
            (denied ()
-                   (a/send arbitrator-actor hungry self id)
+                   (a/send arbitrator-actor hungry a/self id)
                    (a/become philosopher id rounds-so-far (+ local-counter 1)))
            (eat ()
                 (a/send counter-actor add local-counter)
@@ -39,13 +39,13 @@
                 (if (< (+ rounds-so-far 1) Rounds)
                     (begin
                       ;; was: (a/send self start)
-                      (a/send arbitrator-actor hungry self id)
+                      (a/send arbitrator-actor hungry a/self id)
                       (a/become philosopher id (+ rounds-so-far 1) local-counter))
                     (begin
                       (a/send arbitrator-actor exit)
                       (a/terminate))))
            (start ()
-                  (a/send arbitrator-actor hungry self id)
+                  (a/send arbitrator-actor hungry a/self id)
                   (a/become philosopher id rounds-so-far local-counter))))
 (define counter-actor (a/create counter 0))
 (define arbitrator-actor (a/create arbitrator (make-vector NumForks #f) 0))

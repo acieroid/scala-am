@@ -55,6 +55,6 @@
 (define (main-loop radix next-actor)
   (if (> radix 0)
       (let ((sort-actor (a/create sort radix next-actor '() 0)))
-        (main-loop (inexact->exact (/ radix 2)) sort-actor))
+        (main-loop (inexact->exact (floor (/ radix 2))) sort-actor))
       next-actor))
 (a/send source-actor next-actor (main-loop (int-top) validation-actor))

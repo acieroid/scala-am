@@ -6,7 +6,7 @@
   (a/actor "number-producer-actor" ()
            (prime-filter (actor)
                          (letrec ((loop (lambda (candidate)
-                                          (if (= candidate Limit)
+                                          (if (>= candidate Limit)
                                               (begin
                                                 (a/send actor exit)
                                                 (a/terminate))

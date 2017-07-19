@@ -346,6 +346,8 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
 
     @scala.annotation.tailrec
     def outerLoop(st: OuterLoopState, iteration: Int): Output = {
+      println("---------------")
+      println(s"Iteration: $iteration")
       if (st.todo.isEmpty || timeout.reached) {
         println("Final mailboxes:")
         st.mailboxes.foreach({ case (k, v) =>

@@ -44,7 +44,7 @@
   (a/actor "source" (next producer current)
            (boot ()
                  (a/send next value current)
-                 (a/send producer next self)
+                 (a/send producer next a/self)
                  (a/become source next producer (modulo (+ current 1) MaxValue)))
            (exit ()
                  (a/terminate))))
@@ -110,7 +110,6 @@
   (a/actor "integrator" (next data exits-received)
            (sourced-value (source-id value)
                           ;; Some complex processing not modeled here
-                          ;; TODO: the list has to be copied when sent, instead we compute the sum here
                           (letrec ((make-values (lambda (i acc) (if (= i NumChannels) acc (make-values (+ i 1) (cons (int-top) acc))))))
                             (if (bool-top)
                                 (a/send next collection (make-values 0 '()) ;; (foldl (lambda (v acc) (+ v acc)) 0 (make-values 0 '()))

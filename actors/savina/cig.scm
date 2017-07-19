@@ -24,7 +24,7 @@
 (define arbitrator
   (a/actor "arbitrator" (smoker-actors rounds-so-far)
            (create-smokers ()
-                           (a/become arbitrator (build-vector NumSmokers (lambda (i) (a/create smoker self))) 0))
+                           (a/become arbitrator (build-vector NumSmokers (lambda (i) (a/create smoker a/self))) 0))
            (start ()
                   (notify-random-smoker smoker-actors)
                   (a/become arbitrator smoker-actors rounds-so-far))

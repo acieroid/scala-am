@@ -11,15 +11,15 @@
                       (begin
                         (if barber-asleep
                             (begin
-                              (a/send self next)
+                              (a/send a/self next)
                               (a/become waiting-room (cons customer waiting-customers) #t))
                             (begin
                               (a/send customer wait)
-                              (a/become waiting-room (cons customer waiting-customer) #f))))))
+                              (a/become waiting-room (cons customer waiting-customers) #f))))))
            (next ()
                  (if (pair? waiting-customers)
                      (let ((c (car waiting-customers)))
-                       (a/send barber-actor enter c self)
+                       (a/send barber-actor enter c a/self)
                        (a/become waiting-room (cdr waiting-customers) barber-asleep))
                      (begin
                        (a/send barber-actor wait)
@@ -61,7 +61,7 @@
 (define customer
   (a/actor "customer" (id)
            (full ()
-                 (a/send factory-actor returned self)
+                 (a/send factory-actor returned a/self)
                  (a/become customer id))
            (wait ()
                  (a/become customer id))

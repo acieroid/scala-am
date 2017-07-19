@@ -5,7 +5,7 @@
                     (if (= n 0)
                         (a/send customer result 1)
                         (let ((c (a/create customer-actor n customer)))
-                          (a/send self compute (- n 1) c)))
+                          (a/send a/self compute (- n 1) c)))
                     (a/become fact-actor))))
 (define customer-actor
   (a/actor "customer" (n customer)
