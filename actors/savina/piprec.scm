@@ -1,5 +1,5 @@
 (define NumWorkers (int-top))
-(define Tolerance (int-top))
+(define Tolerance 0.1)
 (define Precision (int-top))
 
 (define (build-vector n f)
@@ -26,7 +26,7 @@
          (term3 (- term2 (/ 1 (+ eight-k 5))))
          (term4 (- term3 (/ 1 (+ eight-k 6))))
          (term5 (/ term4 (expt 16 k))))
-    term5))
+    (exact->inexact term5)))
 
 (define worker-actor
   (a/actor "worker-actor" (master id terms-processed)
@@ -50,22 +50,21 @@
                                num-terms-requested)))
                      (if (= num-terms-requested2 num-terms-received)
                          (vector-foreach workers (lambda (w) (a/send w stop))))
-                     (a/become workers (+ result r) num-workers-terminated num-terms-requested2 (+ num-terms-received 1) stop-requests2)))
+                     (a/become master-actor workers (+ result r) num-workers-terminated num-terms-requested2 (+ num-terms-received 1) stop-requests2)))
            (stop ()
                  (if (= (+ num-workers-terminated 1) NumWorkers)
                      (a/terminate)
                      (a/become master-actor workers result (+ num-workers-terminated 1) num-terms-requested num-terms-received stop-requests)))
            (start ()
-                  (letrec ((loop (lambda (i)
-                                   (if (= i (min Precision (* 10 NumWorkers)))
-                                       (a/become master-actor workers result num-workers-terminated (+ num-terms-requested i) num-terms-received stop-requests)
-                                       (begin
-                                         (a/send (vector-ref workers (modulo i NumWorkers))
-                                                 work Precision (+ num-terms-requested i))
-                                         (loop (+ i 1)))))))
-                    (loop 0)))))
-(define master
-  (a/create master-actor
-            (build-vector NumWorkers (lambda (i) (a/create worker-actor master i 0)))
-            0 0 0 0 #f))
+                  (let ((workers (build-vector NumWorkers (lambda (i) (a/create worker-actor a/self i 0)))))
+                    (letrec ((loop (lambda (i)
+                                     (if (= i (min Precision (* 10 NumWorkers)))
+                                         (a/become master-actor workers result num-workers-terminated (+ num-terms-requested i) num-terms-received stop-requests)
+                                         (begin
+                                           (a/send (vector-ref workers (modulo i NumWorkers))
+                                                   work Precision (+ num-terms-requested i))
+                                           (loop (+ i 1)))))))
+                      (loop 0))))))
+
+(define master (a/create master-actor #f 0 0 0 0 #f))
 (a/send master start)

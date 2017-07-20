@@ -23,6 +23,13 @@
 
 (define master-actor
   (a/actor "master-actor" (workers result-counter message-counter num-workers-terminated num-work-sent num-work-completed)
+           (start ()
+                  (a/become master-actor
+                            (build-vector NumWorkers (lambda (i)
+                                                       (let ((w (a/create worker-actor master i)))
+                                                         (if (= i 0) (a/send w work '(0) 0))
+                                                         w)))
+                            result-counter message-counter num-workers-terminated num-work-sent num-work-completed))
            (work (data depth)
                  (a/send (vector-ref workers (modulo (+ message-counter 1) NumWorkers)) work '(0) 0)
                  (a/become master-actor workers result-counter (+ message-counter 1) num-workers-terminated num-work-sent num-work-completed))
@@ -89,10 +96,5 @@
            (stop ()
                  (a/send master stop)
                  (a/terminate))))
-(define master
-  (a/create master-actor (build-vector NumWorkers (lambda (i)
-                                                    (let ((w (a/create worker-actor master i)))
-                                                      (if (= i 0) (a/send w work '(0) 0))
-                                                      w)))
-            0 1 0 0 0))
-1
+(define master (a/create master-actor #f 0 1 0 0 0))
+(a/send master start)

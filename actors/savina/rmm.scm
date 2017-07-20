@@ -23,8 +23,16 @@
 
 (define master-actor
   (a/actor "master-actor" (workers num-workers-terminated num-work-sent num-work-completed)
+           (start ()
+                  (a/become master-actor
+                            (build-vector NumWorkers (lambda (i)
+                                                    (let* ((w (a/create worker-actor master i)))
+                                                      (if (= i 0)
+                                                          (a/send w work 0 0 0 0 0 0 NumBlocks DataLength 0))
+                                                      w)))
+                            num-workers-terminated num-work-sent num-work-completed))
            (work (srA scA srB scB srC scC num-blocks dim priority)
-                 (let ((index (modulo (inexact->exact (+ srC scC)) NumWorkers)))
+                 (let ((index (modulo (inexact->exact (floor (+ srC scC))) NumWorkers)))
                    (a/send (vector-ref workers index) work srA scA srB scB srC scC num-blocks dim priority)
                    (a/become master-actor workers num-workers-terminated (+ num-work-sent 1) num-work-completed)))
            (done ()
@@ -95,11 +103,6 @@
            (stop ()
                  (a/send master stop)
                  (a/terminate))))
-
-(define master
-  (a/create master-actor (build-vector NumWorkers (lambda (i)
-                                                    (let* ((w (a/create worker-actor master i)))
-                                                      (if (= i 0)
-                                                          (a/send w work 0 0 0 0 0 0 NumBlocks DataLength 0))
-                                                      w))) 0 0 0))
+(define master (a/create master-actor #f 0 0 0))
 master
+(a/send master start)
