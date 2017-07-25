@@ -40,7 +40,7 @@
                      (vector-foreach (lambda (a) (a/send a stop)) workers))
                  (a/become master-actor workers num-workers-terminated num-work-sent (+ num-work-completed 1)))
            (stop ()
-                 (if (= (+ num-workers-terminated 1) num-workers)
+                 (if (= (+ num-workers-terminated 1) NumWorkers)
                      (begin
                        (a/send result stop)
                        (a/terminate))

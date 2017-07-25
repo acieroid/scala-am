@@ -8,12 +8,53 @@ import scalaz._
  * TODO: bring back annotations
  * TODO: just have to restart computation from wait states
  */
-class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier]
+class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier](recordValues: Boolean)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ActorsModular"
   var recordedBecome: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
+  def recordBecome(pid: PID, name: String, args: List[Abs]): Unit = if (recordValues) {
+    val existing = recordedBecome(pid)
+    val subsumed = existing.exists({ case (name2, args2) =>
+      name == name2 && args.zip(args2).forall({ case (v, v2) => name == name2 && JoinLattice[Abs].subsumes(v2, v) })
+    })
+    val updated = if (subsumed) { existing } else {
+      existing.filter({ case (name2, args2) =>
+        /* remove all subsumed by new element */
+        !(name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v, v2) }))
+      }) + ((name, args))
+    }
+    recordedBecome = recordedBecome + (pid -> updated)
+  }
+
   var recordedCreate: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
+  def recordCreate(pid: PID, name: String, args: List[Abs]): Unit = if (recordValues) {
+    val existing = recordedCreate(pid)
+    val subsumed = existing.exists({ case (name2, args2) =>
+      name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v2, v) })
+    })
+    val updated = if (subsumed) { existing } else {
+      existing.filter({ case (name2, args2) =>
+        /* remove all subsumed by new element */
+        !(name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v, v2) }))
+      }) + ((name, args))
+    }
+    recordedCreate = recordedCreate + (pid -> updated)
+  }
+
   var recordedReceive: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
+  def recordReceive(pid: PID, name: String, args: List[Abs]): Unit = if (recordValues) {
+    val existing = recordedReceive(pid)
+    val subsumed = existing.exists({ case (name2, args2) =>
+      name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v2, v) })
+    })
+    val updated = if (subsumed) { existing } else {
+      existing.filter({ case (name2, args2) =>
+        /* remove all subsumed by new element */
+        !(name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v, v2) }))
+      }) + ((name, args))
+    }
+    recordedReceive = recordedReceive + (pid -> updated)
+  }
 
   type G = Graph[ActorState, Unit, Unit]
   implicit val graphNode = new GraphNode[ActorState, Unit] {
@@ -178,14 +219,14 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
         (Some(this.copy(control = ControlError(err))),
           store, None, None)
       case ActorActionBecome(name, actd, env2, store2, vres, effs) =>
-        recordedBecome = recordedBecome + (pid -> (recordedBecome(pid) + ((name, extractArgs(actd, env2, store2)))))
+        recordBecome(pid, name, extractArgs(actd, env2, store2))
         (Some(this.copy(control = ControlWait, inst = ActorInstanceActor(actd, env2), kont = HaltKontAddress, t =  ActorTimestamp[Time].actorBecome(t, actd))),
           store.includeDelta(store2.delta), None, None)
       case ActorActionTerminate(_) =>
         (None, store, None, None)
       case ActorActionCreate(name, actd, exp, env2, store2, fres : (PID => Abs), effs) =>
-        recordedCreate = recordedCreate + (pid -> (recordedCreate(pid) + ((name, extractArgs(actd, env2, store2)))))
-        val p2 = ThreadIdentifier[PID].thread(exp, t, name)
+        recordCreate(pid, name, extractArgs(actd, env2, store2))
+        val p2 = ThreadIdentifier[PID].thread(t, name)
         (Some(this.copy(control = ControlKont(fres(p2)), t = ActorTimestamp[Time].actorCreated(t, p2))),
           store.includeDelta(store2.delta),
           Some(ActorState(p2, ControlWait, HaltKontAddress, ActorInstanceActor(actd, env2), Timestamp[Time].initial(""))),
@@ -229,7 +270,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
             /* TODO: pop from mailbox */
             mailbox.pop.foldLeft(init)((acc, m) => m match {
               case message @ (sender, name, values) =>
-                recordedReceive = recordedReceive + (pid -> (recordedReceive(pid) + ((name, values))))
+                recordReceive(pid, name, values)
                 sem.stepReceive(pid, name, values, actd, env, acc._4.store, ActorTimestamp[Time].messageReception(t, sender, name, values)).foldLeft(acc)((acc, action) =>
                   integrate(action, acc._4) match {
                     case (s, store2, created, sent) =>
@@ -362,7 +403,7 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
           val (todoCreated, pidsCreated) = fromCreated(ist.created, acc._2)
           println(s"Created pids: ${ist.created.map(_.pid)}")
           val (todoSent, mailboxesSent) = fromSent(ist.sent, acc._2, acc._3)
-          println(s"Messages sent: ${ist.sent.map(_._1)}")
+          println(s"Messages sent: ${ist.sent.map(x => (x._1, x._2))}")
           (acc._1 ++ todoCreated ++ todoSent, pidsCreated, mailboxesSent, store2, acc._5 + (ist.pid -> ist.graph))
         })
         val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5)
