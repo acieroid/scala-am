@@ -38,8 +38,8 @@
 
 (define master-actor
   (a/actor "master-actor" (workers terms-received result-area)
-           (start (workers)
-                  (a/become master-actor workers terms-received result-area))
+;;            (start (workers)
+;;                   (a/become master-actor workers terms-received result-area))
            (result (v id)
                    (if (= (+ terms-received 1) NumWorkers)
                        (a/terminate)
@@ -54,12 +54,19 @@
                                           (a/send (vector-ref workers i) work wl wr h)
                                           (loop (+ i 1)))))))
                      (loop 0))))))
+(define master-actor-init
+  (a/actor "master-actor-init" ()
+           (start ()
+                  (let ((workers (build-vector NumWorkers (lambda (i) (a/create worker-actor master i)))))
+                    (a/send a/self work L R Precision)
+                    (a/become master-actor workers 0 0)))))
 (define worker-actor
   (a/actor "worker-actor" (master id)
             (work (l r h)
                   (let ((area (compute-area l r h)))
                     (a/send master result area id)
                     (a/terminate)))))
-(define master (a/create master-actor #f 0 0))
-(a/send master start (build-vector NumWorkers (lambda (i) (a/create worker-actor master i))))
-(a/send master work L R Precision)
+;; (define master (a/create master-actor #f 0 0))
+;; (a/send master start )
+(define master (a/create master-actor-init))
+(a/send master start)

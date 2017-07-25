@@ -70,29 +70,29 @@
                                          (a/become manager producers consumers available-producers available-consumers (cdr pending-data) terminated-producers)))))
            (exit () (if (and (= (+ 1 terminated-producers) NumProducers) (= (length available-consumers) NumConsumers))
                         (begin
+                          (a/log "available consumers: ~a~n " (length available-consumers))
                           (for-each (lambda (c) (a/send c exit)) consumers)
                           (a/terminate))
                         (a/become manager producers consumers available-producers available-consumers pending-data (+ 1 terminated-producers))))))
 
 (define (process-item item cost) (random 10)) ; not modeled as in Savina, but doesn't change anything for static analysis
 
-(define producer
-  (a/actor "producer" (id manager items-produced prod-item)
-           (produce-data ()
-                         (if (= items-produced NumItemsPerProducer)
-                             (begin
-                               (a/send manager exit)
-                               (a/terminate))
-                             (begin
-                               (let ((prod-item2 (process-item prod-item ProdCost)))
-                                 (a/send manager data-item a/self prod-item)
-                                 (a/become producer id manager (+ items-produced 1) prod-item2)))))))
-(define consumer
-  (a/actor "consumer" (id manager cons-item)
-           (data-item (data)
-                      (let ((cons-item2 (process-item (+ cons-item data) ConsCost)))
-                        (a/send manager consumer-available a/self)
-                        (a/become consumer id manager cons-item2)))
-           (exit () (a/terminate))))
+(define producer (a/actor "producer" (id manager items-produced prod-item)
+                          (produce-data ()
+                                        (if (= items-produced NumItemsPerProducer)
+                                            (begin
+                                              (a/send manager exit)
+                                              (a/terminate))
+                                            (begin
+                                              (let ((prod-item2 (process-item prod-item ProdCost)))
+                                                (a/send manager data-item a/self prod-item)
+                                                (a/become producer id manager (+ items-produced 1) prod-item2)))))))
+(define consumer (a/actor "consumer" (id manager cons-item)
+                          (data-item (data)
+                                     (let ((cons-item2 (process-item (+ cons-item data) ConsCost)))
+                                       (a/send manager consumer-available a/self)
+                                       (a/become consumer id manager cons-item2)))
+                          (exit () (a/terminate))))
 (define m (a/create manager '() '() '() '() '() 0))
 (a/send m start)
+
