@@ -58,7 +58,7 @@ object Config {
     opt[Address.Value]('a', "address") action { (x, c) => c.copy(address = x) } text(s"Addresses to use (${Address.values.mkString(separator)})")
     opt[Mbox.Value]("mbox") action { (x, c) => c.copy(mbox = x) } text(s"Mailbox to use (${Mbox.values.mkString(separator)})")
     opt[Int]("mbox-bound") action { (x, c) => c.copy(mboxBound = x) } text("Mailbox bound to use (defaults to 1)")
-    opt[Unit]("counting") action { (x, c) => c.copy(counting = true) } text("Use absstract counting (on for concrete lattices)")
+    opt[Unit]("counting") action { (x, c) => c.copy(counting = true) } text("Use abstract counting (on for concrete lattices)")
     opt[Int]('b', "bound") action { (x, c) => c.copy(bound = x) } text("Bound for bounded lattice (defaults to 100)")
     opt[Int]('w', "workers") action { (x, c) => c.copy(workers = x) } text("Number of workers (defaults to 1)")
   }
