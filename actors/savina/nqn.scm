@@ -68,8 +68,7 @@
                           (if (not (loopj (+ i 1)))
                               #f
                               (loopi (+ i 1))))))))
-    (let ((res (loopi 0)))
-      res)))
+    (loopi 0)))
 (define (nqueens-seq data depth master)
   (if (= Size depth)
       (a/send master result)
