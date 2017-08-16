@@ -23,8 +23,8 @@
                        'done))))
     (loop 0)))
 
-(define master
-  (a/actor "master" (computers workers num-work-requested num-work-received terms-sum)
+(define master-init
+  (a/actor "master-init" ()
            (start ()
                   (let* ((computers
                           (build-vector NumComputers
@@ -43,7 +43,9 @@
                                             (a/send actor get-term)
                                             actor
                                             )))))
-                    (a/become master computers workers NumWorkers num-work-received terms-sum)))
+                    (a/become master computers workers NumWorkers 0 0)))))
+(define master
+  (a/actor "master" (computers workers num-work-requested num-work-received terms-sum)
            (result (term)
                    (if (= (+ num-work-received 1) num-work-requested)
                        (begin
@@ -69,6 +71,7 @@
   (a/actor "series-worker" (master computer cur-term)
            (next-term ()
                       (a/send computer compute cur-term a/self)
+                      ;; (a/become series-worker master computer cur-term)
                       (a/become series-worker-wait master computer)
                       )
            (result (term)
@@ -89,5 +92,6 @@
            (stop ()
                  (a/terminate))))
 
-(define master-actor (a/create master #f #f 0 0 0))
+;; (define master-actor (a/create master #f #f 0 0 0))
+(define master-actor (a/create master-init))
 (a/send master-actor start)

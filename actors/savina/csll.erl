@@ -73,7 +73,7 @@ worker(Master, Dictionary, Id, MessageCount) ->
 
 list_member(_, []) -> false;
 list_member(Element, [X | Xs]) ->
-    case X == Xs of
+    case Element == X of
         true -> true;
         false -> list_member(Element, Xs)
     end.
