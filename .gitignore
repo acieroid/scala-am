@@ -5,3 +5,4 @@
 *.dot
 target
 *.log
+*.beam

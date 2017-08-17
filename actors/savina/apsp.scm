@@ -138,8 +138,8 @@
                                                                         (if (= r num-blocks-in-single-dim)
                                                                             acc
                                                                             (if (= r bi)
-                                                                                (neighbors-loop2 (+ r 1) acc)
-                                                                                (neighbors-loop2 (+ r 1) (cons (vector-ref (vector-ref block-actors r) bj) acc))))))
+                                                                                (neighbors-loop1 (+ r 1) acc)
+                                                                                (neighbors-loop1 (+ r 1) (cons (vector-ref (vector-ref block-actors r) bj) acc))))))
                                                      (neighbors-loop2 (lambda (c acc)
                                                                         (if (= c num-blocks-in-single-dim)
                                                                             acc
