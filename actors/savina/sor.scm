@@ -168,7 +168,7 @@
                                                                        (sor-actor pos (vector-ref (vector-ref matrix-part i) (- j 1))
                                                                                   c s (+ (- s part-start) 1)
                                                                                   omega self #t))
-                                                          (if (= j 1) (vector-set! my-border i (vector-ref sor-actors pos)) #f)
+                                                          (if (= j 1) (vector-set! my-border i (vector-ref pos sor-actors)) #f)
                                                           (loop2j (+ j 1)))))))
                                    (loop2j 1)
                                    (loop2i (+ i 1)))))))

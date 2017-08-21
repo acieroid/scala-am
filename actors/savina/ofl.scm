@@ -1,6 +1,5 @@
 (define Alpha 2.0)
 (define CutoffDepth (int-top))
-(define Seed (int-top))
 (define GridSize (int-top)) ;; was 500
 (define F (* (sqrt 2) GridSize))
 (define NumPoints (int-top))
@@ -122,13 +121,13 @@
               0 ;; terminated child count
               (foldl (lambda (c acc)
                        (+ acc (foldl (lambda (result fac)
-                                       (let ((distance (get-distance fac point)))
+                                       (let ((distance (get-distance fac c)))
                                          (if (< distance result)
                                              distance
                                              result)))
                                      0
                                      local-facilities)))
-                     customers 0.0))))
+                     0.0 customers))))
 (define quadrant-actor
   (a/actor "quadrant-actor"
            (parent position-relative-to-parent boundary threshold
@@ -160,7 +159,7 @@
                                                local-facilities)))
                               (if (> (+ total-cost cost) threshold)
                                   ;; partition
-                                  (let ((facility (mid-point bounding-box))
+                                  (let ((facility (mid-point boundary))
                                         (max-depth (max max-depth-of-known-open-facility depth)))
                                     ;; notifyParentOfFacility(...)
                                     (if parent
@@ -242,7 +241,7 @@
                                           total-cost)
                             )))
             (request-exit ()
-                          (if (null? children)
+                          (if (not (null? children))
                               (begin
                                 (for-each (lambda (loop-child) (a/send loop-child request-exit)) children)
                                 (a/become quadrant-actor parent
