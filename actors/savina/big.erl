@@ -1,10 +1,13 @@
-%-module(big).
-%-export([main/0]).
-%-define(NMessages, 5).
-%-define(NWorkers, 5).
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NMessages, ?any_nat()).
 -define(NWorkers, ?any_nat()).
+-else.
+-module(big).
+-export([main/0]).
+-define(NMessages, 5).
+-define(NWorkers, 5).
+-endif.
 
 list_ref(0, []) -> error;
 list_ref(0, [X | _]) -> X;
@@ -27,9 +30,13 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
+-ifdef(SOTER).
 random(X) ->
-    %rand:uniform(X)-1.
     modulo(?any_nat(), X).
+-else.
+random(X) ->
+    rand:uniform(X)-1.
+-endif.
 
 big_actor(Id, NumPings, Sink, ExpPinger, Neighbors) ->
     receive

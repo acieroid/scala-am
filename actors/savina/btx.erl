@@ -1,12 +1,15 @@
-%-soter_config(peano).
-%-define(NumAccounts, ?any_nat()).
-%-define(NumBankings, ?any_nat()).
-%-define(InitialBalance, ?any_nat()).
+-ifdef(SOTER).
+-soter_config(peano).
+-define(NumAccounts, ?any_nat()).
+-define(NumBankings, ?any_nat()).
+-define(InitialBalance, ?any_nat()).
+-else.
 -module(btx).
 -export([main/0]).
 -define(NumAccounts, 5).
 -define(NumBankings, 5).
 -define(InitialBalance, 5).
+-endif.
 
 plus(X, 0) -> X;
 plus(X, Y) -> plus(X+1, Y-1).
@@ -20,9 +23,13 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
+-ifdef(SOTER).
+random(X) ->
+    modulo(?any_nat(), X).
+-else.
 random(X) ->
     rand:uniform(X)-1.
-    %modulo(?any_nat(), X).
+-endif.
 
 list_ref(0, []) -> error;
 list_ref(0, [X | _]) -> X;

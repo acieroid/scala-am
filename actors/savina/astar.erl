@@ -1,17 +1,19 @@
-%-module(astar).
-%-export([main/0]).
-%-define(NumWorkers, 2).
-%-define(Threshold, 5).
-%-define(MaxNeighbors, 5).
-%-define(Origin, 0).
-%-define(Target, 10).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NumWorkers, ?any_nat()).
 -define(Threshold, ?any_nat()).
 -define(MaxNeighbors, ?any_nat()).
 -define(Origin, 0).
 -define(Target, 10).
+-else.
+-module(astar).
+-export([main/0]).
+-define(NumWorkers, 2).
+-define(Threshold, 5).
+-define(MaxNeighbors, 5).
+-define(Origin, 0).
+-define(Target, 10).
+-endif.
 
 list_ref(0, []) -> error;
 list_ref(0, [X | _]) -> X;
@@ -39,12 +41,6 @@ build_list_i(I, N, F) ->
     end.
 build_list(N, F) -> build_list_i(0, N, F).
 
-%% plus(X, 0) -> X;
-%% plus(X, Y) -> plus(X+1, Y-1).
-
-%% times(_, 0) -> 0;
-%% times(X, Y) -> plus(X, times(X, Y-1)).
-
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
 
@@ -54,9 +50,13 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
+-ifdef(SOTER).
 random(X) ->
-%    rand:uniform(X)-1.
      modulo(?any_nat(), X).
+-else.
+random(X) ->
+    rand:uniform(X)-1.
+-endif.
 
 master_actor(Workers, NumWorkersTerminated, NumWorkSent, NumWorkCompleted) ->
     receive

@@ -1,12 +1,15 @@
-% -module(apsp).
-% -export([main/0]).
-% -define(NumNodes, 30).
-% -define(BlockSize, 5).
-% -define(W, 10).
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NumNodes, ?any_nat()).
 -define(BlockSize, ?any_nat()).
 -define(W, ?any_nat()).
+-else.
+-module(apsp).
+-export([main/0]).
+-define(NumNodes, 30).
+-define(BlockSize, 5).
+-define(W, 10).
+-endif.
 
 build_list_i(I, N, F) ->
     case I == N of
@@ -72,11 +75,12 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
+-ifdef(SOTER).
+random(X) -> modulo(?any_nat(), X).
+-else.
 random(X) ->
     rand:uniform(X)-1.
-%     modulo(?any_nat(), X).
-
-
+-endif.
 
 generate_graph() ->
     LocalData = build_list(?NumNodes, fun(_) -> build_list(?NumNodes, fun(_) -> 0 end) end),
