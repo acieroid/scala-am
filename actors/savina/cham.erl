@@ -1,11 +1,13 @@
-%-module(cham).
-%-export([main/0]).
-%-define(NMeetings, 5).
-%-define(NChameneos, 5).
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NMeetings, ?any_nat()).
 -define(NChameneos, ?any_nat()).
-
+-else.
+-module(cham).
+-export([main/0]).
+-define(NMeetings, 5).
+-define(NChameneos, 5).
+-endif.
 
 complement(red, red) -> red;
 complement(red, yellow) -> blue;
@@ -41,23 +43,20 @@ modulo(X, Y) ->
 chameneo_actor(Mall, Meetings, Color, Id) ->
     receive
         {meet, OtherColor, Sender} ->
-            io:format("chameneo meet ~w ~w~n", [OtherColor, Sender]),
             NewColor = complement(Color, OtherColor),
             Sender ! {change, NewColor},
             Mall ! {meet, NewColor, self()},
             chameneo_actor(Mall, Meetings, NewColor, Id);
         {change, NewColor} ->
-            io:format("chameneo change ~w~n", [NewColor]),
             Mall ! {meet, NewColor, self()},
             chameneo_actor(Mall, Meetings+1, NewColor, Id);
         {exit, Sender} ->
-            io:format("chameneo ~w exiting~n", [Id]),
             Sender ! {meetingcount, Meetings, self()},
+            io:format("chameneo done~n"),
             done
     end.
 
 create_chameneo(Mall, Color, Id) ->
-    io:format(">>> create chameneo ~w ~w~n", [Color, Id]),
     Chameneo = spawn(fun() -> chameneo_actor(Mall, 0, Color, Id) end),
     Mall ! {meet, Color, Chameneo},
     Chameneo.
@@ -65,7 +64,6 @@ create_chameneo(Mall, Color, Id) ->
 create_chameneos(I, Mall) ->
     case I == ?NChameneos of
         true ->
-            io:format("done creating~n"),
             done;
         false ->
             create_chameneo(Mall, pick_color(modulo(I, 3)), I),
@@ -75,13 +73,11 @@ create_chameneos(I, Mall) ->
 mall_actor(WaitingChameneo, N, SumMeetings, NumFaded) ->
     receive
         {meetingcount, Count, _} ->
-            io:format("meetingcount ~w~n", [Count]),
             case (NumFaded+1) == ?NChameneos of
                 true -> io:format("mall done~n"), done;
                 false -> mall_actor(WaitingChameneo, N, plus(SumMeetings,Count), NumFaded+1)
             end;
         {meet, Color, Sender} ->
-            io:format("meet ~w ~w~n", [Color, Sender]),
             case N == 0 of
                 false -> case WaitingChameneo of
                              false -> mall_actor(Sender, N, SumMeetings, NumFaded);

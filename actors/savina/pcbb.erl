@@ -1,13 +1,4 @@
-%-module(pcbb).
-%-export([main/0]).
-%-define(BufferSize, 5).
-%-define(NumProducers, 2).
-%-define(NumConsumers, 2).
-%-define(NumItemsPerProducer, 2).
-%-define(ConsCost, 40).
-%-define(ProdCost, 40).
-%-define(AdjustedBufferSize, ?BufferSize-?NumProducers).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(BufferSize, ?any_nat()).
 -define(NumProducers, ?any_nat()).
@@ -15,8 +6,18 @@
 -define(NumItemsPerProducer, ?any_nat()).
 -define(ConsCost, 40).
 -define(ProdCost, 40).
--define(AdjustedBufferSize, ?any_nat()). % should be ?BufferSize-?NumProducers but Soter doesn't support -
-
+-define(AdjustedBufferSize, ?any_nat()).
+-else.
+-module(pcbb).
+-export([main/0]).
+-define(BufferSize, 5).
+-define(NumProducers, 2).
+-define(NumConsumers, 2).
+-define(NumItemsPerProducer, 2).
+-define(ConsCost, 40).
+-define(ProdCost, 40).
+-define(AdjustedBufferSize, ?BufferSize-?NumProducers).
+-endif.
 
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
@@ -27,9 +28,11 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
-random(X) ->
-    %rand:uniform(X)-1.
-    modulo(?any_nat(), X).
+-ifdef(SOTER).
+random(X) -> modulo(?any_nat(), X).
+-else.
+random(X) -> rand:uniform(X)-1.
+-endif.
 
 plus(X, 0) -> X;
 plus(X, Y) -> plus(X+1, Y-1).
@@ -52,11 +55,6 @@ rest([_|A]) -> A.
 andd(true, true) -> true;
 andd(_, _) -> false.
 
-%gt(0, 0) -> false;
-%gt(X, 0) -> true;
-%gt(0, X) -> false;
-%gt(X, Y) -> gt(X-1, Y-1).
-
 spawn_producers_loop(Manager, I) ->
     case I == ?NumProducers of
         true -> [];
@@ -68,8 +66,6 @@ spawn_producers_loop(Manager, I) ->
 
 spawn_producers(Manager) ->
     spawn_producers_loop(Manager, 0).
-
-
 
 spawn_consumers_loop(Manager, I) ->
     case I == ?NumConsumers of

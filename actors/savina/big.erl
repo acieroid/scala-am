@@ -21,15 +21,6 @@ list_foreach(F, [X | Xs]) ->
     F(X),
     list_foreach(F, Xs).
 
-minus(X, 0) -> X;
-minus(X, Y) -> minus(X-1, Y-1).
-
-modulo(X, Y) ->
-    case X < Y of
-        true -> X;
-        false -> modulo(minus(X,Y), Y)
-    end.
-
 -ifdef(SOTER).
 random(X) ->
     modulo(?any_nat(), X).
@@ -41,11 +32,9 @@ random(X) ->
 big_actor(Id, NumPings, Sink, ExpPinger, Neighbors) ->
     receive
         {ping, SenderId} ->
-            io:format("ping from ~w to ~w~n", [SenderId, Id]),
             list_ref(SenderId, Neighbors) ! {pong, Id},
             big_actor(Id, NumPings, Sink, ExpPinger, Neighbors);
         {pong, Sender} ->
-            io:format("pong from ~w to ~w ~n", [Sender, Id]),
             case Sender == ExpPinger of
                 true -> case NumPings == ?NMessages of
                             true ->
@@ -61,7 +50,6 @@ big_actor(Id, NumPings, Sink, ExpPinger, Neighbors) ->
         {exit} ->
             io:format("~w exiting~n", [Id]), done;
         {neighbors, NewNeighbors} ->
-            io:format("~w got its neighbors~n", [Id]),
             big_actor(Id, NumPings, Sink, ExpPinger, NewNeighbors)
     end.
 

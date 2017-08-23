@@ -68,7 +68,6 @@ minus(X, Y) -> minus(X-1, Y-1).
 times(_, 0) -> 0;
 times(X, Y) -> plus(X, times(X, Y-1)).
 
-
 modulo(X, Y) ->
     case X < Y of
         true -> X;

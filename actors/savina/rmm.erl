@@ -1,15 +1,17 @@
-%-module(rmm).
-%-export([main/0]).
-%-define(NumWorkers, 2).
-%-define(DataLength, 5).
-%-define(NumBlocks, 25).
-%-define(BlockThreshold, 5).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NumWorkers, ?any_nat()).
 -define(DataLength, ?any_nat()).
 -define(NumBlocks, ?any_nat()).
 -define(BlockThreshold, ?any_nat()).
+-else.
+-module(rmm).
+-export([main/0]).
+-define(NumWorkers, 2).
+-define(DataLength, 5).
+-define(NumBlocks, 25).
+-define(BlockThreshold, 5).
+-endif.
 
 list_ref(0, []) -> error;
 list_ref(0, [X | _]) -> X;

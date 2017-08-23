@@ -1,10 +1,13 @@
-%-module(rsort).
-%-export([main/0]).
-%-define(NumValues, 5).
-%-define(MaxValue, 1024).
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NumValues, ?any_nat()).
 -define(MaxValue, ?any_nat()).
+-else.
+-module(rsort).
+-export([main/0]).
+-define(NumValues, 5).
+-define(MaxValue, 1024).
+-endif.
 
 list_foreach(_, []) -> done;
 list_foreach(F, [X | Xs]) ->

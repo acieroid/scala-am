@@ -1,5 +1,11 @@
+-ifdef(SOTER).
 -soter_config(peano).
 -define(N, ?any_nat()).
+-else.
+-module(fjc).
+-export([main/0]).
+-define(N, 5).
+-endif.
 
 perform_computation(Theta) ->
     Theta.

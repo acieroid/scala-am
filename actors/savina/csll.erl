@@ -1,15 +1,17 @@
-%-module(csll).
-%-export([main/0]).
-%-define(NWorkers, 5).
-%-define(NMsgsPerWorker, 5).
-%-define(WritePercent, 50).
-%-define(SizePercent, 50).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NWorkers, ?any_nat()).
 -define(NMsgsPerWorker, ?any_nat()).
 -define(WritePercent, ?any_nat()).
 -define(SizePercent, ?any_nat()).
+-else.
+-module(csll).
+-export([main/0]).
+-define(NWorkers, 5).
+-define(NMsgsPerWorker, 5).
+-define(WritePercent, 50).
+-define(SizePercent, 50).
+-endif.
 
 list_foreach(_, []) -> done;
 list_foreach(F, [X | Xs]) ->
@@ -25,9 +27,11 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
-random(X) ->
-    %rand:uniform(X)-1.
-    modulo(?any_nat(), X).
+-ifdef(SOTER).
+random(X) -> modulo(?any_nat(), X).
+-else.
+random(X) -> rand:uniform(X)-1.
+-endif.
 
 create_workers(Master, SortedList, I) ->
     case I == ?NWorkers of

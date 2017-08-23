@@ -1,23 +1,24 @@
-%-module(fjt).
-%-export([main/0]).
+-ifdef(SOTER).
 -soter_config(peano).
-%-uncoverable("throughput_mail > 10").
-
--define(A, 3). %?any_nat()).
--define(N, 10). % ?any_nat()).
+-define(A, ?any_nat()).
+-define(N, ?any_nat()).
+-else.
+-module(fjt).
+-export([main/0]).
+-define(A, 3).
+-define(N, 10).
+-endif.
 
 perform_computation(Theta) ->
-io:format("computation~n"), Theta.
+    Theta.
 
 throughput(1) ->
-    %?label_mail("throughput_mail"),
     receive
         {message} ->
             perform_computation(37),
             done
     end;
 throughput(N) ->
-    %?label_mail("throughput_mail"),
     receive
       {message} ->
             perform_computation(37),
@@ -25,8 +26,7 @@ throughput(N) ->
     end.
 
 send_all([]) -> done;
-send_all([A | As]) -> A ! {message}, send_all(As);
-send_all(_) -> done. % should not happen, but otherwise soter has a false positive "match fail" error
+send_all([A | As]) -> A ! {message}, send_all(As).
 
 loop_send(0, _) -> done;
 loop_send(N, As) -> send_all(As), loop_send(N-1, As).
@@ -34,7 +34,7 @@ loop_send(N, As) -> send_all(As), loop_send(N-1, As).
 spawn_throughput(0) ->
     [];
 spawn_throughput(N) ->
-  [spawn(fun() -> throughput(?N) end) | spawn_throughput(N-1)].
+    [spawn(fun() -> throughput(?N) end) | spawn_throughput(N-1)].
 
 main() ->
     As = spawn_throughput(?A),

@@ -1,10 +1,13 @@
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NumRounds, ?any_nat()).
 -define(NumSmokers, ?any_nat()).
-%-module(cig).
-%-export([main/0]).
-%-define(NumRounds, 5).
-%-define(NumSmokers, 5).
+-else.
+-module(cig).
+-export([main/0]).
+-define(NumRounds, 5).
+-define(NumSmokers, 5).
+-endif.
 
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
@@ -15,9 +18,11 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
-random(X) ->
-    %rand:uniform(X)-1.
-    modulo(?any_nat(), X).
+-ifdef(SOTER).
+random(X) -> modulo(?any_nat(), X).
+-else.
+random(X) -> rand:uniform(X)-1.
+-endif.
 
 list_ref(0, []) -> error;
 list_ref(0, [X | _]) -> X;

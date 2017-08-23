@@ -1,13 +1,4 @@
-%-module(fbank).
-%-export([main/0]).
-%-define(NumSimulations, 5).
-%-define(NumChannels, 5).
-%-define(NumColumns, 5).
-%-define(SinkPrintRate, 2).
-%-define(H, 5).
-%-define(F, 5).
-%-define(MaxValue, 1000).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NumSimulations, ?any_nat()).
 -define(NumChannels, ?any_nat()).
@@ -16,6 +7,18 @@
 -define(H, ?any_nat()).
 -define(F, ?any_nat()).
 -define(MaxValue, ?any_nat()).
+-else.
+-module(fbank).
+-export([main/0]).
+-define(NumSimulations, 5).
+-define(NumChannels, 5).
+-define(NumColumns, 5).
+-define(SinkPrintRate, 2).
+-define(H, 5).
+-define(F, 5).
+-define(MaxValue, 1000).
+-endif.
+
 
 number_to_string(_) ->
     "foo".

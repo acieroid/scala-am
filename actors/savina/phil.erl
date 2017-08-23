@@ -1,13 +1,15 @@
-%-module(phil).
-%-export([main/0]).
-%-define(Rounds, 5).
-%-define(NumForks, 5).
-%-define(NumPhilosophers, ?NumForks).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(Rounds, ?any_nat()).
 -define(NumForks, ?any_nat()).
 -define(NumPhilosophers, ?any_nat()).
+-else.
+-module(phil).
+-export([main/0]).
+-define(Rounds, 5).
+-define(NumForks, 5).
+-define(NumPhilosophers, ?NumForks).
+-endif.
 
 plus(X, 0) -> X;
 plus(X, Y) -> plus(X+1, Y-1).

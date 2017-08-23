@@ -1,17 +1,19 @@
-%-module(logm).
-%-export([main/0]).
-%-define(NumSeries, 5).
-%-define(NumComputers, ?NumSeries).
-%-define(NumWorkers, ?NumSeries).
-%-define(StartRate, 5).
-%-define(Increment, 2).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(NumSeries, ?any_nat()).
 -define(NumComputers, ?NumSeries).
 -define(NumWorkers, ?NumSeries).
 -define(StartRate, ?any_nat()).
 -define(Increment, ?any_nat()).
+-else.
+-module(logm).
+-export([main/0]).
+-define(NumSeries, 5).
+-define(NumComputers, ?NumSeries).
+-define(NumWorkers, ?NumSeries).
+-define(StartRate, 5).
+-define(Increment, 2).
+-endif.
 
 list_foreach(_, []) -> done;
 list_foreach(F, [X | Xs]) ->
@@ -44,7 +46,6 @@ build_list_i(I, N, F) ->
     end.
 build_list(N, F) -> build_list_i(0, N, F).
 
-
 master(Computers, Workers, NumWorkRequested, NumWorkReceived, TermsSum) ->
     receive
         {start} ->
@@ -67,7 +68,6 @@ master(Computers, Workers, NumWorkRequested, NumWorkReceived, TermsSum) ->
                 true ->
                     list_foreach(fun (A) -> A ! {stop} end, Computers),
                     list_foreach(fun (A) -> A ! {stop} end, Workers),
-                    % io:format("Finished with: ~w~n", [TermsSum]),
                     done;
                 false ->
                     master(Computers, Workers, NumWorkRequested, NumWorkReceived+1, plus(TermsSum,Term))

@@ -1,11 +1,13 @@
-%-module(sbar).
-%-export([main/0]).
-%-define(Capacity, 5).
-%-define(Haircuts, 5).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(Capacity, ?any_nat()).
 -define(Haircuts, ?any_nat()).
+-else.
+-module(sbar).
+-export([main/0]).
+-define(Capacity, 5).
+-define(Haircuts, 5).
+-endif.
 
 plus(X, 0) -> X;
 plus(X, Y) -> plus(X+1, Y-1).

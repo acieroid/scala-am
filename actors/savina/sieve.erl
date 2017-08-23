@@ -1,15 +1,23 @@
-%-module(sieve).
-%-export([main/0]).
-%-define(Limit, 250).
-%-define(NumMaxLocalPrimes, 10).
+-ifdef(SOTER).
 -soter_config(peano).
 -define(Limit, ?any_nat()).
 -define(NumMaxLocalPrimes, ?any_nat()).
+-else.
+-module(sieve).
+-export([main/0]).
+-define(Limit, 250).
+-define(NumMaxLocalPrimes, 10).
+-endif.
 
-random(X) -> ?any_bool().
+-ifdef(SOTER).
+random_bool() -> ?any_bool().
+-else.
+random_bool() ->
+    rand:uniform(2) == 1.
+-endif.
 
 locally_prime(_) ->
-    random(2) == 1.
+    random_bool().
 
 loop(Actor, N) ->
     case N >= ?Limit  of

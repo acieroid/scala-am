@@ -1,10 +1,13 @@
-%-module(qsort).
-%-export([main/0]).
-%-define(T, 5).
-%-define(InputSize, 1500).
+-ifdef(SOTER).
 -soter_config(peano).
 -define(T, ?any_nat()).
 -define(InputSize, ?any_nat()).
+-else.
+-module(qsort).
+-export([main/0]).
+-define(T, 5).
+-define(InputSize, 1500).
+-endif.
 
 list_ref(0, []) -> error;
 list_ref(0, [X | _]) -> X;

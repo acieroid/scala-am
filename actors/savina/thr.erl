@@ -1,11 +1,13 @@
-%-module(thr).
-%-export([main/0]).
-%-define(N, 5).
-%-define(R, 5).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(N, ?any_nat()).
 -define(R, ?any_nat()).
+-else.
+-module(thr).
+-export([main/0]).
+-define(N, 5).
+-define(R, 5).
+-endif.
 
 threadring(Id, Next) ->
     receive
@@ -13,13 +15,11 @@ threadring(Id, Next) ->
             Next ! {exit, ?N},
             threadring(Id, Next);
         {ping, PingsLeft} ->
-            io:format("ping ~w~n", [PingsLeft]),
             Next ! {ping, PingsLeft-1},
             threadring(Id, Next);
         {data, Next2} -> threadring(Id, Next2);
-        {exit, 1} -> done;
+        {exit, 1} -> io:format("done~n"), done;
         {exit, ExitsLeft} ->
-            io:format("exiting actor ~w~n", [Id]),
             Next ! {exit, ExitsLeft-1}
     end.
 

@@ -1,17 +1,21 @@
-%-module(ofl).
-%-export([main/0]).
-%-define(Alpha, 2.0).
-%-define(CutoffDepth, 3).
-%-define(GridSize, 500.0).
-%-define(F, 707.0).
-%-define(NumPoints, 100).
-
+-ifdef(SOTER).
 -soter_config(peano).
 -define(Alpha, ?any_nat()).
 -define(CutoffDepth, ?any_nat()).
 -define(GridSize, ?any_nat()).
 -define(F, ?any_nat()).
 -define(NumPoints, ?any_nat()).
+-define(Zero, 0).
+-else.
+-module(ofl).
+-export([main/0]).
+-define(Alpha, 2.0).
+-define(CutoffDepth, 3).
+-define(GridSize, 500.0).
+-define(F, 707.0).
+-define(NumPoints, 100).
+-define(Zero, 0.0).
+-endif.
 
 % Constants
 -define(Unknown, -2).
@@ -76,28 +80,42 @@ box_contains(Box, P) ->
 mid_point(Box) ->
     {point, divide(plus(box_x1(Box), box_x2(Box)), 2), divide(plus(box_y1(Box), box_y2(Box)), 2)}.
 
-%plus(X,Y) -> X+Y.
+-ifdef(SOTER).
 plus(X, 0) -> X;
 plus(X, Y) -> plus(X+1, Y-1).
+-else.
+plus(X,Y) -> X+Y.
+-endif.
 
-%divide(X,Y) -> X / Y.
+-ifdef(SOTER).
 divide(X, Y) ->
     case X < Y of
         true -> 0;
         false -> divide(minus(X,Y),Y)+1
     end.
+-else.
+divide(X,Y) -> X / Y.
+-endif.
 
-%minus(X, Y) -> X-Y.
+-ifdef(SOTER).
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
+-else.
+minus(X, Y) -> X-Y.
+-endif.
 
-%times(X, Y) -> X*Y.
+-ifdef(SOTER).
 times(_, 0) -> 0;
 times(X, Y) -> plus(X, times(X, Y-1)).
+-else.
+times(X, Y) -> X*Y.
+-endif.
 
-random(X) ->
-    rand:uniform(X)-1.
-%     modulo(?any_nat(), X).
+-ifdef(SOTER).
+random(X) -> modulo(?any_nat(), X).
+-else.
+random(X) -> rand:uniform(X)-1.
+-endif.
 
 modulo(X, Y) ->
     case X < Y of
@@ -111,9 +129,11 @@ mmax(X, Y) ->
         false -> X
     end.
 
-sqrt(X) ->
-    % X
-    math:sqrt(X).
+-ifdef(SOTER).
+sqrt(X) -> X.
+-else.
+sqrt(X) -> math:sqrt(X).
+-endif.
 
 get_distance(P1, P2) ->
     XDiff = minus(point_x(P1), point_x(P2)),
@@ -164,7 +184,7 @@ create_child(Self, Boundary, Position, Customers, Threshold, Depth, LocalFacilit
                                                                                  end,
                                                                                  0, LocalFacilities))
                                                          end,
-                                                         0.0, Customers))
+                                                         ?Zero, Customers))
           end).
 
 quadrant_actor(Parent, PositionRelativeToParent, Boundary, Threshold,
@@ -281,6 +301,6 @@ quadrant_actor(Parent, PositionRelativeToParent, Boundary, Threshold,
 main() ->
     Threshold = times(?Alpha, ?F),
     BoundingBox = {box, 0, 0, ?GridSize, ?GridSize},
-    RootQuadrant = spawn(fun() -> quadrant_actor(false, ?Root, BoundingBox, Threshold, 0, [mid_point(BoundingBox)], 1, -1, [], [], [], 0, 0, 0, 0.0) end),
+    RootQuadrant = spawn(fun() -> quadrant_actor(false, ?Root, BoundingBox, Threshold, 0, [mid_point(BoundingBox)], 1, -1, [], [], [], 0, 0, 0, ?Zero) end),
     Producer = spawn(fun() -> producer_actor(RootQuadrant, 0) end),
     Producer ! {start}.
