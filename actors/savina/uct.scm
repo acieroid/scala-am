@@ -60,6 +60,7 @@
                                                    (a/send sender urgent-generate-children (random BinomialParam) size child-comp))
                                                (a/become root-actor (if (> (+ child-height 1) height) (+ child-height 1) height) (+ size BinomialParam) children has-grant-children traversed final-size-printed))
                                              (a/become root-actor child-height size children has-grant-children traversed final-size-printed))
+                                         ;; TODO: should be terminate!
                                          (a/become root-actor height size children has-grant-children
                                                    (begin
                                                      (if (not traversed) (vector-foreach (lambda (a) (a/send a traverse)) children))
@@ -70,7 +71,7 @@
            (print-info ()
                        (vector-foreach (lambda (a) (a/send a print-info)) children)
                        (a/become root-actor height size children has-grant-children traversed final-size-printed))
-           (terminate-me ()
+           (terminate ()
                          (vector-foreach (lambda (a) (a/send a terminate)) children)
                          (a/terminate))))
 

@@ -17,13 +17,13 @@ plus(X, Y) -> plus(X+1, Y-1).
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
 
+-ifdef(SOTER).
 modulo(X, Y) ->
     case X < Y of
         true -> X;
         false -> modulo(minus(X,Y), Y)
     end.
 
--ifdef(SOTER).
 random(X) ->
     modulo(?any_nat(), X).
 -else.
@@ -40,11 +40,17 @@ list_foreach(F, [X | Xs]) ->
     F(X),
     list_foreach(F, Xs).
 
+-ifdef(SOTER).
+source_id(N) -> random(N).
+-else.
+source_id(N) -> round((random(N)/10) * 8).
+-endif.
+
 generate_work(I, Accounts) ->
     case I == ?NumBankings of
         true -> done;
         false ->
-            SourceId = random(?NumAccounts),% was round((random(?NumAccounts)/10) * 8), but not supported by soter
+            SourceId = source_id(?NumAccounts),
             LoopId = random(?NumAccounts-SourceId),
             DestId = plus(SourceId, (case LoopId of 0 -> 1; _ -> LoopId end)),
             Source = list_ref(SourceId, Accounts),
@@ -80,7 +86,7 @@ account(Master, Id, Balance) ->
             account(Master, Id, minus(Balance,Amount));
         {nevercalled} ->
             1+2;
-        {stop} -> self ! {foo}, done
+        {stop} -> self() ! {foo}, done
     end.
 
 create_accounts(I, Master) ->

@@ -18,6 +18,7 @@ list_foreach(F, [X | Xs]) ->
     F(X),
     list_foreach(F, Xs).
 
+-ifdef(SOTER).
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
 
@@ -27,7 +28,6 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
--ifdef(SOTER).
 random(X) -> modulo(?any_nat(), X).
 -else.
 random(X) -> rand:uniform(X)-1.

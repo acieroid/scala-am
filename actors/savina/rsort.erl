@@ -19,6 +19,7 @@ list_reverse([X | Xs], Res) -> list_reverse(Xs, [X | Res]).
 
 list_reverse(L) -> list_reverse(L, []).
 
+-ifdef(SOTER).
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
 
@@ -28,9 +29,11 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
-random(X) ->
-    %rand:uniform(X)-1.
-    modulo(?any_nat(), X).
+random(X) -> modulo(?any_nat(), X).
+-else.
+random(X) -> rand:uniform(X)-1.
+-endif.
+
 
 int_source_loop(_, 0) -> done;
 int_source_loop(Actor, N) ->
@@ -79,7 +82,7 @@ validation(SumSoFar, ValuesSoFar, PrevValue, ErrorValue) ->
                 true ->
                     case ErrorValue >= 0 of
                         true -> io:format("error! (~w) ~n", [ErrorValue]);
-                        false -> io:format("~w~n", [SumSoFar])
+                        false -> io:format("done: ~w~n", [SumSoFar])
                     end,
                     done;
                 false -> validation(SumSoFar+PrevValue, ValuesSoFar+1, V, ErrorValue2)

@@ -154,7 +154,7 @@ sor_runner_actor(N) ->
                                 false -> nothing
                             end,
                             case Returned+1 == times(S, Part)+1 of
-                                true -> done;
+                                true -> io:format("sor_runner done~n"), done;
                                 false ->
                                     Actor(Actor, plus(GTotal, Mv), Returned+1, plus(TotalMsgRcv, MsgRcv), ExpectingBoot)
                             end;
@@ -274,13 +274,13 @@ sor_actor(Pos, Value, Color, Nx, Ny, Omega, SorSource, _) ->
                                                 true ->
                                                     list_foreach(fun(LoopNeighIndex) -> list_ref(LoopNeighIndex, SorActors) ! {value, Value} end, Neighbors),
                                                     case Iter+1 == MaxIter of
-                                                        true -> SorSource ! {result, X, Y, Value, MsgRcv}, done;
+                                                        true -> SorSource ! {result, X, Y, Value, MsgRcv}, io:format("sor_actor done~n"), done;
                                                         false -> Actor(Actor, fplus(ftimes(OmegaOverFour, Sum), ftimes(OneMinusOmega, Value)), Iter+1,
                                                                        MaxIter, MsgRcv+1, SorActors, ReceivedVals+1, plus(Sum, V), ExpectingStart, PendingMessages)
                                                     end;
                                                 false -> Actor(Actor, Value, Iter, MaxIter, MsgRcv+1, SorActors, ReceivedVals+1, plus(Sum, V), ExpectingStart, PendingMessages)
                                             end;
-                                        false -> done
+                                        false -> io:format("sor_actor done~n"), done
                                     end
                             end
                     end
@@ -351,7 +351,7 @@ sor_peer(S, PartStart, MatrixPart, Border, SorSource) ->
                                 false -> nothing
                             end,
                             case Returned+1 == times(S, minus(S, PartStart)) of
-                                true -> SorSource ! {result, -1, -1, GTotal, TotalMsgRcv}, done;
+                                true -> SorSource ! {result, -1, -1, GTotal, TotalMsgRcv}, io:format("sor_peer done~n"), done;
                                 false -> Actor(Actor, plus(GTotal, Mv), Returned+1, plus(TotalMsgRcv, MsgRcv), ExpectingBoot)
                             end
                     end

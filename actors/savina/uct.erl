@@ -23,8 +23,8 @@ plus(X, Y) -> plus(X+1, Y-1).
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
 
-times(_, 0) -> 0;
-times(X, Y) -> plus(X, times(X, Y-1)).
+%times(_, 0) -> 0;
+%times(X, Y) -> plus(X, times(X, Y-1)).
 
 modulo(X, Y) ->
     case X < Y of
@@ -63,8 +63,6 @@ list_foreach(F, [X | Xs]) ->
 list_length([]) -> 0;
 list_length([_ | Xs]) -> list_length(Xs)+1.
 
-
-
 get_next_normal(PMean, PDev) ->
     Loop = fun(Loop, I) ->
                    case I > 0 of
@@ -76,13 +74,13 @@ get_next_normal(PMean, PDev) ->
            end,
     Loop(Loop, 0).
 
-wait_loop(BusyWait, Dummy) ->
-    Loop = fun(Loop, K) ->
-                   case K == times(Dummy, BusyWait) of
-                       true -> K;
-                       false -> Loop(Loop, K+1)
-                   end
-           end,
+wait_loop(_, _) ->
+    % Loop = fun(Loop, K) ->
+    %                case K == times(Dummy, BusyWait) of
+    %                    true -> K;
+    %                    false -> Loop(Loop, K+1)
+    %                end
+    %        end,
     % Loop(Loop, 0).
     wait.
 
@@ -115,21 +113,24 @@ root_actor(Height, Size, Children, HasGrantChildren, Traversed, FinalSizePrinted
                                            end, plus(Size, ?BinomialParam), Children, HasGrantChildren, Traversed, FinalSizePrinted);
                             false -> root_actor(ChildHeight, Size, Children, HasGrantChildren, Traversed, FinalSizePrinted)
                         end;
-                false -> root_actor(Height, Size, Children, HasGrantChildren,
-                                    case Traversed of
-                                        true -> true;
-                                        false -> list_foreach(fun(A) -> A ! {traverse} end, Children), true
-                                    end,
-                                    case FinalSizePrinted of
-                                        true -> true;
-                                        false -> io:format("...~n"), true
-                                    end)
+                false -> case Traversed of
+                             true -> true;
+                             false -> list_foreach(fun(A) -> A ! {traverse} end, Children), true
+                         end,
+                         case FinalSizePrinted of
+                             true -> true;
+                             false -> io:format("...~n"), true
+                         end,
+                         list_foreach(fun(A) -> A ! {terminate} end, Children),
+                         io:format("done~n"),
+                         done
             end;
         {print_info} ->
             list_foreach(fun(A) -> A ! {print_info} end, Children),
             root_actor(Height, Size, Children, HasGrantChildren, Traversed, FinalSizePrinted);
-        {terminate_me} ->
+        {terminate} ->
             list_foreach(fun(A) -> A ! {terminate} end, Children),
+            io:format("done~n"),
             done
     end.
 

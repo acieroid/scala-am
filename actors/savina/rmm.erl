@@ -61,28 +61,25 @@ modulo(X, Y) ->
 master_actor(ResultActor, Workers, NumWorkersTerminated, NumWorkSent, NumWorkCompleted) ->
     receive
         {start} ->
-            io:format("[master] start~n"),
             Master = self(),
             Workers2 = build_list(?NumWorkers, fun(I) -> spawn(fun() -> worker_actor(ResultActor, Master, I) end) end),
             list_ref(0, Workers2) ! {work, 0, 0, 0, 0, 0, 0, ?NumBlocks, ?DataLength, 0},
             master_actor(ResultActor, Workers2, NumWorkersTerminated, NumWorkSent, NumWorkCompleted);
         {work, SrA, ScA, SrB, ScB, SrC, ScC, NumBlocks, Dim, Priority} ->
-            io:format("[master] work~n"),
             Index = modulo(plus(SrC, ScC), ?NumWorkers),
             list_ref(Index, Workers) ! {work, SrA, ScA, SrB, ScB, SrC, ScC, NumBlocks, Dim, Priority},
             master_actor(ResultActor, Workers, NumWorkersTerminated, NumWorkSent+1, NumWorkCompleted);
         {done} ->
-            io:format("[master] done~n"),
             case NumWorkCompleted+1 == NumWorkSent of
                 true -> list_foreach(fun(A) -> A ! {stop} end, Workers);
                 false -> nothing
             end,
             master_actor(ResultActor, Workers, NumWorkersTerminated, NumWorkSent, NumWorkCompleted+1);
         {stop} ->
-            io:format("[master] stop~n"),
             case NumWorkersTerminated+1 == ?NumWorkers of
                 true ->
                     ResultActor ! {stop},
+                    io:format("[mater] exiting~n"),
                     done;
                 false ->
                     master_actor(ResultActor, Workers, NumWorkersTerminated+1, NumWorkSent, NumWorkCompleted)
@@ -95,15 +92,13 @@ b(_, J) -> J.
 result_actor(C) ->
     receive
         {add, I, J, V} ->
-            io:format("[result] add~n"),
             result_actor(list2_set(C, J, I, plus(list2_ref(C, J, I), V)));
-        {stop} -> done
+        {stop} -> io:format("finished.~n"), done
     end.
 
 worker_actor(ResultActor, Master, Id) ->
     receive
         {work, SrA, ScA, SrB, ScB, SrC, ScC, NumBlocks, Dim, Priority} ->
-            io:format("[worker] work~n"),
             case NumBlocks > ?BlockThreshold of
                 true ->
                     NewDim = divide(Dim, 2),
@@ -148,7 +143,6 @@ worker_actor(ResultActor, Master, Id) ->
             Master ! {done},
             worker_actor(ResultActor, Master, Id);
         {stop} ->
-            io:format("[worker] stop~n"),
             Master ! {stop},
             done
     end.

@@ -44,7 +44,9 @@ prime_filter_actor(Id, Initial, Next, LocalPrimes, AvailableLocalPrimes) ->
                                          false ->
                                              prime_filter_actor(Id, Initial, Next, [Candidate|LocalPrimes], AvailableLocalPrimes+1);
                                          true ->
-                                             NewNext = spawn(fun() -> prime_filter_actor(Id+1, Candidate, false, [Candidate], 1) end),
+                                             NewNext = spawn(fun() ->
+                                                                     io:format("spawning prime filter ~w~n", [Id+1]),
+                                                                     prime_filter_actor(Id+1, Candidate, false, [Candidate], 1) end),
                                              prime_filter_actor(Id, Initial, NewNext, LocalPrimes, AvailableLocalPrimes)
                                      end;
                             Actor ->

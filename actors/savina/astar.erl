@@ -74,7 +74,7 @@ master_actor(Workers, NumWorkersTerminated, NumWorkSent, NumWorkCompleted) ->
             master_actor(Workers, NumWorkersTerminated, NumWorkSent, NumWorkCompleted);
         {stop} ->
             case NumWorkersTerminated+1 == ?NumWorkers of
-                true -> done;
+                true -> io:format("finished~n"), done;
                 false -> master_actor(Workers, NumWorkersTerminated+1, NumWorkSent, NumWorkCompleted)
             end
     end.

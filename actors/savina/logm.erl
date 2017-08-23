@@ -50,12 +50,12 @@ master(Computers, Workers, NumWorkRequested, NumWorkReceived, TermsSum) ->
     receive
         {start} ->
             Computers2 = build_list(?NumComputers, fun (I) ->
-                                                          Rate = plus(?StartRate, (times(I,?Increment))),
+                                                          Rate = plus(?StartRate, (times(I+1,?Increment))),
                                                           spawn(fun() -> rate_computer(Rate) end)
                                                   end),
             Workers2 = build_list(?NumWorkers, fun (I) ->
                                                        RateComputer = list_ref(modulo(I, ?NumComputers), Computers2),
-                                                       StartTerm = times(I,?Increment),
+                                                       StartTerm = times(I+1,?Increment),
                                                        Master = self(),
                                                        Actor = spawn(fun() -> series_worker(Master, RateComputer, StartTerm) end),
                                                        Actor ! {next_term},
@@ -68,7 +68,7 @@ master(Computers, Workers, NumWorkRequested, NumWorkReceived, TermsSum) ->
                 true ->
                     list_foreach(fun (A) -> A ! {stop} end, Computers),
                     list_foreach(fun (A) -> A ! {stop} end, Workers),
-                    done;
+                    io:format("done~n"), done;
                 false ->
                     master(Computers, Workers, NumWorkRequested, NumWorkReceived+1, plus(TermsSum,Term))
             end
@@ -110,7 +110,7 @@ rate_computer(Rate) ->
     receive
         {compute, Term, Sender} ->
             Sender ! {result, compute_next_term(Term, Rate)},
-            rate_computer(rate);
+            rate_computer(Rate);
         {stop} ->
             done
     end.

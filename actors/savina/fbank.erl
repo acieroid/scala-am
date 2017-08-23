@@ -19,7 +19,6 @@
 -define(MaxValue, 1000).
 -endif.
 
-
 number_to_string(_) ->
     "foo".
 string_append(_, _) ->
@@ -68,9 +67,11 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
-random(X) ->
-%    rand:uniform(X)-1.
-     modulo(?any_nat(), X).
+-ifdef(SOTER).
+random(X) -> modulo(?any_nat(), X).
+-else.
+random(X) -> rand:uniform(X)-1.
+-endif.
 
 randbool() ->
     random(2) == 1.
@@ -94,7 +95,7 @@ source(Next, Producer, Current) ->
             Next ! {value, Current},
             Producer ! {next, self()},
             source(Next, Producer, modulo(Current+1, ?MaxValue));
-        {exit} -> done
+        {exit} -> io:format("finished!~n"), done
     end.
 
 branches(Next, Banks) ->

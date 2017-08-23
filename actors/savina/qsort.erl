@@ -25,6 +25,7 @@ filter(F, [X | Xs]) ->
 append([], Ys) -> Ys;
 append([X | Xs], Ys) -> [X | append(Xs, Ys)].
 
+-ifdef(SOTER).
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
 
@@ -35,8 +36,11 @@ modulo(X, Y) ->
     end.
 
 random(X) ->
+    modulo(?any_nat(), X).
+-else.
+random(X) ->
     rand:uniform(X)-1.
-%    modulo(?any_nat(), X).
+-endif.
 
 qsort_seq([]) -> [];
 qsort_seq([X]) -> [X];

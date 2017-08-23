@@ -22,6 +22,15 @@ list_foreach(F, [X | Xs]) ->
     list_foreach(F, Xs).
 
 -ifdef(SOTER).
+minus(X, 0) -> X;
+minus(X, Y) -> minus(X-1, Y-1).
+
+modulo(X, Y) ->
+    case X < Y of
+        true -> X;
+        false -> modulo(minus(X,Y), Y)
+    end.
+
 random(X) ->
     modulo(?any_nat(), X).
 -else.

@@ -19,6 +19,7 @@
 -define(AdjustedBufferSize, ?BufferSize-?NumProducers).
 -endif.
 
+-ifdef(SOTER).
 minus(X, 0) -> X;
 minus(X, Y) -> minus(X-1, Y-1).
 
@@ -28,7 +29,6 @@ modulo(X, Y) ->
         false -> modulo(minus(X,Y), Y)
     end.
 
--ifdef(SOTER).
 random(X) -> modulo(?any_nat(), X).
 -else.
 random(X) -> rand:uniform(X)-1.
@@ -51,9 +51,6 @@ list_foreach(F, [X | Xs]) ->
 first([A|_]) -> A.
 
 rest([_|A]) -> A.
-
-andd(true, true) -> true;
-andd(_, _) -> false.
 
 spawn_producers_loop(Manager, I) ->
     case I == ?NumProducers of
@@ -130,7 +127,7 @@ manager(Producers, Consumers, AvailableProducers, AvailableConsumers, PendingDat
                     end
             end;
         {exit} ->
-            io:format("[manager] exit"),
+            io:format("[manager] exit~n"),
             case TerminatedProducers+1 == ?NumProducers of
                 true -> case list_length(AvailableConsumers) == ?NumConsumers of
                             true ->
@@ -169,7 +166,7 @@ consumer(Id, Manager, ConsItem) ->
             Manager ! {consumer_available, self()},
             consumer(Id, Manager, ConsItem2);
         {exit} ->
-            io:format("[consumer] << exit"),
+            io:format("[consumer] << exit~n"),
             done
     end.
 
