@@ -4,7 +4,7 @@
           (actor "producer" (counter)
                  (increment ()
                             (send counter increment)
-                            (send counter retrieve self)
+                            (send counter retrieve a/self)
                             (become producer-actor counter))
                  (result (count)
                          (if (= count 1)

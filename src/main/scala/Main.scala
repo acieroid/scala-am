@@ -129,7 +129,7 @@ object Main {
             implicit val isASchemeLattice = alattice.isASchemeLattice
 
             import ActorTimestamp.fromTime
-            val time: ActorTimestampWrapper = if (config.concrete) ConcreteTimestamp else KMessageTagSensitivity(1)
+            val time: ActorTimestampWrapper = if (config.concrete) ConcreteTimestamp else KMessageTagSensitivity(0)
             implicit val isTimestamp = time.isActorTimestamp
 
             val address: AddressWrapper = config.address match {
@@ -147,7 +147,7 @@ object Main {
 
             val machine = config.machine match {
               case Config.Machine.AAM => new ActorsAAM[SchemeExp, alattice.L, address.A, time.T, ContextSensitiveTID](mbox)
-              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, alattice.L, address.A, time.T, ContextSensitiveTID](mbox)
+              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, alattice.L, address.A, time.T, ContextSensitiveTID](mbox, false)
               case _ => throw new Exception(s"unsupported machine for AScheme: ${config.machine}")
             }
 

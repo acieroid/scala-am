@@ -1,13 +1,61 @@
 import scalaz.Scalaz._
 import scalaz._
 
-class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier](val M: MboxImpl[PID, Abs])
+class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time : ActorTimestamp, PID : ThreadIdentifier](val M: MboxImpl[PID, Abs], val recordValues: Boolean)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ActorsAAMGlobalStore"
 
-  var poppedPerBehavior = Map[(PID, Exp), Set[M.Message]]().withDefaultValue(Set[M.Message]())
-  var poppedPerBehaviorAndMailbox = Map[(PID, Exp, M.T), Set[M.Message]]().withDefaultValue(Set[M.Message]())
-  var poppedPerMailbox = Map[(PID, M.T), Set[M.Message]]().withDefaultValue(Set[M.Message]())
+  def extractArgs(actd: Exp, env: Environment[Addr], sto: Store[Addr, Abs]): List[Abs] = actd match {
+    case SchemeActor(name, xs, _, _) =>
+      xs.map(x => env.lookup(x.name) match {
+        case Some(a) => sto.lookupBot(a)
+        case None => throw new Error("unbound variable: $x")
+      })
+  }
+  var recordedBecome: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
+  def recordBecome(pid: PID, name: String, args: List[Abs]): Unit = if (recordValues) {
+    val existing = recordedBecome(pid)
+    val subsumed = existing.exists({ case (name2, args2) =>
+      name == name2 && args.zip(args2).forall({ case (v, v2) => name == name2 && JoinLattice[Abs].subsumes(v2, v) })
+    })
+    val updated = if (subsumed) { existing } else {
+      existing.filter({ case (name2, args2) =>
+        /* remove all subsumed by new element */
+        !(name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v, v2) }))
+      }) + ((name, args))
+    }
+    recordedBecome = recordedBecome + (pid -> updated)
+  }
+
+  var recordedCreate: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
+  def recordCreate(pid: PID, name: String, args: List[Abs]): Unit = if (recordValues) {
+    val existing = recordedCreate(pid)
+    val subsumed = existing.exists({ case (name2, args2) =>
+      name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v2, v) })
+    })
+    val updated = if (subsumed) { existing } else {
+      existing.filter({ case (name2, args2) =>
+        /* remove all subsumed by new element */
+        !(name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v, v2) }))
+      }) + ((name, args))
+    }
+    recordedCreate = recordedCreate + (pid -> updated)
+  }
+
+  var recordedReceive: Map[PID, Set[(String, List[Abs])]] = Map.empty.withDefaultValue(Set.empty)
+  def recordReceive(pid: PID, name: String, args: List[Abs]): Unit = if (recordValues) {
+    val existing = recordedReceive(pid)
+    val subsumed = existing.exists({ case (name2, args2) =>
+      name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v2, v) })
+    })
+    val updated = if (subsumed) { existing } else {
+      existing.filter({ case (name2, args2) =>
+        /* remove all subsumed by new element */
+        !(name == name2 && args.zip(args2).forall({ case (v, v2) => JoinLattice[Abs].subsumes(v, v2) }))
+      }) + ((name, args))
+    }
+    recordedReceive = recordedReceive + (pid -> updated)
+  }
 
   type Annot = (PID, ActorEffect)
   type Ctx = Unit
@@ -71,7 +119,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
     def commit = if (isUnchanged) { this } else {
       this.copy(store = store.addDelta(storeDelta), storeDelta = StoreDelta.empty,
         kstore = addKStoreDelta(kstore, kstoreDelta), kstoreDelta = KStoreDelta.empty)
-      }
+    }
     def commitMain = if (mainIsUnchanged) { this } else {
       val newStore = oldStore.addDelta(mainStoreDelta)
       val newKStore = addKStoreDelta(oldKStore, mainKStoreDelta)
@@ -136,7 +184,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
 
     def trimMbox: Context = this.copy(mbox = M.empty)
     /** Returns: the new context (or None if it terminated), the processes created,
-      * an optinoal effect, an optional message sent, and the updated global store */
+     * an optinoal effect, an optional message sent, and the updated global store */
     def integrate(p: PID, act: Act, store: GlobalStore):
         (MacrostepState, GlobalStore) = act match {
       case ActionReachedValue(v, store2, effs) =>
@@ -161,6 +209,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
           CreatedActors.empty, ActorEffect.empty, None, None),
           store)
       case ActorActionBecome(name, actd, env2, store2, vres, effs) =>
+        recordBecome(p, name, extractArgs(actd, env2, store2))
         ((Some(Context.create(p, actd, env2).copy(t = ActorTimestamp[Time].actorBecome(t, actd), mbox = mbox)),
           CreatedActors.empty, ActorEffect.become(p, name), None, None),
           store.includeDelta(store2.delta))
@@ -168,8 +217,8 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         ((None, CreatedActors.empty, ActorEffect.terminate(p), None, None),
           store)
       case ActorActionCreate(name, actd, exp, env2, store2, fres : (PID => Abs), effs) =>
-        val p2 = ThreadIdentifier[PID].thread(exp, t)
-        println(s"Creating new actor with pid $p2")
+        recordCreate(p, name, extractArgs(actd, env2, store2))
+        val p2 = ThreadIdentifier[PID].thread(t, name) // was: (exp, t)
         ((Some(this.copy(control = ControlKont(fres(p2)), t = ActorTimestamp[Time].actorCreated(t, p2))),
           CreatedActors(p2 -> Context.create(p2, actd, env2)), ActorEffect.create(p, name), None, None),
           store.includeDelta(store2.delta))
@@ -199,9 +248,7 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
           case ActorInstanceActor(actd, env) =>
             mbox.pop.foldLeft(init)((acc, m) => m match {
               case (message @ (sender, name, values), mbox2) =>
-                // poppedPerBehavior += (((p, actd), poppedPerBehavior((p, actd)) + message))
-                poppedPerBehaviorAndMailbox += (((p, actd, mbox), poppedPerBehaviorAndMailbox((p, actd, mbox)) + message))
-                // poppedPerMailbox += (((p, mbox), poppedPerMailbox((p, mbox)) + message))
+                recordReceive(p, name, values)
                 sem.stepReceive(p, name, values, actd, env, acc._2.store, ActorTimestamp[Time].messageReception(t, sender, name, values)).foldLeft(acc)((acc, action) =>
                   this.copy(mbox = mbox2).integrate(p, action, acc._2) match {
                     case ((s, n, eff, sent, recv), store2) =>
@@ -271,9 +318,9 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
   }
   object Context {
     def create(p: PID, actd: Exp, env: Environment[Addr]): Context =
-      Context(ControlWait, HaltKontAddress, ActorInstanceActor(actd, env), M.empty, Timestamp[Time].initial(p.toString))
+      Context(ControlWait, HaltKontAddress, ActorInstanceActor(actd, env), M.empty, Timestamp[Time].initial(""))
     def createMain(e: Exp, env: Environment[Addr]): Context =
-      Context(ControlEval(e, env), HaltKontAddress, ActorInstanceMain, M.empty, Timestamp[Time].initial("main"))
+      Context(ControlEval(e, env), HaltKontAddress, ActorInstanceMain, M.empty, Timestamp[Time].initial(""))
   }
 
   class ACtxEmpty {
@@ -435,40 +482,29 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         }))
     }
     def printInfo(): Unit = {
-              println("Bounds:")
-        bounds.foreach({
-          case (p, size) => println(s"$p: $size")
-        })/*
-        println("Tags per actor:")
-        mailboxTagsPerActor.foreach({
-          case (p, tags) => println(s"$p: ${tags.size} -> " + tags.map(t => t.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(",")).mkString(" | "))
-        })*/
-        /*
-        println("Tags per behavior:")
-        mailboxTagsPerBehavior.foreach({
-          case ((p, actd), tags) =>
-            println(s"$p, $actd")
-            println(tags.map(t => t.mkString(",")).mkString(" | "))
-        })*//*
-        println("Popped per behavior:")
-        poppedPerBehavior.foreach({
-          case ((p, actd), ms) =>
-            println(s"$p, $actd")
-            println(ms.mkString(", "))
-             })*/
-        println("Popped per behavior and mailbox:")
-        poppedPerBehaviorAndMailbox.foreach({
-          case ((p, actd, mb), ms) =>
-            println(s"$p, $actd, ${mb.size}, $mb")
-            println(ms.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(", "))
-        })
-        /*
-        println("Popped per mailbox:")
-        poppedPerMailbox.foreach({
-          case ((p, mbox), ms) =>
-            println(s"$p, $mbox")
-            println(ms.map({ case (_, tag, vs) => s"$tag(" + vs.mkString(",") + ")" }).mkString(", "))
-        })*/
+      def surround(x: String) = "\"" + x + "\""
+      val keys = recordedCreate.keySet ++ recordedBecome.keySet ++ recordedReceive.keySet
+      val keysstr = keys.mkString(", ")
+      println(s"${keys.size} actor types: $keysstr")
+      println("=========")
+      keys.foreach(k => {
+        val created = recordedCreate(k).map({
+          case (name, args) =>
+            val argsstr = args.mkString(" ")
+            s"(create $name ($argsstr))"
+        }).mkString(" ")
+        val become = recordedBecome(k).map({
+          case (name, args) =>
+            val argsstr = args.mkString(" ")
+            s"(become $name ($argsstr))"
+        }).mkString(" ")
+        val received = recordedReceive(k).map({
+          case (name, args) =>
+            val argsstr = args.mkString(" ")
+            s"(received $name ($argsstr))"
+        }).mkString(" ")
+        println(s"(${k.toString} ($created $become $received))")
+      })
     }
     @scala.annotation.tailrec
     def loopMacrostep(todo: Set[State], visited: Set[State], reallyVisited: Set[State], halted: Set[State],

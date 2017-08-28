@@ -60,14 +60,11 @@
                                                    (a/send sender urgent-generate-children (random BinomialParam) size child-comp))
                                                (a/become root-actor (if (> (+ child-height 1) height) (+ child-height 1) height) (+ size BinomialParam) children has-grant-children traversed final-size-printed))
                                              (a/become root-actor child-height size children has-grant-children traversed final-size-printed))
-                                         ;; TODO: should be terminate!
-                                         (a/become root-actor height size children has-grant-children
-                                                   (begin
-                                                     (if (not traversed) (vector-foreach (lambda (a) (a/send a traverse)) children))
-                                                     #t)
-                                                   (begin
-                                                     (if (not final-size-printed) (display "..."))
-                                                     #t))))
+                                         (begin
+                                           (if (not traversed) (vector-foreach (lambda (a) (a/send a traverse)) children))
+                                           (if (not final-size-printed) (display "..."))
+                                           (vector-foreach (lambda (a) (a/send a terminate)) children)
+                                           (a/terminate))))
            (print-info ()
                        (vector-foreach (lambda (a) (a/send a print-info)) children)
                        (a/become root-actor height size children has-grant-children traversed final-size-printed))
@@ -105,7 +102,8 @@
            (traverse ()
                      (wait-loop comp-size 40000)
                      (if has-children
-                         (vector-foreach (lambda (a) (a/send a traverse)) children))
+                         (vector-foreach (lambda (a) (a/send a traverse)) children)
+                         #t)
                      (a/become node-actor parent root height id comp-size is-urgent urgent-child has-children children has-grant-children))
            (urgent-traverse ()
                             (wait-loop comp-size 40000)
@@ -118,15 +116,18 @@
                                                            (a/send (vector-ref children i) urgent-traverse)
                                                            (a/send (vector-ref children i) traverse))
                                                        (loop (+ i 1)))))))
-                                  (loop 0)))
+                                  (loop 0))
+                                #t)
                             (a/become node-actor parent root height id comp-size is-urgent urgent-child has-children children has-grant-children))
            (print-info ()
                        (if has-children
-                           (vector-foreach (lambda (a) (a/send a print-info)) children))
+                           (vector-foreach (lambda (a) (a/send a print-info)) children)
+                           #t)
                        (a/become node-actor parent root height id comp-size is-urgent urgent-child has-children children has-grant-children))
            (terminate ()
                       (if has-children
-                          (vector-foreach (lambda (a) (a/send a terminate)) children))
+                          (vector-foreach (lambda (a) (a/send a terminate)) children)
+                          #t)
                       (a/terminate))))
 (define root
   (a/create root-actor 1 1 #f (make-vector BinomialParam #f) #f #f))

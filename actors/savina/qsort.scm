@@ -30,7 +30,7 @@
   (let ((data-length (length data)))
     (if (<= data-length 1)
         data
-        (let* ((pivot (list-ref data (inexact->exact (floor (/ data-length 2)))))
+        (let* ((pivot (list-ref data (inexact->exact (round (/ data-length 2)))))
                (left-unsorted (filter (lambda (x) (< x pivot)) data))
                (left-sorted (qsort-seq left-unsorted))
                (equal-elements (filter (lambda (x) (= x pivot)) data))
@@ -45,7 +45,8 @@
                  (if (< (length data) T)
                      (let ((result (qsort-seq data)))
                        (if parent
-                           (a/send parent result result position-relative-to-parent))
+                           (a/send parent result result position-relative-to-parent)
+                           #t)
                        (a/terminate))
                      (let* ((data-length-half (inexact->exact (floor (/ (length data) 2))))
                             (pivot (list-ref data data-length-half))
@@ -68,7 +69,8 @@
                      (if (= (+ num-fragments 1) 3)
                          (begin
                            (if parent
-                               (a/send parent result result2 position-relative-to-parent))
+                               (a/send parent result result2 position-relative-to-parent)
+                               #t)
                            (a/terminate))
                          (a/become quicksort-actor parent position-relative-to-parent result2 (+ num-fragments 1)))))))
 (define root

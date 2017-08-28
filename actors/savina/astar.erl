@@ -120,7 +120,8 @@ worker_actor(Master, Id) ->
             Master ! {received},
             worker_actor(Master, Id);
         {stop} ->
-            Master ! {stop}
+            Master ! {stop},
+            done
     end.
 
 master_actor_init() ->

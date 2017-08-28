@@ -1,5 +1,4 @@
 ;; Adapted from Savina benchmarks ("Counting Actor" benchmarks, coming from Theron)
-;; counting-actor will receive 10 increment and one retreive: bound is 11 (or N+1)
 (define N (int-top))
 (define producer-actor
   (a/actor "producer" (counter)
@@ -11,7 +10,7 @@
                                              (loop (- n 1)))
                                            'done))))
                         (loop N)
-                        (a/send counter retrieve self)
+                        (a/send counter retrieve a/self)
                         (a/become producer-actor counter)))
            (result (count)
                    (if (= count N)
