@@ -70,14 +70,13 @@ object Main {
   }
 
   def main(args: Array[String]) {
-    import scala.util.control.Breaks._
-    Config.parser.parse(args, Config.Config()).foreach(config => {
+      Config.parser.parse(args, Config.Config()).foreach(config => {
         val lattice: SchemeLattice = config.lattice match {
           case Config.Lattice.Concrete => new MakeSchemeLattice[Concrete.S, Concrete.B, Concrete.I, Concrete.F, Concrete.C, Concrete.Sym](config.counting)
           case Config.Lattice.TypeSet => new MakeSchemeLattice[Type.S, Concrete.B, Type.I, Type.F, Type.C, Type.Sym](config.counting)
           case Config.Lattice.BoundedInt =>
             val bounded = new BoundedInteger(config.bound)
-                new MakeSchemeLattice[Type.S, Concrete.B, bounded.I, Type.F, Type.C, Type.Sym](config.counting)
+            new MakeSchemeLattice[Type.S, Concrete.B, bounded.I, Type.F, Type.C, Type.Sym](config.counting)
           case Config.Lattice.ConstantPropagation => new MakeSchemeLattice[ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.F, ConstantPropagation.C, ConstantPropagation.Sym](config.counting)
         }
         implicit val isSchemeLattice: IsSchemeLattice[lattice.L] = lattice.isSchemeLattice
@@ -157,7 +156,7 @@ object Main {
             val warmup = if (N > 1) 2 else 0 // 2 runs that are ignored to warm up
             val (states, times) = (1 to N+warmup).map(i =>
               runOnFile(config.file.get, program => run(machine, sem)(program, config.dotfile, config.jsonfile, config.timeout.map(_.toNanos), config.inspect))).unzip
-            println("States: " + states.mkString(", "))
+              println("States: " + states.mkString(", "))
             println("Time: " + times.drop(warmup).mkString(","))
             if (N == 1) visitor.print
         }
@@ -194,7 +193,7 @@ object ScalaAM {
       val output = run[SchemeExp, concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T](
         new ConcreteMachine[SchemeExp, concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T],
         new SchemeSemantics[concreteLattice.L, ClassicalAddress.A, ConcreteTimestamp.T](new SchemePrimitives[ClassicalAddress.A, concreteLattice.L]))(program, false, timeout)
-      assert(output.finalValues.size <= 1)
+        assert(output.finalValues.size <= 1)
       output.finalValues.headOption
     }
   }
