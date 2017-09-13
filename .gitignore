@@ -1,7 +1,8 @@
 /.d8_history
 /.ensime
 /TODO.org
+/project/
+/target/
 .ensime_cache
 *.dot
-target
 *.log
