@@ -284,10 +284,10 @@ class ActorActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address, Ti
   type Act = Action[Exp, Abs, Addr]
   def send(pid: PID, name: String, msg: List[Abs], vres: Abs, effs: Effs = Set.empty): Act =
     new ActorActionSend(pid, name, msg, vres, effs)
-  def create(name: String, actd: Exp, exp: Exp, env: Env, store: Sto, fres: PID => Abs, effs: Effs = Set.empty): Act =
-    new ActorActionCreate(name, actd, exp, env, store, fres, effs)
-  def become(name: String, actd: Exp, env: Env, store: Sto, vres: Abs, effs: Effs = Set.empty): Act =
-    new ActorActionBecome(name, actd, env, store, vres, effs)
+  def create(name: String, actd: Exp, exp: Exp, args: List[Abs], env: Env, store: Sto, fres: PID => Abs, effs: Effs = Set.empty): Act =
+    new ActorActionCreate(name, actd, exp, args, env, store, fres, effs)
+  def become(name: String, actd: Exp, args: List[Abs], env: Env, store: Sto, vres: Abs, effs: Effs = Set.empty): Act =
+    new ActorActionBecome(name, actd, args, env, store, vres, effs)
   def terminate: Act = new ActorActionTerminate[Exp, Abs, Addr]()
 }
 
@@ -299,14 +299,14 @@ case class ActorActionSend[PID : ThreadIdentifier, Exp : Expression, Abs : JoinL
 }
 
 case class ActorActionCreate[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
-  (name: String, actd: Exp, e: Exp, env: Environment[Addr], store: Store[Addr, Abs], fres: PID => Abs,
+  (name: String, actd: Exp, e: Exp, args: List[Abs], env: Environment[Addr], store: Store[Addr, Abs], fres: PID => Abs,
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)
 }
 
 case class ActorActionBecome[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier]
-  (name: String, actd: Exp, env: Environment[Addr], store: Store[Addr, Abs], vres: Abs,
+  (name: String, actd: Exp, args: List[Abs], env: Environment[Addr], store: Store[Addr, Abs], vres: Abs,
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)

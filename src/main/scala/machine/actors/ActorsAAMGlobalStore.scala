@@ -208,16 +208,16 @@ class ActorsAAMGlobalStore[Exp : Expression, Abs : IsASchemeLattice, Addr : Addr
         ((Some(this.copy(control = ControlError(err))),
           CreatedActors.empty, ActorEffect.empty, None, None),
           store)
-      case ActorActionBecome(name, actd, env2, store2, vres, effs) =>
-        recordBecome(p, name, extractArgs(actd, env2, store2))
+      case ActorActionBecome(name, actd, args, env2, store2, vres, effs) =>
+        recordBecome(p, name, args)
         ((Some(Context.create(p, actd, env2).copy(t = ActorTimestamp[Time].actorBecome(t, actd), mbox = mbox)),
           CreatedActors.empty, ActorEffect.become(p, name), None, None),
           store.includeDelta(store2.delta))
       case ActorActionTerminate(_) =>
         ((None, CreatedActors.empty, ActorEffect.terminate(p), None, None),
           store)
-      case ActorActionCreate(name, actd, exp, env2, store2, fres : (PID => Abs), effs) =>
-        recordCreate(p, name, extractArgs(actd, env2, store2))
+      case ActorActionCreate(name, actd, exp, args, env2, store2, fres : (PID => Abs), effs) =>
+        recordCreate(p, name, args)
         val p2 = ThreadIdentifier[PID].thread(t, name) // was: (exp, t)
         ((Some(this.copy(control = ControlKont(fres(p2)), t = ActorTimestamp[Time].actorCreated(t, p2))),
           CreatedActors(p2 -> Context.create(p2, actd, env2)), ActorEffect.create(p, name), None, None),

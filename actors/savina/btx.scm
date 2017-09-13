@@ -3,14 +3,14 @@
 (define InitialBalance (int-top))
 
 (define (build-vector n f)
-  (letrec ((v (make-vector n #f))
+  (letrec ((v (make-vector n (f 0)))
            (loop (lambda (i)
                    (if (< i n)
                        (begin
                          (vector-set! v i (f i))
                          (loop (+ i 1)))
                        v))))
-    (loop 0)))
+    (loop 1)))
 (define (vector-foreach f v)
   (letrec ((loop (lambda (i)
                    (if (< i (vector-length v))

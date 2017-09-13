@@ -113,7 +113,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimes
               Action.error(ArityError(s"create actor $name", xs.size, argsv.size))
             } else {
               val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
-              ActorAction.create(name, actd, exp, env2, store2, IsASchemeLattice[Abs].injectPid _)
+              ActorAction.create(name, actd, exp, argsv, env2, store2, IsASchemeLattice[Abs].injectPid _)
           }
           case (name, actd, env) =>
             Action.error(TypeError(actd.toString, "actor", "behavior", "not a behavior"))
@@ -133,7 +133,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimes
               Action.error(ArityError("become behavior", xs.size, argsv.size))
             } else {
               val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
-              ActorAction.become(name, actd, env2, store2, IsASchemeLattice[Abs].inject(false))
+              ActorAction.become(name, actd, argsv, env2, store2, IsASchemeLattice[Abs].inject(false))
             }
           case (name, actd, env) =>
             Action.error(TypeError(actd.toString, "actor", "behavior", "not a behavior"))

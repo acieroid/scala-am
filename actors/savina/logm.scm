@@ -4,15 +4,25 @@
 (define StartRate (int-top))
 (define Increment (int-top))
 
-(define (build-vector n f)
-  (letrec ((v (make-vector n #f))
-           (loop (lambda (i)
+(define (build-vector1 n f)
+  (letrec ((v (make-vector n (f 0)))
+           (loop1 (lambda (i)
                    (if (< i n)
                        (begin
                          (vector-set! v i (f i))
-                         (loop (+ i 1)))
+                         (loop1 (+ i 1)))
                        v))))
-    (loop 0)))
+    (loop1 1)))
+
+(define (build-vector2 n f)
+  (letrec ((v (make-vector n (f 0)))
+           (loop2 (lambda (i)
+                   (if (< i n)
+                       (begin
+                         (vector-set! v i (f i))
+                         (loop2 (+ i 1)))
+                       v))))
+    (loop2 1)))
 
 (define (vector-foreach f v)
   (letrec ((loop (lambda (i)
@@ -27,13 +37,12 @@
   (a/actor "master-init" ()
            (start ()
                   (let* ((computers
-                          (build-vector NumComputers
+                          (build-vector1 NumComputers
                                         (lambda (i)
-                                          (let* ((rate (+ StartRate (* i Increment)))
-                                                 (actor (a/create rate-computer rate)))
-                                            actor))))
+                                          (let* ((rate (+ StartRate (* i Increment))))
+                                            (a/create rate-computer rate)))))
                          (workers
-                          (build-vector NumWorkers
+                          (build-vector2 NumWorkers
                                         (lambda (i)
                                           (let* ((rate-computer
                                                  (vector-ref computers (modulo i NumComputers)))

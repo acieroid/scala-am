@@ -218,14 +218,14 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
       case ActionError(err) =>
         (Some(this.copy(control = ControlError(err))),
           store, None, None)
-      case ActorActionBecome(name, actd, env2, store2, vres, effs) =>
-        recordBecome(pid, name, extractArgs(actd, env2, store2))
+      case ActorActionBecome(name, actd, args, env2, store2, vres, effs) =>
+        recordBecome(pid, name, args)
         (Some(this.copy(control = ControlWait, inst = ActorInstanceActor(actd, env2), kont = HaltKontAddress, t =  ActorTimestamp[Time].actorBecome(t, actd))),
           store.includeDelta(store2.delta), None, None)
       case ActorActionTerminate(_) =>
         (None, store, None, None)
-      case ActorActionCreate(name, actd, exp, env2, store2, fres : (PID => Abs), effs) =>
-        recordCreate(pid, name, extractArgs(actd, env2, store2))
+      case ActorActionCreate(name, actd, exp, args, env2, store2, fres : (PID => Abs), effs) =>
+        recordCreate(pid, name, args)
         val p2 = ThreadIdentifier[PID].thread(t, name)
         (Some(this.copy(control = ControlKont(fres(p2)), t = ActorTimestamp[Time].actorCreated(t, p2))),
           store.includeDelta(store2.delta),

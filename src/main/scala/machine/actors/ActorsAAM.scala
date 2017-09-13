@@ -166,13 +166,13 @@ class ActorsAAM[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Time :
         Set((this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(vres), mbox = ctx.mbox.push((p, name, msg)), t = Timestamp[Time].tick(ctx.t)))),
           p, Some(ActorEffectSendSelf(p, name))))
-      case ActorActionCreate(name, actd, exp, env2, store2, fres : (PID => Abs), effs) =>
+      case ActorActionCreate(name, actd, exp, _, env2, store2, fres : (PID => Abs), effs) =>
         val p2 = ThreadIdentifier[PID].thread(exp, ctx.t)
         Set((this.copy(procs = procs
           .update(p -> ctx.copy(control = ControlKont(fres(p2)), t = Timestamp[Time].tick(ctx.t)))
           .extend(p2 -> Context.create(p2, actd, env2)),
           store = store2), p, Some(ActorEffectCreate(p, name))))
-      case ActorActionBecome(name, actd, env2, store2, vres, effs) =>
+      case ActorActionBecome(name, actd, _, env2, store2, vres, effs) =>
         Set((this.copy(procs = procs
           .update(p -> Context.create(p, actd, env2).copy(t = Timestamp[Time].tick(ctx.t), mbox = ctx.mbox)),
           store = store2), p, Some(ActorEffectBecome(p, name))))

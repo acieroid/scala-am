@@ -23,15 +23,6 @@
 
 (define master-actor
   (a/actor "master-actor" (workers num-workers-terminated num-work-sent num-work-completed)
-           (start ()
-                  (a/become master-actor
-                            (build-vector NumWorkers (lambda (i)
-                                                    (let* ((w (a/create worker-actor master i)))
-                                                      (if (= i 0)
-                                                          (a/send w work 0 0 0 0 0 0 NumBlocks DataLength 0)
-                                                          #t)
-                                                      w)))
-                            num-workers-terminated num-work-sent num-work-completed))
            (work (srA scA srB scB srC scC num-blocks dim priority)
                  (let ((index (modulo (inexact->exact (floor (+ srC scC))) NumWorkers)))
                    (a/send (vector-ref workers index) work srA scA srB scB srC scC num-blocks dim priority)
@@ -47,6 +38,18 @@
                        (a/send result stop)
                        (a/terminate))
                      (a/become master-actor workers (+ num-workers-terminated 1) num-work-sent num-work-completed)))))
+
+(define master-actor-init
+  (a/actor "master-actor" ()
+           (start ()
+                  (a/become master-actor
+                            (build-vector NumWorkers (lambda (i)
+                                                       (let* ((w (a/create worker-actor a/self i)))
+                                                         (if (= i 0)
+                                                             (a/send w work 0 0 0 0 0 0 NumBlocks DataLength 0)
+                                                             #t)
+                                                         w)))
+                            0 0 0))))
 
 (define (A i j) i)
 (define (B i j) j)
@@ -106,6 +109,5 @@
            (stop ()
                  (a/send master stop)
                  (a/terminate))))
-(define master (a/create master-actor #f 0 0 0))
-master
+(define master (a/create master-actor-init))
 (a/send master start)

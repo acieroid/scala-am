@@ -1,8 +1,8 @@
 (define Alpha 2.0)
-(define CutoffDepth (int-top))
+(define CutoffDepth (int-top)) ;; was 3
 (define GridSize (int-top)) ;; was 500
 (define F (* (sqrt 2) GridSize))
-(define NumPoints (int-top))
+(define NumPoints (int-top)) ;; was 100000
 
 (define foldl
   (lambda (f base lst)
@@ -111,7 +111,18 @@
   (a/terminate))
 
 (define (create-child self boundary position customers threshold depth local-facilities known-facilities max-depth)
-  (let ((customers (filter (lambda (c) (box-contains boundary c)) customers)))
+  (let ((customers (filter (lambda (c) (box-contains boundary c)) customers))
+        (cost (foldl (lambda (acc point)
+                       (+ acc (if (pair? local-facilities)
+                                  (foldl (lambda (result fac)
+                                           (let ((distance (get-distance fac point)))
+                                             (if (< distance result)
+                                                  distance
+                                                  result)))
+                                         (get-distance (car local-facilities) point)
+                                         (cdr local-facilities))
+                                  0)))
+                     0.0 customers)))
     (a/create quadrant-actor self position boundary threshold (+ depth 1)
               local-facilities known-facilities max-depth customers
               '() ;; children
@@ -119,15 +130,7 @@
               0 ;; children facilities
               0 ;; facility customers
               0 ;; terminated child count
-              (foldl (lambda (c acc)
-                       (+ acc (foldl (lambda (result fac)
-                                       (let ((distance (get-distance fac c)))
-                                         (if (< distance result)
-                                             distance
-                                             result)))
-                                     0
-                                     local-facilities)))
-                     0.0 customers))))
+              cost)))
 (define quadrant-actor
   (a/actor "quadrant-actor"
            (parent position-relative-to-parent boundary threshold
@@ -150,13 +153,15 @@
                           #f)
                       (if (null? children)
                           (begin
-                            (let ((cost (foldl (lambda (result fac)
-                                                 (let ((distance (get-distance fac point)))
-                                                   (if (< distance result)
-                                                       distance
-                                                       result)))
-                                               0
-                                               local-facilities)))
+                            (let ((cost (if (pair? local-facilities)
+                                            (foldl (lambda (result fac)
+                                                     (let ((distance (get-distance fac point)))
+                                                       (if (< distance result)
+                                                           distance
+                                                           result)))
+                                                   (get-distance (car local-facilities) point)
+                                                   (cdr local-facilities))
+                                            0)))
                               (if (> (+ total-cost cost) threshold)
                                   ;; partition
                                   (let ((facility (mid-point boundary))

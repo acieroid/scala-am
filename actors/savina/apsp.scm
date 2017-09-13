@@ -3,14 +3,35 @@
 (define W (int-top))
 
 (define (build-vector n f)
-  (letrec ((v (make-vector n #f))
+  (letrec ((v (make-vector n (f 0)))
            (loop (lambda (i)
                    (if (< i n)
                        (begin
                          (vector-set! v i (f i))
                          (loop (+ i 1)))
                        v))))
-    (loop 0)))
+    (loop 1)))
+
+
+(define (build-vector2 n f2)
+  (letrec ((v (make-vector n (f2 0)))
+           (loop2 (lambda (i)
+                   (if (< i n)
+                       (begin
+                         (vector-set! v i (f2 i))
+                         (loop2 (+ i 1)))
+                       v))))
+    (loop2 1)))
+(define (build-vector3 n f3)
+  (letrec ((v (make-vector n (f3 0)))
+           (loop3 (lambda (i)
+                   (if (< i n)
+                       (begin
+                         (vector-set! v i (f3 i))
+                         (loop3 (+ i 1)))
+                       v))))
+    (loop3 1)))
+
 (define (for-each f l)
   (if (null? l)
       #t
@@ -68,7 +89,7 @@
          (num-neighbors (* 2 (- num-blocks-in-single-dim 1)))
          (row-offset (* (inexact->exact (floor (/ id num-blocks-in-single-dim))) block-size))
          (col-offset (* (modulo id num-blocks-in-single-dim) block-size)))
-    (letrec ((actor (a/actor "apsp-actor" (neighbors k neighbor-data-per-iteration received-neighbors current-iter-data)
+    (letrec ((apsp-actor-actor (a/actor "apsp-actor" (neighbors k neighbor-data-per-iteration received-neighbors current-iter-data)
                         (result (src-k src-id init-data)
                                 (if (not received-neighbors) (error "not received neighbors yet") #f)
                                 ;; storeIterationData
@@ -109,22 +130,22 @@
                                         ;; neighborDataPerIteration.clear()
                                         (if (= k2 (- graph-size 1))
                                             (a/terminate)
-                                            (a/become actor neighbors k2 '() received-neighbors current-iter-data2))))
-                                    (a/become actor neighbors k (cons (cons src-id init-data) neighbor-data-per-iteration)
+                                            (a/become apsp-actor-actor neighbors k2 '() received-neighbors current-iter-data2))))
+                                    (a/become apsp-actor-actor neighbors k (cons (cons src-id init-data) neighbor-data-per-iteration)
                                               received-neighbors current-iter-data)))
                         (initial ()
                                  (for-each (lambda (loop-neighbor) (a/send loop-neighbor result k id current-iter-data)) neighbors)
-                                 (a/become actor neighbors k neighbor-data-per-iteration received-neighbors current-iter-data))
+                                 (a/become apsp-actor-actor neighbors k neighbor-data-per-iteration received-neighbors current-iter-data))
                         (neighbor (new-neighbors)
-                                  (a/become actor new-neighbors k neighbor-data-per-iteration #t current-iter-data)))))
-      (a/create actor '() -1 '() #f (get-block init-graph-data id)))))
+                                  (a/become apsp-actor-actor new-neighbors k neighbor-data-per-iteration #t current-iter-data)))))
+      (a/create apsp-actor-actor '() -1 '() #f (get-block init-graph-data id)))))
 
 (define num-nodes N)
 (define block-size B)
 (define num-blocks-in-single-dim (inexact->exact (floor (/ num-nodes block-size))))
-(define block-actors (build-vector num-blocks-in-single-dim
+(define block-actors (build-vector2 num-blocks-in-single-dim
                                    (lambda (i)
-                                     (build-vector num-blocks-in-single-dim
+                                     (build-vector3 num-blocks-in-single-dim
                                                    (lambda (j)
                                                      (let ((id (+ (* i num-blocks-in-single-dim) j)))
                                                        (apsp-actor id block-size num-nodes graph-data)))))))

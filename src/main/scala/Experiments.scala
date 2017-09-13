@@ -30,7 +30,7 @@ object ActorExperiments {
     ("NQN", "actors/savina/nqn.scm"))
   def main(args: Array[String]): Unit = {
     val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1000000000)
+    val timeout: Option[Long] = Some(120 * 1e9.toLong)
     implicit val isASchemeLattice = lat.isASchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -73,34 +73,34 @@ object ActorExperiments {
 
 object ActorExperimentsECOOP {
   val benchFiles: List[(String, String)] = List(
-//    ("PP", "actors/savina/pp.scm"),
-//    ("COUNT", "actors/savina/count.scm"),
-//    ("FJT", "actors/savina/fjt.scm"),
-//    ("FJC", "actors/savina/fjc.scm"),
-    ("THR", "actors/savina/thr.scm"),
-    ("CHAM", "actors/savina/cham.scm"),
-    ("BIG", "actors/savina/big.scm"),
-//    ("CDICT", "actors/savina/cdict.scm"),
-    ("CSLL", "actors/savina/csll.scm"),
-//    ("PCBB", "actors/savina/pcbb.scm"),
-    ("PHIL", "actors/savina/phil.scm"),
-    ("SBAR", "actors/savina/sbar.scm"),
-//    ("CIG", "actors/savina/cig.scm"),
-    ("LOGM", "actors/savina/logm.scm"),
-//    ("BTX", "actors/savina/btx.scm"),
-//    ("RSORT", "actors/savina/rsort.scm"),
-    ("FBANK", "actors/savina/fbank.scm"),
-//    ("SIEVE", "actors/savina/sieve.scm"),
-    ("UCT", "actors/savina/uct.scm"),
-    ("OFL", "actors/savina/ofl.scm"),
-//    ("TRAPR", "actors/savina/trapr.scm"),
-//    ("PIPREC", "actors/savina/piprec.scm"))
-    ("RMM", "actors/savina/rmm.scm"),
-    ("QSORT", "actors/savina/qsort.scm"),
-    ("APSP", "actors/savina/apsp.scm"),
-    ("SOR", "actors/savina/sor.scm"),
-    ("ASTAR", "actors/savina/astar.scm"),
-    ("NQN", "actors/savina/nqn.scm"))
+    ("PP", "actors/savina/pp.scm"),
+    ("COUNT", "actors/savina/count.scm"),
+    ("FJT", "actors/savina/fjt.scm"),
+    ("FJC", "actors/savina/fjc.scm"),
+//    ("THR", "actors/savina/thr.scm"),
+//    ("CHAM", "actors/savina/cham.scm"),
+//    ("BIG", "actors/savina/big.scm"),
+    ("CDICT", "actors/savina/cdict.scm"),
+//    ("CSLL", "actors/savina/csll.scm"),
+    ("PCBB", "actors/savina/pcbb.scm"),
+//    ("PHIL", "actors/savina/phil.scm"),
+//    ("SBAR", "actors/savina/sbar.scm"),
+    ("CIG", "actors/savina/cig.scm"),
+//    ("LOGM", "actors/savina/logm.scm"),
+    ("BTX", "actors/savina/btx.scm"),
+    ("RSORT", "actors/savina/rsort.scm"),
+//    ("FBANK", "actors/savina/fbank.scm"),
+    ("SIEVE", "actors/savina/sieve.scm"),
+//    ("UCT", "actors/savina/uct.scm"),
+//    ("OFL", "actors/savina/ofl.scm"),
+    ("TRAPR", "actors/savina/trapr.scm"),
+    ("PIPREC", "actors/savina/piprec.scm"))
+//    ("RMM", "actors/savina/rmm.scm"),
+//    ("QSORT", "actors/savina/qsort.scm"))
+//    ("APSP", "actors/savina/apsp.scm"),
+//    ("SOR", "actors/savina/sor.scm"),
+//    ("ASTAR", "actors/savina/astar.scm"),
+//    ("NQN", "actors/savina/nqn.scm"))
   def main(args: Array[String]): Unit = {
     val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
     val timeout: Option[Long] = Some(120 * 1e9.toLong)
@@ -117,8 +117,8 @@ object ActorExperimentsECOOP {
     }
 
     if (args.size == 0) {
-      val N = 10
-      val warmup = 2
+      val N = 20
+      val warmup = 10
       for ((name, file) <- benchFiles) {
         val sname = name.padTo(10, " ").mkString
         print(s"$sname | ")

@@ -4,14 +4,14 @@
 (define Size (int-top))
 (define SolutionsLimit (int-top))
 (define (build-vector n f)
-  (letrec ((v (make-vector n #f))
+  (letrec ((v (make-vector n (f 0)))
            (loop (lambda (i)
                    (if (< i n)
                        (begin
                          (vector-set! v i (f i))
                          (loop (+ i 1)))
                        v))))
-    (loop 0)))
+    (loop 1)))
 (define (vector-foreach f v)
   (letrec ((loop (lambda (i)
                    (if (< i (vector-length v))
@@ -21,17 +21,17 @@
                        'done))))
     (loop 0)))
 
+(define master-actor-init
+  (a/actor "master-actor" ()
+           (start ()
+                  (let ((workers (build-vector NumWorkers (lambda (i) (a/create worker-actor a/self i)))))
+                    (a/send (vector-ref workers 0) work '() 0)
+                    (a/become master-actor
+                              workers
+                              0 1 0 1 0)))))
+
 (define master-actor
   (a/actor "master-actor" (workers result-counter message-counter num-workers-terminated num-work-sent num-work-completed)
-           (start ()
-                  (let ((workers2 (build-vector NumWorkers (lambda (i)
-                                                       (let ((w (a/create worker-actor a/self i)))
-                                                         ;; (if (= i 0) (a/send w work '() 0) #t)
-                                                         w)))))
-                    (a/send (vector-ref workers2 message-counter) work '() 0)
-                    (a/become master-actor
-                              workers2
-                              result-counter (modulo (+ message-counter 1) NumWorkers) num-workers-terminated (+ num-work-sent 1) num-work-completed)))
            (work (data depth)
                  (a/send (vector-ref workers message-counter) work data depth)
                  (a/become master-actor workers result-counter (modulo (+ message-counter 1) NumWorkers) num-workers-terminated (+ 1 num-work-sent) num-work-completed))
@@ -102,5 +102,5 @@
            (stop ()
                  (a/send master stop)
                  (a/terminate))))
-(define master (a/create master-actor #f 0 0 0 0 0))
+(define master (a/create master-actor-init))
 (a/send master start)
