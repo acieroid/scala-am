@@ -192,8 +192,8 @@ class ActionHelpers[Exp : Expression, Abs : JoinLattice, Addr : Address] {
     new ActionStepIn(fexp, clo, e, env, store, argsv, effects)
   def error(err: SemanticError): Act =
     new ActionError(err)
-  def spawn[TID : ThreadIdentifier](t: TID, e: Exp, env: Env, store: Sto, act: Act, effects: Effs = Set.empty): Act =
-    new ActionSpawn(t, e, env, store, act, effects)
+  def spawn[TID : ThreadIdentifier](t: TID, e: Exp, env: Env, store: Sto, v: Abs, effects: Effs = Set.empty): Act =
+    new ActionSpawn(t, e, env, store, v, effects)
   def join[TID : ThreadIdentifier](t: TID, store: Sto, effects: Effs = Set.empty): Act =
     new ActionJoin(t, store, effects)
 }
@@ -260,10 +260,10 @@ case class NotSupported(reason: String) extends SemanticError
 
 /**
  * Spawns a new thread that evaluates expression e in environment ρ. The current
- * thread continues its execution by performing action act.
+ * thread reaches value v.
  */
 case class ActionSpawn[TID : ThreadIdentifier, Exp : Expression, Abs : JoinLattice, Addr : Address]
-  (t: TID, e: Exp, env: Environment[Addr], store: Store[Addr, Abs], act: Action[Exp, Abs, Addr],
+  (t: TID, e: Exp, env: Environment[Addr], store: Store[Addr, Abs], v: Abs,
     effects: Set[Effect[Addr]] = Set[Effect[Addr]]())
     extends Action[Exp, Abs, Addr] {
   def addEffects(effs: Set[Effect[Addr]]) = this.copy(effects = effects ++ effs)

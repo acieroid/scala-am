@@ -13,7 +13,7 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
   override def stepEval(e: SchemeExp, env: Env, store: Sto, t: Time) = e match {
     case SchemeSpawn(exp, _) =>
       val tid = ThreadIdentifier[TID].thread[SchemeExp, Time](exp, t)
-      Action.spawn(tid, exp, env, store, Action.value(IsCSchemeLattice[Abs].injectTid(tid), store))
+      Action.spawn(tid, exp, env, store, IsCSchemeLattice[Abs].injectTid(tid))
     case SchemeJoin(exp, _) => optimizeAtomic(Action.push(FrameJoin(env), exp, env, store), t)
     case SchemeCas(variable, eold, enew, _) => Action.push(FrameCasOld(variable, None, enew, env), eold, env, store)
     case SchemeCasVector(variable, index, eold, enew, _) => Action.push(FrameCasIndex(variable, eold, enew, env), index, env, store)
