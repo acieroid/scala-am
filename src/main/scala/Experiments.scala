@@ -7,8 +7,7 @@ object ThreadExperiments {
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
     val machine = new ConcurrentModular[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID]
-    // val sem = new ASchemeSemantics[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L])
-    val sem = new CSchemeSemantics[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L])
+    val sem = new CSchemeSemantics[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new CSchemePrimitives[ClassicalAddress.A, lat.L])
 
     def run(file: String) = {
       Util.runOnFile(file, ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem)(_, true, timeout))
