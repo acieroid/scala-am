@@ -1,7 +1,7 @@
 import scalaz.Scalaz._
 import scalaz._
 
-/* TODO: how to deal with termination and join? Additional store? */
+/* TODO: use Option for returned to distinguish non-termination and bottom */
 class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ConcurrentModular"
@@ -20,10 +20,6 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
   type StoreDelta = Map[Addr, Abs]
   object StoreDelta {
     def empty: StoreDelta = Map()
-  }
-  type ReturnStoreDelta = Map[TID, Abs]
-  object ReturnStoreDelta {
-    def empty: ReturnStoreDelta = Map()
   }
 
   type G = Graph[ThreadState, Unit, Unit]
@@ -56,9 +52,7 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
   case class GlobalStore(store: DeltaStore[Addr, Abs], oldStore: DeltaStore[Addr, Abs],
     storeDelta: StoreDelta, mainStoreDelta: StoreDelta,
     kstore: TimestampedKontStore[KontAddr], oldKStore: TimestampedKontStore[KontAddr],
-    kstoreDelta: KStoreDelta, mainKStoreDelta: KStoreDelta,
-    returnStore: DeltaStore[TID, Abs], oldReturnStore: DeltaStore[TID, Abs],
-    returnStoreDelta: ReturnStoreDelta, mainReturnStoreDelta: ReturnStoreDelta) {
+    kstoreDelta: KStoreDelta, mainKStoreDelta: KStoreDelta) {
     def includeDelta(d: Option[Map[Addr, Abs]]): GlobalStore = d match {
       case Some(d) => this.copy(storeDelta = storeDelta |+| d, mainStoreDelta = mainStoreDelta |+| d)
       case None => throw new Exception("GlobalStore should be used with a store that supports delta!")
@@ -68,41 +62,30 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
         this.copy(kstoreDelta = kstoreDelta + (a -> (kstoreDelta(a) + kont)),
           mainKStoreDelta = mainKStoreDelta + (a -> (mainKStoreDelta(a) + kont)))
       }
-    def isUnchanged = storeDelta.isEmpty && kstoreDelta.isEmpty && returnStoreDelta.isEmpty
-    def mainIsUnchanged = mainStoreDelta.isEmpty && mainKStoreDelta.isEmpty && mainReturnStoreDelta.isEmpty
+    def isUnchanged = storeDelta.isEmpty && kstoreDelta.isEmpty
+    def mainIsUnchanged = mainStoreDelta.isEmpty && mainKStoreDelta.isEmpty
     private def addKStoreDelta(kstore: TimestampedKontStore[KontAddr], kstoreDelta: KStoreDelta): TimestampedKontStore[KontAddr] =
       kstoreDelta.foldLeft(kstore)((kstore, toAdd) => toAdd match {
         case (k, vs) => vs.foldLeft(kstore)((kstore, v) => kstore.extend(k, v).asInstanceOf[TimestampedKontStore[KontAddr]])
       })
     def commit = if (isUnchanged) { this } else {
       this.copy(store = store.addDelta(storeDelta), storeDelta = StoreDelta.empty,
-        kstore = addKStoreDelta(kstore, kstoreDelta), kstoreDelta = KStoreDelta.empty,
-        returnStore = returnStore.addDelta(returnStoreDelta), returnStoreDelta = ReturnStoreDelta.empty)
+        kstore = addKStoreDelta(kstore, kstoreDelta), kstoreDelta = KStoreDelta.empty)
     }
     def commitMain = if (mainIsUnchanged) { this } else {
       val newStore = oldStore.addDelta(mainStoreDelta)
       val newKStore = addKStoreDelta(oldKStore, mainKStoreDelta)
-      val newReturnStore = oldReturnStore.addDelta(mainReturnStoreDelta)
       this.copy(store = newStore, oldStore = newStore, storeDelta = StoreDelta.empty, mainStoreDelta = StoreDelta.empty,
-        kstore = newKStore, oldKStore = newKStore, kstoreDelta = KStoreDelta.empty, mainKStoreDelta = KStoreDelta.empty,
-        returnStore = newReturnStore, oldReturnStore = newReturnStore, returnStoreDelta = ReturnStoreDelta.empty, mainReturnStoreDelta = ReturnStoreDelta.empty)
+        kstore = newKStore, oldKStore = newKStore, kstoreDelta = KStoreDelta.empty, mainKStoreDelta = KStoreDelta.empty)
     }
     def restore =
       this.copy(store = oldStore, kstore = oldKStore, storeDelta = StoreDelta.empty, kstoreDelta = KStoreDelta.empty)
-    def lookupReturnValue(t: TID): Option[Abs] = returnStore.lookup(t)
-    def setReturnValue(t: TID, v: Abs): GlobalStore =
-      if (returnStore.lookup(t).map(v2 => JoinLattice[Abs].subsumes(v2, v)).getOrElse(false)) { this } else {
-        this.copy(returnStoreDelta = returnStoreDelta + (t -> JoinLattice[Abs].join(returnStoreDelta.get(t).getOrElse(JoinLattice[Abs].bottom), v)),
-          mainReturnStoreDelta = mainReturnStoreDelta + (t -> JoinLattice[Abs].join(mainReturnStoreDelta.get(t).getOrElse(JoinLattice[Abs].bottom), v)))
-      }
   }
   object GlobalStore {
     def initial(storeMappings: Iterable[(Addr, Abs)]): GlobalStore = {
       val store = DeltaStore[Addr, Abs](storeMappings.toMap, Map())
       val kstore = TimestampedKontStore[KontAddr](Map(), 0)
-      val emptyReturnStore = DeltaStore[TID, Abs](Map(), Map())
-      new GlobalStore(store, store, StoreDelta.empty, StoreDelta.empty, kstore, kstore, KStoreDelta.empty, KStoreDelta.empty,
-        emptyReturnStore, emptyReturnStore, ReturnStoreDelta.empty, ReturnStoreDelta.empty)
+      new GlobalStore(store, store, StoreDelta.empty, StoreDelta.empty, kstore, kstore, KStoreDelta.empty, KStoreDelta.empty)
     }
   }
 
@@ -141,7 +124,7 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
       case ControlError(_) => true
       case _ => false
     }
-    def integrate(act: Act, store: GlobalStore):
+    def integrate(act: Act, store: GlobalStore, results: Map[TID, Abs]):
         (
           /* Successor state */
           Option[ThreadState],
@@ -174,10 +157,10 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
         (Some(this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t))),
           store.includeDelta(store2.delta), Some(ThreadState(t2, ControlEval(e, env), HaltKontAddress, t)), effs, Option.empty)
       case ActionJoin(tid2: TID @unchecked, store2, effs) =>
-        (store.lookupReturnValue(tid2).map(v => this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t))),
+        (results.get(tid2).map(v => this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t))),
           store.includeDelta(store2.delta), Option.empty, effs, Some(tid2))
     }
-    def step(sem: Semantics[Exp, Abs, Addr, Time], store: GlobalStore):
+    def step(sem: Semantics[Exp, Abs, Addr, Time], store: GlobalStore, results: Map[TID, Abs]):
         (
           /* Successor states */
           Set[ThreadState],
@@ -187,25 +170,27 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
           Set[Eff],
           /* Threads joined */
           Set[TID],
+          /* Return value */
+          Option[Abs],
           /* Resulting store */
           GlobalStore
         ) = {
-      val init: (Set[ThreadState], Set[ThreadState], Set[Eff], Set[TID], GlobalStore) = (Set.empty, Set.empty, Set.empty, Set.empty, store)
+      val init: (Set[ThreadState], Set[ThreadState], Set[Eff], Set[TID], Option[Abs], GlobalStore) = (Set.empty, Set.empty, Set.empty, Set.empty, Option.empty, store)
       control match {
         case ControlEval(e, env) => sem.stepEval(e, env, store.store, t).foldLeft(init)((acc, action) =>
-          integrate(action, acc._5) match { case (s, store2, spawned, effs, joined) =>
-            (acc._1 ++ s.toSet, acc._2 ++ spawned.toSet, acc._3 ++ effs.toSet, acc._4 ++ joined.toSet, store2)
+          integrate(action, acc._6, results) match { case (s, store2, spawned, effs, joined) =>
+            (acc._1 ++ s.toSet, acc._2 ++ spawned.toSet, acc._3 ++ effs, acc._4 ++ joined.toSet, acc._5, store2)
           })
         case ControlKont(v) if kont != HaltKontAddress =>
           store.kstore.lookup(kont).foldLeft(init)((acc, kont) => kont match {
-            case Kont(frame, next) => sem.stepKont(v, frame, acc._5.store, t).foldLeft(acc)((acc, action) =>
-              this.copy(kont = next).integrate(action, acc._5) match {
+            case Kont(frame, next) => sem.stepKont(v, frame, acc._6.store, t).foldLeft(acc)((acc, action) =>
+              this.copy(kont = next).integrate(action, acc._6, results) match {
                 case (s, store2, spawned, effs, joined) =>
-                  (acc._1 ++ s.toSet, acc._2 ++ spawned.toSet, acc._3 ++ effs.toSet, acc._4 ++ joined.toSet, store2)
+                  (acc._1 ++ s.toSet, acc._2 ++ spawned.toSet, acc._3 ++ effs, acc._4 ++ joined.toSet, acc._5, store2)
               })
           })
         case ControlKont(v) if kont == HaltKontAddress =>
-          (Set.empty, Set.empty, Set.empty, Set.empty, store.setReturnValue(tid, v))
+          (Set.empty, Set.empty, Set.empty, Set.empty, Some(v), store)
         case ControlError(_) => init
       }
     }
@@ -240,14 +225,16 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
       /* Effects */
       effs: Set[Eff],
       /* Threads which are joined */
-      joined: Set[TID]
+      joined: Set[TID],
+      /* Return value */
+      returned: Abs
     )
     implicit val innerLoopStateWithKey = new WithKey[InnerLoopState] {
       type K = TID
       def key(st: InnerLoopState) = st.tid
     }
     @scala.annotation.tailrec
-    def innerLoop(st: InnerLoopState, store: GlobalStore):
+    def innerLoop(st: InnerLoopState, store: GlobalStore, returnedValues: Map[TID, Abs]):
         (
           /* Final state */
           InnerLoopState,
@@ -257,23 +244,26 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
       if (st.todo.isEmpty || timeout.reached) {
         (st, store)
       } else {
-        val (edges, store2, created, effs, joined) = st.todo.foldLeft((Set[(ThreadState, Unit, ThreadState)](), store, Set[ThreadState](), Set[Eff](), Set[TID]()))((acc, state) =>
-          state.step(sem, acc._2) match {
-            case (succs, created, effs, joined, store2) =>
-              println(s"Explored $state, joined: $joined")
-              (acc._1 ++ succs.map(state2 => (state, (), state2)), store2, acc._3 ++ created, acc._4 ++ effs, acc._5 ++ joined)
+        val (edges, store2, created, effs, joined, returned) = st.todo.foldLeft((Set[(ThreadState, Unit, ThreadState)](), store, Set[ThreadState](), Set[Eff](), Set[TID](), JoinLattice[Abs].bottom))((acc, state) =>
+          state.step(sem, acc._2, returnedValues) match {
+            case (succs, created, effs, joined, returned, store2) =>
+              println(s"Explored $state, joined: $joined, returned $returned")
+              (acc._1 ++ succs.map(state2 => (state, (), state2)), store2, acc._3 ++ created, acc._4 ++ effs, acc._5 ++ joined,
+              JoinLattice[Abs].join(returned.getOrElse(JoinLattice[Abs].bottom), acc._6))
           })
         val newTodo = edges.map(_._3)
         val newGraph = st.graph.map(_.addEdges(edges))
         if (store2.mainIsUnchanged) {
           innerLoop(st.copy(
             todo = newTodo.filter(s => !VisitedSet[VS].contains(st.visited, s)),
+            visited = VisitedSet[VS].append(st.visited, st.todo),
             reallyVisited = VisitedSet[VS].append(st.reallyVisited, st.todo),
             graph = newGraph,
             effs = st.effs ++ effs,
             created = st.created ++ created,
-            joined = st.joined ++ joined
-          ), store2)
+            joined = st.joined ++ joined,
+            returned = JoinLattice[Abs].join(st.returned, returned)
+          ), store2, returnedValues)
         } else {
           innerLoop(st.copy(
             todo = newTodo.filter(s => !VisitedSet[VS].contains(st.visited, s)),
@@ -282,7 +272,9 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
             graph = newGraph,
             effs = st.effs ++ effs,
             created = st.created ++ created,
-            joined = st.joined ++ joined), store2.commitMain)
+            joined = st.joined ++ joined,
+            returned = JoinLattice[Abs].join(st.returned, returned)
+          ), store2.commitMain, returnedValues)
         }
       }
     case class OuterLoopState(
@@ -292,6 +284,8 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
       tids: Map[TID, Set[InnerLoopState]],
       /* Join dependencies: which threads depends on which other thread's value. t1 -> (t2, t3) mean that t2 and t3 depend on t1's return value */
       joinDeps: Map[TID, Set[TID]],
+      /* Returned values of each thread */
+      returned: Map[TID, Abs],
       /* Global store */
       store: GlobalStore,
       /* Graphs for each thread */
@@ -305,7 +299,7 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
           /* already spawned this thread, nothing changed */
           acc
         } else {
-          val inner = InnerLoopState(st.tid, Set(st), VisitedSet[VS].empty, VisitedSet[VS].empty, Option(G()), Set.empty, Set.empty, Set.empty)
+          val inner = InnerLoopState(st.tid, Set(st), VisitedSet[VS].empty, VisitedSet[VS].empty, Option(G()), Set.empty, Set.empty, Set.empty, JoinLattice[Abs].bottom)
           (acc._1 + inner, acc._2 + (st.tid -> (acc._2(st.tid) + inner)))
         }
       })
@@ -314,11 +308,9 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
       joined.foldLeft(joinDeps)((acc, t) => acc + ((t -> (acc(t) + tid))))
     def  fromReturn(tid: TID, tids: Map[TID, Set[InnerLoopState]], joinDeps: Map[TID, Set[TID]]): Set[InnerLoopState] =
       /* Thread tid returned, need to explore all its dependencies */
-      /* TODO: improve this by actually triggering it only if it returned a different value */
-      tids(tid)
+      joinDeps(tid).foldLeft(Set[InnerLoopState]())((acc, t) => acc ++ tids(t))
 
     /* TODO: from effs */
-    /* TODO: from joins/term */
     @scala.annotation.tailrec
     def outerLoop(st: OuterLoopState, iteration: Int): Output = {
       println("---------------")
@@ -327,18 +319,23 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
         println(s"Number of iterations: $iteration")
         new ThreadModularOutput(timeout.time, st.graphs, timeout.reached)
       } else {
-        val succ = st.todo.foldLeft((Set[InnerLoopState](), st.tids, st.joinDeps, st.store, st.graphs))((acc, threadState) => {
+        val succ = st.todo.foldLeft((Set[InnerLoopState](), st.tids, st.joinDeps, st.returned, st.store, st.graphs))((acc, threadState) => {
           println(s"Exploring thread ${threadState.tid}")
-          val (ist, store2) = innerLoop(threadState, acc._4)
+          val (ist, store2) = innerLoop(threadState, acc._5, acc._4)
           val (todoCreated, tidsCreated) = fromCreated(ist.created, acc._2)
           val joinDeps = fromJoined(threadState.tid, ist.joined, acc._2, acc._3)
-          val todoJoined = fromReturn(threadState.tid, acc._2, acc._3)
+          val oldReturned = acc._4(threadState.tid)
+          val newReturned = JoinLattice[Abs].join(oldReturned, ist.returned)
+          val todoJoined = if (oldReturned == newReturned) { Set.empty } else {
+            fromReturn(threadState.tid, acc._2, acc._3)
+          }
           println(s"Created tids: ${ist.created.map(_.tid)}")
           println(s"Joined on tids: ${ist.joined}")
           println(s"Triggering evaluation of ${todoJoined.map(_.tid)}")
-          (acc._1 ++ todoCreated ++ todoJoined, tidsCreated, joinDeps, store2, acc._5 + (ist.tid -> ist.graph))
+          (acc._1 ++ todoCreated ++ todoJoined, tidsCreated, joinDeps, acc._4 + ((threadState.tid -> newReturned)),
+            store2, acc._6 + (ist.tid -> ist.graph))
         })
-        val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5)
+        val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5, succ._6)
         newOuter.graphs.foreach({
           case (k, Some(g)) => GraphDOTOutput.toFile(g, ())(s"iteration-$iteration-$k.dot")
           case (_, None) => ()
@@ -351,6 +348,7 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
 /*        }*/
       }
     }
+    val bot = JoinLattice[Abs].bottom
     val mainPid = ThreadIdentifier[TID].initial
     def inject(exp: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (ThreadState, GlobalStore) = {
       val initEnv = Environment.initial[Addr](env)
@@ -358,10 +356,11 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
         GlobalStore.initial(store))
     }
     val (initialState, store) = inject(exp, sem.initialEnv, sem.initialStore)
-    val initialInner = InnerLoopState(initialState.tid, Set(initialState), VisitedSet[VS].empty, VisitedSet[VS].empty, Option(G()), Set.empty, Set.empty, Set.empty)
+    val initialInner = InnerLoopState(initialState.tid, Set(initialState), VisitedSet[VS].empty, VisitedSet[VS].empty, Option(G()), Set.empty, Set.empty, Set.empty, bot)
     val res = outerLoop(OuterLoopState(Set(initialInner),
       Map[TID, Set[InnerLoopState]]().withDefaultValue(Set.empty) + (mainPid -> Set(initialInner)),
       Map[TID, Set[TID]]().withDefaultValue(Set.empty),
+      Map[TID, Abs]().withDefaultValue(bot),
       store,
       Map[TID, Option[G]]().withDefaultValue(Option(G()))), 0)
 
