@@ -284,6 +284,10 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
       tids: Map[TID, Set[InnerLoopState]],
       /* Join dependencies: which threads depends on which other thread's value. t1 -> (t2, t3) mean that t2 and t3 depend on t1's return value */
       joinDeps: Map[TID, Set[TID]],
+      /* Read dependencies: which thread reads from which addresses */
+      readDeps: Map[TID, Set[Addr]],
+      /* Write dependencies: which thread writes to which addresses */
+      writeDeps: Map[TID, Set[Addr]],
       /* Returned values of each thread */
       returned: Map[TID, Abs],
       /* Global store */
@@ -309,8 +313,31 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
     def  fromReturn(tid: TID, tids: Map[TID, Set[InnerLoopState]], joinDeps: Map[TID, Set[TID]]): Set[InnerLoopState] =
       /* Thread tid returned, need to explore all its dependencies */
       joinDeps(tid).foldLeft(Set[InnerLoopState]())((acc, t) => acc ++ tids(t))
+    def fromEffects(tid: TID, effects: Set[Eff], readDeps: Map[TID, Set[Addr]], writeDeps: Map[TID, Set[Addr]], tids: Map[TID, Set[InnerLoopState]],
+      oldStore: GlobalStore, newStore: GlobalStore):
+        (Map[TID, Set[Addr]], Map[TID, Set[Addr]], Set[InnerLoopState]) = {
+      /* TODO: currently limited to effects on variables, but we also have effects on car/cdr, vectors and locks */
+      val newReadDeps = readDeps + ((tid -> (readDeps(tid) ++ effects.collect({ case EffectReadVariable(a) => a }))))
+      val newWriteDeps = writeDeps + ((tid -> (writeDeps(tid) ++ effects.collect({ case EffectWriteVariable(a) => a }))))
+      val rwConflicts = readDeps.keySet.foldLeft(Set[TID]())((acc, tid2) => {
+        val intersection = newWriteDeps(tid).intersect(readDeps(tid2))
+        /* If there is no conflict, or there is a conflict but the store hasn't been
+         * updated, so no new information will be discovered, no need to re-run
+         * analysis. Otherwise, add tid to the set of threads to revisit */
+        if (tid != tid2 && intersection.exists(a => oldStore.store.lookup(a) != newStore.store.lookup(a))) {
+          acc + tid2
+        } else { acc }
+      })
+      val wwConflicts = writeDeps.keySet.foldLeft(Set[TID]())((acc, tid2) => {
+        val intersection = newWriteDeps(tid).intersect(writeDeps(tid2))
+        if (tid != tid2 && intersection.exists(a => oldStore.store.lookup(a) != newStore.store.lookup(a))) {
+          acc + tid2
+        } else { acc }
+      })
+      val toRevisit = (rwConflicts ++ wwConflicts).flatMap(t => tids(t))
+      (newReadDeps, newWriteDeps, toRevisit)
+    }
 
-    /* TODO: from effs */
     @scala.annotation.tailrec
     def outerLoop(st: OuterLoopState, iteration: Int): Output = {
       println("---------------")
@@ -319,33 +346,33 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
         println(s"Number of iterations: $iteration")
         new ThreadModularOutput(timeout.time, st.graphs, timeout.reached)
       } else {
-        val succ = st.todo.foldLeft((Set[InnerLoopState](), st.tids, st.joinDeps, st.returned, st.store, st.graphs))((acc, threadState) => {
+        val succ = st.todo.foldLeft((Set[InnerLoopState](), st.tids, st.joinDeps, st.readDeps, st.writeDeps, st.returned, st.store, st.graphs))((acc, threadState) => {
           println(s"Exploring thread ${threadState.tid}")
-          val (ist, store2) = innerLoop(threadState, acc._5, acc._4)
+          val (ist, store2) = innerLoop(threadState, acc._7, acc._6)
           val (todoCreated, tidsCreated) = fromCreated(ist.created, acc._2)
           val joinDeps = fromJoined(threadState.tid, ist.joined, acc._2, acc._3)
-          val oldReturned = acc._4(threadState.tid)
+          val oldReturned = acc._6(threadState.tid)
           val newReturned = JoinLattice[Abs].join(oldReturned, ist.returned)
           val todoJoined = if (oldReturned == newReturned) { Set.empty } else {
             fromReturn(threadState.tid, acc._2, acc._3)
           }
+          val (readDeps, writeDeps, todoEffects) = fromEffects(threadState.tid, ist.effs, acc._4, acc._5, acc._2, acc._7, store2)
           println(s"Created tids: ${ist.created.map(_.tid)}")
           println(s"Joined on tids: ${ist.joined}")
-          println(s"Triggering evaluation of ${todoJoined.map(_.tid)}")
-          (acc._1 ++ todoCreated ++ todoJoined, tidsCreated, joinDeps, acc._4 + ((threadState.tid -> newReturned)),
-            store2, acc._6 + (ist.tid -> ist.graph))
+          println(s"Join triggering evaluation of ${todoJoined.map(_.tid)}")
+          println(s"Read deps of thread: ${readDeps(threadState.tid)}")
+          println(s"Write deps of thread: ${writeDeps(threadState.tid)}")
+          println(s"Effects triggered evaluation of ${todoEffects.map(_.tid)}")
+
+          (acc._1 ++ todoCreated ++ todoJoined ++ todoEffects, tidsCreated, joinDeps, readDeps, writeDeps, acc._6 + ((threadState.tid -> newReturned)),
+            store2, acc._8 + (ist.tid -> ist.graph))
         })
-        val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5, succ._6)
+        val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5, succ._6, succ._7, succ._8)
         newOuter.graphs.foreach({
           case (k, Some(g)) => GraphDOTOutput.toFile(g, ())(s"iteration-$iteration-$k.dot")
           case (_, None) => ()
         })
-        /*if (newOuter.mailboxes == st.mailboxes && newOuter.tids == st.tids) {
-          /* if it didn't change, we skip the todos */
-          outerLoop(newOuter.copy(todo = Set.empty), iteration+1)
-        } else { */
-          outerLoop(newOuter, iteration+1)
-/*        }*/
+        outerLoop(newOuter, iteration+1)
       }
     }
     val bot = JoinLattice[Abs].bottom
@@ -360,6 +387,8 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
     val res = outerLoop(OuterLoopState(Set(initialInner),
       Map[TID, Set[InnerLoopState]]().withDefaultValue(Set.empty) + (mainPid -> Set(initialInner)),
       Map[TID, Set[TID]]().withDefaultValue(Set.empty),
+      Map[TID, Set[Addr]]().withDefaultValue(Set.empty),
+      Map[TID, Set[Addr]]().withDefaultValue(Set.empty),
       Map[TID, Abs]().withDefaultValue(bot),
       store,
       Map[TID, Option[G]]().withDefaultValue(Option(G()))), 0)
