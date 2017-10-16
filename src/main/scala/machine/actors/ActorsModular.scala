@@ -387,28 +387,28 @@ class ActorsModular[Exp : Expression, Abs : IsASchemeLattice, Addr : Address, Ti
 
     @scala.annotation.tailrec
     def outerLoop(st: OuterLoopState, iteration: Int): Output = {
-      println("---------------")
-      println(s"Iteration: $iteration")
+      // println("---------------")
+      // println(s"Iteration: $iteration")
       if (st.todo.isEmpty || timeout.reached) {
-        println("Final mailboxes:")
+        /* println("Final mailboxes:")
         st.mailboxes.foreach({ case (k, v) =>
           println(s"$k -> $v")
         })
-        println(s"Number of iterations: $iteration")
+        println(s"Number of iterations: $iteration") */
         new ActorModularOutput(timeout.time, st.graphs, timeout.reached)
       } else {
         val succ = st.todo.foldLeft(Set[InnerLoopState](), st.pids, st.mailboxes, st.store, st.graphs)((acc, actorState) => {
-          println(s"Exploring actor ${actorState.pid} with mailbox ${st.mailboxes(actorState.pid)}")
+          // println(s"Exploring actor ${actorState.pid} with mailbox ${st.mailboxes(actorState.pid)}")
           val (ist, store2) = innerLoop(actorState, st.mailboxes(actorState.pid), acc._4)
           val (todoCreated, pidsCreated) = fromCreated(ist.created, acc._2)
-          println(s"Created pids: ${ist.created.map(_.pid)}")
+          // println(s"Created pids: ${ist.created.map(_.pid)}")
           val (todoSent, mailboxesSent) = fromSent(ist.sent, acc._2, acc._3)
-          println(s"Messages sent: ${ist.sent.map(x => (x._1, x._2))}")
+          // println(s"Messages sent: ${ist.sent.map(x => (x._1, x._2))}")
           (acc._1 ++ todoCreated ++ todoSent, pidsCreated, mailboxesSent, store2, acc._5 + (ist.pid -> ist.graph))
         })
         val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5)
         newOuter.graphs.foreach({
-          case (k, Some(g)) => GraphDOTOutput.toFile(g, ())(s"iteration-$iteration-$k.dot")
+          case (k, Some(g)) => () // GraphDOTOutput.toFile(g, ())(s"iteration-$iteration-$k.dot")
           case (_, None) => ()
         })
         if (newOuter.mailboxes == st.mailboxes && newOuter.pids == st.pids) {
