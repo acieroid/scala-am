@@ -67,7 +67,15 @@ class MakeCSchemeLattice[LSeq : IsSchemeLattice] extends CSchemeLattice {
   val tids: LatticeElement[Tids] = LatticeElement.ofSet[Any]
   val lockaddrs: LatticeElement[LockAddrs] = LatticeElement.ofSet[Any]
 
-  case class Value(seq: LSeq = lat.bottom, t: Tids = tids.bottom, la: LockAddrs = lockaddrs.bottom, l: Locked = locked.bottom)
+  case class Value(seq: LSeq = lat.bottom, t: Tids = tids.bottom, la: LockAddrs = lockaddrs.bottom, l: Locked = locked.bottom) {
+    override def toString = {
+      val seqstr = if (seq == lat.bottom) { "" } else { seq.toString }
+      val tstr = if (t == tids.bottom) { "" } else { t.mkString(", ") }
+      val lastr = if (la == lockaddrs.bottom) { "" } else { la.mkString(", ") }
+      val lstr = if (l == locked.bottom) { "" } else { l.toString }
+      seqstr ++ tstr ++ lastr ++ lstr
+    }
+  }
   type L = Value
 
   val isCSchemeLattice: IsCSchemeLattice[L] = new IsCSchemeLattice[L] {
@@ -117,6 +125,10 @@ class MakeCSchemeLattice[LSeq : IsSchemeLattice] extends CSchemeLattice {
     def inject[Addr : Address, Abs : JoinLattice](x: Primitive[Addr, Abs]) = Value(seq = lat.inject[Addr, Abs](x))
     def inject[Exp : Expression, Addr : Address](x: (Exp, Environment[Addr])) = Value(seq = lat.inject[Exp, Addr](x))
     def injectSymbol(x: String) = Value(seq = lat.injectSymbol(x))
+
+    def getRefs[Addr : Address](x: L): Set[Addr] = lat.getRefs[Addr](x.seq)
+    def ref[Addr : Address](a: Addr): L = Value(seq = lat.ref[Addr](a))
+
     def cons[Addr : Address](car: Addr, cdr: Addr) = Value(seq = lat.cons[Addr](car, cdr))
     def nil = Value(seq = lat.nil)
     def car[Addr : Address](x: L) = lat.car[Addr](x.seq)

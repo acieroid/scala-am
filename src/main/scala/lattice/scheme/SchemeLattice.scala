@@ -2,6 +2,7 @@ import scalaz.{Plus => _, _}
 import scalaz.Scalaz._
 import SchemeOps._
 
+case class CannotAccessRef(ref: String) extends SemanticError
 case class CannotAccessVector(vector: String) extends SemanticError
 case class CannotAccessCar(v: String) extends SemanticError
 case class CannotAccessCdr(v: String) extends SemanticError
@@ -60,6 +61,11 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
   /** Nil value */
   def nil: L
 
+  /** Creates a ref from an address */
+  def ref[Addr : Address](a: Addr): L
+  /** Returns the addresses of a ref */
+  def getRefs[Addr : Address](x: L): Set[Addr]
+
   /** Takes the car of a cons cell */
   def car[Addr : Address](x: L): Set[Addr]
   /** Takes the cdr of a cons cell */
@@ -77,6 +83,7 @@ trait IsSchemeLattice[L] extends JoinLattice[L] {
    * address. Return the vector address wrapped in a lattice value, as well as
    * the vector value itsel */
   def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
+
 
   trait SchemeLatticeLaw extends MonoidLaw {
     import scalaz.std.boolean.conditional

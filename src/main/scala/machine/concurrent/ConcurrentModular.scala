@@ -2,9 +2,32 @@ import scalaz.Scalaz._
 import scalaz._
 
 /* TODO: use Option for returned to distinguish non-termination and bottom */
-class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier]
+class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](val recordValues: Boolean)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def name = "ConcurrentModular"
+
+  class Recorded[V](val recordName: String, val toStr: V => String = (v: V) => v.toString) {
+    var content: Map[TID, Set[V]] = Map.empty.withDefaultValue(Set.empty)
+    def record(t: TID, v: V) = if (recordValues) {
+      content = content + (t -> (content(t) + v))
+    }
+    def keys: Set[TID] = content.keySet
+    def report(t: TID): String = content(t).map({
+      case v =>
+        s"($recordName ${toStr(v)})"
+    }).mkString(" ")
+  }
+  object Recorded {
+    def empty[V](recordName: String): Recorded[V] = new Recorded(recordName)
+    def emptyF[V](recordName: String, toStr: V => String): Recorded[V] = new Recorded(recordName, toStr)
+  }
+
+  val recordedCreate: Recorded[TID] = Recorded.empty[TID]("create")
+  val recordedJoin: Recorded[TID] = Recorded.empty[TID]("join")
+  val recordedRead: Recorded[(Addr, Abs)] = Recorded.emptyF[(Addr, Abs)]("read", { case (a, v) => s"$a $v" })
+  val recordedWrite: Recorded[(Addr, Abs)] = Recorded.emptyF[(Addr, Abs)]("write", { case (a, v) => s"$a $v" })
+  val recordedAcquire: Recorded[Addr] = Recorded.empty[Addr]("acquire")
+  val recordedRelease: Recorded[Addr] = Recorded.empty[Addr]("release")
 
   trait KontAddr
   case class NormalKontAddress(tid: TID, exp: Exp, time: Time) extends KontAddr
@@ -154,9 +177,11 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
       case ActionError(err) =>
         (Some(this.copy(control = ControlError(err))), store, Option.empty, Set.empty, Option.empty)
       case ActionSpawn(t2: TID @unchecked, e, env, store2, v, effs) =>
+        recordedCreate.record(tid, t2)
         (Some(this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t))),
-          store.includeDelta(store2.delta), Some(ThreadState(t2, ControlEval(e, env), HaltKontAddress, t)), effs, Option.empty)
+          store.includeDelta(store2.delta), Some(ThreadState(t2, ControlEval(e, env), HaltKontAddress, Timestamp[Time].initial(t2.toString))), effs, Option.empty)
       case ActionJoin(tid2: TID @unchecked, store2, effs) =>
+        recordedJoin.record(tid, tid2)
         (results.get(tid2).map(v => this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t))),
           store.includeDelta(store2.delta), Option.empty, effs, Some(tid2))
     }
@@ -200,7 +225,7 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
     def finalValues: Set[Abs] = Set()
     def toFile(path: String)(output: GraphOutput) =
       graphs.foreach({
-        case (k, Some(g)) => output.toFile(g, ())(path + "-" + k.toString + ".dot")
+        case (k, Some(g)) => output.toFile(g, ())(path + "-" + k.toString.replace('/', '-').take(20) + ".dot")
         case (_, None) => ()
       })
   }
@@ -247,9 +272,9 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
         val (edges, store2, created, effs, joined, returned) = st.todo.foldLeft((Set[(ThreadState, Unit, ThreadState)](), store, Set[ThreadState](), Set[Eff](), Set[TID](), JoinLattice[Abs].bottom))((acc, state) =>
           state.step(sem, acc._2, returnedValues) match {
             case (succs, created, effs, joined, returned, store2) =>
-              println(s"Explored $state, joined: $joined, returned $returned")
+              //println(s"Explored $state, joined: $joined, returned $returned")
               (acc._1 ++ succs.map(state2 => (state, (), state2)), store2, acc._3 ++ created, acc._4 ++ effs, acc._5 ++ joined,
-              JoinLattice[Abs].join(returned.getOrElse(JoinLattice[Abs].bottom), acc._6))
+                JoinLattice[Abs].join(returned.getOrElse(JoinLattice[Abs].bottom), acc._6))
           })
         val newTodo = edges.map(_._3)
         val newGraph = st.graph.map(_.addEdges(edges))
@@ -310,15 +335,29 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
     def fromJoined(tid: TID, joined: Set[TID], tids: Map[TID, Set[InnerLoopState]], joinDeps: Map[TID, Set[TID]]):
         Map[TID, Set[TID]] =
       joined.foldLeft(joinDeps)((acc, t) => acc + ((t -> (acc(t) + tid))))
-    def  fromReturn(tid: TID, tids: Map[TID, Set[InnerLoopState]], joinDeps: Map[TID, Set[TID]]): Set[InnerLoopState] =
+    def  fromReturn(tid: TID, tids: Map[TID, Set[InnerLoopState]], joinDeps: Map[TID, Set[TID]], newJoinDeps: Map[TID, Set[TID]]): Set[InnerLoopState] =
       /* Thread tid returned, need to explore all its dependencies */
-      joinDeps(tid).foldLeft(Set[InnerLoopState]())((acc, t) => acc ++ tids(t))
+      (joinDeps(tid) ++ newJoinDeps(tid)).foldLeft(Set[InnerLoopState]())((acc, t) => acc ++ tids(t))
     def fromEffects(tid: TID, effects: Set[Eff], readDeps: Map[TID, Set[Addr]], writeDeps: Map[TID, Set[Addr]], tids: Map[TID, Set[InnerLoopState]],
       oldStore: GlobalStore, newStore: GlobalStore):
         (Map[TID, Set[Addr]], Map[TID, Set[Addr]], Set[InnerLoopState]) = {
       /* TODO: currently limited to effects on variables, but we also have effects on car/cdr, vectors and locks */
-      val newReadDeps = readDeps + ((tid -> (readDeps(tid) ++ effects.collect({ case EffectReadVariable(a) => a }))))
-      val newWriteDeps = writeDeps + ((tid -> (writeDeps(tid) ++ effects.collect({ case EffectWriteVariable(a) => a }))))
+      val newReadDeps = readDeps + ((tid -> (readDeps(tid) ++ effects.collect({
+        case EffectReadReference(a, v : Abs @unchecked) =>
+          recordedRead.record(tid, (a, v))
+          a
+        }))))
+      val newWriteDeps = writeDeps + ((tid -> (writeDeps(tid) ++ effects.collect({
+        case EffectWriteReference(a, v : Abs @unchecked) =>
+          recordedWrite.record(tid, (a, v))
+          a
+        case EffectAcquire(a) =>
+          recordedAcquire.record(tid, a)
+          a
+        case EffectRelease(a) =>
+          recordedRelease.record(tid, a)
+          a
+        }))))
       val rwConflicts = readDeps.keySet.foldLeft(Set[TID]())((acc, tid2) => {
         val intersection = newWriteDeps(tid).intersect(readDeps(tid2))
         /* If there is no conflict, or there is a conflict but the store hasn't been
@@ -340,38 +379,38 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
 
     @scala.annotation.tailrec
     def outerLoop(st: OuterLoopState, iteration: Int): Output = {
-      println("---------------")
-      println(s"Iteration: $iteration")
+      //println("---------------")
+      //println(s"Iteration: $iteration")
       if (st.todo.isEmpty || timeout.reached) {
-        println(s"Number of iterations: $iteration")
+        //println(s"Number of iterations: $iteration")
         new ThreadModularOutput(timeout.time, st.graphs, timeout.reached)
       } else {
         val succ = st.todo.foldLeft((Set[InnerLoopState](), st.tids, st.joinDeps, st.readDeps, st.writeDeps, st.returned, st.store, st.graphs))((acc, threadState) => {
-          println(s"Exploring thread ${threadState.tid}")
+          //println(s"Exploring thread ${threadState.tid}")
           val (ist, store2) = innerLoop(threadState, acc._7, acc._6)
           val (todoCreated, tidsCreated) = fromCreated(ist.created, acc._2)
           val joinDeps = fromJoined(threadState.tid, ist.joined, acc._2, acc._3)
           val oldReturned = acc._6(threadState.tid)
           val newReturned = JoinLattice[Abs].join(oldReturned, ist.returned)
           val todoJoined = if (oldReturned == newReturned) { Set.empty } else {
-            fromReturn(threadState.tid, acc._2, acc._3)
+            fromReturn(threadState.tid, acc._2, acc._3, joinDeps)
           }
           val (readDeps, writeDeps, todoEffects) = fromEffects(threadState.tid, ist.effs, acc._4, acc._5, acc._2, acc._7, store2)
-          println(s"Created tids: ${ist.created.map(_.tid)}")
-          println(s"Joined on tids: ${ist.joined}")
-          println(s"Join triggering evaluation of ${todoJoined.map(_.tid)}")
-          println(s"Read deps of thread: ${readDeps(threadState.tid)}")
-          println(s"Write deps of thread: ${writeDeps(threadState.tid)}")
-          println(s"Effects triggered evaluation of ${todoEffects.map(_.tid)}")
+          // println(s"Created tids: ${ist.created.map(_.tid)}")
+          // println(s"Joined on tids: ${ist.joined}")
+          // println(s"Join triggering evaluation of ${todoJoined.map(_.tid)}")
+          // println(s"Read deps of thread: ${readDeps(threadState.tid)}")
+          // println(s"Write deps of thread: ${writeDeps(threadState.tid)}")
+          // println(s"Effects triggered evaluation of ${todoEffects.map(_.tid)}")
 
           (acc._1 ++ todoCreated ++ todoJoined ++ todoEffects, tidsCreated, joinDeps, readDeps, writeDeps, acc._6 + ((threadState.tid -> newReturned)),
             store2, acc._8 + (ist.tid -> ist.graph))
         })
         val newOuter = OuterLoopState(succ._1, succ._2, succ._3, succ._4, succ._5, succ._6, succ._7, succ._8)
-        newOuter.graphs.foreach({
-          case (k, Some(g)) => GraphDOTOutput.toFile(g, ())(s"iteration-$iteration-$k.dot")
-          case (_, None) => ()
-        })
+        // newOuter.graphs.foreach({
+        //   case (k, Some(g)) => GraphDOTOutput.toFile(g, ())(s"iteration-$iteration-$k.dot")
+        //   case (_, None) => ()
+        // })
         outerLoop(newOuter, iteration+1)
       }
     }
@@ -393,7 +432,14 @@ class ConcurrentModular[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address
       store,
       Map[TID, Option[G]]().withDefaultValue(Option(G()))), 0)
 
-//    reportRecorded()
+    reportRecorded()
     res
+  }
+  def reportRecorded(): Unit = {
+    def keys = recordedCreate.keys ++ recordedJoin.keys ++ recordedRead.keys ++ recordedWrite.keys ++ recordedAcquire.keys ++ recordedRelease.keys
+    println("=========")
+    keys.foreach(k =>
+      println(s"($k (${recordedCreate.report(k)} ${recordedJoin.report(k)} ${recordedRead.report(k)} ${recordedWrite.report(k)} ${recordedAcquire.report(k)} ${recordedRelease.report(k)}))")
+    )
   }
 }

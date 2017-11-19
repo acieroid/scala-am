@@ -3,7 +3,7 @@ object SchemeOps {
   object UnaryOperator extends Enumeration {
     val
       /* Check the type of a value */
-      IsNull, IsBoolean, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsReal, IsVector,
+      IsNull, IsBoolean, IsCons, IsChar, IsSymbol, IsString, IsInteger, IsReal, IsVector, IsProcedure,
       /* Negate a value */
       Not,
       /* Unary arithmetic operations */

@@ -117,7 +117,7 @@ object Main {
             implicit val isAddress = address.isAddress
 
             val machine = config.machine match {
-              case Config.Machine.AAM => new ConcurrentAAM[SchemeExp, clattice.L, address.A, time.T, ContextSensitiveTID](AllInterleavings)
+              // case Config.Machine.AAM => new ConcurrentAAM[SchemeExp, clattice.L, address.A, time.T, ContextSensitiveTID](AllInterleavings)
               case _ => throw new Exception(s"unsupported machine for CScheme: ${config.machine}")
             }
 

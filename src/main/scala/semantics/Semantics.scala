@@ -115,49 +115,25 @@ abstract class Effect[Addr : Address] {
 
 object Effect {
   def none[Addr : Address]: Set[Effect[Addr]] = Set.empty
-  def readVariable[Addr : Address](target: Addr): Effect[Addr] = EffectReadVariable(target)
-  def writeVariable[Addr : Address](target: Addr): Effect[Addr] = EffectWriteVariable(target)
+  def readRef[Addr : Address, Abs : JoinLattice](target: Addr, v: Abs): Set[Effect[Addr]] = Set(EffectReadReference(target, v))
+  def writeRef[Addr : Address, Abs : JoinLattice](target: Addr, v: Abs): Set[Effect[Addr]] = Set(EffectWriteReference(target, v))
+  def readVariable[Addr : Address](target: Addr): Set[Effect[Addr]] = Set.empty
+  def writeVariable[Addr : Address](target: Addr): Set[Effect[Addr]] = Set.empty
+  def readVector[Addr : Address](target: Addr): Set[Effect[Addr]] = Set.empty
+  def writeVector[Addr : Address](target: Addr): Set[Effect[Addr]] = Set.empty
+  def acquire[Addr : Address](target: Addr): Set[Effect[Addr]] = Set(EffectAcquire(target))
+  def release[Addr : Address](target: Addr): Set[Effect[Addr]] = Set(EffectRelease(target))
 }
 
-case class EffectReadVariable[Addr : Address](target: Addr)
+case class EffectReadReference[Addr : Address, Abs : JoinLattice](target: Addr, v: Abs)
     extends Effect[Addr] {
   val kind = ReadEffect
   override def toString = s"R$target"
 }
-case class EffectReadConsCar[Addr : Address](target: Addr)
-    extends Effect[Addr] {
-  val kind = ReadEffect
-  override def toString = s"Rcar($target)"
-}
-case class EffectReadConsCdr[Addr : Address](target: Addr)
-    extends Effect[Addr] {
-  val kind = ReadEffect
-  override def toString = s"Rcdr($target)"
-}
-case class EffectReadVector[Addr : Address](target: Addr)
-    extends Effect[Addr] {
-  val kind = ReadEffect
-  override def toString = s"Rvec($target)"
-}
-case class EffectWriteVariable[Addr : Address](target: Addr)
+case class EffectWriteReference[Addr : Address, Abs : JoinLattice](target: Addr, v: Abs)
     extends Effect[Addr] {
   val kind = WriteEffect
   override def toString = s"W$target"
-}
-case class EffectWriteConsCar[Addr : Address](target: Addr)
-    extends Effect[Addr] {
-  val kind = WriteEffect
-  override def toString = s"Wcar($target)"
-}
-case class EffectWriteConsCdr[Addr : Address](target: Addr)
-    extends Effect[Addr] {
-  val kind = WriteEffect
-  override def toString = s"Wcdr($target)"
-}
-case class EffectWriteVector[Addr : Address](target: Addr)
-    extends Effect[Addr] {
-  val kind = WriteEffect
-  override def toString = s"Wvec($target)"
 }
 case class EffectAcquire[Addr : Address](target: Addr)
     extends Effect[Addr] {

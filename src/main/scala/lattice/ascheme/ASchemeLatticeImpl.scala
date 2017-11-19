@@ -87,6 +87,9 @@ class MakeASchemeLattice[LSeq : IsSchemeLattice] extends ASchemeLattice {
     def getPids[PID : ThreadIdentifier](x: L): Set[PID] = x.p.collect({
       case p: PID @unchecked => p
     })
+
+    def getRefs[Addr : Address](x: L): Set[Addr] = lat.getRefs[Addr](x.seq)
+    def ref[Addr : Address](a: Addr): L = Value(seq = lat.ref[Addr](a))
     def isPrimitiveValue(x: L) = lat.isPrimitiveValue(x.seq) && x.p.isEmpty && x.b.isEmpty
     def cardinality(x: L) = ??? /* TODO */
   }

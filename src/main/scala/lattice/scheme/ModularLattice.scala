@@ -53,6 +53,9 @@ class MakeSchemeLattice[
     }
   }
   case class VectorAddress[Addr : Address](a: Addr) extends Value
+  case class Ref[Addr : Address](a: Addr) extends Value {
+    override def toString = "#<ref>"
+  }
 
   val True = Bool(BoolLattice[B].inject(true))
   val False = Bool(BoolLattice[B].inject(false))
@@ -92,7 +95,7 @@ class MakeSchemeLattice[
 
     def isPrimitiveValue(x: Value): Boolean = x match {
       case Bot | Str(_) | Bool(_) | Int(_) | Real(_) | Char(_) | Symbol(_) | Nil => true
-      case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) => false
+      case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _) | Ref(_)=> false
     }
 
     def cardinality(x: Value): Cardinality = x match {
@@ -104,7 +107,7 @@ class MakeSchemeLattice[
       case Char(c) => CharLattice[C].cardinality(c)
       case Symbol(s) => SymbolLattice[Sym].cardinality(s)
       case Nil => CardinalityNumber(1)
-      case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _)  => CardinalityNumber(1)
+      case Closure(_, _) | Prim(_) | Cons(_, _) | Ref(_) | VectorAddress(_) | Vec(_, _, _)  => CardinalityNumber(1)
     }
 
     def isTrue(x: Value): Boolean = x match {
@@ -157,6 +160,11 @@ class MakeSchemeLattice[
       case IsVector => x match {
         case Vec(_, _, _) => True
         case VectorAddress(_) => True
+        case _ => False
+      }
+      case IsProcedure => x match {
+        case Closure(_, _) => True
+        case Prim(_) => True
         case _ => False
       }
       case Not => x match {
@@ -349,6 +357,12 @@ class MakeSchemeLattice[
     def nil: Value = Nil
     def cons[Addr : Address](car: Addr, cdr: Addr): Value = Cons(car, cdr)
 
+    def getRefs[Addr : Address](x: Value): Set[Addr] = x match {
+      case Ref(a : Addr @unchecked) => Set(a)
+      case _ => Set()
+    }
+    def ref[Addr : Address](a: Addr): Value = Ref(a)
+
     def getClosures[Exp : Expression, Addr : Address](x: Value) = x match {
       case Closure(lam: Exp @unchecked, env: Environment[Addr] @unchecked) => Set((lam, env))
       case _ => Set()
@@ -531,6 +545,10 @@ class MakeSchemeLattice[
     def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)] = foldMapL(size, size =>
       isSchemeLatticeValue.vector(addr, size, init).map({ case (a, v) => (Element(a), Element(v)) }))
     def nil: L = Element(isSchemeLatticeValue.nil)
+
+    def getRefs[Addr : Address](x: L): Set[Addr] = foldMapL(x, x => isSchemeLatticeValue.getRefs(x))
+    def ref[Addr : Address](a: Addr): L = Element(isSchemeLatticeValue.ref(a))
+
   }
 
   object L {

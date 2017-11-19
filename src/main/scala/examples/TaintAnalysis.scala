@@ -104,6 +104,9 @@ class TaintLattice[Abs : IsSchemeLattice] extends SchemeLattice {
     def getClosures[Exp : Expression, Addr : Address](x: L): Set[(Exp, Environment[Addr])] = IsSchemeLattice[Abs].getClosures(x._2)
     def getPrimitives[Addr : Address, Abs2 : JoinLattice](x: L): Set[Primitive[Addr, Abs2]] = IsSchemeLattice[Abs].getPrimitives(x._2)
     def getVectors[Addr : Address](x: L): Set[Addr] = IsSchemeLattice[Abs].getVectors(x._2)
+
+    def getRefs[Addr : Address](x: L): Set[Addr] = IsSchemeLattice[Abs].getRefs(x._2)
+    def ref[Addr : Address](a: Addr): L = (Untainted, IsSchemeLattice[Abs].nil)
   }
   val isSchemeLattice: IsSchemeLattice[L] = isTaintLattice
 }

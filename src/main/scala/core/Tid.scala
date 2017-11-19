@@ -18,7 +18,7 @@ object ContextSensitiveTID {
     override def  toString = if (false && Timestamp[Time].name == "Concrete") {
       t.toString
     } else {
-      exp.toString + "@" + Expression[Exp].pos(exp).toString
+      /* exp.toString + "@" + */ Expression[Exp].pos(exp).toString
     }
   }
 

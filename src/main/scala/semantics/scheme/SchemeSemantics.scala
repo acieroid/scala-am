@@ -174,7 +174,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       Action.push(FrameDoInit(List(), name, step, vars, test, finals, commands, env), init, env, store)
     case SchemeVar(variable) => env.lookup(variable.name) match {
       case Some(a) => store.lookup(a) match {
-        case Some(v) => Action.value(v, store, Set(EffectReadVariable(a)))
+        case Some(v) => Action.value(v, store, Effect.readVariable(a))
         case None => Action.error(UnboundAddress(a.toString))
       }
       case None => Action.error(UnboundVariable(variable))
@@ -216,7 +216,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
     case FrameLetrec(a, (a1, exp) :: rest, body, env) =>
       Action.push(FrameLetrec(a1, rest, body, env), exp, env, store.update(a, v))
     case FrameSet(variable, env) => env.lookup(variable.name) match {
-      case Some(a) => Action.value(IsSchemeLattice[V].inject(false), store.update(a, v), Set(EffectWriteVariable(a)))
+      case Some(a) => Action.value(IsSchemeLattice[V].inject(false), store.update(a, v), Effect.writeVariable(a))
       case None => Action.error(UnboundVariable(variable))
     }
     case FrameBegin(body, env) => evalBody(body, env, store)
@@ -290,7 +290,7 @@ class SchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp](pri
    * the evaluation if it succeeded, otherwise returns None */
   protected def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[(V, Set[Effect[Addr]])] = e match {
     case λ: SchemeLambda => Some((IsSchemeLattice[V].inject[SchemeExp, Addr]((λ, env)), Set()))
-    case SchemeVar(variable) => env.lookup(variable.name).flatMap(a => store.lookup(a).map(v => (v, Set(EffectReadVariable(a)))))
+    case SchemeVar(variable) => env.lookup(variable.name).flatMap(a => store.lookup(a).map(v => (v, Effect.readVariable(a))))
     case SchemeValue(v, _) => evalValue(v).map(value => (value, Set()))
     case _ => None
   }

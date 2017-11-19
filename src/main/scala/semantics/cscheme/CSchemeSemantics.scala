@@ -46,9 +46,9 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
               yield
                 conditional(cond,
                   /* Compare and swap succeeds */
-                  Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, v), Set(EffectWriteVariable(a), EffectReadVariable(a))),
+                  Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, v), Effect.readVariable(a) ++ Effect.writeVariable(a)),
                   /* Compare and swap fails */
-                  Action.value(IsSchemeLattice[Abs].inject(false), store, Set(EffectReadVariable(a))))
+                  Action.value(IsSchemeLattice[Abs].inject(false), store, Effect.readVariable(a)))
           }
           /* Compare and swap on vector element */
           case Some(i) => store.lookup(a) match {
@@ -67,8 +67,8 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
                       val success: Actions = for {
                         (newvec, addrs) <- IsSchemeLattice[Abs].vectorSet(vec, i, Address[Addr].cell(enew, t))
                       } yield Action.value(IsCSchemeLattice[Abs].inject(true), addrs.foldLeft(store.update(va, newvec))((acc, a) => acc.updateOrExtend(a, v)),
-                        addrs.flatMap(a => Set(EffectWriteVector(a), EffectReadVector(a))))
-                      val fail: Actions = Action.value(IsCSchemeLattice[Abs].inject(false), store, Set(EffectReadVector(a)))
+                        addrs.flatMap(a => Effect.writeVector(a) ++ Effect.readVector(a)))
+                      val fail: Actions = Action.value(IsCSchemeLattice[Abs].inject(false), store, Effect.readVector(a))
                       oldvals.foldLeft(Set[Action[SchemeExp, Abs, Addr]]())((acc, a) => store.lookup(a) match {
                         case None => acc + (Action.error(UnboundAddress(a.toString)))
                         case Some(oldval) => for { cond <- IsCSchemeLattice[Abs].binaryOp(SchemeOps.BinaryOperator.Eq)(oldval, old) }
@@ -89,7 +89,7 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
           case None => Action.error(UnboundAddress(a.toString))
           case Some(v) => if (IsCSchemeLattice[Abs].isTrue(IsCSchemeLattice[Abs].isLock(v))) {
             if (IsSchemeLattice[Abs].isFalse(IsCSchemeLattice[Abs].isLocked(v))) {
-              Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, IsCSchemeLattice[Abs].lockedValue), Set(EffectAcquire(a)))
+              Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, IsCSchemeLattice[Abs].lockedValue), Effect.acquire(a))
             } else {
               Action.none
             }
@@ -107,7 +107,7 @@ class CSchemeSemantics[Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp,
           case None => Action.error(UnboundAddress(a.toString))
           case Some(v) => if (IsSchemeLattice[Abs].isTrue(IsCSchemeLattice[Abs].isLock(v))) {
             if (IsSchemeLattice[Abs].isTrue(IsCSchemeLattice[Abs].isLocked(v))) {
-              Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, IsCSchemeLattice[Abs].unlockedValue), Set(EffectRelease(a)))
+              Action.value(IsSchemeLattice[Abs].inject(true), store.update(a, IsCSchemeLattice[Abs].unlockedValue), Effect.release(a))
             } else {
               /* Lock is already released */
               Action.value(IsSchemeLattice[Abs].inject(true), store)

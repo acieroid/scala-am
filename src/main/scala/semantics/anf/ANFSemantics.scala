@@ -22,7 +22,7 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
     case lam: ANFLambda => (IsSchemeLattice[Abs].inject[ANFExp, Addr]((lam, env)), Effect.none).point[MayFail]
     case ANFVar(variable) => env.lookup(variable.name) match {
       case Some(a) => store.lookup(a) match {
-        case Some(v) => (v, Set(Effect.readVariable(a))).point[MayFail]
+        case Some(v) => (v, Effect.readVariable(a)).point[MayFail]
         case None => UnboundAddress(a.toString)
       }
       case None => UnboundVariable(variable)
@@ -98,7 +98,7 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
     case ANFSet(variable, value, _) => env.lookup(variable.name) match {
       case Some(vara) => for {
         (v, effects) <- atomicEval(value, env, store)
-      } yield Action.value(v, store.update(vara, v), effects + Effect.writeVariable(vara))
+      } yield Action.value(v, store.update(vara, v), effects ++ Effect.writeVariable(vara))
       case None => Action.error(UnboundVariable(variable))
     }
     /* A quoted identifier is a value */

@@ -20,7 +20,7 @@ object ExplorationTypeParser extends scala.util.parsing.combinator.RegexParsers 
     case Error(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")
   }
 }
-
+/*
 class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](exploration: ExplorationType)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
   def abs = implicitly[JoinLattice[Abs]]
@@ -55,10 +55,9 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
       case ActionEval(e, ρ, store, effs) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t))), results, store, effs))
       case ActionStepIn(fexp, _, e, ρ, store, _, effs) => Set((threads.update(tid, Context(ControlEval(e, ρ), kstore, a, time.tick(t, fexp))), results, store, effs))
       case ActionError(err) => Set((threads.update(tid, Context(ControlError(err), kstore, a, time.tick(t))), results, oldstore, noEffect))
-      case ActionSpawn(tid2: TID @unchecked, e, ρ, store, v, effs) => {
+      case ActionSpawn(tid2: TID @unchecked, e, env, store, v, effs) => {
         assert(effs.isEmpty) /* TODO */
-        ???
-        // integrate1(tid, a, act)(threads.add(tid2, Context(ControlEval(e, ρ), KontStore.empty[KontAddr], HaltKontAddress, time.initial(tid2.toString))), store, results)
+        Set((threads.add(tid2, Context(ControlEval(e, env), KontStore.empty[KontAddr], HaltKontAddress, time.initial(tid2.toString))), results, store, noEffect))
       }
       case ActionJoin(tid2: TID @unchecked, store, effs) =>
         if (results.isDone(tid2)) {
@@ -178,7 +177,7 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
   }
 
   type Annot = (TID, Effects)
-  type G = Graph[State, Annot, Unit]
+  type Gjg = Graph[State, Annot, Unit]
   implicit val annot = new GraphAnnotation[Annot, Unit] {
     override def labelXml(annot: (TID, Effects)) = annot match { case (tid, eff) => (scala.xml.Text(tid.toString) :: effectsToXml(eff)) }
   }
@@ -396,3 +395,4 @@ class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : 
     }
   }
 }
+ */

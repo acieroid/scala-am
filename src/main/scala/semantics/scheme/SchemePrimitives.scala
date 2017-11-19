@@ -12,6 +12,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   def isSymbol = abs.unaryOp(UnaryOperator.IsSymbol) _
   def isString = abs.unaryOp(UnaryOperator.IsString) _
   def isInteger = abs.unaryOp(UnaryOperator.IsInteger) _
+  def isProcedure = abs.unaryOp(UnaryOperator.IsProcedure) _
   def isReal = abs.unaryOp(UnaryOperator.IsReal) _
   def isBoolean = abs.unaryOp(UnaryOperator.IsBoolean) _
   def isVector = abs.unaryOp(UnaryOperator.IsVector) _
@@ -345,6 +346,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       isreal <- isReal(x)
     } yield abs.or(isint, isreal)
   }
+  object Procedurep extends NoStoreOperation("procedure?", Some(1)) {
+    override def call(x: Abs) = isProcedure(x)
+  }
   object Numberp extends NoStoreOperation("number?", Some(1)) {
     override def call(x: Abs) = Realp.call(x) /* No support for complex number, so number? is equivalent as real? */
   }
@@ -382,12 +386,12 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     override def call(x: Abs) = stringLength(x)
   }
   object Newline extends NoStoreOperation("newline", Some(0)) {
-    override def call() = { println(""); MayFailSuccess(abs.inject(false)) }
+    override def call() = { /* println(""); */ MayFailSuccess(abs.inject(false)) }
   }
   object Display extends NoStoreOperation("display", Some(1)) {
     override def call(x: Abs) = {
-      val str = x.toString
-      print(if (str.startsWith("\"")) { str.substring(1, str.size-1) } else { str })
+      /* val str = x.toString
+      print(if (str.startsWith("\"")) { str.substring(1, str.size-1) } else { str }) */
       MayFailSuccess(x) /* Undefined behavior in R5RS */
     }
   }
@@ -399,6 +403,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   val mfmon = MayFail.monoid[(Abs, Set[Effect[Addr]])]
   def err(e: SemanticError): MayFail[(Abs, Set[Effect[Addr]])] = e
   def success(v: Abs): MayFail[(Abs, Set[Effect[Addr]])] = (v, Set[Effect[Addr]]()).point[MayFail]
+
   object Cons extends Primitive[Addr, Abs] {
     val name = "cons"
     def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
@@ -417,7 +422,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     } else {
       addrs.foldLeft(mfmon.zero)((acc, a) =>
         acc |+| (store.lookup(a) match {
-          case Some(v) => (v, Set[Effect[Addr]](EffectReadConsCar(a))).point[MayFail]
+          case Some(v) => (v, Set[Effect[Addr]]()).point[MayFail]
           case None => UnboundAddress(a.toString)
         }))
     }
@@ -429,7 +434,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     } else {
       addrs.foldLeft(mfmon.zero)((acc, a) =>
         mfmon.append(acc, store.lookup(a) match {
-          case Some(v) => MayFailSuccess((v, Set(EffectReadConsCdr(a))))
+          case Some(v) => MayFailSuccess((v, Set[Effect[Addr]]()))
           case None => err(UnboundAddress(a.toString))
         }))
     }
@@ -487,10 +492,10 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     override def call(cell: Abs, value: Abs, store: Store[Addr, Abs]) = {
       val addrs = abs.car(cell)
       if (addrs.isEmpty) {
-         MayFailError(List(CannotAccessCar(cell.toString)))
+        MayFailError(List(CannotAccessCar(cell.toString)))
       } else {
         val (store2, effects) = addrs.foldLeft((store, Set[Effect[Addr]]()))((acc, a) =>
-          (acc._1.update(a, value), acc._2 + EffectWriteConsCar(a)))
+          (acc._1.update(a, value), acc._2))
         MayFailSuccess((abs.inject(false) /* undefined */, store2, effects))
       }
     }
@@ -502,7 +507,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
         MayFailError(List(CannotAccessCdr(cell.toString)))
       } else {
         val (store2, effects) = addrs.foldLeft((store, Set[Effect[Addr]]()))((acc, a) =>
-          (acc._1.update(a, value), acc._2 + EffectWriteConsCdr(a)))
+          (acc._1.update(a, value), acc._2))
         MayFailSuccess((abs.inject(false) /* undefined */, store2, effects))
       }
     }
@@ -524,7 +529,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
             } else { mfmon.zero }
             val f = if (abs.isFalse(cond)) {
               isNull(l) >>= (fcond => {
-              val ft = if (abs.isTrue(fcond)) { MayFailSuccess((abs.inject(0), Set[Effect[Addr]]())) } else { mfmon.zero }
+                val ft = if (abs.isTrue(fcond)) { MayFailSuccess((abs.inject(0), Set[Effect[Addr]]())) } else { mfmon.zero }
                 val ff = if (abs.isFalse(fcond)) { err(TypeError("length", "first operand", "list", "non-list")) } else { mfmon.zero }
                 mfmon.append(ft, ff)
               })
@@ -539,9 +544,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
 
   object ListPrim extends StoreOperation("list", None) {
     override def call[Exp: Expression, Time: Timestamp](fexp: Exp,
-                                                        args: List[(Exp, Abs)],
-                                                        store: Store[Addr, Abs],
-                                                        t: Time): MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])] = {
+      args: List[(Exp, Abs)],
+      store: Store[Addr, Abs],
+      t: Time): MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])] = {
       val pos = implicitly[Expression[Exp]].pos(fexp)
 
       val nilv = abs.nil
@@ -632,8 +637,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                   val targetaddr = Address[Addr].cell(exp, t)
                   abs.vectorSet(oldvec, index, targetaddr).map({ case (vec, addrs) =>
                     val store2 = addrs.foldLeft(store.update(va, vec))((st, a) => st.updateOrExtend(a, value))
-                    val effects2 = addrs.map(a => EffectWriteVector(a))
-                    (abs.join(oldval, vec), store2, effects ++ effects2)
+                    (abs.join(oldval, vec), store2, effects)
                   })
                 })
               }
@@ -673,7 +677,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
         addrs.foldLeft(mfmon.zero)((acc, va) =>
           MayFail.monoid[(Abs, Set[Effect[Addr]])].append(acc, /* TODO: that's basically a foldMap over a monoid... */
             store.lookup(va) match {
-              case Some(v) => vectorLength(v).map(vl => (vl, Set(EffectReadVariable(va))))
+              case Some(v) => vectorLength(v).map(vl => (vl, Set[Effect[Addr]]()))
               case None => MayFailError(List(UnboundAddress(va.toString)))
             }))
       }
@@ -694,7 +698,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
               vs.foldLeft(acc)((acc, a) =>
                 mfmon.append(acc,
                   store.lookup(a) match {
-                    case Some(value) => MayFailSuccess((value, Set(EffectReadVector(a))))
+                    case Some(value) => MayFailSuccess((value, Set[Effect[Addr]]()))
                     case None => err(UnboundAddress(a.toString))
                   })))
             case None => mfmon.append(acc, MayFailError(List(UnboundAddress(va.toString))))
@@ -706,11 +710,11 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
 
   /** (define (list-ref l index)
-        (if (pair? l)
-          (if (= index 0)
-            (car l)
-            (list-ref (cdr l) (- index 1)))
-          (error "list-ref applied to a non-list"))) */
+   (if (pair? l)
+   (if (= index 0)
+   (car l)
+   (list-ref (cdr l) (- index 1)))
+   (error "list-ref applied to a non-list"))) */
   object ListRef extends StoreOperation("list-ref", Some(2)) {
     def listRef(l: Abs, index: Abs, visited: Set[(Abs, Abs)], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
       if (visited.contains((l, index))) {
@@ -741,17 +745,17 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
 
   /** (define (equal? a b)
-        (or (eq? a b)
-          (and (null? a) (null? b))
-          (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
-          (and (vector? a) (vector? b)
-            (let ((n (vector-length a)))
-              (and (= (vector-length b) n)
-                (letrec ((loop (lambda (i)
-                                 (or (= i n)
-                                   (and (equal? (vector-ref a i) (vector-ref b i))
-                                     (loop (+ i 1)))))))
-                  (loop 0)))))))
+   (or (eq? a b)
+   (and (null? a) (null? b))
+   (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
+   (and (vector? a) (vector? b)
+   (let ((n (vector-length a)))
+   (and (= (vector-length b) n)
+   (letrec ((loop (lambda (i)
+   (or (= i n)
+   (and (equal? (vector-ref a i) (vector-ref b i))
+   (loop (+ i 1)))))))
+   (loop 0)))))))
    */
   object Equal extends StoreOperation("equal?", Some(2)) {
     override def call(a: Abs, b: Abs, store: Store[Addr, Abs]) = {
@@ -768,12 +772,12 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     val tt = if (abs.isTrue(itemtest)) {
                       plus(i, abs.inject(1)) >>= (iplus1 =>
                         equalVec(a, b, iplus1, n, visitedEqual, visited + ((a, b, i, n))).map({ case (eqvec, effects4) =>
-                        (eqvec, effects1 ++ effects2 ++ effects3 ++ effects4)}))
+                          (eqvec, effects1 ++ effects2 ++ effects3 ++ effects4)}))
                     } else { MayFailSuccess((abs.bottom, effects1 ++ effects2 ++ effects3)) }
                     val tf = if (abs.isFalse(itemtest)) { MayFailSuccess((abs.inject(false), effects1 ++ effects2 ++ effects3)) } else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
                     MayFail.monoid[(Abs, Set[Effect[Addr]])].append(tt, tf)
-                }})
-              })})
+                  }})
+                })})
             } else { MayFailSuccess((abs.bottom, Set[Effect[Addr]]())) }
             MayFail.monoid[(Abs, Set[Effect[Addr]])].append(t, f)
           })
@@ -846,11 +850,11 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   }
 
   /** (define (member e l) ; member, memq and memv are similar, the difference lies in the comparison function used
-       (if (null? l)
-         #f
-         (if (equal? (car l) e)
-           l
-           (member e (cdr l))))) */
+   (if (null? l)
+   #f
+   (if (equal? (car l) e)
+   l
+   (member e (cdr l))))) */
   abstract class MemberLike(val n: String, eqFn: (Abs, Abs, Store[Addr, Abs]) => MayFail[(Abs, Set[Effect[Addr]])]) extends StoreOperation(n, Some(2)) {
     def mem(e: Abs, l: Abs, visited: Set[Abs], store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
       if (visited.contains(l)) {
@@ -939,6 +943,50 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
   object Assq extends AssocLike("assq",
     (x: Abs, y: Abs, store: Store[Addr, Abs]) => Eq.call(x, y).map(res => (res, Set.empty)))
 
+  object Ref extends Primitive[Addr, Abs] {
+    val name = "t/ref"
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
+      case (vexp, v) :: Nil => {
+        val va = Address[Addr].cell(vexp, t)
+        MayFailSuccess((abs.ref(va), store.extend(va, v), Set()))
+      }
+      case _ =>
+        MayFailError(List(ArityError(name, 1, args.length)))
+    }
+  }
+  object DeRef extends StoreOperation("t/deref", Some(1)) {
+    override def call(ref: Abs, store: Store[Addr, Abs]) =
+      deref(ref, store).map({ case (v, effs) => (v, store, effs) })
+    def deref(ref: Abs, store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+      val addrs = abs.getRefs(ref)
+      if (addrs.isEmpty) {
+        MayFailError(List(CannotAccessRef(ref.toString)))
+      } else {
+        addrs.foldLeft(mfmon.zero)((acc, a) =>
+          store.lookup(a) match {
+            case Some(v) => mfmon.append(acc,
+              MayFailSuccess((v, Effect.readRef(a, v))))
+            case None => mfmon.append(acc, MayFailError(List(UnboundAddress(a.toString))))
+          })
+      }
+    }
+  }
+  object RefSet extends Primitive[Addr, Abs] {
+    val name = "t/ref-set"
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
+      case (_, ref) :: (_, value) :: Nil =>
+        val addrs = abs.getRefs(ref)
+        if (addrs.isEmpty) {
+          MayFailError(List(CannotAccessRef(ref.toString)))
+        } else {
+          val (store2, effects) = addrs.foldLeft((store, Set[Effect[Addr]]()))((acc, a) =>
+            (acc._1.update(a, value), acc._2 ++ Effect.writeRef(a, value)))
+          MayFailSuccess((value, store2, effects))
+        }
+      case _ =>
+        MayFailError(List(ArityError(name, 2, args.length)))
+    }
+  }
 
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def all: List[Primitive[Addr, Abs]] = List(
@@ -1050,7 +1098,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     Pairp,          /* [vv] pair?: Pairs */
                     /* [x]  peek-char?: Reading */
     Positivep,      /* [vv] positive?: Comparison */
-                    /* [x]  procedure?: Procedure Properties */
+    Procedurep,     /* [vx] procedure?: Procedure Properties */
     Quotient,       /* [vv] quotient: Integer Operations */
                     /* [x]  rational?: Reals and Rationals */
                     /* [x]  read: Scheme Read */
@@ -1118,7 +1166,9 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar,
     Cdaadr, Cdadar, Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr,
     /* Other primitives that are not R5RS */
-    Random, Error, BoolTop, IntTop)
+    Random, Error, BoolTop, IntTop,
+    Ref, DeRef, RefSet
+  )
 
   def toVal(prim: Primitive[Addr, Abs]): Abs = abs.inject(prim)
 }
