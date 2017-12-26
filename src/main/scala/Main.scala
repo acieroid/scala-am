@@ -147,7 +147,7 @@ object Main {
 
             val machine = config.machine match {
               case Config.Machine.AAM => new ActorsAAM[SchemeExp, alattice.L, address.A, time.T, ContextSensitiveTID](mbox)
-              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, alattice.L, address.A, time.T, ContextSensitiveTID](mbox, false)
+              case Config.Machine.AAMGlobalStore => new ActorsAAMGlobalStore[SchemeExp, alattice.L, address.A, time.T, ContextSensitiveTID](mbox, false, ActorMacrostepping)
               case _ => throw new Exception(s"unsupported machine for AScheme: ${config.machine}")
             }
 

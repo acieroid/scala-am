@@ -1,4 +1,10 @@
-object ActorExperiments {
+object ExperimentsConfig {
+  val timeout: Option[Long] = Some(1800 * 1e9.toLong)
+  val warmupRuns: Int = 0
+  val nruns: Int = 1
+}
+
+object ActorExperimentsModular {
   val benchFiles: List[(String, String)] = List(
     ("PP", "actors/savina/pp.scm"),
     ("COUNT", "actors/savina/count.scm"),
@@ -30,7 +36,6 @@ object ActorExperiments {
     ("NQN", "actors/savina/nqn.scm"))
   def main(args: Array[String]): Unit = {
     val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
     implicit val isASchemeLattice = lat.isASchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -46,12 +51,12 @@ object ActorExperiments {
     val sem = new ASchemeSemanticsWithVisitorAndOptimization[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L], visitor)
 
     def run(file: String) = {
-      Util.runOnFile(file, ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem)(_, true, timeout))
+      Util.runOnFile(file, ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem)(_, true, ExperimentsConfig.timeout))
     }
 
     if (args.size == 0) {
-      val N = 20
-      val warmup = 10
+      val N = ExperimentsConfig.nruns
+      val warmup = ExperimentsConfig.warmupRuns
       for ((name, file) <- benchFiles) {
         val sname = name.padTo(10, " ").mkString
         print(s"$sname | ")
@@ -71,6 +76,147 @@ object ActorExperiments {
     }
   }
 }
+
+object ActorExperimentsMacrostepping {
+  val benchFiles: List[(String, String)] = List(
+    ("PP", "actors/savina/pp.scm"),
+    ("COUNT", "actors/savina/count.scm"),
+    ("FJT", "actors/savina/fjt.scm"),
+    ("FJC", "actors/savina/fjc.scm"),
+    ("THR", "actors/savina/thr.scm"),
+    ("CHAM", "actors/savina/cham.scm"),
+    ("BIG", "actors/savina/big.scm"),
+    ("CDICT", "actors/savina/cdict.scm"),
+    ("CSLL", "actors/savina/csll.scm"),
+    ("PCBB", "actors/savina/pcbb.scm"),
+    ("PHIL", "actors/savina/phil.scm"),
+    ("SBAR", "actors/savina/sbar.scm"),
+    ("CIG", "actors/savina/cig.scm"),
+    ("LOGM", "actors/savina/logm.scm"),
+    ("BTX", "actors/savina/btx.scm"),
+    ("RSORT", "actors/savina/rsort.scm"),
+    ("FBANK", "actors/savina/fbank.scm"),
+    ("SIEVE", "actors/savina/sieve.scm"),
+    ("UCT", "actors/savina/uct.scm"),
+    ("OFL", "actors/savina/ofl.scm"),
+    ("TRAPR", "actors/savina/trapr.scm"),
+    ("PIPREC", "actors/savina/piprec.scm"),
+    ("RMM", "actors/savina/rmm.scm"),
+    ("QSORT", "actors/savina/qsort.scm"),
+    ("APSP", "actors/savina/apsp.scm"),
+    ("SOR", "actors/savina/sor.scm"),
+    ("ASTAR", "actors/savina/astar.scm"),
+    ("NQN", "actors/savina/nqn.scm")
+  )
+  def main(args: Array[String]): Unit = {
+    val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
+    val timeout: Option[Long] = Some(1800 * 1e9.toLong)
+    implicit val isASchemeLattice = lat.isASchemeLattice
+    val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
+    implicit val isActorTimestamp = time.isActorTimestamp
+    val mbox = new PowersetMboxImpl[ContextSensitiveTID, lat.L]
+    val machine = new ActorsAAMGlobalStore[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](mbox, args.size > 0, ActorMacrostepping)
+    val visitor = new RecordActorVisitor[SchemeExp, lat.L, ClassicalAddress.A]
+    val sem = new ASchemeSemanticsWithVisitorAndOptimization[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L], visitor)
+
+    def run(file: String) = {
+      Util.runOnFile(file, ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem)(_, true, ExperimentsConfig.timeout))
+    }
+
+    if (args.size == 0) {
+      val N = ExperimentsConfig.nruns
+      val warmup = ExperimentsConfig.warmupRuns
+      for ((name, file) <- benchFiles) {
+        val sname = name.padTo(10, " ").mkString
+        print(s"$sname | ")
+        val times = (1 to N+warmup).map(i =>
+          scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
+            run(file).time
+          }
+        )
+        val time = (times.drop(warmup).sum / N * 1000).toInt
+        println(s"$time")
+      }
+    } else {
+      val result = run(args(0))
+      val graph = args(1)
+      if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
+      println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
+      result.toFile(graph)(GraphDOTOutput)
+    }
+  }
+}
+
+object ActorExperimentsAllInterleavings {
+  val benchFiles: List[(String, String)] = List(
+    ("PP", "actors/savina/pp.scm"),
+    ("COUNT", "actors/savina/count.scm"),
+    ("FJT", "actors/savina/fjt.scm"),
+    ("FJC", "actors/savina/fjc.scm"),
+    ("THR", "actors/savina/thr.scm"),
+    ("CHAM", "actors/savina/cham.scm"),
+    ("BIG", "actors/savina/big.scm"),
+    ("CDICT", "actors/savina/cdict.scm"),
+    ("CSLL", "actors/savina/csll.scm"),
+    ("PCBB", "actors/savina/pcbb.scm"),
+    ("PHIL", "actors/savina/phil.scm"),
+    ("SBAR", "actors/savina/sbar.scm"),
+    ("CIG", "actors/savina/cig.scm"),
+    ("LOGM", "actors/savina/logm.scm"),
+    ("BTX", "actors/savina/btx.scm"),
+    ("RSORT", "actors/savina/rsort.scm"),
+    ("FBANK", "actors/savina/fbank.scm"),
+    ("SIEVE", "actors/savina/sieve.scm"),
+    ("UCT", "actors/savina/uct.scm"),
+    ("OFL", "actors/savina/ofl.scm"),
+    ("TRAPR", "actors/savina/trapr.scm"),
+    ("PIPREC", "actors/savina/piprec.scm"),
+    ("RMM", "actors/savina/rmm.scm"),
+    ("QSORT", "actors/savina/qsort.scm"),
+    ("APSP", "actors/savina/apsp.scm"),
+    ("SOR", "actors/savina/sor.scm"),
+    ("ASTAR", "actors/savina/astar.scm"),
+    ("NQN", "actors/savina/nqn.scm")
+  )
+  def main(args: Array[String]): Unit = {
+    val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
+    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    implicit val isASchemeLattice = lat.isASchemeLattice
+    val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
+    implicit val isActorTimestamp = time.isActorTimestamp
+    val mbox = new PowersetMboxImpl[ContextSensitiveTID, lat.L]
+    val machine = new ActorsAAMGlobalStore[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](mbox, args.size > 0, ActorAllInterleavings)
+    val visitor = new RecordActorVisitor[SchemeExp, lat.L, ClassicalAddress.A]
+    val sem = new ASchemeSemanticsWithVisitorAndOptimization[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L], visitor)
+
+    def run(file: String) = {
+      Util.runOnFile(file, ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem)(_, true, ExperimentsConfig.timeout))
+    }
+
+    if (args.size == 0) {
+      val N = ExperimentsConfig.nruns
+      val warmup = ExperimentsConfig.warmupRuns
+      for ((name, file) <- benchFiles) {
+        val sname = name.padTo(10, " ").mkString
+        print(s"$sname | ")
+        val times = (1 to N+warmup).map(i =>
+          scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
+            run(file).time
+          }
+        )
+        val time = (times.drop(warmup).sum / N * 1000).toInt
+        println(s"$time")
+      }
+    } else {
+      val result = run(args(0))
+      val graph = args(1)
+      if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
+      println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
+      result.toFile(graph)(GraphDOTOutput)
+    }
+  }
+}
+
 object ActorExperimentsScalability1 {
   import java.io._
   import java.nio.file.Files
@@ -273,74 +419,3 @@ object ActorExperimentsScalabilityBehaviors {
     writer.close
   }
 }
-
-
-object ActorExperimentsECOOP {
-  val benchFiles: List[(String, String)] = List(
-    ("PP", "actors/savina/pp.scm"),
-    ("COUNT", "actors/savina/count.scm"),
-    ("FJT", "actors/savina/fjt.scm"),
-    ("FJC", "actors/savina/fjc.scm"),
-//    ("THR", "actors/savina/thr.scm"),
-//    ("CHAM", "actors/savina/cham.scm"),
-//    ("BIG", "actors/savina/big.scm"),
-    ("CDICT", "actors/savina/cdict.scm"),
-//    ("CSLL", "actors/savina/csll.scm"),
-    ("PCBB", "actors/savina/pcbb.scm"),
-//    ("PHIL", "actors/savina/phil.scm"),
-//    ("SBAR", "actors/savina/sbar.scm"),
-    ("CIG", "actors/savina/cig.scm"),
-//    ("LOGM", "actors/savina/logm.scm"),
-    ("BTX", "actors/savina/btx.scm"),
-    ("RSORT", "actors/savina/rsort.scm"),
-//    ("FBANK", "actors/savina/fbank.scm"),
-    ("SIEVE", "actors/savina/sieve.scm"),
-//    ("UCT", "actors/savina/uct.scm"),
-//    ("OFL", "actors/savina/ofl.scm"),
-    ("TRAPR", "actors/savina/trapr.scm"),
-    ("PIPREC", "actors/savina/piprec.scm"))
-//    ("RMM", "actors/savina/rmm.scm"),
-//    ("QSORT", "actors/savina/qsort.scm"))
-//    ("APSP", "actors/savina/apsp.scm"),
-//    ("SOR", "actors/savina/sor.scm"),
-//    ("ASTAR", "actors/savina/astar.scm"),
-//    ("NQN", "actors/savina/nqn.scm"))
-  def main(args: Array[String]): Unit = {
-    val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
-    implicit val isASchemeLattice = lat.isASchemeLattice
-    val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
-    implicit val isActorTimestamp = time.isActorTimestamp
-    val mbox = new PowersetMboxImpl[ContextSensitiveTID, lat.L]
-    val machine = new ActorsAAMGlobalStore[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](mbox, args.size > 0)
-    val visitor = new RecordActorVisitor[SchemeExp, lat.L, ClassicalAddress.A]
-    val sem = new ASchemeSemanticsWithVisitorAndOptimization[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L], visitor)
-
-    def run(file: String) = {
-      Util.runOnFile(file, ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem)(_, true, timeout))
-    }
-
-    if (args.size == 0) {
-      val N = 20
-      val warmup = 10
-      for ((name, file) <- benchFiles) {
-        val sname = name.padTo(10, " ").mkString
-        print(s"$sname | ")
-        val times = (1 to N+warmup).map(i =>
-          scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
-            run(file).time
-          }
-        )
-        val time = (times.drop(warmup).sum / N * 1000).toInt
-        println(s"$time")
-      }
-    } else {
-      val result = run(args(0))
-      val graph = args(1)
-      if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
-      println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
-      result.toFile(graph)(GraphDOTOutput)
-    }
-  }
-}
-
