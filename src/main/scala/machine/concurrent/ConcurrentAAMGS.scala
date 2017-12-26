@@ -1,6 +1,20 @@
 import scalaz.Scalaz._
 import scalaz._
 
+trait ExplorationType
+case object AllInterleavings extends ExplorationType
+case object Macrostepping extends ExplorationType
+object ExplorationTypeParser extends scala.util.parsing.combinator.RegexParsers {
+  val all = "AllInterleavings".r ^^ (_ => AllInterleavings)
+  val one = "Macrostepping".r ^^ (_ => Macrostepping)
+  def expl: Parser[ExplorationType] = all | one
+  def parse(s: String): ExplorationType = parseAll(expl, s) match {
+    case Success(res, _) => res
+    case Failure(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")
+    case Error(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")
+  }
+}
+
 /* TODO: record write, reads etc. */
 class ConcurrentAAMGS[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address, Time : Timestamp, PID : ThreadIdentifier](exploration: ExplorationType, recordValues: Boolean)
     extends AbstractMachine[Exp, Abs, Addr, Time] {
@@ -339,10 +353,45 @@ class ConcurrentAAMGS[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address, 
         Some(res)
       }
     }
+    def stepPid(p: PID, store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time], timeout: Timeout):
+        Option[(Set[State], GlobalStore)] = {
+      val init: (Set[State], GlobalStore) = (Set.empty, store)
+      val res = procs.get(p).foldLeft(init)((acc, ctx) => {
+        val (res, store2) = ctx.step(p, sem, acc._2)
+        val next = res.map({
+          case (ctx2, created, effs) =>
+            val withCtx = ctx2 match {
+              case Some(newCtx) => this.copy(procs = procs.update(p -> newCtx))
+              case None => this.copy(procs = procs.terminate(p))
+            }
+            val withCreated = if (created.isEmpty) { withCtx } else {
+              withCtx.copy(procs = created.foldLeft(withCtx.procs)((procs, cr) => procs.extend(cr)))
+            }
+            withCreated
+        })
+        (acc._1 ++ next, store2)
+      })
+      if (res._1.isEmpty) {
+        None
+      } else {
+        Some(res)
+      }
+    }
     def macrostepAll(store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time], timeout: Timeout):
         (Set[(Set[State], PID)], GlobalStore) =
       procs.pids.foldLeft((Set[(Set[State], PID)](), store))((acc, p) => {
         macrostepPid(p, acc._2, sem, timeout) match {
+          case Some((states, store2)) => {
+            (acc._1 + ((states, p)), store2)
+          }
+          case None =>
+            acc
+        }
+      })
+    def stepAll(store: GlobalStore, sem: Semantics[Exp, Abs, Addr, Time], timeout: Timeout):
+        (Set[(Set[State], PID)], GlobalStore) =
+      procs.pids.foldLeft((Set[(Set[State], PID)](), store))((acc, p) => {
+        stepPid(p, acc._2, sem, timeout) match {
           case Some((states, store2)) => {
             (acc._1 + ((states, p)), store2)
           }
@@ -413,13 +462,38 @@ class ConcurrentAAMGS[Exp : Expression, Abs : IsCSchemeLattice, Addr : Address, 
         }
       }
     }
+    @scala.annotation.tailrec
+    def loopAll(todo: Set[State], visited: Set[State], reallyVisited: Set[State], halted: Set[State],
+      store: GlobalStore, graph: Option[G]): ConcurrentAAMGSOutput = {
+      if (todo.isEmpty || timeout.reached) {
+        ConcurrentAAMGSOutput(halted, store.store, reallyVisited.size, timeout.time, graph, !todo.isEmpty)
+      } else {
+        val (edges, store2) = todo.foldLeft((Set[(State, PID, State)](), store))((acc, s) => {
+          val (next, store2) = s.stepAll(acc._2.restore, sem, timeout)
+          (acc._1 ++ next.flatMap({ case (ss, p) =>
+            ss.map({ case s2 => (s, p, s2) })
+          }), store2)
+        })
+        val newTodo = edges.map(_._3)
+        val newGraph = graph.map(_.addEdges(edges))
+        if (store2.mainIsUnchanged) {
+          loopAll(newTodo.diff(visited), visited ++ todo, reallyVisited ++ todo, halted ++ todo.filter(_.halted),
+            store2, newGraph)
+        } else {
+          loopAll(newTodo, Set(), reallyVisited ++ todo, halted ++ todo.filter(_.halted),
+            store2.commitMain, newGraph)
+        }
+      }
+    }
     val (initialState, store) = State.inject(exp, sem.initialEnv, sem.initialStore)
     val g = if (graph) { Some(Graph.empty[State, Annot, Unit]) } else { None }
-    val res = loopMacrostep(Set(initialState), Set(), Set(), Set(), store, g)
+    val res = exploration match {
+      case Macrostepping => loopMacrostep(Set(initialState), Set(), Set(), Set(), store, g)
+      case AllInterleavings => loopAll(Set(initialState), Set(), Set(), Set(), store, g)
+    }
     reportRecorded()
     res
   }
-
   def reportRecorded(): Unit = {
     def keys = recordedCreate.keys ++ recordedJoin.keys ++ recordedRead.keys ++ recordedWrite.keys ++ recordedAcquire.keys ++ recordedRelease.keys
     println("=========")

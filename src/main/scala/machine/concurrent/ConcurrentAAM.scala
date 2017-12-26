@@ -1,7 +1,7 @@
 import scalaz.Scalaz._
 import scalaz._
 
-trait ExplorationType
+/*trait ExplorationType
 case object AllInterleavings extends ExplorationType
 case object OneInterleaving extends ExplorationType
 case object RandomInterleaving extends ExplorationType
@@ -19,7 +19,7 @@ object ExplorationTypeParser extends scala.util.parsing.combinator.RegexParsers 
     case Failure(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")
     case Error(msg, _) => throw new Exception(s"cannot parse exploration type: $msg")
   }
-}
+}*/
 /*
 class ConcurrentAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp, TID : ThreadIdentifier](exploration: ExplorationType)
     extends AbstractMachine[Exp, Abs, Addr, Time] {

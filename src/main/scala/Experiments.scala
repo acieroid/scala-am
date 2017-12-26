@@ -65,40 +65,107 @@ object ThreadExperiments {
   }
 }
 
-object ThreadExperimentsNonModular {
+object ThreadExperimentsMacrostepping {
   val benchFiles: List[(String, String)] = List(
-    ("ABP", "threads/suite/abp.scm"),
-    ("COUNT", "threads/suite/count.scm"),
-    ("DEKKER", "threads/suite/dekker.scm"),
+//    ("ABP", "threads/suite/abp.scm"),
+//    ("COUNT", "threads/suite/count.scm"),
+//    ("DEKKER", "threads/suite/dekker.scm"),
 //    ("FACT", "threads/suite/fact.scm"),
 //    ("MATMUL", "threads/suite/matmul.scm"),
 //    ("MCARLO", "threads/suite/mcarlo.scm"),
 //    ("MSORT", "threads/suite/msort.scm"),
-    ("PC", "threads/suite/pc.scm"),
-    ("PHIL", "threads/suite/phil.scm"),
-    ("PHILD", "threads/suite/phild.scm"),
-    ("PP", "threads/suite/pp.scm"),
+//    ("PC", "threads/suite/pc.scm"),
+//    ("PHIL", "threads/suite/phil.scm"),
+//    ("PHILD", "threads/suite/phild.scm"),
+//    ("PP", "threads/suite/pp.scm"),
 //    ("RINGBUF", "threads/suite/ringbuf.scm"),
-    ("RNG", "threads/suite/rng.scm"),
+//    ("RNG", "threads/suite/rng.scm"),
 //    ("SUDOKU", "threads/suite/sudoku.scm"),
-    ("TRAPR", "threads/suite/trapr.scm"),
-    ("ATOMS", "threads/suite/atoms.scm"),
+//    ("TRAPR", "threads/suite/trapr.scm"),
+//    ("ATOMS", "threads/suite/atoms.scm"),
 //    ("STM", "threads/suite/stm.scm"),
-    ("NBODY", "threads/suite/nbody.scm"),
-    ("SIEVE", "threads/suite/sieve.scm"),
+//    ("NBODY", "threads/suite/nbody.scm"),
+//    ("SIEVE", "threads/suite/sieve.scm"),
 //    ("CRYPT", "threads/suite/crypt.scm"),
 //    ("MCEVAL", "threads/suite/mceval.scm"),
 //    ("QSORT", "threads/suite/qsort.scm"),
 //    ("TSP", "threads/suite/tsp.scm"),
-    ("BCHAIN", "threads/suite/bchain.scm"),
-    ("LIFE", "threads/suite/life.scm"),
-    ("PPS", "threads/suite/pps.scm"),
+//    ("BCHAIN", "threads/suite/bchain.scm"),
+    ("LIFE", "threads/suite/life.scm")
+//    ("PPS", "threads/suite/pps.scm"),
 //    ("MINIMAX", "threads/suite/minimax.scm"),
 //    ("ACTORS", "threads/suite/actors.scm")
   )
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    val timeout: Option[Long] = Some(1800 * 1e9.toLong)
+    implicit val isCSchemeLattice = lat.isCSchemeLattice
+    val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
+    implicit val isActorTimestamp = time.isActorTimestamp
+    val machine = new ConcurrentAAMGS[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](Macrostepping, args.size > 0)
+    val sem = new CSchemeSemantics[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new CSchemePrimitives[ClassicalAddress.A, lat.L])
+
+    def run(file: String) = {
+      Util.runOnFile(file, ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem)(_, true, timeout))
+    }
+
+    if (args.size == 0) {
+      val N = 20
+      val warmup = 2
+      for ((name, file) <- benchFiles) {
+        val sname = name.padTo(10, " ").mkString
+        print(s"$sname | ")
+        val times = (1 to N+warmup).map(i =>
+          scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
+            run(file).time
+          })
+        val time = (times.drop(warmup).sum / N * 1000).toInt
+        println(s"$time")
+      }
+    } else {
+      val result = run(args(0))
+      val graph = args(1)
+      if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
+      println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
+      result.toFile(graph)(GraphDOTOutput)
+    }
+  }
+}
+
+object ThreadExperimentsNaive {
+  val benchFiles: List[(String, String)] = List(
+    ("ABP", "threads/suite/abp.scm"),
+    ("COUNT", "threads/suite/count.scm"),
+    ("DEKKER", "threads/suite/dekker.scm"),
+    ("FACT", "threads/suite/fact.scm"),
+    ("MATMUL", "threads/suite/matmul.scm"),
+    ("MCARLO", "threads/suite/mcarlo.scm"),
+    ("MSORT", "threads/suite/msort.scm"),
+    ("PC", "threads/suite/pc.scm"),
+    ("PHIL", "threads/suite/phil.scm"),
+    ("PHILD", "threads/suite/phild.scm"),
+    ("PP", "threads/suite/pp.scm"),
+    ("RINGBUF", "threads/suite/ringbuf.scm"),
+    ("RNG", "threads/suite/rng.scm"),
+    ("SUDOKU", "threads/suite/sudoku.scm"),
+    ("TRAPR", "threads/suite/trapr.scm"),
+    ("ATOMS", "threads/suite/atoms.scm"),
+    ("STM", "threads/suite/stm.scm"),
+    ("NBODY", "threads/suite/nbody.scm"),
+    ("SIEVE", "threads/suite/sieve.scm"),
+    ("CRYPT", "threads/suite/crypt.scm"),
+    ("MCEVAL", "threads/suite/mceval.scm"),
+    ("QSORT", "threads/suite/qsort.scm"),
+    ("TSP", "threads/suite/tsp.scm"),
+    ("BCHAIN", "threads/suite/bchain.scm"),
+    ("LIFE", "threads/suite/life.scm"),
+    ("PPS", "threads/suite/pps.scm"),
+    ("MINIMAX", "threads/suite/minimax.scm"),
+    ("ACTORS", "threads/suite/actors.scm")
+  )
+  def main(args: Array[String]): Unit = {
+    val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
+    val timeout: Option[Long] = Some(150 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
