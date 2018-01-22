@@ -419,3 +419,139 @@ object ActorExperimentsScalabilityBehaviors {
     writer.close
   }
 }
+
+
+
+object ActorExperimentsScalabilityMessagesMacrostepping {
+  import java.io._
+  import java.nio.file.Files
+  val MAX = 10
+  def rm(file: String) = {
+    val f = new File(file)
+    f.delete()
+  }
+  def gen(selectors: Int, file: String) = {
+    val writer = new PrintWriter(new File(file))
+    val name = "\"foo\""
+    writer.write(s"(letrec ((b (a/actor $name ()\n")
+    for (i <- 0 until MAX) {
+      writer.write(s"              (m$i ()(a/become b))\n")
+    }
+    writer.write("  )) (p (a/create b)))\n")
+    for (i <- 0 until MAX) {
+      writer.write(s"  (a/send p m${i % selectors})")
+    }
+    writer.write("  )\n")
+    writer.close
+  }
+
+  def main(args: Array[String]): Unit = {
+    val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
+    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    implicit val isASchemeLattice = lat.isASchemeLattice
+    val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
+    implicit val isActorTimestamp = time.isActorTimestamp
+    val mbox = new PowersetMboxImpl[ContextSensitiveTID, lat.L]
+    val machine = new ActorsAAMGlobalStore[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](mbox, false, ActorMacrostepping)
+    val visitor = new EmptyActorVisitor[SchemeExp, lat.L, ClassicalAddress.A]
+    val sem = new ASchemeSemanticsWithVisitorAndOptimization[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L], visitor)
+
+    val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
+
+    val writer = new PrintWriter(new File("scalability.dat"))
+    val N = 20
+    val warmup = 10
+    for (i <- 1 to MAX) {
+      val sname = (i.toString).padTo(10, " ").mkString
+      val file = s"actors/scalability/b1m${i}.scm"
+      gen(i, file)
+
+      Util.fileContent(file) match {
+        case Some(program) =>
+          (1 to N+warmup).foreach(i => {
+            val time = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
+              run(program, true, timeout).time
+          }
+          if (i <= warmup) {} else {
+            val itime = (time * 1000).toInt
+            println(s"$sname | $itime")
+            writer.write(s"$sname $itime\n")
+          }
+        })
+        case None => ()
+      }
+      writer.flush
+      rm(file)
+      System.gc()
+    }
+    writer.close
+  }
+}
+
+object ActorExperimentsScalabilityBehaviorsMacrostepping {
+  import java.io._
+  import java.nio.file.Files
+  val MAX = 150
+  def rm(file: String) = {
+    val f = new File(file)
+    f.delete()
+  }
+  def gen(behaviors: Int, file: String) = {
+    val writer = new PrintWriter(new File(file))
+    writer.write(s"(letrec (")
+    for (i <- 0 until MAX) {
+      val name = "\"foo\""
+      writer.write(s"  (b$i (a/actor $name ()\n")
+      writer.write(s"         (m () (a/become b))))\n")
+    }
+    writer.write("  )")
+    for (i <- 0 until MAX) {
+      writer.write(s"(a/send (a/create b${i % behaviors}) m)")
+    }
+    writer.write("  )\n")
+    writer.close
+  }
+
+  def main(args: Array[String]): Unit = {
+    val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
+    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    implicit val isASchemeLattice = lat.isASchemeLattice
+    val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
+    implicit val isActorTimestamp = time.isActorTimestamp
+    val mbox = new PowersetMboxImpl[ContextSensitiveTID, lat.L]
+    val machine = new ActorsAAMGlobalStore[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](mbox, false, ActorMacrostepping)
+    val visitor = new EmptyActorVisitor[SchemeExp, lat.L, ClassicalAddress.A]
+    val sem = new ASchemeSemanticsWithVisitorAndOptimization[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L], visitor)
+
+    val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
+
+
+    val writer = new PrintWriter(new File("scalability.dat"))
+    val N = 20
+    val warmup = 10
+    for (i <- 1 to MAX) {
+      val sname = (i.toString).padTo(10, " ").mkString
+      val file = s"actors/scalability/b${i}m${i}.scm"
+      gen(i, file)
+
+      Util.fileContent(file) match {
+        case Some(program) =>
+          (1 to N+warmup).foreach(i => {
+            val time = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
+              run(program, true, timeout).time
+          }
+          if (i <= warmup) {} else {
+            val itime = (time * 1000).toInt
+            println(s"$sname | $itime")
+            writer.write(s"$sname $itime\n")
+          }
+        })
+        case None => ()
+      }
+      writer.flush
+      rm(file)
+      System.gc()
+    }
+    writer.close
+  }
+}
