@@ -420,12 +420,10 @@ object ActorExperimentsScalabilityBehaviors {
   }
 }
 
-
-
 object ActorExperimentsScalabilityMessagesMacrostepping {
   import java.io._
   import java.nio.file.Files
-  val MAX = 10
+  val MAX = 20
   def rm(file: String) = {
     val f = new File(file)
     f.delete()
@@ -491,7 +489,7 @@ object ActorExperimentsScalabilityMessagesMacrostepping {
 object ActorExperimentsScalabilityBehaviorsMacrostepping {
   import java.io._
   import java.nio.file.Files
-  val MAX = 150
+  val MAX = 20
   def rm(file: String) = {
     val f = new File(file)
     f.delete()
