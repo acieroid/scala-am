@@ -407,7 +407,7 @@ object ThreadExperimentsScalabilityConflicts {
 object ThreadExperimentsScalabilityProcessesMacrostepping {
   import java.io._
   import java.nio.file.Files
-  val MAX = 150
+  val MAX = 20
   def rm(file: String) = {
     val f = new File(file)
     f.delete()
@@ -430,7 +430,7 @@ object ThreadExperimentsScalabilityProcessesMacrostepping {
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    val timeout: Option[Long] = Some(1200 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -451,7 +451,9 @@ object ThreadExperimentsScalabilityProcessesMacrostepping {
         case Some(program) =>
           (1 to N+warmup).foreach(i => {
             val time = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
-              run(program, false, timeout).time
+              val res = run(program, false, timeout)
+              if (res.timedOut) { println(s"TIMED OUT") }
+              res.time
             }
             if (i <= warmup) {} else {
               val itime = (time * 1000).toInt
@@ -472,7 +474,7 @@ object ThreadExperimentsScalabilityProcessesMacrostepping {
 object ThreadExperimentsScalabilityJoinsMacrostepping {
   import java.io._
   import java.nio.file.Files
-  val MAX = 150
+  val MAX = 10
   def rm(file: String) = {
     val f = new File(file)
     f.delete()
@@ -496,7 +498,7 @@ object ThreadExperimentsScalabilityJoinsMacrostepping {
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    val timeout: Option[Long] = Some(180 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -517,7 +519,9 @@ object ThreadExperimentsScalabilityJoinsMacrostepping {
         case Some(program) =>
           val times: List[Double] = (1 to N+warmup).map(i => {
             val time = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
-              run(program, false, timeout).time
+              val res = run(program, false, timeout)
+              if (res.timedOut) { println(s"TIMED OUT") }
+              res.time
             }
             if (i <= warmup) {} else {
               val itime = (time * 1000).toInt
@@ -541,7 +545,7 @@ object ThreadExperimentsScalabilityJoinsMacrostepping {
 object ThreadExperimentsScalabilityConflictsMacrostepping {
   import java.io._
   import java.nio.file.Files
-  val MAX = 150
+  val MAX = 10
   def rm(file: String) = {
     val f = new File(file)
     f.delete()
@@ -588,7 +592,9 @@ object ThreadExperimentsScalabilityConflictsMacrostepping {
         case Some(program) =>
           val times: List[Double] = (1 to N+warmup).map(i => {
             val time = scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
-              run(program, false, timeout).time
+              val res = run(program, false, timeout)
+              if (res.timedOut) { println(s"TIMED OUT") }
+              res.time
             }
             if (i <= warmup) {} else {
               val itime = (time * 1000).toInt
