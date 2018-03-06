@@ -1,7 +1,7 @@
 object ExperimentsConfig {
   val timeout: Option[Long] = Some(1800 * 1e9.toLong)
-  val warmupRuns: Int = 0
-  val nruns: Int = 1
+  val warmupRuns: Int = 20
+  val nruns: Int = 10
 }
 
 object ActorExperimentsModular {
@@ -78,6 +78,20 @@ object ActorExperimentsModular {
 }
 
 object ActorExperimentsMacrostepping {
+   val benchFiles: List[(String, String)] = List(
+     ("PP", "actors/savina/pp.scm"),
+     ("COUNT-SEQ", "actors/savina/count-seq.scm"),
+     ("FJT-SEQ", "actors/savina/fjt-seq.scm"),
+     ("FJC-SEQ", "actors/savina/fjc-seq.scm"),
+     ("FACTORIAL", "actors/factorial.scm"),
+     ("STACK", "actors/stack.scm"),
+     ("CELL", "actors/cell.scm"),
+     ("PARIKH", "actors/soter/parikh.scm"),
+     ("PIPE-SEQ", "actors/soter/pipe-seq.scm"),
+     ("SAFE-SEND", "actors/soter/safe_send.scm"),
+     ("STATE-FACTORY", "actors/soter/state_factory.scm"),
+     ("STUTTER", "actors/soter/stutter.scm"))
+/*
   val benchFiles: List[(String, String)] = List(
     ("PP", "actors/savina/pp.scm"),
     ("COUNT", "actors/savina/count.scm"),
@@ -107,7 +121,7 @@ object ActorExperimentsMacrostepping {
     ("SOR", "actors/savina/sor.scm"),
     ("ASTAR", "actors/savina/astar.scm"),
     ("NQN", "actors/savina/nqn.scm")
-  )
+  )*/
   def main(args: Array[String]): Unit = {
     val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
     val timeout: Option[Long] = Some(1800 * 1e9.toLong)
@@ -148,36 +162,50 @@ object ActorExperimentsMacrostepping {
 }
 
 object ActorExperimentsMacrosteppingBoundedMultiset {
-  val benchFiles: List[(String, String, Int)] = List(
+   val benchFiles: List[(String, String, Int)] = List(
      ("PP", "actors/savina/pp.scm", 1),
-     ("COUNT", "actors/savina/count.scm", 1),
-     ("FJT", "actors/savina/fjt.scm", 1),
-     ("FJC", "actors/savina/fjc.scm", 1),
-//     ("THR", "actors/savina/thr.scm", 1),
+     ("COUNT-SEQ", "actors/savina/count-seq.scm", 1),
+     ("FJT-SEQ", "actors/savina/fjt-seq.scm", 1),
+     ("FJC-SEQ", "actors/savina/fjc-seq.scm", 1),
+     ("FACTORIAL", "actors/factorial.scm", 1),
+     ("STACK", "actors/stack.scm", 1),
+     ("CELL", "actors/cell.scm", 1),
+     ("PARIKH", "actors/soter/parikh.scm", 1),
+     ("PIPE-SEQ", "actors/soter/pipe-seq.scm", 1),
+     ("SAFE-SEND", "actors/soter/safe_send.scm", 1),
+     ("STATE-FACTORY", "actors/soter/state_factory.scm", 1),
+     ("STUTTER", "actors/soter/stutter.scm", 1))
+
+/*  val benchFiles: List[(String, String, Int)] = List(
+//      ("PP", "actors/savina/pp.scm", 1),
+//      ("COUNT", "actors/savina/count.scm", 1),
+//      ("FJT", "actors/savina/fjt.scm", 1),
+//      ("FJC", "actors/savina/fjc.scm", 1),
+//      ("THR", "actors/savina/thr.scm", 1),
 //     ("CHAM", "actors/savina/cham.scm", 1),
-//     ("BIG", "actors/savina/big.scm", 1),
+     ("BIG", "actors/savina/big.scm", 1),
 //     ("CDICT", "actors/savina/cdict.scm", 1),
 //     ("CSLL", "actors/savina/csll.scm", 1),
 //     ("PCBB", "actors/savina/pcbb.scm", 1),
 //     ("PHIL", "actors/savina/phil.scm", 1),
-//     ("SBAR", "actors/savina/sbar.scm", 1),
+     ("SBAR", "actors/savina/sbar.scm", 1),
      ("CIG", "actors/savina/cig.scm", 1),
-//     ("LOGM", "actors/savina/logm.scm", 1),
-//     ("BTX", "actors/savina/btx.scm", 1),
-//     ("RSORT", "actors/savina/rsort.scm", 1),
-//     ("FBANK", "actors/savina/fbank.scm", 1),
+     ("LOGM", "actors/savina/logm.scm", 1),
+     ("BTX", "actors/savina/btx.scm", 1),
+     ("RSORT", "actors/savina/rsort.scm", 1),
+     ("FBANK", "actors/savina/fbank.scm", 1),
      ("SIEVE", "actors/savina/sieve.scm", 1),
-//     ("UCT", "actors/savina/uct.scm", 1),
-//     ("OFL", "actors/savina/ofl.scm", 1),
+     ("UCT", "actors/savina/uct.scm", 1),
+     ("OFL", "actors/savina/ofl.scm", 1),
      ("TRAPR", "actors/savina/trapr.scm", 1),
      ("PIPREC", "actors/savina/piprec.scm", 1),
-//     ("RMM", "actors/savina/rmm.scm", 1),
-//     ("QSORT", "actors/savina/qsort.scm", 1),
-//     ("APSP", "actors/savina/apsp.scm", 1),
-//    ("SOR", "actors/savina/sor.scm", 1),
-//    ("ASTAR", "actors/savina/astar.scm", 1),
-//    ("NQN", "actors/savina/nqn.scm", 1)
-  )
+     ("RMM", "actors/savina/rmm.scm", 1),
+     ("QSORT", "actors/savina/qsort.scm", 1),
+     ("APSP", "actors/savina/apsp.scm", 1),
+    ("SOR", "actors/savina/sor.scm", 1),
+    ("ASTAR", "actors/savina/astar.scm", 1),
+    ("NQN", "actors/savina/nqn.scm", 1)
+  )*/
   def main(args: Array[String]): Unit = {
     val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
 //    val timeout: Option[Long] = Some(120 * 1e9.toLong)
@@ -223,37 +251,51 @@ object ActorExperimentsMacrosteppingBoundedMultiset {
 
 
 object ActorExperimentsMacrosteppingBoundedList {
-  val benchFiles: List[(String, String, Int)] = List(
+     val benchFiles: List[(String, String, Int)] = List(
+     ("PP", "actors/savina/pp.scm", 1),
+     ("COUNT-SEQ", "actors/savina/count-seq.scm", 1),
+     ("FJT-SEQ", "actors/savina/fjt-seq.scm", 2),
+     ("FJC-SEQ", "actors/savina/fjc-seq.scm", 1),
+     ("FACTORIAL", "actors/factorial.scm", 1),
+     ("STACK", "actors/stack.scm", 4),
+     ("CELL", "actors/cell.scm", 2),
+     ("PARIKH", "actors/soter/parikh.scm", 2),
+     ("PIPE-SEQ", "actors/soter/pipe-seq.scm", 1),
+     ("SAFE-SEND", "actors/soter/safe_send.scm", 4),
+     ("STATE-FACTORY", "actors/soter/state_factory.scm", 1),
+     ("STUTTER", "actors/soter/stutter.scm", 1))
+
+/*  val benchFiles: List[(String, String, Int)] = List(
 ////     ("PP", "actors/savina/pp.scm", 1),
 ////     ("COUNT", "actors/savina/count.scm", 1),
 ////     ("FJT", "actors/savina/fjt.scm", 1),
 ////     ("FJC", "actors/savina/fjc.scm", 1),
 
-     ("THR", "actors/savina/thr.scm", 2),
-     ("CHAM", "actors/savina/cham.scm", 2),
-     ("BIG", "actors/savina/big.scm", 2),
+//     ("THR", "actors/savina/thr.scm", 2),
+//     ("CHAM", "actors/savina/cham.scm", 2),
+//     ("BIG", "actors/savina/big.scm", 2),
 ////     ("CDICT", "actors/savina/cdict.scm", 1),
-     ("CSLL", "actors/savina/csll.scm", 2),
+//     ("CSLL", "actors/savina/csll.scm", 2),
 ////     ("PCBB", "actors/savina/pcbb.scm", 1),
-     ("PHIL", "actors/savina/phil.scm", 2),
-     ("SBAR", "actors/savina/sbar.scm", 2),
+//     ("PHIL", "actors/savina/phil.scm", 2),
+//     ("SBAR", "actors/savina/sbar.scm", 2),
 ////     ("CIG", "actors/savina/cig.scm", 2),
-     ("LOGM", "actors/savina/logm.scm", 2),
+//     ("LOGM", "actors/savina/logm.scm", 2),
 ////     ("BTX", "actors/savina/btx.scm", 1),
-     ("RSORT", "actors/savina/rsort.scm", 2),
-     ("FBANK", "actors/savina/fbank.scm", 2),
-     ("SIEVE", "actors/savina/sieve.scm", 2),
-     ("UCT", "actors/savina/uct.scm", 2),
-     ("OFL", "actors/savina/ofl.scm", 2),
-     ("TRAPR", "actors/savina/trapr.scm", 2),
-     ("PIPREC", "actors/savina/piprec.scm", 2),
-     ("RMM", "actors/savina/rmm.scm", 2),
-     ("QSORT", "actors/savina/qsort.scm", 2),
-     ("APSP", "actors/savina/apsp.scm", 2),
-    ("SOR", "actors/savina/sor.scm", 2),
-    ("ASTAR", "actors/savina/astar.scm", 2),
+//     ("RSORT", "actors/savina/rsort.scm", 2),
+//     ("FBANK", "actors/savina/fbank.scm", 2),
+//     ("SIEVE", "actors/savina/sieve.scm", 2),
+//     ("UCT", "actors/savina/uct.scm", 2),
+//     ("OFL", "actors/savina/ofl.scm", 2),
+//     ("TRAPR", "actors/savina/trapr.scm", 2),
+//     ("PIPREC", "actors/savina/piprec.scm", 2),
+//     ("RMM", "actors/savina/rmm.scm", 2),
+//     ("QSORT", "actors/savina/qsort.scm", 2),
+//     ("APSP", "actors/savina/apsp.scm", 2),
+//    ("SOR", "actors/savina/sor.scm", 2),
+//    ("ASTAR", "actors/savina/astar.scm", 2),
     ("NQN", "actors/savina/nqn.scm", 2)
-  )
+  )*/
   def main(args: Array[String]): Unit = {
     val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
 //    val timeout: Option[Long] = Some(120 * 1e9.toLong)
@@ -298,36 +340,50 @@ object ActorExperimentsMacrosteppingBoundedList {
 }
 
 object ActorExperimentsMacrosteppingGraph {
-  val benchFiles: List[(String, String)] = List(
-    ("PP", "actors/savina/pp.scm"),
-    ("COUNT", "actors/savina/count.scm"),
-    ("FJT", "actors/savina/fjt.scm"),
-    ("FJC", "actors/savina/fjc.scm"),
-    ("THR", "actors/savina/thr.scm"),
-    ("CHAM", "actors/savina/cham.scm"),
-    ("BIG", "actors/savina/big.scm"),
-    ("CDICT", "actors/savina/cdict.scm"),
-    ("CSLL", "actors/savina/csll.scm"),
-    ("PCBB", "actors/savina/pcbb.scm"),
-    ("PHIL", "actors/savina/phil.scm"),
-    ("SBAR", "actors/savina/sbar.scm"),
-    ("CIG", "actors/savina/cig.scm"),
-    ("LOGM", "actors/savina/logm.scm"),
-    ("BTX", "actors/savina/btx.scm"),
-    ("RSORT", "actors/savina/rsort.scm"),
-    ("FBANK", "actors/savina/fbank.scm"),
-    ("SIEVE", "actors/savina/sieve.scm"),
-    ("UCT", "actors/savina/uct.scm"),
-    ("OFL", "actors/savina/ofl.scm"),
-    ("TRAPR", "actors/savina/trapr.scm"),
-    ("PIPREC", "actors/savina/piprec.scm"),
-    ("RMM", "actors/savina/rmm.scm"),
-    ("QSORT", "actors/savina/qsort.scm"),
-    ("APSP", "actors/savina/apsp.scm"),
-    ("SOR", "actors/savina/sor.scm"),
-    ("ASTAR", "actors/savina/astar.scm"),
-    ("NQN", "actors/savina/nqn.scm")
-  )
+   val benchFiles: List[(String, String)] = List(
+     ("PP", "actors/savina/pp.scm"),
+     ("COUNT-SEQ", "actors/savina/count-seq.scm"),
+     ("FJT-SEQ", "actors/savina/fjt-seq.scm"),
+     ("FJC-SEQ", "actors/savina/fjc-seq.scm"),
+     ("FACTORIAL", "actors/factorial.scm"),
+     ("STACK", "actors/stack.scm"),
+     ("CELL", "actors/cell.scm"),
+     ("PARIKH", "actors/soter/parikh.scm"),
+     ("PIPE-SEQ", "actors/soter/pipe-seq.scm"),
+     ("SAFE-SEND", "actors/soter/safe_send.scm"),
+     ("STATE-FACTORY", "actors/soter/state_factory.scm"),
+     ("STUTTER", "actors/soter/stutter.scm"))
+
+//  val benchFiles: List[(String, String)] = List(
+//    ("PP", "actors/savina/pp.scm"),
+//    ("COUNT", "actors/savina/count.scm"),
+//    ("FJT", "actors/savina/fjt.scm"),
+//    ("FJC", "actors/savina/fjc.scm"),
+//    ("THR", "actors/savina/thr.scm"),
+//    ("CHAM", "actors/savina/cham.scm"),
+//    ("BIG", "actors/savina/big.scm"),
+//    ("CDICT", "actors/savina/cdict.scm"),
+//    ("CSLL", "actors/savina/csll.scm"),
+//    ("PCBB", "actors/savina/pcbb.scm"),
+//    ("PHIL", "actors/savina/phil.scm"),
+//    ("SBAR", "actors/savina/sbar.scm"),
+//    ("CIG", "actors/savina/cig.scm"),
+//    ("LOGM", "actors/savina/logm.scm"),
+//    ("BTX", "actors/savina/btx.scm"),
+//    ("RSORT", "actors/savina/rsort.scm"),
+//    ("FBANK", "actors/savina/fbank.scm"),
+//    ("SIEVE", "actors/savina/sieve.scm"),
+//    ("UCT", "actors/savina/uct.scm"),
+//    ("OFL", "actors/savina/ofl.scm"),
+//    ("TRAPR", "actors/savina/trapr.scm"),
+//    ("PIPREC", "actors/savina/piprec.scm"),
+//    ("RMM", "actors/savina/rmm.scm"),
+//    ("QSORT", "actors/savina/qsort.scm"),
+//    ("APSP", "actors/savina/apsp.scm"),
+//    ("SOR", "actors/savina/sor.scm"),
+//    ("ASTAR", "actors/savina/astar.scm"),
+//    ("NQN", "actors/savina/nqn.scm")
+//  )
   def main(args: Array[String]): Unit = {
     val lat = new MakeASchemeLattice[ScalaAM.typeLattice.L]
     val timeout: Option[Long] = Some(1800 * 1e9.toLong)
