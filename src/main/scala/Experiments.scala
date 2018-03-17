@@ -225,7 +225,7 @@ object ThreadExperimentsScalabilityProcesses {
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    val timeout: Option[Long] = Some(1800 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -291,7 +291,7 @@ object ThreadExperimentsScalabilityJoins {
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    val timeout: Option[Long] = Some(1800 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -362,7 +362,7 @@ object ThreadExperimentsScalabilityConflicts {
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    val timeout: Option[Long] = Some(1800 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -411,7 +411,7 @@ object ThreadExperimentsScalabilityProcessesMacrostepping {
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(1200 * 1e9.toLong)
+    val timeout: Option[Long] = Some(1800 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -458,7 +458,7 @@ object ThreadExperimentsScalabilityJoinsMacrostepping {
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(180 * 1e9.toLong)
+    val timeout: Option[Long] = Some(1800 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
@@ -509,7 +509,7 @@ object ThreadExperimentsScalabilityConflictsMacrostepping {
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
-    val timeout: Option[Long] = Some(120 * 1e9.toLong)
+    val timeout: Option[Long] = Some(1800 * 1e9.toLong)
     implicit val isCSchemeLattice = lat.isCSchemeLattice
     val time: ActorTimestampWrapper = KMessageTagSensitivity(0)
     implicit val isActorTimestamp = time.isActorTimestamp
