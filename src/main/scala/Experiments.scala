@@ -234,11 +234,10 @@ object ThreadExperimentsScalabilityProcesses {
 
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
-    val writer = new PrintWriter(new File("scalability.dat"))
+    val writer = new PrintWriter(new File("modular-scalability-t.dat"))
     val N = 10
     val warmup = 1
-    val step = 10
-    for (i <- 1 to MAX by step) {
+    for (i <- 1 to MAX) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
       gen(MAX, i, file)
@@ -300,7 +299,7 @@ object ThreadExperimentsScalabilityJoins {
 
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
-    val writer = new PrintWriter(new File("scalability.dat"))
+    val writer = new PrintWriter(new File("modular-scalability-j.dat"))
     val N = 20
     val warmup = 10
     for (i <- 1 to MAX by 10) {
@@ -371,7 +370,7 @@ object ThreadExperimentsScalabilityConflicts {
 
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
-    val writer = new PrintWriter(new File("scalability.dat"))
+    val writer = new PrintWriter(new File("modular-scalability-c.dat"))
     val N = 20
     val warmup = 10
     for (i <- 1 to MAX by 10) {
@@ -420,7 +419,7 @@ object ThreadExperimentsScalabilityProcessesMacrostepping {
 
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
-    val writer = new PrintWriter(new File("scalability.dat"))
+    val writer = new PrintWriter(new File("macrostep-scalability-t.dat"))
     val N = 20
     val warmup = 10
     for (i <- 1 to MAX) {
@@ -467,7 +466,7 @@ object ThreadExperimentsScalabilityJoinsMacrostepping {
 
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
-    val writer = new PrintWriter(new File("scalability.dat"))
+    val writer = new PrintWriter(new File("macrostep-scalability-j.dat"))
     val N = 3
     val warmup = 0
     for (i <- 1 to MAX) {
@@ -518,7 +517,7 @@ object ThreadExperimentsScalabilityConflictsMacrostepping {
 
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
-    val writer = new PrintWriter(new File("scalability.dat"))
+    val writer = new PrintWriter(new File("macrostep-scalability-c.dat"))
     val N = 3
     val warmup = 0
     for (i <- 1 to MAX) {
