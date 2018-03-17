@@ -207,15 +207,15 @@ object ThreadExperimentsScalabilityProcesses {
     val f = new File(file)
     f.delete()
   }
-  def gen(processes: Int, file: String) = {
+  def gen(max: Int, processes: Int, file: String) = {
     val writer = new PrintWriter(new File(file))
     val name = "\"foo\""
     writer.write("(letrec ((f (lambda (n) n))\n")
-    for (i <- 0 until MAX) {
+    for (i <- 0 until max) {
       if (i <= processes) {
-        writer.write(s"       (t$i (t/spawn (f $i)))\n")
+        writer.write(s"       (t$i (t/spawn $i))\n")
       } else {
-        writer.write(s"       (t$i $i)\n")
+        writer.write(s"       (t$i (+ $i))\n")
       }
     }
     writer.write(")\n")
@@ -235,12 +235,13 @@ object ThreadExperimentsScalabilityProcesses {
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
     val writer = new PrintWriter(new File("scalability.dat"))
-    val N = 20
-    val warmup = 10
-    for (i <- 1 to MAX) {
+    val N = 10
+    val warmup = 1
+    val step = 10
+    for (i <- 1 to MAX by step) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
-      gen(i, file)
+      gen(MAX, i, file)
 
       Util.fileContent(file) match {
         case Some(program) =>
@@ -272,20 +273,19 @@ object ThreadExperimentsScalabilityJoins {
     val f = new File(file)
     f.delete()
   }
-  def gen(joins: Int, file: String) = {
+  def gen(max: Int, joins: Int, file: String) = {
     val writer = new PrintWriter(new File(file))
     val name = "\"foo\""
-    writer.write("(letrec ((f (lambda (n) f))\n")
-    for (i <- 0 until MAX+1) {
+    writer.write("(letrec ((f (lambda (n) n))\n")
+    for (i <- 0 until max+1) {
       if (i < joins) {
-        writer.write(s"(t$i (t/spawn (f (t/join t${i+1}))))")
+        writer.write(s"(t$i (t/spawn (t/join t${i+1})))")
       } else {
-        writer.write(s"(t$i (t/spawn (f (+ t${i+1}))))")
+        writer.write(s"(t$i (t/spawn (+ ${i+1})))")
       }
     }
     writer.write(")\n")
-    writer.write("(t/join t0)")
-    writer.write(")\n")
+    writer.write("1)\n")
     writer.close
   }
 
@@ -303,10 +303,10 @@ object ThreadExperimentsScalabilityJoins {
     val writer = new PrintWriter(new File("scalability.dat"))
     val N = 20
     val warmup = 10
-    for (i <- 1 to MAX) {
+    for (i <- 1 to MAX by 10) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
-      gen(i, file)
+      gen(MAX, i, file)
 
       Util.fileContent(file) match {
         case Some(program) =>
@@ -316,7 +316,7 @@ object ThreadExperimentsScalabilityJoins {
             }
             if (i <= warmup) {} else {
               val itime = (time * 1000).toInt
-            //println(s"$sname | $itime")
+            println(s"$sname | $itime")
             writer.write(s"$sname $itime\n")
           }
             time
@@ -341,20 +341,20 @@ object ThreadExperimentsScalabilityConflicts {
     val f = new File(file)
     f.delete()
   }
-  def gen(joins: Int, file: String) = {
+  def gen(max: Int, joins: Int, file: String) = {
     val writer = new PrintWriter(new File(file))
     val name = "\"foo\""
     writer.write("(letrec ((x (t/ref 0))\n")
-    for (i <- 0 until MAX) {
+    for (i <- 0 until max) {
       if (i < joins) {
-        writer.write(s"       (t$i (t/spawn (begin (t/ref-set x (+ (t/deref x) 1)))))\n")
+        writer.write(s"       (t$i (t/spawn (t/ref-set x (+ (t/deref x) 1))))\n")
       } else {
-        writer.write(s"       (t$i (t/spawn $i))\n")
+        writer.write(s"       (t$i (t/spawn (+ (+ (+ $i) 1))))\n")
       }
     }
     writer.write(")\n")
-    for (i <- 0 until MAX) {
-      writer.write("(t/join t$i)")
+    for (i <- 0 until max) {
+      writer.write(s"(t/join t$i)")
     }
     writer.write(")\n")
     writer.close
@@ -374,10 +374,10 @@ object ThreadExperimentsScalabilityConflicts {
     val writer = new PrintWriter(new File("scalability.dat"))
     val N = 20
     val warmup = 10
-    for (i <- 1 to MAX) {
+    for (i <- 1 to MAX by 10) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
-      gen(i, file)
+      gen(MAX, i, file)
 
       Util.fileContent(file) match {
         case Some(program) =>
@@ -407,26 +407,7 @@ object ThreadExperimentsScalabilityConflicts {
 object ThreadExperimentsScalabilityProcessesMacrostepping {
   import java.io._
   import java.nio.file.Files
-  val MAX = 20
-  def rm(file: String) = {
-    val f = new File(file)
-    f.delete()
-  }
-  def gen(processes: Int, file: String) = {
-    val writer = new PrintWriter(new File(file))
-    val name = "\"foo\""
-    writer.write("(letrec ((f (lambda (n) n))\n")
-    for (i <- 0 until MAX) {
-      if (i <= processes) {
-        writer.write(s"       (t$i (t/spawn (f $i)))\n")
-      } else {
-        writer.write(s"       (t$i $i)\n")
-      }
-    }
-    writer.write(")\n")
-    writer.write("(f 1))\n")
-    writer.close
-  }
+  val MAX = 10
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
@@ -445,7 +426,7 @@ object ThreadExperimentsScalabilityProcessesMacrostepping {
     for (i <- 1 to MAX) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
-      gen(i, file)
+      ThreadExperimentsScalabilityProcesses.gen(MAX, i, file)
 
       Util.fileContent(file) match {
         case Some(program) =>
@@ -464,7 +445,6 @@ object ThreadExperimentsScalabilityProcessesMacrostepping {
         case None => ()
       }
       writer.flush
-      // rm(file)
       System.gc()
     }
     writer.close
@@ -475,26 +455,6 @@ object ThreadExperimentsScalabilityJoinsMacrostepping {
   import java.io._
   import java.nio.file.Files
   val MAX = 10
-  def rm(file: String) = {
-    val f = new File(file)
-    f.delete()
-  }
-  def gen(joins: Int, file: String) = {
-    val writer = new PrintWriter(new File(file))
-    val name = "\"foo\""
-    writer.write("(letrec ((f (lambda (n) f))\n")
-    for (i <- 0 until MAX+1) {
-      if (i < joins) {
-        writer.write(s"(t$i (t/spawn (f (t/join t${i+1}))))")
-      } else {
-        writer.write(s"(t$i (t/spawn (f (+ t${i+1}))))")
-      }
-    }
-    writer.write(")\n")
-    writer.write("(t/join t0)")
-    writer.write(")\n")
-    writer.close
-  }
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
@@ -508,12 +468,12 @@ object ThreadExperimentsScalabilityJoinsMacrostepping {
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
     val writer = new PrintWriter(new File("scalability.dat"))
-    val N = 20
-    val warmup = 10
+    val N = 3
+    val warmup = 0
     for (i <- 1 to MAX) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
-      gen(i, file)
+      ThreadExperimentsScalabilityJoins.gen(MAX, i, file)
 
       Util.fileContent(file) match {
         case Some(program) =>
@@ -525,7 +485,7 @@ object ThreadExperimentsScalabilityJoinsMacrostepping {
             }
             if (i <= warmup) {} else {
               val itime = (time * 1000).toInt
-            //println(s"$sname | $itime")
+            println(s"$sname | $itime")
             writer.write(s"$sname $itime\n")
           }
             time
@@ -546,28 +506,6 @@ object ThreadExperimentsScalabilityConflictsMacrostepping {
   import java.io._
   import java.nio.file.Files
   val MAX = 10
-  def rm(file: String) = {
-    val f = new File(file)
-    f.delete()
-  }
-  def gen(joins: Int, file: String) = {
-    val writer = new PrintWriter(new File(file))
-    val name = "\"foo\""
-    writer.write("(letrec ((x (t/ref 0))\n")
-    for (i <- 0 until MAX) {
-      if (i < joins) {
-        writer.write(s"       (t$i (t/spawn (begin (t/ref-set x (+ (t/deref x) 1)))))\n")
-      } else {
-        writer.write(s"       (t$i (t/spawn $i))\n")
-      }
-    }
-    writer.write(")\n")
-    for (i <- 0 until MAX) {
-      writer.write("(t/join t$i)")
-    }
-    writer.write(")\n")
-    writer.close
-  }
 
   def main(args: Array[String]): Unit = {
     val lat = new MakeCSchemeLattice[ScalaAM.typeLattice.L]
@@ -581,12 +519,12 @@ object ThreadExperimentsScalabilityConflictsMacrostepping {
     val run = ScalaAM.run[SchemeExp, lat.L, ClassicalAddress.A, time.T](machine, sem) _
 
     val writer = new PrintWriter(new File("scalability.dat"))
-    val N = 20
-    val warmup = 10
+    val N = 3
+    val warmup = 0
     for (i <- 1 to MAX) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
-      gen(i, file)
+      ThreadExperimentsScalabilityConflicts.gen(MAX, i, file)
 
       Util.fileContent(file) match {
         case Some(program) =>
