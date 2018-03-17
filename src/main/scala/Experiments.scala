@@ -302,7 +302,7 @@ object ThreadExperimentsScalabilityJoins {
     val writer = new PrintWriter(new File("modular-scalability-j.dat"))
     val N = 20
     val warmup = 10
-    for (i <- 1 to MAX by 10) {
+    for (i <- 1 to MAX) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
       gen(MAX, i, file)
@@ -373,7 +373,7 @@ object ThreadExperimentsScalabilityConflicts {
     val writer = new PrintWriter(new File("modular-scalability-c.dat"))
     val N = 20
     val warmup = 10
-    for (i <- 1 to MAX by 10) {
+    for (i <- 1 to MAX) {
       val sname = (i.toString).padTo(10, " ").mkString
       val file = s"/tmp/p${i}.scm"
       gen(MAX, i, file)
