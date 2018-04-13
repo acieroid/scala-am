@@ -44,7 +44,7 @@ object ActorExperimentsModular {
     //val mbox = new GraphMboxImpl[ContextSensitiveTID, lat.L]
     // val machine = new ActorsAAMGlobalStoreUnboundedActors[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](mbox)
     // val machine = new ActorsAAMGlobalStore[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](mbox)
-    val machine = new ActorsModular[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](false) // args.size > 0)
+    val machine = new ActorsModular[SchemeExp, lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](args.size > 0)
     // val sem = new ASchemeSemantics[lat.L, ClassicalAddress.A, time.T, ContextSensitiveTID](new SchemePrimitives[ClassicalAddress.A, lat.L])
     // val visitor = new RecordActorVisitor[SchemeExp, lat.L, ClassicalAddress.A]
     val visitor = new EmptyActorVisitor[SchemeExp, lat.L, ClassicalAddress.A]

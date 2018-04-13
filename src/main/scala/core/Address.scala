@@ -20,13 +20,13 @@ trait AddressWrapper {
 object ClassicalAddress extends AddressWrapper {
   trait A
   case class VariableAddress[Time : Timestamp](id: Identifier, t: Time) extends A {
-    override def toString = s"@$id-$t"
+    override def toString = s"@$id"
   }
   case class PrimitiveAddress(name: String) extends A {
     override def toString = s"@$name"
   }
   case class CellAddress[Exp : Expression, Time : Timestamp](exp: Exp, t: Time) extends A {
-    override def toString = s"@$exp-$t"
+    override def toString = Expression[Exp].pos(exp).toString /* s"@$exp-$t" */
   }
 
   implicit val isAddress = new Address[A] {
