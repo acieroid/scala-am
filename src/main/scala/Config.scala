@@ -5,7 +5,7 @@ import scala.concurrent.duration.Duration
  */
 object Config {
   object Machine extends Enumeration {
-    val AAC, AAM, AAMGlobalStore, Free, ConcreteMachine = Value
+    val AAC, AAM, ModularAAM, AAMGlobalStore, Free, ConcreteMachine = Value
   }
   implicit val machineRead: scopt.Read[Machine.Value] = scopt.Read.reads(Machine withName _)
 

@@ -95,6 +95,7 @@ object Main {
 
             val machine = config.machine match {
               case Config.Machine.AAM => new AAM[SchemeExp, lattice.L, address.A, time.T]
+              case Config.Machine.ModularAAM => new ModularAAM[SchemeExp, lattice.L, address.A, time.T]
               case Config.Machine.AAMGlobalStore => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AAMKAlloc)
               case Config.Machine.ConcreteMachine => new ConcreteMachine[SchemeExp, lattice.L, address.A, time.T]
               case Config.Machine.AAC => new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AACKAlloc)
@@ -221,3 +222,5 @@ object ScalaAM {
     Util.replOrFile(None, p => println(eval(p, None)))
   }
 }
+
+
