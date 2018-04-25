@@ -88,9 +88,10 @@ case class CombinedStore[Addr : Address, Abs : JoinLattice](ro: Store[Addr, Abs]
 case class DeltaStore[Addr : Address, Abs : JoinLattice](content: Map[Addr, Abs], d: Map[Addr, Abs]) extends Store[Addr, Abs] {
   def this() = this(Map(), Map())
   override def toString = content.filterKeys(a => !Address[Addr].isPrimitive(a)).toString
-  def keys = content.keys
+  def keys = content.keys ++ d.keys
   def forall(p: ((Addr, Abs)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
-  def lookup(a: Addr) = d.get(a).orElse(content.get(a)) /* information in the delta should always be as broad as the information in the store itself */
+  def lookup(a: Addr) =
+    d.get(a).orElse(content.get(a)) /* information in the delta should always be as broad as the information in the store itself */
   def lookupBot(a: Addr) = d.get(a).orElse(content.get(a)).getOrElse(JoinLattice[Abs].bottom)
   def extend(a: Addr, v: Abs) = d.get(a) match {
     case Some(v2) => this.copy(d = d + (a -> JoinLattice[Abs].join(v2, v)))
