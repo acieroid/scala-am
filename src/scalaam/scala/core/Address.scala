@@ -8,3 +8,18 @@ trait Address {
    */
   def printable: Boolean
 }
+
+
+trait Allocator[A <: Address, T, C] {
+  implicit val timestamp: Timestamp[T, C]
+  def variable(name: Identifier, t: T): A
+}
+
+case class NameAddress(name: Identifier) extends Address {
+  def printable = true
+  override def toString = s"@${name.name}"
+}
+
+case class NameAllocator[T, C]()(implicit val timestamp: Timestamp[T, C]) extends Allocator[NameAddress, T, C] {
+  def variable(name: Identifier, t: T) = NameAddress(name)
+}

@@ -16,7 +16,8 @@ trait Store[A <: Address, V] {
   /** Checks if a predicate is true for all elements of the store */
   def forall(p: ((A, V)) => Boolean): Boolean
   /** Looks up a value in the store */
-  def lookup(a: A): MayFail[V, Error]
+  def lookup(a: A): Option[V]
+  def lookupMF(a: A): MayFail[V, Error]
   /** Add a new entry in the store */
   def extend(a: A, v: V): Store[A, V]
   /** Update an entry in the store */
@@ -35,7 +36,8 @@ case class BasicStore[A <: Address, V](content: Map[A, V]) extends Store[A, V] {
   override def toString = content.filterKeys(_.printable).toString
   def keys = content.keys
   def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
-  def lookup(a: A) = content.get(a) match {
+  def lookup(a: A) = content.get(a)
+  def lookupMF(a: A) = content.get(a) match {
     case Some(a) => a
     case None => UnboundAddress(a)
   }
@@ -51,4 +53,10 @@ case class BasicStore[A <: Address, V](content: Map[A, V]) extends Store[A, V] {
   }
   def subsumes(that: Store[A, V]) =
     that.forall((binding: (A, V)) => content.get(binding._1).exists(v => lat.subsumes(v, binding._2)))
+}
+
+object Store {
+  def empty[A <: Address, V]: Store[A, V] = BasicStore(Map())
+  def initial[A <: Address, V](values: Iterable[(A, V)]): Store[A, V] =
+    BasicStore(values.toMap)
 }

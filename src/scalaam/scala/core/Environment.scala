@@ -24,7 +24,7 @@ trait Environment[A <: Address] {
 
 /** Basic mapping from names to addresses */
 case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Environment[A] {
-  override def toString = content.filter({ case (_, a) => a.printable }).toString
+  override def toString = "{" + content.filter({ case (_, a) => a.printable }).map({ case (k, v) => s"$k: $v" }).mkString(", ") + "}"
   def keys = content.keys
   def forall(p: ((String, A)) => Boolean) = content.forall(p)
   def lookup(name: String) = content.get(name)
