@@ -219,9 +219,7 @@ class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Tim
 
     case class OuterLoopState(
       /* What's still to visit */
-      todo: WL[InnerLoopState],
-      /* Which inner loop states correspond to which functions */
-      funs: Map[Clo, Set[InnerLoopState]],
+      todo: WL[Clo],
       /* global store */
       store: GlobalStore,
       /* called functions */
@@ -233,23 +231,15 @@ class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Tim
     )
 
     /* Closure `clo` called the closures in `called`. We want to extract what states should be re-analyzed, and an updated version of the call dependencies, and of the initial states (funs) */
-    def fromCalled(caller: Clo, called: Set[Clo], calledDeps: Map[Clo, Set[Clo]], funs: Map[Clo, Set[InnerLoopState]]):
-        (Set[InnerLoopState], Map[Clo, Set[Clo]], Map[Clo, Set[InnerLoopState]]) =
+    def fromCalled(caller: Clo, called: Set[Clo], calledDeps: Map[Clo, Set[Clo]]):
+        (Set[Clo], Map[Clo, Set[Clo]]) =
       Profiler.profile("fromCalled") {
-      called.foldLeft((Set[InnerLoopState](), calledDeps, funs))((acc, clo) => {
-        //println(s"Called ${clo._1}")
-        val state = FunctionState(ControlEval(clo._2, clo._3), HaltKontAddress, Timestamp[Time].initial("" /* TODO: support context sensitivity here */))
-        if (acc._3(clo).exists((inner: InnerLoopState) => inner.todo.contains(state))) {
-          (acc._1, acc._2 + (caller -> (acc._2(caller) + clo)), acc._3)
-        } else {
-          val inner = InnerLoopState(clo, Set(state), VisitedSet[VS].empty, Option(G()), Set.empty, JoinLattice[Abs].bottom)
-          (acc._1 + inner, acc._2 + (caller -> (acc._2(caller) + clo)), acc._3 + (clo -> (acc._3(clo) + inner)))
-        }
-      })
+      called.foldLeft((Set[Clo](), calledDeps))((acc, clo) =>
+        (acc._1 + clo, acc._2 + (caller -> (acc._2(caller) + clo))))
       }
 
     /* Closure `clo` returned `result`. We extract what has to be re-analyzed and an updated set of returned values */
-    def fromReturned(clo: Clo, result: Abs, calledDeps: Map[Clo, Set[Clo]], returned: Map[Clo, Abs], funs: Map[Clo, Set[InnerLoopState]]):
+    def fromReturned(clo: Clo, result: Abs, calledDeps: Map[Clo, Set[Clo]], returned: Map[Clo, Abs]):
         (Set[Clo], Map[Clo, Abs]) = Profiler.profile("fromReturned") {
       //println(s"Closure ${clo._1} returned: $result")
       (calledDeps.foldLeft(Set[Clo]())((acc, kv) => {
@@ -266,19 +256,17 @@ class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Tim
         new ModularAAMOutput(timeout.time, st.graphs, timeout.reached)
       } else {
         println(s"=========\nIteration: $iteration (${st.todo.length} closures to analyze)")
-        st.todo.headOption match {
-          case Some(s) if (visited.exists(s2 => s2 == s.clo)) =>
-            outerLoop(st.copy(todo = st.todo.tail), visited, iteration+1)
-          case Some(s) =>
-            //println(s"Analyzing ${s.clo}")
-            val (ist, store2) = Profiler.profile("innerLoop") { innerLoop(s, st.returned, st.store) }
-            val (todoCalled, called, funs) = fromCalled(ist.clo, ist.called, st.called, st.funs)
-            val (todoReturned, returned) = fromReturned(ist.clo, ist.returned, st.called, st.returned, st.funs)
-            val newTodo = (ist.called ++ todoReturned).map(clo => {
-              val state = FunctionState(ControlEval(clo._2, clo._3), HaltKontAddress, Timestamp[Time].initial(""))
-              InnerLoopState(clo, Set(state), VisitedSet[VS].empty, Option(G()), Set.empty, JoinLattice[Abs].bottom)
-            })
-            val newOuter = OuterLoopState(newTodo ++ st.todo.tail, st.funs |+| funs, st.store.include(store2), st.called |+| called, st.returned |+| returned, st.graphs + (ist.clo -> ist.graph))
+        WorkList[WL].pick(st.todo) match { // , (clo: Clo) => st.called(clo).isEmpty || st.returned(clo) == JoinLattice[Abs].bottom) match {
+          case Some((clo, todoRest)) if (visited.contains(clo)) =>
+            outerLoop(st.copy(todo = todoRest), visited, iteration+1)
+          case Some((clo, todoRest)) =>
+            val fstate = FunctionState(ControlEval(clo._2, clo._3), HaltKontAddress, Timestamp[Time].initial(""))
+            val istate = InnerLoopState(clo, Set(fstate), VisitedSet[VS].empty, Option(G()), Set.empty, JoinLattice[Abs].bottom)
+            val (ist, store2) = Profiler.profile("innerLoop") { innerLoop(istate, st.returned, st.store) }
+            val (todoCalled, called) = fromCalled(ist.clo, ist.called, st.called)
+            val (todoReturned, returned) = fromReturned(ist.clo, ist.returned, st.called, st.returned)
+            val newTodo = (ist.called ++ todoReturned)
+            val newOuter = OuterLoopState(newTodo ++ todoRest, st.store.include(store2), called, returned, st.graphs + (ist.clo -> ist.graph))
             if (newOuter.store == st.store && newOuter.returned == st.returned) {
               outerLoop(newOuter, visited + ist.clo, iteration+1)
             } else {
@@ -342,9 +330,9 @@ class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Tim
        GlobalStore.initial(store))
     }
     val (initialClo, initialState, store) = inject(exp, sem.initialEnv, sem.initialStore)
-    val initialInner = InnerLoopState(initialClo, Set(initialState), VisitedSet[VS].empty, Option(G()), Set.empty, JoinLattice[Abs].bottom)
-    Profiler.profile("outerLoop") { outerLoop(OuterLoopState(Set(initialInner),
-      Map[Clo, Set[InnerLoopState]]().withDefaultValue(Set.empty) + ((initialClo -> Set(initialInner))),
+//    val initialInner = InnerLoopState(initialClo, Set(initialState), VisitedSet[VS].empty, Option(G()), Set.empty, JoinLattice[Abs].bottom)
+    Profiler.profile("outerLoop") { outerLoop(OuterLoopState(Set(initialClo),
+      // Map[Clo, Set[InnerLoopState]]().withDefaultValue(Set.empty) + ((initialClo -> Set(initialInner))),
       store,
       Map[Clo, Set[Clo]]().withDefaultValue(Set.empty),
       Map[Clo, Abs]().withDefaultValue(JoinLattice[Abs].bottom),
