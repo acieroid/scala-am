@@ -12,21 +12,17 @@ object LambdaLattice {
   def apply[L, A <: Address]()(implicit l: LambdaLattice[L, A]): LambdaLattice[L, A] = l
 }
 
-trait LambdaLatticeTypeclass[A <: Address] {
-  type L
-  val typeclass: LambdaLattice[L, A]
-}
+case class LambdaSetLattice[A <: Address]() {
+  case class L(vals: Set[(LambdaExp, Environment[A])])
 
-case class LambdaSetLattice[A <: Address]() extends LambdaLatticeTypeclass[A] {
-  type L = Set[(LambdaExp, Environment[A])]
+  object L {
+    implicit val typeclass = new LambdaLattice[L, A] {
+      def function(e: LambdaExp, env: Environment[A]) = L(Set((e, env)))
+      def closures(f: L) = f.vals
 
-  val typeclass = new LambdaLattice[L, A] {
-    def function(e: LambdaExp, env: Environment[A]) = Set((e, env))
-    def closures(f: L) = f
-
-    def bottom = Set.empty
-    def join(x: L, y: L) = x.union(y)
-    def subsumes(x: L, y: L) = y.subsetOf(x)
+      def bottom = L(Set.empty)
+      def join(x: L, y: L) = L(x.vals.union(y.vals))
+      def subsumes(x: L, y: L) = y.vals.subsetOf(x.vals)
+    }
   }
-  val typeclassL: Lattice[L] = typeclass
 }

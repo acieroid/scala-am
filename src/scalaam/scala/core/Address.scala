@@ -15,11 +15,14 @@ trait Allocator[A <: Address, T, C] {
   def variable(name: Identifier, t: T): A
 }
 
-case class NameAddress(name: Identifier) extends Address {
-  def printable = true
-  override def toString = s"@${name.name}"
+object NameAddress {
+  case class A(name: Identifier) extends Address {
+    def printable = true
+    override def toString = s"@${name.name}"
+  }
+  case class Alloc[T, C]()(implicit val timestamp: Timestamp[T, C]) extends Allocator[A, T, C] {
+  def variable(name: Identifier, t: T) = A(name)
 }
 
-case class NameAllocator[T, C]()(implicit val timestamp: Timestamp[T, C]) extends Allocator[NameAddress, T, C] {
-  def variable(name: Identifier, t: T) = NameAddress(name)
 }
+
