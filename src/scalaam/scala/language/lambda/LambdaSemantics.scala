@@ -1,6 +1,6 @@
 package scalaam.language.lambda
 
-import scalaam.language.Semantics
+import scalaam.language.{Semantics, Frame}
 import scalaam.lattice._
 import scalaam.core._
 
@@ -10,7 +10,6 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
     extends Semantics[LambdaExp, V, A, T, C] {
 
   implicit val lattice: Lattice[V] = lambdaLattice
-
 
   case class FrameFuncallOperator(fexp: LambdaExp, args: List[LambdaExp], env: Environment[A]) extends Frame
   case class FrameFuncallOperands(f: V, fexp: LambdaExp, cur: LambdaExp, args: List[(LambdaExp, V)], toeval: List[LambdaExp], env: Environment[A]) extends Frame

@@ -3,6 +3,8 @@ package scalaam.language
 import scalaam.core._
 import scalaam.lattice._
 
+trait Frame
+
 trait Semantics[Exp, V, Addr <: Address, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val lattice: Lattice[V]
@@ -15,10 +17,10 @@ trait Semantics[Exp, V, Addr <: Address, T, C] {
     case class StepIn(fexp: Exp, clo: (Exp, Environment[Addr]), e: Exp, env: Environment[Addr], store: Store[Addr, V]) extends A
     case class Err(err: Error) extends A
 
+    import scala.language.implicitConversions
     implicit def actionToSet(act: A): Set[A] = Set(act)
   }
 
-  trait Frame
 
   def stepEval(e: Exp, env: Environment[Addr], store: Store[Addr, V], t: T): Set[Action.A]
 

@@ -1,7 +1,7 @@
 package scalaam.machine
 
 import scalaam.lattice.Lattice
-import scalaam.language.Semantics
+import scalaam.language.{Semantics, Frame}
 import scalaam.graph.{Graph, GraphElement, GraphMetadataNone, Colors, NoTransition}
 import scalaam.core._
 
@@ -52,7 +52,7 @@ class AAM[Exp, V, A <: Address, T, C](val sem: Semantics[Exp, V, A, T, C])(
   case class KontAddr(exp: Exp, time: T) extends KA
   case object HaltKontAddr extends KA
 
-  case class Kont(f: sem.Frame, next: KA)
+  case class Kont(f: Frame, next: KA)
 
   /**
    * A machine state is made of a control component, a value store, a
@@ -194,7 +194,7 @@ class AAM[Exp, V, A <: Address, T, C](val sem: Semantics[Exp, V, A, T, C])(
       /* Start with the initial state resulting from injecting the program */
       Vector(State.inject(program, sem.initialEnv, sem.initialStore)).toSeq,
       /* Initially we didn't visit any state */
-      VisitedSet.MapVisitedSet.empty[State],
+      VisitedSet.SetVisitedSet.empty[State],
       /* The initial graph is given */
       graph)
   }

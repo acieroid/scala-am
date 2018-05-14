@@ -21,6 +21,7 @@ object EmptyGraphElement
 
 /** A graph with nodes of type N and edges of type E.
     Edges have a specific type because they may contain information (i.e., they can be annotated).
+   TODO: evaluate perf and see whether a mutable graph would be more efficient
  */
 trait Graph[N <: GraphElement, E <: GraphElement] {
   /** Add a node to the graph, without any edge */
