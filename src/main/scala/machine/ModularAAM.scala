@@ -147,12 +147,13 @@ class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Tim
     }
   }
 
+  val graphId = new java.util.concurrent.atomic.AtomicInteger(0)
   case class ModularAAMOutput(time: Double, graphs: Map[Clo, Option[G]], timedOut: Boolean) extends Output {
     def numberOfStates = 0
     def finalValues: Set[Abs] = Set()
     def toFile(path: String)(output: GraphOutput) =
       graphs.foreach({
-        case (k, Some(g)) => output.toFile(g, ())(path + "-" + k.hashCode + ".dot")
+        case (k, Some(g)) => output.toFile(g, ())(path + "-" + graphId.getAndIncrement + ".dot")
         case (_, None) => ()
       })
   }

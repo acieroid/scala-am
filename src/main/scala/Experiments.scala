@@ -1,8 +1,98 @@
 object ExperimentsConfig {
   val timeout: Option[Long] = Some(1800 * 1e9.toLong)
-  val warmupRuns: Int = 20
-  val nruns: Int = 10
+  val warmupRuns: Int = 0
+  val nruns: Int = 1
 }
+
+object ModFExperiments {
+  val benchFiles: List[(String, String)] = List(
+//    ("boyer", "test/gabriel/boyer.scm"),
+//   ("cpstak", "test/gabriel/cpstak.scm"),
+//    ("dderiv", "test/gabriel/dderiv.scm"),
+//    ("deriv", "test/gabriel/deriv.scm"),
+//    ("divrec", "test/gabriel/divrec.scm"),
+//    ("takl", "test/gabriel/takl.scm"),
+//    ("ack", "test/kernighanvanwyk/ack.scm"),
+//    ("nqueens", "test/gambit/nqueens.scm"),
+//    ("array1", "test/gambit/array1.scm"),
+//    ("destruc", "test/gambit/destruc.scm"),
+//    ("diviter", "test/gambit/diviter.scm"),
+//    ("graphs", "test/gambit/graphs.scm"),
+//    ("lattice", "test/gambit/lattice.scm"),
+//    ("mazefun", "test/gambit/mazefun.scm"),
+//    ("paraffins", "test/gambit/paraffins.scm"),
+//    ("perm9", "test/gambit/perm9.scm"),
+//    ("peval", "test/gambit/peval.scm"),
+//    ("primes", "test/gambit/primes.scm"),
+//    ("sum", "test/gambit/sum.scm"),
+//    ("sumloop", "test/gambit/sumloop.scm"),
+//    ("tak", "test/gambit/tak.scm"),
+//    ("easter", "test/rosetta/easter.scm"),
+//    ("quadratic", "test/rosetta/quadratic.scm"),
+//    ("blur", "test/blur.scm"),
+//    ("collatz", "test/collatz.scm"),
+//    ("eta", "test/eta.scm"),
+//    ("gcipd", "test/gcipd.scm"),
+//    ("grid", "test/grid.scm"),
+//    ("kcfa2", "test/kcfa2.scm"),
+//    ("kcfa3", "test/kcfa3.scm"),
+//    ("loop2", "test/loop2.scm"),
+//    ("mj09", "test/mj09.scm"),
+    ("primtest", "test/primtest.scm"),
+    ("regex", "test/regex.scm"),
+    ("rsa", "test/rsa.scm"),
+    ("sat", "test/sat.scm"),
+    ("scm2java", "test/scm2java.scm"))
+  def main(args: Array[String]): Unit = {
+    val lattice = new MakeSchemeLattice[Type.S, Concrete.B, Type.I, Type.F, Type.C, Type.Sym](false)
+    implicit val isSchemeLattice = lattice.isSchemeLattice
+    val address = ClassicalAddress
+    implicit val isAddress = address.isAddress
+    val time = ZeroCFA
+    implicit val isTimestamp = time.isTimestamp
+    val modularmachine = new ModularAAM[SchemeExp, lattice.L, address.A, time.T]
+    val nonmodularmachine = new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AACKAlloc)
+    val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
+
+    def runMod(file: String) = {
+      Util.runOnFile(file, ScalaAM.run[SchemeExp, lattice.L, address.A, time.T](modularmachine, sem)(_, true, ExperimentsConfig.timeout))
+    }
+    def runNonMod(file: String) = {
+      Util.runOnFile(file, ScalaAM.run[SchemeExp, lattice.L, address.A, time.T](nonmodularmachine, sem)(_, true, ExperimentsConfig.timeout))
+    }
+
+    if (args.size == 0) {
+      val N = ExperimentsConfig.nruns
+      val warmup = ExperimentsConfig.warmupRuns
+      for ((name, file) <- benchFiles) {
+        val sname = name.padTo(10, " ").mkString
+        print(s"$sname | ")
+        val times = (1 to N+warmup).map(i =>
+          scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
+            runMod(file).time
+          })
+        val time = (times.drop(warmup).sum / N * 1000).toInt
+        print(s"MOD: $time | ")
+
+        val times2 = (1 to N+warmup).map(i =>
+          scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
+            runNonMod(file).time
+          })
+        val time2 = (times2.drop(warmup).sum / N * 1000).toInt
+        println(s"NONMOD: $time2")
+
+      }
+    } else {
+      val result = runMod(args(0))
+      val graph = args(1)
+      if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
+      println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
+      result.toFile(graph)(GraphDOTOutput)
+    }
+
+  }
+}
+
 
 object ActorExperimentsModular {
   val benchFiles: List[(String, String)] = List(
@@ -829,3 +919,4 @@ object ActorExperimentsScalabilityBehaviorsMacrostepping {
     writer.close
   }
 }
+
