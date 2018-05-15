@@ -19,13 +19,8 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
       Action.Value(LambdaLattice[V, A].function(e, env), store)
     case LambdaCall(f, args, _) =>
       Action.Push(FrameFuncallOperator(f, args, env), f, env, store)
-    case LambdaVar(id) => env.lookup(id.name) match {
-      case Some(a) => store.lookup(a) match {
-        case Some(v) => Action.Value(v, store)
-        case None => ??? /* TODO: use mayfail */
-      }
-      case None => ??? /* TODO: use mayfail */
-    }
+    case LambdaVar(id) => Action.fromMF(env.lookupMF(id).flatMap(a =>
+      store.lookupMF(a).map(v => Action.Value(v, store))))
   }
 
   def stepKont(v: V, frame: Frame, store: Store[A, V], t: T): Set[Action.A] = frame match {

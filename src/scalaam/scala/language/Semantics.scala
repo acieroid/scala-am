@@ -19,8 +19,12 @@ trait Semantics[Exp, V, Addr <: Address, T, C] {
 
     import scala.language.implicitConversions
     implicit def actionToSet(act: A): Set[A] = Set(act)
+    implicit def fromMF(mf: MayFail[A, Error]): Set[A] = mf match {
+      case MayFailSuccess(a) => Set(a)
+      case MayFailError(errs) => errs.toSet.map(e => Err(e))
+      case MayFailBoth(a, errs) => errs.toSet.map(e => Err(e)) ++ (Set(a))
+    }
   }
-
 
   def stepEval(e: Exp, env: Environment[Addr], store: Store[Addr, V], t: T): Set[Action.A]
 
@@ -30,3 +34,4 @@ trait Semantics[Exp, V, Addr <: Address, T, C] {
   def initialEnv: Iterable[(String, Addr)] = initialBindings.map({ case (name, a, _) => (name, a) })
   def initialStore: Iterable[(Addr, V)] = initialBindings.map({ case (_, a, v) => (a, v) })
 }
+
