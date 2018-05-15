@@ -20,9 +20,6 @@ trait MachineAbstraction[Exp, V, A <: Address, T, C] {
   /** The semantics used */
   val sem: Semantics[Exp, V, A, T, C]
 
-  /** The name of the abstract machine */
-  val name: String
-
   /** The states explored by the machine.
    States can be converted to graph nodes */
   type State <: GraphElement

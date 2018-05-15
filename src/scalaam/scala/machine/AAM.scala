@@ -25,13 +25,12 @@ import scalaam.core._
 
  * Exp are used as context for the timestamp
  */
-class AAM[Exp, V, A <: Address, T, C](val sem: Semantics[Exp, V, A, T, C])(
-  implicit val timestamp: Timestamp[T, C],
+class AAM[Exp, V, A <: Address, T](val sem: Semantics[Exp, V, A, T, Exp])(
+  implicit val timestamp: Timestamp[T, Exp],
   implicit val lattice: Lattice[V])
-    extends MachineAbstraction[Exp, V, A, T, C] {
+    extends MachineAbstraction[Exp, V, A, T, Exp] {
 
   val Action = sem.Action
-  val name = "AAM"
 
   /** Control component */
   trait Control
@@ -90,18 +89,18 @@ class AAM[Exp, V, A <: Address, T, C](val sem: Semantics[Exp, V, A, T, C])(
     private def integrate(a: KA, actions: Set[Action.A]): Set[State] =
       actions.flatMap({
         /* When a value is reached, we go to a continuation state */
-        case Action.Value(v, store) => Set(State(ControlKont(v), store, kstore, a, Timestamp[T, C].tick(t)))
+        case Action.Value(v, store) => Set(State(ControlKont(v), store, kstore, a, Timestamp[T, Exp].tick(t)))
         /* When a continuation needs to be pushed, push it in the continuation store */
         case Action.Push(frame, e, env, store) => {
           val next = KontAddr(e, t)
-          Set(State(ControlEval(e, env), store, kstore.extend(next, Set(Kont(frame, a))), next, Timestamp[T, C].tick(t)))
+          Set(State(ControlEval(e, env), store, kstore.extend(next, Set(Kont(frame, a))), next, Timestamp[T, Exp].tick(t)))
         }
         /* When a value needs to be evaluated, we go to an eval state */
-        case Action.Eval(e, env, store) => Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, C].tick(t)))
+        case Action.Eval(e, env, store) => Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, Exp].tick(t)))
         /* When a function is stepped in, we also go to an eval state */
-        case Action.StepIn(fexp, _, e, env, store) => Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, C].tick(t, null.asInstanceOf[C] /* TODO fexp */)))
+        case Action.StepIn(fexp, _, e, env, store) => Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, Exp].tick(t, fexp)))
         /* When an error is reached, we go to an error state */
-        case Action.Err(err) => Set(State(ControlError(err), store, kstore, a, Timestamp[T, C].tick(t)))
+        case Action.Err(err) => Set(State(ControlError(err), store, kstore, a, Timestamp[T, Exp].tick(t)))
       })
 
     /**
@@ -125,7 +124,7 @@ class AAM[Exp, V, A <: Address, T, C](val sem: Semantics[Exp, V, A, T, C])(
   object State {
     def inject(exp: Exp, env: Iterable[(String, A)], store: Iterable[(A, V)]) =
       State(ControlEval(exp, Environment.initial[A](env)),
-        Store.initial[A, V](store), Store.empty[KA, Set[Kont]], HaltKontAddr, Timestamp[T, C].initial(""))
+        Store.initial[A, V](store), Store.empty[KA, Set[Kont]], HaltKontAddr, Timestamp[T, Exp].initial(""))
 
     /* TODO: do this without typeclass, e.g., class State extends WithKey[KA](a) */
     implicit val stateWithKey = new WithKey[State] {
