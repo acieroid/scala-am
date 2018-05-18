@@ -9,8 +9,6 @@ trait StringLattice[S] extends Lattice[S] {
   def toSymbol[Sym : SymbolLattice](s: S): Sym
 
   class StringLatticeLaw[I]()(implicit val intLat: IntLattice[I]) extends LatticeLaw {
-    import scalaz.std.boolean.conditional
-
     def lengthPreservesBottom: Boolean =
       length[I](bottom) == IntLattice[I].bottom
     def lengthIsMonotone(a: S, b: S): Boolean =

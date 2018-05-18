@@ -1,9 +1,9 @@
 package scalaam.lattice
 
-import scalaz.Monoid
-
-/** A (join semi-)lattice L should support the following operations */
-trait Lattice[L] extends Monoid[L] with PartialOrdering[L] {
+/** A lattice typeclass.
+ * It is actually a join-semi lattice as it only need a join operation and a bottom element
+ */
+trait Lattice[L] extends PartialOrdering[L] {
   /** A lattice has a bottom element */
   def bottom: L
   /** Elements of the lattice can be joined together */
@@ -32,7 +32,8 @@ trait Lattice[L] extends Monoid[L] with PartialOrdering[L] {
 
   /** Lattice properties */
   trait LatticeLaw {
-    import scalaz.std.boolean.conditional
+    def conditional(p: Boolean, q: => Boolean): Boolean = !p || q
+
     /** Bottom is the lower bound of all elements in the lattice */
     def bottomLowerBound(a: L): Boolean = subsumes(a, bottom)
     /** The join operation is commutative */

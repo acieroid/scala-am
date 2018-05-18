@@ -5,10 +5,9 @@ trait SymbolLattice[Sym] extends Lattice[Sym] {
   def inject(sym: String): Sym
   def toString[S : StringLattice](n: Sym): S
 
-  trait SymbolLatticeLaw {
+  trait SymbolLatticeLaw extends LatticeLaw {
     /* No laws for now */
   }
-  val symbolLatticeLaw = new SymbolLatticeLaw {}
 }
 
 object SymbolLattice {

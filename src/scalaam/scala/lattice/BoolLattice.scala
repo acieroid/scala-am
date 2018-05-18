@@ -9,7 +9,6 @@ trait BoolLattice[B] extends Lattice[B] {
   def top: B
 
   trait BoolLatticeLaw extends LatticeLaw {
-    import scalaz.std.boolean.conditional
     /**
      * Inject preserves truthiness
      * isTrue(inject(true)) ∧ isFalse(inject(false))

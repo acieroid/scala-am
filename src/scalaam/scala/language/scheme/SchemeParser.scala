@@ -562,114 +562,113 @@ object SchemeRenamer {
  * Which is semantically equivalent with respect to the end result
  */
 object SchemeUndefiner {
-  import scalaz.Free.Trampoline
-  import scalaz.Trampoline
+  import scala.util.control.TailCalls._
 
   def undefine(exps: List[SchemeExp]): SchemeExp =
-    undefine(exps, List()).run
+    undefine(exps, List()).result
 
-  def undefine(exps: List[SchemeExp], defs: List[(Identifier, SchemeExp)]): Trampoline[SchemeExp] = exps match {
-    case Nil => Trampoline.done(SchemeBegin(Nil, Position.none))
+  def undefine(exps: List[SchemeExp], defs: List[(Identifier, SchemeExp)]): TailRec[SchemeExp] = exps match {
+    case Nil => done(SchemeBegin(Nil, Position.none))
     case SchemeDefineFunction(name, args, body, pos) :: rest =>
-      Trampoline.suspend(Trampoline.suspend(undefineBody(body)).flatMap(bodyv => undefine(SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.pos), pos) :: rest, defs)))
-    case SchemeDefineVariable(name, value, _) :: rest => Trampoline.suspend(undefine1(value)).flatMap(v =>
-      Trampoline.suspend(undefine(rest, (name, v) :: defs)))
+      tailcall(tailcall(undefineBody(body)).flatMap(bodyv => undefine(SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.pos), pos) :: rest, defs)))
+    case SchemeDefineVariable(name, value, _) :: rest => tailcall(undefine1(value)).flatMap(v =>
+      tailcall(undefine(rest, (name, v) :: defs)))
     case _ :: _ => if (defs.isEmpty) {
-      Trampoline.suspend(undefineBody(exps)).flatMap({
-        case Nil => Trampoline.done(SchemeBegin(Nil, Position.none))
-        case exp :: Nil => Trampoline.done(exp)
-        case exps => Trampoline.done(SchemeBegin(exps, exps.head.pos))
+      tailcall(undefineBody(exps)).flatMap({
+        case Nil => done(SchemeBegin(Nil, Position.none))
+        case exp :: Nil => done(exp)
+        case exps => done(SchemeBegin(exps, exps.head.pos))
       })
     } else {
-      Trampoline.suspend(undefineBody(exps)).flatMap(body => Trampoline.done(SchemeLetrec(defs.reverse, body, exps.head.pos)))
+      tailcall(undefineBody(exps)).flatMap(body => done(SchemeLetrec(defs.reverse, body, exps.head.pos)))
     }
   }
 
-  def trampolineM[A, B](f: A => Trampoline[B], l: List[A]): Trampoline[List[B]] = l match {
-    case Nil => Trampoline.done(Nil)
-    case x :: xs => Trampoline.suspend(f(x)).flatMap(y => Trampoline.suspend(trampolineM(f, xs)).flatMap(ys => Trampoline.done(y :: ys)))
+  def trampolineM[A, B](f: A => TailRec[B], l: List[A]): TailRec[List[B]] = l match {
+    case Nil => done(Nil)
+    case x :: xs => tailcall(f(x)).flatMap(y => tailcall(trampolineM(f, xs)).flatMap(ys => done(y :: ys)))
   }
 
-  def undefine1(exp: SchemeExp): Trampoline[SchemeExp] = undefine(List(exp), List())
+  def undefine1(exp: SchemeExp): TailRec[SchemeExp] = undefine(List(exp), List())
 
-  def undefineBody(exps: List[SchemeExp]): Trampoline[List[SchemeExp]] = exps match {
-    case Nil => Trampoline.done(Nil)
-    case SchemeDefineFunction(_, _, _, _) :: _ => Trampoline.suspend(undefine(exps, List())).map(v => List(v))
-    case SchemeDefineVariable(_, _, _) :: _ => Trampoline.suspend(undefine(exps, List())).map(v => List(v))
+  def undefineBody(exps: List[SchemeExp]): TailRec[List[SchemeExp]] = exps match {
+    case Nil => done(Nil)
+    case SchemeDefineFunction(_, _, _, _) :: _ => tailcall(undefine(exps, List())).map(v => List(v))
+    case SchemeDefineVariable(_, _, _) :: _ => tailcall(undefine(exps, List())).map(v => List(v))
     case exp :: rest => {
       val exp2 = exp match {
-        case SchemeLambda(args, body, pos) => Trampoline.suspend(undefineBody(body)).map(b => SchemeLambda(args, b, pos))
-        case SchemeFuncall(f, args, pos) => Trampoline.suspend(undefine1(f)).flatMap(fun =>
+        case SchemeLambda(args, body, pos) => tailcall(undefineBody(body)).map(b => SchemeLambda(args, b, pos))
+        case SchemeFuncall(f, args, pos) => tailcall(undefine1(f)).flatMap(fun =>
           trampolineM(undefine1, args).map(argsv => SchemeFuncall(fun, argsv, pos)))
         case SchemeIf(cond, cons, alt, pos) =>
-          Trampoline.suspend(undefine1(cond)).flatMap(condv =>
-            Trampoline.suspend(undefine1(cons)).flatMap(consv =>
-              Trampoline.suspend(undefine1(alt)).map(altv =>
+          tailcall(undefine1(cond)).flatMap(condv =>
+            tailcall(undefine1(cons)).flatMap(consv =>
+              tailcall(undefine1(alt)).map(altv =>
                 SchemeIf(condv, consv, altv, pos))))
         case SchemeLet(bindings, body, pos) =>
           trampolineM((x : (Identifier, SchemeExp)) => x match {
-            case (b, v) => Trampoline.suspend(undefine1(v)).map(vv => (b, vv))
+            case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
           }, bindings).flatMap(bindingsv =>
-            Trampoline.suspend(undefineBody(body)).map(bodyv =>
+            tailcall(undefineBody(body)).map(bodyv =>
               SchemeLet(bindingsv, bodyv, pos)))
         case SchemeLetStar(bindings, body, pos) =>
           trampolineM((x : (Identifier, SchemeExp)) => x match {
-            case (b, v) => Trampoline.suspend(undefine1(v)).map(vv => (b, vv))
+            case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
           }, bindings).flatMap(bindingsv =>
-            Trampoline.suspend(undefineBody(body)).map(bodyv =>
+            tailcall(undefineBody(body)).map(bodyv =>
               SchemeLetStar(bindingsv, bodyv, pos)))
         case SchemeLetrec(bindings, body, pos) =>
           trampolineM((x : (Identifier, SchemeExp)) => x match {
-            case (b, v) => Trampoline.suspend(undefine1(v)).map(vv => (b, vv))
+            case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
           }, bindings).flatMap(bindingsv =>
-            Trampoline.suspend(undefineBody(body)).map(bodyv =>
+            tailcall(undefineBody(body)).map(bodyv =>
               SchemeLetrec(bindingsv, bodyv, pos)))
         case SchemeNamedLet(name, bindings, body, pos) =>
           trampolineM((x : (Identifier, SchemeExp)) => x match {
-            case (b, v) => Trampoline.suspend(undefine1(v)).map(vv => (b, vv))
+            case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
           }, bindings).flatMap(bindingsv =>
-            Trampoline.suspend(undefineBody(body)).map(bodyv =>
+            tailcall(undefineBody(body)).map(bodyv =>
               SchemeNamedLet(name, bindingsv, bodyv, pos)))
-        case SchemeSet(variable, value, pos) => Trampoline.suspend(undefine1(value)).map(v => SchemeSet(variable, v, pos))
-        case SchemeBegin(exps, pos) => Trampoline.suspend(undefineBody(exps)).map(expsv => SchemeBegin(expsv, pos))
+        case SchemeSet(variable, value, pos) => tailcall(undefine1(value)).map(v => SchemeSet(variable, v, pos))
+        case SchemeBegin(exps, pos) => tailcall(undefineBody(exps)).map(expsv => SchemeBegin(expsv, pos))
         case SchemeCond(clauses, pos) =>
           trampolineM((e: (SchemeExp, List[SchemeExp])) => e match {
-            case (cond, body) => Trampoline.suspend(undefine1(cond)).flatMap(condv =>
-              Trampoline.suspend(undefineBody(body)).map(bodyv =>
+            case (cond, body) => tailcall(undefine1(cond)).flatMap(condv =>
+              tailcall(undefineBody(body)).map(bodyv =>
                 (condv, bodyv)))
           }, clauses).map(clausesv => SchemeCond(clausesv, pos))
         case SchemeCase(key, clauses, default, pos) =>
-          Trampoline.suspend(undefine1(key)).flatMap(keyv =>
+          tailcall(undefine1(key)).flatMap(keyv =>
             trampolineM((c: (List[SchemeValue], List[SchemeExp])) => c match {
-              case (vs, body) => Trampoline.suspend(undefineBody(body)).map(bodyv => (vs, bodyv))
+              case (vs, body) => tailcall(undefineBody(body)).map(bodyv => (vs, bodyv))
             },
             clauses).flatMap(clausesv =>
-              Trampoline.suspend(undefineBody(default)).map(defaultv =>
+              tailcall(undefineBody(default)).map(defaultv =>
                 SchemeCase(keyv, clausesv, defaultv, pos))))
         case SchemeAnd(args, pos) => trampolineM(undefine1, args).map(argsv => SchemeAnd(argsv, pos))
         case SchemeOr(args, pos) => trampolineM(undefine1, args).map(argsv => SchemeOr(argsv, pos))
         case SchemeDo(vars, test, finals, commands, pos) =>
           trampolineM((x: (Identifier, SchemeExp, Option[SchemeExp])) => x match {
             case (id, init, step) =>
-              Trampoline.suspend(undefine1(init)).flatMap(initv => step match {
+              tailcall(undefine1(init)).flatMap(initv => step match {
                 case Some(s) => undefine1(s).map(stepv => {
                   val x: Option[SchemeExp] = Some(stepv)
                   (id, initv, x)
                 })
                 case None =>
                   val x: Option[SchemeExp] = None
-                  Trampoline.done((id, initv, x))
+                  done((id, initv, x))
               })
           }, vars).flatMap(varsv =>
-            Trampoline.suspend(undefine1(test)).flatMap(testv =>
-              Trampoline.suspend(undefineBody(finals)).flatMap(finalsv =>
-                Trampoline.suspend(undefineBody(commands).map(commandsv =>
+            tailcall(undefine1(test)).flatMap(testv =>
+              tailcall(undefineBody(finals)).flatMap(finalsv =>
+                tailcall(undefineBody(commands).map(commandsv =>
                   SchemeDo(varsv, testv, finalsv, commandsv, pos))))))
-        case SchemeVar(id) => Trampoline.done(SchemeVar(id))
-        case SchemeQuoted(quoted, pos) => Trampoline.done(SchemeQuoted(quoted, pos))
-        case SchemeValue(value, pos) => Trampoline.done(SchemeValue(value, pos))
+        case SchemeVar(id) => done(SchemeVar(id))
+        case SchemeQuoted(quoted, pos) => done(SchemeQuoted(quoted, pos))
+        case SchemeValue(value, pos) => done(SchemeValue(value, pos))
       }
-      exp2.flatMap(e2 => Trampoline.suspend(undefineBody(rest)).flatMap(e3 => Trampoline.done(e2 :: e3)))
+      exp2.flatMap(e2 => tailcall(undefineBody(rest)).flatMap(e3 => done(e2 :: e3)))
     }
   }
 }

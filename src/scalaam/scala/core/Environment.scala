@@ -1,7 +1,11 @@
 package scalaam.core
 
+/** Error raised when a variable is unbound when looked up in an environment.
+ * @see [[scalaam.core.Error]]
+ */
 case class UnboundVariable(id: Identifier) extends Error
 
+/** Mapping from variable name to addresses */
 trait Environment[A <: Address] {
   /** Gets all the keys of the environment */
   def keys: Iterable[String]

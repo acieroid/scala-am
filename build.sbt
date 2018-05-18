@@ -5,7 +5,6 @@ scalaVersion := "2.12.6"
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.0"
-libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.2.22"
 
 maxErrors := 5
 scalaSource in Compile := baseDirectory.value / "src" / "scalaam"

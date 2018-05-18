@@ -16,7 +16,6 @@ trait IntLattice[I] extends Lattice[I] { self =>
   def toString[S : StringLattice](n: I): S
 
   class IntLatticeLaw[R, B, S](implicit val realLat: RealLattice[R], boolLat: BoolLattice[B], strLat: StringLattice[S]) extends LatticeLaw {
-    import scalaz.std.boolean.conditional
 
     def toRealPreservesBottom: Boolean =
       toReal[R](bottom) == RealLattice[R].bottom

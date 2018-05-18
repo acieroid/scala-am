@@ -4,10 +4,9 @@ package scalaam.lattice
 trait CharLattice[C] extends Lattice[C] {
   def inject(c: Char): C
 
-  trait CharLatticeLaw {
+  trait CharLatticeLaw extends LatticeLaw {
     /* No laws for now */
   }
-  val charLatticeLaw = new CharLatticeLaw {}
 }
 
 object CharLattice {

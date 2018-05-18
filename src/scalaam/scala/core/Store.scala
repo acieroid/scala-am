@@ -2,10 +2,6 @@ package scalaam.core
 
 import scalaam.lattice.Lattice
 
-import scalaz.Semigroup
-import scalaz.Scalaz.ToSemigroupOps
-import scalaz.std.map._
-
 case class UnboundAddress[A <: Address](a: A) extends Error
 
 trait Store[A <: Address, V] {
@@ -47,10 +43,8 @@ case class BasicStore[A <: Address, V](content: Map[A, V]) extends Store[A, V] {
   }
   def update(a: A, v: V) = extend(a, v)
   def updateOrExtend(a: A, v: V) = extend(a, v)
-  def join(that: Store[A, V]) = that match {
-    case BasicStore(content2) => this.copy(content = content |+| content2)
-    case _ => throw new Exception(s"Incompatible stores: ${this.getClass.getSimpleName} and ${that.getClass.getSimpleName}")
-  }
+  def join(that: Store[A, V]) = keys.foldLeft(that)((acc, k) =>
+    lookup(k).fold(acc)(v => acc.extend(k, v)))
   def subsumes(that: Store[A, V]) =
     that.forall((binding: (A, V)) => content.get(binding._1).exists(v => lat.subsumes(v, binding._2)))
 }
