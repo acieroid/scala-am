@@ -70,10 +70,10 @@ abstract class Semantics[Exp : Expression, Abs : JoinLattice, Addr : Address, Ti
    *   - the position of the argument
    *   - the value of the argument
    */
-  protected def bindArgs(l: List[(Identifier, Abs)], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs]) =
-    l.foldLeft((env, store))({ case ((env, store), (id, value)) => {
+  protected def bindArgs(l: List[(Identifier, Abs)], env: Environment[Addr], store: Store[Addr, Abs], t: Time): (Environment[Addr], Store[Addr, Abs], Set[Effect[Addr]]) =
+    l.foldLeft((env, store, Set[Effect[Addr]]()))({ case ((env, store, effs), (id, value)) => {
       val a = Address[Addr].variable(id, value, t)
-      (env.extend(id.name, a), store.extend(a, value))
+      (env.extend(id.name, a), store.extend(a, value), effs + Effect.writeVariable[Addr](a))
     }})
 }
 

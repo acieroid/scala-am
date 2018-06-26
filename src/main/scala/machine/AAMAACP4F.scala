@@ -13,7 +13,7 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
   def name = s"AAMAACP4F($strategy)"
 
   trait KontAddr
-  case class AAMKontAddress(e2: Exp, t: Time) extends KontAddr {
+  case class AAMKontAddress(e2: Exp, env: Environment[Addr], t: Time) extends KontAddr {
     override def toString = s"AAM($e2)"
   }
   case class AACKontAddress(e2: Exp, env2: Environment[Addr], control: Control, store: Store[Addr, Abs], t: Time) extends KontAddr {
@@ -40,7 +40,7 @@ class AAMAACP4F[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Time
   }
 
   def kalloc(state: State, e: Exp, env: Environment[Addr], store: Store[Addr, Abs], t: Time) = strategy match {
-    case AAMKAlloc => AAMKontAddress(e, t)
+    case AAMKAlloc => AAMKontAddress(e, env, t)
     case AACKAlloc => AACKontAddress(e, env, state.control, store, t)
     case P4FKAlloc => P4FKontAddress(e, env, t)
   }

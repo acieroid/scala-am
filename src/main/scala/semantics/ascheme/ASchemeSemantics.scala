@@ -70,7 +70,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimes
           if (margs.size != margsv.size) {
             Action.error(ArityError(s"receive message $mname on actor $name with pid $self", margs.size, margsv.size))
           } else {
-            val (env2, store2) = bindArgs(margs.zip(margsv), env, store, t)
+            val (env2, store2, _) = bindArgs(margs.zip(margsv), env, store, t)
             val pself = self.asInstanceOf[PID]
             val vself = IsASchemeLattice[Abs].injectPid(pself)
             val aself = Address[Addr].variable(Identifier("a/self", actd.pos), vself, t)
@@ -112,7 +112,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimes
             if (xs.size != argsv.size) {
               Action.error(ArityError(s"create actor $name", xs.size, argsv.size))
             } else {
-              val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
+              val (env2, store2, _) = bindArgs(xs.zip(argsv), env, store, t)
               ActorAction.create(name, actd, exp, argsv, env2, store2, IsASchemeLattice[Abs].injectPid _)
           }
           case (name, actd, env) =>
@@ -132,7 +132,7 @@ class ASchemeSemantics[Abs : IsASchemeLattice, Addr : Address, Time : ActorTimes
             if (xs.size != argsv.size) {
               Action.error(ArityError("become behavior", xs.size, argsv.size))
             } else {
-              val (env2, store2) = bindArgs(xs.zip(argsv), env, store, t)
+              val (env2, store2, _) = bindArgs(xs.zip(argsv), env, store, t)
               ActorAction.become(name, actd, argsv, env2, store2, IsASchemeLattice[Abs].inject(false))
             }
           case (name, actd, env) =>

@@ -1,3 +1,4 @@
+;(define (string-ref str n) #\a) ;; quick hack
 ;;; BROWSE -- Benchmark to create and browse through
 ;;; an AI-like data base of units.
 

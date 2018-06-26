@@ -58,7 +58,7 @@ class ANFSemantics[Abs : IsSchemeLattice, Addr : Address, Time : Timestamp](prim
           case (ANFLambda(args, body, pos), env) => if (args.length == argsv.length) {
             /* To call a closure, bind the arguments and step into the function */
             bindArgs(args.zip(argsv.reverseMap(_._2)), env, store, t) match {
-              case (env2, store) => Action.stepIn(f, (ANFLambda(args, body, pos), env), body, env2, store, argsv, effects)
+              case (env2, store, effs) => Action.stepIn(f, (ANFLambda(args, body, pos), env), body, env2, store, argsv, effs ++ effects)
             }
           } else {
             Action.error(ArityError(f.toString, args.length, argsv.length))

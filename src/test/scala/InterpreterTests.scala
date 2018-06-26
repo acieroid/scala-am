@@ -9,7 +9,7 @@ case class Benchmark[Abs : JoinLattice](name: String, file: String, expected: Ab
 }
 trait BenchmarkFiles {
   /* Expected running time: 2 second timeout -> ~3 minutes, 10 seconds timeout -> ~7 minutes */
-  val timeout: Duration = Duration(10, "seconds")
+  val timeout: Duration = Duration(180, "seconds")
 
   def benchmarks(lattice: SchemeLattice): List[Benchmark[lattice.L]] = {
     implicit val abs = lattice.isSchemeLattice
@@ -28,22 +28,22 @@ trait BenchmarkFiles {
     List(
       /* Gabriel benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
       /* Benchmarks ignored because common with gambit: browse, ctak, destruc, diviter, puzzle */
-      Benchmark("boyer", "test/gabriel/boyer.scm", abs.inject(true)),
-      Benchmark("cpstak", "test/gabriel/cpstak.scm", abs.inject(6)),
-      Benchmark("dderiv", "test/gabriel/dderiv.scm", abs.inject(true)),
-      Benchmark("deriv", "test/gabriel/deriv.scm", abs.inject(true)),
-      Benchmark("divrec", "test/gabriel/divrec.scm", abs.inject(true)),
-      Benchmark("takl", "test/gabriel/takl.scm", abs.inject(true)),
+//      Benchmark("boyer", "test/gabriel/boyer.scm", abs.inject(true)),
+//      Benchmark("cpstak", "test/gabriel/cpstak.scm", abs.inject(6)),
+//      Benchmark("dderiv", "test/gabriel/dderiv.scm", abs.inject(true)),
+//      Benchmark("deriv", "test/gabriel/deriv.scm", abs.inject(true)),
+//      Benchmark("divrec", "test/gabriel/divrec.scm", abs.inject(true)),
+//      Benchmark("takl", "test/gabriel/takl.scm", abs.inject(true)),
 
       /* Kernighan and Van Wyk benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html */
       /* Benchmarks ignored because common with gambit: array1, string, sumloop */
       /* Benchmarks igored because use i/o: cat, sum1, tail, wc */
-      Benchmark("ack", "test/kernighanvanwyk/ack.scm", abs.inject(4)),
+//      Benchmark("ack", "test/kernighanvanwyk/ack.scm", abs.inject(4)),
 
       /* Gambit benchmarks, see http://www.larcenists.org/Twobit/benchmarksAbout.html, and http://github.com/gambit/gambit */
-      Benchmark("nqueens", "test/gambit/nqueens.scm", abs.inject(92)),
-      Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)),
-      // Benchmark("browse", "test/gambit/browse.scm", abs.inject(1101)), // missing primitive: string-ref
+//      Benchmark("nqueens", "test/gambit/nqueens.scm", abs.inject(92)),
+//      Benchmark("array1", "test/gambit/array1.scm", abs.inject(true)),
+//      Benchmark("browse", "test/gambit/browse.scm", abs.inject(1101)), // missing primitive: string-ref
       // Benchmark("cat", "test/gambit/cat.scm", ???) // rely on file io
       // Benchmark("compiler", "test/gambit/compiler.scm", ???) // dot notation
       // Benchmark("ctak.scm", "test/gambit/ctak.scm", abs.inject(true)) // call/cc

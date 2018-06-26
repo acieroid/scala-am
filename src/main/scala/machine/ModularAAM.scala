@@ -1,5 +1,5 @@
 import scalaz.Scalaz._
-import scalaz._
+import scalaz.{Ordering => _, _}
 
 class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Timestamp]
     extends AbstractMachine[Exp, Abs, Addr, Time] {
@@ -68,8 +68,13 @@ class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Tim
   }
 
   type Clo = (String, Exp, Environment[Addr])
+  def fromEffs(effs: Set[Effect[Addr]], store: Store[Addr, Abs], store2: Store[Addr, Abs]): Set[ModEffect] =
+    effs.collect({
+      case e: Effect[Addr] if e.kind == WriteEffect && store.lookup(e.target) != store2.lookup(e.target) => ModEffectWrite(e.target)
+      case e: Effect[Addr] if e.kind == ReadEffect => ModEffectRead(e.target)
+    })
 
-  case class FunctionState(control: Control, kont: KontAddr, t: Time) {
+  case class FunctionState(clo: Clo, control: Control, kont: KontAddr, t: Time) {
     def toXml: List[scala.xml.Node] = control match {
       case ControlEval(e, _) => List(<font color="forestgreen">{e.toString.take(40)}</font>)
       case ControlKont(v) => List(<font color="rosybrown1">{v.toString.take(40)}</font>)
@@ -84,73 +89,84 @@ class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Tim
       case ControlError(_) => true
       case _ => false
     }
-    def integrate(act: Act, returned: Map[Clo, Abs], store: GlobalStore):
+    def integrate(act: Act, store: GlobalStore):
         (/* successor state */
           Option[FunctionState],
-          /* resulting store */
+          /* successor store */
           GlobalStore,
-          /* functions called */
-          Option[Clo],
-          /* return value */
-          Option[Abs]
-        ) = Profiler.profile("integrate") { act match {
-      case ActionReachedValue(v, store2, effs) =>
-        (Some(this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t))),
-          store.copy(store = store.store.copy(d = store.store.d |+| store2.asInstanceOf[DeltaStore[Addr, Abs]].d)), Option.empty, Option.empty)
-      case ActionPush(frame, e, env, store2, effs) =>
-        val next = NormalKontAddress(e, t)
-        (Some(this.copy(control = ControlEval(e, env), kont = next, t = Timestamp[Time].tick(t))),
-          store.copy(store = store.store.copy(d = store.store.d |+| store2.asInstanceOf[DeltaStore[Addr, Abs]].d)).push(next, Kont(frame, kont)),
-          Option.empty, Option.empty)
-      case ActionEval(e, env, store2, effs) =>
-        (Some(this.copy(control = ControlEval(e, env), t = Timestamp[Time].tick(t))),
-          store.copy(store = store.store.copy(d = store.store.d |+| store2.asInstanceOf[DeltaStore[Addr, Abs]].d)), Option.empty, Option.empty)
-      case ActionStepIn(fexp, clo, e, env, store2, argsv, effs) =>
-        val v = returned(("clo", e, env))
-        (Some(this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t, fexp))),
-          store.copy(store = store.store.copy(d = store.store.d |+| store2.asInstanceOf[DeltaStore[Addr, Abs]].d)), Some(("clo" /* fexp.toString */, e, env)), Option.empty)
-      case ActionError(err) =>
-        (Some(this.copy(control = ControlError(err))),
-          store, Option.empty, Option.empty)
-        }
+          /* effects */
+          Set[ModEffect]) = Profiler.profile("integrate") { act match {
+            case ActionReachedValue(v, store2, effs) =>
+              (Some(this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t))),
+                store.copy(store = store.store.copy(d = store.store.d |+| store2.asInstanceOf[DeltaStore[Addr, Abs]].d)),
+                fromEffs(effs, store.store, store2))
+            case ActionPush(frame, e, env, store2, effs) =>
+              val next = NormalKontAddress(e, t)
+              (Some(this.copy(control = ControlEval(e, env), kont = next, t = Timestamp[Time].tick(t))),
+                store.copy(store = store.store.copy(d = store.store.d |+| store2.asInstanceOf[DeltaStore[Addr, Abs]].d)).push(next, Kont(frame, kont)),
+                fromEffs(effs, store.store, store2))
+            case ActionEval(e, env, store2, effs) =>
+              (Some(this.copy(control = ControlEval(e, env), t = Timestamp[Time].tick(t))),
+                store.copy(store = store.store.copy(d = store.store.d |+| store2.asInstanceOf[DeltaStore[Addr, Abs]].d)),
+                fromEffs(effs, store.store, store2))
+            case ActionStepIn(fexp, clo, e, env, store2, argsv, effs) =>
+              val retaddr = RetAddr(("clo", e, env))
+              val v = store.store.lookupBot(retaddr)
+              (Some(this.copy(control = ControlKont(v), t = Timestamp[Time].tick(t, fexp))),
+                store.copy(store = store.store.copy(d = store.store.d |+| store2.asInstanceOf[DeltaStore[Addr, Abs]].d)),
+                /* A call to a function is effectively performing the call followed by reading the value at its return address */
+                fromEffs(effs, store.store, store2) + ModEffectCall(("clo", e, env)) + ModEffectRead(RetAddr(("clo", e, env))))
+            case ActionError(err) =>
+              (Some(this.copy(control = ControlError(err))),
+                store,
+                Set.empty)
+          }
     }
-    def step(sem: Semantics[Exp, Abs, Addr, Time], returned: Map[Clo, Abs], store: GlobalStore):
+    def step(sem: Semantics[Exp, Abs, Addr, Time], store: GlobalStore):
         (/* successor states */
           Set[FunctionState],
-          /* called functions */
-          Set[Clo],
-          /* return value */
-          Abs,
           /* resulting store */
-          GlobalStore
+          GlobalStore,
+          /* effects */
+          Set[ModEffect]
         ) = Profiler.profile("step") {
-      val init: (Set[FunctionState], Set[Clo], Abs, GlobalStore) = (Set.empty, Set.empty, JoinLattice[Abs].bottom, store)
+      val init: (Set[FunctionState], GlobalStore, Set[ModEffect]) = (Set.empty, store, Set.empty)
       control match {
         case ControlEval(e, env) =>
           sem.stepEval(e, env, store.store, t).foldLeft(init)((acc, action) =>
-          integrate(action, returned, acc._4) match { case (s, store2, called, result) =>
-            (acc._1 ++ s.toSet, acc._2 ++ called.toSet, JoinLattice[Abs].join(acc._3, result.getOrElse(JoinLattice[Abs].bottom)), store2)
-          })
+            integrate(action, acc._2) match { case (s, store2, effs) =>
+              (acc._1 ++ s.toSet, store2, acc._3 ++ effs)
+            })
         case ControlKont(v) if kont != HaltKontAddress =>
           store.kstore.lookup(kont).foldLeft(init)((acc, kont) => kont match {
-            case Kont(frame, next) => sem.stepKont(v, frame, acc._4.store, t).foldLeft(acc)((acc, action) =>
-              this.copy(kont = next).integrate(action, returned, acc._4) match {
-                case (s, store2, called, result) => (acc._1 ++ s.toSet, acc._2 ++ called.toSet, JoinLattice[Abs].join(acc._3, result.getOrElse(JoinLattice[Abs].bottom)), store2)
+            case Kont(frame, next) => sem.stepKont(v, frame, acc._2.store, t).foldLeft(acc)((acc, action) =>
+              this.copy(kont = next).integrate(action, acc._2) match {
+                case (s, store2, effs) =>
+                  (acc._1 ++ s.toSet, store2, acc._3 ++ effs)
               })
           })
         case ControlKont(v) if kont == HaltKontAddress =>
-          /* Either execution is finished, or the function returns value v */
-          (Set.empty, Set.empty, v, store)
+          /* function has returned, write effect */
+          val retaddr = RetAddr(clo)
+          Recorder.funRet(clo._2, JoinLattice[Abs].typesOf(v))
+          val store2 = store.store.extend(retaddr, v)
+          (Set.empty, store.copy(store = store2.asInstanceOf[DeltaStore[Addr, Abs]]), fromEffs(Set(Effect.writeVariable(retaddr)), store.store, store2))
         case ControlError(_) =>
-          (Set.empty, Set.empty, JoinLattice[Abs].bottom, store)
+          (Set.empty, store, Set.empty)
       }
     }
   }
 
+  trait ModEffect
+  case class ModEffectRead(addr: Addr) extends ModEffect
+  case class ModEffectWrite(addr: Addr) extends ModEffect
+  case class ModEffectCall(clo: Clo) extends ModEffect
+  def RetAddr(clo: Clo): Addr = Address[Addr].cell(clo._2, Timestamp[Time].initial("")) /* should be cached, but doesn't really matter in the end */
+
   val graphId = new java.util.concurrent.atomic.AtomicInteger(0)
-  case class ModularAAMOutput(time: Double, graphs: Map[Clo, Option[G]], timedOut: Boolean) extends Output {
-    def numberOfStates = 0
-    def finalValues: Set[Abs] = Set()
+  case class ModularAAMOutput(n: Int, v: Abs, time: Double, graphs: Map[Clo, Option[G]], timedOut: Boolean) extends Output {
+    def numberOfStates = n
+    def finalValues: Set[Abs] = Set(v)
     def toFile(path: String)(output: GraphOutput) =
       graphs.foreach({
         case (k, Some(g)) => output.toFile(g, ())(path + "-" + graphId.getAndIncrement + ".dot")
@@ -158,185 +174,86 @@ class ModularAAM[Exp : Expression, Abs : JoinLattice, Addr : Address, Time : Tim
       })
   }
 
+
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Timeout): Output = {
     type WL[A] = Set[A]
-    type VS[A] = KeyMap[A]
     val startingTime = System.nanoTime
-    case class InnerLoopState(
-      /* The closure analyzed */
-      clo: Clo,
-      /* The worklist */
-      todo: WL[FunctionState],
-      /* Set of seen states */
-      visited: VS[FunctionState],
-      /* Graph computed */
-      graph: Option[G],
-      /* Functions called */
-      called: Set[Clo],
-      /* Return value */
-      returned: Abs
-    )
-    implicit val innerLoopStateWithKey = new WithKey[InnerLoopState] {
-      type K = Clo
-      def key(st: InnerLoopState) = st.clo
-    }
 
-    @scala.annotation.tailrec
-    def innerLoop(st: InnerLoopState, returned: Map[Clo, Abs], store: GlobalStore):
-        (/* final state */ InnerLoopState, /* resulting store */ GlobalStore) =
-      if (st.todo.isEmpty || timeout.reached) {
-        //println(s"delta: ${store.store.d}")
-        (st, store)
-      } else {
-        val init = (Set[(FunctionState, Unit, FunctionState)](), store, Set[Clo](), JoinLattice[Abs].bottom)
-        //st.clo._3.lookup("x").foreach(a => println(store.store.lookup(a)))
-        val (edges, store2, called, result) = st.todo.foldLeft(init)((acc, state) => {
-          //println(state.control)
-          state.step(sem, returned, acc._2) match {
-            case (succs, called, result, store2) =>
-              (acc._1 ++ succs.map(state2 => (state, (), state2)), store2, acc._3 ++ called, JoinLattice[Abs].join(acc._4, result))
-          }
-        })
-        val newTodo = edges.map(_._3)
-        val newGraph = st.graph.map(_.addEdges(edges))
-        if (store2 == store) {
-          innerLoop(st.copy(
-            todo = newTodo.filter(s => !VisitedSet[VS].contains(st.visited, s)),
-            visited = VisitedSet[VS].append(st.visited, st.todo),
-            graph = newGraph,
-            called = st.called ++ called,
-            returned = JoinLattice[Abs].join(st.returned, result)
-          ), returned, store2)
-        } else {
-          innerLoop(st.copy(
-            todo = newTodo.filter(s => !VisitedSet[VS].contains(st.visited, s)),
-            visited = VisitedSet[VS].empty,
-            graph = newGraph,
-            called = st.called ++ called,
-            returned = JoinLattice[Abs].join(st.returned, result)
-          ), returned, store2)
-        }
-      }
-
-    case class OuterLoopState(
-      /* What's still to visit */
-      todo: WL[Clo],
-      /* global store */
-      store: GlobalStore,
-      /* called functions */
-      called: Map[Clo, Set[Clo]],
-      /* returned values */
-      returned: Map[Clo, Abs],
-      /* Graphs */
-      graphs: Map[Clo, Option[G]]
-    )
-
-    /* Closure `clo` called the closures in `called`. We want to extract what states should be re-analyzed, and an updated version of the call dependencies, and of the initial states (funs) */
-    def fromCalled(caller: Clo, called: Set[Clo], calledDeps: Map[Clo, Set[Clo]]):
-        (Set[Clo], Map[Clo, Set[Clo]]) =
-      Profiler.profile("fromCalled") {
-      called.foldLeft((Set[Clo](), calledDeps))((acc, clo) =>
-        (acc._1 + clo, acc._2 + (caller -> (acc._2(caller) + clo))))
-      }
-
-    /* Closure `clo` returned `result`. We extract what has to be re-analyzed and an updated set of returned values */
-    def fromReturned(clo: Clo, result: Abs, calledDeps: Map[Clo, Set[Clo]], returned: Map[Clo, Abs]):
-        (Set[Clo], Map[Clo, Abs]) = Profiler.profile("fromReturned") {
-      //println(s"Closure ${clo._1} returned: $result")
-      (calledDeps.foldLeft(Set[Clo]())((acc, kv) => {
-        val (k, v) = kv
-        if (v.contains(clo)) {
-          acc + k
-        } else {
-          acc
-        }
-      }), returned + (clo -> JoinLattice[Abs].join(returned(clo), result)))
-    }
-    def outerLoop(st: OuterLoopState, visited: Set[Clo], iteration: Int): Output = {
-      if (st.todo.isEmpty || timeout.reached) {
-        new ModularAAMOutput(timeout.time, st.graphs, timeout.reached)
-      } else {
-        println(s"=========\nIteration: $iteration (${st.todo.length} closures to analyze)")
-        WorkList[WL].pick(st.todo) match { // , (clo: Clo) => st.called(clo).isEmpty || st.returned(clo) == JoinLattice[Abs].bottom) match {
-          case Some((clo, todoRest)) if (visited.contains(clo)) =>
-            outerLoop(st.copy(todo = todoRest), visited, iteration+1)
-          case Some((clo, todoRest)) =>
-            val fstate = FunctionState(ControlEval(clo._2, clo._3), HaltKontAddress, Timestamp[Time].initial(""))
-            val istate = InnerLoopState(clo, Set(fstate), VisitedSet[VS].empty, Option(G()), Set.empty, JoinLattice[Abs].bottom)
-            val (ist, store2) = Profiler.profile("innerLoop") { innerLoop(istate, st.returned, st.store) }
-            val (todoCalled, called) = fromCalled(ist.clo, ist.called, st.called)
-            val (todoReturned, returned) = fromReturned(ist.clo, ist.returned, st.called, st.returned)
-            val newTodo = (ist.called ++ todoReturned)
-            val newOuter = OuterLoopState(newTodo ++ todoRest, st.store.include(store2), called, returned, st.graphs + (ist.clo -> ist.graph))
-            if (newOuter.store == st.store && newOuter.returned == st.returned) {
-              outerLoop(newOuter, visited + ist.clo, iteration+1)
-            } else {
-              outerLoop(newOuter, Set.empty, iteration+1)
-            }
-          case None =>
-            outerLoop(st, visited, iteration+1)
-        }
-      }
-    }
-    /*
-    @scala.annotation.tailrec
-    def outerLoopFrontier(st: OuterLoopState, iteration: Int): Output = {
-      if (st.todo.isEmpty || timeout.reached) {
-        new ModularAAMOutput(timeout.time, st.graphs, timeout.reached)
-      } else {
-        println(s"=====================\nIteration: $iteration (${st.todo.length} closures to analyze)")
-        val init = (Set[Clo](), st.funs, st.store.include(st.store), st.called, st.returned, st.graphs)
-        val todopar = st.todo.par
-        val (todoNoDeps, todoDeps) = todopar.partition { ist => false && st.called(ist.clo).isEmpty }
-        val __succ = if (todoNoDeps.isEmpty) { todoDeps } else { todoNoDeps }
-        //println(st.store.store)
-        val _succ = Profiler.profile("outerLoop - 1") { __succ.map(funState => {
-          // println(s"Analyzing ${funState.clo._1}, ${funState.clo._2}")
-          // println(s"Analyze : ${funState.clo}")
-          val (ist, store2) = Profiler.profile("innerLoop") { innerLoop(funState, st.returned, st.store) }
-          val (todoCalled, called, funs) = fromCalled(ist.clo, ist.called, st.called, st.funs)
-          val (todoReturned, returned) = fromReturned(ist.clo, ist.returned, st.called, st.returned, st.funs)
-          (ist.called ++ todoReturned, funs, store2, called, returned, (ist.clo -> ist.graph))
-        })}
-        val succ = Profiler.profile("outerLoop - 2") { _succ.foldLeft(init)((acc, v) =>
-            (acc._1 ++ v._1, acc._2 |+| v._2, acc._3.include(v._3), acc._4 |+| v._4, acc._5 |+| v._5, acc._6 + v._6)) }
-
-        // val succ = st.todo.foldLeft(init)((acc, funState) => {
-        //   val (ist, store2) = innerLoop(funState, acc._5, acc._3)
-        //   val (todoCalled, called, funs) = fromCalled(ist.clo, ist.called, acc._4, acc._2)
-        //   val (todoReturned, returned) = fromReturned(ist.clo, ist.returned, acc._4, acc._5, acc._2)
-        //   (/* acc._1 ++ todoCalled ++ todoReturned */
-        //     acc._1 ++ ist.called ++ todoReturned, funs, store2, called, returned, acc._6 + (ist.clo -> ist.graph))
-        // })
-        /* simpler strategy: re-analyze all functions until no change (old one still computed but not used as it is incorrect) */
-        val newTodo = /* (if (todoNoDeps.isEmpty) Set().par else todoDeps) ++ succ._1.par */ succ._1.par.map(clo => {
-          val state = FunctionState(ControlEval(clo._2, clo._3), HaltKontAddress, Timestamp[Time].initial("" /* TODO: support context sensitivity here */))
-          InnerLoopState(clo, Set(state), VisitedSet[VS].empty, Option(G()), Set.empty, JoinLattice[Abs].bottom)
-        })
-        val newOuter = OuterLoopState(newTodo.seq /* old strategy: succ._1 */, succ._2, succ._3, succ._4, succ._5, succ._6)
-        //println(s"Main unchanged: ${newOuter.store.mainIsUnchanged}, called=?: ${newOuter.called == st.called}, returned=?: ${newOuter.returned == st.returned}")
-        //Thread.sleep(1000)
-        if (newOuter.called == st.called && newOuter.returned == st.returned && newOuter.store == st.store) {
-          outerLoop(newOuter.copy(todo = Set.empty), iteration+1)
-        } else {
-          outerLoop(newOuter, iteration+1)
-        }
-      }
-    }
-     */
     def inject(e: Exp, env: Iterable[(String, Addr)], store: Iterable[(Addr, Abs)]): (Clo, FunctionState, GlobalStore) = {
       val initEnv = Environment.initial[Addr](env)
       (("main", e, initEnv),
-       FunctionState(ControlEval(e, initEnv), HaltKontAddress, Timestamp[Time].initial("")),
-       GlobalStore.initial(store))
+        FunctionState(("main", e, initEnv), ControlEval(e, initEnv), HaltKontAddress, Timestamp[Time].initial("")),
+        GlobalStore.initial(store))
     }
-    val (initialClo, initialState, store) = inject(exp, sem.initialEnv, sem.initialStore)
-//    val initialInner = InnerLoopState(initialClo, Set(initialState), VisitedSet[VS].empty, Option(G()), Set.empty, JoinLattice[Abs].bottom)
-    Profiler.profile("outerLoop") { outerLoop(OuterLoopState(Set(initialClo),
-      // Map[Clo, Set[InnerLoopState]]().withDefaultValue(Set.empty) + ((initialClo -> Set(initialInner))),
-      store,
-      Map[Clo, Set[Clo]]().withDefaultValue(Set.empty),
-      Map[Clo, Abs]().withDefaultValue(JoinLattice[Abs].bottom),
-      Map[Clo, Option[G]]().withDefaultValue(Option(G()))), Set.empty, 0) }
+
+    val (initialClo, initialState, initialStore) = inject(exp, sem.initialEnv, sem.initialStore)
+    val MainRetAddr: Addr = RetAddr(initialClo)
+
+    @scala.annotation.tailrec
+    def intraAnalysis(clo: Clo, todo: WL[FunctionState], graph: Option[G], store: GlobalStore, effs: Set[ModEffect]): (Option[G], GlobalStore, Set[ModEffect]) = {
+      if (todo.isEmpty || timeout.reached) {
+        (graph, store, effs)
+      } else {
+        val init = (Set[(FunctionState, Unit, FunctionState)](), store, effs)
+        val (edges, store2, effs2) = todo.foldLeft(init)((acc, state) => {
+          state.step(sem, acc._2) match { /* step : sem, store -> succs, store, effs */
+            case (succs, store2, effs) =>
+              (acc._1 ++ succs.map(state2 => (state, (), state2)), store2, acc._3 ++ effs)
+          }
+        })
+        val newTodo = edges.map(_._3)
+        val newGraph = graph.map(_.addEdges(edges))
+        intraAnalysis(clo, newTodo, newGraph, store2, effs2)
+      }
+    }
+
+    import scala.collection.mutable.PriorityQueue
+    implicit val ordering: Ordering[Clo] = new Ordering[Clo] {
+      def compare(x: Clo, y: Clo): Int = {
+        val a = Expression[Exp].pos(x._2)
+        val b = Expression[Exp].pos(y._2)
+        if (a < b) { 1 } else if (a == b) { 0 } else { -1 }
+      }
+    }
+
+    @scala.annotation.tailrec
+    def interAnalysis(todo: PriorityQueue[Clo], store: GlobalStore, readDeps: Map[Addr, Set[Clo]], graphs: Map[Clo, G]): (Map[Clo, G], Abs) = {
+      if (todo.isEmpty || timeout.reached) {
+        (graphs, store.store.lookupBot(MainRetAddr))
+      } else {
+        val clo = todo.dequeue
+        val fstate = FunctionState(clo, ControlEval(clo._2, clo._3), HaltKontAddress, Timestamp[Time].initial(""))
+        intraAnalysis(clo, Set(fstate), Option(G()), store, Set()) match {
+          case (g, store2, effs) =>
+            /* Note: we could avoid adding to the worklist elements that are already in it (because it's a vector and not a set) */
+            val todo2: Set[Clo] = effs.flatMap({
+              /* !! we look up retval in the old store, because f could call itself */
+              case ModEffectCall(clo) =>
+                if (store.store.lookup(RetAddr(clo)).isDefined) {
+                  Set[Clo]()
+                } else {
+                  Set[Clo](clo)
+                }
+              case ModEffectWrite(a) =>
+                readDeps(a)
+              case _ => Set[Clo]()
+            })
+            val readDeps2 = effs.foldLeft(readDeps)((acc, eff) => eff match {
+              case ModEffectRead(a) =>
+                acc + (a -> (acc(a) + clo))
+              case _ => acc
+            })
+            val graphs2 = g.fold(graphs)(gv => graphs + (clo -> gv))
+            todo ++= todo2
+            interAnalysis(todo, store2, readDeps2, graphs2)
+        }
+      }
+    }
+
+    val initTodo = new PriorityQueue[Clo]()
+    initTodo.enqueue(initialClo)
+    val (graphs, v) = interAnalysis(initTodo, initialStore, Map[Addr, Set[Clo]]().withDefaultValue(Set.empty), Map[Clo, G]())
+    ModularAAMOutput(graphs.keySet.foldLeft(0)((acc, clo) => acc + graphs(clo).size), v,
+      timeout.time, graphs.map({ case (k, v) => (k, Option(v)) }), timeout.reached)
   }
 }

@@ -405,7 +405,19 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       case (carexp, car) :: (cdrexp, cdr) :: Nil => {
         val cara = Address[Addr].cell(carexp, t)
         val cdra = Address[Addr].cell(cdrexp, t)
-        MayFailSuccess((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr), Set()))
+        MayFailSuccess((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr), Set(EffectWriteConsCar(cara), EffectWriteConsCdr(cdra))))
+      }
+      case l => MayFailError(List(ArityError(name, 2, l.size)))
+    }
+  }
+  object Cons1 extends Primitive[Addr, Abs] {
+    val name = "cons1"
+    def call[Exp : Expression, Time : Timestamp](fexp: Exp, args: List[(Exp, Abs)], store: Store[Addr, Abs], t: Time) = args match {
+      case (carexp, car) :: (cdrexp, cdr) :: Nil => {
+        println(s"cons, car: $car")
+        val cara = Address[Addr].cell(carexp, t)
+        val cdra = Address[Addr].cell(cdrexp, t)
+        MayFailSuccess((abs.cons(cara, cdra), store.extend(cara, car).extend(cdra, cdr), Set(EffectWriteConsCar(cara), EffectWriteConsCdr(cdra))))
       }
       case l => MayFailError(List(ArityError(name, 2, l.size)))
     }
@@ -419,6 +431,23 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
         acc |+| (store.lookup(a) match {
           case Some(v) => (v, Set[Effect[Addr]](EffectReadConsCar(a))).point[MayFail]
           case None => UnboundAddress(a.toString)
+        }))
+    }
+  }
+  private def car1(v: Abs, store: Store[Addr, Abs]): MayFail[(Abs, Set[Effect[Addr]])] = {
+    val addrs = abs.car(v)
+    println(s"Addresses: $addrs")
+    if (addrs.isEmpty) {
+      CannotAccessCar(v.toString)
+    } else {
+      addrs.foldLeft(mfmon.zero)((acc, a) =>
+        acc |+| (store.lookup(a) match {
+          case Some(v) =>
+            println(s"Value: $v")
+            (v, Set[Effect[Addr]](EffectReadConsCar(a))).point[MayFail]
+          case None =>
+            println(s"Unbound")
+            UnboundAddress(a.toString)
         }))
     }
   }
@@ -439,20 +468,24 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     trait Spec
     case object Car extends Spec
     case object Cdr extends Spec
-    val spec: List[Spec] = name.drop(1).take(name.length - 2).toList.reverseMap(c =>
+    val spec: List[Spec] = if (name == "car1") { List(Car) } else { name.drop(1).take(name.length - 2).toList.reverseMap(c =>
       if (c == 'a') { Car }
       else if (c == 'd') { Cdr }
       else { throw new Exception("Incorrect car/cdr operation: $name") })
-    override def call(v: Abs, store: Store[Addr, Abs]) =
+    }
+    override def call(v: Abs, store: Store[Addr, Abs]) = {
+      if (name == "car1") { println(v) }
       for { (v, effs) <- spec.foldLeft(success(v))((acc, op) => for {
         (v, effs) <- acc
         (vcxr, effs2) <- op match {
-          case Car => car(v, store)
+          case Car => if (name == "car1") { car1(v, store) } else { car(v, store) }
           case Cdr => cdr(v, store)
         }
       } yield (vcxr, effs ++ effs2)) } yield (v, store, effs)
+    }
   }
   object Car extends CarCdrOperation("car")
+  object Car1 extends CarCdrOperation("car1")
   object Cdr extends CarCdrOperation("cdr")
   object Caar extends CarCdrOperation("caar")
   object Cadr extends CarCdrOperation("cadr")
@@ -547,20 +580,20 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
 
       val nilv = abs.nil
       val nila = Address[Addr].variable(Identifier("_nil_", pos), abs.bottom, t) // Hack to make sure addresses use the position of fexp
-      val init: (Abs, Addr, Store[Addr, Abs]) = (nilv, nila, store)
+      val init: (Abs, Addr, Store[Addr, Abs], Set[Effect[Addr]]) = (nilv, nila, store, Set.empty)
       /*
        * If args is empty, the store should not be extended, so we allocate an address, but only forward it to
        * the next iteration, so that this next iteration (if there is one) can use it to extend the store.
        */
       val result = args.zipWithIndex.reverse.foldLeft(init)({
-        case ((cdrv, cdra, store), ((argExp, argv), index)) =>
+        case ((cdrv, cdra, store, effs), ((argExp, argv), index)) =>
           val cara = Address[Addr].cell(argExp, t)
           val cons = abs.cons(cara, cdra)
           val newStore = store.extend(cdra, cdrv).extend(cara, argv)
           val paira = Address[Addr].variable(Identifier(s"_cons_${index}", pos), abs.bottom, t) // Hack to make sure addresses use the position of fexp
-          (abs.cons(cara, cdra), paira, newStore)
+          (abs.cons(cara, cdra), paira, newStore, effs ++ Set(EffectWriteConsCar(cara), EffectWriteConsCdr(cdra)))
       })
-      MayFailSuccess((result._1, result._3, Set()))
+      MayFailSuccess((result._1, result._3, result._4))
     }
   }
 
@@ -605,7 +638,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
           if (abs.isTrue(isint)) {
             val vaddr = Address[Addr].cell(fexp, t)
             abs.vector(vaddr, size, initaddr).map({ case (va, vector) =>
-              (va, store.extend(vaddr, vector).extend(initaddr, init), Set.empty)})
+              (va, store.extend(vaddr, vector).extend(initaddr, init), Set(EffectWriteVector(vaddr)))})
           } else {
             MayFailError(List(TypeError("make-vector", "first operand", "integer", size.toString)))
           })
@@ -653,15 +686,15 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
       val botaddr = Address[Addr].primitive("__bottom__")
       abs.vector(a, abs.inject(args.size), botaddr) >>= ({ case (va, emptyVector) =>
         /* No tracked effects because we only perform atomic updates at allocation time */
-        val init: MayFail[(Abs, Store[Addr, Abs])] = MayFailSuccess((emptyVector, store))
-        args.zipWithIndex.foldLeft(init)((acc, arg) => acc >>= ({ case (vec, store) =>
+        val init: MayFail[(Abs, Store[Addr, Abs], Set[Effect[Addr]])] = MayFailSuccess((emptyVector, store, Set()))
+        args.zipWithIndex.foldLeft(init)((acc, arg) => acc >>= ({ case (vec, store, effs) =>
           arg match {
             case ((exp, value), index) =>
               val valaddr = Address[Addr].cell(exp, t)
               abs.vectorSet(vec, abs.inject(index), valaddr).map({
-                case (vec, addrs) => (vec, addrs.foldLeft(store)((st, a) => st.updateOrExtend(a, value)))
+                case (vec, addrs) => (vec, addrs.foldLeft(store)((st, a) => st.updateOrExtend(a, value)), effs ++ addrs.map(EffectWriteVector(_)))
               })
-          }})).map({ case (vector, store) => (va, store.extend(a, vector), Set[Effect[Addr]]()) })
+          }})).map({ case (vector, store, effs) => (va, store.extend(a, vector), effs) })
       })
     }
   }
@@ -963,6 +996,7 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
                     /* [x]  call-with-output-file: File Ports */
                     /* [x]  call-with-values: Multiple Values */
     Car,            /* [vv] car: Pairs */
+    Car1,
     Cdr,            /* [vv] cdr: Pairs */
     Ceiling,        /* [vv] ceiling: Arithmetic */
                     /* [x]  char->integer: Characters */
@@ -1118,7 +1152,8 @@ class SchemePrimitives[Addr : Address, Abs : IsSchemeLattice] extends Primitives
     Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar,
     Cdaadr, Cdadar, Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr,
     /* Other primitives that are not R5RS */
-    Random, Error, BoolTop, IntTop)
+    Random, Error, BoolTop, IntTop,
+  Cons1)
 
   def toVal(prim: Primitive[Addr, Abs]): Abs = abs.inject(prim)
 }

@@ -76,6 +76,7 @@ case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)], body: List[Sche
 
 /**
  * Named-let: (let name ((v1 e1) ...) body...)
+ *  can be desugared to (let ((name (lambda (v1 ...) body...))) (name e1 ...))
  */
 case class SchemeNamedLet(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
   override def toString = {
@@ -571,7 +572,10 @@ object SchemeRenamer {
       countl(bindings.map(_._1), names, count) match {
         case (variables, names1, count1) => renameList(bindings.map(_._2), names1, count1) match {
           case (exps, count2) => renameList(body, names1, count2) match {
-            case (body1, count3) => (SchemeNamedLet(name /* TODO: rename it as well */, variables.zip(exps), body1, pos), count2)
+            case (body1, count3) => (SchemeNamedLet(names.get(name.name) match {
+              case Some(n) => (Identifier(n, name.pos))
+              case None => (Identifier(name.name, name.pos))
+             }, variables.zip(exps), body1, pos), count2)
           }
         }
       }

@@ -3,6 +3,7 @@ import scalaz.Scalaz._
 
 /** A (join semi-)lattice L should support the following operations */
 trait JoinLattice[L] extends Monoid[L] with PartialOrdering[L] {
+  def typesOf(v: L): Set[Recorder.Typ.Typ] = ???
   /** A lattice has a bottom element */
   def bottom: L
   /** Elements of the lattice can be joined together */

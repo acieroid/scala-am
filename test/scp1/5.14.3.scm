@@ -6,11 +6,12 @@
 (define (super-merge-n lsts n)
 
   (define (geef-n+rest lst n)
-    (cond ((or (= 0 n) (null? lst)) (cons '() lst))
-          (else (let* ((res (geef-n+rest (cdr lst) (- n 1)))
+    (if (or (= 0 n) (null? lst))
+        (cons '() lst)
+        (let* ((res (geef-n+rest (cdr lst) (- n 1)))
                        (first (car res))
                        (rest (cdr res)))
-                  (cons (cons (car lst) first) rest)))))
+                  (cons (cons (car lst) first) rest))))
 
   (if (null? lsts)
       '()
@@ -23,6 +24,7 @@
                                            rest
                                            (list rest)))
                                n)))))
+
 
 (equal? (super-merge-n '((a b c d e f)
                    (g h i j k)

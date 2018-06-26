@@ -99,10 +99,6 @@
   (lambda (current-random)
     (remainder (+ (* current-random 3581) 12751) 131072)))
 
-(define shuffle
-  (lambda (lst)
-    (shuffle-aux lst initial-random)))
-
 (define shuffle-aux
   (lambda (lst current-random)
     (if (null? lst)
@@ -112,25 +108,9 @@
             (cons (list-read lst i)
                   (shuffle-aux (list-remove-pos lst i)
                                new-random)))))))
-
-(define make-maze
-  (lambda (n m)
-    (if (not (and (odd? n) (odd? m)))
-        'error
-        (let ((cave
-               (make-matrix n m (lambda (i j)
-                                  (if (and (even? i) (even? j))
-                                      (cons i j)
-                                      #f))))
-              (possible-holes
-               (concat
-                (for 0 n (lambda (i)
-                           (concat
-                            (for 0 m (lambda (j)
-                                       (if (equal? (even? i) (even? j))
-                                           '()
-                                           (list (cons i j)))))))))))
-          (cave-to-maze (pierce-randomly (shuffle possible-holes) cave))))))
+(define shuffle
+  (lambda (lst)
+    (shuffle-aux lst initial-random)))
 
 (define cave-to-maze
   (lambda (cave)
@@ -140,42 +120,6 @@
   (lambda (pos cave)
     (let ((i (car pos)) (j (cdr pos)))
       (matrix-write cave i j pos))))
-
-(define pierce-randomly
-  (lambda (possible-holes cave)
-    (if (null? possible-holes)
-        cave
-        (let ((hole (car possible-holes)))
-          (pierce-randomly (cdr possible-holes)
-                           (try-to-pierce hole cave))))))
-
-(define try-to-pierce
-  (lambda (pos cave)
-    (let ((i (car pos)) (j (cdr pos)))
-      (let ((ncs (neighboring-cavities pos cave)))
-        (if (duplicates?
-             (map (lambda (nc) (matrix-read cave (car nc) (cdr nc))) ncs))
-            cave
-            (pierce pos
-                    (foldl (lambda (c nc) (change-cavity c nc pos))
-                           cave
-                           ncs)))))))
-
-(define change-cavity
-  (lambda (cave pos new-cavity-id)
-    (let ((i (car pos)) (j (cdr pos)))
-      (change-cavity-aux cave pos new-cavity-id (matrix-read cave i j)))))
-
-(define change-cavity-aux
-  (lambda (cave pos new-cavity-id old-cavity-id)
-    (let ((i (car pos)) (j (cdr pos)))
-      (let ((cavity-id (matrix-read cave i j)))
-        (if (equal? cavity-id old-cavity-id)
-            (foldl (lambda (c nc)
-                     (change-cavity-aux c nc new-cavity-id old-cavity-id))
-                   (matrix-write cave i j new-cavity-id)
-                   (neighboring-cavities pos cave))
-            cave)))))
 
 (define neighboring-cavities
   (lambda (pos cave)
@@ -196,6 +140,64 @@
                     (if (and (< j (- m 1)) (matrix-read cave i (+ j 1)))
                         (list (cons i (+ j 1)))
                         '())))))))))
+
+
+(define change-cavity-aux
+  (lambda (cave pos new-cavity-id old-cavity-id)
+    (let ((i (car pos)) (j (cdr pos)))
+      (let ((cavity-id (matrix-read cave i j)))
+        (if (equal? cavity-id old-cavity-id)
+            (foldl (lambda (c nc)
+                     (change-cavity-aux c nc new-cavity-id old-cavity-id))
+                   (matrix-write cave i j new-cavity-id)
+                   (neighboring-cavities pos cave))
+            cave)))))
+
+(define change-cavity
+  (lambda (cave pos new-cavity-id)
+    (let ((i (car pos)) (j (cdr pos)))
+      (change-cavity-aux cave pos new-cavity-id (matrix-read cave i j)))))
+
+(define try-to-pierce
+  (lambda (pos cave)
+    (let ((i (car pos)) (j (cdr pos)))
+      (let ((ncs (neighboring-cavities pos cave)))
+        (if (duplicates?
+             (map (lambda (nc) (matrix-read cave (car nc) (cdr nc))) ncs))
+            cave
+            (pierce pos
+                    (foldl (lambda (c nc) (change-cavity c nc pos))
+                           cave
+                           ncs)))))))
+
+(define pierce-randomly
+  (lambda (possible-holes cave)
+    (if (null? possible-holes)
+        cave
+        (let ((hole (car possible-holes)))
+          (pierce-randomly (cdr possible-holes)
+                           (try-to-pierce hole cave))))))
+
+
+(define make-maze
+  (lambda (n m)
+    (if (not (and (odd? n) (odd? m)))
+        'error
+        (let ((cave
+               (make-matrix n m (lambda (i j)
+                                  (if (and (even? i) (even? j))
+                                      (cons i j)
+                                      #f))))
+              (possible-holes
+               (concat
+                (for 0 n (lambda (i)
+                           (concat
+                            (for 0 m (lambda (j)
+                                       (if (equal? (even? i) (even? j))
+                                           '()
+                                           (list (cons i j)))))))))))
+          (cave-to-maze (pierce-randomly (shuffle possible-holes) cave))))))
+
 
 (define expected-result
   '((_ * _ _ _ _ _ _ _ _ _)

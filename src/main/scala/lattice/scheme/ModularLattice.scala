@@ -110,6 +110,19 @@ class MakeSchemeLattice[
       case Nil => CardinalityNumber(1)
       case Closure(_, _) | Prim(_) | Cons(_, _) | VectorAddress(_) | Vec(_, _, _)  => CardinalityNumber(1)
     }
+    override def typesOf(x: Value): Set[Recorder.Typ.Typ] = x match {
+      case Bot => Set()
+      case Str(_) => Set(Recorder.Typ.String)
+      case Bool(_) => Set(Recorder.Typ.Boolean)
+      case Int(_) => Set(Recorder.Typ.Int)
+      case Real(_) => Set(Recorder.Typ.Real)
+      case Char(_) => Set(Recorder.Typ.Character)
+      case Symbol(_) => Set(Recorder.Typ.Symbol)
+      case Nil => Set(Recorder.Typ.Nil)
+      case Closure(_, _) | Prim(_) => Set(Recorder.Typ.Closure)
+      case Cons(_, _) => Set(Recorder.Typ.Cons)
+      case VectorAddress(_) | Vec(_, _, _) => Set(Recorder.Typ.Vector)
+    }
 
     def isTrue(x: Value): Boolean = x match {
       case Bool(b) => BoolLattice[B].isTrue(b)
@@ -494,6 +507,8 @@ class MakeSchemeLattice[
   val isSchemeLattice = new IsSchemeLattice[L] {
     val name = s"SetLattice(${StringLattice[S].name}, ${BoolLattice[B].name}, ${IntLattice[I].name}, ${RealLattice[F].name}, ${CharLattice[C].name}, ${SymbolLattice[Sym].name})"
     val counting = supportsCounting
+
+    override def typesOf(x: L): Set[Recorder.Typ.Typ] = foldMapL(x, isSchemeLatticeValue.typesOf(_))
 
     def isTrue(x: L): Boolean = foldMapL(x, isSchemeLatticeValue.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = foldMapL(x, isSchemeLatticeValue.isFalse(_))(boolOrMonoid)

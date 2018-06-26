@@ -4,45 +4,181 @@ object ExperimentsConfig {
   val nruns: Int = 1
 }
 
+object Recorder {
+  import scala.collection.mutable.Map
+
+  object Typ extends Enumeration {
+    type Typ = Value
+    val String, Boolean, Symbol, Character, Closure, Int, Real, Vector, Cons, Nil = Value
+  }
+  import Typ._
+
+  val types: Map[Identifier, Set[Typ]] = Map[Identifier, Set[Typ]]().withDefaultValue(Set[Typ]())
+  val typesRet: Map[SchemeExp, Set[Typ]] = Map[SchemeExp, Set[Typ]]().withDefaultValue(Set[Typ]())
+  val numClo: Map[SchemeExp, Int] = Map[SchemeExp, Int]().withDefaultValue(0)
+
+  def closures[Exp](site: Exp, num: Int): Unit = {
+    numClo += site.asInstanceOf[SchemeExp] -> numClo(site.asInstanceOf[SchemeExp]).max(num)
+  }
+  def identifier(id: Identifier, ts: Set[Typ]): Unit = {
+    types += id -> (types(id) ++ ts)
+  }
+  def funRet[Exp](clo: Exp, ts: Set[Typ]): Unit = {
+    typesRet += clo.asInstanceOf[SchemeExp] -> (typesRet(clo.asInstanceOf[SchemeExp]) ++ ts)
+  }
+
+  def print: Unit = {
+    println("================")
+    println("Number of closures:")
+    numClo.foreach({ case (k, v) => {
+      val ks = s"${k}:${k.pos}"
+      println(s"$ks: $v")
+    }})
+    println("================")
+    println("Types:")
+    types.foreach({ case (k, v) => {
+      val ks = s"${k.name}:${k.pos}"
+      val vs = v.mkString(",")
+      println(s"$ks: $vs")
+    }})
+    println("================")
+    println("Return types:")
+    typesRet.foreach({ case (k, v) => {
+      val ks = s"${k}:${k.pos}"
+      val vs = v.mkString(",")
+      println(s"$ks: $vs")
+    }})
+  }
+
+  def extract: (scala.collection.immutable.Map[String, Set[Typ]], scala.collection.immutable.Map[String, Set[Typ]], scala.collection.immutable.Map[String, Int]) = {
+    (types.map({ case (k: Identifier, v: Set[Typ]) => (s"$k:${k.pos}", v) }).toMap,
+      typesRet.map({ case (k: SchemeExp, v: Set[Typ]) => (s"$k:${Expression[SchemeExp].pos(k)}", v) }).toMap,
+      numClo.map({ case (k: SchemeExp, v: Int) => (s"$k:${Expression[SchemeExp].pos(k)}", v) }).toMap)
+  }
+
+  def clear(): Unit = {
+    types.clear
+    typesRet.clear
+    numClo.clear
+  }
+}
+
+object Precision {
+  /* Return the number of over-approximations performed by the less precise map */
+  def compareNumClo[A](less: Map[A, Int], more: Map[A, Int]): Int = {
+//    println(s"less - more = ${less.keySet -- more.keySet}, more - less = ${more.keySet -- less.keySet}")
+    if (!more.keySet.subsetOf(less.keySet)) {
+      println(s"!!!!!!! Not the same keys: less - more = ${less.keySet -- more.keySet}, more - less = ${more.keySet -- less.keySet}")
+      -1
+    } else {
+      less.keySet.foldLeft(0)({ case (acc, k) =>
+        if (more.get(k) == None) { acc /* + less(k) */ } else {
+        val (x, y) = (less(k), more(k))
+        if (x > y) {
+          /* Over-approximation */
+          acc + (x - y)
+        } else if (x == y) {
+          /* Full precision */
+          acc
+        } else {
+          /* Under-approximation!? */
+          println(s"!!!!UNDER-APPROX FOR $k: less is $x, more is $y")
+          acc
+        }
+      }})
+    }
+  }
+
+  def numCloSize[A](m: Map[A, Int]): Int =
+    m.keySet.foldLeft(0)({ case (acc, k) => acc + m(k) })
+  def typSize[A, B](m: Map[A, Set[B]]): Int =
+    m.keySet.foldLeft(0)({ case (acc, k) => acc + m(k).size })
+
+  /* Similar, return number of over-approxs */
+  def compareTyp[A, B](less: Map[A, Set[B]], more: Map[A, Set[B]]): Int = {
+//    println(s"less - more = ${less.keySet -- more.keySet}, more - less = ${more.keySet -- less.keySet}")
+    if (!more.keySet.subsetOf(less.keySet)) {
+      println(s"!!!!!!! Not the same keys: less - more = ${less.keySet -- more.keySet}, more - less = ${more.keySet -- less.keySet}")
+      -1
+    } else {
+      less.keySet.foldLeft(0)({ case (acc, k) =>
+        if (more.get(k) == None) { acc /* + less(k).size */ } else {
+        val (x, y) = (less(k), more(k))
+        if (x.subsetOf(y) || y.subsetOf(x)) {
+          if (x.size > y.size) {
+            /* Over-approximation */
+            acc + (x.size - y.size)
+          } else if (x.size == y.size) {
+            /* Full precision */
+            acc
+          } else {
+            /* Under-approximation!? */
+            println(s"!!!!UNDER-APPROX FOR $k: less is $x, more is $y")
+            acc
+          }
+        } else {
+          println(s"INCOMPATIBLE SETS for $k: less is $x, more is $y")
+          acc
+        }
+      }})
+    }
+
+  }
+}
+
+
+
 object ModFExperiments {
   val benchFiles: List[(String, String)] = List(
-//    ("boyer", "test/gabriel/boyer.scm"),
-    ("cpstak", "test/gabriel/cpstak.scm"),
-    ("dderiv", "test/gabriel/dderiv.scm"),
-    ("deriv", "test/gabriel/deriv.scm"),
-    ("divrec", "test/gabriel/divrec.scm"),
-    ("takl", "test/gabriel/takl.scm"),
-    ("ack", "test/kernighanvanwyk/ack.scm"),
-    ("nqueens", "test/gambit/nqueens.scm"),
-    ("array1", "test/gambit/array1.scm"),
-    ("destruc", "test/gambit/destruc.scm"),
-    ("diviter", "test/gambit/diviter.scm"),
-    ("graphs", "test/gambit/graphs.scm"),
-    ("lattice", "test/gambit/lattice.scm"),
-    ("mazefun", "test/gambit/mazefun.scm"),
-    ("paraffins", "test/gambit/paraffins.scm"),
-    ("perm9", "test/gambit/perm9.scm"),
-    ("peval", "test/gambit/peval.scm"),
-    ("primes", "test/gambit/primes.scm"),
-    ("sum", "test/gambit/sum.scm"),
-    ("sumloop", "test/gambit/sumloop.scm"),
-    ("tak", "test/gambit/tak.scm"),
-    ("easter", "test/rosetta/easter.scm"),
-    ("quadratic", "test/rosetta/quadratic.scm"),
-    ("blur", "test/blur.scm"),
-    ("collatz", "test/collatz.scm"),
-    ("eta", "test/eta.scm"),
-    ("gcipd", "test/gcipd.scm"),
-    ("grid", "test/grid.scm"),
-    ("kcfa2", "test/kcfa2.scm"),
-    ("kcfa3", "test/kcfa3.scm"),
-    ("loop2", "test/loop2.scm"),
-    ("mj09", "test/mj09.scm"),
-    ("primtest", "test/primtest.scm"),
-    ("regex", "test/regex.scm"),
-    ("rsa", "test/rsa.scm"),
-    ("sat", "test/sat.scm"),
-    ("scm2java", "test/scm2java.scm"))
+   //    ("foo", "foo.scm")
+   //     ("boyer", "test/gabriel/boyer.scm"), too slow
+       ("cpstak", "test/gabriel/cpstak.scm"),
+       ("dderiv", "test/gabriel/dderiv.scm"),
+       ("deriv", "test/gabriel/deriv.scm"),
+//       ("divrec", "test/gabriel/divrec.scm"),
+//       ("takl", "test/gabriel/takl.scm"),
+//       ("ack", "test/kernighanvanwyk/ack.scm"),
+       ("nqueens", "test/gambit/nqueens.scm"),
+   //    ("array1", "test/gambit/array1.scm"), // do
+   //    ("destruc", "test/gambit/destruc.scm"), // do
+   //    ("diviter", "test/gambit/diviter.scm"), // do
+   //    ("graphs", "test/gambit/graphs.scm"), // do
+       ("lattice", "test/gambit/lattice.scm"),
+       ("mazefun", "test/gambit/mazefun.scm"),
+       ("paraffins", "test/gambit/paraffins.scm"),
+//       ("perm9", "test/gambit/perm9.scm"), do
+   //    ("peval", "test/gambit/peval.scm"), // too slow
+//       ("primes", "test/gambit/primes.scm"),
+//       ("sum", "test/gambit/sum.scm"),
+//       ("sumloop", "test/gambit/sumloop.scm"),
+//       ("tak", "test/gambit/tak.scm"),
+  //     ("easter", "test/rosetta/easter.scm"),
+//       ("quadratic", "test/rosetta/quadratic.scm"),
+//       ("blur", "test/blur.scm"),
+//       ("collatz", "test/collatz.scm"),
+//       ("eta", "test/eta.scm"),
+//       ("gcipd", "test/gcipd.scm"),
+       ("grid", "test/grid.scm"),
+//       ("kcfa2", "test/kcfa2.scm"),
+//       ("kcfa3", "test/kcfa3.scm"),
+//       ("loop2", "test/loop2.scm"),
+//       ("mj09", "test/mj09.scm"),
+//       ("primtest", "test/primtest.scm"),
+       ("regex", "test/regex.scm"),
+//       ("rsa", "test/rsa.scm"),
+//       ("sat", "test/sat.scm"),
+       ("scm2java", "test/scm2java.scm"),
+//       ("mceval", "test/mceval.scm"),
+    ("church", "test/church.scm"),
+    ("mem", "test/sigscheme/mem.scm"),
+    ("7.14", "test/scp1/7.14.scm"),
+    ("7.16", "test/scp1/7.16.scm"),
+//    ("8.15", "test/scp1/8.15.scm"),
+    ("9.16", "test/scp1/9.16.scm"),
+//    ("takr", "test/sigscheme/takr.scm"),
+    ("5.14.3", "test/scp1/5.14.3.scm"),
+    ("9.12", "test/scp1/9.12.scm")
+  )
   def main(args: Array[String]): Unit = {
     val lattice = new MakeSchemeLattice[Type.S, Concrete.B, Type.I, Type.F, Type.C, Type.Sym](false)
     implicit val isSchemeLattice = lattice.isSchemeLattice
@@ -54,12 +190,23 @@ object ModFExperiments {
     val nonmodularmachine = new AAMAACP4F[SchemeExp, lattice.L, address.A, time.T](AAMKAlloc)
     val sem = new SchemeSemantics[lattice.L, address.A, time.T](new SchemePrimitives[address.A, lattice.L])
 
+    val concLattice = new MakeSchemeLattice[Concrete.S, Concrete.B, Concrete.I, Concrete.F, Concrete.C, Concrete.Sym](true)
+    implicit val isConcSchemeLattice = concLattice.isSchemeLattice
+    val concTime = ConcreteTimestamp
+    implicit val isConcreteTimestamp = concTime.isTimestamp
+    val concretemachine = new ConcreteMachine[SchemeExp, concLattice.L, address.A, concTime.T]
+    val concsem = new SchemeSemantics[concLattice.L, address.A, concTime.T](new SchemePrimitives[address.A, concLattice.L])
+
     def runMod(file: String) = {
       Util.runOnFile(file, ScalaAM.run[SchemeExp, lattice.L, address.A, time.T](modularmachine, sem)(_, true, ExperimentsConfig.timeout))
     }
     def runNonMod(file: String) = {
       Util.runOnFile(file, ScalaAM.run[SchemeExp, lattice.L, address.A, time.T](nonmodularmachine, sem)(_, true, ExperimentsConfig.timeout))
     }
+    def runConc(file: String) = {
+      Util.runOnFile(file, ScalaAM.run[SchemeExp, concLattice.L, address.A, concTime.T](concretemachine, concsem)(_, true, ExperimentsConfig.timeout))
+    }
+
 
     if (args.size == 0) {
       val N = ExperimentsConfig.nruns
@@ -72,15 +219,50 @@ object ModFExperiments {
             runMod(file).time
           })
         val time = (times.drop(warmup).sum / N * 1000).toInt
-        print(s"MOD: $time | ")
+          print(s"MOD: $time | ")
+          val modinfo = Recorder.extract
+          Recorder.clear
 
         val times2 = (1 to N+warmup).map(i =>
           scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
             runNonMod(file).time
           })
         val time2 = (times2.drop(warmup).sum / N * 1000).toInt
-        println(s"NONMOD: $time2")
+          print(s"NONMOD: $time2 | ")
+          val nonmodinfo = Recorder.extract
+          Recorder.clear
 
+          val times3 = (1 to N+warmup).map(i =>
+          scala.Console.withOut(new java.io.OutputStream { override def write(b: Int) {} }) {
+            runConc(file).time
+          })
+
+        val time3 = (times3.drop(warmup).sum / N * 1000).toInt
+          println(s"CONC: $time3")
+          val concinfo = Recorder.extract
+          Recorder.clear
+
+
+          println(s"Observed: ${Precision.typSize(concinfo._1)} and ${Precision.numCloSize(concinfo._3)}")
+
+
+          val imprec1mod = Precision.compareTyp(modinfo._1, concinfo._1)
+          val imprec3mod = Precision.compareNumClo(modinfo._3, concinfo._3)
+          if (imprec1mod > 0 || imprec3mod > 0) { println(s"Imprecision mod: $imprec1mod $imprec3mod") }
+
+          val imprec1nonmod = Precision.compareTyp(nonmodinfo._1, concinfo._1)
+          val imprec3nonmod = Precision.compareNumClo(nonmodinfo._3, concinfo._3)
+          if (imprec1nonmod > 0 || imprec3nonmod > 0) { println(s"Imprecision nonmod: $imprec1nonmod $imprec3nonmod") }
+
+                   //          println(s"2: ${Precision.compareTyp(modinfo._2, nonmodinfo._2)}")
+//          println(s"MOD vs. CONC:")
+//          val imprec1Precision.compareTyp(modinfo._1, concinfo._1)}")
+//          println(s"2: ${Precision.compareTyp(modinfo._2, concinfo._2)}")
+//          println(s"3: ${Precision.compareNumClo(modinfo._3, concinfo._3)}")
+//          println(s"NONMOD vs. CONC:")
+//          println(s"1: ${Precision.compareTyp(nonmodinfo._1, concinfo._1)}")
+//          println(s"2: ${Precision.compareTyp(nonmodinfo._2, concinfo._2)}")
+//          println(s"3: ${Precision.compareNumClo(nonmodinfo._3, concinfo._3)}")
       }
     } else {
       val result = runMod(args(0))
@@ -88,6 +270,7 @@ object ModFExperiments {
       if (result.timedOut) println(s"${scala.io.AnsiColor.RED}Timeout was reached${scala.io.AnsiColor.RESET}")
       println(s"Visited ${result.numberOfStates} states in ${result.time} seconds, ${result.finalValues.size} possible results: ${result.finalValues}")
       result.toFile(graph)(GraphDOTOutput)
+      Recorder.print
     }
 
   }

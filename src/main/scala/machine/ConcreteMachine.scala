@@ -32,7 +32,7 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
    * in a file, and returns the set of final states reached
    */
   def eval(exp: Exp, sem: Semantics[Exp, Abs, Addr, Time], graph: Boolean, timeout: Timeout): Output = {
-    def loop(control: Control, store: Store[Addr, Abs], stack: List[Frame], t: Time, count: Int): ConcreteMachineOutput = {
+    def loop(control: Control, store: Store[Addr, Abs], inStack: List[Frame], outStack: List[(Exp, List[Frame])], t: Time, count: Int): ConcreteMachineOutput = {
       if (timeout.reached) {
         ConcreteMachineOutputTimeout(store, timeout.time, count)
       } else {
@@ -41,31 +41,38 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
             val actions = sem.stepEval(e, env, store, t)
             if (actions.size == 1) {
               actions.head match {
-                case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, stack, Timestamp[Time].tick(t), count + 1)
-                case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: stack, Timestamp[Time].tick(t), count + 1)
-                case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, stack, Timestamp[Time].tick(t), count + 1)
-                case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, stack, Timestamp[Time].tick(t, fexp), count + 1)
+                case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, inStack, outStack, Timestamp[Time].tick(t), count + 1)
+                case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: inStack, outStack, Timestamp[Time].tick(t), count + 1)
+                case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, inStack, outStack, Timestamp[Time].tick(t), count + 1)
+                case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, List.empty, (e, inStack) :: outStack, Timestamp[Time].tick(t, fexp), count + 1)
                 case ActionError(err) => ConcreteMachineOutputError(store, timeout.time, count, err.toString)
               }
             } else {
               ConcreteMachineOutputError(store, timeout.time, count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
             }
           case ControlKont(v) => /* pop a continuation */
-            stack match {
+            inStack match {
               case frame :: tl =>
                 val actions = sem.stepKont(v, frame, store, t)
                 if (actions.size == 1) {
                   actions.head match {
-                    case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, tl, Timestamp[Time].tick(t), count + 1)
-                    case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: tl, Timestamp[Time].tick(t), count + 1)
-                    case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, tl, Timestamp[Time].tick(t), count + 1)
-                    case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, tl, Timestamp[Time].tick(t, fexp), count + 1)
+                    case ActionReachedValue(v, store2, _) => loop(ControlKont(v), store2, tl, outStack, Timestamp[Time].tick(t), count + 1)
+                    case ActionPush(frame, e, env, store2, _) => loop(ControlEval(e, env), store2, frame :: tl, outStack, Timestamp[Time].tick(t), count + 1)
+                    case ActionEval(e, env, store2, _) => loop(ControlEval(e, env), store2, tl, outStack, Timestamp[Time].tick(t), count + 1)
+                    case ActionStepIn(fexp, _, e, env, store2, _, _) => loop(ControlEval(e, env), store2, List.empty, (e, tl) :: outStack, Timestamp[Time].tick(t, fexp), count + 1)
                     case ActionError(err) => ConcreteMachineOutputError(store, timeout.time, count, err.toString)
                   }
                 } else {
                   ConcreteMachineOutputError(store, timeout.time, count, s"execution was not concrete (got ${actions.size} actions instead of 1)")
                 }
-              case Nil => ConcreteMachineOutputValue(store, timeout.time, count, v)
+              case Nil => outStack match {
+                case (e, inStack2) :: tl =>
+                  Recorder.funRet(e, JoinLattice[Abs].typesOf(v))
+                  loop(control, store, inStack2, tl, t, count)
+                case Nil =>
+                  Recorder.funRet(exp, JoinLattice[Abs].typesOf(v))
+                  ConcreteMachineOutputValue(store, timeout.time, count, v)
+              }
             }
           case ControlError(err) =>
             ConcreteMachineOutputError(store, timeout.time, count, err.toString)
@@ -74,6 +81,6 @@ class ConcreteMachine[Exp : Expression, Abs : JoinLattice, Addr : Address, Time 
     }
     loop(ControlEval(exp, Environment.initial[Addr](sem.initialEnv)),
       Store.initial[Addr, Abs](sem.initialStore),
-      Nil, Timestamp[Time].initial(""), 0)
+      Nil, Nil, Timestamp[Time].initial(""), 0)
   }
 }

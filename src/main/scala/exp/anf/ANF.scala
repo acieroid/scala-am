@@ -67,6 +67,13 @@ object ANFCompiler {
       bindings.reverse.foldLeft(compileBody(body, pos, a => a))(
         (e: ANFExp, binding: (Identifier, SchemeExp)) =>
         ANFLet(binding._1, compile(binding._2), e, pos))
+    case SchemeNamedLet(name, bindings, body, pos) =>
+      val init: ANFExp = ANFFuncall(ANFVar(name), bindings.map(b => ANFVar(b._1)), pos)
+      ANFLet(name, ANFLambda(bindings.map(_._1), compileBody(body, pos, a => a), pos),
+        bindings.reverse.foldLeft(init)(
+          (e: ANFExp, binding: (Identifier, SchemeExp)) =>
+          ANFLet(binding._1, compile(binding._2), e, pos)),
+      pos)
     case SchemeLetStar(bindings, body, pos) =>
       bindings.reverse.foldLeft(compileBody(body, pos, a => a))(
         (e: ANFExp, binding: (Identifier, SchemeExp)) =>
@@ -105,6 +112,15 @@ object ANFCompiler {
       ret(ANFQuoted(quoted, pos), tail, k)
     case SchemeValue(value, pos) =>
       k(ANFValue(value, pos))
+    case SchemeCond((cond, body1) :: (SchemeValue(ValueBoolean(true), _), body2) :: Nil, pos) =>
+      compile(cond, false, c =>
+        compileBody(body1, pos, b1 =>
+          compileBody(body2, pos, b2 =>
+            ret(ANFIf(c, b1, b2, pos), tail, k))))
+    case SchemeCond((cond, body) :: clauses, pos) =>
+      compile(cond, false, c =>
+        compileBody(body, pos, b =>
+          ret(ANFIf(c, b, compile(SchemeCond(clauses, pos)), pos), tail, k)))
     case _ =>
       throw new Exception(s"Unhandled expression in ANF compiler: $exp")
   }
@@ -121,7 +137,7 @@ object ANFCompiler {
   }
 
   def compileBody(body: List[SchemeExp], pos: Position, k: ANFAtomicExp => ANFExp): ANFExp = body match {
-    case Nil => throw new Exception("Cannot compile empty body")
+    case Nil => ANFValue(ValueBoolean(true), pos) //throw new Exception("Cannot compile empty body")
     case e :: Nil => compile(e, true, a => a)
     case e :: rest => compile(e, false, a => {
       val v = newVar
@@ -150,4 +166,12 @@ object ANF {
    * Parse a string representing a Scheme program
    */
   def parse(s: String): ANFExp = compile(Scheme.rename(Scheme.parse(s)))
+}
+
+object ANFConverter {
+  def main(args: Array[String]): Unit = {
+    Util.withFileWriter(args(1))(w =>
+      w.write(ANF.parse(Util.fileContent(args(0)).get).toString)
+    )
+  }
 }

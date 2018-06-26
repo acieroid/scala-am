@@ -69,11 +69,11 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       case (SchemeLambda(args, body, pos), env1) =>
         if (args.length == argsv.length) {
           bindArgs(args.zip(argsv.map(_._2)), env1, store, t) match {
-            case (env2, store) =>
+            case (env2, store, effs) =>
               if (body.length == 1)
-                Action.stepIn(fexp, (SchemeLambda(args, body, pos), env1), body.head, env2, store, argsv)
+                Action.stepIn(fexp, (SchemeLambda(args, body, pos), env1), body.head, env2, store, argsv, effs)
               else
-                Action.stepIn(fexp, (SchemeLambda(args, body, pos), env1), SchemeBegin(body, pos), env2, store, argsv)
+                Action.stepIn(fexp, (SchemeLambda(args, body, pos), env1), SchemeBegin(body, pos), env2, store, argsv, effs)
           }
         } else { Action.error(ArityError(fexp.toString, args.length, argsv.length)) }
       case (lambda, _) => Action.error(TypeError(lambda.toString, "operator", "closure", "not a closure"))
@@ -83,7 +83,9 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
     if (fromClo.isEmpty && fromPrim.isEmpty) {
       Action.error(TypeError(function.toString, "operator", "function", "not a function"))
     } else {
-      fromClo ++ fromPrim
+      val res = fromClo ++ fromPrim
+      Recorder.closures(fexp, res.size)
+      res
     }
   }
 
@@ -144,7 +146,7 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
           (env.extend(v.name, a), store.extend(a, JoinLattice[V].bottom))
       })
       val exp = bindings.head._2
-      Action.push(FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1), exp, env1, store1)
+      Action.push(FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1), exp, env1, store1, addresses.toSet.map(Effect.writeVariable[Addr]))
     case SchemeNamedLet(name, bindings, body, pos) =>
       val fexp = SchemeLambda(bindings.map(_._1), body, pos)
       val a = Address[Addr].variable(name, JoinLattice[V].bottom, t)
@@ -166,15 +168,19 @@ class BaseSchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp]
       val v = IsSchemeLattice[V].inject[SchemeExp, Addr]((SchemeLambda(args, body, pos), env))
       val env1 = env.extend(f.name, a)
       val store1 = store.extend(a, v)
-      Action.value(v, store)
+      Action.value(v, store, Set(Effect.writeVariable(a)))
     }
     case SchemeDo(Nil, test, finals, commands, pos) =>
+      throw new Exception("disabled") // disabled
       Action.push(FrameDoTest(Nil, test, finals, commands, env), test, env, store)
     case SchemeDo((name, init, step) :: vars, test, finals, commands, pos) =>
+      throw new Exception("disabled") // disabled
       Action.push(FrameDoInit(List(), name, step, vars, test, finals, commands, env), init, env, store)
     case SchemeVar(variable) => env.lookup(variable.name) match {
       case Some(a) => store.lookup(a) match {
-        case Some(v) => Action.value(v, store, Set(EffectReadVariable(a)))
+        case Some(v) =>
+          Recorder.identifier(variable, JoinLattice[V].typesOf(v))
+          Action.value(v, store, Set(EffectReadVariable(a)))
         case None => Action.error(UnboundAddress(a.toString))
       }
       case None => Action.error(UnboundVariable(variable))
@@ -290,7 +296,10 @@ class SchemeSemantics[V : IsSchemeLattice, Addr : Address, Time : Timestamp](pri
    * the evaluation if it succeeded, otherwise returns None */
   protected def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[(V, Set[Effect[Addr]])] = e match {
     case λ: SchemeLambda => Some((IsSchemeLattice[V].inject[SchemeExp, Addr]((λ, env)), Set()))
-    case SchemeVar(variable) => env.lookup(variable.name).flatMap(a => store.lookup(a).map(v => (v, Set(EffectReadVariable(a)))))
+    case SchemeVar(variable) => env.lookup(variable.name).flatMap(a => store.lookup(a).map(v => {
+      Recorder.identifier(variable, JoinLattice[V].typesOf(v))
+      (v, Set(EffectReadVariable(a)))
+    }))
     case SchemeValue(v, _) => evalValue(v).map(value => (value, Set()))
     case _ => None
   }
