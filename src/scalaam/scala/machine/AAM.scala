@@ -25,10 +25,10 @@ import scalaam.core._
 
  * Exp are used as context for the timestamp
  */
-class AAM[Exp, V, A <: Address, T](val sem: Semantics[Exp, V, A, T, Exp])(
+class AAM[Exp, V, T](val sem: Semantics[Exp, V, Exp])(
   implicit val timestamp: Timestamp[T, Exp],
   implicit val lattice: Lattice[V])
-    extends MachineAbstraction[Exp, V, A, T, Exp] {
+    extends MachineAbstraction[Exp, V, Exp] {
 
   val Action = sem.Action
 
