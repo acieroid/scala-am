@@ -1,14 +1,11 @@
 package scalaam.core
 
-/** A timestamp T with contexts of type C */
 trait Timestamp[T, C] {
-  /** The initial value for the timestamp */
   def initial(seed: String): T
-  /** A tick on the timestamp without context */
   def tick(t: T): T
-  /** A tick on the timestamp with context c */
-  def tick(t: T, c: C): T
+  def tick(t: T, c: C): T = tick(t)
 }
+
 
 object Timestamp {
   def apply[T, C]()(implicit t: Timestamp[T, C]): Timestamp[T, C] = t
@@ -22,7 +19,7 @@ case class KCFA[C](k: Int) {
     implicit val typeclass = new Timestamp[T, C] {
       def initial(seed: String) = T(seed, List.empty)
       def tick(t: T) = t
-      def tick(t: T, c: C) = T(t.seed, (c :: t.history).take(k))
+      override def tick(t: T, c: C) = T(t.seed, (c :: t.history).take(k))
     }
   }
 }
@@ -34,7 +31,6 @@ case class ZeroCFA[C]() {
     implicit val typeclass = new Timestamp[T, C] {
       def initial(seed: String) = T(seed)
       def tick(t: T) = t
-      def tick(t: T, c: C) = t
     }
   }
 }
@@ -46,7 +42,6 @@ case class ConcreteTimestamp[C]() {
     implicit val typeclass = new Timestamp[T, C] {
       def initial(seed: String) = T(seed, 0)
       def tick(t: T) = T(t.seed, t.n + 1)
-      def tick(t: T, c: C) = tick(t)
     }
   }
 }

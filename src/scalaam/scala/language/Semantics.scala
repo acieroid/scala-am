@@ -5,7 +5,7 @@ import scalaam.lattice._
 
 trait Frame
 
-trait Semantics[Exp, V, Addr <: Address, T, C] {
+trait Semantics[Exp, Addr <: Address, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val lattice: Lattice[V]
 

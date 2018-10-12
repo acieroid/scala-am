@@ -7,7 +7,7 @@ import scalaam.core._
 case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])(
   implicit val timestamp: Timestamp[T, C],
   implicit val lambdaLattice: LambdaLattice[V, A])
-    extends Semantics[LambdaExp, V, A, T, C] {
+    extends Semantics[LambdaExp, A, V, T, C] {
 
   implicit val lattice: Lattice[V] = lambdaLattice
 

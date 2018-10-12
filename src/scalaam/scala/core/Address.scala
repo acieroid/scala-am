@@ -10,9 +10,9 @@ trait Address {
 }
 
 
-trait Allocator[C] {
-  implicit val timestamp: Timestamp[C]
-  def variable(name: Identifier, t: Timestamp): Address
+trait Allocator[A <: Address, T, C] {
+  implicit val timestamp: Timestamp[T, C]
+  def variable(name: Identifier, t: T): A
 }
 
 object NameAddress {
@@ -20,7 +20,7 @@ object NameAddress {
     def printable = true
     override def toString = s"@${name.name}"
   }
-  case class Alloc[T, C]()(implicit val timestamp: Timestamp[T, C]) extends Allocator[T, C] {
+  case class Alloc[T, C]()(implicit val timestamp: Timestamp[T, C]) extends Allocator[A, T, C] {
     def variable(name: Identifier, t: T) = A(name)
   }
 }

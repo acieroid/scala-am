@@ -13,12 +13,12 @@ import scalaam.core._
  *   - A type of timestamp T
  *   - A type of context for the timestamp C
  */
-trait MachineAbstraction[Exp, V, A <: Address, T, C] {
+trait MachineAbstraction[Exp, A <: Address, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val lattice: Lattice[V]
 
   /** The semantics used */
-  val sem: Semantics[Exp, V, A, T, C]
+  val sem: Semantics[Exp, A, V, T, C]
 
   /** The states explored by the machine.
    States can be converted to graph nodes */

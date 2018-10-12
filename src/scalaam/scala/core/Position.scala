@@ -8,7 +8,7 @@ sealed trait Position {
 }
 
 /** A position with a line and column */
-case class SimplePosition(line: Int, column: Int) extends Position
+case class SimplePosition(line: Int, column: Int) extends Position with SmartHash
 
 /** No position */
 object NoPosition extends Position {
