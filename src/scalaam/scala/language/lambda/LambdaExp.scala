@@ -25,6 +25,6 @@ case class LambdaCall(f: LambdaExp, args: List[LambdaExp], pos: Position) extend
 }
 
 case class LambdaVar(id: Identifier) extends LambdaExp {
-  val pos = id.pos
+  val pos               = id.pos
   override def toString = id.name
 }

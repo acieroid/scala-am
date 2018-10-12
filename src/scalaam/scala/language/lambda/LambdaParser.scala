@@ -13,28 +13,27 @@ object LambdaCompiler {
       for {
         restv <- compileArgsT(rest)
       } yield id :: restv
-      // tailcall(compileArgsT(rest)).map(restv => id :: restv)
+    // tailcall(compileArgsT(rest)).map(restv => id :: restv)
     case SExpValue(ValueNil, _) => done(Nil)
-    case _ => throw new Exception(s"Invalid parameter list: $args (${args.pos})")
+    case _                      => throw new Exception(s"Invalid parameter list: $args (${args.pos})")
   }
 
   def compileListT(args: SExp): TailRec[List[LambdaExp]] = args match {
     case SExpPair(exp, rest, _) =>
       for {
-        expv <- compileT(exp)
+        expv  <- compileT(exp)
         restv <- compileListT(rest)
       } yield expv :: restv
 //      tailcall(compileT(exp)).flatMap(expv =>
 //        tailcall(compileListT(rest)).map(restv => expv :: restv))
     case SExpValue(ValueNil, _) => done(Nil)
-    case _ => throw new Exception(s"Invalid argument list: $args (${args.pos})")
+    case _                      => throw new Exception(s"Invalid argument list: $args (${args.pos})")
   }
-
 
   def compileT(exp: SExp): TailRec[LambdaExp] = exp match {
     case SExpPair(SExpId(Identifier("lambda", _)),
-      SExpPair(args,
-        SExpPair(body, SExpValue(ValueNil, _), _), _), _) =>
+                  SExpPair(args, SExpPair(body, SExpValue(ValueNil, _), _), _),
+                  _) =>
       for {
         argsv <- compileArgsT(args)
         bodyv <- compileT(body)
@@ -44,7 +43,7 @@ object LambdaCompiler {
 //          LambdaFun(argsv, bodyv, exp.pos)))
     case SExpPair(f, args, _) =>
       for {
-        fv <- compileT(f)
+        fv    <- compileT(f)
         argsv <- compileListT(args)
       } yield LambdaCall(fv, argsv, exp.pos)
 //      tailcall(compileT(f)).flatMap(fv =>
@@ -60,6 +59,6 @@ object LambdaParser {
   def compile(exp: SExp): LambdaExp = LambdaCompiler.compile(exp)
   def parse(s: String): LambdaExp = SExpParser.parse(s) match {
     case sexp :: Nil => compile(sexp)
-    case _ => throw new Exception(s"Invalid lambda-calculus program: $s")
+    case _           => throw new Exception(s"Invalid lambda-calculus program: $s")
   }
 }

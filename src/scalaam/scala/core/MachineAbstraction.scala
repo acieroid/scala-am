@@ -3,13 +3,13 @@ package scalaam.core
 import scalaam.graph.{Graph, GraphElement}
 
 /**
- * The interface of the machine abstraction itself.
- * A machine abstraction is parameterized by:
- *   - A type of expressions Exp
- *   - A type of values V
- *   - A type of timestamp T
- *   - A type of context for the timestamp C
- */
+  * The interface of the machine abstraction itself.
+  * A machine abstraction is parameterized by:
+  *   - A type of expressions Exp
+  *   - A type of values V
+  *   - A type of timestamp T
+  *   - A type of context for the timestamp C
+  */
 trait MachineAbstraction[Exp, A <: Address, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val lattice: Lattice[V]
@@ -26,11 +26,11 @@ trait MachineAbstraction[Exp, A <: Address, V, T, C] {
   type Transition <: GraphElement
 
   /**
-   * Runs the machine abstraction with its semantics on a program.
-   *   - @param program is the program to run
-   *   - @param graph is the initial graph, on which nodes and edges corresponding respectively to explored states and transitions are added
-   *   - @param timeout is a timeout after which the run is stopped
-   * When the timeout is exceeded, the run stops and the current graph is returned, but it is not safe to conclude anything from this graph.
-   */
+    * Runs the machine abstraction with its semantics on a program.
+    *   - @param program is the program to run
+    *   - @param graph is the initial graph, on which nodes and edges corresponding respectively to explored states and transitions are added
+    *   - @param timeout is a timeout after which the run is stopped
+    * When the timeout is exceeded, the run stops and the current graph is returned, but it is not safe to conclude anything from this graph.
+    */
   def run[G](program: Exp, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G
 }

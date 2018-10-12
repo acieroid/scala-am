@@ -13,12 +13,12 @@ case class SimplePosition(line: Int, column: Int) extends Position with SmartHas
 /** No position */
 object NoPosition extends Position {
   val column = 0
-  val line = 0
+  val line   = 0
 }
 
 object Position {
   def apply(p: scala.util.parsing.input.Position): Position = SimplePosition(p.column, p.line)
-  def none: Position = NoPosition
+  def none: Position                                        = NoPosition
 
   /** Positions are ordered */
   implicit val ordering: Ordering[Position] = new Ordering[Position] {

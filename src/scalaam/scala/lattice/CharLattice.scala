@@ -12,5 +12,5 @@ trait CharLattice[C] extends Lattice[C] {
 }
 
 object CharLattice {
-  def apply[C : CharLattice]: CharLattice[C] = implicitly
+  def apply[C: CharLattice]: CharLattice[C] = implicitly
 }

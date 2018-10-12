@@ -17,10 +17,10 @@ case class LambdaSetLattice[A <: Address]() {
   object L {
     implicit val typeclass = new LambdaLattice[L, A] {
       def function(e: LambdaExp, env: Environment[A]) = L(Set((e, env)))
-      def closures(f: L) = f.vals
+      def closures(f: L)                              = f.vals
 
-      def bottom = L(Set.empty)
-      def join(x: L, y: L) = L(x.vals.union(y.vals))
+      def bottom               = L(Set.empty)
+      def join(x: L, y: L)     = L(x.vals.union(y.vals))
       def subsumes(x: L, y: L) = y.vals.subsetOf(x.vals)
     }
   }

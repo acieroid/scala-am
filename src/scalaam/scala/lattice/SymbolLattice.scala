@@ -5,7 +5,7 @@ import scalaam.core.Lattice
 /** A lattice for symbols */
 trait SymbolLattice[Sym] extends Lattice[Sym] {
   def inject(sym: String): Sym
-  def toString[S : StringLattice](n: Sym): S
+  def toString[S: StringLattice](n: Sym): S
 
   trait SymbolLatticeLaw extends LatticeLaw {
     /* No laws for now */
@@ -13,6 +13,6 @@ trait SymbolLattice[Sym] extends Lattice[Sym] {
 }
 
 object SymbolLattice {
-  def apply[Sym : SymbolLattice]: SymbolLattice[Sym] = implicitly
+  def apply[Sym: SymbolLattice]: SymbolLattice[Sym] = implicitly
 
 }
