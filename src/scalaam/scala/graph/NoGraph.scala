@@ -1,12 +1,19 @@
 package scalaam.graph
 
 /** A graph that preserves no information */
-class NoGraph[N <: GraphElement, E <: GraphElement] extends Graph[N, E] {
-  def addNode(node: N) = this
-  def addEdge(node1: N, edge: E, node2: N) = this
-  override def addEdges(l: Iterable[(N, E, N)]) = this
-  def removeNode(node: N) = this
-  def removeEdge(node1: N, edge: E, node2: N) = this
-  def nodes = 0
-  def edges = 0
+class NoGraph[N <: GraphElement, E <: GraphElement] {
+  case class G()
+  object G {
+    implicit val typeclass = new Graph[G, N, E] {
+      def empty = G()
+      def addNode(g: G, node: N) = g
+      def addEdge(g: G, node1: N, edge: E, node2: N) = g
+      override def addEdges(g: G, l: Iterable[(N, E, N)]) = g
+      def removeNode(g: G, node: N) = g
+      def removeEdge(g: G, node1: N, edge: E, node2: N) = g
+      def nodes(g: G) = 0
+      def edges(g: G) = 0
+    }
+  }
 }
+

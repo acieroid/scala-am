@@ -3,6 +3,7 @@ package scalaam.machine
 import scalaam.lattice.Lattice
 import scalaam.language.{Semantics, Frame}
 import scalaam.graph.{Graph, GraphElement, GraphMetadataNone, Colors, NoTransition}
+import Graph.GraphOps
 import scalaam.core._
 
 /**
@@ -143,7 +144,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
    * program (otherwise it will just visit every reachable state). A @param
    * timeout can also be given.
    */
-  def run(program: Exp, graph: Graph[State, Transition], timeout: Timeout.T): Graph[State, Transition] = {
+  def run[G](program: Exp, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
     import scala.language.higherKinds
     /* The fixpoint computation loop. @param todo is the set of states that need to
      * be visited (the worklist). @param visited is the set of states that have
@@ -157,7 +158,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
      * implementations; but they are basically similar as Set[State].
      */
     @scala.annotation.tailrec
-    def loop[WL[_] : WorkList, VS[_] : VisitedSet](todo: WL[State], visited: VS[State], graph: Graph[State, Transition]): Graph[State, Transition] = {
+    def loop[WL[_] : WorkList, VS[_] : VisitedSet](todo: WL[State], visited: VS[State], graph: G): G = {
       if (timeout.reached) {
         /* If we exceeded the maximal time allowed, we stop the evaluation and return what we computed up to now */
         graph
@@ -195,6 +196,6 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
       /* Initially we didn't visit any state */
       VisitedSet.SetVisitedSet.empty[State],
       /* The initial graph is given */
-      graph)
+      Graph[G, State, Transition].empty)
   }
 }

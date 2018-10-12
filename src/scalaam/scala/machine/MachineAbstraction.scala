@@ -35,5 +35,5 @@ trait MachineAbstraction[Exp, A <: Address, V, T, C] {
    *   - @param timeout is a timeout after which the run is stopped
    * When the timeout is exceeded, the run stops and the current graph is returned, but it is not safe to conclude anything from this graph.
    */
-  def run(program: Exp, graph: Graph[State, Transition], timeout: Timeout.T): Graph[State, Transition]
+  def run[G](program: Exp, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G
 }
