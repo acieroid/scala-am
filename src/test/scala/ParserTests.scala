@@ -4,8 +4,16 @@ import org.scalatest.prop._
 import scalaam.language.sexp._
 import scalaam.language.scheme.SchemeParser
 
-class ParserTests extends FlatSpec with Matchers {
+class SExpParserTests extends FlatSpec with Matchers {
   Benchmarks.benchmarksFor(BenchmarkTestKind.SExpParse).foreach(bench =>
+    BenchmarksUtil.fileContent(bench).foreach(content =>
+      bench.file should "be parsed" in {
+        assert(SExpParser.parse(content).toString.length > 0)
+      }))
+}
+
+class SchemeParserTests extends FlatSpec with Matchers {
+  Benchmarks.benchmarksFor(BenchmarkTestKind.SchemeParse).foreach(bench =>
     BenchmarksUtil.fileContent(bench).foreach(content =>
       bench.file should "be parsed" in {
         assert(SchemeParser.parse(content).toString.length > 0)
