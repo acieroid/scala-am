@@ -78,7 +78,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
      */
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
-      case ControlKont(v) => a == HaltKontAddr
+      case ControlKont(_) => a == HaltKontAddr
       case ControlError(_) => true
     }
 

@@ -23,7 +23,7 @@ trait IntLattice[I] extends Lattice[I] { self =>
       conditional(subsumes(b, a),
         RealLattice[R].subsumes(toReal[R](b), toReal[R](a)))
     def toRealIsSound(a: Int): Boolean =
-      RealLattice[R].subsumes(toReal[R](inject(a)), RealLattice[R].inject(a))
+      RealLattice[R].subsumes(toReal[R](inject(a)), RealLattice[R].inject(a.toDouble))
     def randomPreservesBottom: Boolean =
       random(bottom) == bottom
     /* Random should neither be monotone nor sound (at least in concrete) */

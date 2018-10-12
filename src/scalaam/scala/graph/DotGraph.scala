@@ -15,7 +15,7 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]() {
       _addNode(node1)._addNode(node2)._addEdgeNoCheck(node1, edge, node2)
 
     def toFile(path: String): Unit = {
-      withFileWriter(path) { out }
+      withFileWriter(path)(out)
     }
 
     private def withFileWriter(path: String)(body: java.io.Writer => Unit): Unit = {
@@ -25,19 +25,19 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]() {
       bw.close()
     }
 
-    def out(writer: java.io.Writer) = {
-      writer.append("digraph G {\n")
+    def out(writer: java.io.Writer): Unit = {
+      writer.write("digraph G {\n")
       _nodes.foreach((n) => {
         val id = ids(n)
         val label = n.label
         val color = n.color
         val tooltip = n.metadata.toString
-        writer.append(s"node_$id[shape=box, xlabel=$id, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n")
+        writer.write(s"node_$id[shape=box, xlabel=$id, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n")
       })
       _edges.foreach({ case (n1, ns) => ns.foreach({ case (annot, n2) =>
         val annotstr = annot.label
-        writer.append(s"node_${ids(n1)} -> node_${ids(n2)} [label=<$annotstr>]\n")})})
-      writer.append("}")
+        writer.write(s"node_${ids(n1)} -> node_${ids(n2)} [label=<$annotstr>]\n")})})
+      writer.write("}")
     }
   }
 

@@ -1,7 +1,7 @@
 package scalaam
 
 object Main {
-  def main(args: Array[String]) {
+  def main(args: Array[String]) = {
     import scalaam.language.lambda._
     import scalaam.machine._
     import scalaam.core._

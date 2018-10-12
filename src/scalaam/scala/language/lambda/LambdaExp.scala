@@ -1,7 +1,6 @@
 package scalaam.language.lambda
 
 import scalaam.core.{Position, Identifier}
-import scalaam.language.sexp._
 
 trait LambdaExp {
   val pos: Position

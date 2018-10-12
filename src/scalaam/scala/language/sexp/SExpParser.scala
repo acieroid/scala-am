@@ -160,7 +160,7 @@ class SExpLexer extends Lexical with SExpTokens {
         val signstr = s.map(_.toString).getOrElse("")
         val poststr = post.map({ case _ ~ digits => s".${digits.mkString}" }).getOrElse("")
         val expstr = exp.map({
-          case e ~ TInteger(n) => s"e$n"
+          case _ ~ TInteger(n) => s"e$n"
           case _ => throw new Exception(s"cannot parse real ($exp)")
         }).getOrElse("")
         val n = s"$signstr${pre.mkString}$poststr$expstr"

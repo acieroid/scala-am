@@ -15,7 +15,7 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
   case class FrameFuncallOperands(f: V, fexp: LambdaExp, cur: LambdaExp, args: List[(LambdaExp, V)], toeval: List[LambdaExp], env: Environment[A]) extends Frame
 
   def stepEval(e: LambdaExp, env: Environment[A], store: Store[A, V], t: T): Set[Action.A] = e match {
-    case LambdaFun(args, body, pos) =>
+    case LambdaFun(_, _, _) =>
       Action.Value(LambdaLattice[V, A].function(e, env), store)
     case LambdaCall(f, args, _) =>
       Action.Push(FrameFuncallOperator(f, args, env), f, env, store)
@@ -24,19 +24,19 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
   }
 
   def stepKont(v: V, frame: Frame, store: Store[A, V], t: T): Set[Action.A] = frame match {
-    case FrameFuncallOperator(fexp, Nil, env) =>
+    case FrameFuncallOperator(fexp, Nil, _) =>
       evalCall(v, fexp, Nil, store, t)
     case FrameFuncallOperator(fexp, arg :: args, env) =>
       Action.Push(FrameFuncallOperands(v, fexp, arg, List.empty, args, env), arg, env, store)
-    case FrameFuncallOperands(f, fexp, cur, args, Nil, env) =>
+    case FrameFuncallOperands(f@_, fexp, cur, args, Nil, env@_) =>
       evalCall(f, fexp, ((cur, v) :: args).reverse, store, t)
-    case FrameFuncallOperands(f, fexp, cur, args, argtoeval :: argstoeval, env) =>
+    case FrameFuncallOperands(f@_, fexp, cur, args, argtoeval :: argstoeval, env) =>
       Action.Push(FrameFuncallOperands(v, fexp, argtoeval, (cur, v) :: args, argstoeval, env), argtoeval, env, store)
   }
 
   def evalCall(f: V, fexp: LambdaExp, argsv: List[(LambdaExp, V)], store: Store[A, V], t: T): Set[Action.A] =
     LambdaLattice[V, A].closures(f).map({
-      case clo @ (LambdaFun(args, body, pos), defenv) =>
+      case clo @ (LambdaFun(args, body, pos@_), defenv) =>
         if (args.length == argsv.length) {
           val (callenv, store2) = bindArgs(args.zip(argsv.map(_._2)), defenv, store, t)
           Action.StepIn(fexp, clo, body, callenv, store2)

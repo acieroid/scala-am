@@ -427,7 +427,7 @@ object SchemeRenamer {
       countl(bindings.map(_._1), names, count) match {
         case (variables, names1, count1) => renameList(bindings.map(_._2), names1, count1) match {
           case (exps, count2) => renameList(body, names1, count2) match {
-            case (body1, count3) => (SchemeNamedLet(name /* TODO: rename it as well */, variables.zip(exps), body1, pos), count2)
+            case (body1, count3) => (SchemeNamedLet(name /* TODO: rename it as well */, variables.zip(exps), body1, pos), count3)
           }
         }
       }
@@ -458,12 +458,12 @@ object SchemeRenamer {
       }
     case SchemeCase(exp, clauses, default, pos) =>
       rename(exp, names, count) match {
-        case (exp1, count1) => clauses.foldLeft((List[(List[SchemeValue], List[SchemeExp])](), count))(
+        case (exp1, count1) => clauses.foldLeft((List[(List[SchemeValue], List[SchemeExp])](), count1))(
           (st: (List[(List[SchemeValue], List[SchemeExp])], CountMap),
             cl: (List[SchemeValue], List[SchemeExp])) =>
           (st, cl) match {
             case ((l, cs), (objs, body)) => renameList(body, names, cs) match {
-              case (body1, count1) => ((objs, body1) :: l, count1)
+              case (body1, count2) => ((objs, body1) :: l, count2)
             }
           }) match {
           case (l, count1) => renameList(default, names, count1) match {

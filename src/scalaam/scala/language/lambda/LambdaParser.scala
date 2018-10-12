@@ -1,6 +1,6 @@
 package scalaam.language.lambda
 
-import scalaam.core.{Position, Identifier}
+import scalaam.core.Identifier
 import scalaam.language.sexp._
 
 object LambdaCompiler {

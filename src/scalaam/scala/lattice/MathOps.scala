@@ -25,10 +25,10 @@ object MathOps {
     val frac = n % 1 /* Fractional part of n */
     /* In the case of a fraction part equaling 0.5, rounding is done towards the even number. */
     if ((scala.math.abs(frac) == 0.5) && (((n > 0) && ((scala.math.abs(n - frac) % 2) == 0)) || ((n < 0) && (((n - frac) % 2) == -1)))) {
-      scala.math.round(n) - 1
+      scala.math.round(n).toDouble - 1
     }
     else {
-      scala.math.round(n)
+      scala.math.round(n).toDouble
     }
   }
 }

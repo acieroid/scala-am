@@ -31,7 +31,7 @@ case class BasicStore[A <: Address, V](content: Map[A, V]) extends Store[A, V] {
   implicit val lat: Lattice[V] = implicitly[Lattice[V]]
   override def toString = content.filterKeys(_.printable).toString
   def keys = content.keys
-  def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p(a, v) })
+  def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
   def lookup(a: A) = content.get(a)
   def lookupMF(a: A) = content.get(a) match {
     case Some(a) => a
