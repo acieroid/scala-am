@@ -13,12 +13,6 @@ trait Lattice[L] extends PartialOrdering[L] {
   /** Equality check, returning an abstract result */
   //def eql[B : BoolLattice](x: L, y: L): B
 
-
-  /** For Monoid[L]: a lattice is trivially a monoid by using join as append... */
-  final def append(x: L, y: => L): L = join(x, y)
-  /** ...and bottom as zero */
-  final def zero: L = bottom
-
   /** For PartialOrdering[L]: a lattice has a partial order, defined by subsumes... */
   final def lteq(x: L, y: L): Boolean = subsumes(y, x)
   /** ...and elements of the lattice can be compared */
@@ -50,6 +44,12 @@ trait Lattice[L] extends PartialOrdering[L] {
 
 object Lattice {
   def apply[L : Lattice]: Lattice[L] = implicitly
+
+  implicit def SetLattice[A] = new Lattice[Set[A]] {
+    def bottom = Set.empty
+    def join(x: Set[A], y: Set[A]) = x.union(y)
+    def subsumes(x: Set[A], y: Set[A]) = y.subsetOf(x)
+  }
 }
 
 trait LatticeTypeclass {

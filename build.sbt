@@ -56,3 +56,8 @@ libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % 
 
 maxErrors := 5
 scalaSource in Compile := baseDirectory.value / "src" / "scalaam"
+
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+logBuffered in Test := false
+
+

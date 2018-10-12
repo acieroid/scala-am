@@ -3,7 +3,6 @@ package scalaam.core
 case class UnboundAddress[A <: Address](a: A) extends Error
 
 trait Store[A <: Address, V] {
-  implicit val lat: Lattice[V]
 
   /** Gets all the keys of the store */
   def keys: Iterable[A]
@@ -25,8 +24,7 @@ trait Store[A <: Address, V] {
 }
 
 /** Basic store with no fancy feature, just a map from addresses to values */
-case class BasicStore[A <: Address, V](content: Map[A, V]) extends Store[A, V] {
-  implicit val lat: Lattice[V] = implicitly[Lattice[V]]
+class BasicStore[A <: Address, V](content: Map[A, V])(implicit val lat: Lattice[V]) extends Store[A, V] {
   override def toString = content.filterKeys(_.printable).toString
   def keys = content.keys
   def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
@@ -36,8 +34,8 @@ case class BasicStore[A <: Address, V](content: Map[A, V]) extends Store[A, V] {
     case None => UnboundAddress(a)
   }
   def extend(a: A, v: V) = content.get(a) match {
-    case None => this.copy(content = content + (a -> v))
-    case Some(v2) => this.copy(content = content + (a -> lat.join(v, v2)))
+    case None => new BasicStore[A, V](content + (a -> v))
+    case Some(v2) => new BasicStore[A, V](content + (a -> lat.join(v, v2)))
   }
   def update(a: A, v: V) = extend(a, v)
   def updateOrExtend(a: A, v: V) = extend(a, v)
@@ -48,7 +46,7 @@ case class BasicStore[A <: Address, V](content: Map[A, V]) extends Store[A, V] {
 }
 
 object Store {
-  def empty[A <: Address, V]: Store[A, V] = BasicStore(Map())
-  def initial[A <: Address, V](values: Iterable[(A, V)]): Store[A, V] =
-    BasicStore(values.toMap)
+  def empty[A <: Address, V : Lattice]: Store[A, V] = new BasicStore(Map())
+  def initial[A <: Address, V : Lattice](values: Iterable[(A, V)]): Store[A, V] =
+    new BasicStore(values.toMap)
 }

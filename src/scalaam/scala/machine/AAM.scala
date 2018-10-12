@@ -51,6 +51,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   case object HaltKontAddr extends KA
 
   case class Kont(f: Frame, next: KA)
+  implicit val kontSetLattice = Lattice.SetLattice[Kont]
 
   /**
    * A machine state is made of a control component, a value store, a
