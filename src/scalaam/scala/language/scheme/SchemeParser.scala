@@ -3,8 +3,8 @@ package scalaam.language.scheme
 import scalaam.core.{Position, Identifier}
 import scalaam.language.sexp._
 
-/* TODO: use trampolines to ensure that we can parse anything without blowing up the stack */
-/* TODO: free vars function, and other helpers? */
+/* TODO[easy]: use trampolines to ensure that we can parse anything without blowing up the stack */
+/* TODO[easy]: free vars function, and other helpers? */
 
 /**
   * Object that provides a method to compile an s-expression into a Scheme expression

@@ -8,7 +8,10 @@ class SExpParserTests extends FlatSpec with Matchers {
   Benchmarks.benchmarksFor(BenchmarkTestKind.SExpParse).foreach(bench =>
     BenchmarksUtil.fileContent(bench).foreach(content =>
       bench.file should "be parsed" in {
-        assert(SExpParser.parse(content).toString.length > 0)
+        val parsed = SExpParser.parse(content)
+        assert(parsed.mkString("").length > 0)
+        /* Is the result of printing and parsing again the same as the first parse? */
+        assert(SExpParser.parse(parsed.mkString("")).mkString("") == parsed.mkString(""))
       }))
 }
 
@@ -16,7 +19,10 @@ class SchemeParserTests extends FlatSpec with Matchers {
   Benchmarks.benchmarksFor(BenchmarkTestKind.SchemeParse).foreach(bench =>
     BenchmarksUtil.fileContent(bench).foreach(content =>
       bench.file should "be parsed" in {
-        assert(SchemeParser.parse(content).toString.length > 0)
+        val parsed = SchemeParser.parse(content)
+        assert(parsed.toString.length > 0)
+        // TODO[easy]: this is not always the case, look into that
+        //assert(SchemeParser.parse(parsed.toString).toString == parsed.toString)
       }))
 }
 
