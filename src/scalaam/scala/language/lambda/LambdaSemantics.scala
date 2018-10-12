@@ -1,7 +1,5 @@
 package scalaam.language.lambda
 
-import scalaam.language.{Semantics, Frame}
-import scalaam.lattice._
 import scalaam.core._
 
 case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])(

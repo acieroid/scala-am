@@ -1,7 +1,5 @@
 package scalaam.core
 
-import scalaam.lattice.Lattice
-
 case class UnboundAddress[A <: Address](a: A) extends Error
 
 trait Store[A <: Address, V] {

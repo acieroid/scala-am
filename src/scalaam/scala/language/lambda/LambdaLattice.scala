@@ -1,7 +1,6 @@
 package scalaam.language.lambda
 
 import scalaam.core._
-import scalaam.lattice._
 
 trait LambdaLattice[L, A <: Address] extends Lattice[L] {
   def function(e: LambdaExp, env: Environment[A]): L

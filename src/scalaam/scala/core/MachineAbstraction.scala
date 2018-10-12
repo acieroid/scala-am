@@ -1,9 +1,6 @@
-package scalaam.machine
+package scalaam.core
 
-import scalaam.lattice.Lattice
-import scalaam.language.Semantics
 import scalaam.graph.{Graph, GraphElement}
-import scalaam.core._
 
 /**
  * The interface of the machine abstraction itself.

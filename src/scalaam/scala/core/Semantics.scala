@@ -1,7 +1,4 @@
-package scalaam.language
-
-import scalaam.core._
-import scalaam.lattice._
+package scalaam.core
 
 trait Frame
 

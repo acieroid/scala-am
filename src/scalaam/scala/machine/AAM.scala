@@ -1,7 +1,5 @@
 package scalaam.machine
 
-import scalaam.lattice.Lattice
-import scalaam.language.{Semantics, Frame}
 import scalaam.graph.{Graph, GraphElement, GraphMetadataNone, Colors, NoTransition}
 import Graph.GraphOps
 import scalaam.core._

@@ -1,5 +1,7 @@
 package scalaam.lattice
 
+import scalaam.core.Lattice
+
 /** A lattice for symbols */
 trait SymbolLattice[Sym] extends Lattice[Sym] {
   def inject(sym: String): Sym

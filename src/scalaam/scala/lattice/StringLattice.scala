@@ -1,5 +1,7 @@
 package scalaam.lattice
 
+import scalaam.core.Lattice
+
 /** A lattice for strings */
 trait StringLattice[S] extends Lattice[S] {
   def inject(s: String): S

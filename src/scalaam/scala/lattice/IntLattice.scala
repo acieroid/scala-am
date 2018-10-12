@@ -1,5 +1,7 @@
 package scalaam.lattice
 
+import scalaam.core.Lattice
+
 /** A lattice for integers */
 trait IntLattice[I] extends Lattice[I] { self =>
   def inject(n: Int): I

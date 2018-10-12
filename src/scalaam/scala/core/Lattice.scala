@@ -1,4 +1,4 @@
-package scalaam.lattice
+package scalaam.core
 
 /** A lattice typeclass.
  * It is actually a join-semi lattice as it only need a join operation and a bottom element

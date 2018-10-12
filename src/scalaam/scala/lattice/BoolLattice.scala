@@ -1,5 +1,7 @@
 package scalaam.lattice
 
+import scalaam.core.Lattice
+
 /** A lattice for booleans */
 trait BoolLattice[B] extends Lattice[B] {
   def inject(b: Boolean): B
