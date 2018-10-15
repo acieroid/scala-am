@@ -1,5 +1,8 @@
 package scalaam.core
 
+/** Error raised when trying to construct the top element of a lattice which doesn't have one */
+object LatticeTopUndefined extends ScalaAMException
+
 /** A lattice typeclass.
   * It is actually a join-semi lattice as it only need a join operation and a bottom element
   */
@@ -8,14 +11,17 @@ trait Lattice[L] extends PartialOrdering[L] {
   /** A lattice has a bottom element */
   def bottom: L
 
+  /** A lattice has a top element (might be undefined) */
+  def top: L
+
   /** Elements of the lattice can be joined together */
-  def join(x: L, y: L): L
+  def join(x: L, y: => L): L
 
   /** Subsumption between two elements can be checked */
-  def subsumes(x: L, y: L): Boolean
+  def subsumes(x: L, y: => L): Boolean
 
   /** Equality check, returning an abstract result */
-  //def eql[B : BoolLattice](x: L, y: L): B
+  def eql[B : scalaam.lattice.BoolLattice](x: L, y: L): B
 
   /** For PartialOrdering[L]: a lattice has a partial order, defined by subsumes... */
   final def lteq(x: L, y: L): Boolean = subsumes(y, x)
@@ -33,9 +39,11 @@ object Lattice {
   def apply[L: Lattice]: Lattice[L] = implicitly
 
   implicit def SetLattice[A] = new Lattice[Set[A]] {
+    def top                            = throw LatticeTopUndefined
     def bottom                         = Set.empty
-    def join(x: Set[A], y: Set[A])     = x.union(y)
-    def subsumes(x: Set[A], y: Set[A]) = y.subsetOf(x)
+    def join(x: Set[A], y: => Set[A])     = x.union(y)
+    def subsumes(x: Set[A], y: => Set[A]) = y.subsetOf(x)
+    def eql[B : scalaam.lattice.BoolLattice](x: Set[A], y: Set[A]) = ???
   }
 }
 

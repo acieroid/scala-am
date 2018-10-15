@@ -19,9 +19,11 @@ case class LambdaSetLattice[A <: Address]() {
       def function(e: LambdaExp, env: Environment[A]) = L(Set((e, env)))
       def closures(f: L)                              = f.vals
 
-      def bottom               = L(Set.empty)
-      def join(x: L, y: L)     = L(x.vals.union(y.vals))
-      def subsumes(x: L, y: L) = y.vals.subsetOf(x.vals)
+      def bottom                  = L(Set.empty)
+      def top                     = throw LatticeTopUndefined
+      def join(x: L, y: => L)     = L(x.vals.union(y.vals))
+      def subsumes(x: L, y: => L) = y.vals.subsetOf(x.vals)
+      def eql[B : scalaam.lattice.BoolLattice](x: L, y: L) = ??? /* TODO[easy]: define */
     }
   }
 }
