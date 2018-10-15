@@ -1,7 +1,18 @@
 name := "scalaam"
 version := "0.1.2018"
-
 scalaVersion := "2.12.7"
+
+/* Dependencies */
+libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.1"
+
+/* Compilation options */
+maxErrors := 5
+scalaSource in Compile := baseDirectory.value / "src" / "scalaam"
+
+/* Configuration for running the tests */
+logBuffered in Test := false
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.0" % "test"
 
 /* Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
 scalacOptions ++= Seq(
@@ -51,13 +62,3 @@ scalacOptions ++= Seq(
   "-Ywarn-unused:privates",            // Warn if a private member is unused.
   "-Ywarn-value-discard"               // Warn when non-Unit expression results are unused.
 )
-
-libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.1"
-
-maxErrors := 5
-scalaSource in Compile := baseDirectory.value / "src" / "scalaam"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test"
-logBuffered in Test := false
-
-

@@ -27,27 +27,6 @@ trait Lattice[L] extends PartialOrdering[L] {
     case (false, true)  => Some(-1) // y >= x and x != y
     case (false, false) => None // not comparable
   }
-
-  /** Lattice properties */
-  trait LatticeLaw {
-    def conditional(p: Boolean, q: => Boolean): Boolean = !p || q
-
-    /** Bottom is the lower bound of all elements in the lattice */
-    def bottomLowerBound(a: L): Boolean = subsumes(a, bottom)
-
-    /** The join operation is commutative */
-    def joinCommutative(a: L, b: L): Boolean = join(a, b) == join(b, a)
-
-    /** The join operation is associative */
-    def joinAssociatve(a: L, b: L, c: L): Boolean = join(join(a, b), c) == join(a, join(b, c))
-
-    /** The join operation is idempotent */
-    def joinIdempotent(a: L): Boolean = join(a, a) == a
-
-    /** The join operation is compatible with subsumption */
-    def joinSubsumesCompatible(a: L, b: L): Boolean =
-      conditional(subsumes(b, a), join(a, b) == b)
-  }
 }
 
 object Lattice {
