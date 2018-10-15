@@ -419,14 +419,14 @@ abstract class SymbolLatticeTest[Sym : SymbolLattice](gen: LatticeGenerator[Sym]
   checkAll(symbolLaws)
 }
 
-/*
-class ConcreteBoolTest extends BoolLatticeTest[concrete.BoolLattice](ConcreteBooleanGenerator)
-class ConcreteStringTest extends StringLatticeTest[concrete.StringLattice, concrete.IntLattice](ConcreteStringGenerator)
-class ConcreteIntTest extends IntLatticeTest[concrete.IntLattice, concrete.BoolLattice, concrete.StringLattice](ConcreteIntGenerator)
-class ConcreteRealTest extends RealLatticeTest[concrete.RealLattice, concrete.BoolLattice, concrete.StringLattice](ConcreteRealGenerator)
-class ConcreteCharTest extends CharLatticeTest[concrete.CharLattice](ConcreteCharGenerator)
-class ConcreteSymbolTest extends SymbolLatticeTest[concrete.SymbolLattice](ConcreteSymbolGenerator)
+class ConcreteBoolTest extends BoolLatticeTest[concrete.B](ConcreteBooleanGenerator)
+class ConcreteStringTest extends StringLatticeTest[concrete.S, concrete.I](ConcreteStringGenerator)
+class ConcreteIntTest extends IntLatticeTest[concrete.I, concrete.B, concrete.R, concrete.S](ConcreteIntGenerator)
+class ConcreteRealTest extends RealLatticeTest[concrete.R, concrete.B, concrete.I, concrete.S](ConcreteRealGenerator)
+class ConcreteCharTest extends CharLatticeTest[concrete.C](ConcreteCharGenerator)
+class ConcreteSymbolTest extends SymbolLatticeTest[concrete.Sym](ConcreteSymbolGenerator)
 
+/*
 class TypeBoolTest extends BoolLatticeTest[type.BoolLattice](ConcreteBooleanGenerator)
 class TypeStringTest extends StringLatticeTest[type.StringLattice, type.IntLattice](TypeStringGenerator)
 class TypeIntTest extends IntLatticeTest[type.IntLattice, type.BoolLattice, type.StringLattice](TypeIntGenerator)

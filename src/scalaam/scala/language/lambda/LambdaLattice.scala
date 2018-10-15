@@ -23,7 +23,9 @@ case class LambdaSetLattice[A <: Address]() {
       def top                     = throw LatticeTopUndefined
       def join(x: L, y: => L)     = L(x.vals.union(y.vals))
       def subsumes(x: L, y: => L) = y.vals.subsetOf(x.vals)
-      def eql[B : scalaam.lattice.BoolLattice](x: L, y: L) = ??? /* TODO[easy]: define */
+
+      import scalaam.lattice.BoolLattice
+      def eql[B : BoolLattice](x: L, y: L): B = BoolLattice[B].inject(y.vals.subsetOf(x.vals))
     }
   }
 }
