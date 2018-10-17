@@ -1,6 +1,7 @@
 package scalaam.lattice
 
 import scalaam.core.Lattice
+import scalaam.util.Show
 
 object concrete {
   sealed trait L[+X] {
@@ -20,14 +21,12 @@ object concrete {
   case object Top extends L[Nothing]
   case class Values[X](content: Set[X]) extends L[X]
 
-  abstract class BaseInstance[A](typeName: String) extends Lattice[L[A]] {
-    /* TODO[medium]: introduce a Show[A] type class for pretty-printing lattice elements */
-    /*
-     def show(x: L[A]): String = x match {
-     case Top => typeName
-     case Values(content) if content.size == 1 => Show[A].shows(content.elems.head)
-     case Values(content) => "{" + content.elems.map(Show[A].shows).mkString(",") + "}"
-     }*/
+  abstract class BaseInstance[A : Show](typeName: String) extends Lattice[L[A]] with Show[L[A]] {
+    def show(x: L[A]): String = x match {
+      case Top => typeName
+      case Values(content) if content.size == 1 => Show[A].show(content.head)
+      case Values(content) => "{" + content.map(Show[A].show).mkString(",") + "}"
+    }
     val top: L[A] = Top
     val bottom: L[A] = Values[A](Set.empty)
     def join(x: L[A], y: => L[A]): L[A] = x match {
@@ -62,10 +61,9 @@ object concrete {
       def foldMap[Y : Lattice](f: X => Y): Y = content.foldLeft(Lattice[Y].bottom)((acc, v) => Lattice[Y].join(acc, f(v)))
     }
 
-    /*
-    val stringShow: Show[String] = new Show[String] {
-      override def shows(s: String): String = "\"" + s + "\""
-    }*/
+    implicit val stringShow: Show[String] = new Show[String] {
+      def show(s: String): String = "\"" + s + "\""
+    }
     implicit val stringConcrete: StringLattice[S] = new BaseInstance[String]("Str") with StringLattice[S] {
       def inject(x: String): S = Values(Set(x))
       def length[I2 : IntLattice](s: S): I2 = s.foldMap(s => IntLattice[I2].inject(s.length))
@@ -83,10 +81,9 @@ object concrete {
       }
       def toSymbol[Sym2 : SymbolLattice](s: S): Sym2 = s.foldMap(s => SymbolLattice[Sym2].inject(s))
     }
-    /*
-    val boolShow: Show[Boolean] = new Show[Boolean] {
-      override def shows(b: Boolean): String = if (b) { "#t" } else { "#f" }
-    }*/
+    implicit val boolShow: Show[Boolean] = new Show[Boolean] {
+      def show(b: Boolean): String = if (b) { "#t" } else { "#f" }
+    }
     implicit val boolConcrete: BoolLattice[B] = new BaseInstance[Boolean]("Bool") with BoolLattice[B] {
       def inject(x: Boolean): B = Values(Set(x))
       def isTrue(b: B): Boolean = b match {
@@ -100,6 +97,9 @@ object concrete {
       def not(b: B): B = b.map(x => !x)
     }
 
+    implicit val intShow: Show[Int] = new Show[Int] {
+      def show(i: Int): String = s"$i"
+    }
     implicit val intConcrete: IntLattice[I] = new BaseInstance[Int]("Int") with IntLattice[I] {
       def inject(x: Int): I = Values(Set(x))
       def toReal[R2 : RealLattice](n: I): R2 = n match {
@@ -118,6 +118,9 @@ object concrete {
       def toString[S2 : StringLattice](n: I): S2 = n.foldMap(n => StringLattice[S2].inject(n.toString))
     }
 
+    implicit val doubleShow: Show[Double] = new Show[Double] {
+      def show(d: Double): String = s"$d"
+    }
     implicit val realConcrete: RealLattice[R] = new BaseInstance[Double]("Real") with RealLattice[R] {
       def inject(x: Double): R = Values(Set(x))
       def toInt[I2 : IntLattice](n: R): I2 = n.foldMap(n => IntLattice[I2].inject(n.toInt))
@@ -140,14 +143,13 @@ object concrete {
       def lt[B2 : BoolLattice](n1: R, n2: R): B2 = n2.guardBot { n1.foldMap(n1 => n2.foldMap(n2 => BoolLattice[B2].inject(n1 < n2))) }
       def toString[S2 : StringLattice](n: R): S2 = n.foldMap(n => StringLattice[S2].inject(n.toString))
     }
-    /*
-    val charShow: Show[Char] = new Show[Char] {
-      override def shows(c: Char): String = s"#\\$c"
-    }*/
+    implicit val charShow: Show[Char] = new Show[Char] {
+      def show(c: Char): String = s"#\\$c"
+    }
     implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char): C = Values(Set(x))
     }
-    implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym") with SymbolLattice[Sym] {
+    implicit val symConcete: SymbolLattice[Sym] = new BaseInstance[String]("Sym") with SymbolLattice[Sym] {
       def inject(x: String): Sym = Values(Set(x))
       def toString[S2 : StringLattice](s: Sym): S2 = s.foldMap(s => StringLattice[S2].inject(s))
     }

@@ -46,8 +46,3 @@ object Lattice {
     def eql[B : scalaam.lattice.BoolLattice](x: Set[A], y: Set[A]) = ???
   }
 }
-
-trait LatticeTypeclass {
-  type L
-  val typeclass: Lattice[L]
-}
