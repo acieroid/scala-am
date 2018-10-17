@@ -3,7 +3,7 @@ package scalaam.lattice
 import scalaam.core.Lattice
 import scalaam.util.Show
 
-object concrete {
+object Concrete {
   sealed trait L[+X] {
     def foldMap[Y : Lattice](f: X => Y): Y = this match {
       case Top => Lattice[Y].top
@@ -21,7 +21,7 @@ object concrete {
   case object Top extends L[Nothing]
   case class Values[X](content: Set[X]) extends L[X]
 
-  abstract class BaseInstance[A : Show](typeName: String) extends Lattice[L[A]] with Show[L[A]] {
+  abstract class BaseInstance[A : Show](typeName: String) extends Lattice[L[A]] {
     def show(x: L[A]): String = x match {
       case Top => typeName
       case Values(content) if content.size == 1 => Show[A].show(content.head)
@@ -149,7 +149,7 @@ object concrete {
     implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char): C = Values(Set(x))
     }
-    implicit val symConcete: SymbolLattice[Sym] = new BaseInstance[String]("Sym") with SymbolLattice[Sym] {
+    implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym") with SymbolLattice[Sym] {
       def inject(x: String): Sym = Values(Set(x))
       def toString[S2 : StringLattice](s: Sym): S2 = s.foldMap(s => StringLattice[S2].inject(s))
     }

@@ -30,7 +30,7 @@ class BooleanGenerator[B : BoolLattice] extends LatticeGenerator[B] {
     else if (l == top) { Gen.oneOf(bot, t, f) }
     else { Gen.oneOf(l, bot) }
 }
-object ConcreteBooleanGenerator extends BooleanGenerator[concrete.B]
+object ConcreteBooleanGenerator extends BooleanGenerator[Concrete.B]
 
 
 case class SetGen[A](g: Gen[A]) {
@@ -52,24 +52,22 @@ case class SetGen[A](g: Gen[A]) {
   }
 }
 
-class ConcreteGenerator[T](g: Gen[T])(implicit lat: Lattice[concrete.L[T]]) extends LatticeGenerator[concrete.L[T]] {
+class ConcreteGenerator[T](g: Gen[T])(implicit lat: Lattice[Concrete.L[T]]) extends LatticeGenerator[Concrete.L[T]] {
   val isetgen = SetGen[T](g)
-  val topgen: Gen[concrete.L[T]] = lat.top
+  val topgen: Gen[Concrete.L[T]] = lat.top
 
-  def any = Gen.oneOf(topgen, isetgen.gen.map(x => concrete.Values(x)))
-  def le(l: concrete.L[T]) = l match {
-    case concrete.Top => any
-    case concrete.Values(content) => isetgen.genSubset(content).map(x => concrete.Values(x))
+  def any = Gen.oneOf(topgen, isetgen.gen.map(x => Concrete.Values(x)))
+  def le(l: Concrete.L[T]) = l match {
+    case Concrete.Top => any
+    case Concrete.Values(content) => isetgen.genSubset(content).map(x => Concrete.Values(x))
   }
 }
-object ConcreteStringGenerator extends ConcreteGenerator[String](Generators.str)(concrete.L.stringConcrete)
+
+object ConcreteStringGenerator extends ConcreteGenerator[String](Generators.str)(Concrete.L.stringConcrete)
 object ConcreteIntGenerator extends ConcreteGenerator[Int](Generators.int)
 object ConcreteRealGenerator extends ConcreteGenerator[Double](Generators.double)
 object ConcreteCharGenerator extends ConcreteGenerator[Char](Generators.char)
-object ConcreteSymbolGenerator extends ConcreteGenerator[String](Generators.sym)(concrete.L.symConcrete)
-
-/*
-
+object ConcreteSymbolGenerator extends ConcreteGenerator[String](Generators.sym)(Concrete.L.symConcrete)
 
 object TypeGenerator extends LatticeGenerator[Type.T] {
   /** Type lattice is a finite lattice with two elements */
@@ -80,7 +78,7 @@ object TypeGenerator extends LatticeGenerator[Type.T] {
   }
 }
 
-abstract class ConstantPropagationGenerator[X : Order](gen: Gen[X])(implicit lat: LatticeElement[ConstantPropagation.L[X]]) extends LatticeGenerator[ConstantPropagation.L[X]] {
+abstract class ConstantPropagationGenerator[X](gen: Gen[X])(implicit lat: Lattice[ConstantPropagation.L[X]]) extends LatticeGenerator[ConstantPropagation.L[X]] {
   def constgen: Gen[ConstantPropagation.L[X]] = for { x <- gen } yield ConstantPropagation.Constant(x)
   def botgen: Gen[ConstantPropagation.L[X]] = lat.bottom
   def topgen: Gen[ConstantPropagation.L[X]] = lat.top
@@ -88,8 +86,9 @@ abstract class ConstantPropagationGenerator[X : Order](gen: Gen[X])(implicit lat
   def le(l: ConstantPropagation.L[X]) = if (l == lat.top) { any } else if (l == lat.bottom) { botgen } else { Gen.oneOf(l, lat.bottom) }
 }
 
-object StringConstantPropagationGenerator extends ConstantPropagationGenerator[String](Generators.str)(Order[String], ConstantPropagation.L.stringCP)
-object IntegerConstantPropagationGenerator extends ConstantPropagationGenerator[Int](Generators.int)
-object DoubleConstantPropagationGenerator extends ConstantPropagationGenerator[Double](Generators.double)
-object CharConstantPropagationGenerator extends ConstantPropagationGenerator[Char](Generators.char)
-object SymbolConstantPropagationGenerator extends ConstantPropagationGenerator[String](Generators.sym)(Order[String], ConstantPropagation.L.symCP)*/
+
+object ConstantPropagationStringGenerator extends ConstantPropagationGenerator[String](Generators.str)(ConstantPropagation.L.stringCP)
+object ConstantPropagationIntGenerator extends ConstantPropagationGenerator[Int](Generators.int)
+object ConstantPropagationRealGenerator extends ConstantPropagationGenerator[Double](Generators.double)
+object ConstantPropagationCharGenerator extends ConstantPropagationGenerator[Char](Generators.char)
+object ConstantPropagationSymbolGenerator extends ConstantPropagationGenerator[String](Generators.sym)(ConstantPropagation.L.symCP)

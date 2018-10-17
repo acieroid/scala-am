@@ -478,6 +478,7 @@ class MakeSchemeLattice[
 
 
   val schemeLattice: SchemeLattice[L, Exp, A] = new SchemeLattice[L, Exp, A] {
+    def show(x: L) = x.toString /* TODO[easy]: implement better */
     def isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
     def unaryOp(op: UnaryOperator)(x: L): MayFail[L, Error] = x.foldMapL(x => Value.unaryOp(op)(x).map(x => Element(x)))

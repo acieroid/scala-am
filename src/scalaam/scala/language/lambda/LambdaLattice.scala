@@ -16,6 +16,7 @@ case class LambdaSetLattice[A <: Address]() {
 
   object L {
     implicit val typeclass = new LambdaLattice[L, A] {
+      def show(x: L) = "{" ++ x.vals.mkString(",") ++ "}"
       def function(e: LambdaExp, env: Environment[A]) = L(Set((e, env)))
       def closures(f: L)                              = f.vals
 

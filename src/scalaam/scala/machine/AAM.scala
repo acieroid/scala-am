@@ -3,6 +3,7 @@ package scalaam.machine
 import scalaam.graph.{Graph, GraphElement, GraphMetadataNone, Colors, NoTransition}
 import Graph.GraphOps
 import scalaam.core._
+import scalaam.util.Show
 
 /**
   * Implementation of a CESK machine following the AAM approach (Van Horn, David,
@@ -51,6 +52,9 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   case object HaltKontAddr               extends KA
 
   case class Kont(f: Frame, next: KA)
+  implicit val kontShow = new Show[Kont] {
+    def show(k: Kont) = "kont($f)"
+  }
   implicit val kontSetLattice = Lattice.SetLattice[Kont]
 
   /**
