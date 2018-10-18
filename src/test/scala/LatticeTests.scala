@@ -4,6 +4,8 @@ import Prop.forAll
 import scalaam.core.Lattice
 import scalaam.lattice._
 
+/** TODO[medium] tests for scheme lattice */
+
 abstract class LatticeSpecification extends Properties("") {
   /* Taken from Scalaz's SpecLite class */
   override val name = this.getClass.getName.stripSuffix("$")

@@ -31,8 +31,8 @@ trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
   /** Extract closures contained in this value */
   def getClosures(x: L): Set[Closure]
 
-  /** The representation of a primitive operation */
-  type Primitive = Unit // TODO[hard] implement primitives
+  /** TODO[hard] implement primitives */
+  type Primitive = Unit
   /** Extract primitives contained in this value */
   def getPrimitives(x: L): Set[Primitive]
 
