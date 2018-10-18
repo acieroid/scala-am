@@ -296,8 +296,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(
   //TODO override def initialBindings = primitives.bindings
 }
 
-/*
-
 /**
  * Extend base Scheme semantics with:
  *   - atomic evaluation: parts of some constructs can be evaluated atomically
@@ -306,14 +304,18 @@ class BaseSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(
  *     to evaluate (+ 1 (f)), we can directly push the continuation and jump to
  *     the evaluation of (f), instead of evaluating +, and 1 in separate states.
  */
-class SchemeSemantics[V : SchemeLattice, Addr : Address, T : Timestamp](primitives: Primitives[Addr, V])
-    extends BaseSchemeSemantics[V, Addr, T](primitives) {
+class SchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(    // (primitives: Primitives[Addr, V])
+  implicit val t: Timestamp[T, C], // TODO: how can we use the same names as implicits of the parent class?
+  implicit val lat: SchemeLattice[V, SchemeExp, A])
+    extends BaseSchemeSemantics[A, V, T, C](allocator)(t, lat) {
+  import schemeLattice._
+
   /** Tries to perform atomic evaluation of an expression. Returns the result of
    * the evaluation if it succeeded, otherwise returns None */
-  protected def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[(V, Set[Effect[Addr]])] = e match {
-    case lam: SchemeLambda => Some((closure((lam, env)), Set()))
-    case SchemeVar(variable) => env.lookup(variable.name).flatMap(a => store.lookup(a).map(v => (v, Set(EffectReadVariable(a)))))
-    case SchemeValue(v, _) => evalValue(v).map(value => (value, Set()))
+  protected def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[V] = e match {
+    case lam: SchemeLambda => Some(closure((lam, env)))
+    case SchemeVar(variable) => env.lookup(variable.name).flatMap(a => store.lookup(a))
+    case SchemeValue(v, _) => evalValue(v)
     case _ => None
   }
 
@@ -323,9 +325,9 @@ class SchemeSemantics[V : SchemeLattice, Addr : Address, T : Timestamp](primitiv
    * and call stepKont(v, store, frame).
    */
   protected def optimizeAtomic(actions: Actions, t: T): Actions = actions.flatMap({
-    case ActionPush(frame, exp, env, store, effects) => atomicEval(exp, env, store) match {
-      case Some((v, effs)) => stepKont(v, frame, store, t).map(_.addEffects(effs ++ effects))
-      case None => Action.Push(frame, exp, env, store, effects)
+    case act @ Action.Push(frame, exp, env, store) => atomicEval(exp, env, store) match {
+      case Some(v) => stepKont(v, frame, store, t)
+      case None => act
     }
     case action => action
   })
@@ -335,7 +337,7 @@ class SchemeSemantics[V : SchemeLattice, Addr : Address, T : Timestamp](primitiv
     case Nil =>
       evalCall(f, fexp, args.reverse, store, t)
     case e :: rest => atomicEval(e, env, store) match {
-      case Some((v, effs)) => funcallArgs(f, fexp, (e, v) :: args, rest, env, store, t).map(_.addEffects(effs))
+      case Some(v) => funcallArgs(f, fexp, (e, v) :: args, rest, env, store, t)
       case None => Action.Push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)
     }
   }
@@ -345,4 +347,4 @@ class SchemeSemantics[V : SchemeLattice, Addr : Address, T : Timestamp](primitiv
 
   override def stepKont(v: V, frame: Frame, store: Sto, t: T) =
     optimizeAtomic(super.stepKont(v, frame, store, t), t)
-}*/
+}
