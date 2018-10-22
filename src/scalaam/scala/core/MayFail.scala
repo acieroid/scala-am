@@ -2,9 +2,9 @@ package scalaam.core
 
 sealed trait MayFail[A, E] {
   def addError(err: E): MayFail[A, E] = this match {
-    case MayFailSuccess(a)    => MayFailBoth(a, List(err))
-    case MayFailBoth(a, errs) => MayFailBoth(a, errs :+ err)
-    case MayFailError(errs)   => MayFailError(errs :+ err)
+    case MayFailSuccess(a)    => MayFailBoth(a, Set(err))
+    case MayFailBoth(a, errs) => MayFailBoth(a, errs + err)
+    case MayFailError(errs)   => MayFailError(errs + err)
   }
   /* We want to deconstruct in for loops, so we need filter (see https://issues.scala-lang.org/browse/SI-1336) */
   def withFilter(f: A => Boolean) = this
@@ -24,14 +24,19 @@ sealed trait MayFail[A, E] {
     case MayFailError(errs)   => MayFailError(errs)
     case MayFailBoth(a, errs) => MayFailBoth(f(a), errs)
   }
+
+  def mapSet[B](fa: A => B)(fe: E => B): Set[B] = this match {
+    case MayFailSuccess(a) => Set(fa(a))
+    case MayFailError(errs) => errs.map(fe)
+    case MayFailBoth(a, errs) => Set(fa(a)) ++ errs.map(fe)
+  }
 }
 
 case class MayFailSuccess[A, E](a: A)             extends MayFail[A, E]
-case class MayFailError[A, E](errs: List[E])      extends MayFail[A, E]
-case class MayFailBoth[A, E](a: A, errs: List[E]) extends MayFail[A, E]
+case class MayFailError[A, E](errs: Set[E])      extends MayFail[A, E]
+case class MayFailBoth[A, E](a: A, errs: Set[E]) extends MayFail[A, E]
 
 object MayFail {
-  import scala.language.implicitConversions
-  implicit def failure[A, E](err: E): MayFail[A, E] = MayFailError(List(err))
+  implicit def failure[A, E](err: E): MayFail[A, E] = MayFailError(Set(err))
   implicit def success[A, E](a: A): MayFail[A, E]   = MayFailSuccess(a)
 }

@@ -31,10 +31,9 @@ trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
   /** Extract closures contained in this value */
   def getClosures(x: L): Set[Closure]
 
-  /** TODO[hard] implement primitives */
-  type Primitive = Unit
-  /** Extract primitives contained in this value */
-  def getPrimitives(x: L): Set[Primitive]
+  /** Extract primitives contained in this value
+   *  TODO[medium] find a way not to have a type parameter here */
+  def getPrimitives[Primitive](x: L): Set[Primitive]
 
   /** Injection of an integer */
   def number(x: Int): L
@@ -47,7 +46,7 @@ trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
   /** Injection of a character */
   def char(x: Char): L
   /** Injection of a primitive function */
-  def primitive(x: Primitive): L
+  def primitive[Primitive](x: Primitive): L
   /** Injection of a closure */
   def closure(x: Closure): L
   /** Injection of a symbol */

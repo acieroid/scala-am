@@ -47,7 +47,8 @@ class MakeSchemeLattice[
   case class Symbol(s: Sym) extends Value {
     override def toString = s.toString // SymbolLattice[Sym].shows(s)
   }
-  case class Prim(prim: schemeLattice.Primitive) extends Value {
+  /** TODO[medium] find a way not to have a type parametre here */
+  case class Prim[Primitive](prim: Primitive) extends Value {
     override def toString = s"#<prim>"
   }
   case class Clo(lambda: Exp, env: Environment[A]) extends Value {
@@ -356,7 +357,7 @@ class MakeSchemeLattice[
     def string(x: String): Value = Str(StringLattice[S].inject(x))
     def bool(x: Boolean): Value = Bool(BoolLattice[B].inject(x))
     def char(x: scala.Char): Value = Char(CharLattice[C].inject(x))
-    def primitive(x: schemeLattice.Primitive): Value = Prim(x)
+    def primitive[Primitive](x: Primitive): Value = Prim(x)
     def closure(x: schemeLattice.Closure): Value = Clo(x._1, x._2)
     def symbol(x: String): Value = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value = Nil
@@ -367,8 +368,8 @@ class MakeSchemeLattice[
       case Clo(lam, env) => Set((lam, env))
       case _ => Set()
     }
-    def getPrimitives(x: Value): Set[schemeLattice.Primitive] = x match {
-      case Prim(p) => Set(p)
+    def getPrimitives[Primitive](x: Value): Set[Primitive] = x match {
+      case Prim(p : Primitive @unchecked) => Set(p)
       case _ => Set()
     }
 
@@ -499,7 +500,7 @@ class MakeSchemeLattice[
      */
 
     def getClosures(x: L): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
-    def getPrimitives(x: L): Set[Primitive] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
+    def getPrimitives[Primitive](x: L): Set[Primitive] = x.foldMapL(x => Value.getPrimitives[Primitive](x))(setMonoid)
 //    def getVectors[Addr : Address](x: L): Set[Addr] = foldMapL(x, x => valueSchemeLattice.getVectors(x))
 
     def bottom: L = Element(Value.bottom)
@@ -508,7 +509,7 @@ class MakeSchemeLattice[
     def string(x: String): L = Element(Value.string(x))
     def char(x: scala.Char): L = Element(Value.char(x))
     def bool(x: Boolean): L = Element(Value.bool(x))
-    def primitive(x: Primitive): L = Element(Value.primitive(x))
+    def primitive[Primitive](x: Primitive): L = Element(Value.primitive[Primitive](x))
     def closure(x: Closure): L = Element(Value.closure(x))
     def symbol(x: String): L = Element(Value.symbol(x))
     def cons(car: L, cdr: L): L = Element(Value.cons(car, cdr))

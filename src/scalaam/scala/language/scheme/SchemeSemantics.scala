@@ -10,7 +10,7 @@ import scalaam.language.sexp._
 class BaseSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(
   implicit val timestamp: Timestamp[T, C],
   implicit val schemeLattice: SchemeLattice[V, SchemeExp, A])
-    extends Semantics[SchemeExp, A, V, T, C] {
+    extends Semantics[SchemeExp, A, V, T, C] with SchemePrimitives[A, V, T, C] {
   implicit val lattice: Lattice[V] = schemeLattice
   import schemeLattice._
 
@@ -91,8 +91,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(
         } else { Action.Err(ArityError(fexp, args.length, argsv.length)) }
       case (lambda, env1) => Action.Err(TypeError("operator expected to be a closure, but is not", closure((lambda, env1))))
     })
-    val fromPrim: Actions = Action.None /* TODO getPrimitives(function).flatMap(prim =>
-      for { (res, store2, effects) <- prim.call(fexp, argsv, store, t) } yield Action.Value(res, store2, effects) ) */
+    val fromPrim: Actions = getPrimitives[Primitive](function).flatMap(prim => prim.call(fexp, argsv, store, t))
     if (fromClo.isEmpty && fromPrim.isEmpty) {
       Action.Err(TypeError("operator expected to be a function, but is not", function))
     } else {
@@ -293,7 +292,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(
       evalDoStep((variable, v, step) :: vars, toeval, test, finals, commands, t, env, store)
   }
 
-  //TODO override def initialBindings = primitives.bindings
+  override def initialBindings = allPrimitives.map(p => (p.name, allocator.primitive(p.name), primitive[Primitive](p)))
 }
 
 /**
@@ -306,8 +305,8 @@ class BaseSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(
  */
 class SchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(    // (primitives: Primitives[Addr, V])
   implicit val t: Timestamp[T, C], // TODO: how can we use the same names as implicits of the parent class?
-  implicit val lat: SchemeLattice[V, SchemeExp, A])
-    extends BaseSchemeSemantics[A, V, T, C](allocator)(t, lat) {
+  implicit val latt: SchemeLattice[V, SchemeExp, A])
+    extends BaseSchemeSemantics[A, V, T, C](allocator)(t, latt) {
   import schemeLattice._
 
   /** Tries to perform atomic evaluation of an expression. Returns the result of
