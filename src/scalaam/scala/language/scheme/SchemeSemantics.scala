@@ -91,7 +91,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(
         } else { Action.Err(ArityError(fexp, args.length, argsv.length)) }
       case (lambda, env1) => Action.Err(TypeError("operator expected to be a closure, but is not", closure((lambda, env1))))
     })
-    val fromPrim: Actions = getPrimitives[Primitive](function).flatMap(prim => prim.call(fexp, argsv, store, t))
+    val fromPrim: Actions = getPrimitives[Primitive](function).flatMap(prim => prim.callAction(fexp, argsv, store, t))
     if (fromClo.isEmpty && fromPrim.isEmpty) {
       Action.Err(TypeError("operator expected to be a function, but is not", function))
     } else {

@@ -19,6 +19,9 @@ sealed trait MayFail[A, E] {
         case MayFailBoth(a, errs2) => MayFailBoth(a, errs ++ errs2)
       }
   }
+  def >>=[B](f: A => MayFail[B, E]): MayFail[B, E] = flatMap[B](f)
+
+
   def map[B](f: A => B): MayFail[B, E] = this match {
     case MayFailSuccess(a)    => MayFailSuccess(f(a))
     case MayFailError(errs)   => MayFailError(errs)
