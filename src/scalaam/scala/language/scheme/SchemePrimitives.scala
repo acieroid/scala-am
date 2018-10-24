@@ -66,7 +66,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  close-input-port: Closing */
                       /* [x]  close-output-port: Closing */
                       /* [x]  complex?: Complex Numbers */
-      // TODO Cons,           /* [vv] cons: Pairs */
+      Cons,           /* [vv] cons: Pairs */
       Cos,            /* [vv] cos: Scientific */
                       /* [x]  current-input-port: Default Ports */
                       /* [x]  current-output-port: Default Ports */
@@ -191,10 +191,10 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  null-environment */
                       /* [x]  write transcript-on */
                       /* [x]  transcript-off */
-      // TODO Caar, Cadr,     /* [v]  caar etc. */
-      // Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar, Cdddr, Caaaar,
-      // Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar,
-      // Cdaadr, Cdadar, Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr,
+      Caar, Cadr,     /* [v]  caar etc. */
+      Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar, Cdddr, Caaaar,
+      Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar,
+      Cdaadr, Cdadar, Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr,
       /* Other primitives that are not R5RS */
       Random,
       Error,
@@ -218,6 +218,25 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         case x :: y :: Nil => call(fexp, x, y)
         case _ => call(args.map({ case (_, v) => v }))
       }).map(v => (v, store))
+    }
+
+    abstract class StoreOperation(val name: String, val nargs: Option[Int] = None) extends Primitive {
+      def call(args: List[V], store: Store[A, V]): MayFail[(V, Store[A, V]), Error] = MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
+      def call(arg: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
+        call(List(arg), store)
+      def call(arg1: V, arg2: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
+        call(List(arg1, arg2), store)
+      def call(fexp: SchemeExp, arg1: (SchemeExp, V), arg2: (SchemeExp, V), store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
+        call(arg1._2, arg2._2, store)
+      def call(fexp: SchemeExp, arg: (SchemeExp, V), store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
+        call(arg._2, store)
+      def call(store: Store[A, V]): MayFail[(V, Store[A, V]), Error] = call(List(), store)
+      def call(fexp : SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T): MayFail[(V, Store[A, V]), Error] = args match {
+        case Nil => call(store)
+        case x :: Nil => call(fexp, x, store)
+        case x :: y :: Nil => call(fexp, x, y, store)
+        case _ => call(args.map({ case (_, v) => v }), store)
+      }
     }
 
     import schemeLattice._
@@ -252,7 +271,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     }
 
     import scala.language.implicitConversions
-    implicit def fromMF(v: V): MayFail[V, Error] = MayFail.success(v)
+    implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
     /* Simpler names for lattice operations */
     def isNull = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsNull) _
@@ -485,7 +504,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         }
       }
       override def call(args: List[V]) = args match {
-        case Nil => PrimitiveVariadicArityError(name, 1, 0)
+        case Nil => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
         case x :: rest => call(rest, x)
       }
     }
@@ -500,7 +519,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         }
       }
       override def call(args: List[V]) = args match {
-        case Nil => PrimitiveVariadicArityError(name, 1, 0)
+        case Nil => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
         case x :: rest => call(rest, x)
       }
     }
@@ -603,7 +622,76 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       override def call(fexp: SchemeExp, x: (SchemeExp, V)) =
         MayFail.failure(UserError(x._2.toString))
     }
+
+    object Cons extends Primitive {
+      val name = "cons"
+      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T) = args match {
+        case (_, car) :: (_, cdr) :: Nil =>
+          val consa = allocator.pointer(fexp, t)
+          (pointer(consa), store.extend(consa, cons(car, cdr)))
+        case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
+      }
+    }
+
+    class CarCdrOperation(override val name: String) extends StoreOperation(name, Some(1)) {
+      trait Spec
+      case object Car extends Spec
+      case object Cdr extends Spec
+      val spec: List[Spec] = name.drop(1).take(name.length - 2).toList.reverseMap(c =>
+        if (c == 'a') { Car }
+        else if (c == 'd') { Cdr }
+        else { throw new Exception(s"Incorrect car/cdr operation: $name") })
+      override def call(v: V, store: Store[A, V]) =
+        for { v <- spec.foldLeft(MayFail.success[V, Error](v))((acc, op) => for {
+          v <- acc
+          res <- getPointerAddresses(v).foldLeft(MayFail.success[V, Error](bottom))((acc : MayFail[V, Error], a: A) =>
+            store.lookup(a) match {
+              case None => acc.addError(UnboundAddress(a))
+              case Some(consv) => for {
+                v1 <- acc
+                v2 <- op match {
+                  case Car => car(consv)
+                  case Cdr => cdr(consv)
+                }
+              } yield join(v1, v2)
+            }
+          )}
+        yield res)} yield (v, store)
+    }
+
+    object Car extends CarCdrOperation("car")
+    object Cdr extends CarCdrOperation("cdr")
+    object Caar extends CarCdrOperation("caar")
+    object Cadr extends CarCdrOperation("cadr")
+    object Cdar extends CarCdrOperation("cdar")
+    object Cddr extends CarCdrOperation("cddr")
+    object Caaar extends CarCdrOperation("caaar")
+    object Caadr extends CarCdrOperation("caadr")
+    object Cadar extends CarCdrOperation("cadar")
+    object Caddr extends CarCdrOperation("caddr")
+    object Cdaar extends CarCdrOperation("cdaar")
+    object Cdadr extends CarCdrOperation("cdadr")
+    object Cddar extends CarCdrOperation("cddar")
+    object Cdddr extends CarCdrOperation("cdddr")
+    object Caaaar extends CarCdrOperation("caaaar")
+    object Caaadr extends CarCdrOperation("caaadr")
+    object Caadar extends CarCdrOperation("caadar")
+    object Caaddr extends CarCdrOperation("caaddr")
+    object Cadaar extends CarCdrOperation("cadaar")
+    object Cadadr extends CarCdrOperation("cadadr")
+    object Caddar extends CarCdrOperation("caddar")
+    object Cadddr extends CarCdrOperation("cadddr")
+    object Cdaaar extends CarCdrOperation("cdaaar")
+    object Cdaadr extends CarCdrOperation("cdaadr")
+    object Cdadar extends CarCdrOperation("cdadar")
+    object Cdaddr extends CarCdrOperation("cdaddr")
+    object Cddaar extends CarCdrOperation("cddaar")
+    object Cddadr extends CarCdrOperation("cddadr")
+    object Cdddar extends CarCdrOperation("cdddar")
+    object Cddddr extends CarCdrOperation("cddddr")
   }
+
+  
 }
 
 

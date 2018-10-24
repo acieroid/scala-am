@@ -7,7 +7,7 @@ import scalaam.language.sexp._
  * Basic Scheme semantics, without any optimization
  * TODO[hard] primitives
  */
-class BaseSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])(
+class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, C])(
   implicit val timestamp: Timestamp[T, C],
   implicit val schemeLattice: SchemeLattice[V, SchemeExp, A])
     extends Semantics[SchemeExp, A, V, T, C] with SchemePrimitives[A, V, T, C] {

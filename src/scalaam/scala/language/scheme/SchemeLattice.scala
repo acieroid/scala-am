@@ -35,6 +35,8 @@ trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
    *  TODO[medium] find a way not to have a type parameter here */
   def getPrimitives[Primitive](x: L): Set[Primitive]
 
+  def getPointerAddresses(x: L): Set[A]
+
   /** Injection of an integer */
   def number(x: Int): L
   /** Injection of a float */

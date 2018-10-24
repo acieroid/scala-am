@@ -61,7 +61,6 @@ object Benchmarks {
     Benchmark("test/eta.scm", List(SExpParse, SchemeParse)),
     Benchmark("test/fact.scm", List(SExpParse, SchemeParse)),
     Benchmark("test/fib.scm", List(SExpParse, SchemeParse)),
-    Benchmark("test/foo.scm", List(SExpParse, SchemeParse)),
     Benchmark("test/gabriel/boyer.scm", List(SExpParse, SchemeParse)),
     Benchmark("test/gabriel/cpstak.scm", List(SExpParse, SchemeParse)),
     Benchmark("test/gabriel/dderiv.scm", List(SExpParse, SchemeParse)),

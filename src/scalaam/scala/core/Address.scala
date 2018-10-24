@@ -13,7 +13,7 @@ trait Address {
 trait Allocator[A <: Address, T, C] {
   implicit val timestamp: Timestamp[T, C]
   def variable(name: Identifier, t: T): A
-  def cell[E](e: E, t: T): A
+  def pointer[E](e: E, t: T): A
   def primitive(name: String): A
 }
 
@@ -24,7 +24,7 @@ object NameAddress {
     def printable         = true
     override def toString = s"@${name.name}"
   }
-  case class Cell[E](e: E) extends A {
+  case class Pointer[E](e: E) extends A {
     def printable = false
   }
   case class Primitive(name: String) extends A {
@@ -33,7 +33,7 @@ object NameAddress {
 
   case class Alloc[T, C]()(implicit val timestamp: Timestamp[T, C]) extends Allocator[A, T, C] {
     def variable(name: Identifier, t: T): A = Variable(name)
-    def cell[E](e: E, t: T): A = Cell(e)
+    def pointer[E](e: E, t: T): A = Pointer(e)
     def primitive(name: String) = Primitive(name)
   }
 }
