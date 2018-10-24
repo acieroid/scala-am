@@ -4,6 +4,6 @@ scala:
   - 2.11.12
 jdk:
   - oraclejdk8
-  - oracleopenjdk7
+  - openjdk7
 
 script: sbt test
