@@ -38,8 +38,8 @@ class BasicStore[A <: Address, V](content: Map[A, V])(implicit val lat: Lattice[
   def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
   def lookup(a: A)                   = content.get(a)
   def lookupMF(a: A) = content.get(a) match {
-    case Some(a) => a
-    case None    => UnboundAddress(a)
+    case Some(a) => MayFail.success(a)
+    case None    => MayFail.failure(UnboundAddress(a))
   }
   def extend(a: A, v: V) = content.get(a) match {
     case None     => new BasicStore[A, V](content + (a -> v))

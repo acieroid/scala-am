@@ -135,7 +135,7 @@ class MakeSchemeLattice[
 //    implicit def mayFailSuccess(l: Value): MayFail[Value, Error] = MayFail.success(l)
 //    implicit def mayFailError(err: Error): MayFail[Value, Error] = MayFail.failure(err)
     def unaryOp(op: UnaryOperator)(x: Value): MayFail[Value, Error] =
-      if (x == Bot) { Bot } else { op match {
+      if (x == Bot) { MayFail.success(Bot) } else { op match {
         case IsNull => MayFail.success(x match {
           case Nil => True
           case _ => False
@@ -271,7 +271,7 @@ class MakeSchemeLattice[
       }}
 
     def binaryOp(op: BinaryOperator)(x: Value, y: Value): MayFail[Value, Error] =
-      if (x == Bot || y == Bot) { Bot } else {
+      if (x == Bot || y == Bot) { MayFail.success(Bot) } else {
         op match {
           case Plus => (x, y) match {
             case (Int(n1), Int(n2)) => MayFail.success(Int(IntLattice[I].plus(n1, n2)))
@@ -370,6 +370,10 @@ class MakeSchemeLattice[
     }
     def getPrimitives[Primitive](x: Value): Set[Primitive] = x match {
       case Prim(p : Primitive @unchecked) => Set(p)
+      case _ => Set()
+    }
+    def getPointerAddresses(x: Value): Set[A] = x match {
+      case Pointer(a) => Set(a)
       case _ => Set()
     }
 
@@ -501,6 +505,7 @@ class MakeSchemeLattice[
 
     def getClosures(x: L): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
     def getPrimitives[Primitive](x: L): Set[Primitive] = x.foldMapL(x => Value.getPrimitives[Primitive](x))(setMonoid)
+    def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
 //    def getVectors[Addr : Address](x: L): Set[Addr] = foldMapL(x, x => valueSchemeLattice.getVectors(x))
 
     def bottom: L = Element(Value.bottom)

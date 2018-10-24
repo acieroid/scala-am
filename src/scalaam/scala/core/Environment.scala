@@ -17,8 +17,8 @@ trait Environment[A <: Address] {
   /** Looks up a value in the environment */
   def lookup(name: String): Option[A]
   def lookupMF(name: Identifier): MayFail[A, Error] = lookup(name.name) match {
-    case Some(v) => v
-    case None    => UnboundVariable(name)
+    case Some(v) => MayFail.success(v)
+    case None    => MayFail.failure(UnboundVariable(name))
   }
 
   /** Extend the environment */

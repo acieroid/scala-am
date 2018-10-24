@@ -40,6 +40,10 @@ case class MayFailError[A, E](errs: Set[E])      extends MayFail[A, E]
 case class MayFailBoth[A, E](a: A, errs: Set[E]) extends MayFail[A, E]
 
 object MayFail {
-  implicit def failure[A, E](err: E): MayFail[A, E] = MayFailError(Set(err))
-  implicit def success[A, E](a: A): MayFail[A, E]   = MayFailSuccess(a)
+  def failure[A, E](err: E): MayFail[A, E] = MayFailError(Set(err))
+  def success[A, E](a: A): MayFail[A, E]   = MayFailSuccess(a)
+  def fromOption[A, E](opt: Option[A])(alt: => E): MayFail[A, E] = opt match {
+    case Some(a) => success(a)
+    case None => failure(alt)
+  }
 }

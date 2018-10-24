@@ -5,6 +5,7 @@ trait Frame
 trait Semantics[Exp, Addr <: Address, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val lattice: Lattice[V]
+  val allocator: Allocator[Addr, T, C]
 
   object Action {
     trait A
