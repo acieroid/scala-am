@@ -421,12 +421,12 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   r5rs("list?", Table(
     ("program", "answer"),
-//TODO    ("(list? '(a b c))", t),
-//    ("(list? '((a b) c d))", t),
-//    ("(list? '())", t),
-//    ("(list? (cons 'a 'b))", f),
-//    ("(list? 'a)", f),
-//    ("(let ((x '(a))) (set-cdr! x x) (list? x))", f)
+    ("(list? '(a b c))", t),
+    ("(list? '((a b) c d))", t),
+    ("(list? '())", t),
+    ("(list? (cons 'a 'b))", f),
+    ("(list? 'a)", f),
+//TODO    ("(let ((x '(a))) (set-cdr! x x) (list? x))", f)
   ))
 
   r5rs("list", Table(
@@ -444,12 +444,14 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   // append not implemented
   // reverse not implemented
-//  r5rs("list-ref", Table(
-//    ("program", "answer"),
-//    ("(list-ref '(a b c d) 2)", symbol("c")),
-//    ("(list-ref '(a b c d) (inexact->exact (round 1.8)))", symbol("c"))
-//  ))
-//  r5rs("memq", Table(
+  r5rs("list-ref", Table(
+    ("program", "answer"),
+    ("(list-ref '(a b c) 0)", symbol("a")),
+    ("(list-ref '(a b c d) 2)", symbol("c")),
+    ("(list-ref '(a b c d) (inexact->exact (round 1.8)))", symbol("c"))
+  ))
+
+  //  r5rs("memq", Table(
 //    ("program", "answer"),
 //    ("(equal? (memq 'a '(a b c)) '(a b c))", t),
 //    ("(equal? (memq 'b '(a b c)) '(b c))", t),

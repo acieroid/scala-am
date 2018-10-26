@@ -98,9 +98,9 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       ListPrim,       /* [vv] list: List Constructors */
                       /* [x]  list->string: String Constructors */
                       /* [x]  list->vector: Vector Creation */
-      // TODO ListRef,        /* [vv] list-ref: List Selection */
+      ListRef,        /* [vv] list-ref: List Selection */
                       /* [x]  list-tail: List Selection */
-      // TODO Listp,          /* [vv] list?: List Predicates */
+      Listp,          /* [vv] list?: List Predicates */
                       /* [x]  load: Loading */
       Log,            /* [vv] log: Scientific */
                       /* [x]  magnitude: Complex */
@@ -795,11 +795,11 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       }
     }
 
-    /** (define list2 (lambda args
+    /** (define list (lambda args
           (if (null? args)
             '()
             (if (pair? args)
-              (cons (car args) (apply list2 (cdr args)))
+              (cons (car args) (apply list (cdr args)))
               args))))
      */
     object ListPrim extends StoreOperation("list", None) {
@@ -811,6 +811,88 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
           consa = allocator.pointer(exp, t)
           store3 = store2.extend(consa, consv)
         } yield (pointer(consa), store3)
+      }
+    }
+
+
+    /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
+    object Listp extends StoreOperation("list?", Some(1)) {
+      override def call(l: V, store: Store[A, V]) = {
+        def listp(l: V, visited: Set[V]): MayFail[V, Error] = {
+          if (visited.contains(l)) {
+            /* R5RS: "all lists have finite length", and the cases where this is reached
+             * include circular lists. If an abstract list reaches this point, it
+             * may be also finite but will reach a true branch somewhere else, and
+             * both booleans will get joined */
+            bool(false)
+          } else {
+            ifThenElse(isNull(l)) {
+              bool(true)
+            } {
+              ifThenElse(isCons(l)) {
+                /* This is a cons, check that the cdr itself is a list */
+                cdr(l) >>= (listp(_, visited + l))
+              } {
+                ifThenElse(isPointer(l)) {
+                  /* This is a pointer, dereference it and check if it is itself a list */
+                  getPointerAddresses(l).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
+                    for {
+                      consv <- store.lookupMF(a)
+                      res <- listp(consv, visited + l)
+                      accv <- acc
+                    } yield join(accv, res))
+                } {
+                  /* Otherwise, not a list */
+                  bool(false)
+                }
+              }
+            }
+          }
+        }
+        listp(l, Set()).map(v => (v, store))
+      }
+    }
+    /** (define (list-ref l index)
+          (if (pair? l)
+            (if (= index 0)
+              (car l)
+              (list-ref (cdr l) (- index 1)))
+            (error "list-ref applied to a non-list"))) */
+    object ListRef extends StoreOperation("list-ref", Some(2)) {
+      override def call(l: V, index: V, store: Store[A, V]) = {
+        def listRef(l: V, index: V, visited: Set[(V, V)]): MayFail[V, Error] = {
+          if (visited.contains((l, index))) {
+            bottom
+          } else {
+            ifThenElse(isPointer(l)) {
+              /* dereferences the pointer and list-ref that */
+              getPointerAddresses(l).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
+                for {
+                  consv <- store.lookupMF(a)
+                  res <- listRef(consv, index, visited + ((l, index)))
+                  accv <- acc
+                } yield join(accv, res))
+            } {
+              ifThenElse(isCons(l)) {
+                ifThenElse(numEq(index, number(0))) {
+                  /* index is 0, return car */
+                  car(l)
+                } {
+                  /* index is >0, decrease it and continue looking into the cdr */
+                  for {
+                    cdrv <- cdr(l)
+                    index2 <- minus(index, number(1))
+                    res <- listRef(cdrv, index2, visited + ((l, index)))
+                  } yield res
+                }
+              } {
+                /* not a list */
+                MayFail.failure(PrimitiveNotApplicable("list-ref", List(l, index)))
+              }
+            }
+          }
+        }
+        listRef(l, index, Set.empty).map(v => (v, store))
       }
     }
   }
