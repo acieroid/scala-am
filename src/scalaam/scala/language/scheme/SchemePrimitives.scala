@@ -240,6 +240,15 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     }
 
     import schemeLattice._
+    /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
+    def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]) =
+      getPointerAddresses(x).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
+        for {
+          v <- store.lookupMF(a)
+          res <- f(v)
+          accv <- acc
+        } yield join(accv, res))
+
     /* TODO[medium] improve these implicit classes to be able to write primitives more clearly */
     implicit class V1Ops(f: V => MayFail[V, Error]) {
       def apply(arg: MayFail[V, Error]): MayFail[V, Error] = arg >>= f
@@ -647,15 +656,10 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       override def call(v: V, store: Store[A, V]) =
         for { v <- spec.foldLeft(MayFail.success[V, Error](v))((acc, op) => for {
           v <- acc
-          res <- getPointerAddresses(v).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
-            for {
-              consv <- store.lookupMF(a)
-              v1 <- acc
-              v2 <- op match {
-                case Car => car(consv)
-                case Cdr => cdr(consv)
-              }
-            } yield join(v1, v2))
+          res <- dereferencePointer(v, store) { consv => op match {
+            case Car => car(consv)
+            case Cdr => cdr(consv)
+          }}
         } yield res)} yield (v, store)
     }
 
@@ -717,19 +721,27 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
           if (visited.contains(l)) {
             bottom
           } else {
-            getPointerAddresses(l).foldLeft(MayFail.success[V, Error](bottom))((acc, a) =>
-              for {
-                consv <- store.lookupMF(a)
-                res <- ifThenElse(isCons(consv)) {
-                  cdr(consv) >>= (cdrv => length(cdrv, visited + l) >>= (lengthcdr => plus(number(1), lengthcdr)))
+            ifThenElse(isPointer(l)) {
+              /* dereferences the pointer and applies length to the result */
+              dereferencePointer(l, store) { consv => length(consv, visited + l) }
+            } {
+              ifThenElse(isCons(l)) {
+                /* length of the list is length of its cdr plus one */
+                for {
+                  cdrv <- cdr(l)
+                  lengthcdr <- length(cdrv, visited + l)
+                  len <- plus(number(1), lengthcdr)
+                } yield len
+              } {
+                ifThenElse(isNull(l)) {
+                  /* length of null is 0 */
+                  number(0)
                 } {
-                  ifThenElse(isNull(consv)) {
-                    number(0)
-                  } {
-                    MayFail.failure(PrimitiveNotApplicable("length", List(l)))
-                  }
+                  /* not a list */
+                  MayFail.failure(PrimitiveNotApplicable("length", List(l)))
                 }
-              } yield res)
+              }
+            }
           }
         length(l, Set()).map(v => (v, store))
       }
@@ -774,18 +786,17 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                     res <- (and _)(equalp(cara, carb, visited2), equalp(cdra, cdrb, visited2))
                   } yield res
                 } {
-                  /* maybe both pointers, then look up their values */
-                  getPointerAddresses(a).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], addra: A) =>
-                    getPointerAddresses(b).foldLeft(acc)((acc: MayFail[V, Error], addrb: A) => {
-                      for {
-                        consa <- store.lookupMF(addra)
-                        consb <- store.lookupMF(addrb)
-                        res <- equalp(consa, consb, visited2)
-                        accv <- acc
-                      } yield {
-                        join(res, accv)
+                  ifThenElse((and _)(isPointer(a), isPointer(b))) {
+                    /* both pointers, then look up their values */
+                    dereferencePointer(a, store) { consa =>
+                      dereferencePointer(b, store) { consb =>
+                        equalp(consa, consb, visited2)
                       }
-                    })) >>= (v => if (v == bottom) { /* if it is bottom, then there has been no pointer */ bool(false) } else { v })
+                    }
+                  } {
+                    /* otherwise, there is no equality possible */
+                    bool(false)
+                  }
                 }
               }
             }
@@ -835,12 +846,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
               } {
                 ifThenElse(isPointer(l)) {
                   /* This is a pointer, dereference it and check if it is itself a list */
-                  getPointerAddresses(l).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
-                    for {
-                      consv <- store.lookupMF(a)
-                      res <- listp(consv, visited + l)
-                      accv <- acc
-                    } yield join(accv, res))
+                  dereferencePointer(l, store) { consv => listp(consv, visited + l) }
                 } {
                   /* Otherwise, not a list */
                   bool(false)
@@ -852,6 +858,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         listp(l, Set()).map(v => (v, store))
       }
     }
+
     /** (define (list-ref l index)
           (if (pair? l)
             (if (= index 0)
@@ -866,12 +873,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
           } else {
             ifThenElse(isPointer(l)) {
               /* dereferences the pointer and list-ref that */
-              getPointerAddresses(l).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
-                for {
-                  consv <- store.lookupMF(a)
-                  res <- listRef(consv, index, visited + ((l, index)))
-                  accv <- acc
-                } yield join(accv, res))
+              dereferencePointer(l, store) { consv => listRef(consv, index, visited + ((l, index))) }
             } {
               ifThenElse(isCons(l)) {
                 ifThenElse(numEq(index, number(0))) {

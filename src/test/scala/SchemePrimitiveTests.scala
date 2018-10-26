@@ -450,9 +450,9 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   r5rs("length", Table(
     ("program", "answer"),
-//TODO    ("(length '(a b c))", number(3)),
-//    ("(length '(a (b) (c d e)))", number(3)),
-//    ("(length '())", number(0))
+    ("(length '(a b c))", number(3)),
+    ("(length '(a (b) (c d e)))", number(3)),
+    ("(length '())", number(0))
   ))
 
   // append not implemented
