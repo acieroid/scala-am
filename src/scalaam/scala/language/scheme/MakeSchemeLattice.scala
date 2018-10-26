@@ -144,6 +144,10 @@ class MakeSchemeLattice[
           case Cons(_, _) => True
           case _ => False
         })
+        case IsPointer => MayFail.success(x match {
+          case Pointer(_) => True
+          case _ => False
+        })
         case IsChar => MayFail.success(x match {
           case Char(_) => True
           case _ => False

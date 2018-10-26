@@ -277,6 +277,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     /* Simpler names for lattice operations */
     def isNull = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsNull) _
     def isCons = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsCons) _
+    def isPointer = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsPointer) _
     def isChar = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsChar) _
     def isSymbol = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
     def isString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsString) _
@@ -553,7 +554,8 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       override def call(x: V) = isNull(x)
     }
     object Pairp extends NoStoreOperation("pair?", Some(1)) {
-      override def call(x: V) = isCons(x)
+      /* TODO[easy]: this should be a store operation that dereferences the pointer to check if it is indeed a cons */
+      override def call(x: V) = (or _)(isCons(x), isPointer(x))
     }
     object Charp extends NoStoreOperation("char?", Some(1)) {
       override def call(x: V) = isChar(x)

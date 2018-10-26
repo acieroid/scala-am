@@ -50,13 +50,13 @@ abstract class SchemeTests[A <: Address, V, T, C](
   r5rs("eq?", Table(
     ("program", "answer"),
     ("(eq? 'a 'a)", t),
-//    ("(eq? (cons 'a '()) (cons 'a '()))", f), // equivalent to following benchmark
+    ("(eq? (cons 'a '()) (cons 'a '()))", f), // equivalent to following benchmark
 // TODO    ("(eq? (list 'a) (list 'a))", f),
     ("(eq? '() '())", t),
-//    ("(eq? car car)", t),
-//    ("(let ((x '(a))) (eq? x x))", t),
+    ("(eq? car car)", t),
+// TODO: fails?    ("(let ((x '(a))) (eq? x x))", t),
 //    ("(let ((x (make-vector 0 1))) (eq? x x))", t),
-//    ("(let ((p (lambda (x) x))) (eq? p p))", t)
+    ("(let ((p (lambda (x) x))) (eq? p p))", t)
   ))
   // TODO reimplement
   r5rs("equal?", Table(
@@ -201,7 +201,6 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(= 2 1)", f)
   ))
 
-
   r5rs("abs", Table(
     ("program", "answer"),
     ("(abs -7)", number(7)),
@@ -215,7 +214,6 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(modulo 13 -4)", number(-3)),
     ("(modulo -13 -4)", number(-1))
   ))
-
 
   r5rs("quotient", Table(
     ("program", "answer"),
@@ -368,9 +366,9 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("program", "answer"),
     ("(not #t)", f),
     ("(not 3)", f),
-// TODO    ("(not (cons 3 '()))", f),
+    ("(not (cons 3 '()))", f),
     ("(not #f)", t),
-// TODO   ("(not '())", f),
+    ("(not '())", f),
 // TODO   ("(not (list))", f),
     ("(not 'nil)", f)
   ))
@@ -382,43 +380,43 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(boolean? '())", f)
   ))
 
-//  r5rs("pair?", Table(
-//    ("program", "answer"),
-//    ("(pair? (cons 'a 'b))", t),
-//    ("(pair? '(a b c))", t),
-//    ("(pair? '())", f)
-//    // ("(pair? '#(a b))", t) // # notation not supported
-//  ))
+  r5rs("pair?", Table(
+    ("program", "answer"),
+    ("(pair? (cons 'a 'b))", t),
+    ("(pair? '(a b c))", t),
+    ("(pair? '())", f)
+    // ("(pair? '#(a b))", t) // # notation not supported
+  ))
 
  r5rs("cons", Table(
     ("program", "answer"),
-//    ("(equal? (cons 'a '()) '(a))", t),
-//    ("(equal? (cons '(a) '(b c d)) '((a) b c d))", t),
-//    ("(equal? (cons \"a\" '(b c)) '(\"a\" b c))", t)
+    ("(equal? (cons 'a '()) '(a))", t),
+    ("(equal? (cons '(a) '(b c d)) '((a) b c d))", t),
+    ("(equal? (cons \"a\" '(b c)) '(\"a\" b c))", t)
 //    // ("(equal? (cons 'a 3) '(a . 3))", t), // . notation not supported
 //    // ("(equal? (cons '(a b) 'c) '((a b) . c))", t) // . notation not supported
 ))
 
   r5rs("car", Table(
     ("program", "answer"),
-//TODO    ("(equal? (car '(a b c)) 'a)", t),
-//    ("(equal? (car '((a) b c d)) '(a))", t),
-//    ("(equal? (car (cons 1 2)) 1)", t)
+    ("(equal? (car '(a b c)) 'a)", t),
+    ("(equal? (car '((a) b c d)) '(a))", t),
+    ("(equal? (car (cons 1 2)) 1)", t)
       // TODO: (car '()) should raise an error
   ))
 
   r5rs("cdr", Table(
     ("program", "answer"),
-//TODO    ("(equal? (cdr '((a) b c d)) '(b c d))", t),
-//    ("(equal? (cdr (cons 1 2)) 2)", t)
+    ("(equal? (cdr '((a) b c d)) '(b c d))", t),
+    ("(equal? (cdr (cons 1 2)) 2)", t)
       // TODO: (cdr '()) should raise an error
   ))
 
   r5rs("null?", Table(
     ("program", "answer"),
-//TODO    ("(null? '())", t),
-//    ("(null? (list))", t),
-//    ("(null? '(1 2 3))", f)
+    ("(null? '())", t),
+//TODO    ("(null? (list))", t),
+    ("(null? '(1 2 3))", f)
   ))
 
   r5rs("list?", Table(
@@ -480,12 +478,12 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   r5rs("symbol?", Table(
     ("program", "answer"),
-//TODO    ("(symbol? 'foo)", t),
-//    ("(symbol? (car '(a b)))", t),
-//    ("(symbol? \"bar\")", f),
-//    ("(symbol? 'nil)", t),
-//    ("(symbol? '())", f),
-//    ("(symbol? #f)", f)
+    ("(symbol? 'foo)", t),
+    ("(symbol? (car '(a b)))", t),
+    ("(symbol? \"bar\")", f),
+    ("(symbol? 'nil)", t),
+    ("(symbol? '())", f),
+    ("(symbol? #f)", f)
   ))
   r5rs("symbol->string", Table(
     ("program", "answer"),
