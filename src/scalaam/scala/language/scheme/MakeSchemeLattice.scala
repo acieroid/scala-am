@@ -30,7 +30,7 @@ class MakeSchemeLattice[
     override def toString = "⊥"
   }
   case class Str(s: S) extends Value {
-    override def toString = s.toString // StringLattice[S].shows(s)
+    override def toString = "\"" + s + "\"" // StringLattice[S].shows(s)
   }
   case class Bool(b: B) extends Value {
     override def toString = b.toString // BoolLattice[B].shows(b)
@@ -49,10 +49,10 @@ class MakeSchemeLattice[
   }
   /** TODO[medium] find a way not to have a type parametre here */
   case class Prim[Primitive](prim: Primitive) extends Value {
-    override def toString = s"#<prim>"
+    override def toString = s"#prim"
   }
   case class Clo(lambda: Exp, env: Environment[A]) extends Value {
-    override def toString = "#<clo>"
+    override def toString = "#clo"
   }
 
   case class Cons(car: L, cdr: L) extends Value {
@@ -63,7 +63,7 @@ class MakeSchemeLattice[
   }
 
   case class Pointer(a: A) extends Value {
-    override def toString = "#<pointer>"
+    override def toString = "#pointer"
   }
   /*
   case class Vec[Addr : Address](size: I, elements: Map[I, Addr], init: Addr) extends Value {

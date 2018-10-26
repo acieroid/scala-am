@@ -32,9 +32,9 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]() {
       writer.write("digraph G {\n")
       _nodes.foreach((n) => {
         val id      = ids(n)
-        val label   = n.label
+        val label   = n.label.replace("<", "&lt;").replace(">", "&gt;")
         val color   = n.color
-        val tooltip = n.metadata.toString
+        val tooltip = n.metadata.toString.replace("<", "&lt;").replace(">", "&gt;")
         writer.write(
           s"node_$id[shape=box, xlabel=$id, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n")
       })
@@ -56,9 +56,10 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]() {
       def addNode(g: G, node: N)                        = g._addNode(node)
       def addEdge(g: G, node1: N, edge: E, node2: N)    = g._addEdge(node1, edge, node2)
       def removeNode(g: G, node: N)                     = new G(g.ids, g.next, g._nodes - node, g._edges)
-      def removeEdge(g: G, node1: N, edge: E, node2: N) = ???
+      def removeEdge(g: G, node1: N, edge: E, node2: N) = ??? /* TODO[easy] implement */
       def nodes(g: G)                                   = g._nodes.size
       def edges(g: G)                                   = g._edges.size
+      def findNodes(g: G, p: N => Boolean)              = ??? /* TODO[easy]: implement */
     }
   }
 }

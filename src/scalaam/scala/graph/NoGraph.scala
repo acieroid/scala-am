@@ -13,6 +13,7 @@ class NoGraph[N <: GraphElement, E <: GraphElement] {
       def removeEdge(g: G, node1: N, edge: E, node2: N)   = g
       def nodes(g: G)                                     = 0
       def edges(g: G)                                     = 0
+      def findNodes(g: G, p: N => Boolean)                = Set.empty
     }
   }
 }

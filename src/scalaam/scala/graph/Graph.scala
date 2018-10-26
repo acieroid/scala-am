@@ -1,8 +1,15 @@
 package scalaam.graph
 
-trait GraphMetadata
-case class GraphMetadataMap(map: Map[String, GraphMetadata]) extends GraphMetadata
+sealed trait GraphMetadata {
+  /** Find a specific key in this metadata, if present */
+  def find(key: String): Option[GraphMetadata] = None
+}
+case class GraphMetadataMap(map: Map[String, GraphMetadata]) extends GraphMetadata {
+  override def find(key: String) = map.get(key)
+}
 case class GraphMetadataString(str: String)                  extends GraphMetadata
+case class GraphMetadataBool(bool: Boolean)                  extends GraphMetadata
+case class GraphMetadataValue[V](v: V)                       extends GraphMetadata
 case object GraphMetadataNone                                extends GraphMetadata
 
 trait GraphElement {
@@ -49,6 +56,9 @@ trait Graph[G, N <: GraphElement, E <: GraphElement] {
 
   /** Returns the number of edges in the graph */
   def edges(g: G): Int
+
+  /** Finds nodes from the graph satisfying the predicate */
+  def findNodes(g: G, p: N => Boolean): Set[N]
 }
 
 object Graph {
@@ -64,5 +74,6 @@ object Graph {
     def removeEdge(node1: N, edge: E, node2: N): G = ev.removeEdge(g, node1, edge, node2)
     def nodes: Int                                 = ev.nodes(g)
     def edges: Int                                 = ev.nodes(g)
+    def findNodes(p: N => Boolean): Set[N]         = ev.findNodes(g, p)
   }
 }

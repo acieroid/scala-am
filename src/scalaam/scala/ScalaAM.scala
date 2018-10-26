@@ -40,7 +40,7 @@ object Main {
     val machine = new AAM[SchemeExp, address.A, lattice.L, timestamp.T](sem)
     val graph = DotGraph[machine.State, machine.Transition]
     val result = machine.run[graph.G](
-      SchemeParser.parse("(+ 1 2)"),
+      SchemeParser.parse("(string->symbol \"flying-fish\")"),
       Timeout.Infinity)
     result.toFile("foo.dot")
   }

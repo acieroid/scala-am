@@ -34,14 +34,14 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       // TODO Assoc,          /* [vv] assoc: Retrieving Alist Entries */
       // TODO Assq,           /* [vv] assq: Retrieving Alist Entries */
                       /* [x]  assv: Retrieving Alist Entries */
-      ATan,           /* [vv] atan: Scientific [easy] */
+      ATan,           /* [vv] atan: Scientific */
       Booleanp,       /* [vv] boolean?: Booleans */
                       /* [x]  call-with-current-continuation: Continuations */
                       /* [x]  call-with-input-file: File Ports */
                       /* [x]  call-with-output-file: File Ports */
                       /* [x]  call-with-values: Multiple Values */
-      // TODO Car,            /* [vv] car: Pairs */
-      // TODO Cdr,            /* [vv] cdr: Pairs */
+      Car,            /* [vv] car: Pairs */
+      Cdr,            /* [vv] cdr: Pairs */
       Ceiling,        /* [vv] ceiling: Arithmetic */
                       /* [x]  char->integer: Characters */
                       /* [x]  char-alphabetic?: Characters */
@@ -77,7 +77,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       // TODO Equal,          /* [vv] equal?: Equality */
                       /* [x]  eqv?: Equality */
                       /* [x]  eval: Fly Evaluation */
-      Evenp,          /* [v]  even?: Integer Operations */
+      Evenp,          /* [vv] even?: Integer Operations */
       ExactToInexact, /* [vv] exact->inexact: Exactness */
                       /* [x]  exact?: Exactness */
                       /* [x]  exp: Scientific */
@@ -94,7 +94,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       Integerp,       /* [vv] integer?: Integers */
                       /* [x]  interaction-environment: Fly Evaluation */
                       /* [x]  lcm: Integer Operations */
-      // TODO Length,         /* [vv] length: List Selection */
+      Length,         /* [vv] length: List Selection */
       // TODO ListPrim,       /* [vv] list: List Constructors */
                       /* [x]  list->string: String Constructors */
                       /* [x]  list->vector: Vector Creation */
@@ -125,7 +125,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  open-input-file: File Ports */
                       /* [x]  open-output-file: File Ports */
                       /* [x]  output-port?: Ports */
-      // TODO Pairp,          /* [vv] pair?: Pairs */
+      Pairp,          /* [vv] pair?: Pairs */
                       /* [x]  peek-char?: Reading */
       Positivep,      /* [vv] positive?: Comparison */
                       /* [x]  procedure?: Procedure Properties */
@@ -138,8 +138,8 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       Remainder,      /* [vv] remainder: Integer Operations */
                       /* [x]  reverse: Append/Reverse */
       Round,          /* [vv] round: Arithmetic */
-      // TODO SetCar,         /* [vv] set-car!: Pairs */
-      // TODO SetCdr,         /* [vv] set-cdr!: Pairs */
+      SetCar,         /* [vv] set-car!: Pairs */
+      SetCdr,         /* [vv] set-cdr!: Pairs */
       Sin,            /* [vv] sin: Scientific */
       Sqrt,           /* [vv] sqrt: Scientific */
                       /* [x]  string: String Constructors */
@@ -161,7 +161,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  string=?: String Comparison */
                       /* [x]  string>=?: String Comparison */
                       /* [x]  string>?: String Comparison */
-      Stringp,        /* [x]  string?: String Predicates */
+      Stringp,        /* [vv]  string?: String Predicates */
                       /* [x]  substring: String Selection */
       SymbolToString, /* [vv] symbol->string: Symbol Primitives */
       Symbolp,        /* [vv] symbol?: Symbol Primitives */
@@ -179,11 +179,11 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  with-output-to-file: File Ports */
                       /* [x]  write-char: Writing */
       Zerop,          /* [vv] zero?: Comparison */
-      LessThan,       /* [v]  < */
-      LessOrEqual,    /* [v]  <= */
-      NumEq,          /* [v]  = */
-      GreaterThan,    /* [v]  > */
-      GreaterOrEqual, /* [v]  >= */
+      LessThan,       /* [vv]  < */
+      LessOrEqual,    /* [vv]  <= */
+      NumEq,          /* [vv]  = */
+      GreaterThan,    /* [vv]  > */
+      GreaterOrEqual, /* [vv]  >= */
                       /* [x]  numerator */
                       /* [x]  denominator */
                       /* [x]  rationalize-string */
@@ -240,6 +240,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     }
 
     import schemeLattice._
+    /* TODO[medium] improve these implicit classes to be able to write primitives more clearly */
     implicit class V1Ops(f: V => MayFail[V, Error]) {
       def apply(arg: MayFail[V, Error]): MayFail[V, Error] = arg >>= f
     }
@@ -645,18 +646,15 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         for { v <- spec.foldLeft(MayFail.success[V, Error](v))((acc, op) => for {
           v <- acc
           res <- getPointerAddresses(v).foldLeft(MayFail.success[V, Error](bottom))((acc : MayFail[V, Error], a: A) =>
-            store.lookup(a) match {
-              case None => acc.addError(UnboundAddress(a))
-              case Some(consv) => for {
-                v1 <- acc
-                v2 <- op match {
-                  case Car => car(consv)
-                  case Cdr => cdr(consv)
-                }
-              } yield join(v1, v2)
-            }
-          )}
-        yield res)} yield (v, store)
+            for {
+              consv <- store.lookupMF(a)
+              v1 <- acc
+              v2 <- op match {
+                case Car => car(consv)
+                case Cdr => cdr(consv)
+              }
+            } yield join(v1, v2))
+        } yield res)} yield (v, store)
     }
 
     object Car extends CarCdrOperation("car")
@@ -689,9 +687,52 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     object Cddadr extends CarCdrOperation("cddadr")
     object Cdddar extends CarCdrOperation("cdddar")
     object Cddddr extends CarCdrOperation("cddddr")
-  }
 
-  
+    object SetCar extends StoreOperation("set-car!", Some(2)) {
+      override def call(cell: V, value: V, store: Store[A, V]) =
+        getPointerAddresses(cell).foldLeft(MayFail.success[Store[A, V], Error](store))((acc, a) =>
+          for {
+            consv <- store.lookupMF(a) /* look up in old store */
+            st <- acc /* updated store */
+            v1 = value /* update car */
+            v2 <- cdr(consv) /* preserves cdr */
+          } yield st.update(a, cons(v1, v2))).map(store => (bool(false) /* undefined */, store))
+    }
+    object SetCdr extends StoreOperation("set-cdr!", Some(2)) {
+      override def call(cell: V, value: V, store: Store[A, V]) =
+        getPointerAddresses(cell).foldLeft(MayFail.success[Store[A, V], Error](store))((acc, a) =>
+          for {
+            consv <- store.lookupMF(a) /* look up in old store */
+            st <- acc /* updated store */
+            v1 <- car(consv) /* preserves car */
+            v2 = value /* update cdr */
+          } yield st.update(a, cons(v1, v2))).map(store => (bool(false) /* undefined */, store))
+    }
+
+    object Length extends StoreOperation("length", Some(1)) {
+      override def call(l: V, store: Store[A, V]) = {
+        def length(l: V, visited: Set[V]): MayFail[V, Error] =
+          if (visited.contains(l)) {
+            bottom
+          } else {
+            getPointerAddresses(l).foldLeft(MayFail.success[V, Error](bottom))((acc, a) =>
+              for {
+                consv <- store.lookupMF(a)
+                res <- ifThenElse(isCons(consv)) {
+                  cdr(consv) >>= (cdrv => length(cdrv, visited + l) >>= (lengthcdr => plus(number(1), lengthcdr)))
+                } {
+                  ifThenElse(isNull(consv)) {
+                    number(0)
+                  } {
+                    MayFail.failure(PrimitiveNotApplicable("length", List(l)))
+                  }
+                }
+              } yield res)
+          }
+        length(l, Set()).map(v => (v, store))
+      }
+    }
+  }
 }
 
 

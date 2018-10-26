@@ -1,6 +1,6 @@
 package scalaam.machine
 
-import scalaam.graph.{Graph, GraphElement, GraphMetadataNone, Colors, NoTransition}
+import scalaam.graph._
 import Graph.GraphOps
 import scalaam.core._
 import scalaam.util.Show
@@ -66,15 +66,24 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
       extends GraphElement {
     override def toString = control.toString
 
-    def label = toString
-    def color = if (halted) { Colors.Yellow } else {
+    override def label = toString
+    override def color = if (halted) { Colors.Yellow } else {
       control match {
         case _: ControlEval  => Colors.Green
         case _: ControlKont  => Colors.Pink
         case _: ControlError => Colors.Red
       }
     }
-    def metadata = GraphMetadataNone /* TODO: fill it */
+    override def metadata = GraphMetadataMap(Map(
+      "halted" -> GraphMetadataBool(halted),
+      "type" -> (control match {
+        case ControlEval(_, _) => GraphMetadataString("eval")
+        case ControlKont(_) => GraphMetadataString("kont")
+        case ControlError(_) => GraphMetadataString("error")
+      })) ++ (control match {
+        case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
+        case _ => Map()
+      }))
 
     /**
       * Checks if the current state is a final state. It is the case if it

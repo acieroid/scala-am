@@ -292,7 +292,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       evalDoStep((variable, v, step) :: vars, toeval, test, finals, commands, t, env, store)
   }
 
-  override def initialBindings = allPrimitives.map(p => (p.name, allocator.primitive(p.name), primitive[Primitive](p)))
+  override def initialBindings = allPrimitives.map(p => (p.name, allocator.primitive(p.name), primitive[Primitive](p))) ++ Set(("null", allocator.primitive("null"), nil))
 }
 
 /**
