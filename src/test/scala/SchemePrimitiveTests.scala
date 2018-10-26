@@ -31,7 +31,10 @@ abstract class SchemeTests[A <: Address, V, T, C](
        //println(n.metadata.find("value"))
        //println(Some(GraphMetadataValue[V](answer)))
        //println(n.metadata.find("value") == Some(GraphMetadataValue[V](answer)))
-      n.metadata.find("value") == Some(GraphMetadataValue[V](answer))
+      n.metadata.find("value") match {
+        case Some(GraphMetadataValue(v : V @unchecked)) => subsumes(v, answer)
+        case _ => false
+      }
     }
     ).isEmpty)
   }
@@ -426,7 +429,17 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(list? '())", t),
     ("(list? (cons 'a 'b))", f),
     ("(list? 'a)", f),
-//TODO    ("(let ((x '(a))) (set-cdr! x x) (list? x))", f)
+    ("(let ((x '(a))) (set-cdr! x x) (list? x))", f)
+  ))
+
+  r5rs("set-car!", Table(
+    ("program", "answer"),
+    ("(let ((x (cons 1 2))) (set-car! x 3) (and (= (car x) 3) (= (cdr x) 2)))", t)
+  ))
+
+  r5rs("set-cdr!", Table(
+    ("program", "answer"),
+    ("(let ((x (cons 1 2))) (set-cdr! x 3) (and (= (car x) 1) (= (cdr x) 3)))", t)
   ))
 
   r5rs("list", Table(
