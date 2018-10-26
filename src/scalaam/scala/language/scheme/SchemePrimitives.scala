@@ -107,11 +107,10 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  make-polar: Complex */
                       /* [x]  make-rectangular: Complex */
                       /* [x]  make-string: String Constructors */
-      // TODO MakeVector,     /* [vv] make-vector: Vector Creation */
                       /* [x]  map: List Mapping */
       Max,            /* [vv] max: Arithmetic */
-      // TODO Member,         /* [vv] member: List Searching */
-      // TODO Memq,           /* [v]  memq: List Searching */
+      Member,         /* [vv] member: List Searching */
+      Memq,           /* [v]  memq: List Searching */
                       /* [x]  memv: List Searching */
       Min,            /* [vv] min: Arithmetic */
       Modulo,         /* [vv] modulo: Integer Operations */
@@ -168,6 +167,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       Tan,            /* [vv] tan: Scientific */
                       /* [x]  truncate: Arithmetic */
                       /* [x]  values: Multiple Values */
+      // TODO MakeVector,     /* [vv] make-vector: Vector Creation */
       // TODO Vector,         /* [vv] vector: Vector Creation */
                       /* [x]  vector->list: Vector Creation */
                       /* [x]  vector-fill!: Vector Accessors */
@@ -897,6 +897,53 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         listRef(l, index, Set.empty).map(v => (v, store))
       }
     }
+
+    /** (define (member e l) ; member, memq and memv are similar, the difference lies in the comparison function used
+          (if (null? l)
+            #f
+            (if (equal? (car l) e)
+              l
+              (member e (cdr l))))) */
+    abstract class MemberLike(override val name: String, eqFn: (V, V, Store[A, V]) => MayFail[V, Error]) extends StoreOperation(name, Some(2)) {
+      override def call(e: V, l: V, store: Store[A, V]) = {
+        def mem(e: V, l: V, visited: Set[V]): MayFail[V, Error] = {
+          if (visited.contains(l)) {
+            bottom
+          } else {
+            ifThenElse(isNull(l)) {
+              /* list is empty, return false */
+              bool(false)
+            } {
+              ifThenElse(isPointer(l)) {
+                dereferencePointer(l, store) { lv =>
+                  for {
+                    carl <- car(lv)
+                    res <- ifThenElse(eqFn(e, carl, store)) {
+                      /* (car l) and e are equal, return l */
+                      l
+                    } {
+                      for {
+                        cdrl <- cdr(lv)
+                        res2 <- mem(e, cdrl, visited + l)
+                      } yield res2
+                    }
+                  } yield res
+                }
+              } {
+                /* not a list. Note: it may be a cons, but cons shouldn't come from the outside
+                 * as they are wrapped in pointers, so it shouldn't happen that
+                 * l is a cons at this point */
+                MayFail.failure(PrimitiveNotApplicable(name, List(e, l)))
+              }
+            }
+          }
+        }
+        mem(e, l, Set.empty).map(v => (v, store))
+      }
+    }
+
+    object Member extends MemberLike("member", (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1))
+    object Memq extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
   }
 }
 

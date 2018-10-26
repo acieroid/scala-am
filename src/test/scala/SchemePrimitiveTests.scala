@@ -27,12 +27,9 @@ abstract class SchemeTests[A <: Address, V, T, C](
   def checkResult(program: String, answer: V) = {
     val result = machine.run[graph.G](SchemeParser.parse(program), Timeout.Infinity)
     assert(!result.findNodes(n => n.metadata.find("type") == Some(GraphMetadataString("kont")) && {
-      //println(n)
-       //println(n.metadata.find("value"))
-       //println(Some(GraphMetadataValue[V](answer)))
-       //println(n.metadata.find("value") == Some(GraphMetadataValue[V](answer)))
       n.metadata.find("value") match {
-        case Some(GraphMetadataValue(v : V @unchecked)) => subsumes(v, answer)
+        case Some(GraphMetadataValue(v : V @unchecked)) => // println(s"$v vs. $answer")
+          subsumes(v, answer)
         case _ => false
       }
     }
@@ -464,18 +461,18 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(list-ref '(a b c d) (inexact->exact (round 1.8)))", symbol("c"))
   ))
 
-  //  r5rs("memq", Table(
-//    ("program", "answer"),
-//    ("(equal? (memq 'a '(a b c)) '(a b c))", t),
-//    ("(equal? (memq 'b '(a b c)) '(b c))", t),
-//    ("(memq 'a '(b c d))", f),
-//    ("(memq (list 'a) '(b (a) c))", f)
-//  ))
-//  r5rs("member", Table(
-//    ("program", "answer"),
-//    ("(equal? (member (list 'a) '(b (a) c)) '((a) c))", t),
-//    ("(member 'd '(a b c))", f)
-//  ))
+  r5rs("memq", Table(
+    ("program", "answer"),
+    ("(equal? (memq 'a '(a b c)) '(a b c))", t),
+    ("(equal? (memq 'b '(a b c)) '(b c))", t),
+    ("(memq 'a '(b c d))", f),
+    ("(memq (list 'a) '(b (a) c))", f)
+  ))
+  r5rs("member", Table(
+    ("program", "answer"),
+    ("(equal? (member (list 'a) '(b (a) c)) '((a) c))", t),
+    ("(member 'd '(a b c))", f)
+  ))
   // memv not implemented
 //  r5rs("assq", Table(
 //    ("program", "answer"),
