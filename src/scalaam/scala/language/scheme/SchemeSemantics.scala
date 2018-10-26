@@ -124,16 +124,12 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
 
   protected def evalQuoted(exp: SExp, store: Sto, t: T): (V, Sto) = exp match {
     case SExpId(Identifier(sym, _)) => (symbol(sym), store)
-    case SExpPair(car @ _, cdr @ _, _) => {
-      ??? /* TODO[easy]: implement
-      val care: SchemeExp = SchemeVar(Identifier(car.toString, car.pos))
-      val cdre: SchemeExp = SchemeVar(Identifier(cdr.toString, cdr.pos))
-      val cara = allocator.cell(care, t)
+    case SExpPair(car @ _, cdr @ _, _) =>
       val (carv, store2) = evalQuoted(car, store, t)
-      val cdra = allocator.cell(cdre, t)
       val (cdrv, store3) = evalQuoted(cdr, store2, t)
-        (cons(cara, cdra), store3.extend(cara, carv).extend(cdra, cdrv)) */
-    }
+      val cell = cons(carv, cdrv)
+      val a = allocator.pointer(exp, t)
+      (pointer(a), store3.extend(a, cell))
     case SExpValue(v, _) => (v match {
       case ValueString(str) => string(str)
       case ValueCharacter(c) => char(c)

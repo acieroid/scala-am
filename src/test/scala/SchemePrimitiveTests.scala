@@ -59,20 +59,20 @@ abstract class SchemeTests[A <: Address, V, T, C](
 //    ("(let ((p (lambda (x) x))) (eq? p p))", t)
   ))
   // TODO reimplement
-//  r5rs("equal?", Table(
-//    ("program", "answer"),
-//    ("(equal? 'a 'a)", t),
-//    ("(equal? '(a) '(a))", t),
-//    ("(equal? '(a (b) c) '(a (b) c))", t),
-//    ("(equal? \"abc\" \"abc\")", t),
-//    ("(equal? 2 2)", t),
-//    ("(equal? (make-vector 5 'a) (make-vector 5 'a))", t),
-//    ("(equal? 1 2)", f),
-//    ("(equal? #\\a #\\b)", f),
-//    ("(equal? '(a b c) '(a b))", f),
-//    ("(equal? (cons 'a (cons 'b (cons 'c '()))) '(a b c))", t),
-//    ("(equal? '(a b c) '(a c b))", f)
-//  ))
+  r5rs("equal?", Table(
+    ("program", "answer"),
+    ("(equal? 'a 'a)", t),
+    ("(equal? '(a) '(a))", t),
+    ("(equal? '(a (b) c) '(a (b) c))", t),
+    ("(equal? \"abc\" \"abc\")", t),
+    ("(equal? 2 2)", t),
+///    ("(equal? (make-vector 5 'a) (make-vector 5 'a))", t),
+    ("(equal? 1 2)", f),
+    ("(equal? #\\a #\\b)", f),
+    ("(equal? '(a b c) '(a b))", f),
+    ("(equal? (cons 'a (cons 'b (cons 'c '()))) '(a b c))", t),
+    ("(equal? '(a b c) '(a c b))", f)
+  ))
 
   /* 6.2 Numbers */
   // complex? is not implemented
@@ -390,14 +390,14 @@ abstract class SchemeTests[A <: Address, V, T, C](
 //    // ("(pair? '#(a b))", t) // # notation not supported
 //  ))
 
-//TODO  r5rs("cons", Table(
-//    ("program", "answer"),
+ r5rs("cons", Table(
+    ("program", "answer"),
 //    ("(equal? (cons 'a '()) '(a))", t),
 //    ("(equal? (cons '(a) '(b c d)) '((a) b c d))", t),
 //    ("(equal? (cons \"a\" '(b c)) '(\"a\" b c))", t)
 //    // ("(equal? (cons 'a 3) '(a . 3))", t), // . notation not supported
 //    // ("(equal? (cons '(a b) 'c) '((a b) . c))", t) // . notation not supported
-//  ))
+))
 
   r5rs("car", Table(
     ("program", "answer"),

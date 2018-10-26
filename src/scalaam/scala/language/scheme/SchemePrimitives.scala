@@ -74,7 +74,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  dynamic-wind: Dynamic Wind */
                       /* [x]  eof-object?: Reading */
       Eq,             /* [vv] eq?: Equality */
-      // TODO Equal,          /* [vv] equal?: Equality */
+      Equal,          /* [vx] equal?: Equality */
                       /* [x]  eqv?: Equality */
                       /* [x]  eval: Fly Evaluation */
       Evenp,          /* [vv] even?: Integer Operations */
@@ -645,7 +645,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       override def call(v: V, store: Store[A, V]) =
         for { v <- spec.foldLeft(MayFail.success[V, Error](v))((acc, op) => for {
           v <- acc
-          res <- getPointerAddresses(v).foldLeft(MayFail.success[V, Error](bottom))((acc : MayFail[V, Error], a: A) =>
+          res <- getPointerAddresses(v).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
             for {
               consv <- store.lookupMF(a)
               v1 <- acc
@@ -730,6 +730,66 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
               } yield res)
           }
         length(l, Set()).map(v => (v, store))
+      }
+    }
+
+    /** (define (equal? a b)
+          (or (eq? a b)
+            (and (null? a) (null? b))
+            (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
+            (and (vector? a) (vector? b)
+              (let ((n (vector-length a)))
+                (and (= (vector-length b) n)
+                  (letrec ((loop (lambda (i)
+                                   (or (= i n)
+                                     (and (equal? (vector-ref a i) (vector-ref b i))
+                                       (loop (+ i 1)))))))
+                    (loop 0)))))))
+     */
+    // TODO: this is without vectors
+    object Equal extends StoreOperation("equal?", Some(2)) {
+      override def call(a: V, b: V, store: Store[A, V]) = {
+        def equalp(a: V, b: V, visited: Set[(V, V)]): MayFail[V, Error] = {
+          if (visited.contains((a, b)) || a == bottom || b == bottom) {
+            bottom
+          } else {
+            val visited2 = visited + ((a, b))
+            ifThenElse(eqq(a, b)) {
+              /* If a and b are eq?, then they are equal? */
+              bool(true)
+            } {
+              ifThenElse((and _)(isNull(a), isNull(b))) {
+                /* If both a and b are null, then they are equal? */
+                bool(true)
+              } {
+                ifThenElse((and _)(isCons(a), isCons(b))) {
+                  /* If both cons, check car and cdr */
+                  for {
+                    cara <- car(a)
+                    carb <- car(b)
+                    cdra <- cdr(a)
+                    cdrb <- cdr(b)
+                    res <- (and _)(equalp(cara, carb, visited2), equalp(cdra, cdrb, visited2))
+                  } yield res
+                } {
+                  /* maybe both pointers, then look up their values */
+                  getPointerAddresses(a).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], addra: A) =>
+                    getPointerAddresses(b).foldLeft(acc)((acc: MayFail[V, Error], addrb: A) => {
+                      for {
+                        consa <- store.lookupMF(addra)
+                        consb <- store.lookupMF(addrb)
+                        res <- equalp(consa, consb, visited2)
+                        accv <- acc
+                      } yield {
+                        join(res, accv)
+                      }
+                    })) >>= (v => if (v == bottom) { /* if it is bottom, then there has been no pointer */ bool(false) } else { v })
+                }
+              }
+            }
+          }
+        }
+        equalp(a, b, Set()).map(v => (v, store))
       }
     }
   }
