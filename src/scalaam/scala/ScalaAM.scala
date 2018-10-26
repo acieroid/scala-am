@@ -40,8 +40,7 @@ object Main {
     val machine = new AAM[SchemeExp, address.A, lattice.L, timestamp.T](sem)
     val graph = DotGraph[machine.State, machine.Transition]
     val result = machine.run[graph.G](
-      SchemeParser.parse("(equal? (memq 'b '(a b c)) '(b c))
-        "),
+      SchemeParser.parse("(equal? (assq 'b '((a 1) (b 2) (c 3))) '(b 2))"),
       Timeout.Infinity)
     result.toFile("foo.dot")
   }

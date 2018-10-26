@@ -31,8 +31,8 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  apply: Fly Evaluation */
                       /* [x]  apply: Fly Evaluation */
       ASin,           /* [vv] asin: Scientific */
-      // TODO Assoc,          /* [vv] assoc: Retrieving Alist Entries */
-      // TODO Assq,           /* [vv] assq: Retrieving Alist Entries */
+      Assoc,          /* [vv] assoc: Retrieving Alist Entries */
+      Assq,           /* [vv] assq: Retrieving Alist Entries */
                       /* [x]  assv: Retrieving Alist Entries */
       ATan,           /* [vv] atan: Scientific */
       Booleanp,       /* [vv] boolean?: Booleans */
@@ -922,10 +922,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* (car l) and e are equal, return l */
                       l
                     } {
-                      for {
-                        cdrl <- cdr(lv)
-                        res2 <- mem(e, cdrl, visited + l)
-                      } yield res2
+                      cdr(lv) >>= (mem(e, _, visited + l))
                     }
                   } yield res
                 }
@@ -944,6 +941,47 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
 
     object Member extends MemberLike("member", (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1))
     object Memq extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
+
+    abstract class AssocLike(override val name: String, eqFn: (V, V, Store[A, V]) => MayFail[V, Error]) extends StoreOperation(name, Some(2)) {
+      override def call(e: V, l: V, store: Store[A, V]) = {
+        def assoc(e: V, l: V, visited: Set[V]): MayFail[V, Error] = {
+          if (visited.contains(l)) {
+            bottom
+          } else {
+            ifThenElse(isNull(l)) {
+              bool(false)
+            } {
+              ifThenElse(isPointer(l)) {
+                dereferencePointer(l, store) { lv =>
+                  for {
+                    carl <- car(lv)
+                    res <- ifThenElse(isPointer(carl)) {
+                      dereferencePointer(carl, store) { carlv =>
+                        for {
+                          caarl <- car(carlv)
+                          res2 <- ifThenElse(eqFn(e, caarl, store)) {
+                            carl
+                          } {
+                            cdr(lv) >>= (assoc(e, _, visited + l))
+                          }
+                        } yield res2
+                      }
+                    } {
+                      MayFail.failure(PrimitiveNotApplicable(name, List(e, l)))
+                    }
+                  } yield res
+                }
+              } {
+                MayFail.failure(PrimitiveNotApplicable(name, List(e, l)))
+              }
+            }
+          }
+        }
+        assoc(e, l, Set.empty).map(v => (v, store))
+      }
+    }
+    object Assoc extends AssocLike("assoc", (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1))
+    object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
   }
 }
 

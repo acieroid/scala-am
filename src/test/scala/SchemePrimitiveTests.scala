@@ -474,18 +474,18 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(member 'd '(a b c))", f)
   ))
   // memv not implemented
-//  r5rs("assq", Table(
-//    ("program", "answer"),
-//    ("(equal? (assq 'a '((a 1) (b 2) (c 3))) '(a 1))", t),
-//    ("(equal? (assq 'b '((a 1) (b 2) (c 3))) '(b 2))", t),
-//    ("(equal? (assq 'c '((a 1) (b 2) (c 3))) '(c 3))", t),
-//    ("(assq 'd '((a 1) (b 2) (c 3)))", f),
-//    ("(assq (list 'a) '(((a)) ((b)) ((c))))", f)
-//  ))
-//  r5rs("assoc", Table(
-//    ("program", "answer"),
-//    ("(equal? (assoc (list 'a) '(((a)) ((b)) ((c)))) '((a)))", t)
-//  ))
+  r5rs("assq", Table(
+    ("program", "answer"),
+    ("(equal? (assq 'a '((a 1) (b 2) (c 3))) '(a 1))", t),
+    ("(equal? (assq 'b '((a 1) (b 2) (c 3))) '(b 2))", t),
+    ("(equal? (assq 'c '((a 1) (b 2) (c 3))) '(c 3))", t),
+    ("(assq 'd '((a 1) (b 2) (c 3)))", f),
+    ("(assq (list 'a) '(((a)) ((b)) ((c))))", f)
+  ))
+  r5rs("assoc", Table(
+    ("program", "answer"),
+    ("(equal? (assoc (list 'a) '(((a)) ((b)) ((c)))) '((a)))", t)
+  ))
   // assv not implemented
 
   r5rs("symbol?", Table(
