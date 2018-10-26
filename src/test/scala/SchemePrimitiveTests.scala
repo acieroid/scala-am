@@ -51,14 +51,13 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("program", "answer"),
     ("(eq? 'a 'a)", t),
     ("(eq? (cons 'a '()) (cons 'a '()))", f), // equivalent to following benchmark
-// TODO    ("(eq? (list 'a) (list 'a))", f),
+    ("(eq? (list 'a) (list 'a))", f),
     ("(eq? '() '())", t),
     ("(eq? car car)", t),
 // TODO: fails?    ("(let ((x '(a))) (eq? x x))", t),
 //    ("(let ((x (make-vector 0 1))) (eq? x x))", t),
     ("(let ((p (lambda (x) x))) (eq? p p))", t)
   ))
-  // TODO reimplement
   r5rs("equal?", Table(
     ("program", "answer"),
     ("(equal? 'a 'a)", t),
@@ -299,12 +298,13 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(atan 0)", real(0.0))
   ))
 
-//TODO  r5rs("sqrt", Table(
-//    ("program", "answer"),
-//    ("(sqrt 4)", number(2)), // R5RS: It is desirable (but not required) for potentially inexact operations such as `sqrt', when applied to exact arguments, to produce exact answers whenever possible (for example the square root of an exact 4 ought to be an exact 2).
-//    ("(sqrt 16)", number(4)),
-//    ("(sqrt 4.0)", real(2.0))
-//  ))
+  r5rs("sqrt", Table(
+    ("program", "answer"),
+    ("(sqrt 0)", number(0)),
+    ("(sqrt 4)", number(2)), // R5RS: It is desirable (but not required) for potentially inexact operations such as `sqrt', when applied to exact arguments, to produce exact answers whenever possible (for example the square root of an exact 4 ought to be an exact 2).
+    ("(sqrt 16)", number(4)),
+    ("(sqrt 4.0)", real(2.0))
+  ))
   // rationalize not implemented yet
 
   r5rs("log", Table(
@@ -369,7 +369,7 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(not (cons 3 '()))", f),
     ("(not #f)", t),
     ("(not '())", f),
-// TODO   ("(not (list))", f),
+    ("(not (list))", f),
     ("(not 'nil)", f)
   ))
 
@@ -415,7 +415,7 @@ abstract class SchemeTests[A <: Address, V, T, C](
   r5rs("null?", Table(
     ("program", "answer"),
     ("(null? '())", t),
-//TODO    ("(null? (list))", t),
+    ("(null? (list))", t),
     ("(null? '(1 2 3))", f)
   ))
 
@@ -429,11 +429,11 @@ abstract class SchemeTests[A <: Address, V, T, C](
 //    ("(let ((x '(a))) (set-cdr! x x) (list? x))", f)
   ))
 
-//  r5rs("list", Table(
-//    ("program", "answer"),
-//    ("(equal? (list 'a (+ 3 4) 'c) '(a 7 c))", t),
-//    ("(list)", nil)
-//  ))
+  r5rs("list", Table(
+    ("program", "answer"),
+    ("(equal? (list 'a (+ 3 4) 'c) '(a 7 c))", t),
+    ("(list)", nil)
+  ))
 
   r5rs("length", Table(
     ("program", "answer"),

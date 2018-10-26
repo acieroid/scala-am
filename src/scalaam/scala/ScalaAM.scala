@@ -40,7 +40,7 @@ object Main {
     val machine = new AAM[SchemeExp, address.A, lattice.L, timestamp.T](sem)
     val graph = DotGraph[machine.State, machine.Transition]
     val result = machine.run[graph.G](
-      SchemeParser.parse("(pair? (cons 'a 'b))"),
+      SchemeParser.parse("(list 'a 'b)"),
       Timeout.Infinity)
     result.toFile("foo.dot")
   }

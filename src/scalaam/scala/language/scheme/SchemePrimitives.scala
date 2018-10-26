@@ -95,7 +95,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                       /* [x]  interaction-environment: Fly Evaluation */
                       /* [x]  lcm: Integer Operations */
       Length,         /* [vv] length: List Selection */
-      // TODO ListPrim,       /* [vv] list: List Constructors */
+      ListPrim,       /* [vv] list: List Constructors */
                       /* [x]  list->string: String Constructors */
                       /* [x]  list->vector: Vector Creation */
       // TODO ListRef,        /* [vv] list-ref: List Selection */
@@ -451,7 +451,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     }
     object Sqrt extends NoStoreOperation("sqrt", Some(1)) {
       override def call(x: V) =
-        ifThenElse(lt(x, number(0))) {
+        ifThenElse(LessOrEqual.call(number(0), x)) {
           /* n >= 0 */
           for {
             r <- sqrt(x)
@@ -792,6 +792,25 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
           }
         }
         equalp(a, b, Set()).map(v => (v, store))
+      }
+    }
+
+    /** (define list2 (lambda args
+          (if (null? args)
+            '()
+            (if (pair? args)
+              (cons (car args) (apply list2 (cdr args)))
+              args))))
+     */
+    object ListPrim extends StoreOperation("list", None) {
+      override def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T) = args match {
+        case Nil => (nil, store)
+        case (exp, v) :: rest => for {
+          (restv, store2) <- call(fexp, rest, store, t)
+          consv = cons(v, restv)
+          consa = allocator.pointer(exp, t)
+          store3 = store2.extend(consa, consv)
+        } yield (pointer(consa), store3)
       }
     }
   }
