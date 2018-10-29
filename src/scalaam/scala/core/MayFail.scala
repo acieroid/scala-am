@@ -21,7 +21,6 @@ sealed trait MayFail[A, E] {
   }
   def >>=[B](f: A => MayFail[B, E]): MayFail[B, E] = flatMap[B](f)
 
-
   def map[B](f: A => B): MayFail[B, E] = this match {
     case MayFailSuccess(a)    => MayFailSuccess(f(a))
     case MayFailError(errs)   => MayFailError(errs)
@@ -29,13 +28,13 @@ sealed trait MayFail[A, E] {
   }
 
   def mapSet[B](fa: A => B)(fe: E => B): Set[B] = this match {
-    case MayFailSuccess(a) => Set(fa(a))
-    case MayFailError(errs) => errs.map(fe)
+    case MayFailSuccess(a)    => Set(fa(a))
+    case MayFailError(errs)   => errs.map(fe)
     case MayFailBoth(a, errs) => Set(fa(a)) ++ errs.map(fe)
   }
 }
 
-case class MayFailSuccess[A, E](a: A)             extends MayFail[A, E]
+case class MayFailSuccess[A, E](a: A)            extends MayFail[A, E]
 case class MayFailError[A, E](errs: Set[E])      extends MayFail[A, E]
 case class MayFailBoth[A, E](a: A, errs: Set[E]) extends MayFail[A, E]
 
@@ -44,6 +43,6 @@ object MayFail {
   def success[A, E](a: A): MayFail[A, E]   = MayFailSuccess(a)
   def fromOption[A, E](opt: Option[A])(alt: => E): MayFail[A, E] = opt match {
     case Some(a) => success(a)
-    case None => failure(alt)
+    case None    => failure(alt)
   }
 }

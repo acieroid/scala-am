@@ -74,16 +74,19 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
         case _: ControlError => Colors.Red
       }
     }
-    override def metadata = GraphMetadataMap(Map(
-      "halted" -> GraphMetadataBool(halted),
-      "type" -> (control match {
-        case ControlEval(_, _) => GraphMetadataString("eval")
-        case ControlKont(_) => GraphMetadataString("kont")
-        case ControlError(_) => GraphMetadataString("error")
-      })) ++ (control match {
-        case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
-        case _ => Map()
-      }))
+    override def metadata =
+      GraphMetadataMap(
+        Map(
+          "halted" -> GraphMetadataBool(halted),
+          "type" -> (control match {
+            case ControlEval(_, _) => GraphMetadataString("eval")
+            case ControlKont(_)    => GraphMetadataString("kont")
+            case ControlError(_)   => GraphMetadataString("error")
+          })
+        ) ++ (control match {
+          case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
+          case _              => Map()
+        }))
 
     /**
       * Checks if the current state is a final state. It is the case if it

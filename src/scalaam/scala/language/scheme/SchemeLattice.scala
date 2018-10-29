@@ -4,64 +4,83 @@ import scalaam.core._
 
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
+
   /** Can this value be considered true for conditionals? */
   def isTrue(x: L): Boolean
+
   /** Can this value be considered false for conditionals? */
   def isFalse(x: L): Boolean
+
   /** Performs a unary operation on the abstract value x */
   def unaryOp(op: SchemeOps.UnaryOperator)(x: L): MayFail[L, Error]
+
   /** Performs a binary operation on abstract values x and y */
   def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): MayFail[L, Error]
+
   /** Conjunction */
   def and(x: L, y: => L): L = (isTrue(x), isFalse(x)) match {
-    case (true, false) => y /* x is true: return y */
-    case (false, true) => bool(false) /* x is false: return false */
+    case (true, false)  => y /* x is true: return y */
+    case (false, true)  => bool(false) /* x is false: return false */
     case (false, false) => bottom /* x is not true nor false, it is therefore bottom */
-    case (true, true) => join(y, bool(false)) /* either x is true, and we have y, or x is false, and we have false */
+    case (true, true)   => join(y, bool(false)) /* either x is true, and we have y, or x is false, and we have false */
   }
+
   /** Disjunction */
   def or(x: L, y: => L): L = (isTrue(x), isFalse(x)) match {
-    case (true, false) => x /* x is true, return x */
-    case (false, true) => y /* x is false, return y */
+    case (true, false)  => x /* x is true, return x */
+    case (false, true)  => y /* x is false, return y */
     case (false, false) => bottom /* x is not true nor false, it is therefore bottom */
-    case (true, true) => join(x, y) /* either x is true, and we have x, or x is false, and we have y */
+    case (true, true)   => join(x, y) /* either x is true, and we have x, or x is false, and we have y */
   }
+
   /** The representation of a closure */
   type Closure = (Exp, Environment[A])
+
   /** Extract closures contained in this value */
   def getClosures(x: L): Set[Closure]
 
   /** Extract primitives contained in this value
-   *  TODO[medium] find a way not to have a type parameter here */
+    *  TODO[medium] find a way not to have a type parameter here */
   def getPrimitives[Primitive](x: L): Set[Primitive]
 
   def getPointerAddresses(x: L): Set[A]
 
   /** Injection of an integer */
   def number(x: Int): L
+
   /** Injection of a float */
   def real(x: Double): L
+
   /** Injection of a string */
   def string(x: String): L
+
   /** Injection of a boolean */
   def bool(x: Boolean): L
+
   /** Injection of a character */
   def char(x: Char): L
+
   /** Injection of a primitive function */
   def primitive[Primitive](x: Primitive): L
+
   /** Injection of a closure */
   def closure(x: Closure): L
+
   /** Injection of a symbol */
   def symbol(x: String): L
+
   /** Injection of a cons cell */
   def cons(car: L, cdr: L): L
+
   /** Injection of the nil value */
   def nil: L
+
   /** Injection of a pointer (to a cons cell, vector, etc.) */
   def pointer(a: A): L
 
   /** Takes the car of a cons cell */
   def car(x: L): MayFail[L, Error]
+
   /** Takes the cdr of a cons cell */
   def cdr(x: L): MayFail[L, Error]
 
@@ -69,17 +88,17 @@ trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
   /** Get a value from a vector. Returns the addresses where to look for the values */
   def vectorRef[Addr : Address](vector: L, index: L): MayFail[Set[Addr]]
   /** Changes a value inside a vector. The address given is an address where the
-   * value can be stored if needed. Returns the vector value, as well as the
-   * addresses to update in the store. The value stored is not passed to
-   * vectorSet, but will be stored in the returned addresses. */
+    * value can be stored if needed. Returns the vector value, as well as the
+    * addresses to update in the store. The value stored is not passed to
+    * vectorSet, but will be stored in the returned addresses. */
   def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): MayFail[(L, Set[Addr])]
   /** Extract vector addresses contained in this value */
   def getVectors[Addr : Address](x: L): Set[Addr]
   /** Creates a vector of the given size, where the initial value lies at
-   * address. Return the vector address wrapped in a lattice value, as well as
-   * the vector value itsel */
+    * address. Return the vector address wrapped in a lattice value, as well as
+    * the vector value itsel */
   def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
-  */
+    */
 
   /** TODO: move this to the tests
   trait SchemeLatticeLaw extends MonoidLaw {
@@ -144,9 +163,10 @@ trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
     }
     /* TODO: more properties */
   }
-   */
+  */
 }
 
 object SchemeLattice {
-  def apply[L, Exp, A <: Address](implicit lat: SchemeLattice[L, Exp, A]): SchemeLattice[L, Exp, A] = lat
+  def apply[L, Exp, A <: Address](
+      implicit lat: SchemeLattice[L, Exp, A]): SchemeLattice[L, Exp, A] = lat
 }

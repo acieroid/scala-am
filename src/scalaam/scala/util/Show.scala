@@ -7,7 +7,7 @@ trait Show[V] {
 }
 
 object Show {
-  def apply[V : Show]: Show[V] = implicitly
+  def apply[V: Show]: Show[V] = implicitly
 }
 
 trait StoreShow[V, A <: Address] {
@@ -16,7 +16,7 @@ trait StoreShow[V, A <: Address] {
 
 object StoreShow {
   def apply[V, A <: Address](implicit e: StoreShow[V, A]): StoreShow[V, A] = e
-  def fromShow[V : Show, A <: Address]: StoreShow[V, A] = new StoreShow[V, A] {
+  def fromShow[V: Show, A <: Address]: StoreShow[V, A] = new StoreShow[V, A] {
     def show(v: V, store: Store[A, V]) = Show[V].show(v)
   }
 }

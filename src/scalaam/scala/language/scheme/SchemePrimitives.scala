@@ -6,195 +6,227 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
   implicit val timestamp: Timestamp[T, C]
   implicit val schemeLattice: SchemeLattice[V, SchemeExp, A]
 
-  case class PrimitiveArityError(name: String, expected: Int, got: Int) extends Error
+  case class PrimitiveArityError(name: String, expected: Int, got: Int)                extends Error
   case class PrimitiveVariadicArityError(name: String, expectedAtLeast: Int, got: Int) extends Error
-  case class PrimitiveNotApplicable(name: String, args: List[V]) extends Error
-  case class UserError(message: String) extends Error
+  case class PrimitiveNotApplicable(name: String, args: List[V])                       extends Error
+  case class UserError(message: String)                                                extends Error
   trait Primitive {
     def name: String
-    def callAction(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T): Set[Action.A] =
-      call(fexp, args, store, t).mapSet[Action.A](vstore => Action.Value(vstore._1, vstore._2))(err => Action.Err(err))
-    def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T): MayFail[(V, Store[A, V]), Error]
+    def callAction(fexp: SchemeExp,
+                   args: List[(SchemeExp, V)],
+                   store: Store[A, V],
+                   t: T): Set[Action.A] =
+      call(fexp, args, store, t)
+        .mapSet[Action.A](vstore => Action.Value(vstore._1, vstore._2))(err => Action.Err(err))
+    def call(fexp: SchemeExp,
+             args: List[(SchemeExp, V)],
+             store: Store[A, V],
+             t: T): MayFail[(V, Store[A, V]), Error]
   }
+
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[Primitive] = {
     import PrimitiveDefs._
     List(
-      Times,          /* [vv] *: Arithmetic */
-      Plus,           /* [vv] +: Arithmetic */
-      Minus,          /* [vv] -: Arithmetic */
-      Div,            /* [vx] /: Arithmetic (no support for fractions) */
-      Abs,            /* [vv] abs: Arithmetic */
-      ACos,           /* [vv] acos: Scientific */
-                      /* [x]  angle: Complex */
-                      /* [x]  append: Append/Reverse */
-                      /* [x]  apply: Fly Evaluation */
-                      /* [x]  apply: Fly Evaluation */
-      ASin,           /* [vv] asin: Scientific */
-      Assoc,          /* [vv] assoc: Retrieving Alist Entries */
-      Assq,           /* [vv] assq: Retrieving Alist Entries */
-                      /* [x]  assv: Retrieving Alist Entries */
-      ATan,           /* [vv] atan: Scientific */
-      Booleanp,       /* [vv] boolean?: Booleans */
-                      /* [x]  call-with-current-continuation: Continuations */
-                      /* [x]  call-with-input-file: File Ports */
-                      /* [x]  call-with-output-file: File Ports */
-                      /* [x]  call-with-values: Multiple Values */
-      Car,            /* [vv] car: Pairs */
-      Cdr,            /* [vv] cdr: Pairs */
-      Ceiling,        /* [vv] ceiling: Arithmetic */
-                      /* [x]  char->integer: Characters */
-                      /* [x]  char-alphabetic?: Characters */
-                      /* [x]  char-ci<=?: Characters */
-                      /* [x]  char-ci<?: Characters */
-                      /* [x]  char-ci=?: Characters */
-                      /* [x]  char-ci>=?: Characters */
-                      /* [x]  char-ci>?: Characters */
-                      /* [x]  char-downcase: Characters */
-                      /* [x]  char-lower-case?: Characters */
-                      /* [x]  char-numeric?: Characters */
-                      /* [x]  char-ready?: Reading */
-                      /* [x]  char-upcase: Characters */
-                      /* [x]  char-upper-case?: Characters */
-                      /* [x]  char-whitespace?: Characters */
-                      /* [x]  char<=?: Characters */
-                      /* [x]  char<?: Characters */
-                      /* [x]  char=?: Characters */
-                      /* [x]  char>=?: Characters */
-                      /* [x]  char>?: Characters */
-      Charp,          /* [vv] char?: Characters */
-                      /* [x]  close-input-port: Closing */
-                      /* [x]  close-output-port: Closing */
-                      /* [x]  complex?: Complex Numbers */
-      Cons,           /* [vv] cons: Pairs */
-      Cos,            /* [vv] cos: Scientific */
-                      /* [x]  current-input-port: Default Ports */
-                      /* [x]  current-output-port: Default Ports */
-      Display,        /* [v]  display: Writing */
-                      /* [x]  dynamic-wind: Dynamic Wind */
-                      /* [x]  eof-object?: Reading */
-      Eq,             /* [vv] eq?: Equality */
-      Equal,          /* [vx] equal?: Equality */
-                      /* [x]  eqv?: Equality */
-                      /* [x]  eval: Fly Evaluation */
-      Evenp,          /* [vv] even?: Integer Operations */
+      Times, /* [vv] *: Arithmetic */
+      Plus, /* [vv] +: Arithmetic */
+      Minus, /* [vv] -: Arithmetic */
+      Div, /* [vx] /: Arithmetic (no support for fractions) */
+      Abs, /* [vv] abs: Arithmetic */
+      ACos, /* [vv] acos: Scientific */
+      /* [x]  angle: Complex */
+      /* [x]  append: Append/Reverse */
+      /* [x]  apply: Fly Evaluation */
+      /* [x]  apply: Fly Evaluation */
+      ASin, /* [vv] asin: Scientific */
+      Assoc, /* [vv] assoc: Retrieving Alist Entries */
+      Assq, /* [vv] assq: Retrieving Alist Entries */
+      /* [x]  assv: Retrieving Alist Entries */
+      ATan, /* [vv] atan: Scientific */
+      Booleanp, /* [vv] boolean?: Booleans */
+      /* [x]  call-with-current-continuation: Continuations */
+      /* [x]  call-with-input-file: File Ports */
+      /* [x]  call-with-output-file: File Ports */
+      /* [x]  call-with-values: Multiple Values */
+      Car, /* [vv] car: Pairs */
+      Cdr, /* [vv] cdr: Pairs */
+      Ceiling, /* [vv] ceiling: Arithmetic */
+      /* [x]  char->integer: Characters */
+      /* [x]  char-alphabetic?: Characters */
+      /* [x]  char-ci<=?: Characters */
+      /* [x]  char-ci<?: Characters */
+      /* [x]  char-ci=?: Characters */
+      /* [x]  char-ci>=?: Characters */
+      /* [x]  char-ci>?: Characters */
+      /* [x]  char-downcase: Characters */
+      /* [x]  char-lower-case?: Characters */
+      /* [x]  char-numeric?: Characters */
+      /* [x]  char-ready?: Reading */
+      /* [x]  char-upcase: Characters */
+      /* [x]  char-upper-case?: Characters */
+      /* [x]  char-whitespace?: Characters */
+      /* [x]  char<=?: Characters */
+      /* [x]  char<?: Characters */
+      /* [x]  char=?: Characters */
+      /* [x]  char>=?: Characters */
+      /* [x]  char>?: Characters */
+      Charp, /* [vv] char?: Characters */
+      /* [x]  close-input-port: Closing */
+      /* [x]  close-output-port: Closing */
+      /* [x]  complex?: Complex Numbers */
+      Cons, /* [vv] cons: Pairs */
+      Cos, /* [vv] cos: Scientific */
+      /* [x]  current-input-port: Default Ports */
+      /* [x]  current-output-port: Default Ports */
+      Display, /* [v]  display: Writing */
+      /* [x]  dynamic-wind: Dynamic Wind */
+      /* [x]  eof-object?: Reading */
+      Eq, /* [vv] eq?: Equality */
+      Equal, /* [vx] equal?: Equality */
+      /* [x]  eqv?: Equality */
+      /* [x]  eval: Fly Evaluation */
+      Evenp, /* [vv] even?: Integer Operations */
       ExactToInexact, /* [vv] exact->inexact: Exactness */
-                      /* [x]  exact?: Exactness */
-                      /* [x]  exp: Scientific */
-      Expt,           /* [vv] expt: Scientific */
-      Floor,          /* [vv] floor: Arithmetic */
-                      /* [x]  for-each: List Mapping */
-                      /* [x]  force: Delayed Evaluation */
-      Gcd,            /* [vx] gcd: Integer Operations */
-                      /* [x]  imag-part: Complex */
+      /* [x]  exact?: Exactness */
+      /* [x]  exp: Scientific */
+      Expt, /* [vv] expt: Scientific */
+      Floor, /* [vv] floor: Arithmetic */
+      /* [x]  for-each: List Mapping */
+      /* [x]  force: Delayed Evaluation */
+      Gcd, /* [vx] gcd: Integer Operations */
+      /* [x]  imag-part: Complex */
       InexactToExact, /* [vv] inexact->exact: Exactness */
-                      /* [x]  inexact?: Exactness */
-                      /* [x]  input-port?: Ports */
-                      /* [x]  integer->char: Characters */
-      Integerp,       /* [vv] integer?: Integers */
-                      /* [x]  interaction-environment: Fly Evaluation */
-                      /* [x]  lcm: Integer Operations */
-      Length,         /* [vv] length: List Selection */
-      ListPrim,       /* [vv] list: List Constructors */
-                      /* [x]  list->string: String Constructors */
-                      /* [x]  list->vector: Vector Creation */
-      ListRef,        /* [vv] list-ref: List Selection */
-                      /* [x]  list-tail: List Selection */
-      Listp,          /* [vv] list?: List Predicates */
-                      /* [x]  load: Loading */
-      Log,            /* [vv] log: Scientific */
-                      /* [x]  magnitude: Complex */
-                      /* [x]  make-polar: Complex */
-                      /* [x]  make-rectangular: Complex */
-                      /* [x]  make-string: String Constructors */
-                      /* [x]  map: List Mapping */
-      Max,            /* [vv] max: Arithmetic */
-      Member,         /* [vv] member: List Searching */
-      Memq,           /* [v]  memq: List Searching */
-                      /* [x]  memv: List Searching */
-      Min,            /* [vv] min: Arithmetic */
-      Modulo,         /* [vv] modulo: Integer Operations */
-      Negativep,      /* [vv] negative?: Comparison */
-      Newline,        /* [v]  newline: Writing */
-      Not,            /* [vv] not: Booleans */
-      Nullp,          /* [vv] null?: List Predicates */
+      /* [x]  inexact?: Exactness */
+      /* [x]  input-port?: Ports */
+      /* [x]  integer->char: Characters */
+      Integerp, /* [vv] integer?: Integers */
+      /* [x]  interaction-environment: Fly Evaluation */
+      /* [x]  lcm: Integer Operations */
+      Length, /* [vv] length: List Selection */
+      ListPrim, /* [vv] list: List Constructors */
+      /* [x]  list->string: String Constructors */
+      /* [x]  list->vector: Vector Creation */
+      ListRef, /* [vv] list-ref: List Selection */
+      /* [x]  list-tail: List Selection */
+      Listp, /* [vv] list?: List Predicates */
+      /* [x]  load: Loading */
+      Log, /* [vv] log: Scientific */
+      /* [x]  magnitude: Complex */
+      /* [x]  make-polar: Complex */
+      /* [x]  make-rectangular: Complex */
+      /* [x]  make-string: String Constructors */
+      /* [x]  map: List Mapping */
+      Max, /* [vv] max: Arithmetic */
+      Member, /* [vv] member: List Searching */
+      Memq, /* [v]  memq: List Searching */
+      /* [x]  memv: List Searching */
+      Min, /* [vv] min: Arithmetic */
+      Modulo, /* [vv] modulo: Integer Operations */
+      Negativep, /* [vv] negative?: Comparison */
+      Newline, /* [v]  newline: Writing */
+      Not, /* [vv] not: Booleans */
+      Nullp, /* [vv] null?: List Predicates */
       NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
-      Numberp,        /* [vv] number?: Numerical Tower */
-      Oddp,           /* [vv] odd?: Integer Operations */
-                      /* [x]  open-input-file: File Ports */
-                      /* [x]  open-output-file: File Ports */
-                      /* [x]  output-port?: Ports */
-      Pairp,          /* [vv] pair?: Pairs */
-                      /* [x]  peek-char?: Reading */
-      Positivep,      /* [vv] positive?: Comparison */
-                      /* [x]  procedure?: Procedure Properties */
-      Quotient,       /* [vv] quotient: Integer Operations */
-                      /* [x]  rational?: Reals and Rationals */
-                      /* [x]  read: Scheme Read */
-                      /* [x]  read-char?: Reading */
-                      /* [x]  real-part: Complex */
-      Realp,          /* [vv] real?: Reals and Rationals */
-      Remainder,      /* [vv] remainder: Integer Operations */
-                      /* [x]  reverse: Append/Reverse */
-      Round,          /* [vv] round: Arithmetic */
-      SetCar,         /* [vv] set-car!: Pairs */
-      SetCdr,         /* [vv] set-cdr!: Pairs */
-      Sin,            /* [vv] sin: Scientific */
-      Sqrt,           /* [vv] sqrt: Scientific */
-                      /* [x]  string: String Constructors */
-                      /* [x]  string->list: List/String Conversion */
-                      /* [x]  string->number: Conversion */
+      Numberp, /* [vv] number?: Numerical Tower */
+      Oddp, /* [vv] odd?: Integer Operations */
+      /* [x]  open-input-file: File Ports */
+      /* [x]  open-output-file: File Ports */
+      /* [x]  output-port?: Ports */
+      Pairp, /* [vv] pair?: Pairs */
+      /* [x]  peek-char?: Reading */
+      Positivep, /* [vv] positive?: Comparison */
+      /* [x]  procedure?: Procedure Properties */
+      Quotient, /* [vv] quotient: Integer Operations */
+      /* [x]  rational?: Reals and Rationals */
+      /* [x]  read: Scheme Read */
+      /* [x]  read-char?: Reading */
+      /* [x]  real-part: Complex */
+      Realp, /* [vv] real?: Reals and Rationals */
+      Remainder, /* [vv] remainder: Integer Operations */
+      /* [x]  reverse: Append/Reverse */
+      Round, /* [vv] round: Arithmetic */
+      SetCar, /* [vv] set-car!: Pairs */
+      SetCdr, /* [vv] set-cdr!: Pairs */
+      Sin, /* [vv] sin: Scientific */
+      Sqrt, /* [vv] sqrt: Scientific */
+      /* [x]  string: String Constructors */
+      /* [x]  string->list: List/String Conversion */
+      /* [x]  string->number: Conversion */
       StringToSymbol, /* [vv] string->symbol: Symbol Primitives */
-      StringAppend,   /* [vx] string-append: Appending Strings: only two arguments supported */
-                      /* [x]  string-ci<: String Comparison */
-                      /* [x]  string-ci=?: String Comparison */
-                      /* [x]  string-ci>=?: String Comparison */
-                      /* [x]  string-ci>?: String Comparison */
-                      /* [x]  string-copy: String Selection */
-                      /* [x]  string-fill!: String Modification */
-      StringLength,   /* [vv] string-length: String Selection */
-                      /* [x]  string-ref: String Selection */
-                      /* [x]  string-set!: String Modification */
-                      /* [x]  string<=?: String Comparison */
-      StringLt,       /* [vv]  string<?: String Comparison */
-                      /* [x]  string=?: String Comparison */
-                      /* [x]  string>=?: String Comparison */
-                      /* [x]  string>?: String Comparison */
-      Stringp,        /* [vv]  string?: String Predicates */
-                      /* [x]  substring: String Selection */
+      StringAppend, /* [vx] string-append: Appending Strings: only two arguments supported */
+      /* [x]  string-ci<: String Comparison */
+      /* [x]  string-ci=?: String Comparison */
+      /* [x]  string-ci>=?: String Comparison */
+      /* [x]  string-ci>?: String Comparison */
+      /* [x]  string-copy: String Selection */
+      /* [x]  string-fill!: String Modification */
+      StringLength, /* [vv] string-length: String Selection */
+      /* [x]  string-ref: String Selection */
+      /* [x]  string-set!: String Modification */
+      /* [x]  string<=?: String Comparison */
+      StringLt, /* [vv]  string<?: String Comparison */
+      /* [x]  string=?: String Comparison */
+      /* [x]  string>=?: String Comparison */
+      /* [x]  string>?: String Comparison */
+      Stringp, /* [vv]  string?: String Predicates */
+      /* [x]  substring: String Selection */
       SymbolToString, /* [vv] symbol->string: Symbol Primitives */
-      Symbolp,        /* [vv] symbol?: Symbol Primitives */
-      Tan,            /* [vv] tan: Scientific */
-                      /* [x]  truncate: Arithmetic */
-                      /* [x]  values: Multiple Values */
+      Symbolp, /* [vv] symbol?: Symbol Primitives */
+      Tan, /* [vv] tan: Scientific */
+      /* [x]  truncate: Arithmetic */
+      /* [x]  values: Multiple Values */
       // TODO MakeVector,     /* [vv] make-vector: Vector Creation */
       // TODO Vector,         /* [vv] vector: Vector Creation */
-                      /* [x]  vector->list: Vector Creation */
-                      /* [x]  vector-fill!: Vector Accessors */
+      /* [x]  vector->list: Vector Creation */
+      /* [x]  vector-fill!: Vector Accessors */
       // TODO VectorLength,   /* [vv] vector-length: Vector Accessors */
       // TODO VectorRef,      /* [vv] vector-ref: Vector Accessors */
       // TODO VectorSet,      /* [vv] vector-set!: Vector Accessors */
       // TODO Vectorp,        /* [vv] vector?: Vector Creation */
-                      /* [x]  with-input-from-file: File Ports */
-                      /* [x]  with-output-to-file: File Ports */
-                      /* [x]  write-char: Writing */
-      Zerop,          /* [vv] zero?: Comparison */
-      LessThan,       /* [vv]  < */
-      LessOrEqual,    /* [vv]  <= */
-      NumEq,          /* [vv]  = */
-      GreaterThan,    /* [vv]  > */
+      /* [x]  with-input-from-file: File Ports */
+      /* [x]  with-output-to-file: File Ports */
+      /* [x]  write-char: Writing */
+      Zerop, /* [vv] zero?: Comparison */
+      LessThan, /* [vv]  < */
+      LessOrEqual, /* [vv]  <= */
+      NumEq, /* [vv]  = */
+      GreaterThan, /* [vv]  > */
       GreaterOrEqual, /* [vv]  >= */
-                      /* [x]  numerator */
-                      /* [x]  denominator */
-                      /* [x]  rationalize-string */
-                      /* [x]  scheme-report-environment */
-                      /* [x]  null-environment */
-                      /* [x]  write transcript-on */
-                      /* [x]  transcript-off */
-      Caar, Cadr,     /* [v]  caar etc. */
-      Cdar, Cddr, Caaar, Caadr, Cadar, Caddr, Cdaar, Cdadr, Cddar, Cdddr, Caaaar,
-      Caaadr, Caadar, Caaddr, Cadaar, Cadadr, Caddar, Cadddr, Cdaaar,
-      Cdaadr, Cdadar, Cdaddr, Cddaar, Cddadr, Cdddar, Cddddr,
+      /* [x]  numerator */
+      /* [x]  denominator */
+      /* [x]  rationalize-string */
+      /* [x]  scheme-report-environment */
+      /* [x]  null-environment */
+      /* [x]  write transcript-on */
+      /* [x]  transcript-off */
+      Caar,
+      Cadr, /* [v]  caar etc. */
+      Cdar,
+      Cddr,
+      Caaar,
+      Caadr,
+      Cadar,
+      Caddr,
+      Cdaar,
+      Cdadr,
+      Cddar,
+      Cdddr,
+      Caaaar,
+      Caaadr,
+      Caadar,
+      Caaddr,
+      Cadaar,
+      Cadadr,
+      Caddar,
+      Cadddr,
+      Cdaaar,
+      Cdaadr,
+      Cdadar,
+      Cdaddr,
+      Cddaar,
+      Cddadr,
+      Cdddar,
+      Cddddr,
       /* Other primitives that are not R5RS */
       Random,
       Error,
@@ -202,52 +234,73 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
   }
 
   object PrimitiveDefs {
-      /** Helper for defining operations that do not modify the store */
-    abstract class NoStoreOperation(val name: String, val nargs: Option[Int] = None) extends Primitive {
-      def call(args: List[V]): MayFail[V, Error] = MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
+
+    /** Helper for defining operations that do not modify the store */
+    abstract class NoStoreOperation(val name: String, val nargs: Option[Int] = None)
+        extends Primitive {
+      def call(args: List[V]): MayFail[V, Error] =
+        MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
       def call(arg1: V, arg2: V): MayFail[V, Error] = call(List(arg1, arg2))
-      def call(arg1: (SchemeExp, V), arg2: (SchemeExp, V)): MayFail[V, Error] = call(arg1._2, arg2._2)
-      def call(fexp: SchemeExp, arg1: (SchemeExp, V), arg2: (SchemeExp, V)): MayFail[V, Error] = call(arg1, arg2)
-      def call(arg: V): MayFail[V, Error] = call(List(arg))
-      def call(arg: (SchemeExp, V)): MayFail[V, Error] = call(arg._2)
+      def call(arg1: (SchemeExp, V), arg2: (SchemeExp, V)): MayFail[V, Error] =
+        call(arg1._2, arg2._2)
+      def call(fexp: SchemeExp, arg1: (SchemeExp, V), arg2: (SchemeExp, V)): MayFail[V, Error] =
+        call(arg1, arg2)
+      def call(arg: V): MayFail[V, Error]                               = call(List(arg))
+      def call(arg: (SchemeExp, V)): MayFail[V, Error]                  = call(arg._2)
       def call(fexp: SchemeExp, arg: (SchemeExp, V)): MayFail[V, Error] = call(arg)
-      def call(): MayFail[V, Error] = call(List())
-      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T): MayFail[(V, Store[A, V]), Error] = (args match {
-        case Nil => call()
-        case x :: Nil => call(fexp, x)
-        case x :: y :: Nil => call(fexp, x, y)
-        case _ => call(args.map({ case (_, v) => v }))
-      }).map(v => (v, store))
+      def call(): MayFail[V, Error]                                     = call(List())
+      def call(fexp: SchemeExp,
+               args: List[(SchemeExp, V)],
+               store: Store[A, V],
+               t: T): MayFail[(V, Store[A, V]), Error] =
+        (args match {
+          case Nil           => call()
+          case x :: Nil      => call(fexp, x)
+          case x :: y :: Nil => call(fexp, x, y)
+          case _             => call(args.map({ case (_, v) => v }))
+        }).map(v => (v, store))
     }
 
-    abstract class StoreOperation(val name: String, val nargs: Option[Int] = None) extends Primitive {
-      def call(args: List[V], store: Store[A, V]): MayFail[(V, Store[A, V]), Error] = MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
+    abstract class StoreOperation(val name: String, val nargs: Option[Int] = None)
+        extends Primitive {
+      def call(args: List[V], store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
+        MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
       def call(arg: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
         call(List(arg), store)
       def call(arg1: V, arg2: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
         call(List(arg1, arg2), store)
-      def call(fexp: SchemeExp, arg1: (SchemeExp, V), arg2: (SchemeExp, V), store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
+      def call(fexp: SchemeExp,
+               arg1: (SchemeExp, V),
+               arg2: (SchemeExp, V),
+               store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
         call(arg1._2, arg2._2, store)
-      def call(fexp: SchemeExp, arg: (SchemeExp, V), store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
+      def call(fexp: SchemeExp,
+               arg: (SchemeExp, V),
+               store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
         call(arg._2, store)
       def call(store: Store[A, V]): MayFail[(V, Store[A, V]), Error] = call(List(), store)
-      def call(fexp : SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T): MayFail[(V, Store[A, V]), Error] = args match {
-        case Nil => call(store)
-        case x :: Nil => call(fexp, x, store)
+      def call(fexp: SchemeExp,
+               args: List[(SchemeExp, V)],
+               store: Store[A, V],
+               t: T): MayFail[(V, Store[A, V]), Error] = args match {
+        case Nil           => call(store)
+        case x :: Nil      => call(fexp, x, store)
         case x :: y :: Nil => call(fexp, x, y, store)
-        case _ => call(args.map({ case (_, v) => v }), store)
+        case _             => call(args.map({ case (_, v) => v }), store)
       }
     }
 
     import schemeLattice._
+
     /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
     def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]) =
-      getPointerAddresses(x).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
-        for {
-          v <- store.lookupMF(a)
-          res <- f(v)
-          accv <- acc
-        } yield join(accv, res))
+      getPointerAddresses(x).foldLeft(MayFail.success[V, Error](bottom))(
+        (acc: MayFail[V, Error], a: A) =>
+          for {
+            v    <- store.lookupMF(a)
+            res  <- f(v)
+            accv <- acc
+          } yield join(accv, res))
 
     /* TODO[medium] improve these implicit classes to be able to write primitives more clearly */
     implicit class V1Ops(f: V => MayFail[V, Error]) {
@@ -256,8 +309,8 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     implicit class V2Ops(f: (V, => V) => V) {
       def apply(arg1: MayFail[V, Error], arg2: MayFail[V, Error]) =
         for {
-          v1 <- arg1
-          v2 <- arg2
+          v1  <- arg1
+          v2  <- arg2
           res <- f(v1, v2)
         } yield res
     }
@@ -270,9 +323,10 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         v2 <- arg2
         res <- f(v1, v2)
       } yield res */
-    def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
+    def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(
+        elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
       val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
-      val mfMon = scalaam.util.MonoidInstances.mayFail[V](latMon)
+      val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
       cond >>= { condv =>
         val t = if (isTrue(condv)) { thenBranch } else { MayFail.success[V, Error](latMon.zero) }
         val f = if (isFalse(condv)) { elseBranch } else { MayFail.success[V, Error](latMon.zero) }
@@ -284,85 +338,86 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
     /* Simpler names for lattice operations */
-    def isNull = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsNull) _
-    def isCons = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsCons) _
-    def isPointer = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsPointer) _
-    def isChar = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsChar) _
-    def isSymbol = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
-    def isString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsString) _
-    def isInteger = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsInteger) _
-    def isReal = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsReal) _
-    def isBoolean = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
-    def isVector = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsVector) _
-    def ceiling = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Ceiling) _
-    def floor = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Floor) _
-    def round = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Round) _
-    def log = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Log) _
-    def not = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Not) _
-    def random = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Random) _
-    def sin = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sin) _
-    def asin = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ASin) _
-    def cos = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Cos) _
-    def acos = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ACos) _
-    def tan = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Tan) _
-    def atan = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ATan) _
-    def sqrt = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sqrt) _
-    def vectorLength = schemeLattice.unaryOp(SchemeOps.UnaryOperator.VectorLength) _
-    def stringLength = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringLength) _
+    def isNull         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsNull) _
+    def isCons         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsCons) _
+    def isPointer      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsPointer) _
+    def isChar         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsChar) _
+    def isSymbol       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
+    def isString       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsString) _
+    def isInteger      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsInteger) _
+    def isReal         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsReal) _
+    def isBoolean      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
+    def isVector       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsVector) _
+    def ceiling        = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Ceiling) _
+    def floor          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Floor) _
+    def round          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Round) _
+    def log            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Log) _
+    def not            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Not) _
+    def random         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Random) _
+    def sin            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sin) _
+    def asin           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ASin) _
+    def cos            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Cos) _
+    def acos           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ACos) _
+    def tan            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Tan) _
+    def atan           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ATan) _
+    def sqrt           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sqrt) _
+    def vectorLength   = schemeLattice.unaryOp(SchemeOps.UnaryOperator.VectorLength) _
+    def stringLength   = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringLength) _
     def numberToString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.NumberToString) _
     def symbolToString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.SymbolToString) _
     def stringToSymbol = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
     def inexactToExact = schemeLattice.unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
     def exactToInexact = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ExactToInexact) _
 
-    def plus = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Plus) _
-    def minus = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Minus) _
-    def times = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Times) _
-    def div = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Div) _
-    def quotient = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Quotient) _
-    def modulo = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Modulo) _
-    def remainder = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Remainder) _
-    def lt = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Lt) _
-    def numEq = schemeLattice.binaryOp(SchemeOps.BinaryOperator.NumEq) _
-    def eqq = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Eq) _
+    def plus         = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Plus) _
+    def minus        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Minus) _
+    def times        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Times) _
+    def div          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Div) _
+    def quotient     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Quotient) _
+    def modulo       = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Modulo) _
+    def remainder    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Remainder) _
+    def lt           = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Lt) _
+    def numEq        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.NumEq) _
+    def eqq          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Eq) _
     def stringAppend = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringAppend) _
-    def stringLt = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringLt) _
+    def stringLt     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringLt) _
 
     object Plus extends NoStoreOperation("+") {
       override def call(args: List[V]) = args match {
-        case Nil => number(0)
+        case Nil       => number(0)
         case x :: rest => call(rest) >>= (plus(x, _))
       }
     }
     object Minus extends NoStoreOperation("-") {
       override def call(args: List[V]) = args match {
-        case Nil => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
-        case x :: Nil => minus(number(0), x)
+        case Nil       => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
+        case x :: Nil  => minus(number(0), x)
         case x :: rest => Plus.call(rest) >>= (minus(x, _))
       }
     }
     object Times extends NoStoreOperation("*") {
       override def call(args: List[V]) = args match {
-        case Nil => number(1)
+        case Nil       => number(1)
         case x :: rest => call(rest) >>= (times(x, _))
       }
     }
     object Div extends NoStoreOperation("/") {
       override def call(args: List[V]) = args match {
         case Nil => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
-        case x :: rest => for {
-          multrest <- Times.call(rest)
-          r <- div(x, multrest)
-          fl <- floor(r)
-          isexact <- eqq(r, fl)
-          xisint <- isInteger(x)
-          multrestisint <- isInteger(multrest)
-          convert <- and(isexact, and(xisint, multrestisint))
-          exr <- inexactToExact(r)
-          res <- ifThenElse(convert) { exr } { r }
-        } yield {
-          res
-        }
+        case x :: rest =>
+          for {
+            multrest      <- Times.call(rest)
+            r             <- div(x, multrest)
+            fl            <- floor(r)
+            isexact       <- eqq(r, fl)
+            xisint        <- isInteger(x)
+            multrestisint <- isInteger(multrest)
+            convert       <- and(isexact, and(xisint, multrestisint))
+            exr           <- inexactToExact(r)
+            res           <- ifThenElse(convert) { exr } { r }
+          } yield {
+            res
+          }
       }
     }
     object Quotient extends NoStoreOperation("quotient", Some(2)) {
@@ -390,7 +445,8 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     }
 
     object LessThan extends NoStoreOperation("<", Some(2)) {
-      override def call(x: V, y: V) = lt(x, y) /* TODO[easy]: < should accept any number of arguments (same for <= etc.) */
+      override def call(x: V, y: V) =
+        lt(x, y) /* TODO[easy]: < should accept any number of arguments (same for <= etc.) */
     }
     object LessOrEqual extends NoStoreOperation("<=", Some(2)) {
       override def call(x: V, y: V) = (or _)(lt(x, y), numEq(x, y)) /*for {
@@ -409,7 +465,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
           }
       }
       override def call(args: List[V]) = args match {
-        case Nil => bool(true)
+        case Nil       => bool(true)
         case x :: rest => eq(x, rest)
       }
     }
@@ -463,13 +519,13 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         ifThenElse(LessOrEqual.call(number(0), x)) {
           /* n >= 0 */
           for {
-            r <- sqrt(x)
-            fl <- floor(r)
+            r          <- sqrt(x)
+            fl         <- floor(r)
             argisexact <- isInteger(x)
             resisexact <- eqq(r, fl)
-            convert <- and(argisexact, resisexact)
-            exr <- inexactToExact(r)
-            res <- ifThenElse(convert) { exr } { r }
+            convert    <- and(argisexact, resisexact)
+            exr        <- inexactToExact(r)
+            res        <- ifThenElse(convert) { exr } { r }
           } yield {
             res
           }
@@ -484,22 +540,27 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     object InexactToExact extends NoStoreOperation("inexact->exact", Some(1)) {
       override def call(x: V) = inexactToExact(x)
     }
+
     /** (define (zero? x) (= x 0)) */
     object Zerop extends NoStoreOperation("zero?", Some(1)) {
       override def call(x: V) = numEq(number(0), x)
     }
+
     /** (define (positive? x) (< x 0)) */
     object Positivep extends NoStoreOperation("positive?", Some(1)) {
       override def call(x: V) = lt(number(0), x)
     }
+
     /** (define (positive? x) (< 0 x)) */
     object Negativep extends NoStoreOperation("negative?", Some(1)) {
       override def call(x: V) = lt(x, number(0))
     }
+
     /** (define (odd? x) (= 1 (modulo x 2))) */
     object Oddp extends NoStoreOperation("odd?", Some(1)) {
       override def call(x: V) = modulo(x, number(2)) >>= (numEq(number(1), _))
     }
+
     /** (define (even? x) (= 0 (modulo x 2))) */
     object Evenp extends NoStoreOperation("even?", Some(1)) {
       override def call(x: V) = modulo(x, number(2)) >>= (numEq(number(0), _))
@@ -508,14 +569,15 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       /* TODO: In Scheme, max casts numbers to inexact as soon as one of them is inexact, but we don't support that */
       private def call(args: List[V], max: V): MayFail[V, Error] = args match {
         case Nil => max
-        case x :: rest => ifThenElse(lt(max, x)) {
-          call(rest, x)
-        } {
-          call(rest, max)
-        }
+        case x :: rest =>
+          ifThenElse(lt(max, x)) {
+            call(rest, x)
+          } {
+            call(rest, max)
+          }
       }
       override def call(args: List[V]) = args match {
-        case Nil => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
+        case Nil       => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
         case x :: rest => call(rest, x)
       }
     }
@@ -523,17 +585,19 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       /* TODO: same remark as max */
       private def call(args: List[V], min: V): MayFail[V, Error] = args match {
         case Nil => min
-        case x :: rest => ifThenElse(lt(x, min)) {
-          call(rest, x)
-        } {
-          call(rest, min)
-        }
+        case x :: rest =>
+          ifThenElse(lt(x, min)) {
+            call(rest, x)
+          } {
+            call(rest, min)
+          }
       }
       override def call(args: List[V]) = args match {
-        case Nil => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
+        case Nil       => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
         case x :: rest => call(rest, x)
       }
     }
+
     /** (define (abs x) (if (< x 0) (- 0 x) x)) */
     object Abs extends NoStoreOperation("abs", Some(1)) {
       override def call(x: V) =
@@ -543,6 +607,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
           x
         }
     }
+
     /** (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
     object Gcd extends NoStoreOperation("gcd", Some(2)) {
       private def gcd(a: V, b: V, visited: Set[(V, V)]): MayFail[V, Error] = {
@@ -579,13 +644,15 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       override def call(x: V) = isInteger(x)
     }
     object Realp extends NoStoreOperation("real?", Some(1)) {
-      override def call(x: V) = for {
-        isint <- isInteger(x)
-        isreal <- isReal(x)
-      } yield or(isint, isreal)
+      override def call(x: V) =
+        for {
+          isint  <- isInteger(x)
+          isreal <- isReal(x)
+        } yield or(isint, isreal)
     }
     object Numberp extends NoStoreOperation("number?", Some(1)) {
-      override def call(x: V) = Realp.call(x) /* No support for complex number, so number? is equivalent as real? */
+      override def call(x: V) =
+        Realp.call(x) /* No support for complex number, so number? is equivalent as real? */
     }
     object Booleanp extends NoStoreOperation("boolean?", Some(1)) {
       override def call(x: V) = isBoolean(x)
@@ -610,7 +677,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     }
     object StringAppend extends NoStoreOperation("string-append") {
       override def call(args: List[V]) = args match {
-        case Nil => string("")
+        case Nil       => string("")
         case x :: rest => call(rest) >>= (stringAppend(x, _))
       }
     }
@@ -626,7 +693,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
     object Display extends NoStoreOperation("display", Some(1)) {
       override def call(x: V) = {
         val str = x.toString
-          print(if (str.startsWith("\"")) { str.substring(1, str.size-1) } else { str })
+        print(if (str.startsWith("\"")) { str.substring(1, str.size - 1) } else { str })
         x /* Undefined behavior in R5RS, but we return the printed value */
       }
     }
@@ -649,34 +716,43 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       trait Spec
       case object Car extends Spec
       case object Cdr extends Spec
-      val spec: List[Spec] = name.drop(1).take(name.length - 2).toList.reverseMap(c =>
-        if (c == 'a') { Car }
-        else if (c == 'd') { Cdr }
-        else { throw new Exception(s"Incorrect car/cdr operation: $name") })
+      val spec: List[Spec] = name
+        .drop(1)
+        .take(name.length - 2)
+        .toList
+        .reverseMap(c =>
+          if (c == 'a') { Car } else if (c == 'd') { Cdr } else {
+            throw new Exception(s"Incorrect car/cdr operation: $name")
+        })
       override def call(v: V, store: Store[A, V]) =
-        for { v <- spec.foldLeft(MayFail.success[V, Error](v))((acc, op) => for {
-          v <- acc
-          res <- dereferencePointer(v, store) { consv => op match {
-            case Car => car(consv)
-            case Cdr => cdr(consv)
-          }}
-        } yield res)} yield (v, store)
+        for {
+          v <- spec.foldLeft(MayFail.success[V, Error](v))((acc, op) =>
+            for {
+              v <- acc
+              res <- dereferencePointer(v, store) { consv =>
+                op match {
+                  case Car => car(consv)
+                  case Cdr => cdr(consv)
+                }
+              }
+            } yield res)
+        } yield (v, store)
     }
 
-    object Car extends CarCdrOperation("car")
-    object Cdr extends CarCdrOperation("cdr")
-    object Caar extends CarCdrOperation("caar")
-    object Cadr extends CarCdrOperation("cadr")
-    object Cdar extends CarCdrOperation("cdar")
-    object Cddr extends CarCdrOperation("cddr")
-    object Caaar extends CarCdrOperation("caaar")
-    object Caadr extends CarCdrOperation("caadr")
-    object Cadar extends CarCdrOperation("cadar")
-    object Caddr extends CarCdrOperation("caddr")
-    object Cdaar extends CarCdrOperation("cdaar")
-    object Cdadr extends CarCdrOperation("cdadr")
-    object Cddar extends CarCdrOperation("cddar")
-    object Cdddr extends CarCdrOperation("cdddr")
+    object Car    extends CarCdrOperation("car")
+    object Cdr    extends CarCdrOperation("cdr")
+    object Caar   extends CarCdrOperation("caar")
+    object Cadr   extends CarCdrOperation("cadr")
+    object Cdar   extends CarCdrOperation("cdar")
+    object Cddr   extends CarCdrOperation("cddr")
+    object Caaar  extends CarCdrOperation("caaar")
+    object Caadr  extends CarCdrOperation("caadr")
+    object Cadar  extends CarCdrOperation("cadar")
+    object Caddr  extends CarCdrOperation("caddr")
+    object Cdaar  extends CarCdrOperation("cdaar")
+    object Cdadr  extends CarCdrOperation("cdadr")
+    object Cddar  extends CarCdrOperation("cddar")
+    object Cdddr  extends CarCdrOperation("cdddr")
     object Caaaar extends CarCdrOperation("caaaar")
     object Caaadr extends CarCdrOperation("caaadr")
     object Caadar extends CarCdrOperation("caadar")
@@ -696,23 +772,27 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
 
     object SetCar extends StoreOperation("set-car!", Some(2)) {
       override def call(cell: V, value: V, store: Store[A, V]) =
-        getPointerAddresses(cell).foldLeft(MayFail.success[Store[A, V], Error](store))((acc, a) =>
-          for {
-            consv <- store.lookupMF(a) /* look up in old store */
-            st <- acc /* updated store */
-            v1 = value /* update car */
-            v2 <- cdr(consv) /* preserves cdr */
-          } yield st.update(a, cons(v1, v2))).map(store => (bool(false) /* undefined */, store))
+        getPointerAddresses(cell)
+          .foldLeft(MayFail.success[Store[A, V], Error](store))((acc, a) =>
+            for {
+              consv <- store.lookupMF(a) /* look up in old store */
+              st    <- acc /* updated store */
+              v1 = value /* update car */
+              v2 <- cdr(consv) /* preserves cdr */
+            } yield st.update(a, cons(v1, v2)))
+          .map(store => (bool(false) /* undefined */, store))
     }
     object SetCdr extends StoreOperation("set-cdr!", Some(2)) {
       override def call(cell: V, value: V, store: Store[A, V]) =
-        getPointerAddresses(cell).foldLeft(MayFail.success[Store[A, V], Error](store))((acc, a) =>
-          for {
-            consv <- store.lookupMF(a) /* look up in old store */
-            st <- acc /* updated store */
-            v1 <- car(consv) /* preserves car */
-            v2 = value /* update cdr */
-          } yield st.update(a, cons(v1, v2))).map(store => (bool(false) /* undefined */, store))
+        getPointerAddresses(cell)
+          .foldLeft(MayFail.success[Store[A, V], Error](store))((acc, a) =>
+            for {
+              consv <- store.lookupMF(a) /* look up in old store */
+              st    <- acc /* updated store */
+              v1    <- car(consv) /* preserves car */
+              v2 = value /* update cdr */
+            } yield st.update(a, cons(v1, v2)))
+          .map(store => (bool(false) /* undefined */, store))
     }
 
     object Length extends StoreOperation("length", Some(1)) {
@@ -723,14 +803,16 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
           } else {
             ifThenElse(isPointer(l)) {
               /* dereferences the pointer and applies length to the result */
-              dereferencePointer(l, store) { consv => length(consv, visited + l) }
+              dereferencePointer(l, store) { consv =>
+                length(consv, visited + l)
+              }
             } {
               ifThenElse(isCons(l)) {
                 /* length of the list is length of its cdr plus one */
                 for {
-                  cdrv <- cdr(l)
+                  cdrv      <- cdr(l)
                   lengthcdr <- length(cdrv, visited + l)
-                  len <- plus(number(1), lengthcdr)
+                  len       <- plus(number(1), lengthcdr)
                 } yield len
               } {
                 ifThenElse(isNull(l)) {
@@ -759,7 +841,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                                      (and (equal? (vector-ref a i) (vector-ref b i))
                                        (loop (+ i 1)))))))
                     (loop 0)))))))
-     */
+      */
     // TODO: this is without vectors
     object Equal extends StoreOperation("equal?", Some(2)) {
       override def call(a: V, b: V, store: Store[A, V]) = {
@@ -783,7 +865,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                     carb <- car(b)
                     cdra <- cdr(a)
                     cdrb <- cdr(b)
-                    res <- (and _)(equalp(cara, carb, visited2), equalp(cdra, cdrb, visited2))
+                    res  <- (and _)(equalp(cara, carb, visited2), equalp(cdra, cdrb, visited2))
                   } yield res
                 } {
                   ifThenElse((and _)(isPointer(a), isPointer(b))) {
@@ -812,19 +894,20 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
             (if (pair? args)
               (cons (car args) (apply list (cdr args)))
               args))))
-     */
+      */
     object ListPrim extends StoreOperation("list", None) {
-      override def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T) = args match {
-        case Nil => (nil, store)
-        case (exp, v) :: rest => for {
-          (restv, store2) <- call(fexp, rest, store, t)
-          consv = cons(v, restv)
-          consa = allocator.pointer(exp, t)
-          store3 = store2.extend(consa, consv)
-        } yield (pointer(consa), store3)
-      }
+      override def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T) =
+        args match {
+          case Nil => (nil, store)
+          case (exp, v) :: rest =>
+            for {
+              (restv, store2) <- call(fexp, rest, store, t)
+              consv  = cons(v, restv)
+              consa  = allocator.pointer(exp, t)
+              store3 = store2.extend(consa, consv)
+            } yield (pointer(consa), store3)
+        }
     }
-
 
     /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
     object Listp extends StoreOperation("list?", Some(1)) {
@@ -846,7 +929,9 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
               } {
                 ifThenElse(isPointer(l)) {
                   /* This is a pointer, dereference it and check if it is itself a list */
-                  dereferencePointer(l, store) { consv => listp(consv, visited + l) }
+                  dereferencePointer(l, store) { consv =>
+                    listp(consv, visited + l)
+                  }
                 } {
                   /* Otherwise, not a list */
                   bool(false)
@@ -873,7 +958,9 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
           } else {
             ifThenElse(isPointer(l)) {
               /* dereferences the pointer and list-ref that */
-              dereferencePointer(l, store) { consv => listRef(consv, index, visited + ((l, index))) }
+              dereferencePointer(l, store) { consv =>
+                listRef(consv, index, visited + ((l, index)))
+              }
             } {
               ifThenElse(isCons(l)) {
                 ifThenElse(numEq(index, number(0))) {
@@ -882,9 +969,9 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
                 } {
                   /* index is >0, decrease it and continue looking into the cdr */
                   for {
-                    cdrv <- cdr(l)
+                    cdrv   <- cdr(l)
                     index2 <- minus(index, number(1))
-                    res <- listRef(cdrv, index2, visited + ((l, index)))
+                    res    <- listRef(cdrv, index2, visited + ((l, index)))
                   } yield res
                 }
               } {
@@ -904,7 +991,9 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
             (if (equal? (car l) e)
               l
               (member e (cdr l))))) */
-    abstract class MemberLike(override val name: String, eqFn: (V, V, Store[A, V]) => MayFail[V, Error]) extends StoreOperation(name, Some(2)) {
+    abstract class MemberLike(override val name: String,
+                              eqFn: (V, V, Store[A, V]) => MayFail[V, Error])
+        extends StoreOperation(name, Some(2)) {
       override def call(e: V, l: V, store: Store[A, V]) = {
         def mem(e: V, l: V, visited: Set[V]): MayFail[V, Error] = {
           if (visited.contains(l)) {
@@ -939,10 +1028,14 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       }
     }
 
-    object Member extends MemberLike("member", (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1))
+    object Member
+        extends MemberLike("member",
+                           (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1))
     object Memq extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
 
-    abstract class AssocLike(override val name: String, eqFn: (V, V, Store[A, V]) => MayFail[V, Error]) extends StoreOperation(name, Some(2)) {
+    abstract class AssocLike(override val name: String,
+                             eqFn: (V, V, Store[A, V]) => MayFail[V, Error])
+        extends StoreOperation(name, Some(2)) {
       override def call(e: V, l: V, store: Store[A, V]) = {
         def assoc(e: V, l: V, visited: Set[V]): MayFail[V, Error] = {
           if (visited.contains(l)) {
@@ -980,9 +1073,9 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
         assoc(e, l, Set.empty).map(v => (v, store))
       }
     }
-    object Assoc extends AssocLike("assoc", (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1))
+    object Assoc
+        extends AssocLike("assoc",
+                          (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1))
     object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
   }
 }
-
-

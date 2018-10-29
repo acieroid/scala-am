@@ -246,4 +246,3 @@ case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
 case class SchemeValue(value: Value, pos: Position) extends SchemeExp {
   override def toString = value.toString
 }
-

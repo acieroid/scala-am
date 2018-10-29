@@ -16,7 +16,8 @@ case class ValueInteger(value: Int) extends Value {
   override def toString = value.toString
 }
 case class ValueReal(value: Double) extends Value {
-  override def toString = f"$value%e" // Might not preserve full precision, but will be in a Scheme-compatible format
+  override def toString =
+    f"$value%e" // Might not preserve full precision, but will be in a Scheme-compatible format
 }
 case class ValueBoolean(value: Boolean) extends Value {
   override def toString = if (value) { "#t" } else { "#f" }

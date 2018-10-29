@@ -23,7 +23,7 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
   def subsumes(x: L, y: => L): Boolean
 
   /** Equality check, returning an abstract result */
-  def eql[B : scalaam.lattice.BoolLattice](x: L, y: L): B
+  def eql[B: scalaam.lattice.BoolLattice](x: L, y: L): B
 
   /** For PartialOrdering[L]: a lattice has a partial order, defined by subsumes... */
   final def lteq(x: L, y: L): Boolean = subsumes(y, x)
@@ -40,12 +40,12 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
 object Lattice {
   def apply[L: Lattice]: Lattice[L] = implicitly
 
-  implicit def SetLattice[A : Show] = new Lattice[Set[A]] {
-    def show(x: Set[A])                = "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
-    def top                            = throw LatticeTopUndefined
-    def bottom                         = Set.empty
-    def join(x: Set[A], y: => Set[A])     = x.union(y)
-    def subsumes(x: Set[A], y: => Set[A]) = y.subsetOf(x)
-    def eql[B : scalaam.lattice.BoolLattice](x: Set[A], y: Set[A]) = ???
+  implicit def SetLattice[A: Show] = new Lattice[Set[A]] {
+    def show(x: Set[A])                                           = "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
+    def top                                                       = throw LatticeTopUndefined
+    def bottom                                                    = Set.empty
+    def join(x: Set[A], y: => Set[A])                             = x.union(y)
+    def subsumes(x: Set[A], y: => Set[A])                         = y.subsetOf(x)
+    def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A]) = ???
   }
 }

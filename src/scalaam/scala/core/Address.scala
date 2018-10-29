@@ -33,7 +33,7 @@ object NameAddress {
 
   case class Alloc[T, C]()(implicit val timestamp: Timestamp[T, C]) extends Allocator[A, T, C] {
     def variable(name: Identifier, t: T): A = Variable(name)
-    def pointer[E](e: E, t: T): A = Pointer(e)
-    def primitive(name: String) = Primitive(name)
+    def pointer[E](e: E, t: T): A           = Pointer(e)
+    def primitive(name: String)             = Primitive(name)
   }
 }

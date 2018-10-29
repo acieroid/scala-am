@@ -1,16 +1,17 @@
 package scalaam.graph
 
 sealed trait GraphMetadata {
+
   /** Find a specific key in this metadata, if present */
   def find(key: String): Option[GraphMetadata] = None
 }
 case class GraphMetadataMap(map: Map[String, GraphMetadata]) extends GraphMetadata {
   override def find(key: String) = map.get(key)
 }
-case class GraphMetadataString(str: String)                  extends GraphMetadata
-case class GraphMetadataBool(bool: Boolean)                  extends GraphMetadata
-case class GraphMetadataValue[V](v: V)                       extends GraphMetadata
-case object GraphMetadataNone                                extends GraphMetadata
+case class GraphMetadataString(str: String) extends GraphMetadata
+case class GraphMetadataBool(bool: Boolean) extends GraphMetadata
+case class GraphMetadataValue[V](v: V)      extends GraphMetadata
+case object GraphMetadataNone               extends GraphMetadata
 
 trait GraphElement {
   def label: String
