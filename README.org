@@ -1,58 +1,85 @@
-Abstract Machine Experiments with Scala
+Scala-AM: A Framework for Static Analysis of Dynamic Languages
 * Goal
 The goal of this artefact is to experiment with abstract machines and language
 semantics. Scala-AM is initially based on the theoretical framework of
 Abstracting Abstract Machines (see references).
 
-To see how the framework can be used to build static analyses or define language
-semantics, look at =src/main/scala/LambdaCalculus.scala=.
 * Architecture
-To find out about the architecture of the implementation, look at the comments
-on the top of Main.scala (=src/main/scala/Main.scala=). They will bring you to
-other parts of the code that are worth seeing.
+** Core Architecture
+The core architecture of Scala-AM is contained in the =scalaam.core= package and organized as follows:
+  - The =Semantics= class is used to define the semnantics of a language.
+  - The =MachineAbstraction= class is used to define the exploration strategy to
+    analyze a program.
+  - The =Lattice= class is used to define how values of a language are
+    abstracted.
 
-When doing modification to the source code, you can run the test suite to test
-your changes by running =sbt test=. It should take a few minutes to run
-everything and will report which tests are failing if there are any.
+The core idea of Scala-AM is that you can assemble different components together
+in order to obtain specific analyses, without having to adapt the definition of
+other components. For example, one can analyze Scheme programs with an AAM
+machine abstraction, or can easily use a different machine abstraction without
+having to redefine the semantics of Scheme.
+
+The other classes in =scalaam.core= model the typical components used by
+abstract machines, as well as some helpers, including the following.
+  - =Address= defines how memory addresses are represented
+  - =Environment= defines environments that map variable names to addresses
+  - =Store= defines stores that map addresses to values
+  - =Error= defines a generic trait for raising error in the analyzed language
+  - =MayFail= defines a helper structure to deal with computations that may at
+    the same time fail and succeed.
+
+** Graphs
+Scala-AM generates graph for an analyzed program. The definition of graph is
+broad, and multiple graph implementations can be plugged in (see the
+=scalaam.graph= package). For instance, one can compute a full flow graph, or
+only compute a set of reachable states.
+
+** Lattices
+A number of helpers to define language lattices are defined in the
+=scalaam.lattice= package. Because in most languages, there is always a notion
+of booleans, integers, strings, etc. needed, a number of basic lattices for
+these datatypes are provided in that package and can be assembled together in
+order to form the lattice for an analyzed language.
+
+** Machine Abstractions
+Machine abstractions are defined in =scalaam.machine=.
+
+** Languages
+The language-related parts of Scala-AM reside in the =scalaam.language=
+package.
+Currently, this includes:
+  - =sexp= with a parser for s-expressions,
+  - =lambda= with a parser for lambda-expressions (using s-expressions), as well
+    as the semantics of untyped lambda-calculus.
+  - =scheme= with a parser for Scheme, as well as the semantics of Scheme and
+    definitions for many of the primitives defined in R5RS Scheme.
+
 * Usage
-Use sbt to launch the program. Once sbt is launched and has installed the
-dependencies, you can perform the following:
+The components of Scala-AM can be assembled together in order to analyze a
+program. For examples of how this is done, we recommend looking at
+=src/scalaam/scala/ScalaAM.scala=
 
-#+BEGIN_SRC sh
-run -h # Shows the possible options
-run -f test/fact.scm # Performs abstract interpretation on fact.scm
-run -f test/fact.scm -l Concrete -c # Performs concrete interpretation on fact.scm
-run -f test/fact.scm -m AAM # Use the AAM approach (default one is Free)
-run -f test/fact.scm -m AAC # Use the AAC approach
-run -f test/fact.scm -m AAM -d fact.dot # Output the state graph in fact.dot
-run # Launches a REPL that performs interpretation of the input
-#+END_SRC
+The test suite of Scala-AM can be run using =sbt test=.
 
-* Benchmarks
-Some benchmarks are included, in multiple benchmark suites. Look at
-=src/main/Benchmarks.scala= for the benchmark suites. You can run them as
-follows, for the suite =SimpleBenchmarks=:
-
-#+BEGIN_SRC
-run-main SimpleBenchmarks -w 2 -t 2min
-#+END_SRC
-
-You can give a timeout parameter (=-t=, no timeout by default), and a number of
-workers threads to distribute the work(=-w=, 1 by default).
-* Test suite
-The test suite can be run using =sbt test=
 * References and Relevant publications
-The idea behind Scala-AM comes from the AAM paper (Van Horn, David, and Matthew
-Might. "Abstracting abstract machines." ACM Sigplan
-Notices. Vol. 45. No. 9. ACM, 2010), and we have support for other machine
-abstractions: AAC (Johnson, James Ian, and David Van Horn. "Abstracting
-abstract control." ACM SIGPLAN Notices 50.2 (2015): 11-22), P4F (Gilray,
-Thomas, et al. "Pushdown control-flow analysis for free." ACM SIGPLAN
-Notices. Vol. 51. No. 1. ACM, 2016), and a concurrent version of AAM (Might,
-Matthew, and David Van Horn. "A family of abstract interpretations for static
-analysis of concurrent higher-order programs." International Static Analysis
-Symposium. Springer Berlin Heidelberg, 2011).
+The idea behind Scala-AM comes from the [[http://matt.might.net/papers/vanhorn2010abstract.pdf][Abstracting Abstract Machines]]
+litterature.
 
-This framework is described in the following publication:
-  - Scala-AM: A Modular Static Analysis Framework, SCAM 2016, [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf][pdf]], [[https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am][doi]].
-  - Building a Modular Static Analysis Framework in Scala, [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf][pdf]].
+The Scala-AM framework is described in the following publication:
+  - Scala-AM: A Modular Static Analysis Framework. SCAM 2016. [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf][pdf]], [[https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am][doi]].
+  - Building a Modular Static Analysis Framework in Scala. Scala@SPLASH 2016. [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf][pdf]], [[http://doi.acm.org/10.1145/2998392.3001579][doi]].
+
+Scala-AM has been used for evaluating static analysis approaches in the
+following publications:
+  - A general method for rendering static analyses for diverse concurrency
+    models modular. Journal of Systems and Software, Volume 149. 2019. [[https://soft.vub.ac.be/~qstieven/fwo-proposal-jss.pdf][pdf]], [[https://doi.org/10.1016/j.jss.2018.10.001][doi]].
+  - Mailbox Abstractions for Static Analysis of Actor Programs. ECOOP 2017. [[http://soft.vub.ac.be/~qstieven/ecoop2017/ecoop2017actors-final.pdf][pdf]],
+    [[https://doi.org/10.4230/LIPIcs.ECOOP.2017.25][doi]].
+  - Employing Run-time Static Analysis to Improve Concolic
+    Execution. BENEVOL 2017. [[http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_7.pdf][pdf]].
+  - Incrementalizing Abstract Interpretation. BENEVOL 2017. [[http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_9.pdf][pdf]].
+  - Static taint analysis of event-driven scheme programs. ELS 2017. [[http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-02.pdf][pdf]].
+  - Improving trace-based JIT optimisation using whole-program
+    information. VMIL@SPLASH 2016. [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-09.pdf][pdf]], [[http://doi.acm.org/10.1145/2998415.2998418][doi]].
+  - STRAF: A Scala Framework for Experiments in Trace-Based JIT
+    Compilation. GTTSE 2015. [[http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-09.pdf][pdf]], [[https://doi.org/10.1007/978-3-319-60074-1\_10][doi]].
