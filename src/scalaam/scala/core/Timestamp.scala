@@ -13,7 +13,7 @@ object Timestamp {
 /** k-CFA context sensitivity, with a given value of k.
   This sensitivity preserves information about the last k contexts */
 case class KCFA[C](k: Int) {
-  case class T(seed: String, history: List[C])
+  case class T(seed: String, history: List[C]) extends SmartHash
   object T {
     implicit val typeclass = new Timestamp[T, C] {
       def initial(seed: String)     = T(seed, List.empty)
@@ -25,7 +25,7 @@ case class KCFA[C](k: Int) {
 
 /** Similar to KCFA(0), but doesn't include the empty list */
 case class ZeroCFA[C]() {
-  case class T(seed: String)
+  case class T(seed: String) extends SmartHash
   object T {
     implicit val typeclass = new Timestamp[T, C] {
       def initial(seed: String) = T(seed)
@@ -36,7 +36,7 @@ case class ZeroCFA[C]() {
 
 /** Concrete timestamps to model concrete execution */
 case class ConcreteTimestamp[C]() {
-  case class T(seed: String, n: Int)
+  case class T(seed: String, n: Int) extends SmartHash
   object T {
     implicit val typeclass = new Timestamp[T, C] {
       def initial(seed: String) = T(seed, 0)

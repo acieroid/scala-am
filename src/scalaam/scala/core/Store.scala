@@ -2,7 +2,7 @@ package scalaam.core
 
 case class UnboundAddress[A <: Address](a: A) extends Error
 
-trait Store[A <: Address, V] {
+trait Store[A <: Address, V] extends SmartHash {
 
   def content: Map[A, V]
 

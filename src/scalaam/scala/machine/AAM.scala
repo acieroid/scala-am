@@ -33,7 +33,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   val Action = sem.Action
 
   /** Control component */
-  trait Control
+  trait Control extends SmartHash
   case class ControlEval(exp: Exp, env: Environment[A]) extends Control {
     override def toString = s"ev(${exp})"
   }
@@ -55,7 +55,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
     override def toString = "Halt"
   }
 
-  case class Kont(f: Frame, next: KA)
+  case class Kont(f: Frame, next: KA) extends SmartHash
   implicit val kontShow = new Show[Kont] {
     def show(k: Kont) = "kont($f)"
   }
@@ -67,7 +67,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
     * continuation lives.
     */
   case class State(control: Control, store: Store[A, V], kstore: Store[KA, Set[Kont]], a: KA, t: T)
-      extends GraphElement {
+      extends GraphElement with SmartHash {
     override def toString = control.toString
 
     override def label = toString

@@ -1,7 +1,7 @@
 package scalaam.core
 
 /** An address */
-trait Address {
+trait Address extends SmartHash {
 
   /** Should the address be included when printing an environment or store?
       This allows to reduce the size of the printed environment/store.

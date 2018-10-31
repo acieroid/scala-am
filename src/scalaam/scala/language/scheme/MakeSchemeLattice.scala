@@ -26,7 +26,7 @@ class MakeSchemeLattice[
   /** We first implement all possible operations on single values, that can be
     * only joined when compatible. This therefore is not a lattice but will be
     * used to build the set lattice */
-  sealed trait Value
+  sealed trait Value extends SmartHash
   case object Bot extends Value {
     override def toString = "⊥"
   }
@@ -498,7 +498,7 @@ class MakeSchemeLattice[
    */
   }
 
-  sealed trait L {
+  sealed trait L extends SmartHash {
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X
   }
   case class Element(v: Value) extends L {
