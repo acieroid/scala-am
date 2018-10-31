@@ -1,6 +1,6 @@
 package scalaam.core
 
-trait Frame
+trait Frame extends SmartHash
 
 trait Semantics[Exp, Addr <: Address, V, T, C] {
   implicit val timestamp: Timestamp[T, C]

@@ -82,37 +82,36 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
 
     Benchmark("test/gambit/array1.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/browse.scm", ValueInteger(1101), parse /* missing string-ref */),
-    /* TODO
-    Benchmark("test/gambit/cat.scm", all),
-    Benchmark("test/gambit/compiler.scm", none), // unknown reason
-    Benchmark("test/gambit/ctak.scm", all),
-    Benchmark("test/gambit/deriv.scm", all),
-    Benchmark("test/gambit/destruc.scm", all),
-    Benchmark("test/gambit/diviter.scm", all),
-    Benchmark("test/gambit/earley.scm", all),
-    Benchmark("test/gambit/fibc.scm", all),
-    Benchmark("test/gambit/graphs.scm", all),
-    Benchmark("test/gambit/lattice.scm", all),
-    Benchmark("test/gambit/matrix.scm", all),
-    Benchmark("test/gambit/mazefun.scm", all),
-    Benchmark("test/gambit/nboyer.scm", none), // dot notation
-    Benchmark("test/gambit/nqueens.scm", all),
-    Benchmark("test/gambit/paraffins.scm", all),
-    Benchmark("test/gambit/perm9.scm", all),
-    Benchmark("test/gambit/peval.scm", all),
-    Benchmark("test/gambit/primes.scm", all),
-    Benchmark("test/gambit/puzzle.scm", all),
-    Benchmark("test/gambit/sboyer.scm", none), // dot notation
-    Benchmark("test/gambit/scheme.scm", none), // dot notation
-    Benchmark("test/gambit/slatex.scm", none), // dot notation
-    Benchmark("test/gambit/string.scm", all),
-    Benchmark("test/gambit/sum.scm", all),
-    Benchmark("test/gambit/sumloop.scm", all),
-    Benchmark("test/gambit/tail.scm", all),
-    Benchmark("test/gambit/tak.scm", all),
-    Benchmark("test/gambit/trav1.scm", none), // unknown reason
-    Benchmark("test/gambit/triangl.scm", all),
-    Benchmark("test/gambit/wc.scm", all),
+    Benchmark("test/gambit/cat.scm", ValueBoolean(true), parse /* rely on IO */),
+    Benchmark("test/gambit/compiler.scm", ValueBoolean(true), none), // unknown reason
+    Benchmark("test/gambit/ctak.scm", ValueBoolean(true), parse /* call/cc */),
+    Benchmark("test/gambit/deriv.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/destruc.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/diviter.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/earley.scm", ValueBoolean(true), parse /* list->vector */),
+    Benchmark("test/gambit/fibc.scm", ValueBoolean(true), parse /* call/cc */),
+    Benchmark("test/gambit/graphs.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/lattice.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/matrix.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/mazefun.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/nboyer.scm", ValueBoolean(true), none), // dot notation
+    Benchmark("test/gambit/nqueens.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/paraffins.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/perm9.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/peval.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/primes.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/puzzle.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/sboyer.scm", ValueBoolean(true), none), // dot notation
+    Benchmark("test/gambit/scheme.scm", ValueBoolean(true), none), // dot notation
+    Benchmark("test/gambit/slatex.scm", ValueBoolean(true), none), // dot notation
+    Benchmark("test/gambit/string.scm", ValueBoolean(true), parse /* missing substring */),
+    Benchmark("test/gambit/sum.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/sumloop.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/tail.scm", ValueBoolean(true), parse /* rely on IO */),
+    Benchmark("test/gambit/tak.scm", ValueBoolean(true), all),
+    Benchmark("test/gambit/trav1.scm", ValueBoolean(true), none), // unknown reason
+    Benchmark("test/gambit/triangl.scm", ValueBoolean(true), parse /* list->vector */),
+    Benchmark("test/gambit/wc.scm", ValueBoolean(true), parse /* rely on IO */),
      */
 
     Benchmark("test/gcipd.scm", ValueInteger(36), all),

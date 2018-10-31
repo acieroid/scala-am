@@ -45,7 +45,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   }
 
   /** Kontinuation addresses */
-  trait KA extends Address {
+  trait KA extends Address with SmartHash {
     def printable = true
   }
   case class KontAddr(exp: Exp, time: T) extends KA {

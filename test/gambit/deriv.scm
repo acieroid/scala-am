@@ -29,7 +29,7 @@
                            (caddr a)
                            (deriv (caddr a))))))
         (else
-         (fatal-error "No derivation method available"))))
+         (error "No derivation method available"))))
 
 (equal? (deriv '(+ (* 3 x x) (* a x x) (* b x) 5))
         '(+ (* (* 3 x x) (+ (/ 0 3) (/ 1 x) (/ 1 x)))
