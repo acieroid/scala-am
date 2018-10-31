@@ -4,6 +4,8 @@ case class UnboundAddress[A <: Address](a: A) extends Error
 
 trait Store[A <: Address, V] {
 
+  def content: Map[A, V]
+
   /** Gets all the keys of the store */
   def keys: Iterable[A]
 
@@ -31,9 +33,9 @@ trait Store[A <: Address, V] {
 }
 
 /** Basic store with no fancy feature, just a map from addresses to values */
-class BasicStore[A <: Address, V](content: Map[A, V])(implicit val lat: Lattice[V])
+case class BasicStore[A <: Address, V](val content: Map[A, V])(implicit val lat: Lattice[V])
     extends Store[A, V] {
-  override def toString              = content.filterKeys(_.printable).toString
+  override def toString              = content.filterKeys(_.printable).mkString("\n")
   def keys                           = content.keys
   def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
   def lookup(a: A)                   = content.get(a)

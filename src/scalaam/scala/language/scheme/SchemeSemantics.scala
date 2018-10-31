@@ -3,6 +3,18 @@ package scalaam.language.scheme
 import scalaam.core._
 import scalaam.language.sexp._
 
+trait SchemeSemantics[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V, T, C] {
+  implicit val timestamp: Timestamp[T, C]
+  implicit val schemeLattice: SchemeLattice[V, SchemeExp, A]
+  val allocator: Allocator[A, T, C]
+
+  def evalCall(function: V,
+               fexp: SchemeExp,
+               argsv: List[(SchemeExp, V)],
+               store: Store[A, V],
+               t: T): Set[Action.A]
+}
+
 /**
   * Basic Scheme semantics, without any optimization
   * TODO[hard] primitives
@@ -10,7 +22,7 @@ import scalaam.language.sexp._
 class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, C])(
     implicit val timestamp: Timestamp[T, C],
     implicit val schemeLattice: SchemeLattice[V, SchemeExp, A])
-    extends Semantics[SchemeExp, A, V, T, C]
+    extends SchemeSemantics[A, V, T, C]
     with SchemePrimitives[A, V, T, C] {
   implicit val lattice: Lattice[V] = schemeLattice
   import schemeLattice._
@@ -445,7 +457,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   *     to evaluate (+ 1 (f)), we can directly push the continuation and jump to
   *     the evaluation of (f), instead of evaluating +, and 1 in separate states.
   */
-class SchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])( // (primitives: Primitives[Addr, V])
+class OptimizedSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T, C])( // (primitives: Primitives[Addr, V])
     implicit val t: Timestamp[T, C], // TODO: how can we use the same names as implicits of the parent class?
     implicit val latt: SchemeLattice[V, SchemeExp, A])
     extends BaseSchemeSemantics[A, V, T, C](allocator)(t, latt) {

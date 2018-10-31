@@ -84,7 +84,7 @@ trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
   /** Takes the cdr of a cons cell */
   def cdr(x: L): MayFail[L, Error]
 
-  /** TODO: reimplement vectors
+  /* TODO: reimplement vectors
   /** Get a value from a vector. Returns the addresses where to look for the values */
   def vectorRef[Addr : Address](vector: L, index: L): MayFail[Set[Addr]]
   /** Changes a value inside a vector. The address given is an address where the
@@ -100,7 +100,7 @@ trait SchemeLattice[L, Exp, A <: Address] extends Lattice[L] {
   def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
     */
 
-  /** TODO: move this to the tests
+  /* TODO: move this to the tests
   trait SchemeLatticeLaw extends MonoidLaw {
     import scalaz.std.boolean.conditional
     def bottomSubsumesItself: Boolean = subsumes(bottom, bottom)

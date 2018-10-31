@@ -2,7 +2,7 @@ package scalaam.language.scheme
 
 import scalaam.core._
 
-trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V, T, C] {
+trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val schemeLattice: SchemeLattice[V, SchemeExp, A]
 
@@ -36,7 +36,6 @@ trait SchemePrimitives[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V,
       ACos, /* [vv] acos: Scientific */
       /* [x]  angle: Complex */
       /* [x]  append: Append/Reverse */
-      /* [x]  apply: Fly Evaluation */
       /* [x]  apply: Fly Evaluation */
       ASin, /* [vv] asin: Scientific */
       Assoc, /* [vv] assoc: Retrieving Alist Entries */

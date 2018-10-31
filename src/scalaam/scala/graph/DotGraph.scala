@@ -48,6 +48,9 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]() {
       })
       writer.write("}")
     }
+
+    def getNode(id: Int): Option[N] = ids.find({ case (_, v) => id == v }).map(_._1)
+
   }
 
   object G {

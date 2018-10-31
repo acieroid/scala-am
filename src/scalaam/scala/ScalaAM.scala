@@ -2,7 +2,7 @@ package scalaam
 
 object Main {
   def main(args: Array[String]) = {
-    scheme()
+    ()
   }
 
   def lambda() = {
@@ -23,31 +23,42 @@ object Main {
       Timeout.Infinity)
     result.toFile("foo.dot")
   }
+}
 
-  def scheme() = {
-    import scalaam.language.scheme._
-    import scalaam.machine._
-    import scalaam.core._
-    import scalaam.graph._
-    import scalaam.lattice._
 
-    val address   = NameAddress
-    val timestamp = ZeroCFA[SchemeExp]()
-    val lattice = new MakeSchemeLattice[SchemeExp,
-                                        address.A,
-                                        Concrete.S,
-                                        Concrete.B,
-                                        Concrete.I,
-                                        Concrete.R,
-                                        Concrete.C,
-                                        Concrete.Sym]
-    val sem = new BaseSchemeSemantics[address.A, lattice.L, timestamp.T, SchemeExp](
-      address.Alloc[timestamp.T, SchemeExp])
-    val machine = new AAM[SchemeExp, address.A, lattice.L, timestamp.T](sem)
-    val graph   = DotGraph[machine.State, machine.Transition]
+/* To be used with the console: `sbt console`, then scalaam.SchemeRun(file) */
+object SchemeRun {
+  import scalaam.language.scheme._
+  import scalaam.machine._
+  import scalaam.core._
+  import scalaam.graph._
+  import scalaam.lattice._
+
+  val address   = NameAddress
+  val timestamp = ZeroCFA[SchemeExp]()
+  val lattice = new MakeSchemeLattice[SchemeExp,
+    address.A,
+    Type.S,
+    Type.B,
+    Type.I,
+    Type.R,
+    Type.C,
+    Type.Sym]
+  val sem = new BaseSchemeSemantics[address.A, lattice.L, timestamp.T, SchemeExp](
+    address.Alloc[timestamp.T, SchemeExp])
+  val machine = new AAM[SchemeExp, address.A, lattice.L, timestamp.T](sem)
+  val graph   = DotGraph[machine.State, machine.Transition]
+
+  def run(file: String) = {
+    val f = scala.io.Source.fromFile(file)
+    val content = f.getLines.mkString("\n")
     val result = machine.run[graph.G](
-      SchemeParser.parse("(equal? (assq 'b '((a 1) (b 2) (c 3))) '(b 2))"),
-      Timeout.Infinity)
+      SchemeParser.parse(content),
+      Timeout.start(Some(100000000.toLong)))
+    f.close()
     result.toFile("foo.dot")
+    import Graph.GraphOps
+    println(s"States: ${result.nodes}")
+    result
   }
 }

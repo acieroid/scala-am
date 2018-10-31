@@ -1,6 +1,5 @@
 import org.scalatest._
 import org.scalatest.prop._
-// import org.scalatest.prop.TableDrivenPropertyChecks._
 
 import scalaam.core._
 import scalaam.language.scheme._
@@ -9,36 +8,44 @@ import Graph._
 import scalaam.machine._
 import scalaam.lattice._
 
-/** Tests that encodes Chapter 6 of R5RS (only for specified behaviour,
-  * unspecified behaviour is not tested because it's... unspecified). This is
-  * only for test cases explicitly given in R5RS. Some primitives are therefore
-  * not tested (because they aren't given any test case in R5RS). Unsupported
-  * primitives with test cases defined in R5RS are explicitly stated in
-  * comments. If you're bored, you can implement some of them. */
 abstract class SchemeTests[A <: Address, V, T, C](
   implicit val timestamp: Timestamp[T, C],
   implicit val lat: SchemeLattice[V, SchemeExp, A])
     extends PropSpec with TableDrivenPropertyChecks with Matchers {
-  import lat._
   val sem: Semantics[SchemeExp, A, V, T, C]
   val machine: MachineAbstraction[SchemeExp, A, V, T, C]
   val graph = ReachableStatesConditionGraph[machine.State, machine.Transition](n => n.metadata.find("halted") == Some(GraphMetadataBool(true)))
 
-  def checkResult(program: String, answer: V) = {
-    val result = machine.run[graph.G](SchemeParser.parse(program), Timeout.Infinity)
-    assert(!result.findNodes(n => n.metadata.find("type") == Some(GraphMetadataString("kont")) && {
-      n.metadata.find("value") match {
-        case Some(GraphMetadataValue(v : V @unchecked)) => // println(s"$v vs. $answer")
-          subsumes(v, answer)
-        case _ => false
-      }
+  def checkResult(program: String, answer: V, timeout: Timeout.T = Timeout.Infinity) = {
+    val result = machine.run[graph.G](SchemeParser.parse(program), timeout)
+    if (timeout.reached) {
+      cancel(s"time out")
+    } else {
+      val resultVals = result.findNodes(n => n.metadata.find("type") == Some(GraphMetadataString("kont"))).flatMap[V, Set[V]]({ n => n.metadata.find("value") match {
+        case Some(GraphMetadataValue(v : V @unchecked)) => Set(v)
+        case _ => Set()
+      }})
+      assert(!resultVals.find(v => lat.subsumes(v, answer)).isEmpty)
     }
-    ).isEmpty)
   }
   def check(table: TableFor2[String, V]) =
     forAll (table) { (program: String, answer: V) =>
       checkResult(program, answer)
     }
+}
+
+/** Tests that encodes Chapter 6 of R5RS (only for specified behaviour,
+ * unspecified behaviour is not tested because it's... unspecified). This is
+ * only for test cases explicitly given in R5RS. Some primitives are therefore
+ * not tested (because they aren't given any test case in R5RS). Unsupported
+ * primitives with test cases defined in R5RS are explicitly stated in
+ * comments. If you're bored, you can implement some of them. */
+abstract class SchemePrimitiveTests[A <: Address, V, T, C](
+  override implicit val timestamp: Timestamp[T, C],
+  override implicit val lat: SchemeLattice[V, SchemeExp, A])
+    extends SchemeTests[A, V, T, C] {
+  import lat._
+
   def r5rs(name: String, table: TableFor2[String, V]) =
     property(s"$name satisfies R5RS") { check(table) }
 
@@ -54,8 +61,8 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(eq? (list 'a) (list 'a))", f),
     ("(eq? '() '())", t),
     ("(eq? car car)", t),
-// TODO: fails?    ("(let ((x '(a))) (eq? x x))", t),
-//    ("(let ((x (make-vector 0 1))) (eq? x x))", t),
+    // TODO: fails?    ("(let ((x '(a))) (eq? x x))", t),
+    //    ("(let ((x (make-vector 0 1))) (eq? x x))", t),
     ("(let ((p (lambda (x) x))) (eq? p p))", t)
   ))
   r5rs("equal?", Table(
@@ -65,7 +72,7 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(equal? '(a (b) c) '(a (b) c))", t),
     ("(equal? \"abc\" \"abc\")", t),
     ("(equal? 2 2)", t),
-///    ("(equal? (make-vector 5 'a) (make-vector 5 'a))", t),
+    ///    ("(equal? (make-vector 5 'a) (make-vector 5 'a))", t),
     ("(equal? 1 2)", f),
     ("(equal? #\\a #\\b)", f),
     ("(equal? '(a b c) '(a b))", f),
@@ -152,8 +159,8 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   r5rs("<", Table(
     ("program", "answer"),
-//    ("(<)", t),
-//    ("(< 1)", t),
+    //    ("(<)", t),
+    //    ("(< 1)", t),
     ("(< 1 2)", t),
     ("(< 2 1)", f),
     ("(< 1 1)", f),
@@ -163,8 +170,8 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   r5rs("<=", Table(
     ("program", "answer"),
-//    ("(<=)", t),
-//    ("(<= 1)", t),
+    //    ("(<=)", t),
+    //    ("(<= 1)", t),
     ("(<= 1 2)", t),
     ("(<= 2 1)", f),
     ("(<= 1 1)", t),
@@ -174,8 +181,8 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   r5rs(">", Table(
     ("program", "answer"),
-//    ("(>)", f),
-//    ("(> 1)", f),
+    //    ("(>)", f),
+    //    ("(> 1)", f),
     ("(> 1 2)", f),
     ("(> 2 1)", t),
     ("(> 1 1)", f),
@@ -185,8 +192,8 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   r5rs(">=", Table(
     ("program", "answer"),
-//    ("(>=)", f),
-//    ("(>= 1)", f),
+    //    ("(>=)", f),
+    //    ("(>= 1)", f),
     ("(>= 1 2)", f),
     ("(>= 2 1)", t),
     ("(>= 1 1)", t),
@@ -227,14 +234,14 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(remainder -13 4)", number(-1)),
     ("(remainder 13 -4)", number(1)),
     ("(remainder -13 -4)", number(-1))
-    // ("(remainder -13 -4.0)", -1.0)
+      // ("(remainder -13 -4.0)", -1.0)
   ))
 
 
   r5rs("gcd", Table(
     ("program", "answer")
-    // ("(gcd 32 -36)", abs.inject(4)) // TODO: not implemented correctly?
-    // ("(gcd)", abs.inject(0)), // gcd doesn't support 0 arguments yet
+      // ("(gcd 32 -36)", abs.inject(4)) // TODO: not implemented correctly?
+      // ("(gcd)", abs.inject(0)), // gcd doesn't support 0 arguments yet
   ))
 
   // lcm not implemented yet
@@ -252,13 +259,13 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(ceiling -4.3)", real(-4.0)),
     ("(ceiling 3.5)", real(4.0))))
   // truncate not implemented yet
-//TODO  r5rs("round", Table(
-//    ("program", "anwser"),
-//    ("(round -4.3)", real(-4.0)),
-//    ("(round 3.5)", real(4.0)),
-//    //("(round 7/2)", abs.inject(4)), // TODO: rounding an exact returns an exact (but we don't support fractions)
-//    ("(round 7)", real(7))
-//  ))
+  //TODO  r5rs("round", Table(
+  //    ("program", "anwser"),
+  //    ("(round -4.3)", real(-4.0)),
+  //    ("(round 3.5)", real(4.0)),
+  //    //("(round 7/2)", abs.inject(4)), // TODO: rounding an exact returns an exact (but we don't support fractions)
+  //    ("(round 7)", real(7))
+  //  ))
 
   r5rs("floor", Table(
     ("program", "answer"),
@@ -385,17 +392,17 @@ abstract class SchemeTests[A <: Address, V, T, C](
     ("(pair? (cons 'a 'b))", t),
     ("(pair? '(a b c))", t),
     ("(pair? '())", f)
-    // ("(pair? '#(a b))", t) // # notation not supported
+      // ("(pair? '#(a b))", t) // # notation not supported
   ))
 
- r5rs("cons", Table(
+  r5rs("cons", Table(
     ("program", "answer"),
     ("(equal? (cons 'a '()) '(a))", t),
     ("(equal? (cons '(a) '(b c d)) '((a) b c d))", t),
     ("(equal? (cons \"a\" '(b c)) '(\"a\" b c))", t)
-//    // ("(equal? (cons 'a 3) '(a . 3))", t), // . notation not supported
-//    // ("(equal? (cons '(a b) 'c) '((a b) . c))", t) // . notation not supported
-))
+      //    // ("(equal? (cons 'a 3) '(a . 3))", t), // . notation not supported
+      //    // ("(equal? (cons '(a b) 'c) '((a b) . c))", t) // . notation not supported
+  ))
 
   r5rs("car", Table(
     ("program", "answer"),
@@ -453,6 +460,16 @@ abstract class SchemeTests[A <: Address, V, T, C](
   ))
 
   // append not implemented
+  // r5rs("append", Table(
+  //   ("program", "answer"),
+  //   ("(null? (append))", t),
+  //   ("(equal? (append '(x) '(y)) '(x y))", t),
+  //   ("(equal? (append '(a) '(b c d)) '(a b c d))", t),
+  //   ("(equal? (append '(a (b)) '((c))) '(a (b) (c)))", t),
+  //   ("(equal? (append '(a b) (cons 'c 'd)) (cons 'a (cons 'b (cons 'c 'd))))", t),
+  //   ("(equal? (append '() 'a) '(a))", t)
+  // ))
+
   // reverse not implemented
   r5rs("list-ref", Table(
     ("program", "answer"),
@@ -544,23 +561,23 @@ abstract class SchemeTests[A <: Address, V, T, C](
 
   // 6.3.6: vector notation (#(1 2)) not supported
   // TODO: reimplement vectors
-//  r5rs("vector", Table(
-//    ("program", "answer"),
-//    ("(let ((vec (vector 'a 'b 'c))) (and (equal? (vector-ref vec 0) 'a) (equal? (vector-ref vec 1) 'b) (equal? (vector-ref vec 2) 'c)))", t),
-//    ("(let ((vec (vector 0 '(2 2 2 2) \"Anna\"))) (vector-set! vec 1 '(\"Sue\" \"Sue\")) (and (equal? (vector-ref vec 0) 0) (equal? (vector-ref vec 1) '(\"Sue\" \"Sue\")) (equal? (vector-ref vec 2) \"Anna\")))", t)
-//  ))
-//
-//  r5rs("vector?", Table(
-//    ("program", "answer"),
-//    ("(vector? (vector 'a 'b 'c))", t),
-//    ("(vector? 'a)", f)
-//  ))
-//
-//  r5rs("vector-length", Table(
-//    ("program", "answer"),
-//    ("(vector-length (vector))", number(0)),
-//    ("(vector-length (vector 0 1 0))", number(3))
-//  ))
+  //  r5rs("vector", Table(
+  //    ("program", "answer"),
+  //    ("(let ((vec (vector 'a 'b 'c))) (and (equal? (vector-ref vec 0) 'a) (equal? (vector-ref vec 1) 'b) (equal? (vector-ref vec 2) 'c)))", t),
+  //    ("(let ((vec (vector 0 '(2 2 2 2) \"Anna\"))) (vector-set! vec 1 '(\"Sue\" \"Sue\")) (and (equal? (vector-ref vec 0) 0) (equal? (vector-ref vec 1) '(\"Sue\" \"Sue\")) (equal? (vector-ref vec 2) \"Anna\")))", t)
+  //  ))
+  //
+  //  r5rs("vector?", Table(
+  //    ("program", "answer"),
+  //    ("(vector? (vector 'a 'b 'c))", t),
+  //    ("(vector? 'a)", f)
+  //  ))
+  //
+  //  r5rs("vector-length", Table(
+  //    ("program", "answer"),
+  //    ("(vector-length (vector))", number(0)),
+  //    ("(vector-length (vector 0 1 0))", number(3))
+  //  ))
 
   /* 6.4 Control features */
   // procedure not implemented
@@ -580,7 +597,8 @@ abstract class SchemeTests[A <: Address, V, T, C](
 abstract class SchemePrimitiveAAMTests[A <: Address, T, V](
   allocator: Allocator[A, T, SchemeExp])(
   implicit val time: Timestamp[T, SchemeExp],
-  implicit val l: SchemeLattice[V, SchemeExp, A]) extends SchemeTests[A, V, T, SchemeExp] {
+    implicit val l: SchemeLattice[V, SchemeExp, A])
+    extends SchemePrimitiveTests[A, V, T, SchemeExp] {
   val sem = new BaseSchemeSemantics[A, V, T, SchemeExp](allocator)
   val machine = new AAM[SchemeExp, A, V, T](sem)
 }
@@ -590,6 +608,7 @@ object ConstantPropagationSchemeLattice extends MakeSchemeLattice[SchemeExp, Nam
 object TypeSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, Type.S, Concrete.B, Type.I, Type.R, Type.C, Type.Sym]
 
 object ConcreteSchemeTimestamp extends ConcreteTimestamp[SchemeExp]
+object ZeroCFASchemeTimestamp extends ZeroCFA[SchemeExp]
 
 class ConcreteSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[NameAddress.A, ConcreteSchemeTimestamp.T, ConcreteSchemeLattice.L](NameAddress.Alloc[ConcreteSchemeTimestamp.T, SchemeExp])
 class ConstantPropagationSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[NameAddress.A, ConcreteSchemeTimestamp.T, ConstantPropagationSchemeLattice.L](NameAddress.Alloc[ConcreteSchemeTimestamp.T, SchemeExp])

@@ -46,8 +46,11 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
   def extend(values: Iterable[(String, A)]) = this.copy(content = content ++ values)
 }
 
+/* Default environment constructors */
 object Environment {
+  /** The empty environment */
   def empty[A <: Address]: Environment[A] = BasicEnvironment(Map[String, A]())
+  /** Constructs initial environment given its initial element */
   def initial[A <: Address](values: Iterable[(String, A)]): Environment[A] =
     BasicEnvironment(values.toMap)
 }

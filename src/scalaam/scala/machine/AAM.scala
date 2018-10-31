@@ -48,8 +48,12 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   trait KA extends Address {
     def printable = true
   }
-  case class KontAddr(exp: Exp, time: T) extends KA
-  case object HaltKontAddr               extends KA
+  case class KontAddr(exp: Exp, time: T) extends KA {
+    override def toString = s"Kont(${exp.toString.take(10)})"
+  }
+  case object HaltKontAddr               extends KA {
+    override def toString = "Halt"
+  }
 
   case class Kont(f: Frame, next: KA)
   implicit val kontShow = new Show[Kont] {
