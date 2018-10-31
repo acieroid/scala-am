@@ -112,7 +112,6 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/trav1.scm", ValueBoolean(true), none), // unknown reason
     Benchmark("test/gambit/triangl.scm", ValueBoolean(true), parse /* list->vector */),
     Benchmark("test/gambit/wc.scm", ValueBoolean(true), parse /* rely on IO */),
-     */
 
     Benchmark("test/gcipd.scm", ValueInteger(36), all),
     Benchmark("test/grid.scm", ValueBoolean(true), all),
