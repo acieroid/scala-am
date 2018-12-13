@@ -14,7 +14,7 @@ object SchemeCompiler {
   /**
     * Reserved keywords
     */
-  val reserved: List[String] =
+  def reserved: List[String] =
     List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do")
 
   def compile(exp: SExp): SchemeExp = exp match {

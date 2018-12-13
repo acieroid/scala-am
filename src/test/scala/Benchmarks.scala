@@ -40,7 +40,7 @@ object Benchmarks {
   import scalaam.language.sexp._
   def benchmarksFor(kind: BenchmarkTestKind): List[Benchmark] =
     allBenchmarks.filter(b => b.supported.contains(kind))
-  val allBenchmarks = List(
+  def allBenchmarks = List(
     Benchmark("test/ad/abstrct.scm", ValueBoolean(true), parse /* vectors */),
     Benchmark("test/ad/bfirst.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/ad/bst.scm", ValueBoolean(true), none), // dot notation
