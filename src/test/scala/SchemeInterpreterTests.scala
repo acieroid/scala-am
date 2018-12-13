@@ -39,6 +39,7 @@ abstract class SchemeInterpreterAAMTests[A <: Address, T, V](
   val machine = new AAM[SchemeExp, A, V, T](sem)
 }
 
+// NOTE: we cannot use the concrete interpreter because we only have stores with weak updates. TODO[easy]: write a concrete machine that uses a concrete store, or introduce a store with abstract coutningn
 //class ConcreteSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ConcreteSchemeTimestamp.T, ConcreteSchemeLattice.L](NameAddress.Alloc[ConcreteSchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunConcrete)
-//class ConstantPropagationSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, ConstantPropagationSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)
-//class TypeSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, TypeSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)
+class ConstantPropagationSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, ConstantPropagationSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)
+class TypeSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, TypeSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)

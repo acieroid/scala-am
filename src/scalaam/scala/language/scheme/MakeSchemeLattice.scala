@@ -31,25 +31,25 @@ class MakeSchemeLattice[
     override def toString = "⊥"
   }
   case class Str(s: S) extends Value {
-    override def toString = "\"" + s + "\"" // StringLattice[S].shows(s)
+    override def toString = StringLattice[S].show(s)
   }
   case class Bool(b: B) extends Value {
-    override def toString = b.toString // BoolLattice[B].shows(b)
+    override def toString = BoolLattice[B].show(b)
   }
   case class Int(i: I) extends Value {
-    override def toString = i.toString // IntLattice[I].shows(i)
+    override def toString = IntLattice[I].show(i)
   }
   case class Real(r: R) extends Value {
-    override def toString = r.toString // RealLattice[R].shows(r)
+    override def toString = RealLattice[R].show(r)
   }
   case class Char(c: C) extends Value {
-    override def toString = c.toString // CharLattice[C].shows(c)
+    override def toString = CharLattice[C].show(c)
   }
   case class Symbol(s: Sym) extends Value {
-    override def toString = s.toString // SymbolLattice[Sym].shows(s)
+    override def toString = SymbolLattice[Sym].show(s)
   }
 
-  /** TODO[medium] find a way not to have a type parametre here */
+  /** TODO[medium] find a way not to have a type parameter here */
   case class Prim[Primitive](prim: Primitive) extends Value {
     override def toString = s"#prim"
   }

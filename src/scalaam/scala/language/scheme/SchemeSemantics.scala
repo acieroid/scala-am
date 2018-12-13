@@ -17,7 +17,6 @@ trait SchemeSemantics[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V, 
 
 /**
   * Basic Scheme semantics, without any optimization
-  * TODO[hard] primitives
   */
 class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, C])(
     implicit val timestamp: Timestamp[T, C],

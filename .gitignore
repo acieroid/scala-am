@@ -6,3 +6,4 @@
 .ensime_cache
 *.dot
 *.log
+.idea/
