@@ -1,388 +1,444 @@
-import org.scalacheck.{Arbitrary, Gen, Prop, Properties}
+import org.scalacheck.{Prop, Properties}
 import Prop.forAll
 
-import scalaz._
-import scalaz.Scalaz._
+import scalaam.core.Lattice
+import scalaam.lattice._
 
-import SchemeOps._
+/** TODO[medium] tests for scheme lattice */
 
-object LatticeProperties {
-  private def newProperties(name: String)(f: Properties => Unit): Properties = {
-    /* Code taken from Scalaz's test suite */
-    val p = new Properties(name)
-    f(p)
-    p
-  }
-
-  object latticeElement {
-    def laws[L](implicit l: LatticeElement[L], gen: LatticeGenerator[L]): Properties = {
-      implicit val arb = gen.anyArb
-      newProperties("LatticeElement") { p =>
-        p.property("satisfies Equal[_]'s commutativity") =
-          forAll(l.latticeElementLaw.commutative _)
-        p.property("satisfies Equal[_]'s reflexivity") =
-          forAll(l.latticeElementLaw.reflexive _)
-        p.property("satisfies Equal[_]'s transitivity") =
-          forAll(l.latticeElementLaw.transitive _)
-        p.property("satisfies Equal[_]'s naturality") =
-          forAll(l.latticeElementLaw.naturality _)
-        p.property("satisfies Order[_]'s antisymmetricity") =
-          forAll(l.latticeElementLaw.antisymmetric _)
-        p.property("satisfies Order[_]'s transitive order") =
-          forAll(l.latticeElementLaw.transitiveOrder _)
-        p.property("satisfies Order[_]'s order and equal consistency") =
-          forAll(l.latticeElementLaw.orderAndEqualConsistent _)
-        p.property("satisfies Semigroup[_]'s associativity") =
-          forAll(l.latticeElementLaw.associative _)
-        p.property("satisfies Monoid[_]'s left identity") =
-          forAll(l.latticeElementLaw.leftIdentity _)
-        p.property("satisfies Monoid[_]'s right identity") =
-          forAll(l.latticeElementLaw.rightIdentity _)
-        p.property("∀ a: a ⊑ a") =
-          forAll(l.latticeElementLaw.reflexive _)
-        p.property("∀ a: ⊥ ⊔ x = x ∧ x ⊔ ⊥") =
-          forAll(l.latticeElementLaw.leftIdentity _) && forAll(l.latticeElementLaw.rightIdentity _)
-        p.property("∀ a: ⊥ ⊑ a") =
-          forAll(l.latticeElementLaw.bottomLowerBound _)
-        p.property("∀ a: a ⊑ ⊤") =
-          forAll(l.latticeElementLaw.topUpperBound _)
-        p.property("∀ a, b: a ⊔ b = b ⊔ a") =
-          forAll(l.latticeElementLaw.joinCommutative _)
-        p.property("∀ a, b, c: (a ⊔ b) ⊔ c = a ⊔ (b ⊔ c)") =
-          /* This is the same requirement (from Monoid and from LatticeElement) */
-          forAll(l.latticeElementLaw.associative _) &&
-          forAll(l.latticeElementLaw.joinAssociative _)
-        p.property("∀ a: a ⊔ a = a") =
-          forAll(l.latticeElementLaw.joinIdempotent _)
-        p.property("∀ a, b: a ⊑ b ⇒ a ⊔ b = b") = forAll { (b: L) =>
-          forAll(gen.le(b)) { (a: L) =>
-            l.latticeElementLaw.joinSubsumesCompatible(a, b)
-          }
-        }
-        p.property("∀ a: a = bottom ∨ isTrue(eql(a, a))") =
-          forAll(l.latticeElementLaw.eqlIsTrue _)
-      }
-    }
-  }
-  object boolLattice {
-    def laws[B](implicit l: BoolLattice[B], gen: LatticeGenerator[B]): Properties = {
-      implicit val arb = gen.anyArb
-      newProperties("BoolLattice") { p =>
-        p.include(latticeElement.laws[B])
-        p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") =
-          l.boolLatticeLaw.injectPreservesTruthiness
-        p.property("isTrue(⊤) ∧ isFalse(⊤)") =
-          l.boolLatticeLaw.topTrueAndFalse
-        p.property("¬isTrue(⊥) ∧ ¬isFalse(⊥)") =
-          l.boolLatticeLaw.bottomNotTrueNorFalse
-        p.property("∀ a: isTrue(a) ⇒ isFalse(not(a)) ∧ isFalse(a) ⇒ isTrue(not(a))") =
-          forAll(l.boolLatticeLaw.notReversesTruthiness _)
-        p.property("∀ a: not(not(a)) == a") =
-          forAll(l.boolLatticeLaw.notInvolutive _)
-      }
-    }
-  }
-  object stringLattice {
-    def laws[S](implicit l: StringLattice[S], gen: LatticeGenerator[S]): Properties = {
-      implicit val arb = gen.anyArb
-      newProperties("StringLattice") { p =>
-        p.include(latticeElement.laws[S])
-        p.property("length(⊥) = ⊥") =
-          l.stringLatticeLaw.lengthPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ length(a) ⊑ length(b)") = forAll { (b: S) =>
-          forAll(gen.le(b)) { (a: S) =>
-            l.stringLatticeLaw.lengthIsMonotone(a, b)
-          }
-        }
-        p.property("∀ a: length(inject(a)) ⊑ inject(length(a))") =
-          forAll(l.stringLatticeLaw.lengthIsSound _)
-        p.property("∀ a: append(a, ⊥) = ⊥ = append(⊥, a)") =
-          forAll(l.stringLatticeLaw.appendPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ append(a, b) ⊑ append(b, c)") = forAll { (a: S, c: S) =>
-          forAll(gen.le(c)) { (b: S) =>
-            l.stringLatticeLaw.appendIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b: append(inject(a), inject(b)) ⊑ inject(append(a, b))") =
-          forAll(l.stringLatticeLaw.appendIsSound _)
-        p.property("∀ a, b, c: append(a, append(b, c)) == append(append(a, b), c)") =
-          forAll(l.stringLatticeLaw.appendIsAssociative _)
-      }
-    }
-  }
-  object intLattice {
-    def laws[I](implicit l: IntLattice[I], gen: LatticeGenerator[I]): Properties = {
-      implicit val arb = gen.anyArb
-      newProperties("IntLattice") { p =>
-        p.include(latticeElement.laws[I])
-        p.property("toReal(⊥) = ⊥") =
-          l.intLatticeLaw.toRealPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ toReal(a) ⊑ toReal(b)") = forAll { (b: I) =>
-          forAll(gen.le(b)) { (a: I) =>
-            l.intLatticeLaw.toRealIsMonotone(a, b)
-          }
-        }
-        p.property("∀ a: a.toReal ⊑ toReal(inject(a))") =
-          forAll(l.intLatticeLaw.toRealIsSound _)
-        p.property("random(⊥) = ⊥") =
-          l.intLatticeLaw.randomPreservesBottom
-        p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
-          forAll(l.intLatticeLaw.plusPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c)") = forAll { (a: I, c: I) =>
-          forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.plusIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b: inject(a + b) ⊑ plus(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.plusIsSound _)
-        p.property("∀ a, b, c: plus(a, plus(b, c)) == plus(plus(a, b), c)") =
-          forAll(l.intLatticeLaw.plusIsAssociative _)
-        p.property("∀ a, b: plus(a, b) == plus(b, a)") =
-          forAll(l.intLatticeLaw.plusIsCommutative _)
-        p.property("minus(a, ⊥) = ⊥ = minus(⊥, a)") =
-          forAll(l.intLatticeLaw.minusPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ minus(a, b) ⊑ minus(a, c)") = forAll { (a: I, c: I) =>
-          forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.minusIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b: inject(a - b) ⊑ minus(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.minusIsSound _)
-        p.property("∀ a, b: minus(a, b) == minus(inject(0), minus(b, a))") =
-          forAll(l.intLatticeLaw.minusIsAnticommutative _)
-        p.property("times(a, ⊥) = ⊥ = times(⊥, a)") =
-          forAll(l.intLatticeLaw.timesPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ times(a, b) ⊑ times(a, c)") = forAll { (a: I, c: I) =>
-          forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.timesIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b: inject(a + b) ⊑ times(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.timesIsSound _)
-        p.property("∀ a, b, c: times(a, times(b, c)) == times(times(a, b), c)") =
-          forAll(l.intLatticeLaw.timesIsAssociative _)
-        p.property("∀ a, b: times(a, b) == times(b, a)") =
-          forAll(l.intLatticeLaw.timesIsCommutative _)
-        p.property("quotient(a, ⊥) = ⊥ = quotient(⊥, a)") =
-          forAll(l.intLatticeLaw.quotientPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ quotient(a, b) ⊑ quotient(a, c)") = forAll { (a: I, c: I) =>
-          forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.quotientIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ quotient(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.quotientIsSound _)
-        p.property("modulo(a, ⊥) = ⊥ = modulo(⊥, a)") =
-          forAll(l.intLatticeLaw.moduloPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ modulo(a, b) ⊑ modulo(a, c)") = forAll { (a: I, c: I) =>
-          forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.moduloIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ modulo(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.moduloIsSound _)
-        p.property("remainder(a, ⊥) = ⊥ = remainder(⊥, a)") =
-          forAll(l.intLatticeLaw.remainderPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ remainder(a, b) ⊑ remainder(a, c)") = forAll { (a: I, c: I) =>
-          forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.remainderIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ remainder(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.remainderIsSound _)
-        p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") =
-          forAll(l.intLatticeLaw.ltPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c)") = forAll { (a: I, c: I) =>
-          forAll(gen.le(c)) { (b: I) =>
-            l.intLatticeLaw.ltIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b ≠ 0: inject(a < b) ⊑ lt(inject(a), inject(b))") =
-          forAll(l.intLatticeLaw.ltIsSound _)
-        p.property("toString(⊥) = ⊥") =
-          l.intLatticeLaw.toStringPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ toString(a) ⊑ toString(b)") = forAll { (b: I) =>
-          forAll(gen.le(b)) { (a: I) =>
-            l.intLatticeLaw.toStringIsMonotone(a, b)
-          }
-        }
-        p.property("∀ a: inject(a.toString) ⊑ toString(inject(a))") =
-          forAll(l.intLatticeLaw.toStringIsSound _)
-      }
-    }
-  }
-
-  object floatLattice {
-    def laws[F](implicit l: RealLattice[F], gen: LatticeGenerator[F]): Properties = {
-      implicit val arb = gen.anyArb
-      newProperties("RealLattice") { p =>
-        p.include(latticeElement.laws[F])
-        p.property("toInt(⊥) = ⊥") =
-          l.floatLatticeLaw.toIntPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ toInt(a) ⊑ toInt(b)") = forAll { (b: F) =>
-          forAll(gen.le(b)) { (a: F) =>
-            l.floatLatticeLaw.toIntIsMonotone(a, b)
-          }
-        }
-        p.property("∀ a: a.toInt ⊑ toInt(inject(a))") =
-          forAll(l.floatLatticeLaw.toIntIsSound _)
-        p.property("ceiling(⊥) = ⊥") =
-          l.floatLatticeLaw.ceilingPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ ceiling(a) ⊑ ceiling(b)") = forAll { (b: F) =>
-          forAll(gen.le(b)) { (a: F) =>
-            l.floatLatticeLaw.ceilingIsMonotone(a, b)
-          }
-        }
-        p.property("∀ a: inject(a.ceil) ⊑ ceiling(inject(a))") =
-          forAll(l.floatLatticeLaw.ceilingIsSound _)
-        p.property("log(⊥) = ⊥") =
-          l.floatLatticeLaw.logPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ log(a) ⊑ log(b)") = forAll { (b: F) =>
-          forAll(gen.le(b)) { (a: F) =>
-            l.floatLatticeLaw.logIsMonotone(a, b)
-          }
-        }
-        p.property("∀ a: inject(a.log) ⊑ log(inject(a))") =
-          forAll(l.floatLatticeLaw.logIsSound _)
-        p.property("random(⊥) = ⊥") =
-          l.floatLatticeLaw.randomPreservesBottom
-        p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
-          forAll(l.floatLatticeLaw.plusPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c)") = forAll { (a: F, c: F) =>
-          forAll(gen.le(c)) { (b: F) =>
-            l.floatLatticeLaw.plusIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b: inject(a + b) ⊑ float(inject(a), inject(b))") =
-          forAll(l.floatLatticeLaw.plusIsSound _)
-        p.property("minus(a, ⊥) = ⊥ = minus(⊥, a)") =
-          forAll(l.floatLatticeLaw.minusPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ minus(a, b) ⊑ minus(a, c)") = forAll { (a: F, c: F) =>
-          forAll(gen.le(c)) { (b: F) =>
-            l.floatLatticeLaw.minusIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b: inject(a - b) ⊑ minus(inject(a), inject(b))") =
-          forAll(l.floatLatticeLaw.minusIsSound _)
-        p.property("times(a, ⊥) = ⊥ = times(⊥, a)") =
-          forAll(l.floatLatticeLaw.timesPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ times(a, b) ⊑ times(a, c)") = forAll { (a: F, c: F) =>
-          forAll(gen.le(c)) { (b: F) =>
-            l.floatLatticeLaw.timesIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b: inject(a + b) ⊑ times(inject(a), inject(b))") =
-          forAll(l.floatLatticeLaw.timesIsSound _)
-        p.property("div(a, ⊥) = ⊥ = div(⊥, a)") =
-          forAll(l.floatLatticeLaw.divPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ div(a, b) ⊑ div(a, c)") = forAll { (a: F, c: F) =>
-          forAll(gen.le(c)) { (b: F) =>
-            l.floatLatticeLaw.divIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b ≠ 0: inject(a / b) ⊑ div(inject(a), inject(b))") =
-          forAll(l.floatLatticeLaw.divIsSound _)
-        p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") =
-          forAll(l.floatLatticeLaw.ltPreservesBottom _)
-        p.property("∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c)") = forAll { (a: F, c: F) =>
-          forAll(gen.le(c)) { (b: F) =>
-            l.floatLatticeLaw.ltIsMonotone(a, b, c)
-          }
-        }
-        p.property("∀ a, b ≠ 0: inject(a < b) ⊑ lt(inject(a), inject(b))") =
-          forAll(l.floatLatticeLaw.ltIsSound _)
-        p.property("toString(⊥) = ⊥") =
-          l.floatLatticeLaw.toStringPreservesBottom
-        p.property("∀ a, b: a ⊑ b ⇒ toString(a) ⊑ toString(b)") = forAll { (b: F) =>
-          forAll(gen.le(b)) { (a: F) =>
-            l.floatLatticeLaw.toStringIsMonotone(a, b)
-          }
-        }
-        p.property("∀ a: inject(a.toString) ⊑ toString(inject(a))") =
-          forAll(l.floatLatticeLaw.toStringIsSound _)
-      }
-    }
-  }
-
-  object charLattice {
-    def laws[C](implicit l: CharLattice[C], gen: LatticeGenerator[C]): Properties = {
-      implicit val arb = gen.anyArb
-      newProperties("CharLattice") { p =>
-        p.include(latticeElement.laws[C])
-      }
-    }
-  }
-
-  object symbolLattice {
-    def laws[Sym](implicit l: SymbolLattice[Sym], gen: LatticeGenerator[Sym]): Properties = {
-      implicit val arb = gen.anyArb
-      newProperties("SymbolLattice") { p =>
-        p.include(latticeElement.laws[Sym])
-      }
-    }
-  }
-}
-
-abstract class Specification extends Properties("") {
+abstract class LatticeSpecification extends Properties("") {
   /* Taken from Scalaz's SpecLite class */
   override val name = this.getClass.getName.stripSuffix("$")
-  def checkAll(props: Properties) {
-    for ((name, prop) <- props.properties) yield {
+  def checkAll(props: Properties): Unit = {
+    for ((name, prop) <- props.properties) {
       property(name) = prop
     }
   }
-  def newProperties(name: String)(f: Properties => Unit): Properties = {
+  def newProperties(name: String)(f: Properties => Properties): Properties = {
     val p = new Properties(name)
     f(p)
-    p
   }
+
+  def conditional(p: Boolean, q: => Boolean): Boolean = !p || q
 }
 
-abstract class BoolLatticeTest[B : BoolLattice](gen: LatticeGenerator[B]) extends Specification {
-  implicit val g = gen
-  checkAll(LatticeProperties.boolLattice.laws[B])
+abstract class LatticeTest[L : Lattice](gen: LatticeGenerator[L]) extends LatticeSpecification {
+  val laws: Properties = {
+    newProperties("Lattice") { p =>
+      implicit val arb = gen.anyArb
+      val lat: Lattice[L] = implicitly
+      import lat._
+
+      /** The subsumption operation is reflexive */
+      p.property("∀ a: a ⊑ a") = forAll((a: L) => subsumes(a, a))
+      /** Bottom is the lower bound of all elements in the lattice */
+      p.property("∀ a: ⊥ ⊑ a") = forAll((a: L) => subsumes(a, bottom))
+      /** The join operation is commutative */
+      p.property("∀ a, b: a ⊔ b = b ⊔ a") = forAll((a: L, b: L) => join(a, b) == join(b, a))
+      /** The join operation is associative */
+      p.property("∀ a, b, c: (a ⊔ b) ⊔ c = a ⊔ (b ⊔ c)") = forAll((a: L, b: L, c: L) => join(join(a, b), c) == join(a, join(b, c)))
+      /** The join operation is idempotent */
+      p.property("∀ a: a ⊔ a = a") = forAll((a: L) => join(a, a) == a)
+      /** The join operation is compatible with subsumption */
+      p.property("∀ a, b: a ⊑ b ⇒ a ⊔ b = b") = forAll { (b: L) =>
+        forAll(gen.le(b)) { (a: L) =>
+          conditional(subsumes(b, a), join(a, b) == b)
+        }
+      }
+      p
+    }
+  }
+  checkAll(laws)
 }
 
-abstract class StringLatticeTest[S : StringLattice](gen: LatticeGenerator[S]) extends Specification {
-  implicit val g = gen
-  checkAll(LatticeProperties.stringLattice.laws[S])
+abstract class BoolLatticeTest[B : BoolLattice](gen: LatticeGenerator[B]) extends LatticeTest[B](gen) {
+  val boolLaws: Properties = {
+    newProperties("Bool") { p =>
+      newProperties("BoolLattice") { p =>
+        implicit val arb = gen.anyArb
+        val lat: BoolLattice[B] = implicitly
+        import lat._
+
+        /** Inject preserves truthiness */
+        p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") = isTrue(inject(true)) && isFalse(inject(false))
+        /** Top is both true and false */
+        p.property("isTrue(⊤) ∧ isFalse(⊤)") = isTrue(top) && isFalse(top)
+        /** Bottom is neither true nor false */
+        p.property("¬isTrue(⊥) ∧ ¬isFalse(⊥)") = !isTrue(bottom) && !isFalse(bottom)
+        /** Not reverses truthiness */
+        p.property("∀ a: isTrue(a) ⇒ isFalse(not(a)) ∧ isFalse(a) ⇒ isTrue(not(a))") = forAll { (a: B) =>
+          conditional(isTrue(a), isFalse(not(a))) && conditional(isFalse(a), isTrue(not(a)))
+        }
+        /** Not is involutive */
+        p.property("∀ a: not(not(a)) == a") = forAll((a: B) => not(not(a)) == a)
+        p
+      }
+    }
+  }
+  checkAll(boolLaws)
 }
 
-abstract class IntLatticeTest[I : IntLattice](gen: LatticeGenerator[I]) extends Specification {
-  implicit val g = gen
-  checkAll(LatticeProperties.intLattice.laws[I])
+abstract class StringLatticeTest[S : StringLattice, I : IntLattice](gen: LatticeGenerator[S]) extends LatticeTest[S](gen) {
+  val stringLaws: Properties = {
+    newProperties("String") { p =>
+      implicit val arb = gen.anyArb
+      val lat: StringLattice[S] = implicitly
+      import lat._
+
+      /** Length preserves bottom */
+      p.property("length(⊥) = ⊥") = length[I](bottom) == IntLattice[I].bottom
+      /** Length is monotone */
+      p.property("∀ a, b: a ⊑ b ⇒ length(a) ⊑ length(b)") = forAll { (b: S) =>
+        forAll(gen.le(b)) { (a: S) =>
+          conditional(subsumes(b, a), IntLattice[I].subsumes(length[I](b), length[I](a)))
+        }
+      }
+      /** Length is sound */
+      p.property("∀ a: inject(a.size) ⊑ length(inject(a))") = forAll((a: String) => IntLattice[I].subsumes(length[I](inject(a)), IntLattice[I].inject(a.size)))
+
+      /** Append preservesf bottom */
+      p.property("∀ a: append(a, ⊥) = ⊥ = append(⊥, a)") = forAll((a: S) => append(bottom, a) == bottom && append(a, bottom) == bottom)
+      /** Append is monotone */
+      p.property("∀ a, b, c: a ⊑ b ⇒ append(a, c) ⊑ append(b, c) ∧ append(c, a) ⊑ append(c, b)") = forAll { (b: S, c: S) =>
+        forAll(gen.le(b)) { (a: S) =>
+          conditional(subsumes(c, b),
+                  subsumes(append(a, c), append(a, b)) && subsumes(append(c, a), append(b, a)))
+        }
+      }
+      /** Append is sound */
+      p.property("∀ a, b: append(inject(a), inject(b)) ⊑ inject(a ++ b)") = forAll((a: String, b: String) => subsumes(append(inject(a), inject(b)), inject(a ++ b)))
+      /** Append is associative */
+      p.property("∀ a, b, c: append(append(a, b), c) == append(a, append(b, c))") = forAll((a: S, b: S, c: S) => append(append(a, b), c) == append(a, append(b, c)))
+
+      p
+    }
+  }
+  checkAll(stringLaws)
 }
 
-abstract class RealLatticeTest[F : RealLattice](gen: LatticeGenerator[F]) extends Specification {
-  implicit val g = gen
-  checkAll(LatticeProperties.floatLattice.laws[F])
+abstract class IntLatticeTest[I : IntLattice, B : BoolLattice, R : RealLattice, S : StringLattice](gen: LatticeGenerator[I]) extends LatticeTest[I](gen) {
+  val intLaws: Properties = {
+    newProperties("Int") { p =>
+      implicit val arb = gen.anyArb
+      val lat: IntLattice[I] = implicitly
+      import lat._
+
+      /** Conversion to real preserves bottom */
+      p.property("toReal(⊥) = ⊥") = toReal[R](bottom) == RealLattice[R].bottom
+      /** Conversion to real is monotone */
+      p.property("∀ a, b: a ⊑ b ⇒ toReal(a) ⊑ toR(b)") = forAll { (b: I) =>
+        forAll(gen.le(b)) { (a: I) =>
+          conditional(subsumes(b, a), RealLattice[R].subsumes(toReal[R](b), toReal[R](a)))
+        }
+      }
+      /** Conversion to real is sound */
+      p.property("∀ a: inject(a.toDouble) ⊑ toReal(inject(a))") =
+        forAll((a: Int) => RealLattice[R].subsumes(toReal[R](inject(a)), RealLattice[R].inject(a.toDouble)))
+
+      /** Random preserves bottom */
+      p.property("random(⊥) = ⊥") = random(bottom) == bottom
+      /* Random should neither be monotone nor sound (at least in concrete) */
+
+      /** Addition preserves bottom */
+      p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
+        forAll((a: I) => plus(a, bottom) == bottom && plus(bottom, a) == bottom)
+      /** Addition is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c)") = forAll { (a: I, c: I) =>
+        forAll(gen.le(c)) { (b: I) =>
+          conditional(subsumes(c, b), subsumes(plus(a, c), plus(a, b)))
+        }
+      }
+      /** Addition is sound */
+      p.property("∀ a, b: inject(a + b) ⊑ plus(inject(a), inject(b))") =
+        forAll((a: Int, b: Int) => subsumes(plus(inject(a), inject(b)), inject(a + b)))
+      /** Addition is associative */
+      p.property("∀ a, b, c: plus(a, plus(b, c)) == plus(plus(a, b), c)") =
+        forAll((a: I, b: I, c: I) => plus(a, plus(b, c)) == plus(plus(a, b), c))
+      /** Addition is commutative */
+      p.property("∀ a, b: plus(a, b) == plus(b, a)") =
+        forAll((a: I, b: I) => plus(a, b) == plus(b, a))
+
+      /** Subtraction preserves bottom */
+      p.property("minus(a, ⊥) = ⊥ = minus(⊥, a)") =
+        forAll((a: I) => minus(a, bottom) == bottom && minus(bottom, a) == bottom)
+      /** Subtraction is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ minus(a, b) ⊑ minus(a, c)") = forAll { (a: I, c: I) =>
+        forAll(gen.le(c)) { (b: I) =>
+          conditional(subsumes(c, b), subsumes(minus(a, c), minus(a, b)))
+        }
+      }
+      /** Subtraction is sound */
+      p.property("∀ a, b: inject(a - b) ⊑ minus(inject(a), inject(b))") =
+        forAll((a: Int, b: Int) => subsumes(minus(inject(a), inject(b)), inject(a - b)))
+      /** Subtraction is anticommutative */
+      p.property("∀ a, b: minus(a, b) == minus(inject(0), minus(b, a))") =
+        forAll((a: I, b: I) => minus(a, b) == minus(inject(0), minus(b, a)))
+
+      /** Addition preserves bottom */
+      p.property("times(a, ⊥) = ⊥ = times(⊥, a)") =
+        forAll((a: I) => times(a, bottom) == bottom && times(bottom, a) == bottom)
+      /** Addition is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ times(a, b) ⊑ times(a, c)") = forAll { (a: I, c: I) =>
+        forAll(gen.le(c)) { (b: I) =>
+          conditional(subsumes(c, b), subsumes(times(a, c), times(a, b)))
+        }
+      }
+      /** Addition is sound */
+      p.property("∀ a, b: inject(a + b) ⊑ times(inject(a), inject(b))") =
+        forAll((a: Int, b: Int) => subsumes(times(inject(a), inject(b)), inject(a * b)))
+      /** Addition is associative */
+      p.property("∀ a, b, c: times(a, times(b, c)) == times(times(a, b), c)") =
+        forAll((a: I, b: I, c: I) => times(a, times(b, c)) == times(times(a, b), c))
+      /** Addition is commutative */
+      p.property("∀ a, b: times(a, b) == times(b, a)") =
+        forAll((a: I, b: I) => times(a, b) == times(b, a))
+
+      /** Quotient preserves bottom */
+      p.property("div(a, ⊥) = ⊥ = div(⊥, a)") =
+        forAll((a: I) =>
+          quotient(a, bottom) == bottom && conditional(!subsumes(a, inject(0)),
+            quotient(bottom, a) == bottom))
+      /** Quotient is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ div(a, b) ⊑ div(a, c)") = forAll { (a: I, c: I) =>
+        forAll(gen.le(c)) { (b: I) =>
+          conditional(subsumes(c, b) && !subsumes(b, inject(0)) && !subsumes(c, inject(0)),
+            subsumes(quotient(a, c), quotient(a, b)))
+        }
+      }
+      /** Quotient is sound */
+      p.property("∀ a, b ≠ 0: inject(a / b) ⊑ div(inject(a), inject(b))") =
+        forAll((a: Int, b: Int) => conditional(b != 0, subsumes(quotient(inject(a), inject(b)), inject(a / b))))
+
+      /** Modulo preserves bottom */
+      p.property("modulo(a, ⊥) = ⊥ = modulo(⊥, a)") =
+        forAll((a: I) => modulo(a, bottom) == bottom && conditional(!subsumes(a, inject(0)),
+          modulo(bottom, a) == bottom))
+      /** Modulo is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ modulo(a, b) ⊑ modulo(a, c)") = forAll { (a: I, c: I) =>
+        forAll(gen.le(c)) { (b: I) =>
+          conditional(subsumes(c, b) && !subsumes(c, inject(0)) && !subsumes(b, inject(0)),
+            subsumes(modulo(a, c), modulo(a, b)))
+        }
+      }
+      /** Modulo is sound */
+      p.property("∀ a, b ≠ 0: inject(a / b) ⊑ modulo(inject(a), inject(b))") =
+        forAll((a: Int, b: Int) => conditional(b != 0, subsumes(modulo(inject(a), inject(b)), inject(MathOps.modulo(a, b)))))
+
+      /** Remainder preserves bottom */
+      p.property("rem(a, ⊥) = ⊥ = rem(⊥, a) (if a ≠ 0)") = forAll((a: I) =>
+        remainder(a, bottom) == bottom && conditional(!subsumes(a, inject(0)),
+          remainder(bottom, a) == bottom))
+      /** Remainder is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ rem(a, b) ⊑ rem(a, c)") = forAll { (a: I, c: I) =>
+        forAll(gen.le(c)) { (b: I) =>
+          conditional(subsumes(c, b) && !subsumes(c, inject(0)) && !subsumes(b, inject(0)),
+            subsumes(remainder(a, c), remainder(a, b)))
+        }
+      }
+      /** Remainder is sound */
+      p.property("∀ a, b ≠ 0: inject(a / b) ⊑ rem(inject(a), inject(b))") =
+        forAll((a: Int, b: Int) => conditional(b != 0, subsumes(remainder(inject(a), inject(b)), inject(MathOps.remainder(a, b)))))
+
+      /** Less-than operation preserves bottom */
+      p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") =
+        forAll((a: I) => lt[B](a, bottom) == BoolLattice[B].bottom && lt[B](bottom, a) == BoolLattice[B].bottom)
+      /** Less-than operation is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c)") = forAll { (a: I, c: I) =>
+        forAll(gen.le(c)) { (b: I) =>
+          conditional(subsumes(b, c), BoolLattice[B].subsumes(lt[B](a, c), lt[B](a, b)))
+        }
+      }
+      /** Less-than operation is sound */
+      p.property("∀ a, b ≠ 0: inject(a < b) ⊑ lt(inject(a), inject(b))") =
+        forAll((a: Int, b: Int) => BoolLattice[B].subsumes(lt[B](inject(a), inject(b)), BoolLattice[B].inject(a < b)))
+
+      /** To-string operation preserves bottom */
+      p.property("toString(⊥) = ⊥") = lat.toString[S](bottom) == StringLattice[S].bottom
+      /** To-string operation is monotone */
+      p.property("∀ a, b: a ⊑ b ⇒ toString(a) ⊑ toString(b)") = forAll { (b: I) =>
+        forAll(gen.le(b)) { (a: I) =>
+          conditional(subsumes(b, a),
+            StringLattice[S].subsumes(lat.toString[S](b), lat.toString[S](a)))
+        }
+      }
+      /** To-string operation is sound */
+      p.property("∀ a, b: inject(toString(a)) ⊑ toString(inject(a))") =
+        forAll((a: Int) => StringLattice[S].subsumes(lat.toString[S](inject(a)), StringLattice[S].inject(a.toString)))
+
+      p
+    }
+  }
+  checkAll(intLaws)
 }
 
-abstract class CharLatticeTest[C : CharLattice](gen: LatticeGenerator[C]) extends Specification {
-  implicit val g = gen
-  checkAll(LatticeProperties.charLattice.laws[C])
+abstract class RealLatticeTest[R : RealLattice, B : BoolLattice, I : IntLattice, S : StringLattice](gen: LatticeGenerator[R]) extends LatticeTest[R](gen) {
+  val realLaws: Properties = {
+    newProperties("Real") { p =>
+      implicit val arb = gen.anyArb
+      val lat: RealLattice[R] = implicitly
+      import lat._
+
+      /** Integer conversion preserves bottom */
+      p.property("toInt(⊥) = ⊥") = toInt[I](bottom) == IntLattice[I].bottom
+      /** Integer conversion is monotone */
+      p.property("∀ a, b: a ⊑ b ⇒ toInt(a) ⊑ toInt(b)") = forAll { (b: R) =>
+        forAll(gen.le(b)) { (a: R) =>
+          conditional(subsumes(b, a), IntLattice[I].subsumes(toInt[I](b), toInt[I](a)))
+        }
+      }
+      /** Integer conversion is sound */
+      p.property("∀ a: a.toInt ⊑ toInt(inject(a))") =
+        forAll((a: Double) => IntLattice[I].subsumes(toInt[I](inject(a)), IntLattice[I].inject(a.toInt)))
+
+      /** Ceiling preserves bottom */
+      p.property("ceiling(⊥) = ⊥") = ceiling(bottom) == bottom
+      /** Ceiling is monotone */
+      p.property("∀ a, b: a ⊑ b ⇒ ceiling(a) ⊑ ceiling(b)") = forAll { (b: R) =>
+        forAll(gen.le(b)) { (a: R) =>
+          conditional(subsumes(b, a), subsumes(ceiling(b), ceiling(a)))
+        }
+      }
+      /** Ceiling is sound */
+      p.property("∀ a: inject(a.ceil) ⊑ ceiling(inject(a))") =
+        forAll((a: Double) => subsumes(ceiling(inject(a)), inject(MathOps.ceil(a))))
+
+      /** Log preserves bottom */
+      p.property("log(⊥) = ⊥") = log(bottom) == bottom
+      /** Log is monotone */
+      /* TODO[easy] failing test
+       p.property("∀ a, b: a ⊑ b ⇒ log(a) ⊑ log(b)") = forAll { (b: R) =>
+          forAll(gen.le(b)) { (a: R) =>
+            conditional(subsumes(b, a), subsumes(log(b), log(a)))
+          }
+        }
+       */
+      /** Log is sound */
+      p.property("∀ a: inject(a.log) ⊑ log(inject(a))") =
+        forAll((a: Double) => conditional(a > 0, subsumes(log(inject(a)), inject(scala.math.log(a)))))
+
+      /** Random preserves bottom */
+      p.property("random(⊥) = ⊥") = random(bottom) == bottom
+      /* Random should neither be monotone nor sound (at least in concrete) */
+
+      /** Addition preserves bottom */
+      p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
+        forAll((a: R) => plus(a, bottom) == bottom && plus(bottom, a) == bottom)
+      /** Addition is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c)") = forAll { (a: R, c: R) =>
+        forAll(gen.le(c)) { (b: R) =>
+          conditional(subsumes(c, b), subsumes(plus(a, c), plus(a, b)))
+        }
+      }
+      /** Addition is sound */
+      p.property("∀ a, b: inject(a + b) ⊑ plus(inject(a), inject(b))") =
+        forAll((a: Double, b: Double) => subsumes(plus(inject(a), inject(b)), inject(a + b)))
+      /* Plus isn't required to be associative or commutative on reals */
+
+
+      /** Subtraction preserves bottom */
+      p.property("minus(a, ⊥) = ⊥ = minus(⊥, a)") =
+        forAll((a: R) => minus(a, bottom) == bottom && minus(bottom, a) == bottom)
+      /** Subtraction is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ minus(a, b) ⊑ minus(a, c)") = forAll { (a: R, c: R) =>
+        forAll(gen.le(c)) { (b: R) =>
+          conditional(subsumes(c, b), subsumes(minus(a, c), minus(a, b)))
+        }
+      }
+      /** Subtraction is sound */
+      p.property("∀ a, b: inject(a - b) ⊑ minus(inject(a), inject(b))") =
+        forAll((a: Double, b: Double) => subsumes(minus(inject(a), inject(b)), inject(a - b)))
+      /* Minus isn't required to be anticommutative on reals */
+
+      /** Multiplication preserves bottom */
+      p.property("times(a, ⊥) = ⊥ = times(⊥, a)") =
+        forAll((a: R) => times(a, bottom) == bottom && times(bottom, a) == bottom)
+      /** Multiplication is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ times(a, b) ⊑ times(a, c)") = forAll { (a: R, c: R) =>
+        forAll(gen.le(c)) { (b: R) =>
+          conditional(subsumes(c, b), subsumes(times(a, c), times(a, b)))
+        }
+      }
+      /** Multiplication is sound */
+      p.property("∀ a, b: inject(a + b) ⊑ times(inject(a), inject(b))") =
+        forAll((a: Double, b: Double) => subsumes(times(inject(a), inject(b)), inject(a * b)))
+      /* Multiplication isn't required to be associative and commutative on reals */
+
+      /** Division preserves bottom */
+      p.property("div(a, ⊥) = ⊥ = div(⊥, a)") =
+        forAll((a: R) => div(a, bottom) == bottom && conditional(!subsumes(a, inject(0)), div(bottom, a) == bottom))
+      /** Division is monotone */
+      p.property("∀ a, b, c: b ⊑ c ⇒ div(a, b) ⊑ div(a, c)") = forAll { (a: R, c: R) =>
+        forAll(gen.le(c)) { (b: R) =>
+          conditional(subsumes(c, b) && !subsumes(b, inject(0)) && !subsumes(c, inject(0)),
+            subsumes(div(a, c), div(a, b)))
+        }
+      }
+      /** Division is sound */
+      p.property("∀ a, b ≠ 0: inject(a / b) ⊑ div(inject(a), inject(b))") =
+        forAll((a: Double, b: Double) => conditional(b != 0, subsumes(div(inject(a), inject(b)), inject(a / b))))
+
+      /** Less-than operation preserves bottom */
+        p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") =
+          forAll((a: R) => lt[B](a, bottom) == BoolLattice[B].bottom && lt[B](bottom, a) == BoolLattice[B].bottom)
+      /** Less-than operation is monotone */
+        p.property("∀ a, b, c: b ⊑ c ⇒ lt(a, b) ⊑ lt(a, c)") = forAll { (a: R, c: R) =>
+          forAll(gen.le(c)) { (b: R) =>
+            conditional(subsumes(b, c), BoolLattice[B].subsumes(lt[B](a, c), lt[B](a, b)))
+          }
+        }
+      /** Less-than operation is sound */
+        p.property("∀ a, b ≠ 0: inject(a < b) ⊑ lt(inject(a), inject(b))") =
+          forAll((a: Double, b: Double) => BoolLattice[B].subsumes(lt[B](inject(a), inject(b)), BoolLattice[B].inject(a < b)))
+      /** To-string operation preserves bottom */
+        p.property("toString(⊥) = ⊥") = lat.toString[S](bottom) == StringLattice[S].bottom
+      /** To-string operation is monotone */
+        p.property("∀ a, b: a ⊑ b ⇒ toString(a) ⊑ toString(b)") = forAll { (b: R) =>
+          forAll(gen.le(b)) { (a: R) =>
+            conditional(subsumes(b, a),
+                  StringLattice[S].subsumes(lat.toString[S](b), lat.toString[S](a)))
+          }
+        }
+      /** To-string operation is sound */
+        p.property("∀ a: inject(a.toString) ⊑ toString(inject(a))") =
+          forAll((a: Double) => StringLattice[S].subsumes(lat.toString[S](inject(a)), StringLattice[S].inject(a.toString)))
+      p
+    }
+  }
+  checkAll(realLaws)
 }
 
-abstract class SymbolLatticeTest[Sym : SymbolLattice](gen: LatticeGenerator[Sym]) extends Specification {
-  implicit val g = gen
-  checkAll(LatticeProperties.symbolLattice.laws[Sym])
+abstract class CharLatticeTest[C : CharLattice](gen: LatticeGenerator[C]) extends LatticeTest[C](gen) {
+  val charLaws: Properties = {
+    newProperties("Char") { p => p }
+  }
+  checkAll(charLaws)
 }
 
-class ConcreteBoolTest extends BoolLatticeTest(ConcreteBooleanGenerator)
-class ConcreteStringTest extends StringLatticeTest(ConcreteStringGenerator)
-class ConcreteIntTest extends IntLatticeTest(ConcreteIntGenerator)
-class ConcreteRealTest extends RealLatticeTest(ConcreteDoubleGenerator)
-class ConcreteCharTest extends CharLatticeTest(ConcreteCharGenerator)
-class ConcreteSymbolTest extends SymbolLatticeTest(ConcreteSymbolGenerator)
+abstract class SymbolLatticeTest[Sym : SymbolLattice](gen: LatticeGenerator[Sym]) extends LatticeTest[Sym](gen) {
+  val symbolLaws: Properties = {
+    newProperties("Symbol") { p => p }
+  }
+  checkAll(symbolLaws)
+}
 
-class TypeStringTest extends StringLatticeTest(TypeGenerator)
-class TypeIntTest extends IntLatticeTest(TypeGenerator)
-class TypeRealTest extends RealLatticeTest(TypeGenerator)
-class TypeCharTest extends CharLatticeTest(TypeGenerator)
-class TypeSymbolTest extends SymbolLatticeTest(TypeGenerator)
+class ConcreteBoolTest extends BoolLatticeTest[Concrete.B](ConcreteBooleanGenerator)
+class ConcreteStringTest extends StringLatticeTest[Concrete.S, Concrete.I](ConcreteStringGenerator)
+class ConcreteIntTest extends IntLatticeTest[Concrete.I, Concrete.B, Concrete.R, Concrete.S](ConcreteIntGenerator)
+class ConcreteRealTest extends RealLatticeTest[Concrete.R, Concrete.B, Concrete.I, Concrete.S](ConcreteRealGenerator)
+class ConcreteCharTest extends CharLatticeTest[Concrete.C](ConcreteCharGenerator)
+class ConcreteSymbolTest extends SymbolLatticeTest[Concrete.Sym](ConcreteSymbolGenerator)
 
-class ConstantPropagationStringTest extends StringLatticeTest(StringConstantPropagationGenerator)
-class ConstantPropagationIntTest extends IntLatticeTest(IntegerConstantPropagationGenerator)
-class ConstantPropagationRealTest extends RealLatticeTest(DoubleConstantPropagationGenerator)
-class ConstantPropagationCharTest extends CharLatticeTest(CharConstantPropagationGenerator)
-class ConstantPropagationSymbolTest extends SymbolLatticeTest(SymbolConstantPropagationGenerator)
+class TypeBoolTest extends BoolLatticeTest[Type.B](TypeGenerator)
+class TypeStringTest extends StringLatticeTest[Type.S, Type.I](TypeGenerator)
+class TypeIntTest extends IntLatticeTest[Type.I, Type.B, Type.R, Type.S](TypeGenerator)
+class TypeRealTest extends RealLatticeTest[Type.R, Type.B, Type.I, Type.S](TypeGenerator)
+class TypeCharTest extends CharLatticeTest[Type.C](TypeGenerator)
+class TypeSymbolTest extends SymbolLatticeTest[Type.Sym](TypeGenerator)
+
+/* No bool test for constant propagation, as it is equivalent to concrete booleans */
+class ConstantPropagationStringTest extends StringLatticeTest[ConstantPropagation.S, ConstantPropagation.I](ConstantPropagationStringGenerator)
+class ConstantPropagationIntTest extends IntLatticeTest[ConstantPropagation.I, Concrete.B, ConstantPropagation.R, ConstantPropagation.S](ConstantPropagationIntGenerator)
+class ConstantPropagationRealTest extends RealLatticeTest[ConstantPropagation.R, Concrete.B, ConstantPropagation.I, ConstantPropagation.S](ConstantPropagationRealGenerator)
+class ConstantPropagationCharTest extends CharLatticeTest[ConstantPropagation.C](ConstantPropagationCharGenerator)
+class ConstantPropagationSymbolTest extends SymbolLatticeTest[ConstantPropagation.Sym](ConstantPropagationSymbolGenerator)
+

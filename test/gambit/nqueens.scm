@@ -31,3 +31,4 @@
   (try-it (one-to n) '() '()))
 
 (nqueens 8)
+#t

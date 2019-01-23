@@ -1,10 +1,29 @@
 import org.scalatest._
 import org.scalatest.prop._
 
-class ParserSpec extends FlatSpec with Matchers with BenchmarkFiles {
-  benchmarks(SchemeLattices.WithCounting(true).ConcreteLattice).foreach(bench =>
-      Util.fileContent(bench.file).foreach(content =>
-        Scheme.parse(content).toString))
+import scalaam.language.sexp._
+import scalaam.language.scheme.SchemeParser
+
+class SExpParserTests extends FlatSpec with Matchers {
+  Benchmarks.benchmarksFor(BenchmarkTestKind.SExpParse).foreach(bench =>
+    BenchmarksUtil.fileContent(bench).foreach(content =>
+      bench.file should "be parsed" in {
+        val parsed = SExpParser.parse(content)
+        assert(parsed.mkString("").length > 0)
+        /* Is the result of printing and parsing again the same as the first parse? */
+        assert(SExpParser.parse(parsed.mkString("")).mkString("") == parsed.mkString(""))
+      }))
+}
+
+class SchemeParserTests extends FlatSpec with Matchers {
+  Benchmarks.benchmarksFor(BenchmarkTestKind.SchemeParse).foreach(bench =>
+    BenchmarksUtil.fileContent(bench).foreach(content =>
+      bench.file should "be parsed" in {
+        val parsed = SchemeParser.parse(content)
+        assert(parsed.toString.length > 0)
+        // TODO[easy]: this is not always the case, look into that
+        //assert(SchemeParser.parse(parsed.toString).toString == parsed.toString)
+      }))
 }
 
 class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
@@ -17,7 +36,6 @@ class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
       case res => throw new Exception(s"Parse failure: $res")
     }
   def check(parser: lexical.Parser[lexical.SExpToken])(input: String) = checkExpected(parser)(input, input)
-
 
   val bools = Table("boolean", "#t","#f")
   property("lexer should lex booleans without error") {
