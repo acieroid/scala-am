@@ -289,24 +289,6 @@ object SchemeRenamer {
       renameList(body, names, count) match {
         case (body1, count1) => (SchemeBegin(body1, pos), count1)
       }
-    case SchemeCase(exp, clauses, default, pos) =>
-      rename(exp, names, count) match {
-        case (exp1, count1) =>
-          clauses.foldLeft((List[(List[SchemeValue], List[SchemeExp])](), count1))(
-            (st: (List[(List[SchemeValue], List[SchemeExp])], CountMap),
-             cl: (List[SchemeValue], List[SchemeExp])) =>
-              (st, cl) match {
-                case ((l, cs), (objs, body)) =>
-                  renameList(body, names, cs) match {
-                    case (body1, count2) => ((objs, body1) :: l, count2)
-                  }
-            }) match {
-            case (l, count1) =>
-              renameList(default, names, count1) match {
-                case (default1, count2) => (SchemeCase(exp1, l.reverse, default1, pos), count2)
-              }
-          }
-      }
     case SchemeAnd(exps, pos) =>
       renameList(exps, names, count) match {
         case (exps1, count1) => (SchemeAnd(exps1, pos), count1)
@@ -498,17 +480,6 @@ object SchemeUndefiner {
           tailcall(undefine1(value)).map(v => SchemeSet(variable, v, pos))
         case SchemeBegin(exps, pos) =>
           tailcall(undefineBody(exps)).map(expsv => SchemeBegin(expsv, pos))
-        case SchemeCase(key, clauses, default, pos) =>
-          tailcall(undefine1(key)).flatMap(
-            keyv =>
-              trampolineM((c: (List[SchemeValue], List[SchemeExp])) =>
-                            c match {
-                              case (vs, body) =>
-                                tailcall(undefineBody(body)).map(bodyv => (vs, bodyv))
-                          },
-                          clauses).flatMap(clausesv =>
-                tailcall(undefineBody(default)).map(defaultv =>
-                  SchemeCase(keyv, clausesv, defaultv, pos))))
         case SchemeAnd(args, pos) =>
           trampolineM(undefine1, args).map(argsv => SchemeAnd(argsv, pos))
         case SchemeOr(args, pos) => trampolineM(undefine1, args).map(argsv => SchemeOr(argsv, pos))

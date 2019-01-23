@@ -63,10 +63,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       extends SchemeFrame
   case class FrameSet(variable: Identifier, env: Env)    extends SchemeFrame
   case class FrameBegin(rest: List[SchemeExp], env: Env) extends SchemeFrame
-  case class FrameCase(clauses: List[(List[SchemeValue], List[SchemeExp])],
-                       default: List[SchemeExp],
-                       env: Env)
-      extends SchemeFrame
   case class FrameAnd(rest: List[SchemeExp], env: Env)   extends SchemeFrame
   case class FrameOr(rest: List[SchemeExp], env: Env)    extends SchemeFrame
   case class FrameDefine(variable: Identifier, env: Env) extends SchemeFrame
@@ -282,8 +278,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       funcallArgs(f, fexp, List(), bindings.map(_._2), env2, store.extend(a, f), t)
     case SchemeSet(variable, exp, _) => Action.Push(FrameSet(variable, env), exp, env, store)
     case SchemeBegin(body, _)        => evalBody(body, env, store)
-    case SchemeCase(key, clauses, default, _) =>
-      Action.Push(FrameCase(clauses, default, env), key, env, store)
     case SchemeAnd(Nil, _)                  => Action.Value(bool(true), store)
     case SchemeAnd(exp :: exps, _)          => Action.Push(FrameAnd(exps, env), exp, env, store)
     case SchemeOr(Nil, _)                   => Action.Value(bool(false), store)
@@ -362,24 +356,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
         case None    => Action.Err(UnboundVariable(variable))
       }
     case FrameBegin(body, env) => evalBody(body, env, store)
-    case FrameCase(clauses, default, env) => {
-      val fromClauses = clauses.flatMap({
-        case (values, body) =>
-          if (values.exists({
-                case SchemeValue(ValueSymbol(s), _) =>
-                  subsumes(v, symbol(s))
-                case v2 => evalValue(v2.value).exists(v2 => subsumes(v, v2))
-              })) {
-            /* TODO: precision could be improved by restricting v to v2 */
-            evalBody(body, env, store)
-          } else {
-            Action.None
-          }
-      })
-      /* TODO: precision could be improved in cases where we know that default is not
-       * reachable */
-      fromClauses.toSet ++ evalBody(default, env, store)
-    }
     case FrameAnd(Nil, _) =>
       conditional(v, Action.Value(v, store), Action.Value(bool(false), store))
     case FrameAnd(e :: rest, env) =>

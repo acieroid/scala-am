@@ -131,7 +131,7 @@ object SchemeBody {
 
 /**
   * A cond expression: (cond (test1 body1...) ...).
-  * Desugared according to R5RS
+  * Desugared according to R5RS.
  */
 object SchemeCond {
   def apply(clauses: List[(SchemeExp, List[SchemeExp])], pos: Position): SchemeExp =
@@ -146,29 +146,37 @@ object SchemeCond {
 }
 
 /**
-  * A case expression: (case key ((vals1...) body1...) ... (else default...))
+  * A case expression: (case key ((vals1...) body1...) ... (else default...)).
+  * Desugared according to R5RS.
   */
-case class SchemeCase(key: SchemeExp,
-                      clauses: List[(List[SchemeValue], List[SchemeExp])],
-                      default: List[SchemeExp],
-                      pos: Position)
-    extends SchemeExp {
-  override def toString = {
-    val c = clauses
-      .map({
-        case (datums, cons) => {
-          val d = datums.mkString(" ")
-          val b = cons.mkString(" ")
-          s"(($d) $b)"
-        }
-      })
-      .mkString(" ")
-    if (default.isEmpty) {
-      s"(case $key $c)"
-    } else {
-      s"(case $key $c (else ${default.mkString(" ")}))"
+object SchemeCase {
+  def apply(key: SchemeExp,
+    clauses: List[(List[SchemeValue], List[SchemeExp])],
+    default: List[SchemeExp],
+    pos: Position): SchemeExp = key match {
+      case _: SchemeVar | _: SchemeValue | SchemeQuoted(SExpId(_), _) =>
+        /* Atomic key */
+        val eqv = SchemeVar(Identifier("eq?", NoPosition)) /* TODO: should be eqv? instead of eq? */
+        clauses.foldRight[SchemeExp](SchemeBody(default))((clause, acc) =>
+          /* In R5RS, the condition is desugared into a (memv key '(atoms ...)) call. This
+           * would mean we would have to construct a list and go through it,
+           * which would badly impact precision. Hence, we instead explicitly do
+           * a big-or with eq? */
+          SchemeIf(
+            SchemeOr(clause._1.map(atom => SchemeFuncall(eqv, List(key,
+              atom match {
+                case SchemeValue(ValueSymbol(sym), pos) =>
+                  SchemeQuoted(SExpId(Identifier(sym, pos)), pos)
+                case _ => atom
+              }), atom.pos)), pos),
+            SchemeBody(clause._2),
+            acc, pos))
+      case _ =>
+        /* Non-atomic key, let-bind it */
+        val id = Identifier("__case-atom-key", key.pos)
+        SchemeLet(List((id, key)),
+          List(SchemeCase(SchemeVar(id), clauses, default, pos)), key.pos)
     }
-  }
 }
 
 /**
