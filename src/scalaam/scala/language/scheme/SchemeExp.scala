@@ -1,6 +1,6 @@
 package scalaam.language.scheme
 
-import scalaam.core.{Position, Identifier}
+import scalaam.core.{Position, NoPosition, Identifier}
 import scalaam.language.sexp._
 
 /**
@@ -118,23 +118,31 @@ case class SchemeBegin(exps: List[SchemeExp], pos: Position) extends SchemeExp {
     s"(begin $body)"
   }
 }
+/**
+  * Used to create a begin if there are multiple statements, and a single exp if there is only one
+ */
+object SchemeBody {
+  def apply(exps: List[SchemeExp]): SchemeExp = exps match {
+    case Nil => SchemeValue(ValueBoolean(false), NoPosition) /* undefined */
+    case exp :: Nil => exp
+    case exp :: _ => SchemeBegin(exps, exp.pos)
+  }
+}
 
 /**
-  * A cond expression: (cond (test1 body1...) ...)
-  */
-case class SchemeCond(clauses: List[(SchemeExp, List[SchemeExp])], pos: Position)
-    extends SchemeExp {
-  override def toString = {
-    val c = clauses
-      .map({
-        case (cond, cons) => {
-          val b = cons.mkString(" ")
-          s"($cond $b)"
-        }
+  * A cond expression: (cond (test1 body1...) ...).
+  * Desugared according to R5RS
+ */
+object SchemeCond {
+  def apply(clauses: List[(SchemeExp, List[SchemeExp])], pos: Position): SchemeExp =
+    if (clauses.isEmpty) {
+      throw new Exception(s"Invalid Scheme cond without clauses ($pos)")
+    } else {
+      clauses.foldRight[SchemeExp](SchemeValue(ValueBoolean(false /* undefined */), NoPosition))((clause, acc) => clause match {
+        case (SchemeValue(ValueBoolean(true), _), body) => SchemeBody(body)
+        case (cond, body) => SchemeIf(cond, SchemeBody(body), acc, cond.pos)
       })
-      .mkString(" ")
-    s"(cond $c)"
-  }
+    }
 }
 
 /**

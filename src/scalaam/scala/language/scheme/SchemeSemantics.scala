@@ -63,8 +63,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       extends SchemeFrame
   case class FrameSet(variable: Identifier, env: Env)    extends SchemeFrame
   case class FrameBegin(rest: List[SchemeExp], env: Env) extends SchemeFrame
-  case class FrameCond(cons: List[SchemeExp], clauses: List[(SchemeExp, List[SchemeExp])], env: Env)
-      extends SchemeFrame
   case class FrameCase(clauses: List[(List[SchemeValue], List[SchemeExp])],
                        default: List[SchemeExp],
                        env: Env)
@@ -284,9 +282,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       funcallArgs(f, fexp, List(), bindings.map(_._2), env2, store.extend(a, f), t)
     case SchemeSet(variable, exp, _) => Action.Push(FrameSet(variable, env), exp, env, store)
     case SchemeBegin(body, _)        => evalBody(body, env, store)
-    case SchemeCond(Nil, _)          => Action.Err(NotSupported("cond without clauses"))
-    case SchemeCond((cond, cons) :: clauses, _) =>
-      Action.Push(FrameCond(cons, clauses, env), cond, env, store)
     case SchemeCase(key, clauses, default, _) =>
       Action.Push(FrameCase(clauses, default, env), key, env, store)
     case SchemeAnd(Nil, _)                  => Action.Value(bool(true), store)
@@ -367,15 +362,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
         case None    => Action.Err(UnboundVariable(variable))
       }
     case FrameBegin(body, env) => evalBody(body, env, store)
-    case FrameCond(cons, clauses, env) =>
-      conditional(
-        v,
-        if (cons.isEmpty) { Action.Value(v, store) } else { evalBody(cons, env, store) },
-        clauses match {
-          case Nil                  => Action.Value(bool(false), store)
-          case (exp, cons2) :: rest => Action.Push(FrameCond(cons2, rest, env), exp, env, store)
-        }
-      )
     case FrameCase(clauses, default, env) => {
       val fromClauses = clauses.flatMap({
         case (values, body) =>

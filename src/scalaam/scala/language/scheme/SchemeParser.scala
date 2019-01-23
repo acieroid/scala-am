@@ -3,7 +3,7 @@ package scalaam.language.scheme
 import scalaam.core.{Position, Identifier}
 import scalaam.language.sexp._
 
-/* TODO[easy]: use trampolines (scala.util.control.TailCalls) to ensure that we can parse anything without blowing up the stack */
+/* TODO[easy]: use trampolines (scala.util.control.TailCalls) to ensure that we can parse anything without blowing up the stack (see SchemeUndefiner) */
 /* TODO[easy]: free vars function (Noah?), and other helpers? */
 
 /**
@@ -289,21 +289,6 @@ object SchemeRenamer {
       renameList(body, names, count) match {
         case (body1, count1) => (SchemeBegin(body1, pos), count1)
       }
-    case SchemeCond(clauses, pos) =>
-      clauses.foldLeft((List[(SchemeExp, List[SchemeExp])](), count))(
-        (st: (List[(SchemeExp, List[SchemeExp])], CountMap), cl: (SchemeExp, List[SchemeExp])) =>
-          (st, cl) match {
-            case ((l, cs), (e, body)) =>
-              rename(e, names, cs) match {
-                case (e1, count1) =>
-                  renameList(body, names, count1) match {
-                    case (body1, count2) =>
-                      ((e1, body1) :: l, count2)
-                  }
-              }
-        }) match {
-        case (l, count1) => (SchemeCond(l.reverse, pos), count1)
-      }
     case SchemeCase(exp, clauses, default, pos) =>
       rename(exp, names, count) match {
         case (exp1, count1) =>
@@ -513,16 +498,6 @@ object SchemeUndefiner {
           tailcall(undefine1(value)).map(v => SchemeSet(variable, v, pos))
         case SchemeBegin(exps, pos) =>
           tailcall(undefineBody(exps)).map(expsv => SchemeBegin(expsv, pos))
-        case SchemeCond(clauses, pos) =>
-          trampolineM(
-            (e: (SchemeExp, List[SchemeExp])) =>
-              e match {
-                case (cond, body) =>
-                  tailcall(undefine1(cond)).flatMap(condv =>
-                    tailcall(undefineBody(body)).map(bodyv => (condv, bodyv)))
-            },
-            clauses
-          ).map(clausesv => SchemeCond(clausesv, pos))
         case SchemeCase(key, clauses, default, pos) =>
           tailcall(undefine1(key)).flatMap(
             keyv =>
