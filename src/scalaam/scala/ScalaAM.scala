@@ -46,19 +46,19 @@ object SchemeRun {
     Type.Sym]
   val sem = new BaseSchemeSemantics[address.A, lattice.L, timestamp.T, SchemeExp](
     address.Alloc[timestamp.T, SchemeExp])
-  val machine = new AAM[SchemeExp, address.A, lattice.L, timestamp.T](sem)
-  val graph   = DotGraph[machine.State, machine.Transition]
+  val machine = new AAMLKSS[SchemeExp, address.A, lattice.L, timestamp.T](sem)
+  val graph   = new DotGraph[machine.State, machine.Transition]
 
   def run(file: String, timeout: Timeout.T = Timeout.seconds(10)) = {
     val f = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
+    f.close()
     val t0 = System.nanoTime
     val result = machine.run[graph.G](
       SchemeParser.parse(content),
       timeout)
     val t1 = System.nanoTime
     if (timeout.reached) { println("Time out!") } else { println(s"Time: ${(t1 - t0) / 1000000}ms") }
-    f.close()
     result.toFile("foo.dot")
     import Graph.GraphOps
     println(s"States: ${result.nodes}")

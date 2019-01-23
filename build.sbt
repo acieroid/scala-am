@@ -1,6 +1,6 @@
 name := "scalaam"
 version := "0.1.2018"
-scalaVersion := "2.12.7"
+scalaVersion := "2.12.8"
 
 /* Dependencies */
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.1"

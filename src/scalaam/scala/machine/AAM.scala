@@ -5,6 +5,41 @@ import Graph.GraphOps
 import scalaam.core._
 import scalaam.util.Show
 
+/** Control component of the machine. This is factored out of the AAM class to
+  * enable reusability by similar machine abstractions */
+abstract class ControlComponent[Exp, A <: Address, V] {
+  trait Control extends SmartHash
+  case class ControlEval(exp: Exp, env: Environment[A]) extends Control {
+    override def toString = s"ev(${exp})"
+  }
+  case class ControlKont(v: V) extends Control {
+    override def toString = s"ko(${v})"
+  }
+  case class ControlError(err: Error) extends Control {
+    override def toString = s"err($err)"
+  }
+}
+
+/** Continuations are factored out to enable reusability */
+abstract class Kontinuations[Exp, T] {
+  /** Kontinuation addresses */
+  trait KA extends Address with SmartHash {
+    def printable = true
+  }
+  case class KontAddr(exp: Exp, time: T) extends KA {
+    override def toString = s"Kont(${exp.toString.take(10)})"
+  }
+  case object HaltKontAddr               extends KA {
+    override def toString = "Halt"
+  }
+
+  case class Kont(f: Frame, next: KA) extends SmartHash
+  implicit val kontShow = new Show[Kont] {
+    def show(k: Kont) = "kont($f)"
+  }
+  implicit val kontSetLattice = Lattice.SetLattice[Kont]
+}
+
 /**
   * Implementation of a CESK machine following the AAM approach (Van Horn, David,
   * and Matthew Might. "Abstracting abstract machines." ACM Sigplan
@@ -33,33 +68,12 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   val Action = sem.Action
 
   /** Control component */
-  trait Control extends SmartHash
-  case class ControlEval(exp: Exp, env: Environment[A]) extends Control {
-    override def toString = s"ev(${exp})"
-  }
-  case class ControlKont(v: V) extends Control {
-    override def toString = s"ko(${v})"
-  }
-  case class ControlError(err: Error) extends Control {
-    override def toString = s"err($err)"
-  }
+  object ControlComp extends ControlComponent[Exp, A, V]
+  import ControlComp._
 
-  /** Kontinuation addresses */
-  trait KA extends Address with SmartHash {
-    def printable = true
-  }
-  case class KontAddr(exp: Exp, time: T) extends KA {
-    override def toString = s"Kont(${exp.toString.take(10)})"
-  }
-  case object HaltKontAddr               extends KA {
-    override def toString = "Halt"
-  }
-
-  case class Kont(f: Frame, next: KA) extends SmartHash
-  implicit val kontShow = new Show[Kont] {
-    def show(k: Kont) = "kont($f)"
-  }
-  implicit val kontSetLattice = Lattice.SetLattice[Kont]
+  /** Continuations */
+  object Konts extends Kontinuations[Exp, T]
+  import Konts._
 
   /**
     * A machine state is made of a control component, a value store, a
@@ -230,7 +244,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
       /* Start with the initial state resulting from injecting the program */
       Vector(State.inject(program, sem.initialEnv, sem.initialStore)).toSeq,
       /* Initially we didn't visit any state */
-      VisitedSet.SetVisitedSet.empty[State],
+      VisitedSet.MapVisitedSet.empty[State],
       /* The initial graph is given */
       Graph[G, State, Transition].empty
     )
