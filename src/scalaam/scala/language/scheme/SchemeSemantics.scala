@@ -66,83 +66,11 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   case class FrameAnd(rest: List[SchemeExp], env: Env)   extends SchemeFrame
   case class FrameOr(rest: List[SchemeExp], env: Env)    extends SchemeFrame
   case class FrameDefine(variable: Identifier, env: Env) extends SchemeFrame
-  case class FrameDoInit(vars: List[(Identifier, V, Option[SchemeExp])],
-                         variable: Identifier,
-                         step: Option[SchemeExp],
-                         toeval: List[(Identifier, SchemeExp, Option[SchemeExp])],
-                         test: SchemeExp,
-                         finals: List[SchemeExp],
-                         commands: List[SchemeExp],
-                         env: Env)
-      extends SchemeFrame
-  case class FrameDoBody(toeval: List[SchemeExp],
-                         vars: List[(Identifier, V, Option[SchemeExp])],
-                         test: SchemeExp,
-                         finals: List[SchemeExp],
-                         commands: List[SchemeExp],
-                         env: Env)
-      extends SchemeFrame
-  case class FrameDoStep(vars: List[(Identifier, V, Option[SchemeExp])],
-                         variable: Identifier,
-                         step: Option[SchemeExp],
-                         toeval: List[(Identifier, V, Option[SchemeExp])],
-                         test: SchemeExp,
-                         finals: List[SchemeExp],
-                         commands: List[SchemeExp],
-                         env: Env)
-      extends SchemeFrame
-  case class FrameDoTest(vars: List[(Identifier, V, Option[SchemeExp])],
-                         test: SchemeExp,
-                         finals: List[SchemeExp],
-                         commands: List[SchemeExp],
-                         env: Env)
-      extends SchemeFrame
 
   protected def evalBody(body: List[SchemeExp], env: Env, store: Sto): Actions = body match {
     case Nil         => Action.Value(bool(false), store)
     case List(exp)   => Action.Eval(exp, env, store)
     case exp :: rest => Action.Push(FrameBegin(rest, env), exp, env, store)
-  }
-
-  def evalDoBody(toeval: List[SchemeExp],
-                 vars: List[(Identifier, V, Option[SchemeExp])],
-                 test: SchemeExp,
-                 finals: List[SchemeExp],
-                 commands: List[SchemeExp],
-                 t: T,
-                 env: Env,
-                 store: Sto): Actions = toeval match {
-    case Nil => evalDoStep(Nil, vars, test, finals, commands, t, env, store)
-    case exp :: rest =>
-      Action.Push(FrameDoBody(rest, vars, test, finals, commands, env), exp, env, store)
-  }
-  def evalDoStep(vars: List[(Identifier, V, Option[SchemeExp])],
-                 toeval: List[(Identifier, V, Option[SchemeExp])],
-                 test: SchemeExp,
-                 finals: List[SchemeExp],
-                 commands: List[SchemeExp],
-                 t: T,
-                 env: Env,
-                 store: Sto): Actions = toeval match {
-    case Nil =>
-      val vars2 = vars.reverse
-      val store2 = vars2.foldLeft(store)({
-        case (store, (_, _, None)) => store
-        case (store, (variable, value, Some(_))) =>
-          env.lookup(variable.name) match {
-            case Some(a) => store.update(a, value)
-            case None =>
-              throw new Exception(s"unbound variable $variable") // TODO: it SHOULD be bound
-          }
-      })
-      Action.Push(FrameDoTest(vars, test, finals, commands, env), test, env, store2)
-    case (variable, v, None) :: rest =>
-      evalDoStep((variable, v, None) :: vars, rest, test, finals, commands, t, env, store)
-    case (variable, _, Some(step)) :: rest =>
-      Action.Push(FrameDoStep(vars, variable, Some(step), rest, test, finals, commands, env),
-                  step,
-                  env,
-                  store)
   }
 
   def conditional(v: V, t: => Actions, f: => Actions): Actions =
@@ -291,13 +219,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       //val store1 = store.extend(a, v)
       Action.Value(v, store)
     }
-    case SchemeDo(Nil, test, finals, commands, _) =>
-      Action.Push(FrameDoTest(Nil, test, finals, commands, env), test, env, store)
-    case SchemeDo((name, init, step) :: vars, test, finals, commands, _) =>
-      Action.Push(FrameDoInit(List(), name, step, vars, test, finals, commands, env),
-                  init,
-                  env,
-                  store)
     case SchemeVar(variable) =>
       env.lookup(variable.name) match {
         case Some(a) =>
@@ -368,41 +289,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       conditional(v, Action.Value(v, store), Action.Push(FrameOr(rest, env), e, env, store))
     case FrameDefine(_, _) =>
       throw new Exception("TODO: define not handled (no global environment)")
-    case FrameDoInit(vars, name, step, Nil, test, finals, commands, env) =>
-      val vars2     = ((name, v, step) :: vars).reverse
-      val addresses = vars2.map({ case (variable, _, _) => allocator.variable(variable, t) })
-      val (env2, store2) = vars2
-        .zip(addresses)
-        .foldLeft((env, store))({
-          case ((env, store), ((variable, value, _), a)) =>
-            (env.extend(variable.name, a), store.extend(a, value))
-        })
-      Action.Push(FrameDoTest(vars2, test, finals, commands, env2), test, env2, store2)
-    case FrameDoInit(vars,
-                     name,
-                     step,
-                     (name2, init, step2) :: toeval,
-                     test,
-                     finals,
-                     commands,
-                     env) =>
-      Action.Push(
-        FrameDoInit((name, v, step) :: vars, name2, step2, toeval, test, finals, commands, env),
-        init,
-        env,
-        store)
-    case FrameDoTest(vars, test, finals, commands, env) =>
-      conditional(
-        v,
-        /* eval to true, run finals */
-        evalBody(finals, env, store),
-        /* eval to false, run commands and keep iterating */
-        evalDoBody(commands, vars, test, finals, commands, t, env, store)
-      )
-    case FrameDoBody(toeval, vars, test, finals, commands, env) =>
-      evalDoBody(toeval, vars, test, finals, commands, t, env, store)
-    case FrameDoStep(vars, variable, step, toeval, test, finals, commands, env) =>
-      evalDoStep((variable, v, step) :: vars, toeval, test, finals, commands, t, env, store)
   }
 
   override def initialBindings =

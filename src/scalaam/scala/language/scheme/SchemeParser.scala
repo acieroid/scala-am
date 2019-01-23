@@ -483,29 +483,6 @@ object SchemeUndefiner {
         case SchemeAnd(args, pos) =>
           trampolineM(undefine1, args).map(argsv => SchemeAnd(argsv, pos))
         case SchemeOr(args, pos) => trampolineM(undefine1, args).map(argsv => SchemeOr(argsv, pos))
-        case SchemeDo(vars, test, finals, commands, pos) =>
-          trampolineM(
-            (x: (Identifier, SchemeExp, Option[SchemeExp])) =>
-              x match {
-                case (id, init, step) =>
-                  tailcall(undefine1(init)).flatMap(initv =>
-                    step match {
-                      case Some(s) =>
-                        undefine1(s).map(stepv => {
-                          val x: Option[SchemeExp] = Some(stepv)
-                          (id, initv, x)
-                        })
-                      case None =>
-                        val x: Option[SchemeExp] = None
-                        done((id, initv, x))
-                  })
-            },
-            vars
-          ).flatMap(varsv =>
-            tailcall(undefine1(test)).flatMap(testv =>
-              tailcall(undefineBody(finals)).flatMap(finalsv =>
-                tailcall(undefineBody(commands).map(commandsv =>
-                  SchemeDo(varsv, testv, finalsv, commandsv, pos))))))
         case SchemeVar(id)             => done(SchemeVar(id))
         case SchemeQuoted(quoted, pos) => done(SchemeQuoted(quoted, pos))
         case SchemeValue(value, pos)   => done(SchemeValue(value, pos))

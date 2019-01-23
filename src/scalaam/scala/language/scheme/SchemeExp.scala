@@ -89,6 +89,7 @@ case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)],
 
 /**
   * Named-let: (let name ((v1 e1) ...) body...)
+  * TODO: desugar to letrec according to R5RS
   */
 case class SchemeNamedLet(name: Identifier,
                           bindings: List[(Identifier, SchemeExp)],
@@ -223,8 +224,28 @@ case class SchemeDefineFunction(name: Identifier,
 }
 
 /**
-  * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...)
-  */
+  * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...).
+  * Desugared according to R5SR.
+ */
+object SchemeDo {
+  def apply(vars: List[(Identifier, SchemeExp, Option[SchemeExp])],
+    test: SchemeExp,
+    finals: List[SchemeExp],
+    commands: List[SchemeExp],
+    pos: Position): SchemeExp = {
+    val loopId = Identifier("__do_loop", pos)
+    SchemeLetrec(
+      List((loopId, SchemeLambda(vars.map(_._1),
+        List(SchemeIf(test,
+          SchemeBody(finals),
+          SchemeBody(commands :::
+            List(SchemeFuncall(SchemeVar(loopId), vars.map({
+              case (_, _, Some(step)) => step
+              case (id, _, None) => SchemeVar(id)
+            }), pos))), pos)), pos))),
+      List(SchemeFuncall(SchemeVar(loopId), vars.map(_._2), pos)), pos)
+  }
+}
 case class SchemeDo(vars: List[(Identifier, SchemeExp, Option[SchemeExp])],
                     test: SchemeExp,
                     finals: List[SchemeExp],
