@@ -6,4 +6,4 @@ jdk:
   - oraclejdk8
   - openjdk8
 
-script: sbt test
+script: travis_wait sbt test
