@@ -119,30 +119,33 @@ case class SchemeBegin(exps: List[SchemeExp], pos: Position) extends SchemeExp {
     s"(begin $body)"
   }
 }
+
 /**
   * Used to create a begin if there are multiple statements, and a single exp if there is only one
- */
+  */
 object SchemeBody {
   def apply(exps: List[SchemeExp]): SchemeExp = exps match {
-    case Nil => SchemeValue(ValueBoolean(false), NoPosition) /* undefined */
+    case Nil        => SchemeValue(ValueBoolean(false), NoPosition) /* undefined */
     case exp :: Nil => exp
-    case exp :: _ => SchemeBegin(exps, exp.pos)
+    case exp :: _   => SchemeBegin(exps, exp.pos)
   }
 }
 
 /**
   * A cond expression: (cond (test1 body1...) ...).
   * Desugared according to R5RS.
- */
+  */
 object SchemeCond {
   def apply(clauses: List[(SchemeExp, List[SchemeExp])], pos: Position): SchemeExp =
     if (clauses.isEmpty) {
       throw new Exception(s"Invalid Scheme cond without clauses ($pos)")
     } else {
-      clauses.foldRight[SchemeExp](SchemeValue(ValueBoolean(false /* undefined */), NoPosition))((clause, acc) => clause match {
-        case (SchemeValue(ValueBoolean(true), _), body) => SchemeBody(body)
-        case (cond, body) => SchemeIf(cond, SchemeBody(body), acc, cond.pos)
-      })
+      clauses.foldRight[SchemeExp](SchemeValue(ValueBoolean(false /* undefined */ ), NoPosition))(
+        (clause, acc) =>
+          clause match {
+            case (SchemeValue(ValueBoolean(true), _), body) => SchemeBody(body)
+            case (cond, body)                               => SchemeIf(cond, SchemeBody(body), acc, cond.pos)
+        })
     }
 }
 
@@ -152,32 +155,37 @@ object SchemeCond {
   */
 object SchemeCase {
   def apply(key: SchemeExp,
-    clauses: List[(List[SchemeValue], List[SchemeExp])],
-    default: List[SchemeExp],
-    pos: Position): SchemeExp = key match {
-      case _: SchemeVar | _: SchemeValue | SchemeQuoted(SExpId(_), _) =>
-        /* Atomic key */
-        val eqv = SchemeVar(Identifier("eq?", NoPosition)) /* TODO: should be eqv? instead of eq? */
-        clauses.foldRight[SchemeExp](SchemeBody(default))((clause, acc) =>
+            clauses: List[(List[SchemeValue], List[SchemeExp])],
+            default: List[SchemeExp],
+            pos: Position): SchemeExp = key match {
+    case _: SchemeVar | _: SchemeValue | SchemeQuoted(SExpId(_), _) =>
+      /* Atomic key */
+      val eqv = SchemeVar(Identifier("eq?", NoPosition)) /* TODO: should be eqv? instead of eq? */
+      clauses.foldRight[SchemeExp](SchemeBody(default))(
+        (clause, acc) =>
           /* In R5RS, the condition is desugared into a (memv key '(atoms ...)) call. This
            * would mean we would have to construct a list and go through it,
            * which would badly impact precision. Hence, we instead explicitly do
            * a big-or with eq? */
           SchemeIf(
-            SchemeOr(clause._1.map(atom => SchemeFuncall(eqv, List(key,
-              atom match {
-                case SchemeValue(ValueSymbol(sym), pos) =>
-                  SchemeQuoted(SExpId(Identifier(sym, pos)), pos)
-                case _ => atom
-              }), atom.pos)), pos),
+            SchemeOr(
+              clause._1.map(atom =>
+                SchemeFuncall(eqv, List(key, atom match {
+                  case SchemeValue(ValueSymbol(sym), pos) =>
+                    SchemeQuoted(SExpId(Identifier(sym, pos)), pos)
+                  case _ => atom
+                }), atom.pos)),
+              pos
+            ),
             SchemeBody(clause._2),
-            acc, pos))
-      case _ =>
-        /* Non-atomic key, let-bind it */
-        val id = Identifier("__case-atom-key", key.pos)
-        SchemeLet(List((id, key)),
-          List(SchemeCase(SchemeVar(id), clauses, default, pos)), key.pos)
-    }
+            acc,
+            pos
+        ))
+    case _ =>
+      /* Non-atomic key, let-bind it */
+      val id = Identifier("__case-atom-key", key.pos)
+      SchemeLet(List((id, key)), List(SchemeCase(SchemeVar(id), clauses, default, pos)), key.pos)
+  }
 }
 
 /**
@@ -226,24 +234,34 @@ case class SchemeDefineFunction(name: Identifier,
 /**
   * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...).
   * Desugared according to R5SR.
- */
+  */
 object SchemeDo {
   def apply(vars: List[(Identifier, SchemeExp, Option[SchemeExp])],
-    test: SchemeExp,
-    finals: List[SchemeExp],
-    commands: List[SchemeExp],
-    pos: Position): SchemeExp = {
+            test: SchemeExp,
+            finals: List[SchemeExp],
+            commands: List[SchemeExp],
+            pos: Position): SchemeExp = {
     val loopId = Identifier("__do_loop", pos)
     SchemeLetrec(
-      List((loopId, SchemeLambda(vars.map(_._1),
-        List(SchemeIf(test,
-          SchemeBody(finals),
-          SchemeBody(commands :::
-            List(SchemeFuncall(SchemeVar(loopId), vars.map({
-              case (_, _, Some(step)) => step
-              case (id, _, None) => SchemeVar(id)
-            }), pos))), pos)), pos))),
-      List(SchemeFuncall(SchemeVar(loopId), vars.map(_._2), pos)), pos)
+      List(
+        (loopId,
+         SchemeLambda(
+           vars.map(_._1),
+           List(SchemeIf(
+             test,
+             SchemeBody(finals),
+             SchemeBody(commands :::
+               List(SchemeFuncall(SchemeVar(loopId), vars.map({
+               case (_, _, Some(step)) => step
+               case (id, _, None)      => SchemeVar(id)
+             }), pos))),
+             pos
+           )),
+           pos
+         ))),
+      List(SchemeFuncall(SchemeVar(loopId), vars.map(_._2), pos)),
+      pos
+    )
   }
 }
 case class SchemeDo(vars: List[(Identifier, SchemeExp, Option[SchemeExp])],

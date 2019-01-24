@@ -22,6 +22,7 @@ abstract class ControlComponent[Exp, A <: Address, V] {
 
 /** Continuations are factored out to enable reusability */
 abstract class Kontinuations[Exp, T] {
+
   /** Kontinuation addresses */
   trait KA extends Address with SmartHash {
     def printable = true
@@ -29,7 +30,7 @@ abstract class Kontinuations[Exp, T] {
   case class KontAddr(exp: Exp, time: T) extends KA {
     override def toString = s"Kont(${exp.toString.take(10)})"
   }
-  case object HaltKontAddr               extends KA {
+  case object HaltKontAddr extends KA {
     override def toString = "Halt"
   }
 
@@ -81,7 +82,8 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
     * continuation lives.
     */
   case class State(control: Control, store: Store[A, V], kstore: Store[KA, Set[Kont]], a: KA, t: T)
-      extends GraphElement with SmartHash {
+      extends GraphElement
+      with SmartHash {
     override def toString = control.toString
 
     override def label = toString

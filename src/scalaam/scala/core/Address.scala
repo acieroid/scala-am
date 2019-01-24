@@ -14,10 +14,13 @@ trait Address extends SmartHash {
   * timestamps of type T, and contexts of type C */
 trait Allocator[A <: Address, T, C] {
   implicit val timestamp: Timestamp[T, C]
+
   /** Allocate a variable given an identifier */
   def variable(name: Identifier, t: T): A
+
   /** Allocate a pointer given some information of type E (usually an expression) */
   def pointer[E](e: E, t: T): A
+
   /** Allocate a primitive */
   def primitive(name: String): A
 }
@@ -32,10 +35,12 @@ object NameAddress {
     def printable         = true
     override def toString = s"@${name.name}"
   }
+
   /** The address for a pointer */
   case class Pointer[E](e: E) extends A {
     def printable = false
   }
+
   /** The address of a primitive */
   case class Primitive(name: String) extends A {
     def printable = false

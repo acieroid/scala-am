@@ -36,13 +36,13 @@ trait Store[A <: Address, V] extends SmartHash {
 /** Basic store with no fancy feature, just a map from addresses to values */
 case class BasicStore[A <: Address, V](val content: Map[A, V])(implicit val lat: Lattice[V])
     extends Store[A, V] {
-  override def toString               = content.filterKeys(_.printable).mkString("\n")
-  def keys                            = content.keys
-  def forall(p: ((A, V)) => Boolean)  = content.forall({ case (a, v) => p((a, v)) })
-  def lookup(a: A)                    = content.get(a)
+  override def toString              = content.filterKeys(_.printable).mkString("\n")
+  def keys                           = content.keys
+  def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
+  def lookup(a: A)                   = content.get(a)
   def lookupDefault(a: A, default: V) = content.get(a) match {
     case Some(a) => a
-    case None => default
+    case None    => default
   }
   def lookupMF(a: A) = content.get(a) match {
     case Some(a) => MayFail.success(a)
