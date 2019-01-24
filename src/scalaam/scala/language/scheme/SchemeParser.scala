@@ -10,6 +10,9 @@ import scalaam.language.sexp._
   * Object that provides a method to compile an s-expression into a Scheme expression
   */
 object SchemeCompiler {
+  // TODO:
+  // class SchemeCompilerException(reason: String, position: Position) extends Exception(reason)
+  import scala.util.control.TailCalls._
 
   /**
     * Reserved keywords
@@ -17,126 +20,158 @@ object SchemeCompiler {
   def reserved: List[String] =
     List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do")
 
-  def compile(exp: SExp): SchemeExp = exp match {
+  def compile(exp: SExp): SchemeExp = _compile(exp).result
+
+  def _compile(exp: SExp): TailRec[SchemeExp] = exp match {
     case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(ValueNil, _), _), _) =>
-      compile(SExpQuoted(quoted, exp.pos))
+      _compile(SExpQuoted(quoted, exp.pos))
     case SExpPair(SExpId(Identifier("quote", _)), _, _) =>
       throw new Exception(s"Invalid Scheme quote: $exp (${exp.pos})")
     case SExpPair(SExpId(Identifier("lambda", _)),
                   SExpPair(args, SExpPair(first, rest, _), _),
                   _) =>
-      SchemeLambda(compileArgs(args), compile(first) :: compileBody(rest), exp.pos)
+      tailcall(compileArgs(args)).flatMap(
+        argsv => tailcall(_compile(first)).flatMap(
+          firstv => tailcall(compileBody(rest)).flatMap(restv =>
+            done(SchemeLambda(argsv, firstv :: restv, exp.pos)))))
     case SExpPair(SExpId(Identifier("lambda", _)), _, _) =>
       throw new Exception(s"Invalid Scheme lambda: $exp (${exp.pos})")
     case SExpPair(SExpId(Identifier("if", _)),
                   SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil, _), _), _), _),
-                  _) =>
-      SchemeIf(compile(cond), compile(cons), compile(alt), exp.pos)
+      _) =>
+      tailcall(_compile(cond)).flatMap(condv =>
+        tailcall(_compile(cons)).flatMap(consv =>
+          tailcall(_compile(alt)).flatMap(altv =>
+            done(SchemeIf(condv, consv, altv, exp.pos)))))
     case SExpPair(SExpId(Identifier("if", _)),
                   SExpPair(cond, SExpPair(cons, SExpValue(ValueNil, _), _), _),
                   _) =>
       /* Empty else branch is replaced by #f (R5RS states it's unspecified) */
-      SchemeIf(compile(cond), compile(cons), SchemeValue(ValueBoolean(false), exp.pos), exp.pos)
+      tailcall(_compile(cond)).flatMap(condv =>
+        tailcall(_compile(cons)).flatMap(consv =>
+          done(SchemeIf(condv, consv,  SchemeValue(ValueBoolean(false), exp.pos), exp.pos))))
     case SExpPair(SExpId(Identifier("if", _)), _, _) =>
       throw new Exception(s"Invalid Scheme if: $exp (${exp.pos})")
     case SExpPair(SExpId(Identifier("let", _)),
-                  SExpPair(SExpId(name), SExpPair(bindings, SExpPair(first, rest, _), _), _),
-                  _) =>
-      SchemeNamedLet(name, compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
+      SExpPair(SExpId(name), SExpPair(bindings, SExpPair(first, rest, _), _), _),
+      _) =>
+      tailcall(compileBindings(bindings)).flatMap(bindingsv =>
+        tailcall(_compile(first)).flatMap(firstv =>
+          tailcall(compileBody(rest)).flatMap(restv =>
+            done(SchemeNamedLet(name, bindingsv, firstv :: restv, exp.pos)))))
     case SExpPair(SExpId(Identifier("let", _)),
-                  SExpPair(bindings, SExpPair(first, rest, _), _),
-                  _) =>
-      SchemeLet(compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
+      SExpPair(bindings, SExpPair(first, rest, _), _),
+      _) =>
+      tailcall(compileBindings(bindings)).flatMap(bindingsv =>
+        tailcall(_compile(first)).flatMap(firstv =>
+          tailcall(compileBody(rest)).flatMap(restv =>
+            done(SchemeLet(bindingsv, firstv :: restv, exp.pos)))))
     case SExpPair(SExpId(Identifier("let", _)), _, _) =>
       throw new Exception(s"Invalid Scheme let: $exp")
     case SExpPair(SExpId(Identifier("let*", _)),
-                  SExpPair(bindings, SExpPair(first, rest, _), _),
-                  _) =>
-      SchemeLetStar(compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
+      SExpPair(bindings, SExpPair(first, rest, _), _),
+      _) =>
+      tailcall(compileBindings(bindings)).flatMap(bindingsv =>
+        tailcall(_compile(first)).flatMap(firstv =>
+          tailcall(compileBody(rest)).flatMap(restv =>
+            done(SchemeLetStar(bindingsv, firstv :: restv, exp.pos)))))
     case SExpPair(SExpId(Identifier("let*", _)), _, _) =>
       throw new Exception(s"Invalid Scheme let*: $exp")
     case SExpPair(SExpId(Identifier("letrec", _)),
                   SExpPair(bindings, SExpPair(first, rest, _), _),
-                  _) =>
-      SchemeLetrec(compileBindings(bindings), compile(first) :: compileBody(rest), exp.pos)
+      _) =>
+      tailcall(compileBindings(bindings)).flatMap(bindingsv =>
+        tailcall(_compile(first)).flatMap(firstv =>
+          tailcall(compileBody(rest)).flatMap(restv =>
+            done(SchemeLetrec(bindingsv, firstv :: restv, exp.pos)))))
     case SExpPair(SExpId(Identifier("letrec", _)), _, _) =>
       throw new Exception(s"Invalid Scheme letrec: $exp")
     case SExpPair(SExpId(Identifier("set!", _)),
                   SExpPair(SExpId(v), SExpPair(value, SExpValue(ValueNil, _), _), _),
-                  _) =>
-      SchemeSet(v, compile(value), exp.pos)
+      _) =>
+      tailcall(_compile(value)).flatMap(valuev =>
+        done(SchemeSet(v, valuev, exp.pos)))
     case SExpPair(SExpId(Identifier("set!", _)), _, _) =>
       throw new Exception(s"Invalid Scheme set!: $exp")
     case SExpPair(SExpId(Identifier("begin", _)), body, _) =>
-      SchemeBegin(compileBody(body), exp.pos)
+      tailcall(compileBody(body)).map(SchemeBegin(_, exp.pos))
     case SExpPair(SExpId(Identifier("cond", _)), clauses, _) =>
-      SchemeCond(compileCondClauses(clauses), exp.pos)
+      tailcall(compileCondClauses(clauses)).map(SchemeCond(_, exp.pos))
     case SExpPair(SExpId(Identifier("case", _)), SExpPair(exp, clauses, _), _) =>
-      val (c, d) = compileCaseClauses(clauses)
-      SchemeCase(compile(exp), c, d, exp.pos)
+      tailcall(compileCaseClauses(clauses)).flatMap({
+        case (c, d) => tailcall(_compile(exp)).map(expv => SchemeCase(expv, c, d, exp.pos))
+      })
     case SExpPair(SExpId(Identifier("and", _)), args, _) =>
-      SchemeAnd(compileBody(args), exp.pos)
+      tailcall(compileBody(args)).map(SchemeAnd(_, exp.pos))
     case SExpPair(SExpId(Identifier("or", _)), args, _) =>
-      SchemeOr(compileBody(args), exp.pos)
+      tailcall(compileBody(args)).map(SchemeOr(_, exp.pos))
     case SExpPair(SExpId(Identifier("define", _)),
                   SExpPair(SExpId(name), SExpPair(value, SExpValue(ValueNil, _), _), _),
-                  _) =>
-      SchemeDefineVariable(name, compile(value), exp.pos)
+      _) =>
+      tailcall(_compile(value)).map(SchemeDefineVariable(name, _, exp.pos))
     case SExpPair(SExpId(Identifier("define", _)),
                   SExpPair(SExpPair(SExpId(name), args, _), SExpPair(first, rest, _), _),
-                  _) =>
-      SchemeDefineFunction(name, compileArgs(args), compile(first) :: compileBody(rest), exp.pos)
+      _) =>
+      tailcall(compileArgs(args)).flatMap(argsv =>
+        tailcall(_compile(first)).flatMap(firstv =>
+          tailcall(compileBody(rest)).map(restv =>
+            SchemeDefineFunction(name, argsv, firstv :: restv, exp.pos))))
     case SExpPair(SExpId(Identifier("do", _)),
                   SExpPair(bindings, SExpPair(SExpPair(test, finals, _), commands, _), _),
-                  _) =>
-      SchemeDo(compileDoBindings(bindings),
-               compile(test),
-               compileBody(finals),
-               compileBody(commands),
-               exp.pos)
-
+      _) =>
+      tailcall(compileDoBindings(bindings)).flatMap(bindingsv =>
+        tailcall(_compile(test)).flatMap(testv =>
+          tailcall(compileBody(finals)).flatMap(finalsv =>
+            tailcall(compileBody(commands).map(commandsv =>
+              SchemeDo(bindingsv, testv, finalsv, commandsv, exp.pos))))))
     case SExpPair(f, args, _) =>
-      SchemeFuncall(compile(f), compileBody(args), exp.pos)
+      tailcall(_compile(f)).flatMap(fv =>
+        tailcall(compileBody(args)).map(argsv =>
+          SchemeFuncall(fv, argsv, exp.pos)))
     case SExpId(v) =>
       if (reserved.contains(v.name)) {
         throw new Exception(s"Invalid Scheme identifier (reserved): $exp")
       } else {
-        SchemeVar(v)
+        done(SchemeVar(v))
       }
-    case SExpValue(value, _)   => SchemeValue(value, exp.pos)
-    case SExpQuoted(quoted, _) => SchemeQuoted(quoted, exp.pos)
+    case SExpValue(value, _)   => done(SchemeValue(value, exp.pos))
+    case SExpQuoted(quoted, _) => done(SchemeQuoted(quoted, exp.pos))
   }
 
-  def compileArgs(args: SExp): List[Identifier] = args match {
-    case SExpPair(SExpId(id), rest, _) => id :: compileArgs(rest)
-    case SExpValue(ValueNil, _)        => Nil
+  def compileArgs(args: SExp): TailRec[List[Identifier]] = args match {
+    case SExpPair(SExpId(id), rest, _) => tailcall(compileArgs(rest)).map(restv => id :: restv)
+    case SExpValue(ValueNil, _)        => done(Nil)
     case _                             => throw new Exception(s"Invalid Scheme argument list: $args (${args.pos})")
   }
 
-  def compileBody(body: SExp): List[SchemeExp] = body match {
-    case SExpPair(exp, rest, _) => compile(exp) :: compileBody(rest)
-    case SExpValue(ValueNil, _) => Nil
+  def compileBody(body: SExp): TailRec[List[SchemeExp]] = body match {
+    case SExpPair(exp, rest, _) => tailcall(_compile(exp)).flatMap(expv => tailcall(compileBody(rest)).map(restv => expv :: restv))
+    case SExpValue(ValueNil, _) => done(Nil)
     case _                      => throw new Exception(s"Invalid Scheme body: $body (${body.pos})")
   }
 
-  def compileBindings(bindings: SExp): List[(Identifier, SchemeExp)] = bindings match {
+  def compileBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp)]] = bindings match {
     case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
       if (reserved.contains(v.name)) {
         throw new Exception(s"Invalid Scheme identifier (reserved): $v (${bindings.pos})")
       } else {
-        (v, compile(value)) :: compileBindings(rest)
+        tailcall(_compile(value)).flatMap(valuev =>
+          tailcall(compileBindings(rest)).map(restv =>
+            (v, valuev) :: restv))
       }
-    case SExpValue(ValueNil, _) => Nil
+    case SExpValue(ValueNil, _) => done(Nil)
     case _                      => throw new Exception(s"Invalid Scheme bindings: $bindings (${bindings.pos})")
   }
 
-  def compileDoBindings(bindings: SExp): List[(Identifier, SchemeExp, Option[SchemeExp])] =
+  def compileDoBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp, Option[SchemeExp])]] =
     bindings match {
       case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
         if (reserved.contains(v.name)) {
           throw new Exception(s"Invalid Scheme identifier (reserved): $v (${bindings.pos})")
         } else {
-          (v, compile(value), None) :: compileDoBindings(rest)
+          tailcall(_compile(value)).flatMap(valuev =>
+            tailcall(compileDoBindings(rest)).map(restv =>
+              (v, valuev, None) :: restv))
         }
       case SExpPair(
           SExpPair(SExpId(v), SExpPair(value, SExpPair(step, SExpValue(ValueNil, _), _), _), _),
@@ -145,46 +180,65 @@ object SchemeCompiler {
         if (reserved.contains(v.name)) {
           throw new Exception(s"Invalid Scheme identifier (reserved): $v (${bindings.pos})")
         } else {
-          (v, compile(value), Some(compile(step))) :: compileDoBindings(rest)
+          tailcall(_compile(value)).flatMap(valuev =>
+            tailcall(_compile(step)).flatMap(stepv =>
+              tailcall(compileDoBindings(rest)).map(restv =>
+                (v, valuev, Some(stepv)) :: restv)))
         }
-      case SExpValue(ValueNil, _) => Nil
+      case SExpValue(ValueNil, _) => done(Nil)
       case _                      => throw new Exception(s"Invalid Scheme do-bindings: $bindings (${bindings.pos})")
     }
 
-  def compileCondClauses(clauses: SExp): List[(SchemeExp, List[SchemeExp])] = clauses match {
+  def compileCondClauses(clauses: SExp): TailRec[List[(SchemeExp, List[SchemeExp])]] = clauses match {
     case SExpPair(SExpPair(SExpId(Identifier("else", _)), SExpPair(first, rest, _), _),
                   SExpValue(ValueNil, _),
-                  _) =>
-      List((SchemeValue(ValueBoolean(true), clauses.pos), compile(first) :: compileBody(rest)))
+      _) =>
+      tailcall(_compile(first)).flatMap(firstv =>
+        tailcall(compileBody(rest)).map(restv =>
+          List((SchemeValue(ValueBoolean(true), clauses.pos), firstv :: restv))))
     case SExpPair(SExpPair(cond, SExpPair(first, rest, _), _), restClauses, _) =>
-      (compile(cond), compile(first) :: compileBody(rest)) :: compileCondClauses(restClauses)
+      tailcall(_compile(cond)).flatMap(condv =>
+        tailcall(_compile(first)).flatMap(firstv =>
+          tailcall(compileBody(rest)).flatMap(restv =>
+            tailcall(compileCondClauses(restClauses)).map(restClausesv =>
+              (condv, firstv :: restv) :: restClausesv))))
     case SExpPair(SExpPair(cond, SExpValue(ValueNil, _), _), restClauses, _) =>
-      (compile(cond), Nil) :: compileCondClauses(restClauses)
-    case SExpValue(ValueNil, _) => Nil
+      tailcall(_compile(cond)).flatMap(condv =>
+        tailcall(compileCondClauses(restClauses)).map(restClausesv =>
+          (condv, Nil) :: restClausesv))
+    case SExpValue(ValueNil, _) => done(Nil)
     case _                      => throw new Exception(s"Invalid Scheme cond clauses: $clauses ${clauses.pos})")
   }
 
   def compileCaseClauses(
-      clauses: SExp): (List[(List[SchemeValue], List[SchemeExp])], List[SchemeExp]) =
+      clauses: SExp): TailRec[(List[(List[SchemeValue], List[SchemeExp])], List[SchemeExp])] =
     clauses match {
       case SExpPair(SExpPair(SExpId(Identifier("else", _)), SExpPair(first, rest, _), _),
                     SExpValue(ValueNil, _),
-                    _) =>
-        (List(), compile(first) :: compileBody(rest))
+        _) =>
+        tailcall(_compile(first)).flatMap(firstv =>
+          tailcall(compileBody(rest)).map(restv =>
+            (List(), firstv :: restv)))
       case SExpPair(SExpPair(objects, body, _), restClauses, _) =>
-        val (compiled, default) = compileCaseClauses(restClauses)
-        ((compileCaseObjects(objects), compileBody(body)) :: compiled, default)
-      case SExpValue(ValueNil, _) => (Nil, Nil)
+        tailcall(compileCaseClauses(restClauses)).flatMap({
+          case (compiled, default) =>
+            tailcall(compileCaseObjects(objects)).flatMap(objectsv =>
+              tailcall(compileBody(body)).map(bodyv =>
+                ((objectsv, bodyv) :: compiled, default)))
+        })
+      case SExpValue(ValueNil, _) => done((Nil, Nil))
       case _                      => throw new Exception(s"Invalid Scheme case clauses: $clauses (${clauses.pos})")
     }
 
-  def compileCaseObjects(objects: SExp): List[SchemeValue] = objects match {
+  def compileCaseObjects(objects: SExp): TailRec[List[SchemeValue]] = objects match {
     case SExpPair(SExpValue(v, _), rest, _) =>
-      SchemeValue(v, objects.pos) :: compileCaseObjects(rest)
+      tailcall(compileCaseObjects(rest)).map(restv =>
+        SchemeValue(v, objects.pos) :: restv)
     case SExpPair(SExpId(id), rest, _) =>
       /* identifiers in case expressions are treated as symbols */
-      SchemeValue(ValueSymbol(id.name), id.pos) :: compileCaseObjects(rest)
-    case SExpValue(ValueNil, _) => Nil
+      tailcall(compileCaseObjects(rest)).map(restv =>
+        SchemeValue(ValueSymbol(id.name), id.pos) :: restv)
+    case SExpValue(ValueNil, _) => done(Nil)
     case _                      => throw new Exception(s"Invalid Scheme case objects: $objects (${objects.pos})")
   }
 }
