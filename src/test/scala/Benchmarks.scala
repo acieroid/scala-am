@@ -28,7 +28,7 @@ case class Benchmark(
 
 object BenchmarksUtil {
   def fileContent(bench: Benchmark): Option[String] = {
-    val f = scala.io.Source.fromFile(bench.file)
+    val f = scala.io.Source.fromFile(bench.file)(scala.io.Codec("UTF-8"))
     val content = f.getLines.mkString("\n")
     f.close()
     Option(content)
