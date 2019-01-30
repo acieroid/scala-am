@@ -26,7 +26,7 @@ class SchemeParserTests extends FlatSpec with Matchers {
       }))
 }
 
-class LexerSpec extends PropSpec with TableDrivenPropertyChecks with Matchers {
+class LexerTests extends PropSpec with TableDrivenPropertyChecks with Matchers {
   val lexical = new SExpLexer
   def checkExpected(parser: lexical.Parser[lexical.SExpToken])(input: String, expected: String) =
     parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray)) match {
