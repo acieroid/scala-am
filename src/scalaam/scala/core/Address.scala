@@ -50,6 +50,24 @@ object NameAddress {
   case class Alloc[T, C]()(implicit val timestamp: Timestamp[T, C]) extends Allocator[A, T, C] {
     def variable(name: Identifier, t: T): A = Variable(name)
     def pointer[E](e: E, t: T): A           = Pointer(e)
-    def primitive(name: String)             = Primitive(name)
+    def primitive(name: String): A          = Primitive(name)
   }
 }
+
+/** Similar to NameAddress, but also includes the timestamp in the address.
+  * As a result, the address has the same sensitivity as the timestamps
+  */
+case class TimestampAddress[T, C]()(implicit val time: Timestamp[T, C]) {
+  /* A timestamp address just bundles a name address with a timestamp */
+  case class A(nameAddr: NameAddress.A, t: T) extends Address {
+    def printable = nameAddr.printable
+  }
+  val nameAlloc = NameAddress.Alloc[T, C]
+  object Alloc extends Allocator[A, T, C] {
+    implicit val timestamp: Timestamp[T, C] = time
+    def variable(name: Identifier, t: T): A = A(nameAlloc.variable(name, t), t)
+    def pointer[E](e: E, t: T): A           = A(nameAlloc.pointer[E](e, t), t)
+    def primitive(name: String): A          = A(nameAlloc.primitive(name), timestamp.initial(""))
+  }
+}
+

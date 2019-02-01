@@ -99,9 +99,9 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
         Map(
           "halted" -> GraphMetadataBool(halted),
           "type" -> (control match {
-            case ControlEval(_, _) => GraphMetadataString("eval")
-            case ControlKont(_)    => GraphMetadataString("kont")
-            case ControlError(_)   => GraphMetadataString("error")
+            case _: ControlEval  => GraphMetadataString("eval")
+            case _: ControlKont  => GraphMetadataString("kont")
+            case _: ControlError => GraphMetadataString("error")
           })
         ) ++ (control match {
           case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
@@ -113,9 +113,9 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
       * reached the end of the computation, or an error
       */
     def halted: Boolean = control match {
-      case ControlEval(_, _) => false
-      case ControlKont(_)    => a == HaltKontAddr
-      case ControlError(_)   => true
+      case _: ControlEval  => false
+      case _: ControlKont  => a == HaltKontAddr
+      case _: ControlError => true
     }
 
     /**

@@ -574,14 +574,15 @@ abstract class SchemePrimitiveAAMTests[A <: Address, T, V](
   val machine = new AAM[SchemeExp, A, V, T](sem)
 }
 
-object ConcreteSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, Concrete.S, Concrete.B, Concrete.I, Concrete.R, Concrete.C, Concrete.Sym]
-object ConstantPropagationSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.R, ConstantPropagation.C, ConstantPropagation.Sym]
-object TypeSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, Type.S, Concrete.B, Type.I, Type.R, Type.C, Type.Sym]
-
 object ConcreteSchemeTimestamp extends ConcreteTimestamp[SchemeExp]
 object ZeroCFASchemeTimestamp extends ZeroCFA[SchemeExp]
+object ConcreteSchemeAddress extends TimestampAddress[ConcreteSchemeTimestamp.T, SchemeExp]
 
-class ConcreteSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[NameAddress.A, ConcreteSchemeTimestamp.T, ConcreteSchemeLattice.L](NameAddress.Alloc[ConcreteSchemeTimestamp.T, SchemeExp])
-class ConstantPropagationSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[NameAddress.A, ConcreteSchemeTimestamp.T, ConstantPropagationSchemeLattice.L](NameAddress.Alloc[ConcreteSchemeTimestamp.T, SchemeExp])
-class TypeSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[NameAddress.A, ConcreteSchemeTimestamp.T, TypeSchemeLattice.L](NameAddress.Alloc[ConcreteSchemeTimestamp.T, SchemeExp])
+object ConcreteSchemeLattice extends MakeSchemeLattice[SchemeExp, ConcreteSchemeAddress.A, Concrete.S, Concrete.B, Concrete.I, Concrete.R, Concrete.C, Concrete.Sym]
+object ConcreteConstantPropagationSchemeLattice extends MakeSchemeLattice[SchemeExp, ConcreteSchemeAddress.A, ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.R, ConstantPropagation.C, ConstantPropagation.Sym]
+object ConcreteTypeSchemeLattice extends MakeSchemeLattice[SchemeExp, ConcreteSchemeAddress.A, Type.S, Concrete.B, Type.I, Type.R, Type.C, Type.Sym]
+
+class ConcreteSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteSchemeLattice.L](ConcreteSchemeAddress.Alloc)
+class ConstantPropagationSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteConstantPropagationSchemeLattice.L](ConcreteSchemeAddress.Alloc)
+class TypeSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteTypeSchemeLattice.L](ConcreteSchemeAddress.Alloc)
 

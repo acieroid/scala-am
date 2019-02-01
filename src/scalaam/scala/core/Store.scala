@@ -74,8 +74,8 @@ object Profiler {
       println(s"$k has been called ${methodsCount(k)} times for a total time of ${methodsTotalTime(k) / 1000000}ms")
     )
   }
-
 }
+
 case class ProfiledStore[A <: Address, V](val store: Store[A, V]) extends Store[A, V] {
   import Profiler.profileCall
   override def toString = profileCall("store.toString") { store.toString }
