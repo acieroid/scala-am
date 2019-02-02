@@ -170,9 +170,9 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   }
 
   object State {
-    def inject(exp: Exp, env: Iterable[(String, A)], store: Iterable[(A, V)]) =
-      State(ControlEval(exp, Environment.initial[A](env)),
-            Store.initial[A, V](store),
+    def inject(exp: Exp, env: Environment[A], store: Store[A, V]) =
+      State(ControlEval(exp, env),
+            store,
             Store.empty[KA, Set[Kont]],
             HaltKontAddr,
             Timestamp[T, Exp].initial(""))
@@ -242,9 +242,17 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
         }
       }
     }
+    /* TODO: remove asInstanceOf by having a trait Exp */
+    import scalaam.language.scheme._
+    val fvs = program.asInstanceOf[SchemeExp].fv
+    val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
+    val initialStore = Store.initial[A, V](sem.initialStore).restrictTo(fvs.map(x => initialEnv.lookup(x) match {
+      case Some(a) => a
+      case None => throw new Exception(s"Unexpected unbound address for variable $x")
+    }))
     loop(
       /* Start with the initial state resulting from injecting the program */
-      Vector(State.inject(program, sem.initialEnv, sem.initialStore)).toSeq,
+      Vector(State.inject(program, initialEnv, initialStore)).toSeq,
       /* Initially we didn't visit any state */
       VisitedSet.MapVisitedSet.empty[State],
       /* The initial graph is given */

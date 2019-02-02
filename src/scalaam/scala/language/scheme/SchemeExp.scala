@@ -8,7 +8,7 @@ import scalaam.language.sexp._
   */
 trait SchemeExp {
   val pos: Position
-  def fv: Set[Identifier]
+  def fv: Set[String]
 }
 
 /**
@@ -23,7 +23,7 @@ case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Posi
     val b = body.mkString(" ")
     s"(lambda ($a) $b)"
   }
-  def fv = body.flatMap(_.fv).toSet -- args.toSet
+  def fv = body.flatMap(_.fv).toSet -- args.map(_.name).toSet
 }
 
 /**
@@ -61,7 +61,7 @@ case class SchemeLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeE
     val bo = body.mkString(" ")
     s"(let ($bi) $bo)"
   }
-  def fv = bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1).toSet)
+  def fv = bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1.name).toSet)
 }
 
 /**
@@ -76,9 +76,9 @@ case class SchemeLetStar(bindings: List[(Identifier, SchemeExp)],
     val bo = body.mkString(" ")
     s"(let* ($bi) $bo)"
   }
-  def fv = bindings.foldLeft((Set.empty[Identifier] /* bound variables */, Set.empty[Identifier] /* free variables */))((acc, binding) => binding match {
-    case (id, e) => (acc._1 + id, acc._2 ++ (e.fv -- acc._1))
-  })._2 ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1).toSet)
+  def fv = bindings.foldLeft((Set.empty[String] /* bound variables */, Set.empty[String] /* free variables */))((acc, binding) => binding match {
+    case (id, e) => (acc._1 + id.name, acc._2 ++ (e.fv -- acc._1))
+  })._2 ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1.name).toSet)
 }
 
 /**
@@ -93,7 +93,7 @@ case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)],
     val bo = body.mkString(" ")
     s"(letrec ($bi) $bo)"
   }
-  def fv = (bindings.map(_._2).flatMap(_.fv).toSet ++ body.flatMap(_.fv).toSet) -- bindings.map(_._1).toSet
+  def fv = (bindings.map(_._2).flatMap(_.fv).toSet ++ body.flatMap(_.fv).toSet) -- bindings.map(_._1.name).toSet
 }
 
 /**
@@ -110,7 +110,7 @@ case class SchemeNamedLet(name: Identifier,
     val bo = body.mkString(" ")
     s"(let $name ($bi) $bo)"
   }
-  def fv = bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- (bindings.map(_._1).toSet + name))
+  def fv = bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- (bindings.map(_._1.name).toSet + name.name))
 }
 
 /**
@@ -118,7 +118,7 @@ case class SchemeNamedLet(name: Identifier,
   */
 case class SchemeSet(variable: Identifier, value: SchemeExp, pos: Position) extends SchemeExp {
   override def toString = s"(set! $variable $value)"
-  def fv = value.fv + variable
+  def fv = value.fv + variable.name
 }
 
 /**
@@ -244,7 +244,7 @@ case class SchemeDefineFunction(name: Identifier,
     val b = body.mkString(" ")
     s"(define ($name $a) $b)"
   }
-  def fv = body.flatMap(_.fv).toSet -- (args.toSet + name)
+  def fv = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
 }
 
 /**
@@ -287,7 +287,7 @@ object SchemeDo {
 case class SchemeVar(id: Identifier) extends SchemeExp {
   val pos               = id.pos
   override def toString = id.name
-  def fv = Set(id)
+  def fv = Set(id.name)
 }
 
 /**

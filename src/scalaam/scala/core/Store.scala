@@ -9,6 +9,9 @@ trait Store[A <: Address, V] extends SmartHash {
   /** Gets all the keys of the store */
   def keys: Iterable[A]
 
+  /** Restrict the store to only certain keys */
+  def restrictTo(keys: Set[A]): Store[A, V]
+
   /** Checks if a predicate is true for all elements of the store */
   def forall(p: ((A, V)) => Boolean): Boolean
 
@@ -44,6 +47,7 @@ case class BasicStore[A <: Address, V](val content: Map[A, V])(implicit val lat:
     extends Store[A, V] {
   override def toString              = content.filterKeys(_.printable).mkString("\n")
   def keys                           = content.keys
+  def restrictTo(keys: Set[A])       = BasicStore(content.filterKeys(a => keys.contains(a)))
   def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
   def lookup(a: A)                   = content.get(a)
   def extend(a: A, v: V) = content.get(a) match {
@@ -81,6 +85,7 @@ case class ProfiledStore[A <: Address, V](val store: Store[A, V]) extends Store[
   override def toString = profileCall("store.toString") { store.toString }
   def content = profileCall("store.content") { store.content }
   def keys = profileCall("store.keys") { store.keys }
+  def restrictTo(keys: Set[A]) = profileCall("store.restrictTo") { ProfiledStore(store.restrictTo(keys)) }
   def forall(p: ((A, V)) => Boolean) = profileCall("store.forall") { store.forall(p) }
   def lookup(a: A) = profileCall("store.lookup") { store.lookup(a) }
   def extend(a: A, v: V) = profileCall("store.extend") { ProfiledStore(store.extend(a, v)) }

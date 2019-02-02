@@ -9,6 +9,7 @@ case class ConcreteStore[A <: Address, V](val content: Map[A, V])(implicit val l
     extends Store[A, V] {
   override def toString              = content.filterKeys(_.printable).mkString("\n")
   def keys                           = content.keys
+  def restrictTo(keys: Set[A])       = ConcreteStore(content.filterKeys(a => keys.contains(a)))
   def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
   def lookup(a: A)                   = content.get(a)
   def extend(a: A, v: V) = content.get(a) match {
