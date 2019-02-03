@@ -2,7 +2,7 @@ package scalaam.core
 
 trait Frame extends SmartHash
 
-trait Semantics[Exp, Addr <: Address, V, T, C] {
+trait Semantics[E <: Exp, Addr <: Address, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val lattice: Lattice[V]
   val allocator: Allocator[Addr, T, C]
@@ -10,11 +10,11 @@ trait Semantics[Exp, Addr <: Address, V, T, C] {
   object Action {
     trait A
     case class Value(v: V, store: Store[Addr, V])                                        extends A
-    case class Push(frame: Frame, e: Exp, env: Environment[Addr], store: Store[Addr, V]) extends A
-    case class Eval(e: Exp, env: Environment[Addr], store: Store[Addr, V])               extends A
-    case class StepIn(fexp: Exp,
-                      clo: (Exp, Environment[Addr]),
-                      e: Exp,
+    case class Push(frame: Frame, e: E, env: Environment[Addr], store: Store[Addr, V]) extends A
+    case class Eval(e: E, env: Environment[Addr], store: Store[Addr, V])               extends A
+    case class StepIn(fexp: E,
+                      clo: (E, Environment[Addr]),
+                      e: E,
                       env: Environment[Addr],
                       store: Store[Addr, V])
         extends A
@@ -31,7 +31,7 @@ trait Semantics[Exp, Addr <: Address, V, T, C] {
     }
   }
 
-  def stepEval(e: Exp, env: Environment[Addr], store: Store[Addr, V], t: T): Set[Action.A]
+  def stepEval(e: E, env: Environment[Addr], store: Store[Addr, V], t: T): Set[Action.A]
 
   def stepKont(v: V, frame: Frame, store: Store[Addr, V], t: T): Set[Action.A]
 

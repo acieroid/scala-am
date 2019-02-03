@@ -28,14 +28,14 @@ case class ConcreteStore[A <: Address, V](val content: Map[A, V])(implicit val l
 }
 
 
-class ConcreteMachine[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
-  implicit val timestamp: Timestamp[T, Exp],
+class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
+  implicit val timestamp: Timestamp[T, E],
   implicit val lattice: Lattice[V])
-    extends MachineAbstraction[Exp, A, V, T, Exp] {
+    extends MachineAbstraction[E, A, V, T, E] {
 
   val Action = sem.Action
 
-  object ControlComp extends ControlComponent[Exp, A, V]
+  object ControlComp extends ControlComponent[E, A, V]
   import ControlComp._
 
   case class State(control: Control, store: Store[A, V], konts: List[Frame], t: T)
@@ -74,8 +74,8 @@ class ConcreteMachine[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, 
   type Transition = NoTransition
   val empty = new NoTransition
 
-  def run[G](program: Exp, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
-    var state = State(ControlEval(program, Environment.initial[A](sem.initialEnv)), new ConcreteStore[A, V](sem.initialStore.toMap), List(), Timestamp[T, Exp].initial(""))
+  def run[G](program: E, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
+    var state = State(ControlEval(program, Environment.initial[A](sem.initialEnv)), new ConcreteStore[A, V](sem.initialStore.toMap), List(), Timestamp[T, E].initial(""))
     var graph = Graph[G, State, Transition].empty
     var finished = false
     while (!finished) {
@@ -86,11 +86,11 @@ class ConcreteMachine[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, 
         } else {
           if (actions.size > 1) println(s"Got more than one action in concrete machine. Picking the first one.")
           val state2 = actions.head match {
-            case Action.Value(v, store2) => State(ControlKont(v), store2, konts, Timestamp[T, Exp].tick(state.t))
-            case Action.Push(frame, e, env, store2) => State(ControlEval(e, env), store2, frame :: konts, Timestamp[T, Exp].tick(state.t))
-            case Action.Eval(e, env, store2) => State(ControlEval(e, env), store2, konts, Timestamp[T, Exp].tick(state.t))
-            case Action.StepIn(fexp, _, e, env, store2) => State(ControlEval(e, env), store2, konts, Timestamp[T, Exp].tick(state.t, fexp))
-            case Action.Err(err) => State(ControlError(err), state.store, konts, Timestamp[T, Exp].tick(state.t))
+            case Action.Value(v, store2) => State(ControlKont(v), store2, konts, Timestamp[T, E].tick(state.t))
+            case Action.Push(frame, e, env, store2) => State(ControlEval(e, env), store2, frame :: konts, Timestamp[T, E].tick(state.t))
+            case Action.Eval(e, env, store2) => State(ControlEval(e, env), store2, konts, Timestamp[T, E].tick(state.t))
+            case Action.StepIn(fexp, _, e, env, store2) => State(ControlEval(e, env), store2, konts, Timestamp[T, E].tick(state.t, fexp))
+            case Action.Err(err) => State(ControlError(err), state.store, konts, Timestamp[T, E].tick(state.t))
           }
           state = state2
           graph = graph.addEdge(state, empty, state2)

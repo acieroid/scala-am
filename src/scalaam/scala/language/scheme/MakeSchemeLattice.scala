@@ -11,7 +11,7 @@ import BinaryOperator._
 /** Defines a Scheme lattice based on other lattices */
 /** TODO[medium]: use Show and ShowStore here */
 class MakeSchemeLattice[
-    Exp,
+    E <: Exp,
     A <: Address,
     S: StringLattice,
     B: BoolLattice,
@@ -53,7 +53,7 @@ class MakeSchemeLattice[
   case class Prim[Primitive](prim: Primitive) extends Value {
     override def toString = s"#prim"
   }
-  case class Clo(lambda: Exp, env: Environment[A]) extends Value {
+  case class Clo(lambda: E, env: Environment[A]) extends Value {
     override def toString = "#clo"
   }
 
@@ -424,7 +424,7 @@ class MakeSchemeLattice[
     def bool(x: Boolean): Value                   = Bool(BoolLattice[B].inject(x))
     def char(x: scala.Char): Value                = Char(CharLattice[C].inject(x))
     def primitive[Primitive](x: Primitive): Value = Prim(x)
-    def closure(x: schemeLattice.Closure): Value  = Clo(x._1, x._2)
+    def closure(x: schemeLattice.Closure): Value  = Clo(x._1, x._2.restrictTo(x._1.fv))
     def symbol(x: String): Value                  = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value                                = Nil
     def cons(car: L, cdr: L): Value               = Cons(car, cdr)
@@ -552,7 +552,7 @@ class MakeSchemeLattice[
   }
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
-  val schemeLattice: SchemeLattice[L, Exp, A] = new SchemeLattice[L, Exp, A] {
+  val schemeLattice: SchemeLattice[L, E, A] = new SchemeLattice[L, E, A] {
     def show(x: L)             = x.toString /* TODO[easy]: implement better */
     def isTrue(x: L): Boolean  = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
@@ -604,6 +604,6 @@ class MakeSchemeLattice[
   }
 
   object L {
-    implicit val lattice: SchemeLattice[L, Exp, A] = schemeLattice
+    implicit val lattice: SchemeLattice[L, E, A] = schemeLattice
   }
 }

@@ -7,9 +7,9 @@ import scalaam.util.Show
 
 /** Control component of the machine. This is factored out of the AAM class to
   * enable reusability by similar machine abstractions */
-abstract class ControlComponent[Exp, A <: Address, V] {
+abstract class ControlComponent[E <: Exp, A <: Address, V] {
   trait Control extends SmartHash
-  case class ControlEval(exp: Exp, env: Environment[A]) extends Control {
+  case class ControlEval(exp: E, env: Environment[A]) extends Control {
     override def toString = s"ev(${exp})"
   }
   case class ControlKont(v: V) extends Control {
@@ -21,13 +21,13 @@ abstract class ControlComponent[Exp, A <: Address, V] {
 }
 
 /** Continuations are factored out to enable reusability */
-abstract class Kontinuations[Exp, T] {
+abstract class Kontinuations[E, T] {
 
   /** Kontinuation addresses */
   trait KA extends Address with SmartHash {
     def printable = true
   }
-  case class KontAddr(exp: Exp, time: T) extends KA {
+  case class KontAddr(exp: E, time: T) extends KA {
     override def toString = s"Kont(${exp.toString.take(10)})"
   }
   case object HaltKontAddr extends KA {
@@ -59,21 +59,21 @@ abstract class Kontinuations[Exp, T] {
   * be evaluated within this environment, whereas a continuation state only
   * contains the value reached.
 
-  * Exp are used as context for the timestamp
+  * E are used as context for the timestamp
   */
-class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
-    implicit val timestamp: Timestamp[T, Exp],
+class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
+    implicit val timestamp: Timestamp[T, E],
     implicit val lattice: Lattice[V])
-    extends MachineAbstraction[Exp, A, V, T, Exp] {
+    extends MachineAbstraction[E, A, V, T, E] {
 
   val Action = sem.Action
 
   /** Control component */
-  object ControlComp extends ControlComponent[Exp, A, V]
+  object ControlComp extends ControlComponent[E, A, V]
   import ControlComp._
 
   /** Continuations */
-  object Konts extends Kontinuations[Exp, T]
+  object Konts extends Kontinuations[E, T]
   import Konts._
 
   /**
@@ -127,7 +127,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
       actions.flatMap({
         /* When a value is reached, we go to a continuation state */
         case Action.Value(v, store) =>
-          Set(State(ControlKont(v), store, kstore, a, Timestamp[T, Exp].tick(t)))
+          Set(State(ControlKont(v), store, kstore, a, Timestamp[T, E].tick(t)))
         /* When a continuation needs to be pushed, push it in the continuation store */
         case Action.Push(frame, e, env, store) => {
           val next = KontAddr(e, t)
@@ -136,17 +136,17 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
                   store,
                   kstore.extend(next, Set(Kont(frame, a))),
                   next,
-                  Timestamp[T, Exp].tick(t)))
+                  Timestamp[T, E].tick(t)))
         }
         /* When a value needs to be evaluated, we go to an eval state */
         case Action.Eval(e, env, store) =>
-          Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, Exp].tick(t)))
+          Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, E].tick(t)))
         /* When a function is stepped in, we also go to an eval state */
         case Action.StepIn(fexp, _, e, env, store) =>
-          Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, Exp].tick(t, fexp)))
+          Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, E].tick(t, fexp)))
         /* When an error is reached, we go to an error state */
         case Action.Err(err) =>
-          Set(State(ControlError(err), store, kstore, a, Timestamp[T, Exp].tick(t)))
+          Set(State(ControlError(err), store, kstore, a, Timestamp[T, E].tick(t)))
       })
 
     /**
@@ -170,12 +170,12 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   }
 
   object State {
-    def inject(exp: Exp, env: Environment[A], store: Store[A, V]) =
+    def inject(exp: E, env: Environment[A], store: Store[A, V]) =
       State(ControlEval(exp, env),
             store,
             Store.empty[KA, Set[Kont]],
             HaltKontAddr,
-            Timestamp[T, Exp].initial(""))
+            Timestamp[T, E].initial(""))
 
     /* TODO: do this without typeclass, e.g., class State extends WithKey[KA](a) */
     implicit val stateWithKey = new WithKey[State] {
@@ -194,7 +194,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
     * program (otherwise it will just visit every reachable state). A @param
     * timeout can also be given.
     */
-  def run[G](program: Exp, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
+  def run[G](program: E, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
     import scala.language.higherKinds
     /* The fixpoint computation loop. @param todo is the set of states that need to
      * be visited (the worklist). @param visited is the set of states that have
@@ -242,9 +242,7 @@ class AAM[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
         }
       }
     }
-    /* TODO: remove asInstanceOf by having a trait Exp */
-    import scalaam.language.scheme._
-    val fvs = program.asInstanceOf[SchemeExp].fv
+    val fvs = program.fv
     val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
     val initialStore = Store.initial[A, V](sem.initialStore).restrictTo(fvs.map(x => initialEnv.lookup(x) match {
       case Some(a) => a

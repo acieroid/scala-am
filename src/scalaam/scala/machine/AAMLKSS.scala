@@ -9,17 +9,17 @@ import scalaam.util.Show
   * looping continuations are pushed on the kont store), and stores are not
   * stored in the states but rather in a separate map. The continuation
   * store itself is global. */
-class AAMLKSS[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
-    implicit val timestamp: Timestamp[T, Exp],
+class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
+    implicit val timestamp: Timestamp[T, E],
     implicit val lattice: Lattice[V])
-    extends MachineAbstraction[Exp, A, V, T, Exp] {
+    extends MachineAbstraction[E, A, V, T, E] {
 
   val Action = sem.Action
 
-  object ControlComp extends ControlComponent[Exp, A, V]
+  object ControlComp extends ControlComponent[E, A, V]
   import ControlComp._
 
-  object Konts extends Kontinuations[Exp, T]
+  object Konts extends Kontinuations[E, T]
   import Konts._
 
   object LKont {
@@ -86,24 +86,24 @@ class AAMLKSS[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
         val kstore = acc._2
         act match {
           case Action.Value(v, store) =>
-            (states + ((State(ControlKont(v), lkont, Timestamp[T, Exp].tick(t)), store)), kstore)
+            (states + ((State(ControlKont(v), lkont, Timestamp[T, E].tick(t)), store)), kstore)
           case Action.Push(frame, e, env, store) =>
             /* TODO: Some frames should result in a stack store push (e.g., loops), and should be handled just as StepIn is. */
-            (states + ((State(ControlEval(e, env), lkont.push(frame), Timestamp[T, Exp].tick(t)),
+            (states + ((State(ControlEval(e, env), lkont.push(frame), Timestamp[T, E].tick(t)),
                         store)),
              kstore)
           case Action.Eval(e, env, store) =>
-            (states + ((State(ControlEval(e, env), lkont, Timestamp[T, Exp].tick(t)), store)),
+            (states + ((State(ControlEval(e, env), lkont, Timestamp[T, E].tick(t)), store)),
              kstore)
           case Action.StepIn(fexp, _, e, env, store) =>
             val next = KontAddr(e, t)
             (states + ((State(ControlEval(e, env),
                               LKont.empty(next),
-                              Timestamp[T, Exp].tick(t, fexp)),
+                              Timestamp[T, E].tick(t, fexp)),
                         store)),
              kstore.extend(next, Set(lkont)))
           case Action.Err(err) =>
-            (states + ((State(ControlError(err), lkont, Timestamp[T, Exp].tick(t)), store)), kstore)
+            (states + ((State(ControlError(err), lkont, Timestamp[T, E].tick(t)), store)), kstore)
         }
       })
     }
@@ -145,12 +145,12 @@ class AAMLKSS[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
   }
 
   object State {
-    def inject(exp: Exp,
+    def inject(exp: E,
                env: Iterable[(String, A)],
                store: Iterable[(A, V)]): (State, Store[A, V], Store[KA, Set[LKont]]) =
       (State(ControlEval(exp, Environment.initial[A](env)),
              LKont.empty(HaltKontAddr),
-             Timestamp[T, Exp].initial("")),
+             Timestamp[T, E].initial("")),
        Store.initial[A, V](store),
        Store.empty[KA, Set[LKont]])
     implicit val stateWithKey = new WithKey[State] {
@@ -178,7 +178,7 @@ class AAMLKSS[Exp, A <: Address, V, T](val sem: Semantics[Exp, A, V, T, Exp])(
       new StoreMap(Map(kv))
   }
 
-  def run[G](program: Exp, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
+  def run[G](program: E, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
     import scala.language.higherKinds
 
     @scala.annotation.tailrec
