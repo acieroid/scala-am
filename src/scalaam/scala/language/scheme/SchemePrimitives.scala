@@ -2,6 +2,9 @@ package scalaam.language.scheme
 
 import scalaam.core._
 
+/**
+  * TODO: Many primitives use non-tail recursion and could profit from being written in the same style as the Equalp primitive
+  */
 trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val schemeLattice: SchemeLattice[V, SchemeExp, A]
@@ -160,7 +163,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
       /* [x]  string-copy: String Selection */
       /* [x]  string-fill!: String Modification */
       StringLength, /* [vv] string-length: String Selection */
-      /* [x]  string-ref: String Selection */
+      StringRef, /* [x]  string-ref: String Selection */
       /* [x]  string-set!: String Modification */
       /* [x]  string<=?: String Comparison */
       StringLt, /* [vv]  string<?: String Comparison */
@@ -290,9 +293,15 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
     }
 
     import schemeLattice._
+    import scala.util.control.TailCalls._
+    def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] = x match {
+      case MayFailSuccess(v) => tailcall(v)
+      case MayFailError(err) => done(MayFailError(err))
+      case MayFailBoth(v, err) => tailcall(v).map(_.addErrors(err))
+    }
 
     /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
-    def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]) =
+    def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]): MayFail[V, Error] =
       getPointerAddresses(x).foldLeft(MayFail.success[V, Error](bottom))(
         (acc: MayFail[V, Error], a: A) =>
           for {
@@ -300,6 +309,12 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
             res  <- f(v)
             accv <- acc
           } yield join(accv, res))
+    def dereferencePointerTR(x: V, store: Store[A, V])(f: V => TailRec[MayFail[V, Error]]): TailRec[MayFail[V, Error]] =
+      getPointerAddresses(x).foldLeft(done(MayFail.success[V, Error](bottom)))(
+        (acc: TailRec[MayFail[V, Error]], a: A) =>
+          acc.flatMap(accv =>
+            liftTailRec(store.lookupMF(a).map(f)).flatMap(fv =>
+              done(fv.flatMap(res => accv.flatMap(accvv => join(accvv, res)))))))
 
     /* TODO[medium] improve these implicit classes to be able to write primitives more clearly */
     implicit class V1Ops(f: V => MayFail[V, Error]) {
@@ -331,6 +346,19 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
         val f = if (isFalse(condv)) { elseBranch } else { MayFail.success[V, Error](latMon.zero) }
         mfMon.append(t, f)
       }
+    }
+
+    def ifThenElseTR(cond: MayFail[V, Error])(thenBranch: => TailRec[MayFail[V, Error]])(
+      elseBranch: => TailRec[MayFail[V, Error]]): TailRec[MayFail[V, Error]] = {
+      val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
+      val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
+      liftTailRec(cond >>= { condv =>
+        val t = if (isTrue(condv)) { thenBranch } else { done(MayFail.success[V, Error](latMon.zero)) }
+        val f = if (isFalse(condv)) { elseBranch } else { done(MayFail.success[V, Error](latMon.zero)) }
+        t.flatMap(tval =>
+          f.map(fval =>
+            mfMon.append(tval, fval)))
+      })
     }
 
     import scala.language.implicitConversions
@@ -379,6 +407,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
     def numEq        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.NumEq) _
     def eqq          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Eq) _
     def stringAppend = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringAppend) _
+    def stringRef    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringRef) _
     def stringLt     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringLt) _
 
     object Plus extends NoStoreOperation("+") {
@@ -680,6 +709,12 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
         case x :: rest => call(rest) >>= (stringAppend(x, _))
       }
     }
+    object StringRef extends NoStoreOperation("string-ref") {
+      override def call(args: List[V]) = args match {
+        case s :: n :: Nil => stringRef(s, n)
+        case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
+      }
+    }
     object StringLt extends NoStoreOperation("string<?", Some(2)) {
       override def call(x: V, y: V) = stringLt(x, y)
     }
@@ -841,49 +876,54 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
                                        (loop (+ i 1)))))))
                     (loop 0)))))))
       */
+
     // TODO: this is without vectors
     object Equal extends StoreOperation("equal?", Some(2)) {
       override def call(a: V, b: V, store: Store[A, V]) = {
-        def equalp(a: V, b: V, visited: Set[(V, V)]): MayFail[V, Error] = {
+        def equalp(a: V, b: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
           if (visited.contains((a, b)) || a == bottom || b == bottom) {
-            bottom
+            done(bottom)
           } else {
             val visited2 = visited + ((a, b))
-            ifThenElse(eqq(a, b)) {
+            ifThenElseTR(eqq(a, b)) {
               /* If a and b are eq?, then they are equal? */
-              bool(true)
+              done(bool(true))
             } {
-              ifThenElse((and _)(isNull(a), isNull(b))) {
+              ifThenElseTR((and _)(isNull(a), isNull(b))) {
                 /* If both a and b are null, then they are equal? */
-                bool(true)
+                done(bool(true))
               } {
-                ifThenElse((and _)(isCons(a), isCons(b))) {
+                ifThenElseTR((and _)(isCons(a), isCons(b))) {
                   /* If both cons, check car and cdr */
-                  for {
-                    cara <- car(a)
-                    carb <- car(b)
-                    cdra <- cdr(a)
-                    cdrb <- cdr(b)
-                    res  <- (and _)(equalp(cara, carb, visited2), equalp(cdra, cdrb, visited2))
-                  } yield res
+                  liftTailRec(car(a).flatMap(cara =>
+                    car(b).flatMap(carb =>
+                      cdr(a).flatMap(cdra =>
+                        cdr(b).flatMap(cdrb =>
+                          liftTailRec(
+                            tailcall(equalp(cara, carb, visited2)).flatMap(eqcar =>
+                              tailcall(equalp(cdra, cdrb, visited2)).map(eqcdr =>
+                                for {
+                                  x <- eqcar
+                                  y <- eqcdr
+                                } yield and(x, y)))))))))
                 } {
-                  ifThenElse((and _)(isPointer(a), isPointer(b))) {
+                  ifThenElseTR((and _)(isPointer(a), isPointer(b))) {
                     /* both pointers, then look up their values */
-                    dereferencePointer(a, store) { consa =>
-                      dereferencePointer(b, store) { consb =>
-                        equalp(consa, consb, visited2)
+                    dereferencePointerTR(a, store) { consa =>
+                      dereferencePointerTR(b, store) { consb =>
+                        tailcall(equalp(consa, consb, visited2))
                       }
                     }
                   } {
                     /* otherwise, there is no equality possible */
-                    bool(false)
+                    done(bool(false))
                   }
                 }
               }
             }
           }
         }
-        equalp(a, b, Set()).map(v => (v, store))
+        equalp(a, b, Set()).result.map(v => (v, store))
       }
     }
 

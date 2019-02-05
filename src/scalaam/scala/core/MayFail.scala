@@ -1,10 +1,11 @@
 package scalaam.core
 
 sealed trait MayFail[A, E] {
-  def addError(err: E): MayFail[A, E] = this match {
-    case MayFailSuccess(a)    => MayFailBoth(a, Set(err))
-    case MayFailBoth(a, errs) => MayFailBoth(a, errs + err)
-    case MayFailError(errs)   => MayFailError(errs + err)
+  def addError(err: E): MayFail[A, E] = addErrors(Set(err))
+  def addErrors(errs: Set[E]): MayFail[A, E] = this match {
+    case MayFailSuccess(a)     => MayFailBoth(a, errs)
+    case MayFailBoth(a, errs2) => MayFailBoth(a, errs2 ++ errs)
+    case MayFailError(errs2)   => MayFailError(errs2 ++ errs)
   }
   /* We want to deconstruct in for loops, so we need filter (see https://issues.scala-lang.org/browse/SI-1336) */
   def withFilter(f: A => Boolean) = this

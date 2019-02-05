@@ -65,7 +65,7 @@ class MakeSchemeLattice[
   }
 
   case class Pointer(a: A) extends Value {
-    override def toString = "#pointer"
+    override def toString = s"#pointer($a)"
   }
   /*
   case class Vec[Addr : Address](size: I, elements: Map[I, Addr], init: Addr) extends Value {
@@ -409,6 +409,11 @@ class MakeSchemeLattice[
             (x, y) match {
               case (Str(s1), Str(s2)) => MayFail.success(Str(StringLattice[S].append(s1, s2)))
               case _                  => MayFail.failure(OperatorNotApplicable("string-append", List(x, y)))
+            }
+          case StringRef =>
+            (x, y) match {
+              case (Str(s), Int(n)) => MayFail.success(Char(StringLattice[S].ref(s, n)))
+              case _                => MayFail.failure(OperatorNotApplicable("string-ref", List(x, y)))
             }
           case StringLt =>
             (x, y) match {

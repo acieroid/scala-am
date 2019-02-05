@@ -81,6 +81,16 @@ object Concrete {
         case (Values(content1), Values(content2)) =>
           Values(content1.foldMap(s1 => content2.map(s2 => s1 + s2)))
       }
+      def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match {
+        case Values(bot) if bot.isEmpty => CharLattice[C2].bottom
+        case Top                        => CharLattice[C2].top
+        case Values(content) =>
+          /* Assumption: we don't perform any bound check. If i contains a value for which s has no character, it is silently ignored */
+          content.foldMap(s =>
+            (0.to(s.size)).collect({
+              case i2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](i, IntLattice[I2].inject(i2))) => CharLattice[C2].inject(s.charAt(i2))
+            }).foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2)))
+      }
       def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match {
         case (Values(bot), _) if bot.isEmpty => BoolLattice[B2].bottom
         case (_, Values(bot)) if bot.isEmpty => BoolLattice[B2].bottom

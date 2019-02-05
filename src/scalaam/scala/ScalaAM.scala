@@ -1,27 +1,40 @@
 package scalaam
+import scalaam.core._
+
 
 object Main {
   def main(args: Array[String]) = {
     ()
   }
+}
 
-  def lambda() = {
-    import scalaam.language.lambda._
-    import scalaam.machine._
-    import scalaam.core._
-    import scalaam.graph._
+object RunGabriel {
+  def main(args: Array[String]) = {
+    val benchmarks = List(
+      "boyer",
+      "browse",
+      "cpstak",
+      "dderiv",
+      "deriv",
+      "destruc",
+      "diviter",
+      "divrec",
+      "puzzle",
+      "takl",
+      "triangl",
+    )
+    val pre = "test/gabriel/"
+    val post = ".scm"
 
-    val address   = NameAddress
-    val timestamp = ZeroCFA[LambdaExp]()
-    val lattice   = LambdaSetLattice[address.A]()
-    val sem = LambdaSemantics[lattice.L, address.A, timestamp.T, LambdaExp](
-      address.Alloc[timestamp.T, LambdaExp])
-    val machine = new AAM[LambdaExp, address.A, lattice.L, timestamp.T](sem)
-    val graph   = DotGraph[machine.State, machine.Transition]
-    val result = machine.run[graph.G](
-      LambdaParser.parse("((lambda (x) (lambda (y) y)) (lambda (z) z))"),
-      Timeout.Infinity)
-    result.toFile("foo.dot")
+    benchmarks.foreach(b => {
+      try {
+        val timeout = Timeout.seconds(10)
+        val (t, s) = SchemeRunAAM.run(pre + b + post, timeout, false)
+        println(s"$b | $t | $s")
+      } catch {
+        case e: Exception => println(s"$b failed ($e)")
+      }
+    })
   }
 }
 
@@ -29,7 +42,6 @@ object Main {
 object SchemeRunAAM {
   import scalaam.language.scheme._
   import scalaam.machine._
-  import scalaam.core._
   import scalaam.graph._
   import scalaam.lattice._
 
@@ -42,21 +54,22 @@ object SchemeRunAAM {
   val machine = new AAM[SchemeExp, address.A, lattice.L, timestamp.T](sem)
   val graph   = new DotGraph[machine.State, machine.Transition]
 
-  def run(file: String, timeout: Timeout.T = Timeout.seconds(10)) = {
+  def run(file: String, timeout: Timeout.T = Timeout.seconds(10), outputDot: Boolean = true) : (Long, Int) = {
     val f       = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
     f.close()
     val t0     = System.nanoTime
     val result = machine.run[graph.G](SchemeParser.parse(content), timeout)
     val t1     = System.nanoTime
+    val time   = (t1 - t0) / 1000000
     if (timeout.reached) { println("Time out!") } else {
-      println(s"Time: ${(t1 - t0) / 1000000}ms")
+      println(s"Time: ${time}ms")
     }
-    Profiler.printResults()
-    result.toFile("foo.dot")
+    if (outputDot) result.toFile("foo.dot")
     import Graph.GraphOps
-    println(s"States: ${result.nodes}")
-    result
+    val states = result.nodes
+    println(s"States: $states")
+    (time, states)
   }
 }
 
