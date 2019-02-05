@@ -88,7 +88,6 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
           case Action.Value(v, store) =>
             (states + ((State(ControlKont(v), lkont, Timestamp[T, E].tick(t)), store)), kstore)
           case Action.Push(frame, e, env, store) =>
-            /* TODO: Some frames should result in a stack store push (e.g., loops), and should be handled just as StepIn is. */
             (states + ((State(ControlEval(e, env), lkont.push(frame), Timestamp[T, E].tick(t)),
                         store)),
              kstore)
@@ -145,14 +144,8 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
   }
 
   object State {
-    def inject(exp: E,
-               env: Iterable[(String, A)],
-               store: Iterable[(A, V)]): (State, Store[A, V], Store[KA, Set[LKont]]) =
-      (State(ControlEval(exp, Environment.initial[A](env)),
-             LKont.empty(HaltKontAddr),
-             Timestamp[T, E].initial("")),
-       Store.initial[A, V](store),
-       Store.empty[KA, Set[LKont]])
+    def inject(exp: E, env: Environment[A]): State =
+      State(ControlEval(exp, env), LKont.empty(HaltKontAddr), Timestamp[T, E].initial(""))
     implicit val stateWithKey = new WithKey[State] {
       type K = KA
       def key(st: State) = st.lkont.next
@@ -191,7 +184,7 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
       if (todo.isEmpty || timeout.reached) {
         graph
       } else {
-        println(s"I have ${todo.size} states to explore")
+//        println(s"I have ${todo.size} states to explore")
         /* Frontier-based semantics */
         val (graph2, successors, stores2, kstore2, shouldClearVisited) =
           todo.foldLeft((graph, Set.empty[State], stores, kstore, false))((acc, state) => {
@@ -226,11 +219,18 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
         }
       }
     }
-    val (state, store, kstore) = State.inject(program, sem.initialEnv, sem.initialStore)
+    val fvs = program.fv
+    val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
+    val initialStore = Store.initial[A, V](sem.initialStore).restrictTo(fvs.map(x => initialEnv.lookup(x) match {
+      case Some(a) => a
+      case None => throw new Exception(s"Unexpected unbound address for variable $x")
+    }))
+    val state = State.inject(program, initialEnv)
+    val kstore = Store.empty[KA, Set[LKont]]
     loop(
       Set(state),
       VisitedSet.MapVisitedSet.empty[State],
-      StoreMap(state -> store),
+      StoreMap(state -> initialStore),
       kstore,
       Graph[G, State, Transition].empty
     )
