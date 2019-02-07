@@ -226,7 +226,10 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
             case Some(v) => Action.Value(v, store)
             case None    => Action.Err(UnboundAddress(a))
           }
-        case None => Action.Err(UnboundVariable(variable))
+        case None => primitives.get(variable.name) match {
+          case Some(p) => Action.Value(p, store)
+          case None => println(s"Unbound variable $variable"); Action.Err(UnboundVariable(variable))
+        }
       }
     case SchemeQuoted(quoted, _) =>
       evalQuoted(quoted, store, t) match {
@@ -291,8 +294,9 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       throw new Exception("TODO: define not handled (no global environment)")
   }
 
+  def primitives: Map[String, V] = allPrimitives.map(p => (p.name, primitive[Primitive](p))).toMap
   override def initialBindings =
-    allPrimitives.map(p => (p.name, allocator.primitive(p.name), primitive[Primitive](p))) ++ Set(
+    /* allPrimitives.map(p => (p.name, allocator.primitive(p.name), primitive[Primitive](p))) ++ */ Set(
       ("null", allocator.primitive("null"), nil))
 }
 

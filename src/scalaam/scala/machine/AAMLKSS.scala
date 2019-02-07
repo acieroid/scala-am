@@ -221,10 +221,7 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     }
     val fvs = program.fv
     val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
-    val initialStore = Store.initial[A, V](sem.initialStore).restrictTo(fvs.map(x => initialEnv.lookup(x) match {
-      case Some(a) => a
-      case None => throw new Exception(s"Unexpected unbound address for variable $x")
-    }))
+    val initialStore = Store.initial[A, V](sem.initialStore)
     val state = State.inject(program, initialEnv)
     val kstore = Store.empty[KA, Set[LKont]]
     loop(

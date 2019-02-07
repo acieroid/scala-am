@@ -26,6 +26,7 @@ abstract class Kontinuations[E, T] {
   /** Kontinuation addresses */
   trait KA extends Address with SmartHash {
     def printable = true
+    def primitive = false
   }
   case class KontAddr(exp: E, time: T) extends KA {
     override def toString = s"Kont(${exp.toString.take(10)})"
@@ -244,10 +245,7 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     }
     val fvs = program.fv
     val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
-    val initialStore = Store.initial[A, V](sem.initialStore).restrictTo(fvs.map(x => initialEnv.lookup(x) match {
-      case Some(a) => a
-      case None => throw new Exception(s"Unexpected unbound address for variable $x")
-    }))
+    val initialStore = Store.initial[A, V](sem.initialStore)
     loop(
       /* Start with the initial state resulting from injecting the program */
       Vector(State.inject(program, initialEnv, initialStore)).toSeq,
