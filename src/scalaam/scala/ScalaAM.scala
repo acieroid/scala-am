@@ -19,17 +19,17 @@ object RunGabriel {
       "destruc",
       "diviter",
       "divrec",
-      "puzzle",
+      // "puzzle", // vectors
       "takl",
-      "triangl",
+      // "triangl", // vectors
     )
     val pre = "test/gabriel/"
     val post = ".scm"
 
     benchmarks.foreach(b => {
       try {
-        val timeout = Timeout.seconds(10)
-        val (t, s) = SchemeRunAAM.run(pre + b + post, timeout, false)
+        val timeout = Timeout.seconds(60)
+        val (t, s) = SchemeRunAAMLKSS.run(pre + b + post, timeout, false)
         println(s"$b | $t | $s")
       } catch {
         case e: Exception => println(s"$b failed ($e)")

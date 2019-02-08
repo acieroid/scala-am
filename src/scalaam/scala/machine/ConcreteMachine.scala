@@ -31,12 +31,9 @@ case class ConcreteStore[A <: Address, V](val content: Map[A, V])(implicit val l
 class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
   implicit val timestamp: Timestamp[T, E],
   implicit val lattice: Lattice[V])
-    extends MachineAbstraction[E, A, V, T, E] {
+    extends MachineAbstraction[E, A, V, T, E] with AAMUtils[E, A, V, T] {
 
   val Action = sem.Action
-
-  object ControlComp extends ControlComponent[E, A, V]
-  import ControlComp._
 
   case class State(control: Control, store: Store[A, V], konts: List[Frame], t: T)
       extends GraphElement

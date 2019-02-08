@@ -3,7 +3,6 @@ package scalaam.machine
 import scalaam.graph._
 import Graph.GraphOps
 import scalaam.core._
-import scalaam.util.Show
 
 /** This is an AAM-like machine, where local continuations are used (only
   * looping continuations are pushed on the kont store), and stores are not
@@ -12,53 +11,9 @@ import scalaam.util.Show
 class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     implicit val timestamp: Timestamp[T, E],
     implicit val lattice: Lattice[V])
-    extends MachineAbstraction[E, A, V, T, E] {
+    extends MachineAbstraction[E, A, V, T, E] with AAMUtils[E, A, V, T] {
 
   val Action = sem.Action
-
-  object ControlComp extends ControlComponent[E, A, V]
-  import ControlComp._
-
-  object Konts extends Kontinuations[E, T]
-  import Konts._
-
-  object LKont {
-    def empty(next: KA): LKont = LKont(List.empty, next)
-  }
-  case class LKont(contents: List[Frame], next: KA) extends Frame {
-    def isEmpty: Boolean   = contents.isEmpty
-    def push(frame: Frame) = LKont(frame :: contents, next)
-    def get: Option[(Frame, LKont)] = contents match {
-      case head :: tail => Some((head, LKont(tail, next)))
-      case Nil          => None
-    }
-    def findKonts(kstore: Store[KA, Set[LKont]]): Set[LKont] = {
-      def helper(todo: Set[KA], visited: Set[KA], acc: Set[LKont]): Set[LKont] =
-        todo.headOption match {
-          case None               => acc
-          case Some(HaltKontAddr) => acc + (LKont.empty(HaltKontAddr))
-          case Some(a) =>
-            if (visited.contains(a)) {
-              helper(todo - a, visited, acc)
-            } else {
-              val (todo2, acc2) = kstore
-                .lookupDefault(a, Set.empty[LKont])
-                .foldLeft((Set.empty[KA], Set.empty[LKont]))((localAcc, lkont) =>
-                  if (lkont.isEmpty) {
-                    (localAcc._1 + lkont.next, localAcc._2)
-                  } else {
-                    (localAcc._1, localAcc._2 + lkont)
-                })
-              helper(todo - a ++ todo2, visited + a, acc ++ acc2)
-            }
-        }
-      helper(Set(next), Set(), Set())
-    }
-  }
-  implicit val lkontShow = new Show[LKont] {
-    def show(lkont: LKont) = s"lkont(${lkont.contents.mkString(",")}, lkont.next)"
-  }
-  implicit val lkontSetLattice = Lattice.SetLattice[LKont]
 
   case class State(control: Control, lkont: LKont, t: T) extends GraphElement with SmartHash {
     override def toString = control.toString
@@ -158,8 +113,11 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
   class StoreMap(val content: Map[State, Store[A, V]]) {
     def add(kv: (State, Store[A, V])): (StoreMap, Boolean) =
       if (content.contains(kv._1)) {
-        /* TODO: improve performance of join + checking if differences */
-        val contents2 = content + (kv._1 -> ((content(kv._1).join(kv._2))))
+        val contents2 = content + (if (!kv._2.subsumes(content(kv._1))) {
+          (kv._1 -> ((content(kv._1).join(kv._2))))
+        } else {
+          kv
+        })
         (new StoreMap(contents2), (contents2(kv._1) != content(kv._1)))
       } else {
         (new StoreMap(content + kv), true)
