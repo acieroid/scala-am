@@ -105,6 +105,12 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
       type K = KA
       def key(st: State) = st.lkont.next
     }
+    implicit val stateWithKey2 = new WithKey2[State] {
+      type K1 = KA
+      type K2 = Control
+      def key1(st: State) = st.lkont.next
+      def key2(st: State) = st.control
+    }
   }
 
   type Transition = NoTransition
@@ -130,15 +136,16 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
   }
 
   def run[G](program: E, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
-    import scala.language.higherKinds
+    object VS extends MapVisitedSetImpl[State]
+    import VS._
 
     @scala.annotation.tailrec
     /* An invariant is that for all states in todo, stores(state) is defined */
-    def loop[VS[_]: VisitedSet](todo: Set[State],
-                                visited: VS[State],
-                                stores: StoreMap,
-                                kstore: Store[KA, Set[LKont]],
-                                graph: G): G = {
+    def loop(todo: Set[State],
+             visited: VisitedSet.T,
+             stores: StoreMap,
+             kstore: Store[KA, Set[LKont]],
+             graph: G): G = {
       if (todo.isEmpty || timeout.reached) {
         graph
       } else {
@@ -167,10 +174,10 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
           })
         if (shouldClearVisited || kstore2 != kstore /* TODO: add timestamping + fastEq that only checks the timestamp */ ) {
           /* Changes in stores/kstore, we have to clear visited set */
-          loop(successors, VisitedSet[VS].empty[State], stores2, kstore2, graph2)
+          loop(successors, VisitedSet.empty, stores2, kstore2, graph2)
         } else {
-          loop(successors.filter(s2 => !VisitedSet[VS].contains(visited, s2)),
-               VisitedSet[VS].append(visited, todo),
+          loop(successors.filter(s2 => !VisitedSet.contains(visited, s2)),
+               VisitedSet.append(visited, todo),
                stores2,
                kstore2,
                graph2)
@@ -184,7 +191,7 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     val kstore = Store.empty[KA, Set[LKont]]
     loop(
       Set(state),
-      VisitedSet.MapVisitedSet.empty[State],
+      VisitedSet.empty,
       StoreMap(state -> initialStore),
       kstore,
       Graph[G, State, Transition].empty

@@ -212,6 +212,12 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
       type K = KA
       def key(st: State) = st.a
     }
+    implicit val stateWithKey2 = new WithKey2[State] {
+      type K1 = KA
+      type K2 = Control
+      def key1(st: State) = st.a
+      def key2(st: State) = st.control
+    }
   }
 
   type Transition = NoTransition
@@ -225,63 +231,27 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     * timeout can also be given.
     */
   def run[G](program: E, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
-    import scala.language.higherKinds
-    /* The fixpoint computation loop. @param todo is the set of states that need to
-     * be visited (the worklist). @param visited is the set of states that have
-     * already been visited. @param halted is the set of "final" states, where
-     * the program has finished its execution (it is only needed so that it can
-     * be included in the output, to return the final values computed by the
-     * program). @param graph is the current graph that has been computed (if we
-     * need to compute it). If we don't need to compute the graph, @param graph
-     * is None (see type definition for G above in this file).  Note that the
-     * worklist and visited set are "parameterized" and not tied to concrete
-     * implementations; but they are basically similar as Set[State].
-     */
-    @scala.annotation.tailrec
-    def loop[WL[_]: WorkList, VS[_]: VisitedSet](todo: WL[State],
-                                                 visited: VS[State],
-                                                 graph: G): G = {
-      if (timeout.reached) {
-        /* If we exceeded the maximal time allowed, we stop the evaluation and return what we computed up to now */
-        graph
-      } else {
-        /* Pick an element from the worklist */
-        WorkList[WL].pick(todo) match {
-          /* We have an element, hence pick returned a pair consisting of the state to visit, and the new worklist */
-          case Some((s, newTodo)) =>
-            if (VisitedSet[VS].contains(visited, s)) {
-              /* If we already visited the state, or if it is subsumed by another already
-               * visited state (i.e., we already visited a state that contains
-               * more information than this one), we ignore it. The subsumption
-               * part reduces the number of visited states. */
-              loop(newTodo, visited, graph)
-            } else if (s.halted) {
-              /* If the state is a final state, add it to the list of final states and
-               * continue exploring the graph */
-              loop(newTodo, VisitedSet[VS].add(visited, s), graph)
-            } else {
-              /* Otherwise, compute the successors of this state, update the graph, and push
-               * the new successors on the todo list */
-              val succs    = s.step /* as.step returns the set of successor states for s */
-              val newGraph = graph.addEdges(succs.map(s2 => (s, empty, s2))) /* add the new edges to the graph: from s to every successor */
-              /* then, add new successors to the worklist, add s to the visited set, and loop with the new graph */
-              loop(WorkList[WL].append(newTodo, succs), VisitedSet[VS].add(visited, s), newGraph)
-            }
-          /* No element returned by pick, this means the worklist is empty and we have visited every reachable state */
-          case None => graph
-        }
-      }
-    }
+    import scala.concurrent.{Await, Future}
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import scala.concurrent.duration._
     val fvs = program.fv
     val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
     val initialStore = Store.initial[A, V](sem.initialStore)
-    loop(
-      /* Start with the initial state resulting from injecting the program */
-      Vector(State.inject(program, initialEnv, initialStore)).toSeq,
-      /* Initially we didn't visit any state */
-      VisitedSet.MapVisitedSet.empty[State],
-      /* The initial graph is given */
-      Graph[G, State, Transition].empty
-    )
+    val initialState = State.inject(program, initialEnv, initialStore)
+    val worklist = scala.collection.mutable.Queue(initialState)
+    val visited = scala.collection.mutable.Map[KA, Set[State]]().withDefaultValue(Set.empty[State])
+    var graph = Future { Graph[G, State, Transition].empty }
+
+    while (!timeout.reached && !worklist.isEmpty) {
+      val s = worklist.dequeue
+      if (!visited(s.a).contains(s) && !s.halted) {
+        /* unvisited non-halted state */
+        val succs = s.step
+        graph = graph.map(g => g.addEdges(succs.map(s2 => (s, empty, s2))))
+        visited += ((s.a, visited(s.a) + s))
+        worklist ++= succs
+      }
+    }
+    Await.result(graph, Duration.Inf)
   }
 }

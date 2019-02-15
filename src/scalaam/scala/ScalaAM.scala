@@ -9,6 +9,7 @@ object Main {
 }
 
 object RunGabriel {
+  import scalaam.language.scheme._
   def main(args: Array[String]) = {
     val benchmarks = List(
       "boyer",
@@ -26,11 +27,24 @@ object RunGabriel {
     val pre = "test/gabriel/"
     val post = ".scm"
 
-    benchmarks.foreach(b => {
+    val t0 = System.nanoTime
+    val parsed = benchmarks.map(b => {
+      val f = scala.io.Source.fromFile(pre + b + post)
+      val content = f.getLines.mkString("\n")
+      f.close()
+      (b, SchemeParser.parse(content))
+    })
+    val t1 = System.nanoTime
+    val parsingTime = (t1 - t0) / 1000000
+    println(s"Parsing time: ${parsingTime}ms")
+    println(s"Press enter to start benchmarking...")
+    //scala.io.StdIn.readLine()
+
+    parsed.foreach(b => {
       try {
-        val timeout = Timeout.seconds(60)
-        val (t, s) = SchemeRunAAMLKSS.run(pre + b + post, timeout, false)
-        println(s"$b | $t | $s")
+        val timeout = Timeout.seconds(10)
+        val (t, s) = SchemeRunAAM.runProgram(b._2, timeout, false)
+        println(s"${b._1} | $t | $s")
       } catch {
         case e: Exception => println(s"$b failed ($e)")
       }
@@ -59,11 +73,14 @@ object SchemeRunAAM {
     val f       = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
     f.close()
+    runProgram(SchemeParser.parse(content), timeout, outputDot)
+  }
+  def runProgram(content: SchemeExp, timeout: Timeout.T = Timeout.seconds(10), outputDot: Boolean = true): (Long, Int) = {
     val t0     = System.nanoTime
-    val result = machine.run[graph.G](SchemeParser.parse(content), timeout)
+    val result = machine.run[graph.G](content, timeout)
     val t1     = System.nanoTime
     val time   = (t1 - t0) / 1000000
-    if (outputDot) result.toFile("foo.dot")
+    // if (outputDot) result.toFile("foo.dot")
     import Graph.GraphOps
     val states = result.nodes
     (time, states)
