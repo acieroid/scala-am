@@ -51,5 +51,5 @@ class SchemeInterpreterConcreteTests extends SchemeInterpreterTests[ConcreteSche
 object ConstantPropagationSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.R, ConstantPropagation.C, ConstantPropagation.Sym]
 object TypeSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, Type.S, Concrete.B, Type.I, Type.R, Type.C, Type.Sym]
 
-class ConstantPropagationSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, ConstantPropagationSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)
+// class ConstantPropagationSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, ConstantPropagationSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)
 class TypeSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, TypeSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)

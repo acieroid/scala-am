@@ -56,4 +56,4 @@
 ((pq 'enqueue) 0 'Sandy)
 ((pq 'enqueue) 89 'Spongebob)
 ((pq 'dequeue))
-((pq 'dequeue))
+(equal? ((pq 'dequeue)) 'Patrick)

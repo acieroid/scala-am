@@ -21,7 +21,10 @@
                 newsign))))
   (iter 1 1 1 1 1))
 
-(and (= (exact->inexact (calc-e-iter 10)) 2.7182818011463845)
-     (= (calc-cos 0 10) 1)
-     (= (calc-cos (/ 3.1415 2) 10) 4.6326794876592664e-05)
-     (= (calc-cos 3.1415 10) -0.9999999992346591))
+(define (close-to x y)
+  (< (abs (- x y)) 0.00000001))
+
+(and (close-to (exact->inexact (calc-e-iter 10)) 2.7182818011463845)
+     (close-to (calc-cos 0 10) 1)
+     (close-to (calc-cos (/ 3.1415 2) 10) 4.6326794876592664e-05)
+     (close-to (calc-cos 3.1415 10) -0.9999999992346591))

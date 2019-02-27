@@ -78,7 +78,7 @@ class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, 
     while (!finished) {
       def applyAction(konts: List[Frame], actions: Set[Action.A]): Unit = {
         if (actions.size == 0) {
-          println("Got no action while one was expected. Terminating concrete machine.")
+          println(s"Got no action while one was expected when stepping state $state. Terminating concrete machine.")
           finished = true;
         } else {
           if (actions.size > 1) println(s"Got more than one action in concrete machine. Picking the first one.")

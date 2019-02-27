@@ -53,7 +53,7 @@
              ((c-home 'increase) n)
              'ok)
             ((eq? team 'visit)
-             ((c-visit 'increase) x)
+             ((c-visit 'increase) n)
              'ok)
             (else (error "wrong team: " team))))
 
@@ -61,7 +61,7 @@
       (cond ((eq? msg 'reset) reset)
             ((eq? msg 'read) read)
             ((eq? msg 'score) score)
-            (else (error "wrong message: " m))))
+            (else (error "wrong message: " msg))))
     dispatch))
 
 (define bord (make-scorebord))
