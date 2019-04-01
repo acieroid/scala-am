@@ -78,4 +78,4 @@
   (equal? check expect))
 (check-expect (regex-match '(seq foo (rep bar))
                            '(foo bar))
-              #f)
+              #t)
