@@ -2,9 +2,6 @@ package scalaam.language.scheme
 
 import scalaam.core._
 
-/**
-  * TODO: Many primitives use non-tail recursion and could profit from being written in the same style as the Equalp primitive
-  */
 trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val schemeLattice: SchemeLattice[V, SchemeExp, A]
@@ -177,14 +174,14 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
       Tan, /* [vv] tan: Scientific */
       /* [x]  truncate: Arithmetic */
       /* [x]  values: Multiple Values */
-      // TODO MakeVector,     /* [vv] make-vector: Vector Creation */
-      // TODO Vector,         /* [vv] vector: Vector Creation */
+      MakeVector,     /* [vv] make-vector: Vector Creation */
+      Vector,         /* [vv] vector: Vector Creation */
       /* [x]  vector->list: Vector Creation */
       /* [x]  vector-fill!: Vector Accessors */
-      // TODO VectorLength,   /* [vv] vector-length: Vector Accessors */
-      // TODO VectorRef,      /* [vv] vector-ref: Vector Accessors */
-      // TODO VectorSet,      /* [vv] vector-set!: Vector Accessors */
-      // TODO Vectorp,        /* [vv] vector?: Vector Creation */
+      VectorLength,   /* [vv] vector-length: Vector Accessors */
+      VectorRef,      /* [vv] vector-ref: Vector Accessors */
+      VectorSet,      /* [vv] vector-set!: Vector Accessors */
+      Vectorp,        /* [vv] vector?: Vector Creation */
       /* [x]  with-input-from-file: File Ports */
       /* [x]  with-output-to-file: File Ports */
       /* [x]  write-char: Writing */
@@ -309,6 +306,19 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
             res  <- f(v)
             accv <- acc
           } yield join(accv, res))
+    def dereferencePointerGetAddressReturnStore(x: V, store: Store[A, V])(f: (A, V, Store[A, V]) => MayFail[(V, Store[A, V]), Error]): MayFail[(V, Store[A, V]), Error] =
+      getPointerAddresses(x).foldLeft(MayFail.success[(V, Store[A, V]), Error]((bottom, store)))(
+        (acc: MayFail[(V, Store[A, V]), Error], a: A) =>
+        acc >>= ({ case (accv, updatedStore) =>
+          /* We use the old store because the new added information can only negatively influence precision (as it didn't hold at the point of the function call */
+          store.lookupMF(a) >>= (v =>
+            /* But we pass the updated store around as it should reflect all updates */
+            f(a, v, updatedStore) >>= ({case (res, newStore) =>
+              MayFail.success((join(accv, res), newStore))
+            })
+          )
+        }))
+
     def dereferencePointerTR(x: V, store: Store[A, V])(f: V => TailRec[MayFail[V, Error]]): TailRec[MayFail[V, Error]] =
       getPointerAddresses(x).foldLeft(done(MayFail.success[V, Error](bottom)))(
         (acc: TailRec[MayFail[V, Error]], a: A) =>
@@ -1104,5 +1114,103 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
         extends AssocLike("assoc",
                           (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1))
     object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
+
+    object MakeVector extends Primitive {
+      val name = "make-vector"
+      def call(fexp: SchemeExp,
+        args: List[(SchemeExp, V)],
+        store: Store[A, V],
+        t: T) = {
+        def createVec(size: V, init: V): MayFail[(V, Store[A, V]), Error] = {
+          isInteger(size) >>= (isint =>
+            if (isTrue(isint)) {
+              val veca = allocator.pointer(fexp, t)
+              vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
+            } else {
+              MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
+            })
+        }
+        args match {
+          case (_, size) :: Nil => createVec(size, /* XXX: unspecified */ bool(false))
+          case (_, size) :: (_, init) :: Nil => createVec(size, init)
+          case l => MayFail.failure(PrimitiveVariadicArityError(name, 1, l.size))
+        }
+      }
+    }
+
+    object Vector extends Primitive {
+      val name = "vector"
+      def call(fexp: SchemeExp,
+        args: List[(SchemeExp, V)],
+        store: Store[A, V],
+        t: T) = {
+        val veca = allocator.pointer(fexp, t)
+        vector(number(args.size), bottom) >>= (emptyvec =>
+          args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))((acc, arg) => acc >>= (vec =>
+            arg match {
+              case ((_, value), index) =>
+                vectorSet(vec, number(index), value)
+            }))) >>= (vec => (pointer(veca), store.extend(veca, vec)))
+      }
+    }
+
+    object VectorLength extends StoreOperation("vector-length", Some(1)) {
+      def length(v: V, store: Store[A, V]): MayFail[V, Error] = {
+        dereferencePointer(v, store) { vec =>
+          ifThenElse(isVector(vec)) {
+            vectorLength(vec)
+          } {
+            MayFail.failure(PrimitiveNotApplicable(name, List(v)))
+          }
+        }
+      }
+      override def call(v: V, store: Store[A, V]) = {
+        length(v, store).map(v => (v, store))
+      }
+    }
+
+    object VectorRef extends StoreOperation("vector-ref", Some(2)) {
+      def vectorRef(v: V, index: V, store: Store[A, V]): MayFail[V, Error] = {
+        dereferencePointer(v, store) { vec =>
+          ifThenElse(isVector(vec)) {
+            schemeLattice.vectorRef(vec, index)
+          } {
+            MayFail.failure(PrimitiveNotApplicable(name, List(v, index)))
+          }
+        }
+      }
+      override def call(v: V, index: V, store: Store[A, V]) =
+        vectorRef(v, index, store).map(v => (v, store))
+    }
+
+    object VectorSet extends StoreOperation("vector-set!", Some(3)) {
+      def vectorSet(v: V, index: V, newval: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error] = {
+        dereferencePointerGetAddressReturnStore(v, store) { case (veca, vec, store) =>
+          isVector(vec) >>= (test => {
+            val t: MayFail[(V, Option[(A, V)]), Error] =
+              if (isTrue(test)) {
+                schemeLattice.vectorSet(vec, index, newval) >>= (newvec =>
+                  MayFail.success((/* unspecified */ bool(false), Some((veca, newvec)))))
+              } else {
+                MayFail.success((bottom, None))
+              }
+            val f: MayFail[V, Error] =
+              if (isFalse(test)) {
+                MayFail.failure(PrimitiveNotApplicable(name, List(v, index, newval)))
+            } else {
+                MayFail.success(bottom)
+              }
+            t >>= ({
+              case (tv, None) => f >>= (tf => MayFail.success((join(tv, tf), store)))
+              case (tv, Some((a, v))) => f >>= (tf => MayFail.success((join(tv, tf), store.update(a, v))))
+            })
+          })
+        }
+      }
+      override def call(args: List[V], store: Store[A, V]) = args match {
+        case v :: index :: newval :: Nil => vectorSet(v, index, newval, store)
+        case _ => MayFail.failure(PrimitiveArityError(name, 3, args.size))
+      }
+    }
   }
 }

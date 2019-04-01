@@ -469,7 +469,7 @@ class MakeSchemeLattice[
         MayFail.success(schemeLattice.join(t, f))
       }
       case (_: Vec, _) => MayFail.failure(TypeError("expecting int to access vector", index))
-      case _ => MayFail.failure(TypeError("expecting vector", vector))
+      case _ => MayFail.failure(TypeError("vector-ref: expecting vector", vector))
     }
 
     def vectorSet(vector: Value, index: Value, newval: L): MayFail[L, Error] = (vector, index) match {
@@ -482,7 +482,7 @@ class MakeSchemeLattice[
         MayFail.success(schemeLattice.join(t, f))
       }
       case (_: Vec, _) => MayFail.failure(TypeError("expecting int to set vector", index))
-      case _ => MayFail.failure(TypeError("expecting vector", vector))
+      case _ => MayFail.failure(TypeError("vector-set!: expecting vector", vector))
     }
 
     def vector(size: Value, init: L): MayFail[Value, Error] = size match {
