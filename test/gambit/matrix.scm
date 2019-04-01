@@ -1,9 +1,22 @@
+(define (reverse lst)
+  (define (go lst tail)
+    (if (null? lst) tail
+        (go (cdr lst) (cons (car lst) tail))))
+  (go lst '()))
+
 (define (map f l)
   (if (null? l)
       l
       (if (pair? l)
           (cons (f (car l)) (map f (cdr l)))
           (error "Cannot map over a non-list"))))
+
+(define (map2 f l1 l2)
+  (if (or (null? l1) (null? l2))
+      '()
+      (if (and (pair? l1) (pair? l2))
+          (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2)))
+          (error "Cannot map2 over a non-list"))))
 ;;; MATRIX -- Obtained from Andrew Wright.
 
 ; Chez-Scheme compatibility stuff:
@@ -340,7 +353,7 @@
                                                   (cdr row)))
                                              (if (coef-zero? first-col)
                                                  rest-row
-                                                 (map
+                                                 (map2
                                                   (let ((mult
                                                          (coef-negate first-col)))
                                                     (lambda (f z)
@@ -397,7 +410,7 @@
                              (if (coef-zero? z-first)
                                  #f
                                  (_-*-
-                                  (map
+                                  (map2
                                    (let ((mult
                                           (coef-negate r-first)))
                                      (lambda (r z)
