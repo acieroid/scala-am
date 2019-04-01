@@ -133,7 +133,7 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
     Benchmark("test/primtest.scm", ValueInteger(1), all),
     Benchmark("test/quasiquoting-simple.scm", ValueBoolean(true), none), // quasiquoting
     Benchmark("test/quasiquoting.scm", ValueBoolean(true), none), // quasiquoting
-    Benchmark("test/regex.scm", ValueBoolean(false), all),
+    Benchmark("test/regex.scm", ValueBoolean(true), all),
     Benchmark("test/rosetta/easter.scm", ValueBoolean(true), all),
     Benchmark("test/rosetta/quadratic.scm", ValueBoolean(true), all),
     Benchmark("test/rotate.scm", ValueString("hallo"), all),

@@ -153,6 +153,12 @@ object SchemeCond {
         (clause, acc) =>
           clause match {
             case (SchemeValue(ValueBoolean(true), _), body) => SchemeBody(body)
+            case (cond, Nil) =>
+              /* Body is empty. R5RS states that "If the selected clause contains only the
+               * test and no expressions ,then the value of the test is returned
+               * as the result" */
+              val id = Identifier("__cond-empty-body", cond.pos)
+              SchemeLet(List((id, cond)), List(SchemeIf(SchemeVar(id), SchemeVar(id), acc, cond.pos)), cond.pos)
             case (cond, body)                               => SchemeIf(cond, SchemeBody(body), acc, cond.pos)
         })
     }
