@@ -87,6 +87,39 @@ object SchemeRunAAM {
   }
 }
 
+object SchemeRunConcrete {
+  import scalaam.language.scheme._
+  import scalaam.machine._
+  import scalaam.graph._
+  import scalaam.lattice._
+
+  val timestamp = ConcreteTimestamp[SchemeExp]()
+  val address   = TimestampAddress[timestamp.T, SchemeExp]
+  val lattice =
+    new MakeSchemeLattice[SchemeExp, address.A, Concrete.S, Concrete.B, Concrete.I, Concrete.R, Concrete.C, Concrete.Sym]
+  val sem = new BaseSchemeSemantics[address.A, lattice.L, timestamp.T, SchemeExp](
+    address.Alloc)
+  val machine = new ConcreteMachine[SchemeExp, address.A, lattice.L, timestamp.T](sem)
+  val graph   = new DotGraph[machine.State, machine.Transition]
+
+  def run(file: String, timeout: Timeout.T = Timeout.seconds(10), outputDot: Boolean = true) : (Long, Int) = {
+    val f       = scala.io.Source.fromFile(file)
+    val content = f.getLines.mkString("\n")
+    f.close()
+    runProgram(SchemeParser.parse(content), timeout, outputDot)
+  }
+  def runProgram(content: SchemeExp, timeout: Timeout.T = Timeout.seconds(10), outputDot: Boolean = true): (Long, Int) = {
+    val t0     = System.nanoTime
+    val result = machine.run[graph.G](content, timeout)
+    val t1     = System.nanoTime
+    val time   = (t1 - t0) / 1000000
+    // if (outputDot) result.toFile("foo.dot")
+    import Graph.GraphOps
+    val states = result.nodes
+    (time, states)
+  }
+}
+
 object SchemeRunAAMLKSS {
   import scalaam.language.scheme._
   import scalaam.machine._
