@@ -68,7 +68,7 @@ object Concrete {
     }
 
     implicit val stringShow: Show[String] = new Show[String] {
-      def show(s: String): String = "\"" + s + "\""
+      def show(s: String): String = '"' + s + '"'
     }
     implicit val stringConcrete: StringLattice[S] = new BaseInstance[String]("Str")
     with StringLattice[S] {
