@@ -84,21 +84,14 @@ trait SchemeLattice[L, E <: Exp, A <: Address] extends Lattice[L] {
   /** Takes the cdr of a cons cell */
   def cdr(x: L): MayFail[L, Error]
 
-  /* TODO: reimplement vectors
-  /** Get a value from a vector. Returns the addresses where to look for the values */
-  def vectorRef[Addr : Address](vector: L, index: L): MayFail[Set[Addr]]
-  /** Changes a value inside a vector. The address given is an address where the
-   * value can be stored if needed. Returns the vector value, as well as the
-   * addresses to update in the store. The value stored is not passed to
-   * vectorSet, but will be stored in the returned addresses. */
-  def vectorSet[Addr : Address](vector: L, index: L, addr: Addr): MayFail[(L, Set[Addr])]
-  /** Extract vector addresses contained in this value */
-  def getVectors[Addr : Address](x: L): Set[Addr]
-  /** Creates a vector of the given size, where the initial value lies at
-   * address. Return the vector address wrapped in a lattice value, as well as
-   * the vector value itsel */
-  def vector[Addr : Address](addr: Addr, size: L, init: Addr): MayFail[(L, L)]
-   */
+  /** Constructs a new vector */
+  def vector(size: L, init: L): MayFail[L, Error]
+
+  /** Accesses an element of a vector */
+  def vectorRef(vector: L, index: L): MayFail[L, Error]
+
+  /** Changes an element of a vector */
+  def vectorSet(vector: L, index: L, newval: L): MayFail[L, Error]
 
   /* TODO: move this to the tests
   trait SchemeLatticeLaw extends MonoidLaw {
