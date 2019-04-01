@@ -41,20 +41,20 @@ object Benchmarks {
   def benchmarksFor(kind: BenchmarkTestKind): List[Benchmark] =
     allBenchmarks.filter(b => b.supported.contains(kind))
   def allBenchmarks = List(
-    Benchmark("test/ad/abstrct.scm", ValueBoolean(true), parse /* vectors */),
+    Benchmark("test/ad/abstrct.scm", ValueBoolean(true), all),
     Benchmark("test/ad/bfirst.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/ad/bst.scm", ValueBoolean(true), none), // dot notation
     // TODO: ad/btree.scm only contains definition, add a body
     Benchmark("test/ad/bubsort.scm", ValueBoolean(true), none), // fails to parse
     Benchmark("test/ad/dict.scm", ValueBoolean(true), all),
     Benchmark("test/ad/heap.scm", ValueBoolean(true), none), // unknown reason
-    Benchmark("test/ad/inssort.scm", ValueBoolean(true), parse /* vectors */),
+    Benchmark("test/ad/inssort.scm", ValueBoolean(true), all),
     Benchmark("test/ad/linear.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/ad/list.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/ad/mesort.scm", ValueBoolean(true), none), // unknown reason
     Benchmark("test/ad/prioq.scm", ValueBoolean(true), all),
     Benchmark("test/ad/qsort.scm", ValueBoolean(true), none), // unknown reason
-    Benchmark("test/ad/qstand.scm", ValueBoolean(true), parse /* vectors */),
+    Benchmark("test/ad/qstand.scm", ValueBoolean(true), all),
     Benchmark("test/ad/queue.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/ad/quick.scm", ValueBoolean(true), none), // unknown reason
     Benchmark("test/ad/RBtreeADT.scm", ValueBoolean(true), none), // dot notation
@@ -80,7 +80,7 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
     Benchmark("test/gabriel/divrec.scm", ValueBoolean(true), all),
     Benchmark("test/gabriel/takl.scm", ValueBoolean(true), all),
 
-    Benchmark("test/gambit/array1.scm", ValueBoolean(true), parse /* vectors */),
+    Benchmark("test/gambit/array1.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/browse.scm", ValueInteger(1101), parse /* missing string-ref */),
     Benchmark("test/gambit/cat.scm", ValueBoolean(true), parse /* rely on IO */),
     Benchmark("test/gambit/compiler.scm", ValueBoolean(true), none), // unknown reason
@@ -90,17 +90,17 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/diviter.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/earley.scm", ValueBoolean(true), parse /* list->vector */),
     Benchmark("test/gambit/fibc.scm", ValueBoolean(true), parse /* call/cc */),
-    Benchmark("test/gambit/graphs.scm", ValueBoolean(true), parse /* vectors */),
+    Benchmark("test/gambit/graphs.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/lattice.scm", ValueBoolean(true), parse /* apply */),
-    Benchmark("test/gambit/matrix.scm", ValueBoolean(true), parse /* vector */),
+    Benchmark("test/gambit/matrix.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/mazefun.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/nboyer.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/gambit/nqueens.scm", ValueBoolean(true), all),
-    Benchmark("test/gambit/paraffins.scm", ValueBoolean(true), parse /* vector */),
+    Benchmark("test/gambit/paraffins.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/perm9.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/peval.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/primes.scm", ValueBoolean(true), all),
-    Benchmark("test/gambit/puzzle.scm", ValueBoolean(true), parse /* vector */),
+    Benchmark("test/gambit/puzzle.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/sboyer.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/gambit/scheme.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/gambit/slatex.scm", ValueBoolean(true), none), // dot notation
@@ -114,7 +114,7 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
     Benchmark("test/gambit/wc.scm", ValueBoolean(true), parse /* rely on IO */),
 
     Benchmark("test/gcipd.scm", ValueInteger(36), all),
-    Benchmark("test/grid.scm", ValueBoolean(true), parse /* vectors */),
+    Benchmark("test/grid.scm", ValueBoolean(true), all),
     Benchmark("test/inc.scm", ValueInteger(4), all),
 /* TODO[easy] these should return bottom
     Benchmark("test/infinite-1.scm", all - SchemeRunConcrete /* does not terminate in concrete (expected behavior) */),
@@ -205,7 +205,7 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
     Benchmark("test/sigscheme/case.scm", ValueInteger(20000), all),
     Benchmark("test/sigscheme/let-loop.scm", ValueInteger(20000), all),
     Benchmark("test/sigscheme/loop.scm", ValueInteger(8000), all),
-    Benchmark("test/sigscheme/mem.scm", ValueBoolean(false), parse /* vectors */),
+    Benchmark("test/sigscheme/mem.scm", ValueBoolean(false), all),
     Benchmark("test/sigscheme/rec.scm", ValueBoolean(true), all),
     Benchmark("test/sigscheme/takr.scm", ValueInteger(7), all),
     Benchmark("test/sq.scm", ValueInteger(9), all),
