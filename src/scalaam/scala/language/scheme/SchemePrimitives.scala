@@ -693,8 +693,12 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
     object Booleanp extends NoStoreOperation("boolean?", Some(1)) {
       override def call(x: V) = isBoolean(x)
     }
-    object Vectorp extends NoStoreOperation("vector?", Some(1)) {
-      override def call(x: V) = isVector(x)
+    object Vectorp extends StoreOperation("vector?", Some(1)) {
+      override def call(x: V, store: Store[A, V]) =
+        for {
+          ispointer <- isPointer(x)
+          isvector <- dereferencePointer(x, store) { v => isVector(v) }
+        } yield (and(ispointer, isvector), store)
     }
     object Eq extends NoStoreOperation("eq?", Some(2)) {
       override def call(x: V, y: V) = eqq(x, y)

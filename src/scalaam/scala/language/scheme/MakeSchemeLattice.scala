@@ -399,9 +399,10 @@ class MakeSchemeLattice[
               case (Symbol(s1), Symbol(s2)) => Bool(SymbolLattice[Sym].eql(s1, s2))
               case (Nil, Nil)               => True
               case (Prim(_), Prim(_))       => Bool(BoolLattice[B].inject(x == y))
-              case (Clo(_, _), Clo(_, _))   => Bool(BoolLattice[B].inject(x == y))
-              case (Cons(_, _), Cons(_, _)) => Bool(BoolLattice[B].inject(x == y))
-              //          case (VectorAddress(_), VectorAddress(_)) => Bool(BoolLattice[B].inject(x == y))
+              case (_: Clo, _: Clo)         => Bool(BoolLattice[B].inject(x == y))
+              case (_: Cons, _: Cons)       => Bool(BoolLattice[B].inject(x == y))
+              case (_: Vec, _: Vec)         => Bool(BoolLattice[B].inject(x == y))
+              case (_: Pointer, _: Pointer) => Bool(BoolLattice[B].top) /* we can't know for sure that equal addresses are eq (in the abstract) */
               case _ => False
             })
           case StringAppend =>

@@ -33,7 +33,7 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
     ("(eq? '() '())", t),
     ("(eq? car car)", t),
     // TODO: fails?    ("(let ((x '(a))) (eq? x x))", t),
-    //    ("(let ((x (make-vector 0 1))) (eq? x x))", t),
+    ("(let ((x (make-vector 0 1))) (eq? x x))", t),
     ("(let ((p (lambda (x) x))) (eq? p p))", t)
   ))
   r5rs("equal?", Table(
@@ -531,24 +531,23 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
   ))
 
   // 6.3.6: vector notation (#(1 2)) not supported
-  // TODO: reimplement vectors
-  //  r5rs("vector", Table(
-  //    ("program", "answer"),
-  //    ("(let ((vec (vector 'a 'b 'c))) (and (equal? (vector-ref vec 0) 'a) (equal? (vector-ref vec 1) 'b) (equal? (vector-ref vec 2) 'c)))", t),
-  //    ("(let ((vec (vector 0 '(2 2 2 2) \"Anna\"))) (vector-set! vec 1 '(\"Sue\" \"Sue\")) (and (equal? (vector-ref vec 0) 0) (equal? (vector-ref vec 1) '(\"Sue\" \"Sue\")) (equal? (vector-ref vec 2) \"Anna\")))", t)
-  //  ))
-  //
-  //  r5rs("vector?", Table(
-  //    ("program", "answer"),
-  //    ("(vector? (vector 'a 'b 'c))", t),
-  //    ("(vector? 'a)", f)
-  //  ))
-  //
-  //  r5rs("vector-length", Table(
-  //    ("program", "answer"),
-  //    ("(vector-length (vector))", number(0)),
-  //    ("(vector-length (vector 0 1 0))", number(3))
-  //  ))
+  r5rs("vector", Table(
+    ("program", "answer"),
+    ("(let ((vec (vector 'a 'b 'c))) (and (equal? (vector-ref vec 0) 'a) (equal? (vector-ref vec 1) 'b) (equal? (vector-ref vec 2) 'c)))", t),
+    ("(let ((vec (vector 0 '(2 2 2 2) \"Anna\"))) (vector-set! vec 1 '(\"Sue\" \"Sue\")) (and (equal? (vector-ref vec 0) 0) (equal? (vector-ref vec 1) '(\"Sue\" \"Sue\")) (equal? (vector-ref vec 2) \"Anna\")))", t)
+    ))
+
+    r5rs("vector?", Table(
+      ("program", "answer"),
+      ("(vector? (vector 'a 'b 'c))", t),
+      ("(vector? 'a)", f)
+    ))
+
+    r5rs("vector-length", Table(
+      ("program", "answer"),
+      ("(vector-length (vector))", number(0)),
+      ("(vector-length (vector 0 1 0))", number(3))
+    ))
 
   /* 6.4 Control features */
   // procedure not implemented
@@ -585,4 +584,3 @@ object ConcreteTypeSchemeLattice extends MakeSchemeLattice[SchemeExp, ConcreteSc
 class ConcreteSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteSchemeLattice.L](ConcreteSchemeAddress.Alloc)
 class ConstantPropagationSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteConstantPropagationSchemeLattice.L](ConcreteSchemeAddress.Alloc)
 class TypeSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteTypeSchemeLattice.L](ConcreteSchemeAddress.Alloc)
-
