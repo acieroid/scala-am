@@ -9,6 +9,17 @@ sealed trait MayFail[A, E] {
   }
   /* We want to deconstruct in for loops, so we need filter (see https://issues.scala-lang.org/browse/SI-1336) */
   def withFilter(f: A => Boolean) = this
+  def join(that: MayFail[A, E], joinA: (A, => A) => A): MayFail[A, E] = (this, that) match {
+    case (MayFailSuccess(a1), MayFailSuccess(a2)) => MayFailSuccess(joinA(a1, a2))
+    case (MayFailSuccess(a1), MayFailBoth(a2, errs2)) => MayFailBoth(joinA(a1, a2), errs2)
+    case (MayFailSuccess(a1), MayFailError(errs2)) => MayFailBoth(a1, errs2)
+    case (MayFailBoth(a1, errs1), MayFailSuccess(a2)) => MayFailBoth(joinA(a1, a2), errs1)
+    case (MayFailBoth(a1, errs1), MayFailBoth(a2, errs2)) => MayFailBoth(joinA(a1, a2), errs1 ++ errs2)
+    case (MayFailBoth(a1, errs1), MayFailError(errs2)) => MayFailBoth(a1, errs1 ++ errs2)
+    case (MayFailError(errs1), MayFailSuccess(a2)) => MayFailBoth(a2, errs1)
+    case (MayFailError(errs1), MayFailBoth(a2, errs2)) => MayFailBoth(a2, errs1 ++ errs2)
+    case (MayFailError(errs1), MayFailError(errs2)) => MayFailError(errs1 ++ errs2)
+  }
 
   def flatMap[B](f: A => MayFail[B, E]): MayFail[B, E] = this match {
     case MayFailSuccess(a)  => f(a)
