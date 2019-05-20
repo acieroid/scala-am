@@ -51,6 +51,8 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]() {
 
     def getNode(id: Int): Option[N] = ids.find({ case (_, v) => id == v }).map(_._1)
 
+    def findNodes(p: N => Boolean) = _nodes.filter(p)
+
   }
 
   object G {

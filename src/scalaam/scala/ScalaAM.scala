@@ -20,9 +20,9 @@ object RunGabriel {
       "destruc",
       "diviter",
       "divrec",
-      // "puzzle", // vectors
+      "puzzle", // vectors
       "takl",
-      // "triangl", // vectors
+      "triangl", // vectors
     )
     val pre = "test/gabriel/"
     val post = ".scm"
@@ -80,7 +80,7 @@ object SchemeRunAAM {
     val result = machine.run[graph.G](content, timeout)
     val t1     = System.nanoTime
     val time   = (t1 - t0) / 1000000
-    // if (outputDot) result.toFile("foo.dot")
+    if (outputDot) result.toFile("foo.dot")
     import Graph.GraphOps
     val states = result.nodes
     (time, states)
@@ -113,10 +113,38 @@ object SchemeRunConcrete {
     val result = machine.run[graph.G](content, timeout)
     val t1     = System.nanoTime
     val time   = (t1 - t0) / 1000000
-    // if (outputDot) result.toFile("foo.dot")
+    if (outputDot) result.toFile("foo.dot")
     import Graph.GraphOps
     val states = result.nodes
     (time, states)
+  }
+  def logValues(file: String, timeout: Timeout.T = Timeout.seconds(10)) : Map[Identifier, lattice.L] = {
+    val f       = scala.io.Source.fromFile(file)
+    val content = f.getLines.mkString("\n")
+    f.close()
+    val result = machine.run[graph.G](SchemeParser.parse(content), timeout)
+    result
+      /* Let's collect all nodes that evaluate a variable */
+      .findNodes((s: machine.State) => s.control match {
+        case machine.ControlEval(SchemeVar(id), env) =>
+          env.lookup(id.name) match {
+            case Some(_) => true
+            case None =>
+              // println(s"Identifier is unbound: $id")
+              false
+          }
+      case _ => false
+    })
+      /* And evaluate the value of each variable */
+      .collect((s: machine.State) => s.control match {
+        case machine.ControlEval(SchemeVar(id), env) =>
+          (id, s.store.lookup(env.lookup(id.name).get).get)
+      })
+      /* We now have a list of pairs (variable, value).
+         Let's join all of them by variable in a single map */
+      .foldLeft(Map.empty[Identifier, lattice.L].withDefaultValue(SchemeLattice[lattice.L, SchemeExp, address.A].bottom))((map, pair) => pair match {
+        case (id, value) => map + (id -> SchemeLattice[lattice.L, SchemeExp, address.A].join(map(id), value))
+      })
   }
 }
 
