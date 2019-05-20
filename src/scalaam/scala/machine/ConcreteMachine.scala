@@ -27,7 +27,6 @@ case class ConcreteStore[A <: Address, V](val content: Map[A, V])(implicit val l
       content.get(binding._1).exists(v => lat.subsumes(v, binding._2)))
 }
 
-
 class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
   implicit val timestamp: Timestamp[T, E],
   implicit val lattice: Lattice[V])

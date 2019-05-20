@@ -25,9 +25,11 @@ trait AAMUtils[E <: Exp, A <: Address, V, T] {
   }
   case class KontAddr(exp: E, time: T) extends KA {
     override def toString = s"Kont(${exp.toString.take(10)})"
+    def allocPosition = exp.pos
   }
   case object HaltKontAddr extends KA {
     override def toString = "Halt"
+    def allocPosition = NoPosition
   }
 
   case class Kont(f: Frame, next: KA) extends SmartHash
