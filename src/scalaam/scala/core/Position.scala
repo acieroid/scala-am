@@ -8,12 +8,15 @@ sealed trait Position {
 }
 
 /** A position with a line and column */
-case class SimplePosition(line: Int, column: Int) extends Position with SmartHash
+case class SimplePosition(line: Int, column: Int) extends Position with SmartHash {
+  override def toString = s"$line:$column"
+}
 
 /** No position */
 object NoPosition extends Position {
   val column = 0
   val line   = 0
+  override def toString = "-1:0"
 }
 
 object Position {
