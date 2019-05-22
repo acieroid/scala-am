@@ -93,6 +93,10 @@ trait SchemeLattice[L, E <: Exp, A <: Address] extends Lattice[L] {
   /** Changes an element of a vector */
   def vectorSet(vector: L, index: L, newval: L): MayFail[L, Error]
 
+  /** Return the set of concrete values contained in this lattice.
+    * Not meant to be used for analysis purposes, but rather to compare analysis results with a concrete run. */
+  def concreteValues(x: L): Set[ConcreteVal]
+
   /* TODO: move this to the tests
   trait SchemeLatticeLaw extends MonoidLaw {
     import scalaz.std.boolean.conditional

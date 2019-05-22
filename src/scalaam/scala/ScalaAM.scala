@@ -86,7 +86,6 @@ object SchemeRunAAM {
     (time, states)
   }
 
-
   def logValues(file: String, timeout: Timeout.T = Timeout.seconds(10)) : Map[Identifier, lattice.L] = {
     val f       = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
@@ -207,5 +206,57 @@ object SchemeRunAAMLKSS {
     import Graph.GraphOps
     val states = result.nodes
     (time, states)
+  }
+}
+
+object CompareMachines {
+  def compare(file: String): Unit = {
+    println("Running concrete")
+    val conc = SchemeRunConcrete.logValues(file)
+    println("Running abstract")
+    val abs = SchemeRunAAM.logValues(file)
+    if (conc.keySet != abs.keySet) {
+      if (conc.keySet.subsetOf(abs.keySet)) {
+        println(s"Abstract has observed extra variables: ${abs.keySet.diff(conc.keySet)}")
+      } else {
+        println("!!!SOUNDNESS PROBLEM!!!")
+        /* If the concrete execution observed variables not observed in the abstract, the abstract is not sound! */
+        println(s"Concrete has observed extra variables: ${conc.keySet.diff(abs.keySet)}")
+        return () /* And we can directly abort */
+      }
+    }
+    import scalaam.core.ConcreteVal._
+    import scalaam.language.scheme._
+    val conclat = SchemeLattice[SchemeRunConcrete.lattice.L, SchemeExp, SchemeRunConcrete.address.A]
+    val abslat = SchemeLattice[SchemeRunAAM.lattice.L, SchemeExp, SchemeRunAAM.address.A]
+    conc.keySet.foreach(id => {
+      val concval = conc(id)
+      val abstractedconcval = conclat.concreteValues(concval).foldLeft(abslat.bottom)((lat, v) => abslat.join(lat, v match {
+        case ConcreteNumber(x) => abslat.number(x)
+        case ConcreteReal(x) => abslat.real(x)
+        case ConcreteString(x) => abslat.string(x)
+        case ConcreteBool(x) => abslat.bool(x)
+        case ConcreteChar(x) => abslat.char(x)
+        case ConcreteSymbol(x) => abslat.symbol(x)
+        case ConcretePrim(p) => abslat.primitive(p)
+        case ConcreteNil => abslat.nil
+        case ConcreteClosure(exp, env) =>
+          val env2 = env.keys.foldLeft(Environment.empty[SchemeRunAAM.address.A])((env2, k) =>
+            env2.extend(k, env.lookup(k).get match {
+              case SchemeRunConcrete.address.A(nameaddr, _) => nameaddr
+            }))
+          abslat.closure((exp.asInstanceOf[SchemeExp], env2))
+        case ConcretePointer(SchemeRunConcrete.address.A(nameaddr, _)) =>
+          abslat.pointer(nameaddr)
+      }))
+      val absval = abs(id)
+      if (absval == abstractedconcval) {
+        println(s"$id: full precision! ($absval)")
+      } else if (!abslat.subsumes(absval, abstractedconcval)) {
+        println(s"$id: SOUNDNESS PROBLEM, inferred $absval while concrete shows $abstractedconcval")
+      } else {
+        println(s"$id: overapproximative, inferred as $absval while best abstraction is $abstractedconcval")
+      }
+    })
   }
 }

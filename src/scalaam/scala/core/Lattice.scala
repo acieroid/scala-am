@@ -35,6 +35,8 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
     case (false, true)  => Some(-1) // y >= x and x != y
     case (false, false) => None // not comparable
   }
+
+  def concreteValues(x: L): Set[ConcreteVal] = ???
 }
 
 object Lattice {

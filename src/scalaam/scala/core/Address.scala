@@ -38,7 +38,7 @@ object NameAddress {
   /** The address of a variable */
   case class Variable(name: Identifier) extends A {
     def printable         = true
-    override def toString = s"@${name.name}"
+    override def toString = s"@${name.name}-${name.pos}"
     def allocPosition     = name.pos
   }
 
@@ -70,6 +70,7 @@ case class TimestampAddress[T, C]()(implicit val time: Timestamp[T, C]) {
   case class A(nameAddr: NameAddress.A, t: T) extends Address {
     def printable     = nameAddr.printable
     def allocPosition = nameAddr.allocPosition
+    override def toString = nameAddr.toString
   }
   val nameAlloc = NameAddress.Alloc[T, C]
   object Alloc extends Allocator[A, T, C] {

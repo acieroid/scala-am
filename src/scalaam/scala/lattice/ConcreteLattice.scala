@@ -1,6 +1,7 @@
 package scalaam.lattice
 
-import scalaam.core.Lattice
+import scalaam.core.{Lattice, ConcreteVal}
+import scalaam.core.ConcreteVal._
 import scalaam.util.Show
 
 object Concrete {
@@ -99,6 +100,10 @@ object Concrete {
           content1.foldMap(s1 => content2.foldMap(s2 => BoolLattice[B2].inject(s1 < s2)))
       }
       def toSymbol[Sym2: SymbolLattice](s: S): Sym2 = s.foldMap(s => SymbolLattice[Sym2].inject(s))
+      override def concreteValues(x: S): Set[ConcreteVal] = x match {
+        case Top => ???
+        case Values(content) => content.map(x => ConcreteString(x))
+      }
     }
     implicit val boolShow: Show[Boolean] = new Show[Boolean] {
       def show(b: Boolean): String = if (b) { "#t" } else { "#f" }
@@ -115,6 +120,10 @@ object Concrete {
         case Values(content) => content.contains(false)
       }
       def not(b: B): B = b.map(x => !x)
+      override def concreteValues(x: B): Set[ConcreteVal] = x match {
+        case Top => ???
+        case Values(content) => content.map(x => ConcreteBool(x))
+      }
     }
 
     implicit val intShow: Show[Int] = new Show[Int] {
@@ -145,6 +154,11 @@ object Concrete {
       }
       def toString[S2: StringLattice](n: I): S2 =
         n.foldMap(n => StringLattice[S2].inject(n.toString))
+
+      override def concreteValues(x: I): Set[ConcreteVal] = x match {
+        case Top => ???
+        case Values(content) => content.map(x => ConcreteNumber(x))
+      }
     }
 
     implicit val doubleShow: Show[Double] = new Show[Double] {
@@ -176,17 +190,29 @@ object Concrete {
       }
       def toString[S2: StringLattice](n: R): S2 =
         n.foldMap(n => StringLattice[S2].inject(n.toString))
+      override def concreteValues(x: R): Set[ConcreteVal] = x match {
+        case Top => ???
+        case Values(content) => content.map(x => ConcreteReal(x))
+      }
     }
     implicit val charShow: Show[Char] = new Show[Char] {
       def show(c: Char): String = s"#\\$c"
     }
     implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char): C = Values(Set(x))
+      override def concreteValues(x: C): Set[ConcreteVal] = x match {
+        case Top => ???
+        case Values(content) => content.map(x => ConcreteChar(x))
+      }
     }
     implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")
     with SymbolLattice[Sym] {
       def inject(x: String): Sym                  = Values(Set(x))
       def toString[S2: StringLattice](s: Sym): S2 = s.foldMap(s => StringLattice[S2].inject(s))
+      override def concreteValues(x: Sym): Set[ConcreteVal] = x match {
+        case Top => ???
+        case Values(content) => content.map(x => ConcreteSymbol(x))
+      }
     }
   }
 }
