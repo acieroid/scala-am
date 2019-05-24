@@ -12,6 +12,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
   case class UserError(message: String)                                                extends Error
   trait Primitive {
     def name: String
+    override def toString = name
     def callAction(fexp: SchemeExp,
                    args: List[(SchemeExp, V)],
                    store: Store[A, V],

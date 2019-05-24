@@ -8,11 +8,6 @@ trait Address extends SmartHash {
     * Address that are not printable may for example include addresses of primitive functions.
     */
   def printable: Boolean
-
-  /**
-    * Return the positional information that identifies where this address has been allocated
-    */
-  def allocPosition: Position
 }
 
 /** An allocator is used to allocate addresses of type A. It relies on
@@ -39,19 +34,16 @@ object NameAddress {
   case class Variable(name: Identifier) extends A {
     def printable         = true
     override def toString = s"@${name.name}-${name.pos}"
-    def allocPosition     = name.pos
   }
 
   /** The address for a pointer */
   case class Pointer[E <: Exp](e: E) extends A {
     def printable     = false
-    def allocPosition = e.pos
   }
 
   /** The address of a primitive */
   case class Primitive(name: String) extends A {
     def printable     = false
-    def allocPosition = NoPosition
   }
 
   /** The NameAddress allocator */
@@ -69,7 +61,6 @@ case class TimestampAddress[T, C]()(implicit val time: Timestamp[T, C]) {
   /* A timestamp address just bundles a name address with a timestamp */
   case class A(nameAddr: NameAddress.A, t: T) extends Address {
     def printable     = nameAddr.printable
-    def allocPosition = nameAddr.allocPosition
     override def toString = nameAddr.toString
   }
   val nameAlloc = NameAddress.Alloc[T, C]

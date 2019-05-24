@@ -238,7 +238,7 @@ object CompareMachines {
         case ConcreteBool(x) => abslat.bool(x)
         case ConcreteChar(x) => abslat.char(x)
         case ConcreteSymbol(x) => abslat.symbol(x)
-        case ConcretePrim(p) => abslat.primitive(p)
+        case ConcretePrim(prim : SchemeRunConcrete.sem.Primitive) => abslat.primitive(SchemeRunAAM.sem.allPrimitives.find(p => p.name == prim.name).get)
         case ConcreteNil => abslat.nil
         case ConcreteClosure(exp, env) =>
           val env2 = env.keys.foldLeft(Environment.empty[SchemeRunAAM.address.A])((env2, k) =>
