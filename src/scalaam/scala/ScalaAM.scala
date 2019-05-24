@@ -251,11 +251,11 @@ object CompareMachines {
       }))
       val absval = abs(id)
       if (absval == abstractedconcval) {
-        println(s"$id: full precision! ($absval)")
+        println(s"${id.fullString}: full precision! ($absval)")
       } else if (!abslat.subsumes(absval, abstractedconcval)) {
-        println(s"$id: SOUNDNESS PROBLEM, inferred $absval while concrete shows $abstractedconcval")
+        println(s"${id.fullString}: SOUNDNESS PROBLEM, inferred $absval while concrete shows $abstractedconcval")
       } else {
-        println(s"$id: overapproximative, inferred as $absval while best abstraction is $abstractedconcval")
+        println(s"${id.fullString}: overapproximative, inferred as $absval while best abstraction is $abstractedconcval")
       }
     })
   }
