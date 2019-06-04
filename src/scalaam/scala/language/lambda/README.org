@@ -47,5 +47,5 @@ Scala-AM, and we don't cover their implementation here.
 * Analysis
 With all of this set up, we can run an analysis. This is done in
 =LambdaAnalysis.scala=, and can be run with =sbt "runMain
-scalaam.language.lambda.LambdaAnalysis"=, which procude the output graph
+scalaam.language.lambda.LambdaAnalysis"= which procude the output graph
 =foo.dot= for the input program =((lambda (x) (lambda (y) y)) (lambda (z) z))=.
