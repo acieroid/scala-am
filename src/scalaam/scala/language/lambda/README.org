@@ -1,0 +1,51 @@
+Example of language support and analysis with Scala-AM
+
+A static analysis with Scala-AM combines at least the following elements:
+  - a description of the semantics of a language to analyze,
+  - an abstract domain encoded as a lattice that encodes the values manipulated
+    by the analysis,
+  - a /machine abstraction/ that drives the analysis of a program written in the language.
+
+We refer here to a simple analysis for untyped lambda-calculus.
+
+* Language Expressions
+First, the expressions of the languages have to be defined.
+This is done in =LambdaExp.scala=. A =LambdaExp= is a lambda-calculus
+expression. These expression can be parsed from a string or file using the
+parser defined in =LambdaParser.scala=, but we don't cover the implementation of
+the parser here.
+* Language Semantics
+The semantics of the language under consideration, lambda-calculus, is defined
+in =LambdaSemantics.scala=. The semantics have to provide two functions:
+  - =stepEval(e, env, store, t)= which performs an evaluation step given an
+     expression =e=, an environment =env=, a store (representing the memory of the
+     program) =store=, and a timestamp =t= used for analysis-specific purposes.
+  - =stepKont(v, frame, store, t)= which performs an evaluation step once an
+    expression has been reduced to a value, and the next continuation frame
+    =frame= is popped from the stack.
+Both functions have to return a set of possible /actions/ that happen in the
+current evaluation step.
+We refer to the actual implementation for more explanation of the possible actions.
+
+* Lattice
+A static analysis needs to manipulate /abstract values/, which are implemented
+as a lattice. For lambda-calculus, we only have one kind of values: closures. A
+closure consists of a function paired with an environment.
+
+A lattice is implemented as a [[https://alvinalexander.com/scala/fp-book/type-classes-101-introduction][type class]], which implements a number of base
+functions, and which is extended with other functions specific to the language
+under consideration. For lambda calculus, we require two extra functions
+=function(e, env)= to /inject/ a function and an environment into a lattice
+value, and =closures(l)= to extract the closures from a lattice value.
+The lambda-calculus lattice is implemented in =LambdaLattice.scala=.
+
+* Machine Abstraction
+The machine abstraction drives the analysis of a language given its expression,
+semantics, and lattice. Multiple machine abstractions are pre-defined in
+Scala-AM, and we don't cover their implementation here.
+
+* Analysis
+With all of this set up, we can run an analysis. This is done in
+=LambdaAnalysis.scala=, and can be run with =sbt "runMain
+scalaam.language.lambda.LambdaAnalysis"=, which procude the output graph
+=foo.dot= for the input program =((lambda (x) (lambda (y) y)) (lambda (z) z))=.
