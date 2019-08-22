@@ -20,7 +20,7 @@ object NoPosition extends Position {
 }
 
 object Position {
-  def apply(p: scala.util.parsing.input.Position): Position = SimplePosition(p.column, p.line)
+  def apply(p: scala.util.parsing.input.Position): Position = SimplePosition(p.line, p.column)
   def none: Position                                        = NoPosition
 
   /** Positions are ordered */
