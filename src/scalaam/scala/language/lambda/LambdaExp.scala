@@ -49,3 +49,16 @@ case class LambdaVar(id: Identifier) extends LambdaExp {
   override def toString = id.name
   def fv = Set(id.name)
 }
+
+/**
+  * A recursive let binding
+  */
+case class LambdaLetrec(bindings: List[(Identifier, LambdaExp)],
+                        body: LambdaExp,
+                        pos: Position) extends LambdaExp {
+  override def toString = {
+    val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
+    s"(letrec ($bi) $body)"
+  }
+  def fv = (bindings.map(_._2).flatMap(_.fv).toSet ++ body.fv.toSet) -- bindings.map(_._1.name).toSet
+}

@@ -39,6 +39,10 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
                                   env: Environment[A])
       extends Frame
 
+  /** This frame is used for letrec bindings */
+  case class FrameLetrec(addr: A, bindings: List[(A, LambdaExp)], body: LambdaExp, env: Environment[A])
+      extends Frame
+
   /** stepEval defines how an expression is evaluated and returns possibly
     * multiple actions to perform. When multiple acitons are returned, this
     * indicates that the interpreter reached a non-deterministic choice (e.g.,
@@ -70,7 +74,25 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
           * monad, which encodes computations that may both succeed and fail (as
           * is often the case in abstract interpretation). */
         Action.fromMF(
-          env.lookupMF(id).flatMap(a => store.lookupMF(a).map(v => Action.Value(v, store))))
+          env.lookupMF(id).flatMap(a => store.lookupMF(a).map(v =>
+            Action.Value(v, store)
+          )))
+      case LambdaLetrec(Nil, body, _) =>
+        Action.Eval(body, env, store)
+      case LambdaLetrec(bindings, body, _) =>
+        val variables = bindings.map(_._1)
+        val addresses = variables.map(v => allocator.variable(v, t))
+        val (env1, store1) = variables
+        .zip(addresses)
+        .foldLeft((env, store))({
+          case ((env, store), (v, a)) =>
+            (env.extend(v.name, a), store.extend(a, LambdaLattice[V, A].bottom))
+        })
+      val exp = bindings.head._2
+      Action.Push(FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1),
+                  exp,
+                  env1,
+                  store1)
     }
 
   /** The `stepKont` function is called when a value has been reached, and the
@@ -95,10 +117,14 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
       /** We have evaluated some of the arguments to a function call but not all, we
         * proceed with the evaluating the rest of the arguments, again pushing a
         * `FrameFuncallOperands` frame on the stack. */
-      Action.Push(FrameFuncallOperands(v, fexp, argtoeval, (cur, v) :: args, argstoeval, env),
+      Action.Push(FrameFuncallOperands(f, fexp, argtoeval, (cur, v) :: args, argstoeval, env),
                   argtoeval,
                   env,
                   store)
+    case FrameLetrec(a, Nil, body, env) =>
+      Action.Eval(body, env, store.update(a, v))
+    case FrameLetrec(a, (a1, exp) :: rest, body, env) =>
+      Action.Push(FrameLetrec(a1, rest, body, env), exp, env, store.update(a, v))
   }
 
   /** This functions performs the evaluation of a function call when the operator
@@ -126,7 +152,6 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
             /* We don't have the expected number of arguments, throw an arity error. The
              * error is no actually thrown, but rather will be represented in
              * the state graph, so there is a specific action for that. */
-            println(s"args: $args, argsv: $argsv")
             Action.Err(ArityError(fexp, args.length, argsv.length))
           }
         case (lam, _) =>

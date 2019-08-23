@@ -9,7 +9,12 @@ import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
 
-/** Defines a Scheme lattice based on other lattices */
+/** Defines a Scheme lattice based on other lattices.
+  * Example usage:
+  *    val address = NameAddress
+  *    val lattice = new MakeSchemeLattice[SchemeExp, address.A, Type.S, Type.B, Type.I, Type.R, Type.C, Type.Sym]
+  * Now `lattice.L` is a SchemeLattice, of which the implicit for the typeclass is available in the current scope.
+  */
 /** TODO[medium]: use Show and ShowStore here */
 class MakeSchemeLattice[
     E <: Exp,

@@ -30,6 +30,16 @@ object LambdaCompiler {
     case _                      => throw new Exception(s"Invalid argument list: $args (${args.pos})")
   }
 
+  def compileBindings(bindings: SExp): TailRec[List[(Identifier, LambdaExp)]] = bindings match {
+    case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
+      for {
+        valuev <- tailcall(compileT(value))
+        restv  <- tailcall(compileBindings(rest))
+      } yield (v, valuev) :: restv
+    case SExpValue(ValueNil, _) => done(Nil)
+    case _                      => throw new Exception(s"Invalid bindings: $bindings (${bindings.pos})")
+  }
+
   def compileT(exp: SExp): TailRec[LambdaExp] = exp match {
     case SExpPair(SExpId(Identifier("lambda", _)),
                   SExpPair(args, SExpPair(body, SExpValue(ValueNil, _), _), _),
@@ -38,17 +48,18 @@ object LambdaCompiler {
         argsv <- compileArgsT(args)
         bodyv <- compileT(body)
       } yield LambdaFun(argsv, bodyv, exp.pos)
-//      tailcall(compileArgsT(args)).flatMap(argsv =>
-//        tailcall(compileT(body)).map(bodyv =>
-//          LambdaFun(argsv, bodyv, exp.pos)))
+    case SExpPair(SExpId(Identifier("letrec", _)),
+      SExpPair(bindings, SExpPair(body, SExpValue(ValueNil, _), _), _),
+      _) =>
+      for {
+        bindingsv <- tailcall(compileBindings(bindings))
+        bodyv <- tailcall(compileT(body))
+      } yield LambdaLetrec(bindingsv, bodyv, exp.pos)
     case SExpPair(f, args, _) =>
       for {
         fv    <- compileT(f)
         argsv <- compileListT(args)
       } yield LambdaCall(fv, argsv, exp.pos)
-//      tailcall(compileT(f)).flatMap(fv =>
-//        tailcall(compileListT(args)).map(argsv =>
-//          LambdaCall(fv, argsv, exp.pos)))
     case SExpId(id) =>
       done(LambdaVar(id))
     case _ => throw new Exception(s"Invalid lambda-calculus expression: $exp (${exp.pos})")

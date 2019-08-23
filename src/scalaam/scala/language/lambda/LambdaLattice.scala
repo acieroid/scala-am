@@ -32,8 +32,14 @@ object LambdaLattice {
   * implementation represents elements of the lattice as sets.
   */
 case class LambdaSetLattice[A <: Address]() {
-  /** L is an element of the lattiec, and contains closures */
-  case class L(vals: Set[(LambdaExp, Environment[A])])
+  /** A closure is a pair of an expression and an environment */
+  case class Closure(e: LambdaExp, env: Environment[A]) extends SmartHash {
+    override def toString = s"#clo<$e>"
+  }
+  /** L is an element of the lattice, and contains closures */
+  case class L(vals: Set[Closure]) extends SmartHash {
+    override def toString = "{" + vals.mkString(", ") + "}"
+  }
 
   object L {
     /** We now define the typeclass instance by defining the functions needed for Lattice[L] and LambdaLattice[L, A]. */
@@ -41,9 +47,9 @@ case class LambdaSetLattice[A <: Address]() {
       /** This is a to-string method */
       def show(x: L)                                  = "{" ++ x.vals.mkString(",") ++ "}"
       /** To inject a function into the lattice domain, we just wrap it inside an L element */
-      def function(e: LambdaExp, env: Environment[A]) = L(Set((e, env)))
+      def function(e: LambdaExp, env: Environment[A]) = L(Set(Closure(e, env)))
       /** To extract closures, we extract them from the L element */
-      def closures(f: L)                              = f.vals
+      def closures(f: L)                              = f.vals.map(clo => (clo.e, clo.env))
 
       /** The bottom (i.e., smallest) element of the lattice is the empty set */
       def bottom                  = L(Set.empty)
