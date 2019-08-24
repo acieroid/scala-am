@@ -372,7 +372,6 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
       })
     }
 
-    import scala.language.implicitConversions
     implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
     /* Simpler names for lattice operations */
@@ -768,11 +767,11 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
       trait Spec
       case object Car extends Spec
       case object Cdr extends Spec
-      val spec: List[Spec] = name
+      val spec: Iterator[Spec] = name
         .drop(1)
         .take(name.length - 2)
         .toList
-        .reverseMap(c =>
+        .reverseIterator.map(c =>
           if (c == 'a') { Car } else if (c == 'd') { Cdr } else {
             throw new Exception(s"Incorrect car/cdr operation: $name")
         })

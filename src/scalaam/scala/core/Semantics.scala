@@ -22,7 +22,6 @@ trait Semantics[E <: Exp, Addr <: Address, V, T, C] {
 
     val None: Set[A] = Set.empty
 
-    import scala.language.implicitConversions
     implicit def actionToSet(act: A): Set[A] = Set(act)
     implicit def fromMF(mf: MayFail[A, Error]): Set[A] = mf match {
       case MayFailSuccess(a)    => Set(a)

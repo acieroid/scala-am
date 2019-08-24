@@ -1,7 +1,5 @@
 package scalaam.core
 
-import scala.language.higherKinds
-
 trait WithKey[A] {
   type K
   def key(a: A): K

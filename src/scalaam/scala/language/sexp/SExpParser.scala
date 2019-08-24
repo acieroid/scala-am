@@ -50,7 +50,7 @@ trait SExpTokens extends Tokens {
     def chars = s
   }
   case class TString(s: String) extends SExpToken {
-    def chars = '"' + s + '"'
+    def chars = s""""$s""""
   }
   case class TInteger(n: Int) extends SExpToken {
     def chars = n.toString

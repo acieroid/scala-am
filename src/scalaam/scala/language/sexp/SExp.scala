@@ -7,7 +7,7 @@ import scalaam.core.{Position, Identifier, Exp}
   */
 sealed abstract class Value
 case class ValueString(value: String) extends Value {
-  override def toString = '"' + value + '"'
+  override def toString = s""""$value""""
 }
 case class ValueSymbol(sym: String) extends Value {
   override def toString = sym

@@ -22,7 +22,7 @@ object LambdaAnalysis {
     /* We use the semantics we defined for lambda-calculus*/
     val sem = LambdaSemantics[lattice.L, address.A, timestamp.T, LambdaExp](address.Alloc[timestamp.T, LambdaExp])
     /* We use the AAM machine asbtraction, pre-defined in Scala-AM */
-    val machine = new AAM[LambdaExp, address.A, lattice.L, timestamp.T](sem)
+    val machine = new AAMLKSS[LambdaExp, address.A, lattice.L, timestamp.T](sem)
     /* This is the kind of graph we want to generate. In this case, we generate a
      * plain graph in the DOT format. Other possibilities include graph
      * representations that only store the information needed for a specific
@@ -65,5 +65,7 @@ object LambdaAnalysis {
     val result = machine.run[graph.G](LambdaParser.parse(church), Timeout.Infinity)
     /* We can then output our graph to a file to inspect it. */
     result.toFile("foo.dot")
+    import Graph.GraphOps
+    println(s"Total number of nodes: ${result.nodes}")
   }
 }

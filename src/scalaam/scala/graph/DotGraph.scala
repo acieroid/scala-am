@@ -1,5 +1,7 @@
 package scalaam.graph
 
+/** A graph representation that can be saved in a .dot file for visualization
+  * purposes */
 case class DotGraph[N <: GraphElement, E <: GraphElement]() {
   class G(val ids: Map[N, Int],
           val next: Int,

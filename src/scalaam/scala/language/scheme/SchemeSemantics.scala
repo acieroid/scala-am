@@ -249,7 +249,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
     case FrameIf(cons, alt, env) =>
       conditional(v, Action.Eval(cons, env, store), Action.Eval(alt, env, store))
     case FrameLet(name, bindings, Nil, body, env) => {
-      val variables = name :: bindings.reverseMap(_._1)
+      val variables = name :: bindings.reverseIterator.map(_._1).toList
       val addresses = variables.map(variable => allocator.variable(variable, t))
       val (env1, store1) = ((name, v) :: bindings)
         .zip(addresses)

@@ -45,9 +45,9 @@ trait Store[A <: Address, V] extends SmartHash {
 /** Basic store with no fancy feature, just a map from addresses to values */
 case class BasicStore[A <: Address, V](val content: Map[A, V])(implicit val lat: Lattice[V])
     extends Store[A, V] {
-  override def toString              = content.filterKeys(_.printable).mkString("\n")
+  override def toString              = content.view.filterKeys(_.printable).mkString("\n")
   def keys                           = content.keys
-  def restrictTo(keys: Set[A])       = BasicStore(content.filterKeys(a => keys.contains(a)))
+  def restrictTo(keys: Set[A])       = BasicStore(content.view.filterKeys(a => keys.contains(a)).toMap)
   def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
   def lookup(a: A)                   = content.get(a)
   def extend(a: A, v: V) = content.get(a) match {
