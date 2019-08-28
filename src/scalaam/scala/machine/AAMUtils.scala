@@ -41,6 +41,7 @@ trait AAMUtils[E <: Exp, A <: Address, V, T] {
     def empty(next: KA): LKont = LKont(List.empty, next)
   }
   case class LKont(contents: List[Frame], next: KA) extends Frame {
+    override def toString = "[" + contents.mkString("; ") + "]"
     def isEmpty: Boolean   = contents.isEmpty
     def push(frame: Frame) = LKont(frame :: contents, next)
     def get: Option[(Frame, LKont)] = contents match {
