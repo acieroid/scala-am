@@ -23,7 +23,10 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
     * environment.
     */
   case class FrameFuncallOperator(fexp: LambdaExp, args: List[LambdaExp], env: Environment[A])
-      extends Frame
+      extends Frame {
+    override def toString = s"rator($fexp)"
+  }
+
   /**
     * This frame is used when we have evaluated the operator of a function call
     * to a value `f`, and we are currently evaluating the argument `cur`. It
@@ -37,11 +40,20 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
                                   args: List[(LambdaExp, V)],
                                   toeval: List[LambdaExp],
                                   env: Environment[A])
-      extends Frame
+      extends Frame {
+    override def toString = s"rand($cur)"
+  }
+
 
   /** This frame is used for letrec bindings */
   case class FrameLetrec(addr: A, bindings: List[(A, LambdaExp)], body: LambdaExp, env: Environment[A])
-      extends Frame
+      extends Frame {
+    override def toString = s"letrec"
+  }
+
+  case class FrameIf(cons: LambdaExp, alt: LambdaExp, env: Environment[A]) extends Frame {
+    override def toString = s"if"
+  }
 
   /** stepEval defines how an expression is evaluated and returns possibly
     * multiple actions to perform. When multiple acitons are returned, this
@@ -77,6 +89,8 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
           env.lookupMF(id).flatMap(a => store.lookupMF(a).map(v =>
             Action.Value(v, store)
           )))
+      case LambdaIf(cond, cons, alt, _) =>
+        Action.Push(FrameIf(cons, alt, env), cond, env, store)
       case LambdaLetrec(Nil, body, _) =>
         Action.Eval(body, env, store)
       case LambdaLetrec(bindings, body, _) =>
@@ -88,11 +102,12 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
           case ((env, store), (v, a)) =>
             (env.extend(v.name, a), store.extend(a, LambdaLattice[V, A].bottom))
         })
-      val exp = bindings.head._2
-      Action.Push(FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1),
-                  exp,
-                  env1,
-                  store1)
+        val exp = bindings.head._2
+        Action.Push(FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1),
+          exp,
+          env1,
+          store1)
+      case LambdaBoolean(b, _) => Action.Value(LambdaLattice[V, A].boolean(b), store)
     }
 
   /** The `stepKont` function is called when a value has been reached, and the
@@ -120,12 +135,18 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
       Action.Push(FrameFuncallOperands(f, fexp, argtoeval, (cur, v) :: args, argstoeval, env),
                   argtoeval,
                   env,
-                  store)
+        store)
+    case FrameIf(cons, alt, env) =>
+      conditional(v, Action.Eval(cons, env, store), Action.Eval(alt, env, store))
     case FrameLetrec(a, Nil, body, env) =>
       Action.Eval(body, env, store.update(a, v))
     case FrameLetrec(a, (a1, exp) :: rest, body, env) =>
       Action.Push(FrameLetrec(a1, rest, body, env), exp, env, store.update(a, v))
   }
+
+  def conditional(v: V, t: => Set[Action.A], f: => Set[Action.A]): Set[Action.A] =
+    (if (LambdaLattice[V, A].isTrue(v)) t else Action.None) ++ (if (LambdaLattice[V, A].isFalse(v)) f else Action.None)
+
 
   /** This functions performs the evaluation of a function call when the operator
     * `fexp` has been evaluated to the value `f`, and the arguments have been

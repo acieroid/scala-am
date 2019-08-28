@@ -10,6 +10,11 @@ import scalaam.core.{Position, Identifier, Exp}
   */
 trait LambdaExp extends Exp
 
+case class LambdaBoolean(value: Boolean, pos: Position) extends LambdaExp {
+  override def toString = if (value) { "#t" } else { "#f" }
+  def fv = Set.empty
+}
+
 /**
   * A function in lambda-calculus: `(lambda (x y) (+ x y)` is a function with `x`
   * and `y` as argument, and `(+ x y)` as body.
@@ -61,4 +66,9 @@ case class LambdaLetrec(bindings: List[(Identifier, LambdaExp)],
     s"(letrec ($bi) $body)"
   }
   def fv = (bindings.map(_._2).flatMap(_.fv).toSet ++ body.fv.toSet) -- bindings.map(_._1.name).toSet
+}
+
+case class LambdaIf(cond: LambdaExp, cons: LambdaExp, alt: LambdaExp, pos: Position) extends LambdaExp {
+  override def toString = s"(if $cond $cons $alt)"
+  def fv = cond.fv ++ cons.fv ++ alt.fv
 }

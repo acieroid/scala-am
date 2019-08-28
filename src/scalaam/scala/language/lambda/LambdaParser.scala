@@ -55,13 +55,30 @@ object LambdaCompiler {
         bindingsv <- tailcall(compileBindings(bindings))
         bodyv <- tailcall(compileT(body))
       } yield LambdaLetrec(bindingsv, bodyv, exp.pos)
+    case SExpPair(SExpId(Identifier("let", _)),
+      SExpPair(bindings, SExpPair(body, SExpValue(ValueNil, _), _), _),
+      _) =>
+      for {
+        bindingsv <- tailcall(compileBindings(bindings))
+        bodyv <- tailcall(compileT(body))
+      } yield LambdaLetrec(bindingsv, bodyv, exp.pos)
+    case SExpPair(SExpId(Identifier("if", _)),
+      SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil, _), _), _), _),
+      _) =>
+      for {
+        condv <- tailcall(compileT(cond))
+        consv <- tailcall(compileT(cons))
+        altv  <- tailcall(compileT(alt))
+      } yield LambdaIf(condv, consv, altv, exp.pos)
     case SExpPair(f, args, _) =>
       for {
-        fv    <- compileT(f)
-        argsv <- compileListT(args)
+        fv    <- tailcall(compileT(f))
+        argsv <- tailcall(compileListT(args))
       } yield LambdaCall(fv, argsv, exp.pos)
     case SExpId(id) =>
       done(LambdaVar(id))
+    case SExpValue(ValueBoolean(b), pos) =>
+      done(LambdaBoolean(b, pos))
     case _ => throw new Exception(s"Invalid lambda-calculus expression: $exp (${exp.pos})")
   }
 }
