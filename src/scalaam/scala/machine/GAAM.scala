@@ -13,11 +13,8 @@ class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
 
   val Action = sem.Action
 
-  val store: GlobalStore[A, V] = GlobalStore.initial[A, V](sem.initialStore)
-  val kstore: GlobalStore[KA, Set[LKont]] = GlobalStore.empty[KA, Set[LKont]]
-
   case class State(control: Control, lkont: LKont, t: T) extends GraphElement with SmartHash {
-    override def toString = control.toString
+    override def toString = s"${control.toString}<br/> ${lkont.toString}"
     override def label    = toString
     override def color = if (halted) { Colors.Yellow } else {
       control match {
@@ -101,6 +98,9 @@ class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
   type Transition = NoTransition
   val empty = new NoTransition
 
+  var store: GlobalStore[A, V] = GlobalStore.empty[A, V]
+  var kstore: GlobalStore[KA, Set[LKont]] = GlobalStore.empty[KA, Set[LKont]]
+
   def run[G](program: E, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
     object VS extends MapVisitedSetImpl[State]
     import VS._
@@ -108,6 +108,8 @@ class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     import scala.concurrent.ExecutionContext.Implicits.global
     import scala.concurrent.duration._
     var graph = Future { Graph[G, State, Transition].empty }
+    store = GlobalStore.initial[A, V](sem.initialStore)
+    kstore = GlobalStore.empty[KA, Set[LKont]]
 
     @scala.annotation.tailrec
     /* An invariant is that for all states in todo, stores(state) is defined */
