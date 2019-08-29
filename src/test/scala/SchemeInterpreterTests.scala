@@ -40,16 +40,15 @@ abstract class SchemeInterpreterGAAMTests[A <: Address, T, V](
   val machine = new GAAM[SchemeExp, A, V, T](sem)
 }
 
-class SchemeInterpreterConcreteTests extends SchemeInterpreterTests[ConcreteSchemeAddress.A, ConcreteSchemeLattice.L, ConcreteSchemeTimestamp.T, SchemeExp](BenchmarkTestKind.SchemeRunConcrete)(ConcreteSchemeTimestamp.T.typeclass, ConcreteSchemeLattice.L.lattice) {
+
+object ConcreteLattice extends MakeSchemeLattice[SchemeExp, ConcreteSchemeAddress.A, Concrete.S, Concrete.B, Concrete.I, Concrete.R, Concrete.C, Concrete.Sym]
+object ConstantPropagationSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.R, ConstantPropagation.C, ConstantPropagation.Sym]
+object TypeSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, Type.S, Concrete.B, Type.I, Type.R, Type.C, Type.Sym]
+
+class ConcreteSchemeInterpreterTests extends SchemeInterpreterTests[ConcreteSchemeAddress.A, ConcreteSchemeLattice.L, ConcreteSchemeTimestamp.T, SchemeExp](BenchmarkTestKind.SchemeRunConcrete)(ConcreteSchemeTimestamp.T.typeclass, ConcreteSchemeLattice.L.lattice) {
   val sem = new BaseSchemeSemantics[ConcreteSchemeAddress.A, ConcreteSchemeLattice.L, ConcreteSchemeTimestamp.T, SchemeExp](ConcreteSchemeAddress.Alloc)
   val machine = new ConcreteMachine[SchemeExp, ConcreteSchemeAddress.A, ConcreteSchemeLattice.L, ConcreteSchemeTimestamp.T](sem)
 }
-
-// NOTE: we cannot use the concrete interpreter because we only have stores with weak updates. TODO[easy]: write a concrete machine that uses a concrete store, or introduce a store with abstract coutningn
-//class ConcreteSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ConcreteSchemeTimestamp.T, ConcreteSchemeLattice.L](NameAddress.Alloc[ConcreteSchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunConcrete)
-
-object ConstantPropagationSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, ConstantPropagation.S, Concrete.B, ConstantPropagation.I, ConstantPropagation.R, ConstantPropagation.C, ConstantPropagation.Sym]
-object TypeSchemeLattice extends MakeSchemeLattice[SchemeExp, NameAddress.A, Type.S, Concrete.B, Type.I, Type.R, Type.C, Type.Sym]
 
 // class ConstantPropagationSchemeInterpreterAAMTests extends SchemeInterpreterAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, ConstantPropagationSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)
 class TypeSchemeInterpreterGAAMTests extends SchemeInterpreterGAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, TypeSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract)
