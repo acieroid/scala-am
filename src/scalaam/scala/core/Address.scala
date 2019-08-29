@@ -39,11 +39,13 @@ object NameAddress {
   /** The address for a pointer */
   case class Pointer[E <: Exp](e: E) extends A {
     def printable = false
+    override def toString = s"@${e.pos}"
   }
 
   /** The address of a primitive */
   case class Primitive(name: String) extends A {
     def printable = false
+    override def toString = s"@prim<$name>"
   }
 
   /** The NameAddress allocator */
