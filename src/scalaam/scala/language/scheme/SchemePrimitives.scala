@@ -820,7 +820,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
       trait Spec
       case object Car extends Spec
       case object Cdr extends Spec
-      val spec: Iterator[Spec] = name
+      val spec: List[Spec] = name
         .drop(1)
         .take(name.length - 2)
         .toList
@@ -834,7 +834,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
             } else {
               throw new Exception(s"Incorrect car/cdr operation: $name")
             }
-        )
+        ).toList
       override def call(v: V, store: Store[A, V]) =
         for {
           v <- spec.foldLeft(MayFail.success[V, Error](v))(
