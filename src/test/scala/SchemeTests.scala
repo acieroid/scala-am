@@ -19,7 +19,7 @@ abstract class SchemeTests[A <: Address, V, T, C](
     if (timeout.reached) {
       cancel(s"time out")
     } else {
-      val resultVals = result.findNodes(n => n.metadata.find("type") == Some(GraphMetadataString("kont"))).flatMap[V, Set[V]]({ n => n.metadata.find("value") match {
+      val resultVals = result.findNodes(n => n.metadata.find("type") == Some(GraphMetadataString("kont"))).flatMap({ n => n.metadata.find("value") match {
         case Some(GraphMetadataValue(v : V @unchecked)) => Set(v)
         case _ => Set()
       }})
