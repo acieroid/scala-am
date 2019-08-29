@@ -95,8 +95,10 @@ class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, 
           )
           finished = true;
         } else {
-          if (actions.size > 1)
-            println(s"Got more than one action in concrete machine. Picking the first one.")
+          if (actions.size > 1) {
+            println(s"Got more than one action (${actions.size}) in concrete machine. Picking the first one.")
+            println(s"Initial state was $state")
+          }
           val state2 = actions.head match {
             case Action.Value(v, store2) =>
               State(ControlKont(v), store2, konts, Timestamp[T, E].tick(state.t))
@@ -109,8 +111,8 @@ class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, 
             case Action.Err(err) =>
               State(ControlError(err), state.store, konts, Timestamp[T, E].tick(state.t))
           }
-          state = state2
           graph = graph.addEdge(state, empty, state2)
+          state = state2
         }
       }
       if (timeout.reached) {
