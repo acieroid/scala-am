@@ -38,12 +38,12 @@ object NameAddress {
 
   /** The address for a pointer */
   case class Pointer[E <: Exp](e: E) extends A {
-    def printable     = false
+    def printable = false
   }
 
   /** The address of a primitive */
   case class Primitive(name: String) extends A {
-    def printable     = false
+    def printable = false
   }
 
   /** The NameAddress allocator */
@@ -60,7 +60,7 @@ object NameAddress {
 case class TimestampAddress[T, C]()(implicit val time: Timestamp[T, C]) {
   /* A timestamp address just bundles a name address with a timestamp */
   case class A(nameAddr: NameAddress.A, t: T) extends Address {
-    def printable     = nameAddr.printable
+    def printable         = nameAddr.printable
     override def toString = nameAddr.toString
   }
   val nameAlloc = NameAddress.Alloc[T, C]

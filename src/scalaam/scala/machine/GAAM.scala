@@ -8,21 +8,25 @@ import scalaam.core._
   * (only looping continuations are pushed on the kont store) */
 class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     implicit val timestamp: Timestamp[T, E],
-    implicit val lattice: Lattice[V])
-    extends MachineAbstraction[E, A, V, T, E] with AAMUtils[E, A, V, T] {
+    implicit val lattice: Lattice[V]
+) extends MachineAbstraction[E, A, V, T, E]
+    with AAMUtils[E, A, V, T] {
 
   val Action = sem.Action
 
   case class State(control: Control, lkont: LKont, t: T) extends GraphElement with SmartHash {
     override def toString = s"${control.toString}<br/> ${lkont.toString}"
     override def label    = toString
-    override def color = if (halted) { Colors.Yellow } else {
-      control match {
-        case _: ControlEval  => Colors.Green
-        case _: ControlKont  => Colors.Pink
-        case _: ControlError => Colors.Red
+    override def color =
+      if (halted) {
+        Colors.Yellow
+      } else {
+        control match {
+          case _: ControlEval  => Colors.Green
+          case _: ControlKont  => Colors.Pink
+          case _: ControlError => Colors.Red
+        }
       }
-    }
     override def metadata = GraphMetadataNone
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
@@ -41,9 +45,7 @@ class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
         case Action.StepIn(fexp, _, e, env, _) =>
           val next = KontAddr(e, t)
           kstore.extend(next, Set(lkont))
-          State(ControlEval(e, env),
-            LKont.empty(next),
-            Timestamp[T, E].tick(t, fexp))
+          State(ControlEval(e, env), LKont.empty(next), Timestamp[T, E].tick(t, fexp))
         case Action.Err(err) =>
           State(ControlError(err), lkont, Timestamp[T, E].tick(t))
       })
@@ -98,7 +100,7 @@ class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
   type Transition = NoTransition
   val empty = new NoTransition
 
-  var store: GlobalStore[A, V] = GlobalStore.empty[A, V]
+  var store: GlobalStore[A, V]            = GlobalStore.empty[A, V]
   var kstore: GlobalStore[KA, Set[LKont]] = GlobalStore.empty[KA, Set[LKont]]
 
   def run[G](program: E, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
@@ -130,14 +132,16 @@ class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
           kstore.clearMutated()
           loop(successors, VisitedSet.empty)
         } else {
-          loop(successors.filter(s2 => !VisitedSet.contains(visited, s2)),
-               VisitedSet.append(visited, todo))
+          loop(
+            successors.filter(s2 => !VisitedSet.contains(visited, s2)),
+            VisitedSet.append(visited, todo)
+          )
         }
       }
     }
-    val fvs = program.fv
+    val fvs        = program.fv
     val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
-    val state = State.inject(program, initialEnv)
+    val state      = State.inject(program, initialEnv)
     loop(Set(state), VisitedSet.empty)
     Await.result(graph, Duration.Inf)
   }

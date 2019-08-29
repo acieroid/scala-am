@@ -26,8 +26,9 @@ import scalaam.core._
   */
 class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     implicit val timestamp: Timestamp[T, E],
-    implicit val lattice: Lattice[V])
-    extends MachineAbstraction[E, A, V, T, E] with AAMUtils[E, A, V, T] {
+    implicit val lattice: Lattice[V]
+) extends MachineAbstraction[E, A, V, T, E]
+    with AAMUtils[E, A, V, T] {
 
   val Action = sem.Action
 
@@ -42,13 +43,16 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     override def toString = control.toString
 
     override def label = toString
-    override def color = if (halted) { Colors.Yellow } else {
-      control match {
-        case _: ControlEval  => Colors.Green
-        case _: ControlKont  => Colors.Pink
-        case _: ControlError => Colors.Red
+    override def color =
+      if (halted) {
+        Colors.Yellow
+      } else {
+        control match {
+          case _: ControlEval  => Colors.Green
+          case _: ControlKont  => Colors.Pink
+          case _: ControlError => Colors.Red
+        }
       }
-    }
     override def metadata =
       GraphMetadataMap(
         Map(
@@ -61,7 +65,8 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
         ) ++ (control match {
           case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
           case _              => Map()
-        }))
+        })
+      )
 
     /**
       * Checks if the current state is a final state. It is the case if it
@@ -87,11 +92,14 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
         case Action.Push(frame, e, env, store) => {
           val next = KontAddr(e, t)
           Set(
-            State(ControlEval(e, env),
-                  store,
-                  kstore.extend(next, Set(Kont(frame, a))),
-                  next,
-                  Timestamp[T, E].tick(t)))
+            State(
+              ControlEval(e, env),
+              store,
+              kstore.extend(next, Set(Kont(frame, a))),
+              next,
+              Timestamp[T, E].tick(t)
+            )
+          )
         }
         /* When a value needs to be evaluated, we go to an eval state */
         case Action.Eval(e, env, store) =>
@@ -126,11 +134,13 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
 
   object State {
     def inject(exp: E, env: Environment[A], store: Store[A, V]) =
-      State(ControlEval(exp, env),
-            store,
-            Store.empty[KA, Set[Kont]],
-            HaltKontAddr,
-            Timestamp[T, E].initial(""))
+      State(
+        ControlEval(exp, env),
+        store,
+        Store.empty[KA, Set[Kont]],
+        HaltKontAddr,
+        Timestamp[T, E].initial("")
+      )
 
     /* TODO: do this without typeclass, e.g., class State extends WithKey[KA](a) */
     implicit val stateWithKey = new WithKey[State] {
@@ -159,13 +169,13 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     import scala.concurrent.{Await, Future}
     import scala.concurrent.ExecutionContext.Implicits.global
     import scala.concurrent.duration._
-    val fvs = program.fv
-    val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
+    val fvs          = program.fv
+    val initialEnv   = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
     val initialStore = Store.initial[A, V](sem.initialStore)
     val initialState = State.inject(program, initialEnv, initialStore)
-    val worklist = scala.collection.mutable.Queue(initialState)
-    val visited = scala.collection.mutable.Map[KA, Set[State]]().withDefaultValue(Set.empty[State])
-    var graph = Future { Graph[G, State, Transition].empty }
+    val worklist     = scala.collection.mutable.Queue(initialState)
+    val visited      = scala.collection.mutable.Map[KA, Set[State]]().withDefaultValue(Set.empty[State])
+    var graph        = Future { Graph[G, State, Transition].empty }
 
     while (!timeout.reached && !worklist.isEmpty) {
       val s = worklist.dequeue

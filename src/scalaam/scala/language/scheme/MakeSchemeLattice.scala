@@ -76,9 +76,11 @@ class MakeSchemeLattice[
 
   case class Vec(size: I, elements: Map[I, L], init: L) extends Value {
     override def toString = {
-      val els = elements.toList.map({
-        case (k, v) => s"$k: $v"
-      }).mkString(", ")
+      val els = elements.toList
+        .map({
+          case (k, v) => s"$k: $v"
+        })
+        .mkString(", ")
       s"Vec(size: $size, elems: {$els}, init: $init)"
     }
   }
@@ -107,30 +109,36 @@ class MakeSchemeLattice[
     }
 
     /** Tries to join. Returns a Right element if it can, otherwise a Left. */
-    def join(x: Value, y: => Value): Either[(Value, Value), Value] = if (x == y) { Right(x) } else {
-      (x, y) match {
-        case (Bot, _)             => Right(y)
-        case (_, Bot)             => Right(x)
-        case (Str(s1), Str(s2))   => Right(Str(StringLattice[S].join(s1, s2)))
-        case (Bool(b1), Bool(b2)) => Right(Bool(BoolLattice[B].join(b1, b2)))
-        case (Int(i1), Int(i2))   => Right(Int(IntLattice[I].join(i1, i2)))
-        case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
-        case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
-        /* TODO: join cons, vectors */
-        case _                    => Left((x, y))
+    def join(x: Value, y: => Value): Either[(Value, Value), Value] =
+      if (x == y) {
+        Right(x)
+      } else {
+        (x, y) match {
+          case (Bot, _)             => Right(y)
+          case (_, Bot)             => Right(x)
+          case (Str(s1), Str(s2))   => Right(Str(StringLattice[S].join(s1, s2)))
+          case (Bool(b1), Bool(b2)) => Right(Bool(BoolLattice[B].join(b1, b2)))
+          case (Int(i1), Int(i2))   => Right(Int(IntLattice[I].join(i1, i2)))
+          case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
+          case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
+          /* TODO: join cons, vectors */
+          case _ => Left((x, y))
+        }
       }
-    }
-    def subsumes(x: Value, y: => Value): Boolean = if (x == y) { true } else {
-      (x, y) match {
-        case (_, Bot)             => true
-        case (Str(s1), Str(s2))   => StringLattice[S].subsumes(s1, s2)
-        case (Bool(b1), Bool(b2)) => BoolLattice[B].subsumes(b1, b2)
-        case (Int(i1), Int(i2))   => IntLattice[I].subsumes(i1, i2)
-        case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
-        case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
-        case _                    => false
+    def subsumes(x: Value, y: => Value): Boolean =
+      if (x == y) {
+        true
+      } else {
+        (x, y) match {
+          case (_, Bot)             => true
+          case (Str(s1), Str(s2))   => StringLattice[S].subsumes(s1, s2)
+          case (Bool(b1), Bool(b2)) => BoolLattice[B].subsumes(b1, b2)
+          case (Int(i1), Int(i2))   => IntLattice[I].subsumes(i1, i2)
+          case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
+          case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
+          case _                    => false
+        }
       }
-    }
 
     def isTrue(x: Value): Boolean = x match {
       case Bool(b) => BoolLattice[B].isTrue(b)
@@ -144,7 +152,9 @@ class MakeSchemeLattice[
     }
 
     def unaryOp(op: UnaryOperator)(x: Value): MayFail[Value, Error] =
-      if (x == Bot) { MayFail.success(Bot) } else {
+      if (x == Bot) {
+        MayFail.success(Bot)
+      } else {
         op match {
           case IsNull =>
             MayFail.success(x match {
@@ -154,7 +164,7 @@ class MakeSchemeLattice[
           case IsCons =>
             MayFail.success(x match {
               case _: Cons => True
-              case _          => False
+              case _       => False
             })
           case IsPointer =>
             MayFail.success(x match {
@@ -194,7 +204,7 @@ class MakeSchemeLattice[
           case IsVector =>
             MayFail.success(x match {
               case _: Vec => True
-              case _ => False
+              case _      => False
             })
           case Not =>
             MayFail.success(x match {
@@ -276,7 +286,7 @@ class MakeSchemeLattice[
           case VectorLength =>
             x match {
               case Vec(size, _, _) => MayFail.success(Int(size))
-              case _ => MayFail.failure(OperatorNotApplicable("vector-length", List(x)))
+              case _               => MayFail.failure(OperatorNotApplicable("vector-length", List(x)))
             }
           case StringLength =>
             x match {
@@ -315,7 +325,9 @@ class MakeSchemeLattice[
       }
 
     def binaryOp(op: BinaryOperator)(x: Value, y: Value): MayFail[Value, Error] =
-      if (x == Bot || y == Bot) { MayFail.success(Bot) } else {
+      if (x == Bot || y == Bot) {
+        MayFail.success(Bot)
+      } else {
         op match {
           case Plus =>
             (x, y) match {
@@ -406,7 +418,7 @@ class MakeSchemeLattice[
               case (_: Cons, _: Cons)       => Bool(BoolLattice[B].inject(x == y))
               case (_: Vec, _: Vec)         => Bool(BoolLattice[B].inject(x == y))
               case (_: Pointer, _: Pointer) => Bool(BoolLattice[B].top) /* we can't know for sure that equal addresses are eq (in the abstract) */
-              case _ => False
+              case _                        => False
             })
           case StringAppend =>
             (x, y) match {
@@ -464,50 +476,64 @@ class MakeSchemeLattice[
       case (Vec(size, content, init), Int(index)) => {
         val comp = IntLattice[I].lt(index, size)
         val t: L = if (BoolLattice[B].isTrue(comp)) {
-          val vals = content.view.filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2))).values
+          val vals = content.view
+            .filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2)))
+            .values
           /* XXX: init doesn't have to be included if we know for sure that index is precise enough */
           vals.foldLeft(init)((acc, v) => schemeLattice.join(acc, v))
-        } else { schemeLattice.bottom }
+        } else {
+          schemeLattice.bottom
+        }
         /* Don't perform bound checks here because we would get too many spurious flows */
         val f: L = schemeLattice.bottom
         MayFail.success(schemeLattice.join(t, f))
       }
       case (_: Vec, _) => MayFail.failure(TypeError("expecting int to access vector", index))
-      case _ => MayFail.failure(TypeError("vector-ref: expecting vector", vector))
+      case _           => MayFail.failure(TypeError("vector-ref: expecting vector", vector))
     }
 
-    def vectorSet(vector: Value, index: Value, newval: L): MayFail[L, Error] = (vector, index) match {
-      case (Vec(size, content, init), Int(index)) => {
-        val comp = IntLattice[I].lt(index, size)
-        val t: L = if (BoolLattice[B].isTrue(comp)) {
-          Element(Vec(size, content + (index -> schemeLattice.join(content.get(index).getOrElse(schemeLattice.bottom), newval)), init))
-        } else { schemeLattice.bottom }
-        val f: L = schemeLattice.bottom
-        MayFail.success(schemeLattice.join(t, f))
+    def vectorSet(vector: Value, index: Value, newval: L): MayFail[L, Error] =
+      (vector, index) match {
+        case (Vec(size, content, init), Int(index)) => {
+          val comp = IntLattice[I].lt(index, size)
+          val t: L = if (BoolLattice[B].isTrue(comp)) {
+            Element(
+              Vec(
+                size,
+                content + (index -> schemeLattice
+                  .join(content.get(index).getOrElse(schemeLattice.bottom), newval)),
+                init
+              )
+            )
+          } else {
+            schemeLattice.bottom
+          }
+          val f: L = schemeLattice.bottom
+          MayFail.success(schemeLattice.join(t, f))
+        }
+        case (_: Vec, _) => MayFail.failure(TypeError("expecting int to set vector", index))
+        case _           => MayFail.failure(TypeError("vector-set!: expecting vector", vector))
       }
-      case (_: Vec, _) => MayFail.failure(TypeError("expecting int to set vector", index))
-      case _ => MayFail.failure(TypeError("vector-set!: expecting vector", vector))
-    }
 
     def vector(size: Value, init: L): MayFail[Value, Error] = size match {
       case Int(size) => MayFail.success(Vec(size, Map[I, L](), init))
-      case _ => MayFail.failure(TypeError("expected int size when constructing vector", size))
+      case _         => MayFail.failure(TypeError("expected int size when constructing vector", size))
     }
 
     def concreteValues(x: Value): Set[ConcreteVal] = x match {
-      case Bot => Set()
-      case Str(s) => StringLattice[S].concreteValues(s)
-      case Bool(b) => BoolLattice[B].concreteValues(b)
-      case Int(i) => IntLattice[I].concreteValues(i)
-      case Real(r) => RealLattice[R].concreteValues(r)
-      case Char(c) => CharLattice[C].concreteValues(c)
-      case Symbol(s) => SymbolLattice[Sym].concreteValues(s)
-      case Prim(prim) => Set(ConcretePrim(prim))
+      case Bot              => Set()
+      case Str(s)           => StringLattice[S].concreteValues(s)
+      case Bool(b)          => BoolLattice[B].concreteValues(b)
+      case Int(i)           => IntLattice[I].concreteValues(i)
+      case Real(r)          => RealLattice[R].concreteValues(r)
+      case Char(c)          => CharLattice[C].concreteValues(c)
+      case Symbol(s)        => SymbolLattice[Sym].concreteValues(s)
+      case Prim(prim)       => Set(ConcretePrim(prim))
       case Clo(lambda, env) => Set(ConcreteClosure(lambda, env))
-      case Nil => Set(ConcreteNil)
-      case Pointer(a) => Set(ConcretePointer(a))
-      case _: Cons => ???
-      case _: Vec => ???
+      case Nil              => Set(ConcreteNil)
+      case Pointer(a)       => Set(ConcretePointer(a))
+      case _: Cons          => ???
+      case _: Vec           => ???
     }
 
   }
@@ -545,21 +571,27 @@ class MakeSchemeLattice[
           case Element(b)   => append(x, Elements(Set(b)))
           case Elements(bs) =>
             /* every element in the other set has to be joined in this set */
-            Elements(as.foldLeft(bs)((acc, x2) =>
-              if (acc.exists(x1 => Value.subsumes(x1, x2))) {
-                /* the set already contains an element that subsumes x2, don't add it to the set */
-                acc
-              } else if (acc.exists(x1 => Value.compatible(x1, x2))) {
-                /* merge x2 into another element of the set */
-                acc.map(x1 =>
-                  Value.join(x1, x2) match {
-                    case Right(joined) => joined
-                    case Left(_)       => x1
-                })
-              } else {
-                /* just add x2 to the set */
-                acc + x2
-            }))
+            Elements(
+              as.foldLeft(bs)(
+                (acc, x2) =>
+                  if (acc.exists(x1 => Value.subsumes(x1, x2))) {
+                    /* the set already contains an element that subsumes x2, don't add it to the set */
+                    acc
+                  } else if (acc.exists(x1 => Value.compatible(x1, x2))) {
+                    /* merge x2 into another element of the set */
+                    acc.map(
+                      x1 =>
+                        Value.join(x1, x2) match {
+                          case Right(joined) => joined
+                          case Left(_)       => x1
+                        }
+                    )
+                  } else {
+                    /* just add x2 to the set */
+                    acc + x2
+                  }
+              )
+            )
         }
     }
     def zero: L = Element(Bot)
@@ -579,7 +611,8 @@ class MakeSchemeLattice[
       y.foldMapL(
         y =>
           /* For every element in y, there exists an element of x that subsumes it */
-          x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid))(boolAndMonoid)
+          x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid)
+      )(boolAndMonoid)
     def car(x: L) = x.foldMapL(Value.car(_))
     def cdr(x: L) = x.foldMapL(Value.cdr(_))
     def top: L    = throw LatticeTopUndefined

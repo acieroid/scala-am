@@ -24,10 +24,13 @@ object WithKey2 {
   def apply[A: WithKey2]: WithKey2[A] = implicitly
 }
 
-class KeyMap2[A : WithKey2](val content: Map[WithKey2[A]#K1, Map[WithKey2[A]#K2, Set[A]]])
+class KeyMap2[A: WithKey2](val content: Map[WithKey2[A]#K1, Map[WithKey2[A]#K2, Set[A]]])
 object KeyMap2 {
   def apply[A: WithKey2](): KeyMap2[A] =
-    new KeyMap2(Map[WithKey2[A]#K1, Map[WithKey2[A]#K2, Set[A]]]().withDefaultValue(Map().withDefaultValue(Set.empty)))
+    new KeyMap2(
+      Map[WithKey2[A]#K1, Map[WithKey2[A]#K2, Set[A]]]()
+        .withDefaultValue(Map().withDefaultValue(Set.empty))
+    )
 }
 
 trait VisitedSet[A, L[_]] {
@@ -40,7 +43,7 @@ trait VisitedSet[A, L[_]] {
 }
 
 class SetVisitedSetImpl[A] {
-  object VisitedSet extends VisitedSet[A, Set]{
+  object VisitedSet extends VisitedSet[A, Set] {
     type T = Set[A]
     def empty                                    = Set.empty
     def contains(v: Set[A], a: A)                = v.contains(a)
@@ -50,7 +53,7 @@ class SetVisitedSetImpl[A] {
   }
 }
 
-class MapVisitedSetImpl[A : WithKey] {
+class MapVisitedSetImpl[A: WithKey] {
   object VisitedSet extends VisitedSet[A, KeyMap] {
     type T = KeyMap[A]
     def empty = KeyMap[A]()
@@ -65,7 +68,7 @@ class MapVisitedSetImpl[A : WithKey] {
   }
 }
 
-class Map2VisitedSetImpl[A : WithKey2] {
+class Map2VisitedSetImpl[A: WithKey2] {
   object VisitedSet extends VisitedSet[A, KeyMap2] {
     type T = KeyMap2[A]
     def empty = KeyMap2[A]()
@@ -81,10 +84,17 @@ class Map2VisitedSetImpl[A : WithKey2] {
       new KeyMap2(v.content + (k1 -> (v1 + (k2 -> (v2 + a)))))
     }
     def size(v: KeyMap2[A]) =
-      v.content.foldLeft(0)((x, kv) => kv match {
-        case (_, v) => v.foldLeft(x)((x, kv) => kv match {
-          case (_, v) => x + v.size
-        })
-      })
+      v.content.foldLeft(0)(
+        (x, kv) =>
+          kv match {
+            case (_, v) =>
+              v.foldLeft(x)(
+                (x, kv) =>
+                  kv match {
+                    case (_, v) => x + v.size
+                  }
+              )
+          }
+      )
   }
 }

@@ -85,12 +85,19 @@ object Concrete {
       def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match {
         case Values(bot) if bot.isEmpty => CharLattice[C2].bottom
         case Top                        => CharLattice[C2].top
-        case Values(content) =>
+        case Values(content)            =>
           /* Assumption: we don't perform any bound check. If i contains a value for which s has no character, it is silently ignored */
-          content.foldMap(s =>
-            (0.to(s.size)).collect({
-              case i2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](i, IntLattice[I2].inject(i2))) => CharLattice[C2].inject(s.charAt(i2))
-            }).foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2)))
+          content.foldMap(
+            s =>
+              (0.to(s.size))
+                .collect({
+                  case i2
+                      if BoolLattice[B]
+                        .isTrue(IntLattice[I2].eql[B](i, IntLattice[I2].inject(i2))) =>
+                    CharLattice[C2].inject(s.charAt(i2))
+                })
+                .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
+          )
       }
       def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match {
         case (Values(bot), _) if bot.isEmpty => BoolLattice[B2].bottom
@@ -101,12 +108,17 @@ object Concrete {
       }
       def toSymbol[Sym2: SymbolLattice](s: S): Sym2 = s.foldMap(s => SymbolLattice[Sym2].inject(s))
       override def concreteValues(x: S): Set[ConcreteVal] = x match {
-        case Top => ???
+        case Top             => ???
         case Values(content) => content.map(x => ConcreteString(x))
       }
     }
     implicit val boolShow: Show[Boolean] = new Show[Boolean] {
-      def show(b: Boolean): String = if (b) { "#t" } else { "#f" }
+      def show(b: Boolean): String =
+        if (b) {
+          "#t"
+        } else {
+          "#f"
+        }
     }
     implicit val boolConcrete: BoolLattice[B] = new BaseInstance[Boolean]("Bool")
     with BoolLattice[B] {
@@ -121,7 +133,7 @@ object Concrete {
       }
       def not(b: B): B = b.map(x => !x)
       override def concreteValues(x: B): Set[ConcreteVal] = x match {
-        case Top => ???
+        case Top             => ???
         case Values(content) => content.map(x => ConcreteBool(x))
       }
     }
@@ -156,7 +168,7 @@ object Concrete {
         n.foldMap(n => StringLattice[S2].inject(n.toString))
 
       override def concreteValues(x: I): Set[ConcreteVal] = x match {
-        case Top => ???
+        case Top             => ???
         case Values(content) => content.map(x => ConcreteNumber(x))
       }
     }
@@ -191,7 +203,7 @@ object Concrete {
       def toString[S2: StringLattice](n: R): S2 =
         n.foldMap(n => StringLattice[S2].inject(n.toString))
       override def concreteValues(x: R): Set[ConcreteVal] = x match {
-        case Top => ???
+        case Top             => ???
         case Values(content) => content.map(x => ConcreteReal(x))
       }
     }
@@ -201,7 +213,7 @@ object Concrete {
     implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char): C = Values(Set(x))
       override def concreteValues(x: C): Set[ConcreteVal] = x match {
-        case Top => ???
+        case Top             => ???
         case Values(content) => content.map(x => ConcreteChar(x))
       }
     }
@@ -210,7 +222,7 @@ object Concrete {
       def inject(x: String): Sym                  = Values(Set(x))
       def toString[S2: StringLattice](s: Sym): S2 = s.foldMap(s => StringLattice[S2].inject(s))
       override def concreteValues(x: Sym): Set[ConcreteVal] = x match {
-        case Top => ???
+        case Top             => ???
         case Values(content) => content.map(x => ConcreteSymbol(x))
       }
     }

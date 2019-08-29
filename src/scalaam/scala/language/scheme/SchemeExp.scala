@@ -45,7 +45,7 @@ case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp], pos: Position) ext
 case class SchemeIf(cond: SchemeExp, cons: SchemeExp, alt: SchemeExp, pos: Position)
     extends SchemeExp {
   override def toString = s"(if $cond $cons $alt)"
-  def fv = cond.fv ++ cons.fv ++ alt.fv
+  def fv                = cond.fv ++ cons.fv ++ alt.fv
 }
 
 /**
@@ -58,56 +58,74 @@ case class SchemeLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeE
     val bo = body.mkString(" ")
     s"(let ($bi) $bo)"
   }
-  def fv = bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1.name).toSet)
+  def fv =
+    bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- bindings
+      .map(_._1.name)
+      .toSet)
 }
 
 /**
   * Let*-bindings: (let* ((v1 e1) ...) body...)
   */
-case class SchemeLetStar(bindings: List[(Identifier, SchemeExp)],
-                         body: List[SchemeExp],
-                         pos: Position)
-    extends SchemeExp {
+case class SchemeLetStar(
+    bindings: List[(Identifier, SchemeExp)],
+    body: List[SchemeExp],
+    pos: Position
+) extends SchemeExp {
   override def toString = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
     s"(let* ($bi) $bo)"
   }
-  def fv = bindings.foldLeft((Set.empty[String] /* bound variables */, Set.empty[String] /* free variables */))((acc, binding) => binding match {
-    case (id, e) => (acc._1 + id.name, acc._2 ++ (e.fv -- acc._1))
-  })._2 ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1.name).toSet)
+  def fv =
+    bindings
+      .foldLeft((Set.empty[String] /* bound variables */, Set.empty[String] /* free variables */ ))(
+        (acc, binding) =>
+          binding match {
+            case (id, e) => (acc._1 + id.name, acc._2 ++ (e.fv -- acc._1))
+          }
+      )
+      ._2 ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1.name).toSet)
 }
 
 /**
   * Letrec-bindings: (letrec ((v1 e1) ...) body...)
   */
-case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)],
-                        body: List[SchemeExp],
-                        pos: Position)
-    extends SchemeExp {
+case class SchemeLetrec(
+    bindings: List[(Identifier, SchemeExp)],
+    body: List[SchemeExp],
+    pos: Position
+) extends SchemeExp {
   override def toString = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
     s"(letrec ($bi) $bo)"
   }
-  def fv = (bindings.map(_._2).flatMap(_.fv).toSet ++ body.flatMap(_.fv).toSet) -- bindings.map(_._1.name).toSet
+  def fv =
+    (bindings.map(_._2).flatMap(_.fv).toSet ++ body.flatMap(_.fv).toSet) -- bindings
+      .map(_._1.name)
+      .toSet
 }
 
 /**
   * Named-let: (let name ((v1 e1) ...) body...)
   * TODO: desugar to letrec according to R5RS
   */
-case class SchemeNamedLet(name: Identifier,
-                          bindings: List[(Identifier, SchemeExp)],
-                          body: List[SchemeExp],
-                          pos: Position)
-    extends SchemeExp {
+case class SchemeNamedLet(
+    name: Identifier,
+    bindings: List[(Identifier, SchemeExp)],
+    body: List[SchemeExp],
+    pos: Position
+) extends SchemeExp {
   override def toString = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
     s"(let $name ($bi) $bo)"
   }
-  def fv = bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- (bindings.map(_._1.name).toSet + name.name))
+  def fv =
+    bindings.map(_._2).flatMap(_.fv).toSet ++ (body
+      .flatMap(_.fv)
+      .toSet -- (bindings.map(_._1.name).toSet + name.name))
 }
 
 /**
@@ -115,7 +133,7 @@ case class SchemeNamedLet(name: Identifier,
   */
 case class SchemeSet(variable: Identifier, value: SchemeExp, pos: Position) extends SchemeExp {
   override def toString = s"(set! $variable $value)"
-  def fv = value.fv + variable.name
+  def fv                = value.fv + variable.name
 }
 
 /**
@@ -153,14 +171,19 @@ object SchemeCond {
         (clause, acc) =>
           clause match {
             case (SchemeValue(ValueBoolean(true), _), body) => SchemeBody(body)
-            case (cond, Nil) =>
+            case (cond, Nil)                                =>
               /* Body is empty. R5RS states that "If the selected clause contains only the
                * test and no expressions ,then the value of the test is returned
                * as the result" */
               val id = Identifier("__cond-empty-body", cond.pos)
-              SchemeLet(List((id, cond)), List(SchemeIf(SchemeVar(id), SchemeVar(id), acc, cond.pos)), cond.pos)
-            case (cond, body)                               => SchemeIf(cond, SchemeBody(body), acc, cond.pos)
-        })
+              SchemeLet(
+                List((id, cond)),
+                List(SchemeIf(SchemeVar(id), SchemeVar(id), acc, cond.pos)),
+                cond.pos
+              )
+            case (cond, body) => SchemeIf(cond, SchemeBody(body), acc, cond.pos)
+          }
+      )
     }
 }
 
@@ -169,10 +192,12 @@ object SchemeCond {
   * Desugared according to R5RS.
   */
 object SchemeCase {
-  def apply(key: SchemeExp,
-            clauses: List[(List[SchemeValue], List[SchemeExp])],
-            default: List[SchemeExp],
-            pos: Position): SchemeExp = key match {
+  def apply(
+      key: SchemeExp,
+      clauses: List[(List[SchemeValue], List[SchemeExp])],
+      default: List[SchemeExp],
+      pos: Position
+  ): SchemeExp = key match {
     case _: SchemeVar | _: SchemeValue | SchemeQuoted(SExpId(_), _) =>
       /* Atomic key */
       val eqv = SchemeVar(Identifier("eq?", NoPosition)) /* TODO: should be eqv? instead of eq? */
@@ -184,18 +209,21 @@ object SchemeCase {
            * a big-or with eq? */
           SchemeIf(
             SchemeOr(
-              clause._1.map(atom =>
-                SchemeFuncall(eqv, List(key, atom match {
-                  case SchemeValue(ValueSymbol(sym), pos) =>
-                    SchemeQuoted(SExpId(Identifier(sym, pos)), pos)
-                  case _ => atom
-                }), atom.pos)),
+              clause._1.map(
+                atom =>
+                  SchemeFuncall(eqv, List(key, atom match {
+                    case SchemeValue(ValueSymbol(sym), pos) =>
+                      SchemeQuoted(SExpId(Identifier(sym, pos)), pos)
+                    case _ => atom
+                  }), atom.pos)
+              ),
               pos
             ),
             SchemeBody(clause._2),
             acc,
             pos
-        ))
+          )
+      )
     case _ =>
       /* Non-atomic key, let-bind it */
       val id = Identifier("__case-atom-key", key.pos)
@@ -231,17 +259,18 @@ case class SchemeOr(exps: List[SchemeExp], pos: Position) extends SchemeExp {
 case class SchemeDefineVariable(name: Identifier, value: SchemeExp, pos: Position)
     extends SchemeExp {
   override def toString = s"(define $name $value)"
-  def fv = value.fv
+  def fv                = value.fv
 }
 
 /**
   * A function definition: (define (name args...) body...)
   */
-case class SchemeDefineFunction(name: Identifier,
-                                args: List[Identifier],
-                                body: List[SchemeExp],
-                                pos: Position)
-    extends SchemeExp {
+case class SchemeDefineFunction(
+    name: Identifier,
+    args: List[Identifier],
+    body: List[SchemeExp],
+    pos: Position
+) extends SchemeExp {
   override def toString = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
@@ -255,29 +284,38 @@ case class SchemeDefineFunction(name: Identifier,
   * Desugared according to R5SR.
   */
 object SchemeDo {
-  def apply(vars: List[(Identifier, SchemeExp, Option[SchemeExp])],
-            test: SchemeExp,
-            finals: List[SchemeExp],
-            commands: List[SchemeExp],
-            pos: Position): SchemeExp = {
+  def apply(
+      vars: List[(Identifier, SchemeExp, Option[SchemeExp])],
+      test: SchemeExp,
+      finals: List[SchemeExp],
+      commands: List[SchemeExp],
+      pos: Position
+  ): SchemeExp = {
     val loopId = Identifier("__do_loop", pos)
     SchemeLetrec(
       List(
-        (loopId,
-         SchemeLambda(
-           vars.map(_._1),
-           List(SchemeIf(
-             test,
-             SchemeBody(finals),
-             SchemeBody(commands :::
-               List(SchemeFuncall(SchemeVar(loopId), vars.map({
-               case (_, _, Some(step)) => step
-               case (id, _, None)      => SchemeVar(id)
-             }), pos))),
-             pos
-           )),
-           pos
-         ))),
+        (
+          loopId,
+          SchemeLambda(
+            vars.map(_._1),
+            List(
+              SchemeIf(
+                test,
+                SchemeBody(finals),
+                SchemeBody(
+                  commands :::
+                    List(SchemeFuncall(SchemeVar(loopId), vars.map({
+                      case (_, _, Some(step)) => step
+                      case (id, _, None)      => SchemeVar(id)
+                    }), pos))
+                ),
+                pos
+              )
+            ),
+            pos
+          )
+        )
+      ),
       List(SchemeFuncall(SchemeVar(loopId), vars.map(_._2), pos)),
       pos
     )
@@ -290,7 +328,7 @@ object SchemeDo {
 case class SchemeVar(id: Identifier) extends SchemeExp {
   val pos               = id.pos
   override def toString = id.name
-  def fv = Set(id.name)
+  def fv                = Set(id.name)
 }
 
 /**
@@ -300,7 +338,7 @@ case class SchemeVar(id: Identifier) extends SchemeExp {
   */
 case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
   override def toString = s"'$quoted"
-  def fv = Set()
+  def fv                = Set()
 }
 
 /**
@@ -308,5 +346,5 @@ case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
   */
 case class SchemeValue(value: Value, pos: Position) extends SchemeExp {
   override def toString = value.toString
-  def fv = Set()
+  def fv                = Set()
 }

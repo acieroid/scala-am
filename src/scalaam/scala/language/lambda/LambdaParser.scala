@@ -41,30 +41,38 @@ object LambdaCompiler {
   }
 
   def compileT(exp: SExp): TailRec[LambdaExp] = exp match {
-    case SExpPair(SExpId(Identifier("lambda", _)),
-                  SExpPair(args, SExpPair(body, SExpValue(ValueNil, _), _), _),
-                  _) =>
+    case SExpPair(
+        SExpId(Identifier("lambda", _)),
+        SExpPair(args, SExpPair(body, SExpValue(ValueNil, _), _), _),
+        _
+        ) =>
       for {
         argsv <- compileArgsT(args)
         bodyv <- compileT(body)
       } yield LambdaFun(argsv, bodyv, exp.pos)
-    case SExpPair(SExpId(Identifier("letrec", _)),
-      SExpPair(bindings, SExpPair(body, SExpValue(ValueNil, _), _), _),
-      _) =>
+    case SExpPair(
+        SExpId(Identifier("letrec", _)),
+        SExpPair(bindings, SExpPair(body, SExpValue(ValueNil, _), _), _),
+        _
+        ) =>
       for {
         bindingsv <- tailcall(compileBindings(bindings))
-        bodyv <- tailcall(compileT(body))
+        bodyv     <- tailcall(compileT(body))
       } yield LambdaLetrec(bindingsv, bodyv, exp.pos)
-    case SExpPair(SExpId(Identifier("let", _)),
-      SExpPair(bindings, SExpPair(body, SExpValue(ValueNil, _), _), _),
-      _) =>
+    case SExpPair(
+        SExpId(Identifier("let", _)),
+        SExpPair(bindings, SExpPair(body, SExpValue(ValueNil, _), _), _),
+        _
+        ) =>
       for {
         bindingsv <- tailcall(compileBindings(bindings))
-        bodyv <- tailcall(compileT(body))
+        bodyv     <- tailcall(compileT(body))
       } yield LambdaLetrec(bindingsv, bodyv, exp.pos)
-    case SExpPair(SExpId(Identifier("if", _)),
-      SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil, _), _), _), _),
-      _) =>
+    case SExpPair(
+        SExpId(Identifier("if", _)),
+        SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(ValueNil, _), _), _), _),
+        _
+        ) =>
       for {
         condv <- tailcall(compileT(cond))
         consv <- tailcall(compileT(cons))

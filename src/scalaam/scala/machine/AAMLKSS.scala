@@ -10,21 +10,25 @@ import scalaam.core._
   * store itself is global. */
 class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     implicit val timestamp: Timestamp[T, E],
-    implicit val lattice: Lattice[V])
-    extends MachineAbstraction[E, A, V, T, E] with AAMUtils[E, A, V, T] {
+    implicit val lattice: Lattice[V]
+) extends MachineAbstraction[E, A, V, T, E]
+    with AAMUtils[E, A, V, T] {
 
   val Action = sem.Action
 
   case class State(control: Control, lkont: LKont, t: T) extends GraphElement with SmartHash {
     override def toString = control.toString
     override def label    = toString
-    override def color = if (halted) { Colors.Yellow } else {
-      control match {
-        case _: ControlEval  => Colors.Green
-        case _: ControlKont  => Colors.Pink
-        case _: ControlError => Colors.Red
+    override def color =
+      if (halted) {
+        Colors.Yellow
+      } else {
+        control match {
+          case _: ControlEval  => Colors.Green
+          case _: ControlKont  => Colors.Pink
+          case _: ControlError => Colors.Red
+        }
       }
-    }
     override def metadata = GraphMetadataNone
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
@@ -35,7 +39,8 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     private def integrate(
         actions: Set[Action.A],
         store: Store[A, V],
-        kstore: Store[KA, Set[LKont]]): (Set[(State, Store[A, V])], Store[KA, Set[LKont]]) = {
+        kstore: Store[KA, Set[LKont]]
+    ): (Set[(State, Store[A, V])], Store[KA, Set[LKont]]) = {
       actions.foldLeft((Set.empty[(State, Store[A, V])], kstore))((acc, act) => {
         val states = acc._1
         val kstore = acc._2
@@ -43,27 +48,38 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
           case Action.Value(v, store) =>
             (states + ((State(ControlKont(v), lkont, Timestamp[T, E].tick(t)), store)), kstore)
           case Action.Push(frame, e, env, store) =>
-            (states + ((State(ControlEval(e, env), lkont.push(frame), Timestamp[T, E].tick(t)),
-                        store)),
-             kstore)
+            (
+              states + (
+                (
+                  State(ControlEval(e, env), lkont.push(frame), Timestamp[T, E].tick(t)),
+                  store
+                )
+              ),
+              kstore
+            )
           case Action.Eval(e, env, store) =>
-            (states + ((State(ControlEval(e, env), lkont, Timestamp[T, E].tick(t)), store)),
-             kstore)
+            (states + ((State(ControlEval(e, env), lkont, Timestamp[T, E].tick(t)), store)), kstore)
           case Action.StepIn(fexp, _, e, env, store) =>
             val next = KontAddr(e, t)
-            (states + ((State(ControlEval(e, env),
-                              LKont.empty(next),
-                              Timestamp[T, E].tick(t, fexp)),
-                        store)),
-             kstore.extend(next, Set(lkont)))
+            (
+              states + (
+                (
+                  State(ControlEval(e, env), LKont.empty(next), Timestamp[T, E].tick(t, fexp)),
+                  store
+                )
+              ),
+              kstore.extend(next, Set(lkont))
+            )
           case Action.Err(err) =>
             (states + ((State(ControlError(err), lkont, Timestamp[T, E].tick(t)), store)), kstore)
         }
       })
     }
 
-    def step(store: Store[A, V],
-             kstore: Store[KA, Set[LKont]]): (Set[(State, Store[A, V])], Store[KA, Set[LKont]]) =
+    def step(
+        store: Store[A, V],
+        kstore: Store[KA, Set[LKont]]
+    ): (Set[(State, Store[A, V])], Store[KA, Set[LKont]]) =
       control match {
         case ControlEval(e, env) => integrate(sem.stepEval(e, env, store, t), store, kstore)
         case ControlKont(v)      =>
@@ -120,10 +136,10 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     def add(kv: (State, Store[A, V])): (StoreMap, Boolean) =
       if (content.contains(kv._1)) {
         val contents2 = content + (if (!kv._2.subsumes(content(kv._1))) {
-          (kv._1 -> ((content(kv._1).join(kv._2))))
-        } else {
-          kv
-        })
+                                     (kv._1 -> ((content(kv._1).join(kv._2))))
+                                   } else {
+                                     kv
+                                   })
         (new StoreMap(contents2), (contents2(kv._1) != content(kv._1)))
       } else {
         (new StoreMap(content + kv), true)
@@ -141,11 +157,13 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
 
     @scala.annotation.tailrec
     /* An invariant is that for all states in todo, stores(state) is defined */
-    def loop(todo: Set[State],
-             visited: VisitedSet.T,
-             stores: StoreMap,
-             kstore: Store[KA, Set[LKont]],
-             graph: G): G = {
+    def loop(
+        todo: Set[State],
+        visited: VisitedSet.T,
+        stores: StoreMap,
+        kstore: Store[KA, Set[LKont]],
+        graph: G
+    ): G = {
       if (todo.isEmpty || timeout.reached) {
         graph
       } else {
@@ -161,34 +179,38 @@ class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
                 (stores2, acc._2 || shouldClearVisited)
               })
             val states = statesWithStores.map(_._1)
-            ( /* Update the graph */
-             graph.addEdges(states.map(state2 => (state, empty, state2))),
-             /* Update the next worklist */
-             successors ++ states,
-             /* Update the store map */
-             stores2,
-             /* Update the kstore */
-             kstore2,
-             /* Should the visited set be cleared? */
-             shouldClearVisited2)
+            (
+              /* Update the graph */
+              graph.addEdges(states.map(state2 => (state, empty, state2))),
+              /* Update the next worklist */
+              successors ++ states,
+              /* Update the store map */
+              stores2,
+              /* Update the kstore */
+              kstore2,
+              /* Should the visited set be cleared? */
+              shouldClearVisited2
+            )
           })
         if (shouldClearVisited || kstore2 != kstore /* TODO: add timestamping + fastEq that only checks the timestamp */ ) {
           /* Changes in stores/kstore, we have to clear visited set */
           loop(successors, VisitedSet.empty, stores2, kstore2, graph2)
         } else {
-          loop(successors.filter(s2 => !VisitedSet.contains(visited, s2)),
-               VisitedSet.append(visited, todo),
-               stores2,
-               kstore2,
-               graph2)
+          loop(
+            successors.filter(s2 => !VisitedSet.contains(visited, s2)),
+            VisitedSet.append(visited, todo),
+            stores2,
+            kstore2,
+            graph2
+          )
         }
       }
     }
-    val fvs = program.fv
-    val initialEnv = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
+    val fvs          = program.fv
+    val initialEnv   = Environment.initial[A](sem.initialEnv).restrictTo(fvs)
     val initialStore = Store.initial[A, V](sem.initialStore)
-    val state = State.inject(program, initialEnv)
-    val kstore = Store.empty[KA, Set[LKont]]
+    val state        = State.inject(program, initialEnv)
+    val kstore       = Store.empty[KA, Set[LKont]]
     loop(
       Set(state),
       VisitedSet.empty,

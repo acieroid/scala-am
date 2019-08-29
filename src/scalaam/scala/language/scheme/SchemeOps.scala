@@ -7,7 +7,7 @@ object SchemeOps {
     val
     /* Check the type of a value */
     IsNull, IsBoolean, IsCons, IsPointer, IsChar, IsSymbol, IsString, IsInteger, IsReal, IsVector,
-    /* Negate a value */
+        /* Negate a value */
     Not, /* Unary arithmetic operations */
     Ceiling, Floor, Round, Random, Sqrt, /* Transcendental functions */
     Sin, ASin, Cos, ACos, Tan, ATan, Log, /* Length operations */

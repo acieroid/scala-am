@@ -20,7 +20,12 @@ case class ValueReal(value: Double) extends Value {
     f"$value%e" // Might not preserve full precision, but will be in a Scheme-compatible format
 }
 case class ValueBoolean(value: Boolean) extends Value {
-  override def toString = if (value) { "#t" } else { "#f" }
+  override def toString =
+    if (value) {
+      "#t"
+    } else {
+      "#f"
+    }
 }
 case class ValueCharacter(value: Char) extends Value {
   override def toString = s"#\\$value"

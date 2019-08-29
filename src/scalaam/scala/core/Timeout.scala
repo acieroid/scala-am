@@ -10,7 +10,9 @@ object Timeout {
 
   def start(timeout: Option[Long]): T = T(System.nanoTime, timeout)
   def start(timeout: Duration): T =
-    T(System.nanoTime, if (timeout.isFinite) { Some(timeout.toNanos) } else None)
+    T(System.nanoTime, if (timeout.isFinite) {
+      Some(timeout.toNanos)
+    } else None)
 
   val Infinity = T(System.nanoTime, None)
 

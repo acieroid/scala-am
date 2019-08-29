@@ -20,9 +20,14 @@ object ConstantPropagation {
       case Top => Top
       case Constant(_) =>
         y match {
-          case Top         => Top
-          case Constant(_) => if (x == y) { x } else { Top }
-          case Bottom      => x
+          case Top => Top
+          case Constant(_) =>
+            if (x == y) {
+              x
+            } else {
+              Top
+            }
+          case Bottom => x
         }
       case Bottom => y
     }
@@ -30,9 +35,14 @@ object ConstantPropagation {
       case Bottom => Bottom
       case Constant(_) =>
         y match {
-          case Top         => x
-          case Constant(_) => if (x == y) { x } else { Bottom }
-          case Bottom      => Bottom
+          case Top => x
+          case Constant(_) =>
+            if (x == y) {
+              x
+            } else {
+              Bottom
+            }
+          case Bottom => Bottom
         }
       case Top => y
     }
@@ -85,11 +95,16 @@ object ConstantPropagation {
       }
       def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match {
         case Bottom => CharLattice[C2].bottom
-        case Top => CharLattice[C2].top
+        case Top    => CharLattice[C2].top
         case Constant(x) =>
-          (0.to(x.size)).collect({
-            case i2 if BoolLattice[Concrete.B].isTrue(IntLattice[I2].eql[Concrete.B](i, IntLattice[I2].inject(i2))) => CharLattice[C2].inject(x.charAt(i2))
-          }).foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
+          (0.to(x.size))
+            .collect({
+              case i2
+                  if BoolLattice[Concrete.B]
+                    .isTrue(IntLattice[I2].eql[Concrete.B](i, IntLattice[I2].inject(i2))) =>
+                CharLattice[C2].inject(x.charAt(i2))
+            })
+            .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
       }
       def lt[B2: BoolLattice](s1: S, s2: S) = (s1, s2) match {
         case (Bottom, _) | (_, Bottom)  => BoolLattice[B2].bottom
