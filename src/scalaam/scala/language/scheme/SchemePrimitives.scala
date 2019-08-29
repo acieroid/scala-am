@@ -787,16 +787,17 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
       override def call(x: V) = stringLength(x)
     }
     object Newline extends NoStoreOperation("newline", Some(0)) {
-      override def call() = { println(""); MayFailSuccess(bool(false)) }
+      override def call() = { /* disabled println(""); */ MayFailSuccess(bool(false)) }
     }
     object Display extends NoStoreOperation("display", Some(1)) {
       override def call(x: V) = {
+        /* // Disabled
         val str = x.toString
         print(if (str.startsWith("\"")) {
           str.substring(1, str.size - 1)
         } else {
           str
-        })
+        }) */
         x /* Undefined behavior in R5RS, but we return the printed value */
       }
     }
