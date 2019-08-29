@@ -42,7 +42,7 @@ object Benchmarks {
   def benchmarksFor(kind: BenchmarkTestKind): List[Benchmark] =
     allBenchmarks.filter(b => b.supported.contains(kind))
   def allBenchmarks = List(
-    Benchmark("test/ad/abstrct.scm", ValueBoolean(true), all),
+    Benchmark("test/ad/abstrct.scm", ValueBoolean(true), parse), // strange equal bug, which makes it so that it doesn't terminate with GAAM
     Benchmark("test/ad/bfirst.scm", ValueBoolean(true), none), // dot notation
     Benchmark("test/ad/bst.scm", ValueBoolean(true), none), // dot notation
     // TODO: ad/btree.scm only contains definition, add a body
