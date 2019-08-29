@@ -27,7 +27,19 @@ class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
           case _: ControlError => Colors.Red
         }
       }
-    override def metadata = GraphMetadataNone
+    override def metadata =       GraphMetadataMap(
+        Map(
+          "halted" -> GraphMetadataBool(halted),
+          "type" -> (control match {
+            case _: ControlEval  => GraphMetadataString("eval")
+            case _: ControlKont  => GraphMetadataString("kont")
+            case _: ControlError => GraphMetadataString("error")
+          })
+        ) ++ (control match {
+          case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
+          case _              => Map()
+        })
+      )
     def halted: Boolean = control match {
       case ControlEval(_, _) => false
       case ControlKont(_)    => lkont.next == HaltKontAddr && lkont.isEmpty
