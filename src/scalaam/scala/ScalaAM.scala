@@ -7,6 +7,18 @@ object Main {
   }
 }
 
+abstract class Interpreter {
+  def run(file: String, timeout: Timeout.T = Timeout.seconds(10), outputDot: Boolean = true): (Long, Int)
+  def main(args: Array[String]): Unit = {
+    if (args.size == 1) {
+      val (time, states) = run(args.head)
+      println(s"Evaluation took ${time}ms, computed $states states")
+    } else {
+      println(s"File expected as argument")
+    }
+  }
+}
+
 object RunGabriel {
   import scalaam.language.scheme._
   def main(args: Array[String]) = {
@@ -53,7 +65,7 @@ object RunGabriel {
 }
 
 /* To be used with the console: `sbt console`, then scalaam.SchemeRunAAM.run(file) */
-object SchemeRunAAM {
+object SchemeRunAAM extends Interpreter {
   import scalaam.language.scheme._
   import scalaam.machine._
   import scalaam.graph._
@@ -268,7 +280,7 @@ object SchemeRunAAMLKSS {
   }
 }
 
-object SchemeRunGAAM {
+object SchemeRunGAAM extends Interpreter {
   import scalaam.language.scheme._
   import scalaam.machine._
   import scalaam.core._
