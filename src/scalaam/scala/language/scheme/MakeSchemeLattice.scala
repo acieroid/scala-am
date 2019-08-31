@@ -479,8 +479,12 @@ class MakeSchemeLattice[
           val vals = content.view
             .filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2)))
             .values
-          /* XXX: init doesn't have to be included if we know for sure that index is precise enough */
-          vals.foldLeft(init)((acc, v) => schemeLattice.join(acc, v))
+          if (Config.concrete) {
+            vals.foldLeft(schemeLattice.bottom)((acc, v) => schemeLattice.join(acc, v))
+          } else {
+            /* XXX: init doesn't have to be included if we know for sure that index is precise enough */
+            vals.foldLeft(init)((acc, v) => schemeLattice.join(acc, v))
+          }
         } else {
           schemeLattice.bottom
         }
@@ -500,8 +504,14 @@ class MakeSchemeLattice[
             Element(
               Vec(
                 size,
-                content + (index -> schemeLattice
-                  .join(content.get(index).getOrElse(schemeLattice.bottom), newval)),
+                content + (index ->
+                  (if (Config.concrete) {
+                    newval
+                  } else {
+                    /* Joins the new value with the previous in index, if it exists */
+                    schemeLattice.join(content.get(index).getOrElse(schemeLattice.bottom), newval)
+                  })
+                ),
                 init
               )
             )
