@@ -154,7 +154,7 @@ object SchemeCond {
           clause match {
             case (SchemeValue(ValueBoolean(true), _), body) => SchemeBody(body)
             case (cond, Nil) =>
-              /* Body is empty. R5RS states that "If the selected clause contains only the
+              /** Body is empty. R5RS states that "If the selected clause contains only the
                * test and no expressions ,then the value of the test is returned
                * as the result" */
               val id = Identifier("__cond-empty-body", cond.pos)
@@ -174,11 +174,11 @@ object SchemeCase {
             default: List[SchemeExp],
             pos: Position): SchemeExp = key match {
     case _: SchemeVar | _: SchemeValue | SchemeQuoted(SExpId(_), _) =>
-      /* Atomic key */
+      /** Atomic key */
       val eqv = SchemeVar(Identifier("eq?", NoPosition)) /* TODO: should be eqv? instead of eq? */
       clauses.foldRight[SchemeExp](SchemeBody(default))(
         (clause, acc) =>
-          /* In R5RS, the condition is desugared into a (memv key '(atoms ...)) call. This
+          /** In R5RS, the condition is desugared into a (memv key '(atoms ...)) call. This
            * would mean we would have to construct a list and go through it,
            * which would badly impact precision. Hence, we instead explicitly do
            * a big-or with eq? */
@@ -197,7 +197,7 @@ object SchemeCase {
             pos
         ))
     case _ =>
-      /* Non-atomic key, let-bind it */
+      /** Non-atomic key, let-bind it */
       val id = Identifier("__case-atom-key", key.pos)
       SchemeLet(List((id, key)), List(SchemeCase(SchemeVar(id), clauses, default, pos)), key.pos)
   }

@@ -22,5 +22,5 @@ object SchemeParser {
   /**
     * Parse a string representing a Scheme program
     */
-  def parse(s: String): SchemeExp = undefine(SExpParser.parse(s).map(compile _))
+  def parse(s: String): SchemeExp = SchemeBody(SExpParser.parse(s).map(compile _))
 }

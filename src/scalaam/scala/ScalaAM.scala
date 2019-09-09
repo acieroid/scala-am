@@ -245,7 +245,7 @@ object CompareMachines {
             env2.extend(k, env.lookup(k).get match {
               case SchemeRunConcrete.address.A(nameaddr, _) => nameaddr
             }))
-          abslat.closure((exp.asInstanceOf[SchemeExp], env2))
+          abslat.closure((exp.asInstanceOf[SchemeExp], env2),None)
         case ConcretePointer(SchemeRunConcrete.address.A(nameaddr, _)) =>
           abslat.pointer(nameaddr)
       }))

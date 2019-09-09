@@ -37,7 +37,7 @@ trait SchemeLattice[L, E <: Exp, A <: Address] extends Lattice[L] {
   type Closure = (E, Environment[A])
 
   /** Extract closures contained in this value */
-  def getClosures(x: L): Set[Closure]
+  def getClosures(x: L): Set[(Closure,Option[String])]
 
   /** Extract primitives contained in this value
     *  TODO[medium] find a way not to have a type parameter here */
@@ -64,7 +64,7 @@ trait SchemeLattice[L, E <: Exp, A <: Address] extends Lattice[L] {
   def primitive[Primitive](x: Primitive): L
 
   /** Injection of a closure */
-  def closure(x: Closure): L
+  def closure(x: Closure, name: Option[String]): L
 
   /** Injection of a symbol */
   def symbol(x: String): L

@@ -54,8 +54,12 @@ class MakeSchemeLattice[
   case class Prim[Primitive](prim: Primitive) extends Value {
     override def toString = s"#prim<$prim>"
   }
-  case class Clo(lambda: E, env: Environment[A]) extends Value {
-    override def toString = s"#clo@${lambda.pos}"
+  case class Clo(lambda: E, env: Environment[A], name: Option[String]) extends Value {
+    def printName = name match {
+      case None => s"anonymous@${lambda.pos}"
+      case Some(name) => name
+    }
+    override def toString = s"#<closure $printName>"
   }
 
   case class Cons(car: L, cdr: L) extends Value {
@@ -427,15 +431,15 @@ class MakeSchemeLattice[
     def bool(x: Boolean): Value                   = Bool(BoolLattice[B].inject(x))
     def char(x: scala.Char): Value                = Char(CharLattice[C].inject(x))
     def primitive[Primitive](x: Primitive): Value = Prim(x)
-    def closure(x: schemeLattice.Closure): Value  = Clo(x._1, x._2.restrictTo(x._1.fv))
+    def closure(x: schemeLattice.Closure, name: Option[String]): Value  = Clo(x._1, x._2.restrictTo(x._1.fv),name)
     def symbol(x: String): Value                  = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value                                = Nil
     def cons(car: L, cdr: L): Value               = Cons(car, cdr)
     def pointer(a: A): Value                      = Pointer(a)
 
-    def getClosures(x: Value): Set[schemeLattice.Closure] = x match {
-      case Clo(lam, env) => Set((lam, env))
-      case _             => Set()
+    def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
+      case Clo(lam, env, name) => Set(((lam, env),name))
+      case _                => Set()
     }
     def getPrimitives[Primitive](x: Value): Set[Primitive] = x match {
       case Prim(p: Primitive @unchecked) => Set(p)
@@ -498,7 +502,7 @@ class MakeSchemeLattice[
       case Char(c) => CharLattice[C].concreteValues(c)
       case Symbol(s) => SymbolLattice[Sym].concreteValues(s)
       case Prim(prim) => Set(ConcretePrim(prim))
-      case Clo(lambda, env) => Set(ConcreteClosure(lambda, env))
+      case Clo(lambda, env, _) => Set(ConcreteClosure(lambda, env))
       case Nil => Set(ConcreteNil)
       case Pointer(a) => Set(ConcretePointer(a))
       case _: Cons => ???
@@ -584,7 +588,7 @@ class MakeSchemeLattice[
     def vectorSet(vector: L, index: L, newval: L): MayFail[L, Error] =
       vector.foldMapL(vec => index.foldMapL(i => Value.vectorSet(vec, i, newval)))
 
-    def getClosures(x: L): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
+    def getClosures(x: L): Set[(Closure,Option[String])] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
     def getPrimitives[Primitive](x: L): Set[Primitive] =
       x.foldMapL(x => Value.getPrimitives[Primitive](x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
@@ -596,7 +600,7 @@ class MakeSchemeLattice[
     def char(x: scala.Char): L                = Element(Value.char(x))
     def bool(x: Boolean): L                   = Element(Value.bool(x))
     def primitive[Primitive](x: Primitive): L = Element(Value.primitive[Primitive](x))
-    def closure(x: Closure): L                = Element(Value.closure(x))
+    def closure(x: Closure, name: Option[String]): L = Element(Value.closure(x,name))
     def symbol(x: String): L                  = Element(Value.symbol(x))
     def cons(car: L, cdr: L): L               = Element(Value.cons(car, cdr))
     def pointer(a: A): L                      = Element(Value.pointer(a))

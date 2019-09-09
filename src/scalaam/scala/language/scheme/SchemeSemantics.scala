@@ -82,7 +82,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
                store: Sto,
                t: T): Actions = {
     val fromClo: Actions = getClosures(function).map({
-      case (SchemeLambda(args, body, pos), env1) =>
+      case ((SchemeLambda(args, body, pos), env1), _) =>
         if (args.length == argsv.length) {
           bindArgs(args.zip(argsv.map(_._2)), env1, store, t) match {
             case (env2, store) =>
@@ -96,9 +96,9 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
                               store)
           }
         } else { Action.Err(ArityError(fexp, args.length, argsv.length)) }
-      case (lambda, env1) =>
+      case ((lambda, env1),name) =>
         Action.Err(
-          TypeError("operator expected to be a closure, but is not", closure((lambda, env1))))
+          TypeError("operator expected to be a closure, but is not", closure((lambda, env1),None)))
     })
     val fromPrim: Actions =
       getPrimitives[Primitive](function).flatMap(prim => prim.callAction(fexp, argsv, store, t))
@@ -174,7 +174,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   }
 
   def stepEval(e: SchemeExp, env: Env, store: Sto, t: T) = e match {
-    case lam: SchemeLambda            => Action.Value(closure((lam, env)), store)
+    case lam: SchemeLambda            => Action.Value(closure((lam, env),None), store)
     case SchemeFuncall(f, args, _)    => Action.Push(FrameFuncallOperator(f, args, env), f, env, store)
     case SchemeIf(cond, cons, alt, _) => Action.Push(FrameIf(cons, alt, env), cond, env, store)
     case SchemeLet(Nil, body, _)      => evalBody(body, env, store)
@@ -202,7 +202,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       val fexp = SchemeLambda(bindings.map(_._1), body, pos)
       val a    = allocator.variable(name, t)
       val env2 = env.extend(name.name, a)
-      val f    = closure((fexp, env2))
+      val f    = closure((fexp, env2),Some(name.name))
       funcallArgs(f, fexp, List(), bindings.map(_._2), env2, store.extend(a, f), t)
     case SchemeSet(variable, exp, _)        => Action.Push(FrameSet(variable, env), exp, env, store)
     case SchemeBegin(body, _)               => evalBody(body, env, store)
@@ -213,7 +213,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
     case SchemeDefineVariable(name, exp, _) => Action.Push(FrameDefine(name, env), exp, env, store)
     case SchemeDefineFunction(f @ _, args, body, pos) => {
       //val a = allocator.variable(f, t)
-      val v = closure((SchemeLambda(args, body, pos), env))
+      val v = closure((SchemeLambda(args, body, pos), env),Some(f.name))
       // TODO: remove DefineFunction from the language?
       //val env1 = env.extend(f.name, a)
       //val store1 = store.extend(a, v)
@@ -296,7 +296,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
 
   def primitives: Map[String, V] = allPrimitives.map(p => (p.name, primitive[Primitive](p))).toMap
   override def initialBindings =
-    /* allPrimitives.map(p => (p.name, allocator.primitive(p.name), primitive[Primitive](p))) ++ */ Set(
+     allPrimitives.map(p => (p.name, allocator.primitive(p.name), primitive[Primitive](p))) ++ Set(
       ("null", allocator.primitive("null"), nil))
 }
 
@@ -317,7 +317,7 @@ class OptimizedSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T,
   /** Tries to perform atomic evaluation of an expression. Returns the result of
     * the evaluation if it succeeded, otherwise returns None */
   protected def atomicEval(e: SchemeExp, env: Env, store: Sto): Option[V] = e match {
-    case lam: SchemeLambda   => Some(closure((lam, env)))
+    case lam: SchemeLambda   => Some(closure((lam, env),None))
     case SchemeVar(variable) => env.lookup(variable.name).flatMap(a => store.lookup(a))
     case SchemeValue(v, _)   => evalValue(v)
     case _                   => None

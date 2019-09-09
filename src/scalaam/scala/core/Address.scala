@@ -13,7 +13,6 @@ trait Address extends SmartHash {
 /** An allocator is used to allocate addresses of type A. It relies on
   * timestamps of type T, and contexts of type C */
 trait Allocator[A <: Address, T, C] {
-  implicit val timestamp: Timestamp[T, C]
 
   /** Allocate a variable given an identifier */
   def variable(name: Identifier, t: T): A

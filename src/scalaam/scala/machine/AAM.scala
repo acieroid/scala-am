@@ -108,9 +108,9 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
       * Computes the set of states that follow the current state
       */
     def step: Set[State] = control match {
-      /* In a eval state, call the semantic's evaluation method */
+      /** In a eval state, call the semantic's evaluation method */
       case ControlEval(e, env) => integrate(a, sem.stepEval(e, env, store, t))
-      /* In a continuation state, call the semantics' continuation method */
+      /** In a continuation state, call the semantics' continuation method */
       case ControlKont(v) =>
         kstore.lookup(a) match {
           case Some(konts) =>
@@ -119,7 +119,7 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
             })
           case None => Set()
         }
-      /* In an error state, the state is not able to make a step */
+      /** In an error state, the state is not able to make a step */
       case ControlError(_) => Set()
     }
   }
@@ -132,7 +132,7 @@ class AAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
             HaltKontAddr,
             Timestamp[T, E].initial(""))
 
-    /* TODO: do this without typeclass, e.g., class State extends WithKey[KA](a) */
+    /** TODO: do this without typeclass, e.g., class State extends WithKey[KA](a) */
     implicit val stateWithKey = new WithKey[State] {
       type K = KA
       def key(st: State) = st.a
