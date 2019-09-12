@@ -79,6 +79,8 @@ class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, 
   val empty = new NoTransition
 
   def run[G](program: E, timeout: Timeout.T)(implicit ev: Graph[G, State, Transition]): G = {
+    val oldConcrete = Config.concrete
+    Config.concrete = true
     var state = State(
       ControlEval(program, Environment.initial[A](sem.initialEnv)),
       new ConcreteStore[A, V](sem.initialStore.toMap),
@@ -87,34 +89,34 @@ class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, 
     )
     var graph    = Graph[G, State, Transition].empty
     var finished = false
-    while (!finished) {
-      def applyAction(konts: List[Frame], actions: Set[Action.A]): Unit = {
-        if (actions.size == 0) {
-          println(
-            s"Got no action while one was expected when stepping state $state. Terminating concrete machine."
-          )
-          finished = true;
-        } else {
-          if (actions.size > 1) {
-            println(s"Got more than one action (${actions.size}) in concrete machine. Picking the first one.")
-            println(s"Initial state was $state")
-          }
-          val state2 = actions.head match {
-            case Action.Value(v, store2) =>
-              State(ControlKont(v), store2, konts, Timestamp[T, E].tick(state.t))
-            case Action.Push(frame, e, env, store2) =>
-              State(ControlEval(e, env), store2, frame :: konts, Timestamp[T, E].tick(state.t))
-            case Action.Eval(e, env, store2) =>
-              State(ControlEval(e, env), store2, konts, Timestamp[T, E].tick(state.t))
-            case Action.StepIn(fexp, _, e, env, store2) =>
-              State(ControlEval(e, env), store2, konts, Timestamp[T, E].tick(state.t, fexp))
-            case Action.Err(err) =>
-              State(ControlError(err), state.store, konts, Timestamp[T, E].tick(state.t))
-          }
-          graph = graph.addEdge(state, empty, state2)
-          state = state2
+    def applyAction(konts: List[Frame], actions: Set[Action.A]): Unit = {
+      if (actions.size == 0) {
+        println(
+          s"Got no action while one was expected when stepping state $state. Terminating concrete machine."
+        )
+        finished = true;
+      } else {
+        if (actions.size > 1) {
+          println(s"Got more than one action (${actions.size}) in concrete machine. Picking the first one.")
+          println(s"Initial state was $state")
         }
+        val state2 = actions.head match {
+          case Action.Value(v, store2) =>
+            State(ControlKont(v), store2, konts, Timestamp[T, E].tick(state.t))
+          case Action.Push(frame, e, env, store2) =>
+            State(ControlEval(e, env), store2, frame :: konts, Timestamp[T, E].tick(state.t))
+          case Action.Eval(e, env, store2) =>
+            State(ControlEval(e, env), store2, konts, Timestamp[T, E].tick(state.t))
+          case Action.StepIn(fexp, _, e, env, store2) =>
+            State(ControlEval(e, env), store2, konts, Timestamp[T, E].tick(state.t, fexp))
+          case Action.Err(err) =>
+            State(ControlError(err), state.store, konts, Timestamp[T, E].tick(state.t))
+        }
+        graph = graph.addEdge(state, empty, state2)
+        state = state2
       }
+    }
+    while (!finished) {
       if (timeout.reached) {
         finished = true
       } else {
@@ -135,6 +137,7 @@ class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, 
         }
       }
     }
+    Config.concrete = oldConcrete
     graph
   }
 }

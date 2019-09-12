@@ -154,7 +154,7 @@ object SchemeRunAAM extends Interpreter {
 
 }
 
-object SchemeRunConcrete {
+object SchemeRunConcrete extends Interpreter {
   import scalaam.language.scheme._
   import scalaam.machine._
   import scalaam.graph._
@@ -185,7 +185,7 @@ object SchemeRunConcrete {
     val f       = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
     f.close()
-    runProgram(SchemeParser.parse(content), timeout, outputDot)
+    runProgram(SchemeUndefiner.undefine(List(SchemeParser.parse(content))), timeout, outputDot)
   }
   def runProgram(
       content: SchemeExp,

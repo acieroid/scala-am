@@ -421,7 +421,13 @@ class MakeSchemeLattice[
               case (_: Clo, _: Clo)         => Bool(BoolLattice[B].inject(x == y))
               case (_: Cons, _: Cons)       => Bool(BoolLattice[B].inject(x == y))
               case (_: Vec, _: Vec)         => Bool(BoolLattice[B].inject(x == y))
-              case (_: Pointer, _: Pointer) => Bool(BoolLattice[B].top) /* we can't know for sure that equal addresses are eq (in the abstract) */
+              case (_: Pointer, _: Pointer) =>
+                if (Config.concrete) {
+                  Bool(BoolLattice[B].inject(x == y))
+                } else {
+                   /* we can't know for sure that equal addresses are eq (in the abstract). */
+                  Bool(BoolLattice[B].top)
+                }
               case _                        => False
             })
           case StringAppend =>
