@@ -67,7 +67,8 @@ object Graph {
     g
 
   implicit class GraphOps[G, N <: GraphElement, E <: GraphElement](g: G)(
-      implicit ev: Graph[G, N, E]) {
+      implicit ev: Graph[G, N, E]
+  ) {
     def addNode(node: N): G                        = ev.addNode(g, node)
     def addEdge(node1: N, edge: E, node2: N): G    = ev.addEdge(g, node1, edge, node2)
     def addEdges(l: Iterable[(N, E, N)]): G        = ev.addEdges(g, l)

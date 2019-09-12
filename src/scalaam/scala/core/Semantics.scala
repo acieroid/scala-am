@@ -9,20 +9,20 @@ trait Semantics[E <: Exp, Addr <: Address, V, T, C] {
 
   object Action {
     trait A
-    case class Value(v: V, store: Store[Addr, V])                                        extends A
+    case class Value(v: V, store: Store[Addr, V])                                      extends A
     case class Push(frame: Frame, e: E, env: Environment[Addr], store: Store[Addr, V]) extends A
     case class Eval(e: E, env: Environment[Addr], store: Store[Addr, V])               extends A
-    case class StepIn(fexp: E,
-                      clo: (E, Environment[Addr]),
-                      e: E,
-                      env: Environment[Addr],
-                      store: Store[Addr, V])
-        extends A
+    case class StepIn(
+        fexp: E,
+        clo: (E, Environment[Addr]),
+        e: E,
+        env: Environment[Addr],
+        store: Store[Addr, V]
+    ) extends A
     case class Err(err: Error) extends A
 
     val None: Set[A] = Set.empty
 
-    import scala.language.implicitConversions
     implicit def actionToSet(act: A): Set[A] = Set(act)
     implicit def fromMF(mf: MayFail[A, Error]): Set[A] = mf match {
       case MayFailSuccess(a)    => Set(a)

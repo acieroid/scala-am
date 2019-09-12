@@ -7,15 +7,14 @@ import scalaam.core._
   * form a lattice), addresses A, timestamps T, and contexts C. */
 case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])(
     implicit val timestamp: Timestamp[T, C],
-    implicit val lambdaLattice: LambdaLattice[V, A])
-    extends Semantics[LambdaExp, A, V, T, C] {
+    implicit val lambdaLattice: LambdaLattice[V, A]
+) extends Semantics[LambdaExp, A, V, T, C] {
 
   implicit val lattice: Lattice[V] = lambdaLattice
 
   /** Frames are pushed on the continuation stack when sub-computations have to be
     * made, in order to remember where to continue the execution of a program
     * once a value for a sub-computation has been reached. */
-
   /**
     * This frame is used when we are evaluating the operator of a function call
     * (`f` in `(f x)`), and stores the current expression that we are
@@ -23,7 +22,10 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
     * environment.
     */
   case class FrameFuncallOperator(fexp: LambdaExp, args: List[LambdaExp], env: Environment[A])
-      extends Frame
+      extends Frame {
+    override def toString = s"rator($fexp)"
+  }
+
   /**
     * This frame is used when we have evaluated the operator of a function call
     * to a value `f`, and we are currently evaluating the argument `cur`. It
@@ -31,13 +33,30 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
     * arguments that are left to evaluate in `toeval`. The current environment
     * is also stored within the frame.
     */
-  case class FrameFuncallOperands(f: V,
-                                  fexp: LambdaExp,
-                                  cur: LambdaExp,
-                                  args: List[(LambdaExp, V)],
-                                  toeval: List[LambdaExp],
-                                  env: Environment[A])
-      extends Frame
+  case class FrameFuncallOperands(
+      f: V,
+      fexp: LambdaExp,
+      cur: LambdaExp,
+      args: List[(LambdaExp, V)],
+      toeval: List[LambdaExp],
+      env: Environment[A]
+  ) extends Frame {
+    override def toString = s"rand($cur)"
+  }
+
+  /** This frame is used for letrec bindings */
+  case class FrameLetrec(
+      addr: A,
+      bindings: List[(A, LambdaExp)],
+      body: LambdaExp,
+      env: Environment[A]
+  ) extends Frame {
+    override def toString = s"letrec"
+  }
+
+  case class FrameIf(cons: LambdaExp, alt: LambdaExp, env: Environment[A]) extends Frame {
+    override def toString = s"if"
+  }
 
   /** stepEval defines how an expression is evaluated and returns possibly
     * multiple actions to perform. When multiple acitons are returned, this
@@ -70,7 +89,29 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
           * monad, which encodes computations that may both succeed and fail (as
           * is often the case in abstract interpretation). */
         Action.fromMF(
-          env.lookupMF(id).flatMap(a => store.lookupMF(a).map(v => Action.Value(v, store))))
+          env.lookupMF(id).flatMap(a => store.lookupMF(a).map(v => Action.Value(v, store)))
+        )
+      case LambdaIf(cond, cons, alt, _) =>
+        Action.Push(FrameIf(cons, alt, env), cond, env, store)
+      case LambdaLetrec(Nil, body, _) =>
+        Action.Eval(body, env, store)
+      case LambdaLetrec(bindings, body, _) =>
+        val variables = bindings.map(_._1)
+        val addresses = variables.map(v => allocator.variable(v, t))
+        val (env1, store1) = variables
+          .zip(addresses)
+          .foldLeft((env, store))({
+            case ((env, store), (v, a)) =>
+              (env.extend(v.name, a), store.extend(a, LambdaLattice[V, A].bottom))
+          })
+        val exp = bindings.head._2
+        Action.Push(
+          FrameLetrec(addresses.head, addresses.zip(bindings.map(_._2)).tail, body, env1),
+          exp,
+          env1,
+          store1
+        )
+      case LambdaBoolean(b, _) => Action.Value(LambdaLattice[V, A].boolean(b), store)
     }
 
   /** The `stepKont` function is called when a value has been reached, and the
@@ -95,21 +136,36 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
       /** We have evaluated some of the arguments to a function call but not all, we
         * proceed with the evaluating the rest of the arguments, again pushing a
         * `FrameFuncallOperands` frame on the stack. */
-      Action.Push(FrameFuncallOperands(v, fexp, argtoeval, (cur, v) :: args, argstoeval, env),
-                  argtoeval,
-                  env,
-                  store)
+      Action.Push(
+        FrameFuncallOperands(f, fexp, argtoeval, (cur, v) :: args, argstoeval, env),
+        argtoeval,
+        env,
+        store
+      )
+    case FrameIf(cons, alt, env) =>
+      conditional(v, Action.Eval(cons, env, store), Action.Eval(alt, env, store))
+    case FrameLetrec(a, Nil, body, env) =>
+      Action.Eval(body, env, store.update(a, v))
+    case FrameLetrec(a, (a1, exp) :: rest, body, env) =>
+      Action.Push(FrameLetrec(a1, rest, body, env), exp, env, store.update(a, v))
   }
+
+  def conditional(v: V, t: => Set[Action.A], f: => Set[Action.A]): Set[Action.A] =
+    (if (LambdaLattice[V, A].isTrue(v)) t else Action.None) ++ (if (LambdaLattice[V, A].isFalse(v))
+                                                                  f
+                                                                else Action.None)
 
   /** This functions performs the evaluation of a function call when the operator
     * `fexp` has been evaluated to the value `f`, and the arguments have been
     * evaluated to the values contained in `argsv`. We need the store to
     * evaluate this call. */
-  def evalCall(f: V,
-               fexp: LambdaExp,
-               argsv: List[(LambdaExp, V)],
-               store: Store[A, V],
-               t: T): Set[Action.A] =
+  def evalCall(
+      f: V,
+      fexp: LambdaExp,
+      argsv: List[(LambdaExp, V)],
+      store: Store[A, V],
+      t: T
+  ): Set[Action.A] =
     LambdaLattice[V, A]
       .closures(f) /* We extract all the closures contained in the lattice value `f` */
       .map({
@@ -126,7 +182,6 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
             /* We don't have the expected number of arguments, throw an arity error. The
              * error is no actually thrown, but rather will be represented in
              * the state graph, so there is a specific action for that. */
-            println(s"args: $args, argsv: $argsv")
             Action.Err(ArityError(fexp, args.length, argsv.length))
           }
         case (lam, _) =>
@@ -137,17 +192,20 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
       })
 
   /** This error is raised when a function is not called with the right number of arguments */
-  case class ArityError(call: LambdaExp, expected: Int, got: Int)   extends Error
+  case class ArityError(call: LambdaExp, expected: Int, got: Int) extends Error
+
   /** This error is raised when encountering an unexpected type */
   case class TypeError(e: LambdaExp, expected: String, got: String) extends Error
 
   /** This function binds multiple arguments to their value according to the input
     * list `l`.  It bninds them in the environment `env` and store `store`,
     * returning the resulting environment and store. */
-  def bindArgs(l: List[(Identifier, V)],
-               env: Environment[A],
-               store: Store[A, V],
-               t: T): (Environment[A], Store[A, V]) =
+  def bindArgs(
+      l: List[(Identifier, V)],
+      env: Environment[A],
+      store: Store[A, V],
+      t: T
+  ): (Environment[A], Store[A, V]) =
     l.foldLeft((env, store))({
       case ((env, store), (id, value)) => {
         val a = allocator.variable(id, t)

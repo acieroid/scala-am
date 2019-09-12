@@ -165,5 +165,6 @@ trait SchemeLattice[L, E <: Exp, A <: Address] extends Lattice[L] {
 
 object SchemeLattice {
   def apply[L, E <: Exp, A <: Address](
-      implicit lat: SchemeLattice[L, E, A]): SchemeLattice[L, E, A] = lat
+      implicit lat: SchemeLattice[L, E, A]
+  ): SchemeLattice[L, E, A] = lat
 }

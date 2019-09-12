@@ -30,10 +30,10 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
 
   /** ...and elements of the lattice can be compared */
   final def tryCompare(x: L, y: L): Option[Int] = (subsumes(x, y), subsumes(y, x)) match {
-    case (true, true)   => Some(0) // x >= y and y >= x => x = y
-    case (true, false)  => Some(1) // x >= y and x != y
+    case (true, true)   => Some(0)  // x >= y and y >= x => x = y
+    case (true, false)  => Some(1)  // x >= y and x != y
     case (false, true)  => Some(-1) // y >= x and x != y
-    case (false, false) => None // not comparable
+    case (false, false) => None     // not comparable
   }
 
   def concreteValues(x: L): Set[ConcreteVal] = ???

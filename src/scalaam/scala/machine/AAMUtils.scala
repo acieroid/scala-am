@@ -4,8 +4,9 @@ import scalaam.core._
 import scalaam.util.Show
 
 /** A number of things are factored out of the AAM-based analysis classes to
-    * enable reusability by similar machine abstractions */
+  * enable reusability by similar machine abstractions */
 trait AAMUtils[E <: Exp, A <: Address, V, T] {
+
   /** Control component of the machine. */
   trait Control extends SmartHash
   case class ControlEval(exp: E, env: Environment[A]) extends Control {
@@ -41,6 +42,7 @@ trait AAMUtils[E <: Exp, A <: Address, V, T] {
     def empty(next: KA): LKont = LKont(List.empty, next)
   }
   case class LKont(contents: List[Frame], next: KA) extends Frame {
+    override def toString  = "[" + contents.mkString("; ") + "]"
     def isEmpty: Boolean   = contents.isEmpty
     def push(frame: Frame) = LKont(frame :: contents, next)
     def get: Option[(Frame, LKont)] = contents match {
@@ -58,12 +60,14 @@ trait AAMUtils[E <: Exp, A <: Address, V, T] {
             } else {
               val (todo2, acc2) = kstore
                 .lookupDefault(a, Set.empty[LKont])
-                .foldLeft((Set.empty[KA], Set.empty[LKont]))((localAcc, lkont) =>
-                  if (lkont.isEmpty) {
-                    (localAcc._1 + lkont.next, localAcc._2)
-                  } else {
-                    (localAcc._1, localAcc._2 + lkont)
-                })
+                .foldLeft((Set.empty[KA], Set.empty[LKont]))(
+                  (localAcc, lkont) =>
+                    if (lkont.isEmpty) {
+                      (localAcc._1 + lkont.next, localAcc._2)
+                    } else {
+                      (localAcc._1, localAcc._2 + lkont)
+                    }
+                )
               helper(todo - a ++ todo2, visited + a, acc ++ acc2)
             }
         }

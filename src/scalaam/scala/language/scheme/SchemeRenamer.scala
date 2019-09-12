@@ -82,11 +82,15 @@ object SchemeRenamer {
             case (exps, count2) =>
               renameList(body, names1, count2) match {
                 case (body1, count3) =>
-                  (SchemeNamedLet(name /* TODO: rename it as well */,
-                                  variables.zip(exps),
-                                  body1,
-                                  pos),
-                   count3)
+                  (
+                    SchemeNamedLet(
+                      name /* TODO: rename it as well */,
+                      variables.zip(exps),
+                      body1,
+                      pos
+                    ),
+                    count3
+                  )
               }
           }
       }
@@ -136,9 +140,11 @@ object SchemeRenamer {
   }
 
   /** Renames a list of expressions executed sequentially (eg. within a begin) */
-  def renameList(exps: List[SchemeExp],
-                 names: NameMap,
-                 count: CountMap): (List[SchemeExp], CountMap) = exps match {
+  def renameList(
+      exps: List[SchemeExp],
+      names: NameMap,
+      count: CountMap
+  ): (List[SchemeExp], CountMap) = exps match {
     case exp :: rest =>
       val (exp1, count1)  = rename(exp, names, count)
       val (rest1, count2) = renameList(rest, names, count1)
@@ -146,9 +152,11 @@ object SchemeRenamer {
     case Nil => (Nil, count)
   }
 
-  def renameLetStarBindings(bindings: List[(Identifier, SchemeExp)],
-                            names: NameMap,
-                            count: CountMap): (List[(Identifier, SchemeExp)], NameMap, CountMap) =
+  def renameLetStarBindings(
+      bindings: List[(Identifier, SchemeExp)],
+      names: NameMap,
+      count: CountMap
+  ): (List[(Identifier, SchemeExp)], NameMap, CountMap) =
     bindings match {
       case (v, e) :: rest =>
         count1(v, names, count) match {
@@ -168,9 +176,11 @@ object SchemeRenamer {
 
   /** To be called when a new variable is introduced in the scope. Adds it to the
     * name map and count map */
-  def count1(variable: Identifier,
-             names: NameMap,
-             count: CountMap): (Identifier, NameMap, CountMap) = {
+  def count1(
+      variable: Identifier,
+      names: NameMap,
+      count: CountMap
+  ): (Identifier, NameMap, CountMap) = {
     val c: Int = count.get(variable.name) match {
       case Some(x) => x + 1
       case None    => 0
@@ -180,9 +190,11 @@ object SchemeRenamer {
   }
 
   /** Same as count1 but for a list of variables */
-  def countl(variables: List[Identifier],
-             names: NameMap,
-             count: CountMap): (List[Identifier], NameMap, CountMap) =
+  def countl(
+      variables: List[Identifier],
+      names: NameMap,
+      count: CountMap
+  ): (List[Identifier], NameMap, CountMap) =
     variables.foldLeft((List[Identifier](), names, count))(
       (st: (List[Identifier], NameMap, CountMap), v: Identifier) =>
         st match {
@@ -190,7 +202,8 @@ object SchemeRenamer {
             count1(v, ns, cs) match {
               case (v1, ns1, cs1) => ((v1 :: l), ns1, cs1)
             }
-      }) match {
+        }
+    ) match {
       case (l, ns, cs) => (l.reverse, ns, cs)
     }
 }

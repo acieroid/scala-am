@@ -45,9 +45,9 @@ trait Store[A <: Address, V] extends SmartHash {
 /** Basic store with no fancy feature, just a map from addresses to values */
 case class BasicStore[A <: Address, V](val content: Map[A, V])(implicit val lat: Lattice[V])
     extends Store[A, V] {
-  override def toString              = content.filterKeys(_.printable).mkString("\n")
+  override def toString              = content.view.filterKeys(_.printable).mkString("\n")
   def keys                           = content.keys
-  def restrictTo(keys: Set[A])       = BasicStore(content.filterKeys(a => keys.contains(a)))
+  def restrictTo(keys: Set[A])       = BasicStore(content.view.filterKeys(a => keys.contains(a)).toMap)
   def forall(p: ((A, V)) => Boolean) = content.forall({ case (a, v) => p((a, v)) })
   def lookup(a: A)                   = content.get(a)
   def extend(a: A, v: V) = content.get(a) match {
@@ -57,25 +57,31 @@ case class BasicStore[A <: Address, V](val content: Map[A, V])(implicit val lat:
   def join(that: Store[A, V]) =
     keys.foldLeft(that)((acc, k) => lookup(k).fold(acc)(v => acc.extend(k, v)))
   def subsumes(that: Store[A, V]) =
-    that.forall((binding: (A, V)) =>
-      content.get(binding._1).exists(v => lat.subsumes(v, binding._2)))
+    that.forall(
+      (binding: (A, V)) => content.get(binding._1).exists(v => lat.subsumes(v, binding._2))
+    )
 }
 
 object Profiler {
-  val methodsCount: scala.collection.mutable.Map[String, Int] = scala.collection.mutable.Map().withDefaultValue(0)
-  val methodsTotalTime: scala.collection.mutable.Map[String, Long] = scala.collection.mutable.Map().withDefaultValue(0)
+  val methodsCount: scala.collection.mutable.Map[String, Int] =
+    scala.collection.mutable.Map().withDefaultValue(0)
+  val methodsTotalTime: scala.collection.mutable.Map[String, Long] =
+    scala.collection.mutable.Map().withDefaultValue(0)
   def profileCall[T](name: String)(f: => T): T = {
-    val t0 = System.nanoTime()
+    val t0  = System.nanoTime()
     val res = f
-    val t1 = System.nanoTime()
-    methodsCount += (name -> (methodsCount(name) + 1))
+    val t1  = System.nanoTime()
+    methodsCount += (name     -> (methodsCount(name) + 1))
     methodsTotalTime += (name -> (methodsTotalTime(name) + (t1 - t0)))
     res
   }
   def printResults(): Unit = {
     // TODO: sort results per total time?
-    methodsCount.keySet.foreach(k =>
-      println(s"$k has been called ${methodsCount(k)} times for a total time of ${methodsTotalTime(k) / 1000000}ms")
+    methodsCount.keySet.foreach(
+      k =>
+        println(
+          s"$k has been called ${methodsCount(k)} times for a total time of ${methodsTotalTime(k) / 1000000}ms"
+        )
     )
   }
 }
@@ -83,16 +89,18 @@ object Profiler {
 case class ProfiledStore[A <: Address, V](val store: Store[A, V]) extends Store[A, V] {
   import Profiler.profileCall
   override def toString = profileCall("store.toString") { store.toString }
-  def content = profileCall("store.content") { store.content }
-  def keys = profileCall("store.keys") { store.keys }
-  def restrictTo(keys: Set[A]) = profileCall("store.restrictTo") { ProfiledStore(store.restrictTo(keys)) }
+  def content           = profileCall("store.content") { store.content }
+  def keys              = profileCall("store.keys") { store.keys }
+  def restrictTo(keys: Set[A]) = profileCall("store.restrictTo") {
+    ProfiledStore(store.restrictTo(keys))
+  }
   def forall(p: ((A, V)) => Boolean) = profileCall("store.forall") { store.forall(p) }
-  def lookup(a: A) = profileCall("store.lookup") { store.lookup(a) }
-  def extend(a: A, v: V) = profileCall("store.extend") { ProfiledStore(store.extend(a, v)) }
+  def lookup(a: A)                   = profileCall("store.lookup") { store.lookup(a) }
+  def extend(a: A, v: V)             = profileCall("store.extend") { ProfiledStore(store.extend(a, v)) }
   def join(that: Store[A, V]) = profileCall("store.join") {
     that match {
       case ProfiledStore(store2) => ProfiledStore(store.join(store2))
-      case _ => ProfiledStore(store.join(that))
+      case _                     => ProfiledStore(store.join(that))
     }
   }
   def subsumes(that: Store[A, V]) = profileCall("store.subsumes") { store.subsumes(that) }
