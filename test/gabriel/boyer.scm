@@ -6,7 +6,8 @@
       *lastlook*
       (let ((pair (assq name *namelist*)))
         (if pair
-          (set! *lastlook* pair))
+            (set! *lastlook* pair)
+            #f)
         pair)))
 (define (get name prop)
   (let ((r (nameprop name)))
