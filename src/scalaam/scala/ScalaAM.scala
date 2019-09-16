@@ -113,7 +113,7 @@ object SchemeRunAAM extends Interpreter {
     val f       = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
     f.close()
-    val result = machine.run[graph.G](SchemeParser.parse(content), timeout)
+    val result = machine.run[graph.G](SchemeUndefiner.undefine(List(SchemeParser.parse(content))), timeout)
     result
     /* Let's collect all nodes that evaluate a variable */
       .findNodes(
@@ -208,7 +208,7 @@ object SchemeRunConcrete extends Interpreter {
     val f       = scala.io.Source.fromFile(file)
     val content = f.getLines.mkString("\n")
     f.close()
-    val result = machine.run[graph.G](SchemeParser.parse(content), timeout)
+    val result = machine.run[graph.G](SchemeUndefiner.undefine(List(SchemeParser.parse(content))), timeout)
     result
     /* Let's collect all nodes that evaluate a variable */
       .findNodes(
@@ -248,7 +248,7 @@ object SchemeRunConcrete extends Interpreter {
   }
 }
 
-object SchemeRunAAMLKSS {
+object SchemeRunAAMLKSS extends Interpreter {
   import scalaam.language.scheme._
   import scalaam.machine._
   import scalaam.core._
@@ -270,7 +270,7 @@ object SchemeRunAAMLKSS {
     val content = f.getLines.mkString("\n")
     f.close()
     val t0     = System.nanoTime
-    val result = machine.run[graph.G](SchemeParser.parse(content), timeout)
+    val result = machine.run[graph.G](SchemeUndefiner.undefine(List(SchemeParser.parse(content))), timeout)
     val t1     = System.nanoTime
     val time   = (t1 - t0) / 1000000
     if (outputDot) result.toFile("foo.dot")
@@ -302,7 +302,7 @@ object SchemeRunGAAM extends Interpreter {
     val content = f.getLines.mkString("\n")
     f.close()
     val t0     = System.nanoTime
-    val result = machine.run[graph.G](SchemeParser.parse(content), timeout)
+    val result = machine.run[graph.G](SchemeUndefiner.undefine(List(SchemeParser.parse(content))), timeout)
     val t1     = System.nanoTime
     val time   = (t1 - t0) / 1000000
     if (outputDot) result.toFile("foo.dot")
