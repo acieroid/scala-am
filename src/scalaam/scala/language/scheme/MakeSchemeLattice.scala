@@ -490,7 +490,13 @@ class MakeSchemeLattice[
             .filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2)))
             .values
           if (Config.concrete) {
-            vals.foldLeft(schemeLattice.bottom)((acc, v) => schemeLattice.join(acc, v))
+            val res = vals.foldLeft(schemeLattice.bottom)((acc, v) => schemeLattice.join(acc, v))
+            if (res == schemeLattice.bottom) {
+              /* No element stored, return init */
+              init
+            } else {
+              res
+            }
           } else {
             /* XXX: init doesn't have to be included if we know for sure that index is precise enough */
             vals.foldLeft(init)((acc, v) => schemeLattice.join(acc, v))
