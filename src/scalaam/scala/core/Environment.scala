@@ -44,7 +44,7 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
       .mkString(", ") + "}"
   def keys = content.keys
   def restrictTo(keys: Set[String]) =
-    this.copy(content = content.view.filterKeys(k => keys.contains(k)).toMap)
+    this.copy(content = content.filterKeys(k => keys.contains(k)).toMap)
   def forall(p: ((String, A)) => Boolean)   = content.forall(p)
   def lookup(name: String)                  = content.get(name)
   def extend(name: String, a: A)            = this.copy(content = content + (name -> a))

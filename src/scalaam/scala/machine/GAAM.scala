@@ -9,7 +9,7 @@ case class GlobalStore[A <: Address, V: Lattice](init: Map[A, V])
     with SmartHash {
   val _content: scala.collection.mutable.Map[A, V] = scala.collection.mutable.Map[A, V]() ++ init
   var _mutated: Boolean                            = false
-  override def toString                            = _content.view.filterKeys(_.printable).mkString("\n")
+  override def toString                            = _content.filterKeys(_.printable).mkString("\n")
   def content                                      = _content.toMap
   def keys                                         = content.keys
   def restrictTo(keys: Set[A]) = {
@@ -119,11 +119,11 @@ class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
               konts.flatMap(lkont => {
                 if (lkont.isEmpty && lkont.next == HaltKontAddr) {
                   if (halted) {
-                    /* If this is a halted state with an empty kont, we stop. */
-                    /* TODO: this case might not be necessary? */
-                    Set()
+                    /** If this is a halted state with an empty kont, we stop. */
+                    /** TODO: this case might not be necessary? */
+                    Set[State]()
                   } else {
-                    /* The kont may be empty but we still have to evaluate something */
+                    /** The kont may be empty but we still have to evaluate something */
                     Set(this.copy(lkont = lkont))
                   }
                 } else {
