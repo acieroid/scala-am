@@ -29,7 +29,10 @@ object SchemeUndefiner {
             bodyv =>
               undefine(
                 SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.pos), pos) :: rest,
-                defs)))
+                defs
+              )
+          )
+        )
       case SchemeDefineVariable(name, value, _) :: rest =>
         tailcall(undefine1(value)).flatMap(v => tailcall(undefine(rest, (name, v) :: defs)))
       case _ :: _ =>
@@ -40,8 +43,8 @@ object SchemeUndefiner {
             case exps       => done(SchemeBegin(exps, exps.head.pos))
           })
         } else {
-          tailcall(undefineBody(exps)).flatMap(body =>
-            done(SchemeLetrec(defs.reverse, body, exps.head.pos)))
+          tailcall(undefineBody(exps))
+            .flatMap(body => done(SchemeLetrec(defs.reverse, body, exps.head.pos)))
         }
     }
 
@@ -62,40 +65,59 @@ object SchemeUndefiner {
         case SchemeLambda(args, body, pos) =>
           tailcall(undefineBody(body)).map(b => SchemeLambda(args, b, pos))
         case SchemeFuncall(f, args, pos) =>
-          tailcall(undefine1(f)).flatMap(fun =>
-            trampolineM(undefine1, args).map(argsv => SchemeFuncall(fun, argsv, pos)))
+          tailcall(undefine1(f)).flatMap(
+            fun => trampolineM(undefine1, args).map(argsv => SchemeFuncall(fun, argsv, pos))
+          )
         case SchemeIf(cond, cons, alt, pos) =>
-          tailcall(undefine1(cond)).flatMap(condv =>
-            tailcall(undefine1(cons)).flatMap(consv =>
-              tailcall(undefine1(alt)).map(altv => SchemeIf(condv, consv, altv, pos))))
+          tailcall(undefine1(cond)).flatMap(
+            condv =>
+              tailcall(undefine1(cons)).flatMap(
+                consv => tailcall(undefine1(alt)).map(altv => SchemeIf(condv, consv, altv, pos))
+              )
+          )
         case SchemeLet(bindings, body, pos) =>
-          trampolineM((x: (Identifier, SchemeExp)) =>
-                        x match {
-                          case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
-                      },
-                      bindings).flatMap(bindingsv =>
-            tailcall(undefineBody(body)).map(bodyv => SchemeLet(bindingsv, bodyv, pos)))
+          trampolineM(
+            (x: (Identifier, SchemeExp)) =>
+              x match {
+                case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
+              },
+            bindings
+          ).flatMap(
+            bindingsv => tailcall(undefineBody(body)).map(bodyv => SchemeLet(bindingsv, bodyv, pos))
+          )
         case SchemeLetStar(bindings, body, pos) =>
-          trampolineM((x: (Identifier, SchemeExp)) =>
-                        x match {
-                          case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
-                      },
-                      bindings).flatMap(bindingsv =>
-            tailcall(undefineBody(body)).map(bodyv => SchemeLetStar(bindingsv, bodyv, pos)))
+          trampolineM(
+            (x: (Identifier, SchemeExp)) =>
+              x match {
+                case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
+              },
+            bindings
+          ).flatMap(
+            bindingsv =>
+              tailcall(undefineBody(body)).map(bodyv => SchemeLetStar(bindingsv, bodyv, pos))
+          )
         case SchemeLetrec(bindings, body, pos) =>
-          trampolineM((x: (Identifier, SchemeExp)) =>
-                        x match {
-                          case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
-                      },
-                      bindings).flatMap(bindingsv =>
-            tailcall(undefineBody(body)).map(bodyv => SchemeLetrec(bindingsv, bodyv, pos)))
+          trampolineM(
+            (x: (Identifier, SchemeExp)) =>
+              x match {
+                case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
+              },
+            bindings
+          ).flatMap(
+            bindingsv =>
+              tailcall(undefineBody(body)).map(bodyv => SchemeLetrec(bindingsv, bodyv, pos))
+          )
         case SchemeNamedLet(name, bindings, body, pos) =>
-          trampolineM((x: (Identifier, SchemeExp)) =>
-                        x match {
-                          case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
-                      },
-                      bindings).flatMap(bindingsv =>
-            tailcall(undefineBody(body)).map(bodyv => SchemeNamedLet(name, bindingsv, bodyv, pos)))
+          trampolineM(
+            (x: (Identifier, SchemeExp)) =>
+              x match {
+                case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
+              },
+            bindings
+          ).flatMap(
+            bindingsv =>
+              tailcall(undefineBody(body)).map(bodyv => SchemeNamedLet(name, bindingsv, bodyv, pos))
+          )
         case SchemeSet(variable, value, pos) =>
           tailcall(undefine1(value)).map(v => SchemeSet(variable, v, pos))
         case SchemeBegin(exps, pos) =>

@@ -50,7 +50,7 @@ trait SExpTokens extends Tokens {
     def chars = s
   }
   case class TString(s: String) extends SExpToken {
-    def chars = '"' + s + '"'
+    def chars = s""""$s""""
   }
   case class TInteger(n: Int) extends SExpToken {
     def chars = n.toString
@@ -59,7 +59,12 @@ trait SExpTokens extends Tokens {
     def chars = n.toString
   }
   case class TBoolean(b: Boolean) extends SExpToken {
-    def chars = if (b) { "#t" } else { "#f" }
+    def chars =
+      if (b) {
+        "#t"
+      } else {
+        "#f"
+      }
   }
   case class TCharacter(c: Char) extends SExpToken {
     def chars = s"#\\$c"
@@ -139,7 +144,8 @@ class SExpLexer extends Lexical with SExpTokens {
   def identifier: Parser[SExpToken] = {
     def specialInitial: Parser[Char] =
       (chr('!') | chr('$') | chr('%') | chr('&') | chr('*') | chr('/') | chr(':') | chr('<') | chr(
-        '=') | chr('>') | chr('?') | chr('^') | chr('_') | chr('~')) ^^ (x => x)
+        '='
+      ) | chr('>') | chr('?') | chr('^') | chr('_') | chr('~')) ^^ (x => x)
     def initial: Parser[Char]              = letter | specialInitial
     def specialSubsequent: Parser[Char]    = chr('+') | chr('-') | chr('.') | chr('@')
     def subsequent: Parser[Char]           = initial | digit | specialSubsequent
@@ -242,7 +248,8 @@ object SExpParser extends TokenParsers {
     case Success(res, next) if next.atEnd => res
     case Success(res, next) if !next.atEnd =>
       throw new Exception(
-        s"cannot fully parse expression, stopped at ${next.pos} after parsing $res")
+        s"cannot fully parse expression, stopped at ${next.pos} after parsing $res"
+      )
     case Failure(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}")
     case Error(msg, next)   => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}")
   }

@@ -1,7 +1,5 @@
 package scalaam.core
 
-import scala.language.higherKinds
-
 /** A worklist is an abstract set of elements */
 trait WorkList[L[_]] {
 

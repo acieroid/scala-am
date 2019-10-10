@@ -10,6 +10,16 @@ import scalaam.core.{Position, Identifier, Exp}
   */
 trait LambdaExp extends Exp
 
+case class LambdaBoolean(value: Boolean, pos: Position) extends LambdaExp {
+  override def toString =
+    if (value) {
+      "#t"
+    } else {
+      "#f"
+    }
+  def fv = Set.empty
+}
+
 /**
   * A function in lambda-calculus: `(lambda (x y) (+ x y)` is a function with `x`
   * and `y` as argument, and `(+ x y)` as body.
@@ -19,6 +29,7 @@ case class LambdaFun(args: List[Identifier], body: LambdaExp, pos: Position) ext
     val a = args.mkString(" ")
     s"(lambda ($a) $body)"
   }
+
   /** This `fv` function is required by the Exp trait, and returns the list of
     * free variables in an expression */
   def fv = body.fv -- args.map(_.name).toSet
@@ -47,5 +58,24 @@ case class LambdaCall(f: LambdaExp, args: List[LambdaExp], pos: Position) extend
 case class LambdaVar(id: Identifier) extends LambdaExp {
   val pos               = id.pos
   override def toString = id.name
-  def fv = Set(id.name)
+  def fv                = Set(id.name)
+}
+
+/**
+  * A recursive let binding
+  */
+case class LambdaLetrec(bindings: List[(Identifier, LambdaExp)], body: LambdaExp, pos: Position)
+    extends LambdaExp {
+  override def toString = {
+    val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
+    s"(letrec ($bi) $body)"
+  }
+  def fv =
+    (bindings.map(_._2).flatMap(_.fv).toSet ++ body.fv.toSet) -- bindings.map(_._1.name).toSet
+}
+
+case class LambdaIf(cond: LambdaExp, cons: LambdaExp, alt: LambdaExp, pos: Position)
+    extends LambdaExp {
+  override def toString = s"(if $cond $cons $alt)"
+  def fv                = cond.fv ++ cons.fv ++ alt.fv
 }
