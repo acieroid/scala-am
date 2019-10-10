@@ -30,7 +30,7 @@ class SchemeModFAnalysis(program: SchemeExp)
     def pointer[E <: Exp](exp: E, intra: IntraAnalysis): Addr  = intra.allocAddr(PtrAddr(exp))
     def primitive(name: String): Addr                          = GlobalAddr(PrmAddr(name))
   }
-  val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
+  lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
   // setup initial environment and install the primitives in the global store
   def initialEnv = Environment.initial(schemeSemantics.initialEnv)
   schemeSemantics.initialStore.foreach { case (a,v) => store(a) = v }
@@ -48,7 +48,7 @@ class SchemeModFAnalysis(program: SchemeExp)
       case Some(name) => name
     }
   }
-  def initial = MainComponent
+  lazy val initial = MainComponent
   // defining the intra-analysis
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with GlobalStoreIntra with ReturnResultIntra {

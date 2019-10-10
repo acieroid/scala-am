@@ -1,18 +1,14 @@
 package scalaam.modular
 
 import scalaam.core._
-import scala.collection.mutable.Map
-import scala.collection.mutable.Set
-import scala.collection.mutable.Queue
+import scala.collection.mutable._
+
 
 abstract class ModAnalysis[Expr <: Exp](program: Expr) {
 
   // parameterized by a 'intra-component' representation
   type IntraComponent
-  def initial: IntraComponent
-
-  // keep track of all components in the analysis
-  private val components = Set[IntraComponent]()
+  val initial: IntraComponent
 
   // an intra-analysis of a component can cause effects that impact the analysis of other components
   // an intra-analysis therefore can:
@@ -33,29 +29,35 @@ abstract class ModAnalysis[Expr <: Exp](program: Expr) {
     private[ModAnalysis] val effects = Set[Effect]()
     protected def pushEffect(eff: Effect) = effects.add(eff)
     protected def pullEffect(eff: Effect) = addDep(component,eff)
-    // keep track of new components called by this intra-analysis
-    private[ModAnalysis] val newComponents = Set[IntraComponent]()
-    protected def spawn(component: IntraComponent): Unit =
-      if (components.add(component)) {
-        newComponents.add(component)
-      }
+    // keep track of components called by this intra-analysis
+    private[ModAnalysis] val components = Set[IntraComponent]()
+    protected def spawn(cmp: IntraComponent): Unit = components.add(cmp)
     // analyses the given component
     def analyze(): Unit
   }
 
-  // the inter-analysis loop
-  def analyze(): Unit = {
-    val visited = Set[IntraComponent]()
-    val worklist = Queue[IntraComponent](initial)
-    while (!worklist.isEmpty) {
-      val component = worklist.dequeue()
-      if (visited.add(component)) {
-        val intra = intraAnalysis(component)
-        intra.analyze() // do the intra-analysis
-        val succs = intra.newComponents ++ intra.effects.flatMap(deps)
-        succs.foreach(succ => visited.remove(succ))
-        succs.foreach(succ => worklist.enqueue(succ))
-      }
-    }
+  // inter-analysis using a simple worklist algorithm
+  val worklist = Set[IntraComponent](initial)
+  val analysed = Set[IntraComponent]()
+  val allComponents = Set[IntraComponent](initial)
+  val componentDeps = Map[IntraComponent,Set[IntraComponent]]()
+  def finished = worklist.isEmpty
+  def step() = {
+    // take the next component
+    val current = worklist.head
+    worklist.remove(current)
+    // do the intra-analysis
+    val intra = intraAnalysis(current)
+    intra.analyze()
+    // add the successors to the worklist
+    val newComponents = intra.components.filterNot(analysed)
+    val componentsToUpdate = intra.effects.flatMap(deps)
+    val succs = newComponents ++ componentsToUpdate
+    succs.foreach(succ => worklist.add(succ))
+    // update the analysis
+    analysed += current
+    allComponents ++= newComponents
+    componentDeps(current) = intra.components
   }
+  def analyze() = while(!finished) { step() }
 }

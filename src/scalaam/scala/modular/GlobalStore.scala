@@ -1,8 +1,7 @@
 package scalaam.modular
 
 import scalaam.core._
-import scala.collection.mutable.Map
-import scala.collection.mutable.Set
+import scala.collection.mutable._
 
 trait GlobalStore[Expr <: Exp] extends ModAnalysis[Expr] {
 

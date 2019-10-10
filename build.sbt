@@ -1,9 +1,15 @@
+// Scala.js configuration
+enablePlugins(ScalaJSPlugin)
+mainClass in Compile := Some("scalaam.modular.MainModular")
+scalaJSUseMainModuleInitializer := true
+libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.7"
+
 name := "scalaam"
 version := "0.1.2018"
 scalaVersion := "2.12.8"
 
 /* Dependencies */
-libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.1"
+libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "1.1.2"
 
 /* Compilation options */
 maxErrors := 5
