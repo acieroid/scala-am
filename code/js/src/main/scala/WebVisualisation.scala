@@ -1,4 +1,6 @@
-package scalaam.modular
+package scalaam.web
+
+import scalaam.modular._
 
 // Scala.js-related imports
 import scala.scalajs.js

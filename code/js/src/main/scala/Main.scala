@@ -1,5 +1,6 @@
-package scalaam.modular
+package scalaam.web
 
+import scalaam.modular._
 import scalaam.language.scheme._
 
 // Scala.js-related imports
@@ -23,7 +24,7 @@ object FileInputElement {
   }
 }
 
-object MainModular {
+object Main {
 
   val input = FileInputElement(loadFile)
 
