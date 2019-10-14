@@ -1,9 +1,10 @@
-package scalaam
+package scalaam.cli
+
 import scalaam.core._
 
 object Main {
   def main(args: Array[String]) = {
-    ()
+    println("boe")
   }
 }
 
