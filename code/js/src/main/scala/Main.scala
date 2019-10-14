@@ -1,6 +1,6 @@
 package scalaam.web
 
-import scalaam.modular._
+import scalaam.modular.scheme._
 import scalaam.language.scheme._
 
 // Scala.js-related imports
@@ -37,7 +37,7 @@ object Main {
 
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
-    val analysis = new SchemeModFAnalysis(program)
+    val analysis = new SchemeModFAnalysis(program) with FullArgumentSensitivity
     val visualisation = new WebVisualisation(analysis)
     // parameters for the visualisation
     val body = document.body

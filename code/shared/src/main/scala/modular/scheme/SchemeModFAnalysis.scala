@@ -1,11 +1,12 @@
-package scalaam.modular
+package scalaam.modular.scheme
 
 import scalaam.core._
 import scalaam.lattice._
 import scalaam.language.sexp
 import scalaam.language.scheme._
+import scalaam.modular._
 
-class SchemeModFAnalysis(program: SchemeExp)
+abstract class SchemeModFAnalysis(program: SchemeExp)
   extends ModAnalysis[SchemeExp](program) with GlobalStore[SchemeExp] with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address
@@ -34,7 +35,7 @@ class SchemeModFAnalysis(program: SchemeExp)
   // setup initial environment and install the primitives in the global store
   def initialEnv = Environment.initial(schemeSemantics.initialEnv)
   schemeSemantics.initialStore.foreach { case (a,v) => store(a) = v }
-  // in ModF, components are functions
+  // in ModF, components are function calls in some context
   trait IntraComponent {
     def env: Environment[Addr]
   }
@@ -42,13 +43,16 @@ class SchemeModFAnalysis(program: SchemeExp)
     val env = initialEnv
     override def toString = "main"
   }
-  case class CallComponent(lambda: SchemeLambda, env: Environment[Addr], nam: Option[String]) extends IntraComponent {
+  case class CallComponent(lambda: SchemeLambda, env: Environment[Addr], nam: Option[String], ctx: Context) extends IntraComponent {
     override def toString = nam match {
-      case None => s"anonymous@${lambda.pos}"
+      case None => s"anonymous@${lambda.pos} [${ctx.toString()}]"
       case Some(name) => name
     }
   }
   lazy val initial = MainComponent
+  // this abstract class is parameterized by the choice of Context and allocation strategy of Contexts
+  type Context
+  def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]): Context
   // defining the intra-analysis
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with GlobalStoreIntra with ReturnResultIntra {
@@ -56,7 +60,7 @@ class SchemeModFAnalysis(program: SchemeExp)
     def analyze() = updateResult(component match {
       case MainComponent =>
         eval(program)
-      case CallComponent(SchemeLambda(pars,body,_),_,_) =>
+      case CallComponent(SchemeLambda(pars,body,_),_,_,_) =>
         bindPars(pars)
         evalSequence(body)
     })
@@ -190,7 +194,8 @@ class SchemeModFAnalysis(program: SchemeExp)
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case ((lambda@SchemeLambda(prs,_,_),env),nam) if prs.length == arity =>
-          val component = CallComponent(lambda,env,nam)
+          val context = allocCtx(lambda,env,args)
+          val component = CallComponent(lambda,env,nam,context)
           bindArgs(component,prs,args)
           call(component)
         case _ => lattice.bottom
