@@ -21,7 +21,7 @@ abstract class SchemeTests[A <: Address, V, T, C](
     } else {
       val resultVals = result.findNodes(n => n.metadata.find("type") == Some(GraphMetadataString("kont"))).flatMap({ n => n.metadata.find("value") match {
         case Some(GraphMetadataValue(v : V @unchecked)) => Set(v)
-        case _ => Set()
+        case _ => Set[V]()
       }})
       assert(!resultVals.find(v => lat.subsumes(v, answer)).isEmpty)
     }
