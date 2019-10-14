@@ -1,9 +1,10 @@
 /.d8_history
 /.ensime
 /TODO.org
-/project/
-/target/
+*target/
+/project/project
 .ensime_cache
 *.dot
 *.log
 .idea/
+.DS_Store

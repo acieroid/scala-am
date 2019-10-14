@@ -163,7 +163,7 @@
                             ((more)
                                 (accross state))
                             (else
-                                (fatal-error "???"))))
+                                (error "???"))))
                     0
                     (lambda (leaf-depth state accross)
                         (folder perm state accross))
@@ -235,7 +235,7 @@
                                         ((equal more)
                                             (accross #t))
                                         (else
-                                            (fatal-error "???"))))))
+                                            (error "???"))))))
                         (lambda ()
                             (minimal-folder root
                                 edge?
