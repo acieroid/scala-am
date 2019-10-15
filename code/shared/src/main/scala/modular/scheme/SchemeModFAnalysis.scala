@@ -14,9 +14,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   case class PtrAddr[E <: Exp](exp: E)  extends LocalAddr { def printable = false }
   case class PrmAddr(name: String)      extends LocalAddr { def printable = false }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
-  lazy val valueLattice = new MakeSchemeLattice[SchemeExp, Addr, Type.S, Concrete.B, Type.I, Type.R, Type.C, Type.Sym]
-  type Value = valueLattice.L
-  lazy val lattice = valueLattice.schemeLattice
+  implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
   // the 'result' of a component is just the return value of the function call
   type Result = Value
   lazy val emptyResult = lattice.bottom

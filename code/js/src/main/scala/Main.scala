@@ -37,7 +37,7 @@ object Main {
 
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
-    val analysis = new SchemeModFAnalysis(program) with FullArgumentSensitivity
+    val analysis = new SchemeModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain
     val visualisation = new WebVisualisation(analysis)
     // parameters for the visualisation
     val body = document.body
