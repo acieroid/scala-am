@@ -1,7 +1,6 @@
 package scalaam.modular.scheme
 
 import scalaam.core._
-import scalaam.lattice._
 import scalaam.language.sexp
 import scalaam.language.scheme._
 import scalaam.modular._

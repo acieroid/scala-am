@@ -5,7 +5,7 @@ import scalaam.modular._
 // Scala.js-related imports
 import scala.scalajs.js
 import org.scalajs.dom
-import dom.{html,document}
+import dom.{document}
 
 import scala.collection.mutable._
 
