@@ -2,9 +2,15 @@
 /.ensime
 /TODO.org
 *target/
-/project/project
 .ensime_cache
 *.dot
 *.log
 .idea/
 .DS_Store
+/project/
+/target/
+*.csv
+*.png
+*.svg
+/.idea
+*.diff
