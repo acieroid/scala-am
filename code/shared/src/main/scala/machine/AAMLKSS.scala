@@ -8,7 +8,7 @@ import scalaam.core._
   * looping continuations are pushed on the kont store), and stores are not
   * stored in the states but rather in a separate map. The continuation
   * store itself is global. */
-class AAMLKSS[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
+class AAMLKSS[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     implicit val timestamp: Timestamp[T, E],
     implicit val lattice: Lattice[V]
 ) extends MachineAbstraction[E, A, V, T, E]

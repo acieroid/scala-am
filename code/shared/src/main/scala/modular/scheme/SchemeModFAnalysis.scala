@@ -10,7 +10,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address
   case class VarAddr(id: Identifier)    extends LocalAddr { def printable = true }
-  case class PtrAddr[E <: Exp](exp: E)  extends LocalAddr { def printable = false }
+  case class PtrAddr[E <: Expression](exp: E)  extends LocalAddr { def printable = false }
   case class PrmAddr(name: String)      extends LocalAddr { def printable = false }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
@@ -25,7 +25,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   }
   case object AllocAdapter extends Allocator[Addr,IntraAnalysis,Unit] {
     def variable(id: Identifier,  intra: IntraAnalysis): Addr  = intra.allocAddr(VarAddr(id))
-    def pointer[E <: Exp](exp: E, intra: IntraAnalysis): Addr  = intra.allocAddr(PtrAddr(exp))
+    def pointer[E <: Expression](exp: E, intra: IntraAnalysis): Addr  = intra.allocAddr(PtrAddr(exp))
     def primitive(name: String): Addr                          = GlobalAddr(PrmAddr(name))
   }
   lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)

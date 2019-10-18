@@ -3,7 +3,7 @@ package scalaam.language.scheme
 import scalaam.core._
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L, E <: Exp, A <: Address] extends Lattice[L] {
+trait SchemeLattice[L, E <: Expression, A <: Address] extends Lattice[L] {
 
   /** Can this value be considered true for conditionals? */
   def isTrue(x: L): Boolean
@@ -164,7 +164,7 @@ trait SchemeLattice[L, E <: Exp, A <: Address] extends Lattice[L] {
 }
 
 object SchemeLattice {
-  def apply[L, E <: Exp, A <: Address](
+  def apply[L, E <: Expression, A <: Address](
       implicit lat: SchemeLattice[L, E, A]
   ): SchemeLattice[L, E, A] = lat
 }

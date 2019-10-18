@@ -4,7 +4,7 @@ import scalaam.core._
 import scala.collection.mutable._
 
 
-abstract class ModAnalysis[Expr <: Exp](program: Expr) {
+abstract class ModAnalysis[Expr <: Expression](program: Expr) {
 
   // parameterized by a 'intra-component' representation
   type IntraComponent

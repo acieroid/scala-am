@@ -2,7 +2,7 @@ package scalaam.core
 
 trait Frame extends SmartHash
 
-trait Semantics[E <: Exp, Addr <: Address, V, T, C] {
+trait Semantics[E <: Expression, Addr <: Address, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val lattice: Lattice[V]
   val allocator: Allocator[Addr, T, C]

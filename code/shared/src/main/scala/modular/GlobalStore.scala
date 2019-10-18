@@ -3,7 +3,7 @@ package scalaam.modular
 import scalaam.core._
 import scala.collection.mutable._
 
-trait GlobalStore[Expr <: Exp] extends ModAnalysis[Expr] {
+trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
 
   // parameterized by a type that represents (local) addresses
   type LocalAddr <: Address

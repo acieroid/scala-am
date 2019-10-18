@@ -17,7 +17,7 @@ import BinaryOperator._
   */
 /** TODO[medium]: use Show and ShowStore here */
 class MakeSchemeLattice[
-    E <: Exp,
+    E <: Expression,
     A <: Address,
     S: StringLattice,
     B: BoolLattice,

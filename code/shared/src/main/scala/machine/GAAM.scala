@@ -47,7 +47,7 @@ object GlobalStore {
 
 /** This is a global-store AAM-like machine, where local continuations are used
   * (only looping continuations are pushed on the kont store) */
-class GAAM[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
+class GAAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     implicit val timestamp: Timestamp[T, E],
     implicit val lattice: Lattice[V]
 ) extends MachineAbstraction[E, A, V, T, E]
