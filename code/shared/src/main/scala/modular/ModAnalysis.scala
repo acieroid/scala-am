@@ -1,6 +1,8 @@
 package scalaam.modular
 
+import core.Annotations.mutable
 import scalaam.core._
+
 import scala.collection.mutable._
 
 
@@ -16,7 +18,7 @@ abstract class ModAnalysis[Expr <: Expression](program: Expr) {
   // - trigger an effect (e.g., when it writes to an address)
   protected trait Effect
   // here, we track which components depend on which effects
-  private val deps = Map[Effect,Set[IntraComponent]]().withDefaultValue(Set())
+  @mutable private val deps = Map[Effect,Set[IntraComponent]]().withDefaultValue(Set())
   protected def addDep(component: IntraComponent, effect: Effect) = deps.get(effect) match {
     case None => deps(effect) = Set(component)
     case Some(components) => components.add(component)
@@ -26,23 +28,23 @@ abstract class ModAnalysis[Expr <: Expression](program: Expr) {
   protected def intraAnalysis(component: IntraComponent): IntraAnalysis
   protected abstract class IntraAnalysis(val component: IntraComponent) {
     // keep track of effects triggered by this intra-analysis
-    private[ModAnalysis] val effects = Set[Effect]()
-    protected def pushEffect(eff: Effect) = effects.add(eff)
-    protected def pullEffect(eff: Effect) = addDep(component,eff)
+    @mutable private[ModAnalysis] val effects = Set[Effect]()
+    protected def pushEffect(eff: Effect) = effects.add(eff)      // Trigger/invoke a dependency.
+    protected def pullEffect(eff: Effect) = addDep(component,eff)  // Register a dependency.
     // keep track of components called by this intra-analysis
-    private[ModAnalysis] val components = Set[IntraComponent]()
+    @mutable private[ModAnalysis] val components = Set[IntraComponent]()
     protected def spawn(cmp: IntraComponent): Unit = components.add(cmp)
     // analyses the given component
     def analyze(): Unit
   }
 
   // inter-analysis using a simple worklist algorithm
-  val worklist = Set[IntraComponent](initial)
-  val analysed = Set[IntraComponent]()
-  val allComponents = Set[IntraComponent](initial)
-  val componentDeps = Map[IntraComponent,Set[IntraComponent]]()
-  def finished = worklist.isEmpty
-  def step() = {
+  @mutable val worklist = Set[IntraComponent](initial)
+  @mutable val analysed = Set[IntraComponent]()
+  @mutable val allComponents = Set[IntraComponent](initial)
+  @mutable val componentDeps = Map[IntraComponent,Set[IntraComponent]]()
+  def finished(): Boolean = worklist.isEmpty
+  def step(): Unit = {
     // take the next component
     val current = worklist.head
     worklist.remove(current)
@@ -53,11 +55,11 @@ abstract class ModAnalysis[Expr <: Expression](program: Expr) {
     val newComponents = intra.components.filterNot(analysed)
     val componentsToUpdate = intra.effects.flatMap(deps)
     val succs = newComponents ++ componentsToUpdate
-    succs.foreach(succ => worklist.add(succ))
+    worklist ++= succs // succs.foreach(succ => worklist.add(succ))
     // update the analysis
     analysed += current
     allComponents ++= newComponents
     componentDeps(current) = intra.components
   }
-  def analyze() = while(!finished) { step() }
+  def analyze(): Unit = while(!finished()) { step() }
 }

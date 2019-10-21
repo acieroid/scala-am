@@ -12,5 +12,5 @@ trait NoSensitivity extends SchemeModFAnalysis {
 /* Full argument sensitivity for ModF */
 trait FullArgumentSensitivity extends SchemeModFAnalysis {
   type Context = List[Value]
-  def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]) = args
+  def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]): List[Value] = args
 }

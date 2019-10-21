@@ -1,6 +1,8 @@
 package scalaam.modular
 
+import core.Annotations.mutable
 import scalaam.core._
+
 import scala.collection.mutable._
 
 trait ReturnResult[Expr <: Expression] extends ModAnalysis[Expr] {
@@ -10,16 +12,16 @@ trait ReturnResult[Expr <: Expression] extends ModAnalysis[Expr] {
   val emptyResult: Result
 
   // keep track of the last result per component
-  val results = Map[IntraComponent,Result]().withDefaultValue(emptyResult)
+  @mutable val results = Map[IntraComponent,Result]().withDefaultValue(emptyResult)
   private def updateComponent(component: IntraComponent, result: Result): Boolean = results.get(component) match {
     case None =>
       results(component) = result
-      return true
+      true
     case Some(oldResult) if oldResult == result =>
-      return false
+      false
     case Some(_) =>
       results(component) = result
-      return true
+      true
   }
 
   // effect that is triggered when the result of the intra-component 'component' has changed
@@ -29,12 +31,11 @@ trait ReturnResult[Expr <: Expression] extends ModAnalysis[Expr] {
   trait ReturnResultIntra extends super.IntraAnalysis {
     // updating the result of a component (default: of the current component)
     protected def updateResult(result: Result, component: IntraComponent = component) =
-      if (updateComponent(component,result)) {
+      if (updateComponent(component,result)) // Trigger a dependency.
         pushEffect(ResultEffect(component))
-      }
     // reading the result of a component
     protected def readResult(component: IntraComponent): Result = {
-      pullEffect(ResultEffect(component))
+      pullEffect(ResultEffect(component)) // Register a dependency.
       results(component)
     }
     // convenience method: calling other components and immediately reading their result

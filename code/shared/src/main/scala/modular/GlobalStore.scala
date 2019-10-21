@@ -1,6 +1,8 @@
 package scalaam.modular
 
+import core.Annotations.mutable
 import scalaam.core._
+
 import scala.collection.mutable._
 
 trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
@@ -20,18 +22,18 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   case class ComponentAddr(component: IntraComponent, addr: LocalAddr) extends Addr
 
   // the global store of the analysis
-  val store = Map[Addr,Value]().withDefaultValue(lattice.bottom)
+  @mutable val store = Map[Addr,Value]().withDefaultValue(lattice.bottom)
   private def updateAddr(addr: Addr, value: Value): Boolean = store.get(addr) match {
     case None if value == lattice.bottom =>
-      return false
+      false
     case None =>
       store(addr) = value
-      return true
+      true
     case Some(oldValue) =>
       val newValue = lattice.join(oldValue,value)
-      if (newValue == oldValue) { return false }
+      if (newValue == oldValue) return false
       store(addr) = newValue
-      return true
+      true
   }
 
   // effect that is triggered when an abstract value at address 'addr' is updated
@@ -40,19 +42,18 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   trait GlobalStoreIntra extends super.IntraAnalysis {
     // allocating an address
     def allocAddr(addr: LocalAddr) = ComponentAddr(component,addr)
-    // reading addresses if the global store
+    // reading addresses in the global store
     protected def readAddr(addr: LocalAddr, component: IntraComponent = component): Value =
       readAddr(ComponentAddr(component,addr))
     protected def readAddr(addr: Addr): Value = {
-      pullEffect(AddrEffect(addr))
+      pullEffect(AddrEffect(addr)) // Register a dependency.
       store(addr)
     }
     // writing addresses of the global store
     protected def writeAddr(addr: LocalAddr, value: Value, component: IntraComponent = component): Unit =
         writeAddr(ComponentAddr(component,addr),value)
     protected def writeAddr(addr: Addr, value: Value): Unit =
-        if (updateAddr(addr,value)) {
+        if (updateAddr(addr,value)) // If the value in the store changed, trigger the dependency.
           pushEffect(AddrEffect(addr))
-        }
     }
 }
