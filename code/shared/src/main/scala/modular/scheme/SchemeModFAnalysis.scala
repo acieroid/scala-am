@@ -181,11 +181,15 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
       applyFun(fun,funVal,args.zip(argVals))
     }
     // apply
-    private def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value = {
-      val fromClosures = applyClosures(fval,args.map(_._2))
-      val fromPrimitives = applyPrimitives(fexp,fval,args)
-      lattice.join(fromClosures,fromPrimitives)
-    }
+    private def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+      if(args.forall(_._2 != lattice.bottom)) {
+        val fromClosures = applyClosures(fval,args.map(_._2))
+        val fromPrimitives = applyPrimitives(fexp,fval,args)
+        lattice.join(fromClosures,fromPrimitives)
+      } else {
+        lattice.bottom
+      }
+
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyClosures(fun: Value, args: List[Value]): Value = {
       val arity = args.length
