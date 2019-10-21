@@ -16,7 +16,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   // addresses in the global analysis are (local) addresses of the intra-analysis + the component
   trait Addr extends Address {
     def addr: LocalAddr
-    def printable = addr.printable
+    def printable: Boolean = addr.printable
   }
   case class GlobalAddr(addr: LocalAddr) extends Addr
   case class ComponentAddr(component: IntraComponent, addr: LocalAddr) extends Addr
@@ -36,24 +36,29 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
       true
   }
 
-  // effect that is triggered when an abstract value at address 'addr' is updated
-  case class AddrEffect(addr: Addr) extends Effect
+  // Dependency that is triggered when an abstract value at address 'addr' is updated
+  case class ReadWriteDependency(addr: Addr) extends Dependency
 
   trait GlobalStoreIntra extends super.IntraAnalysis {
+
     // allocating an address
     def allocAddr(addr: LocalAddr) = ComponentAddr(component,addr)
+
     // reading addresses in the global store
     protected def readAddr(addr: LocalAddr, component: IntraComponent = component): Value =
       readAddr(ComponentAddr(component,addr))
+
     protected def readAddr(addr: Addr): Value = {
-      pullEffect(AddrEffect(addr)) // Register a dependency.
+      registerDependency(ReadWriteDependency(addr))
       store(addr)
     }
+
     // writing addresses of the global store
     protected def writeAddr(addr: LocalAddr, value: Value, component: IntraComponent = component): Unit =
         writeAddr(ComponentAddr(component,addr),value)
+
     protected def writeAddr(addr: Addr, value: Value): Unit =
         if (updateAddr(addr,value)) // If the value in the store changed, trigger the dependency.
-          pushEffect(AddrEffect(addr))
+          triggerDependency(ReadWriteDependency(addr))
     }
 }

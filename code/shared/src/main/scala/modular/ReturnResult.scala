@@ -24,23 +24,26 @@ trait ReturnResult[Expr <: Expression] extends ModAnalysis[Expr] {
       true
   }
 
-  // effect that is triggered when the result of the intra-component 'component' has changed
-  case class ResultEffect(component: IntraComponent) extends Effect
+  // Dependency that is triggered when the result of the intra-component 'component' has changed
+  case class CallReturnDependency(component: IntraComponent) extends Dependency
 
   // intra-analysis can now also update and read the result of a component
   trait ReturnResultIntra extends super.IntraAnalysis {
+
     // updating the result of a component (default: of the current component)
     protected def updateResult(result: Result, component: IntraComponent = component) =
       if (updateComponent(component,result)) // Trigger a dependency.
-        pushEffect(ResultEffect(component))
+        triggerDependency(CallReturnDependency(component))
+
     // reading the result of a component
     protected def readResult(component: IntraComponent): Result = {
-      pullEffect(ResultEffect(component)) // Register a dependency.
+      registerDependency(CallReturnDependency(component)) // Register a dependency.
       results(component)
     }
+
     // convenience method: calling other components and immediately reading their result
     protected def call(component: IntraComponent): Result = {
-      spawn(component)
+      newComponent(component)
       readResult(component)
     }
   }

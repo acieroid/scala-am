@@ -47,7 +47,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
       case Some(name) => name
     }
   }
-  lazy val initial = MainComponent
+  lazy val initialComponent = MainComponent
   // this abstract class is parameterized by the choice of Context and allocation strategy of Contexts
   type Context
   def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]): Context
