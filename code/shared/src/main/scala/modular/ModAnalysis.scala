@@ -85,3 +85,21 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
     deps            = alphaMap(alphaDep,alphaSet(alpha))(deps)
   }
 }
+
+trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
+  // keep a cache between a component and its most recent abstraction
+  private var cache = Map[IntraComponent,IntraComponent]()
+  // look in the cache first, before applying a potentially complicated alpha function
+  abstract override def alpha(cmp: IntraComponent) = cache.get(cmp) match {
+    case Some(cmpAbs) => cmpAbs
+    case None =>
+      val cmpAbs = super.alpha(cmp)
+      cache = cache + (cmp -> cmpAbs)
+      cmpAbs
+  }
+  // when alpha is updated, the cache needs to be cleared
+  override def onAlphaChange() = {
+    cache = Map[IntraComponent,IntraComponent]()
+    super.onAlphaChange()
+  }
+}
