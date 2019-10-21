@@ -1,7 +1,7 @@
 package scalaam.core
 
 /** An expression */
-trait Exp extends SmartHash {
+trait Expression extends SmartHash {
 
   /** The position of the expression in its source file */
   def pos: Position

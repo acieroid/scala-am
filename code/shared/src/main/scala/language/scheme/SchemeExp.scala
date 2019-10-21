@@ -1,12 +1,12 @@
 package scalaam.language.scheme
 
-import scalaam.core.{Position, NoPosition, Identifier, Exp}
+import scalaam.core.{Position, NoPosition, Identifier, Expression}
 import scalaam.language.sexp._
 
 /**
   * Abstract syntax of Scheme programs
   */
-trait SchemeExp extends Exp
+trait SchemeExp extends Expression
 
 /**
   * A lambda expression: (lambda (args...) body...)

@@ -10,7 +10,7 @@ import scalaam.graph.{Graph, GraphElement}
   *   - A type of timestamp T
   *   - A type of context for the timestamp C
   */
-trait MachineAbstraction[E <: Exp, A <: Address, V, T, C] {
+trait MachineAbstraction[E <: Expression, A <: Address, V, T, C] {
   implicit val timestamp: Timestamp[T, C]
   implicit val lattice: Lattice[V]
 

@@ -5,7 +5,7 @@ import scalaam.util.Show
 
 /** A number of things are factored out of the AAM-based analysis classes to
   * enable reusability by similar machine abstractions */
-trait AAMUtils[E <: Exp, A <: Address, V, T] {
+trait AAMUtils[E <: Expression, A <: Address, V, T] {
 
   /** Control component of the machine. */
   trait Control extends SmartHash

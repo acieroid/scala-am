@@ -1,6 +1,6 @@
 package scalaam.language.lambda
 
-import scalaam.core.{Position, Identifier, Exp}
+import scalaam.core.{Position, Identifier, Expression}
 
 /**
   * We want to support lambda expressions, which all implement the LambdaExp
@@ -8,7 +8,7 @@ import scalaam.core.{Position, Identifier, Exp}
   * helper functions and fields, such as a `pos` field indicating the position
   * of the expression in the source file.
   */
-trait LambdaExp extends Exp
+trait LambdaExp extends Expression
 
 case class LambdaBoolean(value: Boolean, pos: Position) extends LambdaExp {
   override def toString =

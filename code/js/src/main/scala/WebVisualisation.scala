@@ -193,9 +193,9 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
             .attr("dy",__CIRCLE_RADIUS__)
             .text((node: Node) => displayText(node.component))
     nodes = newGroup.merge(nodesUpdate)
-    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.worklist.contains(node.component))
-         .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.analysed.contains(node.component))
-         .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.worklist.headOption == Some(node.component))
+    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
+         .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
+         .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.work.headOption == Some(node.component))
     // update the edges
     val edgesUpdate = edges.data(edgesData)
     edges = edgesUpdate.enter().append("path")
@@ -224,7 +224,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     if(analysis.finished) {
       println("ALL DONE!")
     } else {
-      val component = analysis.worklist.head
+      val component = analysis.work.head
       analysis.step()
       refreshDataAfterStep(component)
       refreshVisualisation()

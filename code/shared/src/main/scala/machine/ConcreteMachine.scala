@@ -30,7 +30,7 @@ case class ConcreteStore[A <: Address, V](val content: Map[A, V])(implicit val l
     )
 }
 
-class ConcreteMachine[E <: Exp, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
+class ConcreteMachine[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E])(
     implicit val timestamp: Timestamp[T, E],
     implicit val lattice: Lattice[V]
 ) extends MachineAbstraction[E, A, V, T, E]

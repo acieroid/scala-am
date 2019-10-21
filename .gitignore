@@ -11,3 +11,10 @@
 *.log
 .idea/
 .DS_Store
+/project/
+/target/
+*.csv
+*.png
+*.svg
+/.idea
+*.diff
