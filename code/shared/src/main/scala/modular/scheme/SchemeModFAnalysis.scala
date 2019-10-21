@@ -31,7 +31,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
   // setup initial environment and install the primitives in the global store
   def initialEnv = Environment.initial(schemeSemantics.initialEnv)
-  schemeSemantics.initialStore.foreach { case (a,v) => store(a) = v }
+  schemeSemantics.initialStore.foreach { case (a,v) => store = store + (a -> v) }
   // in ModF, components are function calls in some context
   trait IntraComponent {
     def env: Environment[Addr]
@@ -43,7 +43,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   case class CallComponent(lambda: SchemeLambda, env: Environment[Addr], nam: Option[String], ctx: Context) extends IntraComponent {
     override def toString = nam match {
       case None => s"anonymous@${lambda.pos} [${ctx.toString()}]"
-      case Some(name) => name
+      case Some(name) => s"$name [${ctx.toString()}]"
     }
   }
   lazy val initial = MainComponent

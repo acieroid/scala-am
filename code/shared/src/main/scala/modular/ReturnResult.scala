@@ -1,7 +1,7 @@
 package scalaam.modular
 
 import scalaam.core._
-import scala.collection.mutable._
+import scalaam.util._
 
 trait ReturnResult[Expr <: Exp] extends ModAnalysis[Expr] {
 
@@ -10,15 +10,12 @@ trait ReturnResult[Expr <: Exp] extends ModAnalysis[Expr] {
   val emptyResult: Result
 
   // keep track of the last result per component
-  val results = Map[IntraComponent,Result]().withDefaultValue(emptyResult)
+  var results = Map[IntraComponent,Result]().withDefaultValue(emptyResult)
   private def updateComponent(component: IntraComponent, result: Result): Boolean = results.get(component) match {
-    case None =>
-      results(component) = result
-      return true
     case Some(oldResult) if oldResult == result =>
       return false
-    case Some(_) =>
-      results(component) = result
+    case _ =>
+      results = results + (component -> result)
       return true
   }
 
@@ -42,5 +39,23 @@ trait ReturnResult[Expr <: Exp] extends ModAnalysis[Expr] {
       spawn(component)
       readResult(component)
     }
+  }
+}
+
+trait AdaptiveReturnResult[Expr <: Exp] extends AdaptiveModAnalysis[Expr] with ReturnResult[Expr] {
+  // alpha definition for effects
+  override def alphaEffect(effect: Effect): Effect = effect match {
+    case ResultEffect(component) => ResultEffect(alpha(component))
+    case _ => super.alphaEffect(effect)
+  }
+  // requires an alpha function for the result
+  def alphaResult(result: Result): Result
+  // requires a monoid to potentially merge the result of components
+  // TODO: maybe just require a lattice here?
+  implicit val resultMonoid: Monoid[Result]
+  // when abstraction map changes, need to update the store
+  override def onAlphaChange() = {
+    super.onAlphaChange()
+    results = alphaMap(alpha,alphaResult)(results)
   }
 }

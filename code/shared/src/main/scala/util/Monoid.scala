@@ -1,15 +1,26 @@
 package scalaam.util
 
+import scalaam.core._
+
 trait Monoid[M] {
   def append(x: M, y: => M): M
   def zero: M
 }
+
 object Monoid {
   def apply[M: Monoid]: Monoid[M] = implicitly
 }
 
+object MonoidImplicits {
+  implicit class FoldMapExtension[X](coll: Iterable[X]) {
+      def foldMap[M : Monoid](f: X => M) =
+        coll.foldLeft(Monoid[M].zero)((acc,elm) => Monoid[M].append(acc,f(elm)))
+  }
+  implicit def setMonoid[X]: Monoid[Set[X]] = MonoidInstances.setMonoid
+  implicit def latticeMonoid[L : Lattice]: Monoid[L] = MonoidInstances.latticeMonoid
+}
+
 object MonoidInstances {
-  import scalaam.core._
   def latticeMonoid[L: Lattice]: Monoid[L] = new Monoid[L] {
     def append(x: L, y: => L): L = Lattice[L].join(x, y)
     def zero: L                  = Lattice[L].bottom
