@@ -20,6 +20,19 @@ abstract class Interpreter {
   }
 }
 
+object RunConcrete extends Interpreter {
+  def run(file: String, timeout: Timeout.T = Timeout.seconds(10), outputDot: Boolean = true): (Long, Int) = {
+    import scalaam.language.scheme._
+    val f = scala.io.Source.fromFile(file)
+    val content = f.getLines.mkString("\n")
+    f.close()
+    val parsed = SchemeUndefiner.undefine(List(SchemeParser.parse(content)))
+    val res = SchemeInterpreter.run(parsed, (pos, v) => ())
+    println(s"Result: $res")
+    (0, 0)
+  }
+}
+
 object RunGabriel {
   import scalaam.language.scheme._
   def main(args: Array[String]) = {
