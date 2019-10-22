@@ -228,9 +228,6 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
       if (analysis.finished) {
         finished = true
         refreshVisualisation()
-        for (elem <- analysis.deps.keySet) {
-          println(s"$elem \t-> ${analysis.deps(elem)}")
-        }
       } else {
         val component = analysis.work.head
         analysis.step()

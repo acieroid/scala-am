@@ -123,6 +123,11 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
         case _: ControlError => true
       }
 
+      def finished = control match {
+        case _: ControlKont => a == HaltKontAddr
+        case _              => false
+      }
+
       /**
        * Integrates a set of actions (returned by the semantics, see
        * Semantics.scala), in order to generate a set of states that succeeds this
@@ -189,16 +194,23 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
       }
       var work: List[State] = List[State](state)
       var visited: List[State] = List[State]()
+      var result: Value = emptyResult
 
       while(work.nonEmpty) {
         val state = work.head
         work = work.tail
-        if (!visited.contains(state) && !state.halted) {
+        if (state.finished) {
+          result = lattice.join(result, state.control.asInstanceOf[ControlKont].v)
+          visited = state :: visited
+        }
+        else if (!visited.contains(state) && !state.halted) {
           val successors = state.step()
           visited = state :: visited
           work = successors.toList ::: work
         }
       }
+
+      updateResult(result)
     }
 
     // primitives glue code
