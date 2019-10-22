@@ -333,6 +333,16 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       }
     }
 
+    //////////////
+    // Booleans //
+    //////////////
+    object Not extends SingleArgumentPrim("not") {
+      def fun = {
+        case Value.Bool(b) => Value.Bool(!b)
+        case _ => Value.Bool(false) /* any non-bool value is considered true */
+      }
+    }
+
     /////////////////
     // Conversions //
     /////////////////
@@ -448,10 +458,10 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case _ => Value.Bool(false)
       }
     }
-    object Not extends SingleArgumentPrim("not") {
+    object Vectorp extends SingleArgumentPrim("vector?") {
       def fun = {
-        case Value.Bool(b) => Value.Bool(!b)
-        case _ => Value.Bool(false) /* any non-bool value is considered true */
+        case _: Value.Vector => Value.Bool(true)
+        case _ => Value.Bool(false)
       }
     }
 
@@ -524,12 +534,40 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     /////////////
     // Vectors //
     /////////////
-    // TODO: make-vector
-    // TODO: vector
-    // TODO: vector-length
-    // TODO: vector-ref
-    // TODO: vector-set
-    // vectorp TODO
+    object Vector extends Prim {
+      val name = "vector"
+      def call(args: List[Value]): Value = Value.Vector(args.toArray)
+    }
+    object MakeVector extends Prim {
+      val name = "make-vector"
+      def call(args: List[Value]): Value = args match {
+        case Value.Integer(size) :: init :: Nil =>
+          Value.Vector(Array.fill(size)(init))
+        case _ => throw new Exception(s"make-vector: invalid arguments $args")
+      }
+    }
+    object VectorLength extends SingleArgumentPrim("vector-length") {
+      def fun = {
+        case Value.Vector(v) => Value.Integer(v.length)
+      }
+    }
+    object VectorRef extends Prim {
+      val name = "vector-ref"
+      def call(args: List[Value]): Value = args match {
+        case Value.Vector(v) :: Value.Integer(n) :: Nil =>
+          v(n)
+        case _ => throw new Exception(s"vector-ref: invalid arguments $args")
+      }
+    }
+    object VectorSet extends Prim {
+      val name = "vector-set!"
+      def call(args: List[Value]): Value = args match {
+        case Value.Vector(vec) :: Value.Integer(idx) :: v :: Nil =>
+          vec(idx) = v
+          Value.Undefined(Position.none)
+        case _ => throw new Exception(s"vector-set!: invalid arguments $args")
+      }
+    }
 
     //////////
     // Cons //
