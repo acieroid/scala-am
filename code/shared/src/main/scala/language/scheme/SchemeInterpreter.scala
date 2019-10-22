@@ -202,8 +202,8 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       ExactToInexact, /* [vv] exact->inexact: Exactness */
       /* [x]  exact?: Exactness */
       /* [x]  exp: Scientific */
-      // TODO Expt, /* [vv] expt: Scientific */
-      // TODO Floor, /* [vv] floor: Arithmetic */
+      Expt, /* [vv] expt: Scientific */
+      Floor, /* [vv] floor: Arithmetic */
       /* [x]  for-each: List Mapping */
       /* [x]  force: Delayed Evaluation */
       Gcd, /* [vx] gcd: Integer Operations */
@@ -216,7 +216,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       /* [x]  interaction-environment: Fly Evaluation */
       /* [x]  lcm: Integer Operations */
       Length, /* [vv] length: List Selection */
-      // TODO ListPrim, /* [vv] list: List Constructors */
+      ListPrim, /* [vv] list: List Constructors */
       /* [x]  list->string: String Constructors */
       /* [x]  list->vector: Vector Creation */
       ListRef, /* [vv] list-ref: List Selection */
@@ -235,7 +235,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       /* [x]  memv: List Searching */
       Min, /* [vv] min: Arithmetic */
       // TODO Modulo, /* [vv] modulo: Integer Operations */
-      // TODO Negativep, /* [vv] negative?: Comparison */
+      Negativep, /* [vv] negative?: Comparison */
       Newline, /* [v]  newline: Writing */
       Not, /* [vv] not: Booleans */
       Nullp, /* [vv] null?: List Predicates */
@@ -247,7 +247,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       /* [x]  output-port?: Ports */
       Pairp, /* [vv] pair?: Pairs */
       /* [x]  peek-char?: Reading */
-      // TODO Positivep, /* [vv] positive?: Comparison */
+      Positivep, /* [vv] positive?: Comparison */
       /* [x]  procedure?: Procedure Properties */
       // TODO Quotient, /* [vv] quotient: Integer Operations */
       /* [x]  rational?: Reals and Rationals */
@@ -257,7 +257,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       Realp, /* [vv] real?: Reals and Rationals */
       // TODO Remainder, /* [vv] remainder: Integer Operations */
       /* [x]  reverse: Append/Reverse */
-      // TODO Round, /* [vv] round: Arithmetic */
+      Round, /* [vv] round: Arithmetic */
       SetCar, /* [vv] set-car!: Pairs */
       SetCdr, /* [vv] set-cdr!: Pairs */
       Sin, /* [vv] sin: Scientific */
@@ -299,7 +299,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       /* [x]  with-input-from-file: File Ports */
       /* [x]  with-output-to-file: File Ports */
       /* [x]  write-char: Writing */
-      // TODO Zerop, /* [vv] zero?: Comparison */
+      Zerop, /* [vv] zero?: Comparison */
       // TODO LessThan, /* [vv]  < */
       // TODO LessOrEqual, /* [vv]  <= */
       // TODO NumEq, /* [vv]  = */
@@ -341,7 +341,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       // TODO Cdddar,
       // TODO Cddddr,
       /* Other primitives that are not R5RS */
-      // TODO Random,
+      Random,
       Error
     )
     }
@@ -455,10 +455,38 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case Value.Real(x) => Value.Real(scala.math.sqrt(x))
       }
     }
+    object Expt extends Prim {
+      val name = "expt"
+      // TODO: expt should also preserve exactness if possible
+      def call(args: List[Value]): Value = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil =>
+          Value.Integer(scala.math.pow(x.toDouble, y.toDouble).toInt)
+        case Value.Integer(x) :: Value.Real(y) :: Nil =>
+          Value.Real(scala.math.pow(x.toDouble, y))
+        case Value.Real(x) :: Value.Integer(y) :: Nil =>
+          Value.Real(scala.math.pow(x, y.toDouble))
+        case Value.Real(x) :: Value.Real(y) :: Nil =>
+          Value.Real(scala.math.pow(x, y))
+        case _ => throw new Exception(s"expt: invalid arguments $args")
+      }
+    }
+
     object Ceiling extends SingleArgumentPrim("ceiling") {
       def fun = {
         case x: Value.Integer => x
         case Value.Real(x) => Value.Real(x.ceil)
+      }
+    }
+    object Floor extends SingleArgumentPrim("floor") {
+      def fun = {
+        case x: Value.Integer => x
+        case Value.Real(x) => Value.Real(x.floor)
+      }
+    }
+    object Round extends SingleArgumentPrim("round") {
+      def fun = {
+        case x: Value.Integer => x
+        case Value.Real(x) => Value.Real(Mathops.round(x))
       }
     }
     object Evenp extends SingleArgumentPrim("even?") {
@@ -473,6 +501,25 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case _: Value.Integer => Value.Bool(false)
       }
     }
+    object Negativep extends SingleArgumentPrim("negative?") {
+      def fun = {
+        case Value.Integer(x) if x < 0 => Value.Bool(true)
+        case _: Value.Integer => Value.Bool(false)
+      }
+    }
+    object Positivep extends SingleArgumentPrim("positive?") {
+      def fun = {
+        case Value.Integer(x) if x > 0 => Value.Bool(true)
+        case _: Value.Integer => Value.Bool(false)
+      }
+    }
+    object Zerop extends SingleArgumentPrim("zero??") {
+      def fun = {
+        case Value.Integer(0) => Value.Bool(true)
+        case _: Value.Integer => Value.Bool(false)
+      }
+    }
+
     object Max extends Prim {
       val name = "max"
       def max(maximum: Value, rest: List[Value]): Value = rest match {
@@ -852,6 +899,17 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     ///////////
     // Lists //
     ///////////
+    object ListPrim extends Prim {
+      val name = "list"
+      def call(args: List[Value]) = args match {
+        case Nil => Value.Nil
+        case head :: rest =>
+          val car = newAddr()
+          val cdr = newAddr()
+          store = store + (cdr -> head) + (cdr -> call(rest))
+          Value.Cons(car, cdr)
+      }
+    }
     object ListRef extends Prim {
       val name = "list-ref"
       def listRef(l: Value, n: Int): Value = (n, l) match {
@@ -925,6 +983,16 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     }
     object Assoc extends AssocLike("assoc", Equal)
     object Assq extends AssocLike("assq", Eq)
+
+    ///////////
+    // Other //
+    ///////////
+    object Random extends SingleArgumentPrim("random") {
+      def fun = {
+        case Value.Integer(x) => Value.Integer((scala.math.random() * x).toInt)
+        case Value.Double(x) => Value.Real(scala.math.random() * x)
+      }
+    }
   }
 }
 
