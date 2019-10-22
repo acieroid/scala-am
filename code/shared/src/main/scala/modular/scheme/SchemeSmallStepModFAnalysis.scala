@@ -1,5 +1,6 @@
 package modular.scheme
 
+import core.Annotations.toCheck
 import scalaam.core._
 import scalaam.graph.{Colors, GraphElement, GraphMetadataBool, GraphMetadataMap, GraphMetadataString, GraphMetadataValue}
 import scalaam.language.scheme._
@@ -11,9 +12,9 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
   extends ModAnalysis[SchemeExp](program) with GlobalStore[SchemeExp] with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address
-  case class VarAddr(id: Identifier) extends LocalAddr { def printable = true  }
-  case class PtrAddr(exp: SchemeExp) extends LocalAddr { def printable = false }
-  case class PrmAddr(name: String)   extends LocalAddr { def printable = false }
+  case class VarAddr(id: Identifier)          extends LocalAddr { def printable = true  }
+  case class PtrAddr[E <: Expression](exp: E) extends LocalAddr { def printable = false }
+  case class PrmAddr(name: String)            extends LocalAddr { def printable = false }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
   // the 'result' of a component is just the return value of the function call
@@ -27,9 +28,9 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
   }
   // The AllocAdapter makes sure the right dependencies are registered upon address allocation.
   case object AllocAdapter extends Allocator[Addr, IntraAnalysis, Unit] {
-    def variable(id: Identifier, intra: IntraAnalysis): Addr        = intra.allocAddr(VarAddr(id))
-    def pointer[E <: SchemeExp](exp: E, intra: IntraAnalysis): Addr = intra.allocAddr(PtrAddr(exp))
-    def primitive(name: String): Addr                               = GlobalAddr(PrmAddr(name))
+    def variable(id: Identifier, intra: IntraAnalysis): Addr         = intra.allocAddr(VarAddr(id))
+    def pointer[E <: Expression](exp: E, intra: IntraAnalysis): Addr = intra.allocAddr(PtrAddr(exp))
+    def primitive(name: String): Addr                                = GlobalAddr(PrmAddr(name))
   }
   lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
   // setup initial environment and install the primitives in the global store
@@ -68,7 +69,10 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
     case class ControlError(err: Error) extends Control {
       override def toString = s"err($err)"
     }
-    trait KAddr
+    trait KAddr extends Address with SmartHash {
+      def printable = true
+      def primitive = false
+    }
     case class KontAddr(exp: SchemeExp) extends KAddr { override def toString = s"Kont(${exp.toString.take(10)})" }
     case object HaltKontAddr extends KAddr { override def toString = "Halt" }
     case class Kont(f: Frame, next: KAddr) extends SmartHash
@@ -80,7 +84,7 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
     val Action = sem.Action
 
     // State in the small-step semantics.
-    case class State(control: Control, kstore: KStore, a: KAddr) extends GraphElement with SmartHash {
+    case class State(control: Control, kstore: KStore, a: KAddr, ctx: IntraAnalysis) extends GraphElement with SmartHash {
       override def toString: String = control.toString
 
       override def label = toString
@@ -128,26 +132,32 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
         actions.flatMap({
           /* When a value is reached, we go to a continuation state */
           case Action.Value(v, _) =>
-            Set(State(ControlKont(v), kstore, a))
+            Set(State(ControlKont(v), kstore, a, ctx))
           /* When a continuation needs to be pushed, push it in the continuation store */
-          case Action.Push(frame, e, env, store) => {
+          case Action.Push(frame, e, env, _) => {
             val next = KontAddr(e)
             Set(
               State(
                 ControlEval(e, env),
                 kstore.extend(next, Set(Kont(frame, a))),
-                next
+                next,
+                ctx
               )
             )
           }
           /* When a value needs to be evaluated, we go to an eval state */
-          case Action.Eval(e, env, store) =>
-            Set(State(ControlEval(e, env), kstore, a))
-          /* When a function is stepped in, we also go to an eval state */
-          case Action.StepIn(fexp, _, e, env, store) => ???
+          case Action.Eval(e, env, _) =>
+            Set(State(ControlEval(e, env), kstore, a, ctx))
+          /* When a function is stepped, we go to a KONT state since we DO NOT step into the function. */
+          case Action.StepIn(_, (lam@SchemeLambda(args, _, _), _), _, env, _) => // env already contains bindings for the parameters of the function.
+            @toCheck val context = allocCtx(lam, env, args.map(arg => store(env.lookup(arg.name).get))) // TODO Is this correct?
+            val component = CallComponent(lam, env, None, context)
+            val result = call(component)
+            Set(State(ControlKont(result), kstore, a, ctx))
+          case Action.StepIn(_, clo, _, _, _) => throw new Exception(s"Illegal StepIn: expected a function in closure: $clo.")
           /* When an error is reached, we go to an error state */
           case Action.Err(err) =>
-            Set(State(ControlError(err), kstore, a))
+            Set(State(ControlError(err), kstore, a, ctx))
         })
 
       /**
@@ -155,13 +165,13 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
        */
       def step: Set[State] = control match {
         /** In a eval state, call the semantic's evaluation method */
-        case ControlEval(e, env) => integrate(a, sem.stepEval(e, env, StoreAdapter, TimestampAdapter))
+        case ControlEval(e, env) => integrate(a, sem.stepEval(e, env, StoreAdapter, ctx))
         /** In a continuation state, call the semantics' continuation method */
         case ControlKont(v) =>
           kstore.lookup(a) match {
             case Some(konts) =>
               konts.flatMap({
-                case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, StoreAdapter, TimestampAdapter))
+                case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, StoreAdapter, ctx))
               })
             case None => Set()
           }
