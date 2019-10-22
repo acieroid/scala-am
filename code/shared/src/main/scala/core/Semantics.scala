@@ -12,6 +12,7 @@ trait Semantics[E <: Expression, Addr <: Address, V, T, C] {
     case class Value(v: V, store: Store[Addr, V])                                      extends A
     case class Push(frame: Frame, e: E, env: Environment[Addr], store: Store[Addr, V]) extends A
     case class Eval(e: E, env: Environment[Addr], store: Store[Addr, V])               extends A
+    case class Call(fval: V, fexp: E, args: List[(V,E)], store: Store[Addr, V])        extends A
     case class StepIn(
         fexp: E,
         clo: (E, Environment[Addr]),
@@ -32,8 +33,8 @@ trait Semantics[E <: Expression, Addr <: Address, V, T, C] {
   }
 
   def stepEval(e: E, env: Environment[Addr], store: Store[Addr, V], t: T): Set[Action.A]
-
   def stepKont(v: V, frame: Frame, store: Store[Addr, V], t: T): Set[Action.A]
+  def stepCall(fval: V, fexp: E, args: List[(V,E)], store: Store[Addr,V], t: T): Set[Action.A]
 
   def initialBindings: Iterable[(String, Addr, V)] = List()
   def initialEnv: Iterable[(String, Addr)]         = initialBindings.map({ case (name, a, _) => (name, a) })

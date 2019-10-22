@@ -5,7 +5,7 @@ import scalaam.core._
 import scalaam.util._
 import scalaam.util.MonoidImplicits._
 
-abstract class ModAnalysis[Expr <: Expression](program: Expr) {
+abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
 
   // parameterized by a 'intra-component' representation
   type IntraComponent

@@ -7,14 +7,6 @@ trait SchemeSemantics[A <: Address, V, T, C] extends Semantics[SchemeExp, A, V, 
   implicit val timestamp: Timestamp[T, C]
   implicit val schemeLattice: SchemeLattice[V, SchemeExp, A]
   val allocator: Allocator[A, T, C]
-
-  def evalCall(
-      function: V,
-      fexp: SchemeExp,
-      argsv: List[(SchemeExp, V)],
-      store: Store[A, V],
-      t: T
-  ): Set[Action.A]
 }
 
 /**
@@ -33,7 +25,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   type Actions = Set[Action.A]
 
   case class ArityError(call: SchemeExp, expected: Int, got: Int) extends Error
-  /* TODO[medium]: TypeError is defined both in MakeSchemeLattice and here, define it only in one place */
+  /** TODO[medium]: TypeError is defined both in MakeSchemeLattice and here, define it only in one place */
   case class TypeError(message: String, on: V) extends Error
   case class NotSupported(message: String)     extends Error
 
@@ -46,7 +38,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       f: V,
       fexp: SchemeExp,
       cur: SchemeExp,
-      args: List[(SchemeExp, V)],
+      args: List[(V, SchemeExp)],
       toeval: List[SchemeExp],
       env: Env
   ) extends SchemeFrame
@@ -81,17 +73,17 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   def conditional(v: V, t: => Actions, f: => Actions): Actions =
     (if (isTrue(v)) t else Action.None) ++ (if (isFalse(v)) f else Action.None)
 
-  def evalCall(
+  def stepCall(
       function: V,
       fexp: SchemeExp,
-      argsv: List[(SchemeExp, V)],
+      argsv: List[(V, SchemeExp)],
       store: Sto,
       t: T
   ): Actions = {
     val fromClo: Actions = getClosures(function).map({
       case ((SchemeLambda(args, body, pos), env1), _) =>
         if (args.length == argsv.length) {
-          bindArgs(args.zip(argsv.map(_._2)), env1, store, t) match {
+          bindArgs(args.zip(argsv.map(_._1)), env1, store, t) match {
             case (env2, store) =>
               if (body.length == 1)
                 Action.StepIn(fexp, (SchemeLambda(args, body, pos), env1), body.head, env2, store)
@@ -110,7 +102,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
           TypeError("operator expected to be a closure, but is not", closure((lambda, env1), None)))
     })
     val fromPrim: Actions =
-      getPrimitives[Primitive](function).flatMap(prim => prim.callAction(fexp, argsv, store, t))
+      getPrimitives[Primitive](function).flatMap(prim => prim.callAction(fexp, argsv.map(_.swap), store, t))
     if (fromClo.isEmpty && fromPrim.isEmpty) {
       Action.Err(TypeError("operator expected to be a function, but is not", function))
     } else {
@@ -143,15 +135,16 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   protected def funcallArgs(
       f: V,
       fexp: SchemeExp,
-      args: List[(SchemeExp, V)],
+      args: List[(V, SchemeExp)],
       toeval: List[SchemeExp],
       env: Env,
       store: Sto,
       t: T
   ): Actions = toeval match {
     case Nil =>
-      evalCall(f, fexp, args.reverse, store, t)
-    case e :: rest => Action.Push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)
+      Action.Call(f, fexp, args.reverse, store)
+    case e :: rest =>
+      Action.Push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)
   }
   protected def funcallArgs(
       f: V,
@@ -265,7 +258,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   def stepKont(v: V, frame: Frame, store: Sto, t: T) = frame match {
     case FrameFuncallOperator(fexp, args, env) => funcallArgs(v, fexp, args, env, store, t)
     case FrameFuncallOperands(f, fexp, exp, args, toeval, env) =>
-      funcallArgs(f, fexp, (exp, v) :: args, toeval, env, store, t)
+      funcallArgs(f, fexp, (v,exp) :: args, toeval, env, store, t)
     case FrameIf(cons, alt, env) =>
       conditional(v, Action.Eval(cons, env, store), Action.Eval(alt, env, store))
     case FrameLet(name, bindings, Nil, body, env) => {
@@ -364,17 +357,17 @@ class OptimizedSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T,
   override protected def funcallArgs(
       f: V,
       fexp: SchemeExp,
-      args: List[(SchemeExp, V)],
+      args: List[(V, SchemeExp)],
       toeval: List[SchemeExp],
       env: Env,
       store: Sto,
       t: T
   ): Actions = toeval match {
     case Nil =>
-      evalCall(f, fexp, args.reverse, store, t)
+      Action.Call(f, fexp, args.reverse, store)
     case e :: rest =>
       atomicEval(e, env, store) match {
-        case Some(v) => funcallArgs(f, fexp, (e, v) :: args, rest, env, store, t)
+        case Some(v) => funcallArgs(f, fexp, (v,e) :: args, rest, env, store, t)
         case None    => Action.Push(FrameFuncallOperands(f, fexp, e, args, rest, env), e, env, store)
       }
   }
