@@ -194,7 +194,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
             .attr("dy",__CIRCLE_RADIUS__)
             .text((node: Node) => displayText(node.component))
     nodes = newGroup.merge(nodesUpdate)
-    nodes.classed(__CSS_FINISHED__, (_: Node) => finished)
+    nodes.classed(__CSS_FINISHED__, (_: Node) => analysis.finished())
          .classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
          .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
          .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.work.headOption == Some(node.component))
@@ -222,18 +222,12 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   def onClick() = stepAnalysis()
 
-  var finished = false
   private def stepAnalysis() =
-    if (!finished) {
-      if (analysis.finished) {
-        finished = true
-        refreshVisualisation()
-      } else {
-        val component = analysis.work.head
-        analysis.step()
-        refreshDataAfterStep(component)
-        refreshVisualisation()
-      }
+    if (!analysis.finished()) {
+      val component = analysis.work.head
+      analysis.step()
+      refreshDataAfterStep(component)
+      refreshVisualisation()
     }
 
   //

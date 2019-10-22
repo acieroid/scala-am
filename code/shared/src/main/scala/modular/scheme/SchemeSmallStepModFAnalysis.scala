@@ -155,10 +155,15 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
             Set(State(ControlEval(e, env), kstore, a, ctx))
           /* When a function is stepped, we go to a KONT state since we DO NOT step into the function. */
           case Action.StepIn(_, (lam@SchemeLambda(args, _, _), _), _, env, _) => // env already contains bindings for the parameters of the function.
-            @toCheck val context = allocCtx(lam, env, args.map(arg => store(env.lookup(arg.name).get))) // TODO Is this correct?
-            val component = CallComponent(lam, env, None, context)
-            val result = call(component)
-            Set(State(ControlKont(result), kstore, a, ctx))
+            val arguments: List[Value] = args.map(arg => store(env.lookup(arg.name).get))
+            if (!arguments.contains(lattice.bottom)) { // TODO Is this correct?
+              @toCheck val context = allocCtx(lam, env, arguments) // TODO Is this correct?
+              val component = CallComponent(lam, env, None, context)
+              val result = call(component)
+              Set(State(ControlKont(result), kstore, a, ctx))
+            } else {
+              Set(State(ControlKont(lattice.bottom), kstore, a, ctx))
+            }
           case Action.StepIn(_, clo, _, _, _) => throw new Exception(s"Illegal StepIn: expected a function in closure: $clo.")
           /* When an error is reached, we go to an error state */
           case Action.Err(err) =>
