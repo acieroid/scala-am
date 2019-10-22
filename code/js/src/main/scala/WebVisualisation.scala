@@ -20,6 +20,7 @@ object WebVisualisation {
   val __CSS_NOT_VISITED__ = "not_visited"
   val __CSS_IN_WORKLIST__ = "in_worklist"
   val __CSS_NEXT_COMPONENT__ = "next_component"
+  val __CSS_FINISHED__ = "finished"
   val __FORCE_COLLIDE__ = "collide"
   val __FORCE_CHARGE__ = "charge"
   val __FORCE_LINKS__ = "links"
@@ -193,7 +194,8 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
             .attr("dy",__CIRCLE_RADIUS__)
             .text((node: Node) => displayText(node.component))
     nodes = newGroup.merge(nodesUpdate)
-    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
+    nodes.classed(__CSS_FINISHED__, (_: Node) => finished)
+         .classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
          .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
          .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.work.headOption == Some(node.component))
     // update the edges
@@ -220,14 +222,21 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   def onClick() = stepAnalysis()
 
+  var finished = false
   private def stepAnalysis() =
-    if(analysis.finished) {
-      println("ALL DONE!")
-    } else {
-      val component = analysis.work.head
-      analysis.step()
-      refreshDataAfterStep(component)
-      refreshVisualisation()
+    if (!finished) {
+      if (analysis.finished) {
+        finished = true
+        refreshVisualisation()
+        for (elem <- analysis.deps.keySet) {
+          println(s"$elem \t-> ${analysis.deps(elem)}")
+        }
+      } else {
+        val component = analysis.work.head
+        analysis.step()
+        refreshDataAfterStep(component)
+        refreshVisualisation()
+      }
     }
 
   //
