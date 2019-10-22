@@ -19,7 +19,7 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
   // the 'result' of a component is just the return value of the function call
   type Result = Value
-  lazy val emptyResult = lattice.bottom
+  lazy val emptyResult: Value = lattice.bottom
   // Some glue code to Scala-AM to reuse the primitives and environment
   // not actually used, but required by the interface of SchemeSemantics
   implicit case object TimestampAdapter extends Timestamp[IntraAnalysis,Unit] {
@@ -34,24 +34,24 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
   }
   lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
   // setup initial environment and install the primitives in the global store
-  def initialEnv = Environment.initial(schemeSemantics.initialEnv)
+  def initialEnv: Environment[Addr] = Environment.initial(schemeSemantics.initialEnv)
   schemeSemantics.initialStore.foreach { case (a,v) => store = store + (a -> v) }
   // in ModF, components are function calls in some context
   trait IntraComponent {
     def env: Environment[Addr]
   }
   case object MainComponent extends IntraComponent {
-    val env = initialEnv
+    val env: Environment[Addr] = initialEnv
     override def toString = "main"
   }
   case class CallComponent(lambda: SchemeLambda, env: Environment[Addr], nam: Option[String], ctx: Context) extends IntraComponent {
-    override def toString = nam match {
-      case None => s"anonymous@${lambda.pos} [${ctx.toString()}]"
-      case Some(name) => s"$name [${ctx.toString()}]"
+    override def toString: String = nam match {
+      case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
+      case Some(name) => s"$name [${ctx.toString}]"
     }
   }
 
-  lazy val initialComponent = MainComponent
+  lazy val initialComponent: IntraComponent = MainComponent
   // this abstract class is parameterized by the choice of Context and allocation strategy of Contexts
   type Context
   def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]): Context
@@ -61,10 +61,10 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with GlobalStoreIntra with ReturnResultIntra {
     trait Control extends SmartHash
     case class ControlEval(exp: SchemeExp, env: Environment[Addr]) extends Control {
-      override def toString = s"ev(${exp})"
+      override def toString = s"ev($exp)"
     }
     case class ControlKont(v: Value) extends Control {
-      override def toString = s"ko(${v})"
+      override def toString = s"ko($v)"
     }
     case class ControlError(err: Error) extends Control {
       override def toString = s"err($err)"
@@ -76,7 +76,7 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
     case class KontAddr(exp: SchemeExp) extends KAddr { override def toString = s"Kont(${exp.toString.take(10)})" }
     case object HaltKontAddr extends KAddr { override def toString = "Halt" }
     case class Kont(f: Frame, next: KAddr) extends SmartHash
-    implicit val kontShow = new Show[Kont] {
+    implicit val kontShow: Show[Kont] = new Show[Kont] {
       def show(k: Kont) = "kont($f)"
     }
     type KStore = Store[KAddr, Set[Kont]]
@@ -163,7 +163,7 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
       /**
        * Computes the set of states that follow the current state
        */
-      def step: Set[State] = control match {
+      def step(): Set[State] = control match {
         /** In a eval state, call the semantic's evaluation method */
         case ControlEval(e, env) => integrate(a, sem.stepEval(e, env, StoreAdapter, ctx))
         /** In a continuation state, call the semantics' continuation method */
@@ -181,7 +181,25 @@ abstract class SchemeSmallStepModFAnalysis(program: SchemeExp)
     }
 
     // analysis entry point
-    def analyze(): Unit = ???
+    def analyze(): Unit = {
+      val state: State =  component match {
+        case MainComponent => State(ControlEval(program, component.env), Store.empty[KAddr, Set[Kont]], HaltKontAddr, this)
+        // TODO: cleanup explicit begin (see SchemeSemantics.evalCall).
+        case CallComponent(SchemeLambda(_,body,pos),_,_,_) => State(ControlEval(SchemeBegin(body, pos), component.env), Store.empty[KAddr, Set[Kont]], HaltKontAddr, this)
+      }
+      var work: List[State] = List[State](state)
+      var visited: List[State] = List[State]()
+
+      while(work.nonEmpty) {
+        val state = work.head
+        work = work.tail
+        if (!visited.contains(state) && !state.halted) {
+          val successors = state.step()
+          visited = state :: visited
+          work = successors.toList ::: work
+        }
+      }
+    }
 
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
