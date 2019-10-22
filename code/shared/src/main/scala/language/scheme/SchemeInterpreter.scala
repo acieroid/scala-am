@@ -490,9 +490,37 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     ///////////////
     // Equality //
     //////////////
-    // object Eq extends Prim TODO
-    // object Equal extends Prim TODO
 
+    object Eq extends Prim {
+      val name = "eq?"
+      def call(args: List[Value]) = args match {
+        case x :: y :: Nil => Value.Bool(x == y)
+        case _ => throw new Exception(s"eq?: wrong number of arguments ${args.length}")
+      }
+    }
+    object Equal extends Prim {
+      val name = "equal?"
+      def equal(x: Value, y: Value): Boolean = (x, y) match {
+        case (x: Value.Clo, y: Value.Clo) => x == y
+        case (x: Value.Primitive, y: Value.Primitive) => x == y
+        case (x: Value.Str, y: Value.Str) => x == y
+        case (x: Value.Symbol, y: Value.Symbol) => x == y
+        case (x: Value.Integer, y: Value.Integer) => x == y
+        case (x: Value.Real, y: Value.Real) => x == y
+        case (x: Value.Bool, y: Value.Bool) => x == y
+        case (x: Value.Character, y: Value.Character) => x == y
+        case (Value.Nil, Value.Nil) => x == y
+        case (Value.Cons(car1, cdr1), Value.Cons(car2, cdr2)) =>
+          equal(store(car1), store(car2)) && equal(store(cdr1), store(cdr2))
+        case (x: Value.Quoted, y: Value.Quoted) => x == y
+        case (x: Value.Vector, y: Value.Vector) => x == y
+        case _ => false
+      }
+      def call(args: List[Value]) = args match {
+        case x :: y :: Nil => Value.Bool(equal(x, y))
+        case _ => throw new Exception(s"equal?: wrong number of arguments ${args.length}")
+      }
+    }
     /////////////
     // Vectors //
     /////////////
@@ -532,7 +560,6 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         }
       }
     }
-
     object Cdar extends SingleArgumentPrim("cdar") {
       def fun = {
         case Value.Cons(_, cdr) => store(cdr) match {
@@ -541,7 +568,6 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         }
       }
     }
-
     object Cddr extends SingleArgumentPrim("cddr") {
       def fun = {
         case Value.Cons(_, cdr) => store(cdr) match {
@@ -583,12 +609,79 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     ///////////
     // Lists //
     ///////////
-// TODO: list-ref
-    // TODO: member, memq etc.
-    // TODO: assoc, assq etc.
-// TODO: length
-    // TODO: list?
-    
+    object ListRef extends Prim {
+      val name = "list-ref"
+      def listRef(l: Value, n: Int): Value = (n, l) match {
+        case (0, Value.Cons(car, _)) => store(car)
+        case (_, Value.Cons(_, cdr)) => listRef(store(cdr), n-1)
+        case _ => throw new Exception(s"list-ref: invalid list $l")
+      }
+      def call(args: List[Value]) = args match {
+        case l :: Value.Integer(n) :: Nil => listRef(l, n)
+        case _ => throw new Exception(s"list-ref: wrong number of arguments ${args.length}")
+      }
+    }
+    object Length extends SingleArgumentPrim("length") {
+      /* TODO: support circular lists */
+      def length(l: Value, acc: Int = 0): Int = l match {
+        case Value.Nil => acc
+        case Value.Cons(_, cdr) => length(store(cdr), acc+1)
+        case _ => throw new Exception(s"length: invalid list $l")
+      }
+      def fun = {
+        case l => Value.Integer(length(l, 0))
+      }
+    }
+
+    object Listp extends SingleArgumentPrim("list?") {
+      def listp(l: Value): Boolean = l match {
+        case Value.Nil => true
+        case Value.Cons(_, cdr) => listp(store(cdr))
+        case _ => false
+      }
+      def fun = {
+        case l => Value.Bool(listp(l))
+      }
+    }
+    class MemberLike(val name: String, eq: Prim) extends Prim {
+      def member(e: Value, l: Value): Value = l match {
+        case Value.Nil => Value.Bool(false)
+        case Value.Cons(car, cdr) =>
+          eq.call(e :: store(car) :: Nil) match {
+            case Value.Bool(true) => l /* return the list upon success */
+            case _ => member(e, store(cdr)) /* keep on searching */
+          }
+        case _ => throw new Exception(s"$name: malformed list $l")
+      }
+      def call(args: List[Value]): Value = args match {
+        case e :: l :: Nil => member(e, l)
+        case _ => throw new Exception(s"$name: invalid arguments $args")
+      }
+    }
+    object Member extends MemberLike("member", Equal)
+    object Memq extends MemberLike("memq", Eq)
+
+    class AssocLike(val name: String, eq: Prim) extends Prim {
+      def assoc(e: Value, l: Value): Value = l match {
+        case Value.Nil => Value.Bool(false)
+        case Value.Cons(car, cdr) =>
+          store(car) match {
+            case carv@Value.Cons(caar, _) =>
+              eq.call(e :: store(caar) :: Nil) match {
+                case Value.Bool(true) => carv /* found it, return the matching pair */
+                case _ => assoc(e, store(cdr)) /* keep on looking */
+              }
+            case _ => throw new Exception(s"$name: malformed association list $l")
+          }
+        case _ => throw new Exception(s"$name: malformed list $l")
+      }
+      def call(args: List[Value]): Value = args match {
+        case e :: l :: Nil => assoc(e, l)
+        case _ => throw new Exception(s"$name: invalid arguments $args")
+      }
+    }
+    object Assoc extends AssocLike("assoc", Equal)
+    object Assq extends AssocLike("assq", Eq)
   }
 }
 
@@ -613,6 +706,7 @@ object SchemeInterpreter {
     case class Bool(b: Boolean) extends Value
     case class Character(c: Char) extends Value
     case object Nil extends Value
+    /* TODO: not necessary to represent cons like this, we could just have mutable fields? */
     case class Cons(car: Addr, cdr: Addr) extends Value
     case class Quoted(quoted: SExp) extends Value
     case class Vector(elems: Array[Value]) extends Value
