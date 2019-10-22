@@ -49,7 +49,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
             (env3 + (arg._1.name -> addr))
           })
           eval(SchemeBegin(body, pos2), envExt)
-        case Value.Primitive(p@_) => ???
+        case Value.Primitive(p) => p.call(args.map(arg => eval(arg, env)))
         case v =>
           throw new Exception(s"Invalid function call at position ${pos}: ${v} is not a closure or a primitive")
       }
@@ -122,6 +122,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         }
       }
     case SchemeQuoted(quoted, _) =>
+      // TODO: transform into list.
       Value.Quoted(quoted)
     case SchemeValue(v, _) =>
       v match {
@@ -135,12 +136,216 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       }
   })
 
-  def primitive(name: String): Option[Value] = name match {
-    case "+" => Some(Value.Primitive(Primitives.Plus))
-    case _ => None
-  }
+  def primitive(name: String): Option[Value] = Primitives.primitiveMap.get(name).map(p => Value.Primitive(p))
 
   object Primitives {
+    def primitiveMap: Map[String, Prim] = allPrimitives.map(p => (p.name, p)).toMap
+    def allPrimitives: List[Prim] = {
+    List(
+      Times, /* [vv] *: Arithmetic */
+      Plus, /* [vv] +: Arithmetic */
+      Minus, /* [vv] -: Arithmetic */
+      Div, /* [vx] /: Arithmetic (no support for fractions) */
+      Abs, /* [vv] abs: Arithmetic */
+      ACos, /* [vv] acos: Scientific */
+      /* [x]  angle: Complex */
+      /* [x]  append: Append/Reverse */
+      /* [x]  apply: Fly Evaluation */
+      ASin, /* [vv] asin: Scientific */
+      Assoc, /* [vv] assoc: Retrieving Alist Entries */
+      Assq, /* [vv] assq: Retrieving Alist Entries */
+      /* [x]  assv: Retrieving Alist Entries */
+      ATan, /* [vv] atan: Scientific */
+      Booleanp, /* [vv] boolean?: Booleans */
+      /* [x]  call-with-current-continuation: Continuations */
+      /* [x]  call-with-input-file: File Ports */
+      /* [x]  call-with-output-file: File Ports */
+      /* [x]  call-with-values: Multiple Values */
+      Car, /* [vv] car: Pairs */
+      Cdr, /* [vv] cdr: Pairs */
+      Ceiling, /* [vv] ceiling: Arithmetic */
+      /* [x]  char->integer: Characters */
+      /* [x]  char-alphabetic?: Characters */
+      /* [x]  char-ci<=?: Characters */
+      /* [x]  char-ci<?: Characters */
+      /* [x]  char-ci=?: Characters */
+      /* [x]  char-ci>=?: Characters */
+      /* [x]  char-ci>?: Characters */
+      /* [x]  char-downcase: Characters */
+      /* [x]  char-lower-case?: Characters */
+      /* [x]  char-numeric?: Characters */
+      /* [x]  char-ready?: Reading */
+      /* [x]  char-upcase: Characters */
+      /* [x]  char-upper-case?: Characters */
+      /* [x]  char-whitespace?: Characters */
+      /* [x]  char<=?: Characters */
+      /* [x]  char<?: Characters */
+      /* [x]  char=?: Characters */
+      /* [x]  char>=?: Characters */
+      /* [x]  char>?: Characters */
+      Charp, /* [vv] char?: Characters */
+      /* [x]  close-input-port: Closing */
+      /* [x]  close-output-port: Closing */
+      /* [x]  complex?: Complex Numbers */
+      Cons, /* [vv] cons: Pairs */
+      Cos, /* [vv] cos: Scientific */
+      /* [x]  current-input-port: Default Ports */
+      /* [x]  current-output-port: Default Ports */
+      Display, /* [v]  display: Writing */
+      /* [x]  dynamic-wind: Dynamic Wind */
+      /* [x]  eof-object?: Reading */
+      Eq, /* [vv] eq?: Equality */
+      Equal, /* [vx] equal?: Equality */
+      /* [x]  eqv?: Equality */
+      /* [x]  eval: Fly Evaluation */
+      Evenp, /* [vv] even?: Integer Operations */
+      ExactToInexact, /* [vv] exact->inexact: Exactness */
+      /* [x]  exact?: Exactness */
+      /* [x]  exp: Scientific */
+      // TODO Expt, /* [vv] expt: Scientific */
+      // TODO Floor, /* [vv] floor: Arithmetic */
+      /* [x]  for-each: List Mapping */
+      /* [x]  force: Delayed Evaluation */
+      Gcd, /* [vx] gcd: Integer Operations */
+      /* [x]  imag-part: Complex */
+      InexactToExact, /* [vv] inexact->exact: Exactness */
+      /* [x]  inexact?: Exactness */
+      /* [x]  input-port?: Ports */
+      /* [x]  integer->char: Characters */
+      Integerp, /* [vv] integer?: Integers */
+      /* [x]  interaction-environment: Fly Evaluation */
+      /* [x]  lcm: Integer Operations */
+      Length, /* [vv] length: List Selection */
+      // TODO ListPrim, /* [vv] list: List Constructors */
+      /* [x]  list->string: String Constructors */
+      /* [x]  list->vector: Vector Creation */
+      ListRef, /* [vv] list-ref: List Selection */
+      /* [x]  list-tail: List Selection */
+      Listp, /* [vv] list?: List Predicates */
+      /* [x]  load: Loading */
+      Log, /* [vv] log: Scientific */
+      /* [x]  magnitude: Complex */
+      /* [x]  make-polar: Complex */
+      /* [x]  make-rectangular: Complex */
+      /* [x]  make-string: String Constructors */
+      /* [x]  map: List Mapping */
+      Max, /* [vv] max: Arithmetic */
+      Member, /* [vv] member: List Searching */
+      Memq, /* [v]  memq: List Searching */
+      /* [x]  memv: List Searching */
+      Min, /* [vv] min: Arithmetic */
+      // TODO Modulo, /* [vv] modulo: Integer Operations */
+      // TODO Negativep, /* [vv] negative?: Comparison */
+      Newline, /* [v]  newline: Writing */
+      Not, /* [vv] not: Booleans */
+      Nullp, /* [vv] null?: List Predicates */
+      NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
+      Numberp, /* [vv] number?: Numerical Tower */
+      Oddp, /* [vv] odd?: Integer Operations */
+      /* [x]  open-input-file: File Ports */
+      /* [x]  open-output-file: File Ports */
+      /* [x]  output-port?: Ports */
+      Pairp, /* [vv] pair?: Pairs */
+      /* [x]  peek-char?: Reading */
+      // TODO Positivep, /* [vv] positive?: Comparison */
+      /* [x]  procedure?: Procedure Properties */
+      // TODO Quotient, /* [vv] quotient: Integer Operations */
+      /* [x]  rational?: Reals and Rationals */
+      /* [x]  read: Scheme Read */
+      /* [x]  read-char?: Reading */
+      /* [x]  real-part: Complex */
+      Realp, /* [vv] real?: Reals and Rationals */
+      // TODO Remainder, /* [vv] remainder: Integer Operations */
+      /* [x]  reverse: Append/Reverse */
+      // TODO Round, /* [vv] round: Arithmetic */
+      SetCar, /* [vv] set-car!: Pairs */
+      SetCdr, /* [vv] set-cdr!: Pairs */
+      Sin, /* [vv] sin: Scientific */
+      Sqrt, /* [vv] sqrt: Scientific */
+      /* [x]  string: String Constructors */
+      /* [x]  string->list: List/String Conversion */
+      /* [x]  string->number: Conversion */
+      StringToSymbol, /* [vv] string->symbol: Symbol Primitives */
+      StringAppend, /* [vx] string-append: Appending Strings: only two arguments supported */
+      /* [x]  string-ci<: String Comparison */
+      /* [x]  string-ci=?: String Comparison */
+      /* [x]  string-ci>=?: String Comparison */
+      /* [x]  string-ci>?: String Comparison */
+      /* [x]  string-copy: String Selection */
+      /* [x]  string-fill!: String Modification */
+      StringLength, /* [vv] string-length: String Selection */
+      StringRef, /* [x]  string-ref: String Selection */
+      /* [x]  string-set!: String Modification */
+      /* [x]  string<=?: String Comparison */
+      StringLt, /* [vv]  string<?: String Comparison */
+      /* [x]  string=?: String Comparison */
+      /* [x]  string>=?: String Comparison */
+      /* [x]  string>?: String Comparison */
+      Stringp, /* [vv]  string?: String Predicates */
+      /* [x]  substring: String Selection */
+      SymbolToString, /* [vv] symbol->string: Symbol Primitives */
+      Symbolp, /* [vv] symbol?: Symbol Primitives */
+      Tan, /* [vv] tan: Scientific */
+      /* [x]  truncate: Arithmetic */
+      /* [x]  values: Multiple Values */
+      MakeVector, /* [vv] make-vector: Vector Creation */
+      Vector, /* [vv] vector: Vector Creation */
+      /* [x]  vector->list: Vector Creation */
+      /* [x]  vector-fill!: Vector Accessors */
+      VectorLength, /* [vv] vector-length: Vector Accessors */
+      VectorRef, /* [vv] vector-ref: Vector Accessors */
+      VectorSet, /* [vv] vector-set!: Vector Accessors */
+      Vectorp, /* [vv] vector?: Vector Creation */
+      /* [x]  with-input-from-file: File Ports */
+      /* [x]  with-output-to-file: File Ports */
+      /* [x]  write-char: Writing */
+      // TODO Zerop, /* [vv] zero?: Comparison */
+      // TODO LessThan, /* [vv]  < */
+      // TODO LessOrEqual, /* [vv]  <= */
+      // TODO NumEq, /* [vv]  = */
+      // TODO GreaterThan, /* [vv]  > */
+      // TODO GreaterOrEqual, /* [vv]  >= */
+      /* [x]  numerator */
+      /* [x]  denominator */
+      /* [x]  rationalize-string */
+      /* [x]  scheme-report-environment */
+      /* [x]  null-environment */
+      /* [x]  write transcript-on */
+      /* [x]  transcript-off */
+      Caar,
+      Cadr, /* [v]  caar etc. */
+      Cdar,
+      Cddr,
+      // TODO Caaar,
+      // TODO Caadr,
+      // TODO Cadar,
+      // TODO Caddr,
+      // TODO Cdaar,
+      // TODO Cdadr,
+      // TODO Cddar,
+      // TODO Cdddr,
+      // TODO Caaaar,
+      // TODO Caaadr,
+      // TODO Caadar,
+      // TODO Caaddr,
+      // TODO Cadaar,
+      // TODO Cadadr,
+      // TODO Caddar,
+      // TODO Cadddr,
+      // TODO Cdaaar,
+      // TODO Cdaadr,
+      // TODO Cdadar,
+      // TODO Cdaddr,
+      // TODO Cddaar,
+      // TODO Cddadr,
+      // TODO Cdddar,
+      // TODO Cddddr,
+      /* Other primitives that are not R5RS */
+      // TODO Random,
+      Error
+    )
+    }
+
     abstract class SingleArgumentPrim(val name: String) extends Prim {
       def fun: PartialFunction[Value, Value]
       def call(args: List[Value]) = args match {
