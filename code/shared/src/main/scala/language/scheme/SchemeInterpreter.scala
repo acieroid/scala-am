@@ -268,10 +268,70 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case _: Value.Integer => Value.Bool(false)
       }
     }
-    // object Max TODO
-    // object Min TODO
-    // object Gcd TODO
-
+    object Max extends Prim {
+      val name = "max"
+      def max(maximum: Value, rest: List[Value]): Value = rest match {
+        case Nil => maximum
+        case x :: rest => max(x match {
+          case Value.Integer(n1) => maximum match {
+            case Value.Integer(n2) => if (n1 > n2) { Value.Integer(n1) } else { maximum }
+            case Value.Real(n2) =>
+              val r = n1.toDouble
+              if (r > n2) { Value.Real(r) } else { maximum }
+          }
+          case Value.Real(n1) => maximum match {
+            case Value.Integer(n2) =>
+              val r = n2.toDouble
+              if (n1 > r) { Value.Real(n1) } else { maximum }
+            case Value.Real(n2) => if (n1 > n2) { Value.Real(n1) } else { Value.Real(n2) }
+          }
+        }, rest)
+      }
+      def call(args: List[Value]) = args match {
+        case Nil => throw new Exception("max: wrong number of arguments")
+        case Value.Integer(first) :: rest =>
+          max(Value.Integer(first), rest)
+        case Value.Real(first) :: rest =>
+          max(Value.Real(first), rest)
+        case _ => throw new Exception(s"max: invalid arguments $args")
+      }
+    }
+    object Min extends Prim {
+      val name = "min"
+      def min(minimum: Value, rest: List[Value]): Value = rest match {
+        case Nil => minimum
+        case x :: rest => min(x match {
+          case Value.Integer(n1) => minimum match {
+            case Value.Integer(n2) => if (n1 < n2) { Value.Integer(n1) } else { minimum }
+            case Value.Real(n2) =>
+              val r = n1.toDouble
+              if (r < n2) { Value.Real(r) } else { minimum }
+          }
+          case Value.Real(n1) => minimum match {
+            case Value.Integer(n2) =>
+              val r = n2.toDouble
+              if (n1 < r) { Value.Real(n1) } else { minimum }
+            case Value.Real(n2) => if (n1 < n2) { Value.Real(n1) } else { Value.Real(n2) }
+          }
+        }, rest)
+      }
+      def call(args: List[Value]) = args match {
+        case Nil => throw new Exception("min: wrong number of arguments")
+        case Value.Integer(first) :: rest =>
+          min(Value.Integer(first), rest)
+        case Value.Real(first) :: rest =>
+          min(Value.Real(first), rest)
+        case _ => throw new Exception(s"min: invalid arguments $args")
+      }
+    }
+    object Gcd extends Prim {
+      val name = "gcd"
+      def gcd(a: Int, b: Int): Int = if (b == 0) { a } else { gcd(b, a % b) }
+      def call(args: List[Value]) = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(gcd(x, y))
+        case _ => throw new Exception(s"gcd: invalid arguments $args")
+      }
+    }
 
     /////////////////
     // Conversions //
@@ -411,8 +471,21 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case Value.Str(x) => Value.Integer(x.length)
       }
     }
-    // TODO string-ref
-    // TODO: string<?
+    object StringRef extends Prim {
+      val name = "string-ref"
+      def call(args: List[Value]) = args match {
+        case Value.Str(x) :: Value.Integer(n) :: Nil =>
+          Value.Character(x(n))
+        case _ => throw new Exception(s"string-ref: invalid arguments $args")
+      }
+    }
+    object StringLt extends Prim {
+      val name = "string<?"
+      def call(args: List[Value]) = args match {
+        case Value.Str(x) :: Value.Str(y) :: Nil => Value.Bool(x < y)
+        case _ => throw new Exception(s"string<?: invalid arguments $args")
+      }
+    }
 
     ///////////////
     // Equality //
@@ -443,6 +516,40 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case Value.Cons(_, cdr) => store(cdr)
       }
     }
+    object Caar extends SingleArgumentPrim("caar") {
+      def fun = {
+        case Value.Cons(car, _) => store(car) match {
+          case Value.Cons(caar, _) => store(caar)
+          case _ => throw new Exception(s"caar: invalid list")
+        }
+      }
+    }
+    object Cadr extends SingleArgumentPrim("cadr") {
+      def fun = {
+        case Value.Cons(car, _) => store(car) match {
+          case Value.Cons(_, cadr) => store(cadr)
+          case _ => throw new Exception(s"cadr: invalid list")
+        }
+      }
+    }
+
+    object Cdar extends SingleArgumentPrim("cdar") {
+      def fun = {
+        case Value.Cons(_, cdr) => store(cdr) match {
+          case Value.Cons(cdar, _) => store(cdar)
+          case _ => throw new Exception(s"cdar: invalid list")
+        }
+      }
+    }
+
+    object Cddr extends SingleArgumentPrim("cddr") {
+      def fun = {
+        case Value.Cons(_, cdr) => store(cdr) match {
+          case Value.Cons(_, cddr) => store(cddr)
+          case _ => throw new Exception(s"caar: invalid list")
+        }
+      }
+    }
     object Cons extends Prim {
       val name = "cons"
       def call(args: List[Value]): Value = args match {
@@ -454,10 +561,24 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case _ => throw new Exception(s"cons: wrong number of arguments $args")
       }
     }
-    // TODO: caar etc.
-    // TODO: set-car!
-    // TODO: set-cdr!
-
+    object SetCar extends Prim {
+      val name = "set-car!"
+      def call(args: List[Value]): Value = args match {
+        case Value.Cons(car, _) :: v :: Nil =>
+          store = store + (car -> v)
+          Value.Undefined(Position.none)
+        case _ => throw new Exception(s"set-car!: invalid arguments $args")
+      }
+    }
+    object SetCdr extends Prim {
+      val name = "set-cdr!"
+      def call(args: List[Value]): Value = args match {
+        case Value.Cons(_, cdr) :: v :: Nil =>
+          store = store + (cdr -> v)
+          Value.Undefined(Position.none)
+        case _ => throw new Exception(s"set-cdr!: invalid arguments $args")
+      }
+    }
 
     ///////////
     // Lists //
