@@ -880,7 +880,6 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case (Value.Nil, Value.Nil) => x == y
         case (Value.Cons(car1, cdr1), Value.Cons(car2, cdr2)) =>
           equal(store(car1), store(car2)) && equal(store(cdr1), store(cdr2))
-        case (x: Value.Quoted, y: Value.Quoted) => x == y
         case (x: Value.Vector, y: Value.Vector) => x == y
         case _ => false
       }
@@ -1014,7 +1013,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     ///////////
     object ListPrim extends Prim {
       val name = "list"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value = args match {
         case Nil => Value.Nil
         case head :: rest =>
           allocateCons(head, call(rest))
@@ -1129,7 +1128,6 @@ object SchemeInterpreter {
     case object Nil extends Value
     /* TODO: not necessary to represent cons like this, we could just have mutable fields? */
     case class Cons(car: Addr, cdr: Addr) extends Value
-    case class Quoted(quoted: SExp) extends Value
     case class Vector(elems: Array[Value]) extends Value
   }
 }
