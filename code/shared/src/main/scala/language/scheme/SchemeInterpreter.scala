@@ -122,8 +122,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         }
       }
     case SchemeQuoted(quoted, _) =>
-      // TODO: transform into list.
-      Value.Quoted(quoted)
+      evalQuoted(quoted)
     case SchemeValue(v, _) =>
       v match {
         case ValueString(s) => Value.Str(s)
@@ -135,6 +134,26 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case ValueNil => Value.Nil
       }
   })
+  def evalQuoted(quoted: SExp): Value = quoted match {
+    case SExpId(Identifier(sym, _)) => Value.Symbol(sym)
+    case SExpPair(car, cdr, _) =>
+      val addr1 = newAddr()
+      val addr2 = newAddr()
+      store = store + (addr1 -> evalQuoted(car)) + (addr2 -> evalQuoted(cdr))
+      Value.Cons(addr1, addr2)
+    case SExpValue(v, _) => v match {
+      case ValueString(str)  => Value.Str(str)
+      case ValueCharacter(c) => Value.Character(c)
+      case ValueSymbol(sym)  => Value.Symbol(sym) /* shouldn't happen */
+      case ValueInteger(n)   => Value.Integer(n)
+      case ValueReal(n)      => Value.Real(n)
+      case ValueBoolean(b)   => Value.Bool(b)
+      case ValueNil          => Value.Nil
+    }
+    case SExpQuoted(q, pos) =>
+      evalQuoted(
+        SExpPair(SExpId(Identifier("quote", pos)), SExpPair(q, SExpValue(ValueNil, pos), pos), pos))
+  }
 
   def primitive(name: String): Option[Value] = Primitives.primitiveMap.get(name).map(p => Value.Primitive(p))
 
@@ -234,7 +253,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       Memq, /* [v]  memq: List Searching */
       /* [x]  memv: List Searching */
       Min, /* [vv] min: Arithmetic */
-      // TODO Modulo, /* [vv] modulo: Integer Operations */
+      Modulo, /* [vv] modulo: Integer Operations */
       Negativep, /* [vv] negative?: Comparison */
       Newline, /* [v]  newline: Writing */
       Not, /* [vv] not: Booleans */
@@ -420,6 +439,15 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       }
     }
 
+    object Modulo extends Prim {
+      val name = "modulo"
+      def call(args: List[Value]): Value = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil =>
+          Value.Integer(scalaam.lattice.MathOps.modulo(x, y))
+        case _ => throw new Exception(s"modulo: invalid arguments $args")
+      }
+    }
+
     object Abs extends SingleArgumentPrim("abs") {
       def fun = {
         case Value.Integer(x) => Value.Integer(scala.math.abs(x))
@@ -486,7 +514,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     object Round extends SingleArgumentPrim("round") {
       def fun = {
         case x: Value.Integer => x
-        case Value.Real(x) => Value.Real(Mathops.round(x))
+        case Value.Real(x) => Value.Real(scalaam.lattice.MathOps.round(x))
       }
     }
     object Evenp extends SingleArgumentPrim("even?") {
@@ -990,7 +1018,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     object Random extends SingleArgumentPrim("random") {
       def fun = {
         case Value.Integer(x) => Value.Integer((scala.math.random() * x).toInt)
-        case Value.Double(x) => Value.Real(scala.math.random() * x)
+        case Value.Real(x) => Value.Real(scala.math.random() * x)
       }
     }
   }
