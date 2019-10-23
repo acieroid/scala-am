@@ -13,12 +13,13 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   implicit val lattice: Lattice[Value]
 
   // addresses in the global analysis are (local) addresses of the intra-analysis + the component
-  trait Addr extends Address {
-    def addr: LocalAddr
-    def printable: Boolean = addr.printable
+  trait Addr extends Address
+  case class GlobalAddr(addr: LocalAddr) extends Addr {
+    def printable = addr.printable
   }
-  case class GlobalAddr(addr: LocalAddr) extends Addr
-  case class ComponentAddr(component: IntraComponent, addr: LocalAddr) extends Addr
+  case class ComponentAddr(component: IntraComponent, addr: LocalAddr) extends Addr {
+    def printable = addr.printable
+  }
 
   // the global store of the analysis
   @mutable var store = Map[Addr,Value]().withDefaultValue(lattice.bottom)
@@ -63,7 +64,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
 }
 
 trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] {
-  // alpha definition for addresses and effects
+  // alpha definition for addresses and dependencies
   def alphaAddr(addr: Addr): Addr = addr match {
     case GlobalAddr(_) => addr
     case ComponentAddr(cmp,localAddr) => ComponentAddr(alpha(cmp),localAddr)

@@ -18,9 +18,6 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
   case class PrmAddr(name: String)            extends LocalAddr { def printable = false }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
-  // the 'result' of a component is just the return value of the function call
-  type Result = Value
-  lazy val emptyResult: Value = lattice.bottom
   // Some glue code to Scala-AM to reuse the primitives and environment
   // not actually used, but required by the interface of SchemeSemantics
   implicit case object TimestampAdapter extends Timestamp[IntraAnalysis,Unit] {
@@ -212,7 +209,7 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
       val state: State = State(ControlEval(exp, env), Store.empty[KAddr, Set[Kont]], HaltKontAddr, this)
       var work: Set[State] = Set[State](state)
       var visited: Set[State] = Set[State]()
-      var result: Value = emptyResult
+      var result: Value = lattice.bottom
       while(work.nonEmpty) {
         val state = work.head
         work = work.tail
@@ -224,7 +221,7 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
         }
         visited += state
       }
-      updateResult(result)
+      writeResult(result)
     }
 
     // primitives glue code

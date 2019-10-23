@@ -5,8 +5,7 @@ import scalaam.language.sexp
 import scalaam.language.scheme._
 import scalaam.modular._
 
-abstract class SchemeModFAnalysis(program: SchemeExp)
-  extends ModAnalysis[SchemeExp](program) with GlobalStore[SchemeExp] with ReturnResult[SchemeExp] {
+trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address
   case class VarAddr(id: Identifier)          extends LocalAddr { def printable = true  }
@@ -14,9 +13,6 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   case class PrmAddr(name: String)            extends LocalAddr { def printable = false }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
-  // the 'result' of a component is just the return value of the function call
-  type Result = Value
-  lazy val emptyResult = lattice.bottom
   // Some glue code to Scala-AM to reuse the primitives and environment
   // not actually used, but required by the interface of SchemeSemantics
   implicit case object TimestampAdapter extends Timestamp[IntraAnalysis,Unit] {
@@ -55,7 +51,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with GlobalStoreIntra with ReturnResultIntra {
     // analysis entry point
-    def analyze(): Unit = updateResult(component match {
+    def analyze(): Unit = writeResult(component match {
       case MainComponent =>
         eval(program)
       case CallComponent(SchemeLambda(pars,body,_),_,_,_) =>
@@ -254,3 +250,17 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
     }
   }
 }
+
+trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
+                                  with SchemeModFSemantics
+                                  with AdaptiveGlobalStore[SchemeExp]
+                                  with AdaptiveReturnResult[SchemeExp] {
+  def alpha(cmp: IntraComponent) = ???
+  def alphaValue(value: Value) = ???
+}
+
+abstract class SchemeModFAnalysis(program: SchemeExp) extends ModAnalysis(program)
+                                                      with SchemeModFSemantics
+
+abstract class AdaptiveSchemeModFAnalysis(program: SchemeExp) extends AdaptiveModAnalysis(program)
+                                                              with AdaptiveSchemeModFSemantics

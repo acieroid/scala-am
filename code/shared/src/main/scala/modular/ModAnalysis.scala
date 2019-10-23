@@ -66,15 +66,15 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   // parameterized by an alpha function, which further 'abstracts' components
   // alpha can be used to drive an adaptive strategy for the analysis
   protected def alpha(cmp: IntraComponent): IntraComponent
+  // dependencies might require further abstraction too; subclasses can override this as needed ...
+  protected def alphaDep(dep: Dependency): Dependency = dep
   // based on this definition of alpha, we can induce 'compound versions' of this function
-  protected def alphaSet[A](alphaA: A => A)(set: Set[A]): Set[A] = set.map(alphaA)
-  protected def alphaMap[K, V : Monoid](alphaK: K => K, alphaV: V => V)(map: Map[K,V]): Map[K,V] =
+  def alphaSet[A](alphaA: A => A)(set: Set[A]): Set[A] = set.map(alphaA)
+  def alphaMap[K, V : Monoid](alphaK: K => K, alphaV: V => V)(map: Map[K,V]): Map[K,V] =
     map.foldLeft(Map[K,V]().withDefaultValue(Monoid[V].zero)) { case (acc,(key,vlu)) =>
       val keyAbs = alphaK(key)
       acc + (keyAbs -> Monoid[V].append(acc(keyAbs),alphaV(vlu)))
     }
-  // effects might require further abstraction too; subclasses can override this as needed ...
-  protected def alphaDep(dep: Dependency): Dependency = dep
 
   // when alpha changes, we need to call this function to update the analysis' components
   def onAlphaChange() = {
