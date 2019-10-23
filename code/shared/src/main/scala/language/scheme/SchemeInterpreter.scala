@@ -21,7 +21,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
   def check(e: SchemeExp, v : Value): Value = {
     compared += 1
     v match {
-      case Value.Undefined(pos) => println(s"Undefined behavior arising from position $pos seen at ${e.pos}")
+      case Value.Undefined(pos@_) => () // println(s"Undefined behavior arising from position $pos seen at ${e.pos}")
       case Value.Unbound(id) => println(s"Seen unbound identifier $id at ${e.pos}")
       case _ => ()
     }
@@ -34,6 +34,10 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     lastAddr
   }
   var store = Map[Addr, Value]()
+  def extendStore(a: Addr, v: Value): Unit = {
+    store = store + (a -> v)
+  }
+
   def eval(e: SchemeExp, env: Env): Value = check(e, e match {
     case SchemeLambda(_, _, _) => Value.Clo(e, env)
     case SchemeFuncall(f, args, pos) =>
@@ -44,12 +48,12 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
           }
           val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
             val addr = newAddr()
-            val v = eval(arg._2, env)
-            store = store + (addr -> v)
+            extendStore(addr, eval(arg._2, env))
             (env3 + (arg._1.name -> addr))
           })
           eval(SchemeBegin(body, pos2), envExt)
-        case Value.Primitive(p) => p.call(args.map(arg => eval(arg, env)))
+        case Value.Primitive(p) =>
+          p.call(args.map(arg => eval(arg, env)))
         case v =>
           throw new Exception(s"Invalid function call at position ${pos}: ${v} is not a closure or a primitive")
       }
@@ -61,14 +65,14 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     case SchemeLet(bindings, body, pos) =>
       val envExt = bindings.foldLeft(env)((env2, binding) => {
         val addr = newAddr()
-        store = store + (addr -> eval(binding._2, env))
+        extendStore(addr, eval(binding._2, env))
         (env2 + (binding._1.name -> addr))
       })
       eval(SchemeBegin(body, pos), envExt)
     case SchemeLetStar(bindings, body, pos) =>
       val envExt = bindings.foldLeft(env)((env2, binding) => {
         val addr = newAddr()
-        store = store + (addr -> eval(binding._2, env2 /* this is the difference with let */))
+        extendStore(addr, eval(binding._2, env2 /* this is the difference with let */))
         (env2 + (binding._1.name -> addr))
       })
       eval(SchemeBegin(body, pos), envExt)
@@ -76,9 +80,9 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       val envExt = bindings.foldLeft(env)((env2, binding) => {
         val addr = newAddr()
         /* These are the differences with let* (store and env) */
-        store = store + (addr -> Value.Unbound(binding._1))
+        extendStore(addr, Value.Unbound(binding._1))
         val env3 = env2 + (binding._1.name -> addr)
-        store = store + (addr -> eval(binding._2, env3))
+        extendStore(addr, eval(binding._2, env3))
         env3
       })
       eval(SchemeBegin(body, pos), envExt)
@@ -89,7 +93,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case Some(addr) => addr
         case None => throw new Exception(s"Unbound variable $id accessed at position $pos")
       }
-      store = store + (addr -> eval(v, env))
+      extendStore(addr, eval(v, env))
       Value.Undefined(pos)
     case SchemeBegin(exps, pos) =>
       val init: Value = Value.Undefined(pos)
@@ -134,13 +138,18 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case ValueNil => Value.Nil
       }
   })
+  def allocateCons(car: Value, cdr: Value): Value = {
+    val addr1 = newAddr()
+    val addr2 = newAddr()
+    extendStore(addr1, car)
+    extendStore(addr2, cdr)
+    Value.Cons(addr1, addr2)
+  }
+
   def evalQuoted(quoted: SExp): Value = quoted match {
     case SExpId(Identifier(sym, _)) => Value.Symbol(sym)
     case SExpPair(car, cdr, _) =>
-      val addr1 = newAddr()
-      val addr2 = newAddr()
-      store = store + (addr1 -> evalQuoted(car)) + (addr2 -> evalQuoted(cdr))
-      Value.Cons(addr1, addr2)
+      allocateCons(evalQuoted(car), evalQuoted(cdr))
     case SExpValue(v, _) => v match {
       case ValueString(str)  => Value.Str(str)
       case ValueCharacter(c) => Value.Character(c)
@@ -335,30 +344,30 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       Cadr, /* [v]  caar etc. */
       Cdar,
       Cddr,
-      // TODO Caaar,
-      // TODO Caadr,
-      // TODO Cadar,
-      // TODO Caddr,
-      // TODO Cdaar,
-      // TODO Cdadr,
-      // TODO Cddar,
-      // TODO Cdddr,
-      // TODO Caaaar,
-      // TODO Caaadr,
-      // TODO Caadar,
-      // TODO Caaddr,
-      // TODO Cadaar,
-      // TODO Cadadr,
-      // TODO Caddar,
-      // TODO Cadddr,
-      // TODO Cdaaar,
-      // TODO Cdaadr,
-      // TODO Cdadar,
-      // TODO Cdaddr,
-      // TODO Cddaar,
-      // TODO Cddadr,
-      // TODO Cdddar,
-      // TODO Cddddr,
+      Caaar,
+      Caadr,
+      Cadar,
+      Caddr,
+      Cdaar,
+      Cdadr,
+      Cddar,
+      Cdddr,
+      Caaaar,
+      Caaadr,
+      Caadar,
+      Caaddr,
+      Cadaar,
+      Cadadr,
+      Caddar,
+      Cadddr,
+      Cdaaar,
+      Cdaadr,
+      Cdadar,
+      Cdaddr,
+      Cddaar,
+      Cddadr,
+      Cdddar,
+      Cddddr,
       /* Other primitives that are not R5RS */
       Random,
       Error
@@ -744,10 +753,9 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case _ => throw new Exception(s"newline: wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
-    object Error extends SingleArgumentPrim("error") {
-      def fun = {
-        case x => throw new Exception(s"user-raised error: $x")
-      }
+    object Error extends Prim {
+      val name = "error"
+      def call(args: List[Value]) = throw new Exception(s"user-raised error: $args")
     }
 
     /////////////////
@@ -932,46 +940,53 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case Value.Cons(_, cdr) => store(cdr)
       }
     }
-    object Caar extends SingleArgumentPrim("caar") {
+    class Cxr(name: String, ops: List[Prim]) extends SingleArgumentPrim(name) {
       def fun = {
-        case Value.Cons(car, _) => store(car) match {
-          case Value.Cons(caar, _) => store(caar)
-          case _ => throw new Exception(s"caar: invalid list")
-        }
+        case v: Value.Cons =>
+          val init: Value = v
+          ops.reverse.foldLeft(init)((acc, op) => acc match {
+            case _: Value.Cons => op.call(acc :: Nil)
+            case _ => throw new Exception(s"$name: invalid list $acc")
+          })
       }
     }
-    object Cadr extends SingleArgumentPrim("cadr") {
-      def fun = {
-        case Value.Cons(car, _) => store(car) match {
-          case Value.Cons(_, cadr) => store(cadr)
-          case _ => throw new Exception(s"cadr: invalid list")
-        }
-      }
-    }
-    object Cdar extends SingleArgumentPrim("cdar") {
-      def fun = {
-        case Value.Cons(_, cdr) => store(cdr) match {
-          case Value.Cons(cdar, _) => store(cdar)
-          case _ => throw new Exception(s"cdar: invalid list")
-        }
-      }
-    }
-    object Cddr extends SingleArgumentPrim("cddr") {
-      def fun = {
-        case Value.Cons(_, cdr) => store(cdr) match {
-          case Value.Cons(_, cddr) => store(cddr)
-          case _ => throw new Exception(s"caar: invalid list")
-        }
-      }
-    }
+    object Caar extends Cxr("caar", List(Car, Car))
+    object Cadr extends Cxr("cadr", List(Car, Cdr))
+    object Cdar extends Cxr("cdar", List(Cdr, Car))
+    object Cddr extends Cxr("cddr", List(Cdr, Cdr))
+
+    object Caaar extends Cxr("caaar", List(Car, Caar))
+    object Caadr extends Cxr("caadr", List(Car, Cadr))
+    object Cadar extends Cxr("cadar", List(Car, Cdar))
+    object Caddr extends Cxr("caddr", List(Car, Cddr))
+    object Cdaar extends Cxr("cdaar", List(Cdr, Caar))
+    object Cdadr extends Cxr("cdadr", List(Cdr, Cadr))
+    object Cddar extends Cxr("cddar", List(Cdr, Cdar))
+    object Cdddr extends Cxr("cdddr", List(Cdr, Cddr))
+
+    object Caaaar extends Cxr("caaaar", List(Car, Caaar))
+    object Caaadr extends Cxr("caaadr", List(Car, Caadr))
+    object Caadar extends Cxr("caadar", List(Car, Cadar))
+    object Caaddr extends Cxr("caaddr", List(Car, Caddr))
+    object Cadaar extends Cxr("cadaar", List(Car, Cdaar))
+    object Cadadr extends Cxr("cadadr", List(Car, Cdadr))
+    object Caddar extends Cxr("caddar", List(Car, Cddar))
+    object Cadddr extends Cxr("cadddr", List(Car, Cdddr))
+    object Cdaaar extends Cxr("cdaaar", List(Cdr, Caaar))
+    object Cdaadr extends Cxr("cdaadr", List(Cdr, Caadr))
+    object Cdadar extends Cxr("cdadar", List(Cdr, Cadar))
+    object Cdaddr extends Cxr("cdaddr", List(Cdr, Caddr))
+    object Cddaar extends Cxr("cddaar", List(Cdr, Cdaar))
+    object Cddadr extends Cxr("cddadr", List(Cdr, Cdadr))
+    object Cdddar extends Cxr("cdddar", List(Cdr, Cddar))
+    object Cddddr extends Cxr("cddddr", List(Cdr, Cdddr))
+
+
     object Cons extends Prim {
       val name = "cons"
       def call(args: List[Value]): Value = args match {
         case car :: cdr :: Nil =>
-          val cara = newAddr()
-          val cdra = newAddr()
-          store = store + (cara -> car) + (cdra -> cdr)
-          Value.Cons(cara, cdra)
+          allocateCons(car, cdr)
         case _ => throw new Exception(s"cons: wrong number of arguments $args")
       }
     }
@@ -979,7 +994,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       val name = "set-car!"
       def call(args: List[Value]): Value = args match {
         case Value.Cons(car, _) :: v :: Nil =>
-          store = store + (car -> v)
+          extendStore(car, v)
           Value.Undefined(Position.none)
         case _ => throw new Exception(s"set-car!: invalid arguments $args")
       }
@@ -988,7 +1003,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       val name = "set-cdr!"
       def call(args: List[Value]): Value = args match {
         case Value.Cons(_, cdr) :: v :: Nil =>
-          store = store + (cdr -> v)
+          extendStore(cdr, v)
           Value.Undefined(Position.none)
         case _ => throw new Exception(s"set-cdr!: invalid arguments $args")
       }
@@ -1002,10 +1017,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       def call(args: List[Value]) = args match {
         case Nil => Value.Nil
         case head :: rest =>
-          val car = newAddr()
-          val cdr = newAddr()
-          store = store + (cdr -> head) + (cdr -> call(rest))
-          Value.Cons(car, cdr)
+          allocateCons(head, call(rest))
       }
     }
     object ListRef extends Prim {
@@ -1109,7 +1121,7 @@ object SchemeInterpreter {
     case class Clo(lambda: SchemeExp, env: Env) extends Value
     case class Primitive(p: Prim) extends Value
     case class Str(s: String) extends Value
-    case class Symbol(s: String) extends Value
+    case class Symbol(sym: String) extends Value
     case class Integer(n: Int) extends Value
     case class Real(r: Double) extends Value
     case class Bool(b: Boolean) extends Value
