@@ -1,7 +1,7 @@
 package modular.scheme
 
 import scalaam.core._
-import scalaam.graph.{Colors, GraphElement, GraphMetadataBool, GraphMetadataMap, GraphMetadataString, GraphMetadataValue}
+import scalaam.graph.{Color, Colors, GraphElement, GraphMetadataBool, GraphMetadataMap, GraphMetadataString, GraphMetadataValue}
 import scalaam.language.scheme._
 import scalaam.modular._
 import scalaam.util.Show
@@ -89,17 +89,13 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
       override def toString: String = control.toString
 
       override def label = toString
-      override def color =
-        // TODO[minor]: ControlError is always yellow, because halted is true
-        if (halted) {
-          Colors.Yellow
-        } else {
-          control match {
-            case _: ControlEval  => Colors.Green
-            case _: ControlKont  => Colors.Pink
-            case _: ControlError => Colors.Red
-          }
-        }
+      override def color: Color = control match {
+        case ControlEval(_, _)        => Colors.Blue
+        case ControlCall(_, _, _)     => Colors.Pink
+        case ControlKont(_) if halted => Colors.Grass
+        case ControlKont(_)           => Colors.Yellow
+        case ControlError(_)          => Colors.Red
+      }
       override def metadata =
         GraphMetadataMap(
           Map(
