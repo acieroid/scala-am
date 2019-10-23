@@ -2,11 +2,10 @@ package scalaam.modular
 
 import core.Annotations.mutable
 import scalaam.core._
+import scalaam.util._
+import scalaam.util.MonoidImplicits._
 
-import scala.collection.mutable._
-
-
-abstract class ModAnalysis[Expr <: Expression](program: Expr) {
+abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
 
   // parameterized by a 'intra-component' representation
   type IntraComponent
@@ -14,52 +13,93 @@ abstract class ModAnalysis[Expr <: Expression](program: Expr) {
 
   // an intra-analysis of a component can cause dependencies that impact the analysis of other components
   // an intra-analysis therefore can:
-  // - register a dependency (e.g., when an address is read)
-  // - trigger  a dependency (e.g., when an address is written)
+  // - register a dependency on an effect (e.g., when it reads an address)
+  // - trigger an effect (e.g., when it writes to an address)
   protected trait Dependency
-  // here, we track which components depend on which dependencies
-  @mutable private val deps = Map[Dependency,Set[IntraComponent]]().withDefaultValue(Set())
-  protected def addDependency(component: IntraComponent, dep: Dependency) = deps.get(dep) match {
-    case None => deps(dep) = Set(component)
-    case Some(components) => components.add(component)
-  }
+  // here, we track which components depend on which effects
+  @mutable var deps = Map[Dependency,Set[IntraComponent]]().withDefaultValue(Set())
+  private def addDep(component: IntraComponent, dep: Dependency) =
+    deps += (dep -> (deps(dep) + component))
 
   // parameterized by an 'intra-component analysis'
   protected def intraAnalysis(component: IntraComponent): IntraAnalysis
   protected abstract class IntraAnalysis(val component: IntraComponent) {
     // keep track of dependencies triggered by this intra-analysis
-    @mutable private[ModAnalysis] val dependencies = Set[Dependency]()
-    protected def triggerDependency(dep: Dependency) = dependencies.add(dep)          // Trigger a dependency.
-    protected def registerDependency(dep: Dependency) = addDependency(component, dep)  // Register a dependency.
+    @mutable private[ModAnalysis] var deps = Set[Dependency]()
+    protected def triggerDependency(dep: Dependency) = deps += dep
+    protected def registerDependency(dep: Dependency) = addDep(component,dep)
     // keep track of components called by this intra-analysis
-    @mutable private[ModAnalysis] val components = Set[IntraComponent]()
-    protected def newComponent(cmp: IntraComponent): Unit = components.add(cmp)
+    @mutable private[ModAnalysis] var components = Set[IntraComponent]()
+    protected def spawn(cmp: IntraComponent) = components += cmp
     // analyses the given component
     def analyze(): Unit
   }
 
   // inter-analysis using a simple worklist algorithm
-  @mutable val work          = Set[IntraComponent](initialComponent)
-  @mutable val visited       = Set[IntraComponent]()
-  @mutable val allComponents = Set[IntraComponent](initialComponent)
-  @mutable val componentDeps = Map[IntraComponent, Set[IntraComponent]]()
-  def finished(): Boolean = work.isEmpty
-  def step(): Unit = {
+  @mutable var work = Set[IntraComponent](initialComponent)
+  @mutable var visited = Set[IntraComponent]()
+  @mutable var allComponents = Set[IntraComponent](initialComponent)
+  @mutable var componentDeps = Map[IntraComponent,Set[IntraComponent]]()
+  def finished() = work.isEmpty
+  def step() = {
     // take the next component
     val current = work.head
-    work.remove(current)
+    work -= current
     // do the intra-analysis
     val intra = intraAnalysis(current)
     intra.analyze()
-    // add the successors to the worklist but only if they have not been visited before
-    val newComponents      = intra.components.filterNot(visited)
-    val componentsToUpdate = intra.dependencies.flatMap(deps)
-    val todo = newComponents ++ componentsToUpdate
-    work ++= todo
+    // add the successors to the worklist
+    val newComponents = intra.components.filterNot(visited)
+    val componentsToUpdate = intra.deps.flatMap(deps)
+    val succs = newComponents ++ componentsToUpdate
+    work ++= succs
     // update the analysis
     visited += current
     allComponents ++= newComponents
-    componentDeps(current) = intra.components
+    componentDeps += (current -> intra.components)
   }
   def analyze(): Unit = while(!finished()) { step() }
+}
+
+abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
+
+  // parameterized by an alpha function, which further 'abstracts' components
+  // alpha can be used to drive an adaptive strategy for the analysis
+  protected def alpha(cmp: IntraComponent): IntraComponent
+  // based on this definition of alpha, we can induce 'compound versions' of this function
+  protected def alphaSet[A](alphaA: A => A)(set: Set[A]): Set[A] = set.map(alphaA)
+  protected def alphaMap[K, V : Monoid](alphaK: K => K, alphaV: V => V)(map: Map[K,V]): Map[K,V] =
+    map.foldLeft(Map[K,V]().withDefaultValue(Monoid[V].zero)) { case (acc,(key,vlu)) =>
+      val keyAbs = alphaK(key)
+      acc + (keyAbs -> Monoid[V].append(acc(keyAbs),alphaV(vlu)))
+    }
+  // effects might require further abstraction too; subclasses can override this as needed ...
+  protected def alphaDep(dep: Dependency): Dependency = dep
+
+  // when alpha changes, we need to call this function to update the analysis' components
+  def onAlphaChange() = {
+    work            = alphaSet(alpha)(work)
+    visited         = alphaSet(alpha)(visited)
+    allComponents   = alphaSet(alpha)(allComponents)
+    componentDeps   = alphaMap(alpha,alphaSet(alpha))(componentDeps)
+    deps            = alphaMap(alphaDep,alphaSet(alpha))(deps)
+  }
+}
+
+trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
+  // keep a cache between a component and its most recent abstraction
+  private var cache = Map[IntraComponent,IntraComponent]()
+  // look in the cache first, before applying a potentially complicated alpha function
+  abstract override def alpha(cmp: IntraComponent) = cache.get(cmp) match {
+    case Some(cmpAbs) => cmpAbs
+    case None =>
+      val cmpAbs = super.alpha(cmp)
+      cache = cache + (cmp -> cmpAbs)
+      cmpAbs
+  }
+  // when alpha is updated, the cache needs to be cleared
+  override def onAlphaChange() = {
+    cache = Map[IntraComponent,IntraComponent]()
+    super.onAlphaChange()
+  }
 }

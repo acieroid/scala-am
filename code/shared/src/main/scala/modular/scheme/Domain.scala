@@ -2,9 +2,11 @@ package scalaam.modular.scheme
 
 import scalaam.lattice._
 import scalaam.language.scheme._
+import scalaam.modular.{GlobalStore, ModAnalysis}
 
 /* A type lattice for ModF */
-trait TypeDomain extends SchemeModFAnalysis {
+trait TypeDomain {
+  this: ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] =>
   lazy val valueLattice: MakeSchemeLattice[SchemeExp,
                                            Addr,
                                            Type.S,
@@ -18,7 +20,8 @@ trait TypeDomain extends SchemeModFAnalysis {
 }
 
 /* A constant propagation lattice for ModF */
-trait ConstantPropagationDomain extends SchemeModFAnalysis {
+trait ConstantPropagationDomain {
+  this: ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] =>
   lazy val valueLattice: MakeSchemeLattice[SchemeExp,
                                            Addr,
                                            ConstantPropagation.S,
@@ -33,7 +36,8 @@ trait ConstantPropagationDomain extends SchemeModFAnalysis {
 
 
 /* A powerset lattice for ModF */
-trait PowersetDomain extends SchemeModFAnalysis {
+trait PowersetDomain {
+  this: ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] =>
   lazy val valueLattice: MakeSchemeLattice[SchemeExp,
                                            Addr,
                                            Concrete.S,

@@ -1,5 +1,6 @@
 package scalaam.web
 
+import modular.scheme.SchemeSmallStepModFAnalysis
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 
@@ -36,8 +37,11 @@ object Main {
   }
 
   def loadFile(text: String): Unit = {
-    val program = SchemeParser.parse(text)
-    val analysis = new SchemeModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain
+    val program = SchemeUndefiner.undefine(List(SchemeParser.parse(text)))
+    val analysis = new SchemeSmallStepModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain {
+      // stub implementation to keep the compiler happy
+      def alpha(cmp: IntraComponent): IntraComponent = cmp
+    }
     val visualisation = new WebVisualisation(analysis)
     // parameters for the visualisation
     val body = document.body

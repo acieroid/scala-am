@@ -37,7 +37,7 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
       f: V,
       fexp: LambdaExp,
       cur: LambdaExp,
-      args: List[(LambdaExp, V)],
+      args: List[(V, LambdaExp)],
       toeval: List[LambdaExp],
       env: Environment[A]
   ) extends Frame {
@@ -121,7 +121,7 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
       /** We have evaluated the operator of a nullary function call, e.g. `(f)`. We
         * directly proceed to evaluate the function call, relying on the
         * `evalCall` function defined below. */
-      evalCall(v, fexp, Nil, store, t)
+      Action.Call(v, fexp, Nil, store)
     case FrameFuncallOperator(fexp, arg :: args, env) =>
       /** We have evaluated the operator of a function call, e.g. if `(f x)` we have
         * evaluated f. We proceed by evaluating the first argument `arg`, and
@@ -131,13 +131,13 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
     case FrameFuncallOperands(f @ _, fexp, cur, args, Nil, env @ _) =>
       /** We have evaluated all arguments to a function call, we proceed with actually
         * calling the function. */
-      evalCall(f, fexp, ((cur, v) :: args).reverse, store, t)
+      Action.Call(f, fexp, ((v,cur) :: args).reverse, store)
     case FrameFuncallOperands(f @ _, fexp, cur, args, argtoeval :: argstoeval, env) =>
       /** We have evaluated some of the arguments to a function call but not all, we
         * proceed with the evaluating the rest of the arguments, again pushing a
         * `FrameFuncallOperands` frame on the stack. */
       Action.Push(
-        FrameFuncallOperands(f, fexp, argtoeval, (cur, v) :: args, argstoeval, env),
+        FrameFuncallOperands(f, fexp, argtoeval, (v, cur) :: args, argstoeval, env),
         argtoeval,
         env,
         store
@@ -159,33 +159,33 @@ case class LambdaSemantics[V, A <: Address, T, C](allocator: Allocator[A, T, C])
     * `fexp` has been evaluated to the value `f`, and the arguments have been
     * evaluated to the values contained in `argsv`. We need the store to
     * evaluate this call. */
-  def evalCall(
+  def stepCall(
       f: V,
       fexp: LambdaExp,
-      argsv: List[(LambdaExp, V)],
+      argsv: List[(V, LambdaExp)],
       store: Store[A, V],
       t: T
   ): Set[Action.A] =
     LambdaLattice[V, A]
-      .closures(f) /* We extract all the closures contained in the lattice value `f` */
+      .closures(f) // We extract all the closures contained in the lattice value `f`
       .map({
-        /* A closure `clo` is a pairing of a lambda function and a definition environment */
+        /** A closure `clo` is a pairing of a lambda function and a definition environment */
         case clo @ (LambdaFun(args, body, pos @ _), defenv) =>
           if (args.length == argsv.length) {
-            /* We have the right number of arguments. We bind the arguments in the
+            /** We have the right number of arguments. We bind the arguments in the
              * definition environment and in the store, and step in the function
              * with the `StepIn` action, with the extended environment
              * `callenv` and updated store `store2`. */
-            val (callenv, store2) = bindArgs(args.zip(argsv.map(_._2)), defenv, store, t)
+            val (callenv, store2) = bindArgs(args.zip(argsv.map(_._1)), defenv, store, t)
             Action.StepIn(fexp, clo, body, callenv, store2)
           } else {
-            /* We don't have the expected number of arguments, throw an arity error. The
+            /** We don't have the expected number of arguments, throw an arity error. The
              * error is no actually thrown, but rather will be represented in
              * the state graph, so there is a specific action for that. */
             Action.Err(ArityError(fexp, args.length, argsv.length))
           }
         case (lam, _) =>
-          /* We called a value that is not a closure. This can't happen for our simple
+          /** We called a value that is not a closure. This can't happen for our simple
            * lambda-calculus, but could happen if we were to extend it with
            * other values such as integers, and calling e.g. `(1 x)` */
           Action.Err(TypeError(lam, "closure", "not a closure"))

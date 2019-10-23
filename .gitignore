@@ -1,7 +1,11 @@
 /.d8_history
 /.ensime
+/.metals
 /TODO.org
 *target/
+/project/project
+/project/.bloop
+/.bloop
 .ensime_cache
 *.dot
 *.log

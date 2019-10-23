@@ -32,7 +32,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
   // setup initial environment and install the primitives in the global store
   def initialEnv = Environment.initial(schemeSemantics.initialEnv)
-  schemeSemantics.initialStore.foreach { case (a,v) => store(a) = v }
+  schemeSemantics.initialStore.foreach { case (a,v) => store = store + (a -> v) }
   // in ModF, components are function calls in some context
   trait IntraComponent {
     def env: Environment[Addr]
@@ -44,7 +44,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
   case class CallComponent(lambda: SchemeLambda, env: Environment[Addr], nam: Option[String], ctx: Context) extends IntraComponent {
     override def toString = nam match {
       case None => s"anonymous@${lambda.pos} [${ctx.toString()}]"
-      case Some(name) => name
+      case Some(name) => s"$name [${ctx.toString()}]"
     }
   }
   lazy val initialComponent = MainComponent
@@ -181,11 +181,15 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
       applyFun(fun,funVal,args.zip(argVals))
     }
     // apply
-    private def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value = {
-      val fromClosures = applyClosures(fval,args.map(_._2))
-      val fromPrimitives = applyPrimitives(fexp,fval,args)
-      lattice.join(fromClosures,fromPrimitives)
-    }
+    private def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+      if(args.forall(_._2 != lattice.bottom)) {
+        val fromClosures = applyClosures(fval,args.map(_._2))
+        val fromPrimitives = applyPrimitives(fexp,fval,args)
+        lattice.join(fromClosures,fromPrimitives)
+      } else {
+        lattice.bottom
+      }
+
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyClosures(fun: Value, args: List[Value]): Value = {
       val arity = args.length

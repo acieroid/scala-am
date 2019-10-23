@@ -2,8 +2,7 @@ package scalaam.modular
 
 import core.Annotations.mutable
 import scalaam.core._
-
-import scala.collection.mutable._
+import scalaam.util.MonoidImplicits._
 
 trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
 
@@ -11,7 +10,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   type LocalAddr <: Address
   // parameterized by a type that represents abstract values
   type Value
-  val lattice: Lattice[Value]
+  implicit val lattice: Lattice[Value]
 
   // addresses in the global analysis are (local) addresses of the intra-analysis + the component
   trait Addr extends Address {
@@ -22,18 +21,18 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   case class ComponentAddr(component: IntraComponent, addr: LocalAddr) extends Addr
 
   // the global store of the analysis
-  @mutable val store = Map[Addr,Value]().withDefaultValue(lattice.bottom)
+  @mutable var store = Map[Addr,Value]().withDefaultValue(lattice.bottom)
   private def updateAddr(addr: Addr, value: Value): Boolean = store.get(addr) match {
     case None if value == lattice.bottom =>
       false
     case None =>
-      store(addr) = value
-      true
+      store = store + (addr -> value)
+      return true
     case Some(oldValue) =>
       val newValue = lattice.join(oldValue,value)
-      if (newValue == oldValue) return false
-      store(addr) = newValue
-      true
+      if (newValue == oldValue) { return false }
+      store = store + (addr -> newValue)
+      return true
   }
 
   // Dependency that is triggered when an abstract value at address 'addr' is updated
@@ -61,4 +60,23 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
         if (updateAddr(addr,value)) // If the value in the store changed, trigger the dependency.
           triggerDependency(ReadWriteDependency(addr))
     }
+}
+
+trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] {
+  // alpha definition for addresses and effects
+  def alphaAddr(addr: Addr): Addr = addr match {
+    case GlobalAddr(_) => addr
+    case ComponentAddr(cmp,localAddr) => ComponentAddr(alpha(cmp),localAddr)
+  }
+  override def alphaDep(dep: Dependency): Dependency = dep match {
+    case ReadWriteDependency(addr) => ReadWriteDependency(alphaAddr(addr))
+    case _ => super.alphaDep(dep)
+  }
+  // requires an implementation of alpha for the abstract domain
+  def alphaValue(value: Value): Value
+  // when abstraction map changes, need to update the store
+  override def onAlphaChange() = {
+    super.onAlphaChange()
+    store = alphaMap(alphaAddr,alphaValue)(store)
+  }
 }
