@@ -34,7 +34,6 @@ trait ConstantPropagationDomain {
   lazy val lattice = valueLattice.schemeLattice
 }
 
-
 /* A powerset lattice for ModF */
 trait PowersetDomain {
   this: ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] =>
