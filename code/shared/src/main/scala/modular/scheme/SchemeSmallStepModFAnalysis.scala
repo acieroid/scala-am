@@ -91,10 +91,10 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
       override def label = toString
       override def color: Color = control match {
         case ControlEval(_, _)        => Colors.Blue
-        case ControlCall(_, _, _)     => Colors.Pink
+        case ControlCall(_, _, _)     => Colors.White
         case ControlKont(_) if halted => Colors.Grass
         case ControlKont(_)           => Colors.Yellow
-        case ControlError(_)          => Colors.Red
+        case ControlError(_)          => Colors.Pink
       }
       override def metadata =
         GraphMetadataMap(
@@ -190,9 +190,9 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
             pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par),arg,component) }
             Action.Value(result, StoreAdapter)
           case ((SchemeLambda(pars,_,_), _), _) =>
-            Action.Err(sem.ArityError(fexp, pars.length, args.length))
+            Action.Err(ArityError(fexp, pars.length, args.length))
           case ((lambda,env1),_) =>
-            Action.Err(sem.TypeError("operator expected to be a closure, but is not", lattice.closure((lambda, env1), None)))
+            Action.Err(TypeError("operator expected to be a closure, but is not", lattice.closure((lambda, env1), None)))
       }
 
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(Value,SchemeExp)]): Set[Action.A] =

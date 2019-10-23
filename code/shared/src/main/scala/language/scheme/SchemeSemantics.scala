@@ -24,11 +24,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   type Sto     = Store[A, V]
   type Actions = Set[Action.A]
 
-  case class ArityError(call: SchemeExp, expected: Int, got: Int) extends Error
-  /** TODO[medium]: TypeError is defined both in MakeSchemeLattice and here, define it only in one place */
-  case class TypeError(message: String, on: V) extends Error
-  case class NotSupported(message: String)     extends Error
-
   trait SchemeFrame extends Frame {
     override def toString = s"${this.getClass.getSimpleName}"
   }

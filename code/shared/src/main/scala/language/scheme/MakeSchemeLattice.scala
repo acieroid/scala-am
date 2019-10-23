@@ -26,8 +26,6 @@ class MakeSchemeLattice[
     C: CharLattice,
     Sym: SymbolLattice
 ] {
-  case class TypeError(message: String, on: Value)                           extends Error
-  case class OperatorNotApplicable(operator: String, arguments: List[Value]) extends Error
 
   /** We first implement all possible operations on single values, that can be
     * only joined when compatible. This therefore is not a lattice but will be
