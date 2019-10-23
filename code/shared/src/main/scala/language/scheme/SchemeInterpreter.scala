@@ -319,11 +319,11 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       /* [x]  with-output-to-file: File Ports */
       /* [x]  write-char: Writing */
       Zerop, /* [vv] zero?: Comparison */
-      // TODO LessThan, /* [vv]  < */
-      // TODO LessOrEqual, /* [vv]  <= */
-      // TODO NumEq, /* [vv]  = */
-      // TODO GreaterThan, /* [vv]  > */
-      // TODO GreaterOrEqual, /* [vv]  >= */
+      LessThan, /* [vv]  < */
+      LessOrEqual, /* [vv]  <= */
+      NumEq, /* [vv]  = */
+      GreaterThan, /* [vv]  > */
+      GreaterOrEqual, /* [vv]  >= */
       /* [x]  numerator */
       /* [x]  denominator */
       /* [x]  rationalize-string */
@@ -610,6 +610,76 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       def call(args: List[Value]) = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(gcd(x, y))
         case _ => throw new Exception(s"gcd: invalid arguments $args")
+      }
+    }
+
+    object LessThan extends Prim {
+      val name = "<"
+      def call(args: List[Value]) = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
+        case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x < y)
+        case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
+        case Value.Real(x) :: Value.Real(y) :: Nil => Value.Bool(x < y)
+        case _ => throw new Exception(s"<: invalid arguments $args")
+      }
+    }
+
+    object LessOrEqual extends Prim {
+      val name = "<="
+      def call(args: List[Value]) = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
+        case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x <= y)
+        case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
+        case Value.Real(x) :: Value.Real(y) :: Nil => Value.Bool(x <= y)
+        case _ => throw new Exception(s"<=: invalid arguments $args")
+      }
+    }
+
+    object GreaterThan extends Prim {
+      val name = ">"
+      def call(args: List[Value]) = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
+        case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x > y)
+        case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
+        case Value.Real(x) :: Value.Real(y) :: Nil => Value.Bool(x > y)
+        case _ => throw new Exception(s">: invalid arguments $args")
+      }
+    }
+
+    object GreaterOrEqual extends Prim {
+      val name = ">="
+      def call(args: List[Value]) = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
+        case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x >= y)
+        case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
+        case Value.Real(x) :: Value.Real(y) :: Nil => Value.Bool(x >= y)
+        case _ => throw new Exception(s">=: invalid arguments $args")
+      }
+    }
+
+    object NumEq extends Prim {
+      val name = "="
+      def numEqInt(first: Int, l: List[Value]): Value = l match {
+        case Nil => Value.Bool(true)
+        case Value.Integer(x) :: rest if x == first => numEqInt(first, rest)
+        case (_: Value.Integer) :: _ => Value.Bool(false)
+        case Value.Real(x) :: rest if x == first => numEqInt(first, rest)
+        case (_: Value.Real) :: _ => Value.Bool(false)
+        case _ => throw new Exception(s"=: invalid type of arguments $l")
+      }
+      def numEqReal(first: Double, l: List[Value]): Value = l match {
+        case Nil => Value.Bool(true)
+        case Value.Integer(x) :: rest if x == first => numEqReal(first, rest)
+        case (_: Value.Integer) :: _ => Value.Bool(false)
+        case Value.Real(x) :: rest if x == first => numEqReal(first, rest)
+        case (_: Value.Real) :: _ => Value.Bool(false)
+        case _ => throw new Exception(s"=: invalid type of arguments $l")
+      }
+      def call(args: List[Value]) = args match {
+        case Nil => Value.Bool(true)
+        case Value.Integer(x) :: rest => numEqInt(x, rest)
+        case Value.Real(x) :: rest => numEqReal(x, rest)
+        case _ => throw new Exception(s"=: invalid type of arguments $args")
       }
     }
 
