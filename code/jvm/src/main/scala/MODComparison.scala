@@ -4,7 +4,10 @@ import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
 import modular.scheme.SchemeSmallStepModFAnalysis
-import scalaam.language.scheme.{SchemeExp, SchemeParser}
+import scalaam.core._
+import scalaam.language.scheme.SchemeInterpreter.Value
+import scalaam.language.scheme.SchemeInterpreter.Value._
+import scalaam.language.scheme.{SchemeExp, SchemeInterpreter, SchemeLattice, SchemeParser, SchemeUndefiner}
 import scalaam.modular.scheme.{ConstantPropagationDomain, FullArgumentSensitivity, SchemeModFAnalysis}
 
 object MODComparison extends App {
@@ -210,6 +213,29 @@ object MODComparison extends App {
     outputDir + format.format(now) + name + suffix
   }
 
+  def checkSubsumption[A, L](v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v match {
+      case Value.Undefined(_) => true
+      case Value.Unbound(_)   => true
+      case Clo(_, _)          => lat.getClosures(abs).nonEmpty
+      case Primitive(p)       => lat.subsumes(abs, lat.primitive(p))
+      case Str(s)             => lat.subsumes(abs, lat.string(s))
+      case Symbol(s)          => lat.subsumes(abs, lat.symbol(s))
+      case Integer(i)         => lat.subsumes(abs, lat.number(i))
+      case Real(r)            => lat.subsumes(abs, lat.real(r))
+      case Bool(b)            => lat.subsumes(abs, lat.bool(b))
+      case Character(c)       => lat.subsumes(abs, lat.char(c))
+      case Nil                => lat.subsumes(abs, lat.nil)
+      case Cons(_, _)         => lat.getPointerAddresses(abs).nonEmpty
+      // case Quoted(q)          => ??? // TODO is this correct?
+      case Vector(_)          => lat.getPointerAddresses(abs).nonEmpty
+      case v                  => throw new Exception(s"Unknown concrete value type: $v")
+    }
+
+  def check[A, L](name: String, v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
+    if (!checkSubsumption(v, p, lat, abs))
+      displayErr(s"$name: subsumption check failed: $v > $abs at $p.\n")
+  }
+
   def forFile(file: String): Unit = try {
     display(file + "\n")
 
@@ -224,9 +250,17 @@ object MODComparison extends App {
     if (bS.allComponents.size != sS.allComponents.size)
       displayErr(s"Different number of components! bS: ${bS.allComponents.size} / sS: ${sS.allComponents.size}.\n")
     if (bSStore.keySet.size != sSStore.keySet.size)
-      System.err.println(s"Different store keyset sizes! bS: ${bSStore.keySet.size} / sS: ${sSStore.keySet.size}.")
+      displayErr(s"Different store keyset sizes! bS: ${bSStore.keySet.size} / sS: ${sSStore.keySet.size}.\n")
     if (bSDeps.values.size != sSDeps.values.size)
-      System.err.println(s"Different depencendy keyset sizes! bS: ${bSDeps.keySet.size} / sS: ${sSDeps.keySet.size}.")
+      displayErr(s"Different dependency keyset sizes! bS: ${bSDeps.keySet.size} / sS: ${sSDeps.keySet.size}.\n")
+
+    val interpreter = new SchemeInterpreter({(pos, v) =>
+      check("SmallStep", v, pos, sS.lattice, ???)
+      check("BigStep", v, pos, bS.lattice, ???)
+    })
+    val res = interpreter.run(SchemeUndefiner.undefine(List(program)))
+    println(s"Result: $res")
+
   } catch {
     case e: Throwable => e.printStackTrace()
       println()
