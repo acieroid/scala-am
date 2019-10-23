@@ -8,10 +8,11 @@ import scalaam.modular._
 abstract class SchemeModFAnalysis(program: SchemeExp)
   extends ModAnalysis[SchemeExp](program) with GlobalStore[SchemeExp] with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
-  trait LocalAddr extends Address
-  case class VarAddr(id: Identifier)          extends LocalAddr { def printable = true  }
-  case class PtrAddr[E <: Expression](exp: E) extends LocalAddr { def printable = false }
-  case class PrmAddr(name: String)            extends LocalAddr { def printable = false }
+  trait LocalAddr extends Address { val pos: Position }
+  case class NoAddr()(val pos: Position = Position.none)         extends LocalAddr { def printable = false }
+  case class VarAddr(id: Identifier)(val pos: Position)          extends LocalAddr { def printable = true  }
+  case class PtrAddr[E <: Expression](exp: E)(val pos: Position) extends LocalAddr { def printable = false }
+  case class PrmAddr(name: String)(val pos: Position)            extends LocalAddr { def printable = false }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
   // the 'result' of a component is just the return value of the function call
@@ -24,10 +25,10 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
     def tick(cmp: IntraAnalysis) = throw new Exception("Operation not allowed!")
   }
   // The AllocAdapter makes sure the right dependencies are registered upon address allocation.
-  case object AllocAdapter extends Allocator[Addr,IntraAnalysis,Unit] {
-    def variable(id: Identifier, intra: IntraAnalysis): Addr         = intra.allocAddr(VarAddr(id))
-    def pointer[E <: Expression](exp: E, intra: IntraAnalysis): Addr = intra.allocAddr(PtrAddr(exp))
-    def primitive(name: String): Addr                                = GlobalAddr(PrmAddr(name))
+  case object AllocAdapter extends Allocator[Addr, IntraAnalysis, Unit] {
+    def variable(id: Identifier, intra: IntraAnalysis): Addr         = intra.allocAddr(VarAddr(id)(id.pos))
+    def pointer[E <: Expression](exp: E, intra: IntraAnalysis): Addr = intra.allocAddr(PtrAddr(exp)(exp.pos))
+    def primitive(name: String): Addr                                = GlobalAddr(PrmAddr(name)(Position.none))
   }
   lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
   // setup initial environment and install the primitives in the global store
@@ -100,7 +101,7 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
         val carv = evalQuoted(car)
         val cdrv = evalQuoted(cdr)
         val pair = lattice.cons(carv,cdrv)
-        val addr = allocAddr(PtrAddr(quoted))
+        val addr = allocAddr(PtrAddr(quoted)(quoted.pos))
         writeAddr(addr,pair)
         lattice.pointer(addr)
       case sexp.SExpQuoted(q,pos)   =>
@@ -226,17 +227,17 @@ abstract class SchemeModFAnalysis(program: SchemeExp)
       lattice.join(csqVal,altVal)
     }
     private def bind(vrb: Identifier, vlu: Value): Addr  = {
-      val addr = allocAddr(VarAddr(vrb))
+      val addr = allocAddr(VarAddr(vrb)(vrb.pos))
       env = env.extend(vrb.name,addr)
       writeAddr(addr,vlu)
       addr
     }
     private def bindPars(pars: List[Identifier]) = pars.foreach { par =>
-      val addr = allocAddr(VarAddr(par))
+      val addr = allocAddr(VarAddr(par)(par.pos))
       env = env.extend(par.name,addr)
     }
     private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) = pars.zip(args).foreach { case (par,arg) =>
-      val localAddr = VarAddr(par)
+      val localAddr = VarAddr(par)(par.pos)
       writeAddr(localAddr,arg,component)
     }
     // primitives glue code

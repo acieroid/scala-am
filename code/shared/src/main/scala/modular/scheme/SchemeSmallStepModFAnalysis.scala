@@ -12,10 +12,11 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
   with GlobalStore[SchemeExp]
   with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
-  trait LocalAddr extends Address
-  case class VarAddr(id: Identifier)          extends LocalAddr { def printable = true  }
-  case class PtrAddr[E <: Expression](exp: E) extends LocalAddr { def printable = false }
-  case class PrmAddr(name: String)            extends LocalAddr { def printable = false }
+  trait LocalAddr extends Address { val pos: Position }
+  case class NoAddr()(val pos: Position = Position.none)         extends LocalAddr { def printable = false }
+  case class VarAddr(id: Identifier)(val pos: Position)          extends LocalAddr { def printable = true  }
+  case class PtrAddr[E <: Expression](exp: E)(val pos: Position) extends LocalAddr { def printable = false }
+  case class PrmAddr(name: String)(val pos: Position)            extends LocalAddr { def printable = false }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
   // the 'result' of a component is just the return value of the function call
@@ -29,9 +30,9 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
   }
   // The AllocAdapter makes sure the right dependencies are registered upon address allocation.
   case object AllocAdapter extends Allocator[Addr, IntraAnalysis, Unit] {
-    def variable(id: Identifier, intra: IntraAnalysis): Addr         = intra.allocAddr(VarAddr(id))
-    def pointer[E <: Expression](exp: E, intra: IntraAnalysis): Addr = intra.allocAddr(PtrAddr(exp))
-    def primitive(name: String): Addr                                = GlobalAddr(PrmAddr(name))
+    def variable(id: Identifier, intra: IntraAnalysis): Addr         = intra.allocAddr(VarAddr(id)(id.pos))
+    def pointer[E <: Expression](exp: E, intra: IntraAnalysis): Addr = intra.allocAddr(PtrAddr(exp)(exp.pos))
+    def primitive(name: String): Addr                                = GlobalAddr(PrmAddr(name)(Position.none))
   }
   lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
   // setup initial environment and install the primitives in the global store
@@ -187,7 +188,7 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
             val context = allocCtx(lambda,env1,args)
             val component = CallComponent(lambda,env1,nam,context)
             val result = call(component)
-            pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par),arg,component) }
+            pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par)(par.pos),arg,component) }
             Action.Value(result, StoreAdapter)
           case ((SchemeLambda(pars,_,_), _), _) =>
             Action.Err(ArityError(fexp, pars.length, args.length))
@@ -207,7 +208,7 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
       val env = component match {
         case MainComponent => initialEnv
         case CallComponent(SchemeLambda(pars,_,_),lex,_,_) =>
-          pars.foldLeft(lex)((acc,par) => acc.extend(par.name,allocAddr(VarAddr(par))))
+          pars.foldLeft(lex)((acc,par) => acc.extend(par.name,allocAddr(VarAddr(par)(par.pos))))
       }
       val state: State = State(ControlEval(exp, env), Store.empty[KAddr, Set[Kont]], HaltKontAddr, this)
       var work: Set[State] = Set[State](state)

@@ -213,7 +213,7 @@ object MODComparison extends App {
     outputDir + format.format(now) + name + suffix
   }
 
-  def checkSubsumption[A, L](v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v match {
+  def checkSubsumption[A <: Address, L](v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v match {
       case Value.Undefined(_) => true
       case Value.Unbound(_)   => true
       case Clo(_, _)          => lat.getClosures(abs).nonEmpty
@@ -231,7 +231,7 @@ object MODComparison extends App {
       case v                  => throw new Exception(s"Unknown concrete value type: $v")
     }
 
-  def check[A, L](name: String, v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
+  def check[A <: Address, L](name: String, v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
     if (!checkSubsumption(v, p, lat, abs))
       displayErr(s"$name: subsumption check failed: $v > $abs at $p.\n")
   }
@@ -255,8 +255,12 @@ object MODComparison extends App {
       displayErr(s"Different dependency keyset sizes! bS: ${bSDeps.keySet.size} / sS: ${sSDeps.keySet.size}.\n")
 
     val interpreter = new SchemeInterpreter({(pos, v) =>
-      check("SmallStep", v, pos, sS.lattice, ???)
-      check("BigStep", v, pos, bS.lattice, ???)
+      val sSAddr = sSStore.keySet.filter(_.addr.pos == pos)
+      //val bSAddr = bSStore.keySet.filter(_.addr.pos == pos)
+      println(sSAddr)
+      val sSValues = sSAddr.map(sSStore.getOrElse(_, sS.lattice.bottom))
+      check("SmallStep", v, pos, sS.lattice, sSValues.foldLeft(sS.lattice.bottom)((a, b) => sS.lattice.join(a, b)))
+      //check("BigStep", v, pos, bS.lattice, bSStore.getOrElse(bSStore.keySet.find(a => a.addr.pos == pos).getOrElse(bS.GlobalAddr(bS.NoAddr()(Position.none))), bS.lattice.top))
     })
     val res = interpreter.run(SchemeUndefiner.undefine(List(program)))
     println(s"Result: $res")
