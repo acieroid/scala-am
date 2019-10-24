@@ -6,7 +6,7 @@ import java.util.{Calendar, Date}
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Value
 import scalaam.language.scheme.SchemeInterpreter.Value._
-import scalaam.language.scheme.{SchemeExp, SchemeLattice, SchemeParser}
+import scalaam.language.scheme.{SchemeExp, SchemeInterpreter, SchemeLattice, SchemeParser, SchemeUndefiner}
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
 
@@ -213,7 +213,7 @@ object MODComparison extends App {
     outputDir + format.format(now) + name + suffix
   }
 
-  def checkSubsumption[A <: Address, L](v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v match {
+  def checkSubsumption[A <: Address, L](v: Value, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v match {
       case Value.Undefined(_) => true
       case Value.Unbound(_)   => true
       case Clo(_, _)          => lat.getClosures(abs).nonEmpty
@@ -231,8 +231,27 @@ object MODComparison extends App {
     }
 
   def check[A <: Address, L](name: String, v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
-    if (!checkSubsumption(v, p, lat, abs))
+    if (!checkSubsumption(v, lat, abs))
       displayErr(s"$name: subsumption check failed: $v > $abs at $p.\n")
+  }
+
+  def forMachine(machine: ModAnalysis[SchemeExp] with FullArgumentSensitivity with ConstantPropagationDomain): Map[Position, machine.Value] = {
+    machine.analyze()
+
+    val deps  = machine.deps
+    val store = machine.store
+
+    val pMap: Map[Position, machine.Value] = store.groupBy({_._1 match {
+      case machine.GlobalAddr(addr)       => addr.pos()
+      case machine.ComponentAddr(_, addr) => addr.pos()
+      case _                              => Position.none
+    }}).mapValues(_.values.foldLeft(machine.lattice.bottom)((a, b) => machine.lattice.join(a, b)))
+
+    displayErr(s"Number of components: ${machine.allComponents.size}.\n")
+    displayErr(s"Store keyset size ${store.keySet.size}.\n")
+    displayErr(s"Dependency keyset size: ${deps.keySet.size}.\n")
+
+    pMap
   }
 
   def forFile(file: String): Unit = try {
@@ -242,32 +261,16 @@ object MODComparison extends App {
     val bStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics
     val sStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics
 
-    //bStep.analyze()
-    //sStep.analyze()
+    val bMap: Map[Position, bStep.Value] = forMachine(bStep)
+    val sMap: Map[Position, sStep.Value] = forMachine(sStep)
 
-    val bStepDeps  = bStep.deps
-    val sStepDeps  = sStep.deps
-    val bStepStore = bStep.store
-    val sStepStore = sStep.store
-
-    val diff = bStep.allComponents.asInstanceOf[Set[SchemeModFSemantics#IntraComponent]] -- sStep.allComponents.asInstanceOf[Set[SchemeModFSemantics#IntraComponent]]
-    diff.foreach { d => println(d.toString()); println() }
-
-    displayErr(s"Number of components\n* bStep: ${bStep.allComponents.size}\n* sStep: ${sStep.allComponents.size}.\n")
-    displayErr(s"Store keyset size\n* bStep: ${bStepStore.keySet.size}\n* sStep: ${sStepStore.keySet.size}.\n")
-    displayErr(s"Dependency keyset size\n* bStep: ${bStepDeps.keySet.size}\n* sStep: ${sStepDeps.keySet.size}.\n")
-
-    //sStepStore.keySet.foreach(k => display(s"$k => ${sStepStore(k)}\n"))
-    //val interpreter = new SchemeInterpreter({(pos, v) =>
-      //val sSAddr = sStepStore.keySet.filter(_.addr.pos == pos)
-      //val bSAddr = bStepStore.keySet.filter(_.addr.pos == pos)
-      //println(s"$v@$pos --> $sSAddr")
-      //val sSValues = sSAddr.map(sStepStore.getOrElse(_, sStep.lattice.bottom))
-      //check("SmallStep", v, pos, sStep.lattice, sSValues.foldLeft(sStep.lattice.bottom)((a, b) => sStep.lattice.join(a, b)))
-      //check("BigStep", v, pos, bStep.lattice, bStepStore.getOrElse(bStepStore.keySet.find(a => a.addr.pos == pos).getOrElse(bStep.GlobalAddr(bStep.NoAddr()(Position.none))), bStep.lattice.top))
-    //})
-    //val res = interpreter.run(SchemeUndefiner.undefine(List(program)))
-    //println(s"Result: $res")
+    val interpreter = new SchemeInterpreter({(pos, v) =>
+      println(s"$v@$pos")
+      check("BigStep", v, pos, bStep.lattice, bMap(pos))
+      check("SmallStep", v, pos, sStep.lattice, sMap(pos))
+    })
+    val res = interpreter.run(SchemeUndefiner.undefine(List(program)))
+    println(s"Result: $res")
 
   } catch {
     case e: Throwable => e.printStackTrace()
