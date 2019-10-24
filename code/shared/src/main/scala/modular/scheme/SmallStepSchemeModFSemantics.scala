@@ -7,6 +7,8 @@ import scalaam.util.Show
 
 /** MODF analysis using an AAM intra-component analysis. */
 trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
+  // undefine the original program
+  val undefinedProgram = SchemeUndefiner.undefine(List(program))
   // defining the intraAnalysis
   // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
@@ -154,7 +156,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     // analysis entry point
     def analyze(): Unit = {
       val exp = component match {
-        case MainComponent => program
+        case MainComponent => undefinedProgram
         case CallComponent(SchemeLambda(_,body,_),_,_,_) => SchemeBody(body)
       }
       val env = component match {
