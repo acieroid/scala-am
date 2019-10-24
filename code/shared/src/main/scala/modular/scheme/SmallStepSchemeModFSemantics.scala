@@ -1,63 +1,16 @@
-package modular.scheme
+package scalaam.modular.scheme
 
 import scalaam.core._
 import scalaam.graph.{Color, Colors, GraphElement, GraphMetadataBool, GraphMetadataMap, GraphMetadataString, GraphMetadataValue}
 import scalaam.language.scheme._
-import scalaam.modular._
 import scalaam.util.Show
 
 /** MODF analysis using an AAM intra-component analysis. */
-abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
-  extends ModAnalysis[SchemeExp](SchemeUndefiner.undefine(List(originalProgram)))
-  with GlobalStore[SchemeExp]
-  with ReturnResult[SchemeExp] {
-  // local addresses are simply made out of lexical information
-  trait LocalAddr extends Address { val pos: Position }
-  case class NoAddr()(val pos: Position = Position.none)         extends LocalAddr { def printable = false }
-  case class VarAddr(id: Identifier)(val pos: Position)          extends LocalAddr { def printable = true  }
-  case class PtrAddr[E <: Expression](exp: E)(val pos: Position) extends LocalAddr { def printable = false }
-  case class PrmAddr(name: String)(val pos: Position)            extends LocalAddr { def printable = false }
-  // abstract values come from a Scala-AM Scheme lattice (a type lattice)
-  implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
-  // the 'result' of a component is just the return value of the function call
-  type Result = Value
-  lazy val emptyResult: Value = lattice.bottom
-  // Some glue code to Scala-AM to reuse the primitives and environment
-  // not actually used, but required by the interface of SchemeSemantics
-  implicit case object TimestampAdapter extends Timestamp[IntraAnalysis,Unit] {
-    def initial(s: String)       = throw new Exception("Operation not allowed!")
-    def tick(cmp: IntraAnalysis) = throw new Exception("Operation not allowed!")
-  }
-  // The AllocAdapter makes sure the right dependencies are registered upon address allocation.
-  case object AllocAdapter extends Allocator[Addr, IntraAnalysis, Unit] {
-    def variable(id: Identifier, intra: IntraAnalysis): Addr         = intra.allocAddr(VarAddr(id)(id.pos))
-    def pointer[E <: Expression](exp: E, intra: IntraAnalysis): Addr = intra.allocAddr(PtrAddr(exp)(exp.pos))
-    def primitive(name: String): Addr                                = GlobalAddr(PrmAddr(name)(Position.none))
-  }
-  lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
-  // setup initial environment and install the primitives in the global store
-  def initialEnv: Environment[Addr] = Environment.initial(schemeSemantics.initialEnv)
-  schemeSemantics.initialStore.foreach { case (a,v) => store = store + (a -> v) }
-  // in ModF, components are function calls in some context
-  trait IntraComponent
-  case object MainComponent extends IntraComponent {
-    override def toString = "main"
-  }
-  case class CallComponent(lambda: SchemeLambda, env: Environment[Addr], nam: Option[String], ctx: Context) extends IntraComponent {
-    override def toString: String = nam match {
-      case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
-      case Some(name) => s"$name [${ctx.toString}]"
-    }
-  }
-
-  lazy val initialComponent: IntraComponent = MainComponent
-  // this abstract class is parameterized by the choice of Context and allocation strategy of Contexts
-  type Context
-  def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]): Context
-  // defining the intra-analysis
-  override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
+trait SchemeSmallStepModFSemantics extends SchemeModFSemantics {
+  // defining the intraAnalysis
   // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).
-  class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with GlobalStoreIntra with ReturnResultIntra {
+  override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
+  class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
     trait Control extends SmartHash
     case class ControlEval(exp: SchemeExp, env: Environment[Addr]) extends Control {
       override def toString = s"ev($exp)"
@@ -82,8 +35,7 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
       def show(k: Kont) = "kont($f)"
     }
     type KStore = Store[KAddr, Set[Kont]]
-    val sem = new BaseSchemeSemantics[Addr, Value, IntraAnalysis, Unit](AllocAdapter)
-    val Action = sem.Action
+    val Action = schemeSemantics.Action
 
     // State in the small-step semantics.
     case class State(control: Control, kstore: KStore, a: KAddr, ctx: IntraAnalysis) extends GraphElement with SmartHash {
@@ -159,13 +111,13 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
        */
       def step(): Set[State] = control match {
         /** In a eval state, call the semantic's evaluation method */
-        case ControlEval(e, env) => integrate(a, sem.stepEval(e, env, StoreAdapter, ctx))
+        case ControlEval(e, env) => integrate(a, schemeSemantics.stepEval(e, env, StoreAdapter, ctx))
         /** In a continuation state, call the semantics' continuation method */
         case ControlKont(v) =>
           kstore.lookup(a) match {
             case Some(konts) =>
               konts.flatMap({
-                case Kont(frame, next) => integrate(next, sem.stepKont(v, frame, StoreAdapter, ctx))
+                case Kont(frame, next) => integrate(next, schemeSemantics.stepKont(v, frame, StoreAdapter, ctx))
               })
             case None => Set()
           }
@@ -197,7 +149,7 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
       }
 
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(Value,SchemeExp)]): Set[Action.A] =
-      lattice.getPrimitives[sem.Primitive](fval).flatMap(prim => prim.callAction(fexp, args.map(_.swap), StoreAdapter, this))
+      lattice.getPrimitives[schemeSemantics.Primitive](fval).flatMap(prim => prim.callAction(fexp, args.map(_.swap), StoreAdapter, this))
 
     // analysis entry point
     def analyze(): Unit = {
@@ -213,7 +165,7 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
       val state: State = State(ControlEval(exp, env), Store.empty[KAddr, Set[Kont]], HaltKontAddr, this)
       var work: Set[State] = Set[State](state)
       var visited: Set[State] = Set[State]()
-      var result: Value = emptyResult
+      var result: Value = lattice.bottom
       while(work.nonEmpty) {
         val state = work.head
         work = work.tail
@@ -225,21 +177,7 @@ abstract class SchemeSmallStepModFAnalysis(originalProgram: SchemeExp)
         }
         visited += state
       }
-      updateResult(result)
-    }
-
-    // primitives glue code
-    // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
-    case object StoreAdapter extends Store[Addr,Value] {
-      def lookup(a: Addr)                       = Some(readAddr(a))
-      def extend(a: Addr, v: Value)             = { writeAddr(a,v) ; this }
-      // all the other operations should not be used by the primitives ...
-      def content                               = throw new Exception("Operation not allowed!")
-      def keys                                  = throw new Exception("Operation not allowed!")
-      def restrictTo(a: Set[Addr])              = throw new Exception("Operation not allowed!")
-      def forall(p: ((Addr, Value)) => Boolean) = throw new Exception("Operation not allowed!")
-      def join(that: Store[Addr, Value])        = throw new Exception("Operation not allowed!")
-      def subsumes(that: Store[Addr, Value])    = throw new Exception("Operation not allowed!")
+      writeResult(result)
     }
   }
 }
