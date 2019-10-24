@@ -213,7 +213,7 @@ object MODComparison extends App {
     outputDir + format.format(now) + name + suffix
   }
 
-  def checkSubsumption[A <: Address, L](v: Value, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v match {
+  def checkSubsumption[A <: Address, L](v: Set[Value], lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v.forall( _ match {
       case Value.Undefined(_) => true
       case Value.Unbound(_)   => true
       case Clo(_, _)          => lat.getClosures(abs).nonEmpty
@@ -228,9 +228,9 @@ object MODComparison extends App {
       case Cons(_, _)         => lat.getPointerAddresses(abs).nonEmpty
       case Vector(_)          => lat.getPointerAddresses(abs).nonEmpty
       case v                  => throw new Exception(s"Unknown concrete value type: $v")
-    }
+    })
 
-  def check[A <: Address, L](name: String, v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
+  def check[A <: Address, L](name: String, v: Set[Value], p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
     if (!checkSubsumption(v, lat, abs))
       displayErr(s"$name: subsumption check failed: $v > $abs at $p.\n")
   }
@@ -258,20 +258,20 @@ object MODComparison extends App {
     display(file + "\n")
 
     val program = readFile(file)
-    //val bStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics
+    val bStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics
     val sStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics
 
-    //val bMap: Map[Position, bStep.Value] = forMachine(bStep)
+    val bMap: Map[Position, bStep.Value] = forMachine(bStep)
     val sMap: Map[Position, sStep.Value] = forMachine(sStep)
 
-    var cMap: Map[Position, Value] = Map()
-    val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> v))
+    var cMap: Map[Position, Set[Value]] = Map().withDefaultValue(Set())
+    val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)))
     interpreter.run(SchemeUndefiner.undefine(List(program)))
 
-    println(cMap.keySet)
-    println(cMap.keySet -- sMap.keySet)
-    println(sMap.keySet -- cMap.keySet)
-    println(sMap.keySet)
+    for (elem <- cMap.keySet) {
+      check("big", cMap(elem), elem, bStep.lattice, bMap(elem))
+      check("small", cMap(elem), elem, sStep.lattice, sMap(elem))
+    }
 
   } catch {
     case e: Throwable => e.printStackTrace()

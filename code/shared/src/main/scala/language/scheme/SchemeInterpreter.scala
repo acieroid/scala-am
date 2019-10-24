@@ -39,7 +39,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
   }
 
   def eval(e: SchemeExp, env: Env): Value = e match {
-    case SchemeLambda(_, _, _) => check(e.pos, Value.Clo(e, env))
+    case SchemeLambda(_, _, _) => Value.Clo(e, env)
     case SchemeFuncall(f, args, pos) =>
       eval(f, env) match {
         case Value.Clo(SchemeLambda(argsNames, body, pos2), env2) =>
@@ -53,7 +53,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
           })
           eval(SchemeBegin(body, pos2), envExt)
         case Value.Primitive(p) =>
-          p.call(args.map(arg => check(arg.pos , eval(arg, env))))
+          p.call(args.map(arg => eval(arg, env)))
         case v =>
           throw new Exception(s"Invalid function call at position ${pos}: ${v} is not a closure or a primitive")
       }
