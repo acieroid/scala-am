@@ -226,7 +226,6 @@ object MODComparison extends App {
       case Character(c)       => lat.subsumes(abs, lat.char(c))
       case Nil                => lat.subsumes(abs, lat.nil)
       case Cons(_, _)         => lat.getPointerAddresses(abs).nonEmpty
-      // case Quoted(q)          => ??? // TODO is this correct?
       case Vector(_)          => lat.getPointerAddresses(abs).nonEmpty
       case v                  => throw new Exception(s"Unknown concrete value type: $v")
     }
@@ -240,27 +239,32 @@ object MODComparison extends App {
     display(file + "\n")
 
     val program = readFile(file)
-    val bS      = new          SchemeModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain
-    val sS      = new SchemeSmallStepModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain
-    val bSDeps  = bS.deps
-    val sSDeps  = sS.deps
-    val bSStore = bS.store
-    val sSStore = sS.store
+    val bStep      = new          SchemeModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain
+    val sStep      = new SchemeSmallStepModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain
 
-    if (bS.allComponents.size != sS.allComponents.size)
-      displayErr(s"Different number of components! bS: ${bS.allComponents.size} / sS: ${sS.allComponents.size}.\n")
-    if (bSStore.keySet.size != sSStore.keySet.size)
-      displayErr(s"Different store keyset sizes! bS: ${bSStore.keySet.size} / sS: ${sSStore.keySet.size}.\n")
-    if (bSDeps.values.size != sSDeps.values.size)
-      displayErr(s"Different dependency keyset sizes! bS: ${bSDeps.keySet.size} / sS: ${sSDeps.keySet.size}.\n")
+    bStep.analyze()
+    sStep.analyze()
 
+    val bStepDeps  = bStep.deps
+    val sStepDeps  = sStep.deps
+    val bStepStore = bStep.store
+    val sStepStore = sStep.store
+
+    if (bStep.allComponents.size != sStep.allComponents.size)
+      displayErr(s"Different number of components! bStep: ${bStep.allComponents.size} - sStep: ${sStep.allComponents.size}.\n")
+    if (bStepStore.keySet.size != sStepStore.keySet.size)
+      displayErr(s"Different store keyset sizes! bStep: ${bStepStore.keySet.size} - sStep: ${sStepStore.keySet.size}.\n")
+    if (bStepDeps.values.size != sStepDeps.values.size)
+      displayErr(s"Different dependency keyset sizes! bStep: ${bStepDeps.keySet.size} - sStep: ${sStepDeps.keySet.size}.\n")
+
+    sStepStore.keySet.foreach(k => display(s"$k => ${sStepStore(k)}\n"))
     val interpreter = new SchemeInterpreter({(pos, v) =>
-      val sSAddr = sSStore.keySet.filter(_.addr.pos == pos)
-      //val bSAddr = bSStore.keySet.filter(_.addr.pos == pos)
-      println(sSAddr)
-      val sSValues = sSAddr.map(sSStore.getOrElse(_, sS.lattice.bottom))
-      check("SmallStep", v, pos, sS.lattice, sSValues.foldLeft(sS.lattice.bottom)((a, b) => sS.lattice.join(a, b)))
-      //check("BigStep", v, pos, bS.lattice, bSStore.getOrElse(bSStore.keySet.find(a => a.addr.pos == pos).getOrElse(bS.GlobalAddr(bS.NoAddr()(Position.none))), bS.lattice.top))
+      val sSAddr = sStepStore.keySet.filter(_.addr.pos == pos)
+      //val bSAddr = bStepStore.keySet.filter(_.addr.pos == pos)
+      println(s"$v@$pos --> $sSAddr")
+      //val sSValues = sSAddr.map(sStepStore.getOrElse(_, sStep.lattice.bottom))
+      //check("SmallStep", v, pos, sStep.lattice, sSValues.foldLeft(sStep.lattice.bottom)((a, b) => sStep.lattice.join(a, b)))
+      //check("BigStep", v, pos, bStep.lattice, bStepStore.getOrElse(bStepStore.keySet.find(a => a.addr.pos == pos).getOrElse(bStep.GlobalAddr(bStep.NoAddr()(Position.none))), bStep.lattice.top))
     })
     val res = interpreter.run(SchemeUndefiner.undefine(List(program)))
     println(s"Result: $res")
@@ -270,5 +274,6 @@ object MODComparison extends App {
       println()
   }
 
-  benchmarks.foreach(forFile)
+  forFile(benchmarks(3))
+  //benchmarks.foreach(forFile)
 }
