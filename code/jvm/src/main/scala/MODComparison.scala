@@ -254,7 +254,7 @@ object MODComparison extends App {
     displayErr(s"Store keyset size\n* bStep: ${bStepStore.keySet.size}\n* sStep: ${sStepStore.keySet.size}.\n")
     displayErr(s"Dependency keyset size\n* bStep: ${bStepDeps.keySet.size}\n* sStep: ${sStepDeps.keySet.size}.\n")
 
-    sStepStore.keySet.foreach(k => display(s"$k => ${sStepStore(k)}\n"))
+    //sStepStore.keySet.foreach(k => display(s"$k => ${sStepStore(k)}\n"))
     val interpreter = new SchemeInterpreter({(pos, v) =>
       //val sSAddr = sStepStore.keySet.filter(_.addr.pos == pos)
       //val bSAddr = bStepStore.keySet.filter(_.addr.pos == pos)

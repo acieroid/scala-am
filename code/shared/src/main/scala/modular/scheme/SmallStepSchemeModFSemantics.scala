@@ -140,7 +140,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
             val context = allocCtx(lambda,env1,args)
             val component = CallComponent(lambda,env1,nam,context)
             val result = call(component)
-            pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par)(par.pos),arg,component) }
+            pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par),arg,component) }
             Action.Value(result, StoreAdapter)
           case ((SchemeLambda(pars,_,_), _), _) =>
             Action.Err(ArityError(fexp, pars.length, args.length))
@@ -160,7 +160,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       val env = component match {
         case MainComponent => initialEnv
         case CallComponent(SchemeLambda(pars,_,_),lex,_,_) =>
-          pars.foldLeft(lex)((acc,par) => acc.extend(par.name,allocAddr(VarAddr(par)(par.pos))))
+          pars.foldLeft(lex)((acc,par) => acc.extend(par.name,allocAddr(VarAddr(par))))
       }
       val state: State = State(ControlEval(exp, env), Store.empty[KAddr, Set[Kont]], HaltKontAddr, this)
       var work: Set[State] = Set[State](state)

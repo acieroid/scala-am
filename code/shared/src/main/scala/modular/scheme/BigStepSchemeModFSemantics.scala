@@ -54,7 +54,7 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
         val carv = evalQuoted(car)
         val cdrv = evalQuoted(cdr)
         val pair = lattice.cons(carv,cdrv)
-        val addr = allocAddr(PtrAddr(quoted)(quoted.pos))
+        val addr = allocAddr(PtrAddr(quoted))
         writeAddr(addr,pair)
         lattice.pointer(addr)
       case sexp.SExpQuoted(q,pos)   =>
@@ -180,17 +180,17 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       lattice.join(csqVal,altVal)
     }
     private def bind(vrb: Identifier, vlu: Value): Addr  = {
-      val addr = allocAddr(VarAddr(vrb)(vrb.pos))
+      val addr = allocAddr(VarAddr(vrb))
       env = env.extend(vrb.name,addr)
       writeAddr(addr,vlu)
       addr
     }
     private def bindPars(pars: List[Identifier]) = pars.foreach { par =>
-      val addr = allocAddr(VarAddr(par)(par.pos))
+      val addr = allocAddr(VarAddr(par))
       env = env.extend(par.name,addr)
     }
     private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) = pars.zip(args).foreach { case (par,arg) =>
-      val localAddr = VarAddr(par)(par.pos)
+      val localAddr = VarAddr(par)
       writeAddr(localAddr,arg,component)
     }
   }
