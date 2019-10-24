@@ -7,7 +7,7 @@ import scalaam.language.sexp._
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
   * This interpreter dictates the concrete semantics of the Scheme language analyzed by Scala-AM.
  */
-class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
+class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, output: Boolean = true) {
   import SchemeInterpreter._
   /**
     * Evaluates `program`.
@@ -740,7 +740,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     object Display extends SingleArgumentPrim("display") {
       def fun = {
         case x =>
-          print(x)
+          if (output) print(x)
           Value.Undefined(Position.none)
       }
     }
@@ -748,7 +748,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       val name = "newline"
       def call(args: List[Value]) = args match {
         case Nil =>
-          println("")
+          if (output) println("")
           Value.Undefined(Position.none)
         case _ => throw new Exception(s"newline: wrong number of arguments, 0 expected, got ${args.length}")
       }

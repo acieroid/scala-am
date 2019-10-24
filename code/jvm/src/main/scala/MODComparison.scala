@@ -269,7 +269,7 @@ object MODComparison extends App {
 
     // For every position, cMap keeps the concrete values encountered by the concrete interpreter.
     var cMap: Map[Position, Set[Value]] = Map().withDefaultValue(Set())
-    val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)))
+    val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)), false)
     interpreter.run(SchemeUndefiner.undefine(List(program)))
 
     machines.foreach(m => forMachine(m._1, m._2, cMap))
