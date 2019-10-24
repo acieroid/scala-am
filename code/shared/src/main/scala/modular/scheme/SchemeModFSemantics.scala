@@ -8,10 +8,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                           with GlobalStore[SchemeExp]
                           with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
-  trait LocalAddr extends Address
-  case class VarAddr(id: Identifier)          extends LocalAddr { def printable = true  }
-  case class PtrAddr[E <: Expression](exp: E) extends LocalAddr { def printable = false }
-  case class PrmAddr(name: String)            extends LocalAddr { def printable = false }
+  trait LocalAddr extends Address { val pos: Position }
+  case class NoAddr()(val pos: Position = Position.none)         extends LocalAddr { def printable = false }
+  case class VarAddr(id: Identifier)(val pos: Position)          extends LocalAddr { def printable = true  }
+  case class PtrAddr[E <: Expression](exp: E)(val pos: Position) extends LocalAddr { def printable = false }
+  case class PrmAddr(name: String)(val pos: Position)            extends LocalAddr { def printable = false }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
   // Some glue code to Scala-AM to reuse the primitives and environment
@@ -23,11 +24,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // The AllocAdapter makes sure the right dependencies are registered upon address allocation.
   case object AllocAdapter extends Allocator[Addr,SchemeModFSemanticsIntra,Unit] {
     def variable(id: Identifier, intra: SchemeModFSemanticsIntra): Addr =
-      intra.allocAddr(VarAddr(id))
+      intra.allocAddr(VarAddr(id)(id.pos))
     def pointer[E <: Expression](exp: E, intra: SchemeModFSemanticsIntra): Addr =
-      intra.allocAddr(PtrAddr(exp))
+      intra.allocAddr(PtrAddr(exp)(exp.pos))
     def primitive(name: String): Addr =
-      GlobalAddr(PrmAddr(name))
+      GlobalAddr(PrmAddr(name)(Position.none))
   }
   lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, SchemeModFSemanticsIntra, Unit](AllocAdapter)
   // setup initial environment and install the primitives in the global store

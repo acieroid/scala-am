@@ -3,7 +3,6 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.language.sexp
 import scalaam.language.scheme._
-import scalaam.modular._
 
 trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
@@ -196,9 +195,6 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     }
   }
 }
-
-abstract class SchemeModFAnalysis(program: SchemeExp) extends ModAnalysis(program)
-                                                      with BigStepSchemeModFSemantics
 
 //abstract class AdaptiveSchemeModFAnalysis(program: SchemeExp) extends AdaptiveModAnalysis(program)
 //                                                              with AdaptiveSchemeModFSemantics

@@ -6,7 +6,7 @@ import scalaam.language.scheme._
 import scalaam.util.Show
 
 /** MODF analysis using an AAM intra-component analysis. */
-trait SchemeSmallStepModFSemantics extends SchemeModFSemantics {
+trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intraAnalysis
   // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)

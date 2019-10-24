@@ -3,12 +3,12 @@ package scalaam.cli
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
-import modular.scheme.SchemeSmallStepModFAnalysis
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Value
 import scalaam.language.scheme.SchemeInterpreter.Value._
 import scalaam.language.scheme.{SchemeExp, SchemeInterpreter, SchemeLattice, SchemeParser, SchemeUndefiner}
-import scalaam.modular.scheme.{ConstantPropagationDomain, FullArgumentSensitivity, SchemeModFAnalysis}
+import scalaam.modular.ModAnalysis
+import scalaam.modular.scheme.{BigStepSchemeModFSemantics, ConstantPropagationDomain, FullArgumentSensitivity, SmallStepSchemeModFSemantics}
 
 object MODComparison extends App {
 
@@ -239,8 +239,8 @@ object MODComparison extends App {
     display(file + "\n")
 
     val program = readFile(file)
-    val bStep      = new          SchemeModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain
-    val sStep      = new SchemeSmallStepModFAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain
+    val bStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics
+    val sStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain  with SmallStepSchemeModFSemantics
 
     bStep.analyze()
     sStep.analyze()
