@@ -250,18 +250,15 @@ object MODComparison extends App {
     val bStepStore = bStep.store
     val sStepStore = sStep.store
 
-    if (bStep.allComponents.size != sStep.allComponents.size)
-      displayErr(s"Different number of components! bStep: ${bStep.allComponents.size} - sStep: ${sStep.allComponents.size}.\n")
-    if (bStepStore.keySet.size != sStepStore.keySet.size)
-      displayErr(s"Different store keyset sizes! bStep: ${bStepStore.keySet.size} - sStep: ${sStepStore.keySet.size}.\n")
-    if (bStepDeps.values.size != sStepDeps.values.size)
-      displayErr(s"Different dependency keyset sizes! bStep: ${bStepDeps.keySet.size} - sStep: ${sStepDeps.keySet.size}.\n")
+    displayErr(s"Number of components\n* bStep: ${bStep.allComponents.size}\n* sStep: ${sStep.allComponents.size}.\n")
+    displayErr(s"Store keyset size\n* bStep: ${bStepStore.keySet.size}\n* sStep: ${sStepStore.keySet.size}.\n")
+    displayErr(s"Dependency keyset size\n* bStep: ${bStepDeps.keySet.size}\n* sStep: ${sStepDeps.keySet.size}.\n")
 
     sStepStore.keySet.foreach(k => display(s"$k => ${sStepStore(k)}\n"))
     val interpreter = new SchemeInterpreter({(pos, v) =>
-      val sSAddr = sStepStore.keySet.filter(_.addr.pos == pos)
+      //val sSAddr = sStepStore.keySet.filter(_.addr.pos == pos)
       //val bSAddr = bStepStore.keySet.filter(_.addr.pos == pos)
-      println(s"$v@$pos --> $sSAddr")
+      //println(s"$v@$pos --> $sSAddr")
       //val sSValues = sSAddr.map(sStepStore.getOrElse(_, sStep.lattice.bottom))
       //check("SmallStep", v, pos, sStep.lattice, sSValues.foldLeft(sStep.lattice.bottom)((a, b) => sStep.lattice.join(a, b)))
       //check("BigStep", v, pos, bStep.lattice, bStepStore.getOrElse(bStepStore.keySet.find(a => a.addr.pos == pos).getOrElse(bStep.GlobalAddr(bStep.NoAddr()(Position.none))), bStep.lattice.top))
