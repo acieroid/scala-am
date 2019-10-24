@@ -258,19 +258,20 @@ object MODComparison extends App {
     display(file + "\n")
 
     val program = readFile(file)
-    val bStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics
+    //val bStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics
     val sStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics
 
-    val bMap: Map[Position, bStep.Value] = forMachine(bStep)
+    //val bMap: Map[Position, bStep.Value] = forMachine(bStep)
     val sMap: Map[Position, sStep.Value] = forMachine(sStep)
 
-    val interpreter = new SchemeInterpreter({(pos, v) =>
-      println(s"$v@$pos")
-      check("BigStep", v, pos, bStep.lattice, bMap(pos))
-      check("SmallStep", v, pos, sStep.lattice, sMap(pos))
-    })
-    val res = interpreter.run(SchemeUndefiner.undefine(List(program)))
-    println(s"Result: $res")
+    var cMap: Map[Position, Value] = Map()
+    val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> v))
+    interpreter.run(SchemeUndefiner.undefine(List(program)))
+
+    println(cMap.keySet)
+    println(cMap.keySet -- sMap.keySet)
+    println(sMap.keySet -- cMap.keySet)
+    println(sMap.keySet)
 
   } catch {
     case e: Throwable => e.printStackTrace()

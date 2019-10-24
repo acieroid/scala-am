@@ -7,8 +7,6 @@ import scalaam.util.Show
 
 /** MODF analysis using an AAM intra-component analysis. */
 trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
-  // undefine the original program
-  val undefinedProgram = SchemeUndefiner.undefine(List(program))
   // defining the intraAnalysis
   // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
@@ -102,8 +100,8 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
           case Action.Eval(e, env, _) => Set(State(ControlEval(e, env), kstore, a, ctx))
           /** When a function is called, generate a call state */
           case Action.Call(fval,fexp,args,_) => Set(State(ControlCall(fval,fexp,args),kstore,a,ctx))
-          /** When a function is stepped, we go to a KONT state since we DO NOT step into the function. */
-          case Action.StepIn(_, _, _, _, _) => Set[State]()
+          /** Getting a StepIn action should not happen in a MODF analysis. */
+          case Action.StepIn(_, _, _, _, _) => throw new Exception("Illegal state: MODF should not encounter a StepIn action.")
           /** When an error is reached, we go to an error state */
           case Action.Err(err) => Set(State(ControlError(err), kstore, a, ctx))
         })
@@ -156,7 +154,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     // analysis entry point
     def analyze(): Unit = {
       val exp = component match {
-        case MainComponent => undefinedProgram
+        case MainComponent => SchemeUndefiner.undefine(List(program))
         case CallComponent(SchemeLambda(_,body,_),_,_,_) => SchemeBody(body)
       }
       val env = component match {
