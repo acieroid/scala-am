@@ -11,8 +11,6 @@ import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 object MODComparison extends App {
@@ -244,7 +242,7 @@ object MODComparison extends App {
 
   def forMachine(name: String, machine: Machine, cMap: Map[Position, Set[Value]], timeout: Duration): Unit = try {
     displayErr("* " + name + "\n")
-    Await.ready(Future { machine.analyze() }, timeout)
+    Interruptable.inFuture({ machine.analyze() }, timeout)
 
     val deps  = machine.deps
     val store = machine.store
@@ -278,8 +276,8 @@ object MODComparison extends App {
 
     // For every position, cMap keeps the concrete values encountered by the concrete interpreter.
     var cMap: Map[Position, Set[Value]] = Map().withDefaultValue(Set())
-    val interpreter = Future{ new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)), false) }
-    Await.ready(interpreter.map(_.run(SchemeUndefiner.undefine(List(program)))), timeout) // Easy timeout: we do not have to add the timeout to the concrete interpreter itself.
+    val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)), false)
+    Interruptable.inFuture(interpreter.run(SchemeUndefiner.undefine(List(program))), timeout) // Easy timeout: we do not have to add the timeout to the concrete interpreter itself.
 
     display(s"-> Inferred ${cMap.keySet.size} positions to check values.\n")
 
