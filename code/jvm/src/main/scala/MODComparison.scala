@@ -1,14 +1,19 @@
 package scalaam.cli
 
 import java.text.SimpleDateFormat
+import java.util.concurrent.TimeoutException
 import java.util.{Calendar, Date}
 
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Value
 import scalaam.language.scheme.SchemeInterpreter.Value._
-import scalaam.language.scheme.{SchemeExp, SchemeInterpreter, SchemeLattice, SchemeParser, SchemeUndefiner}
+import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 
 object MODComparison extends App {
 
@@ -237,9 +242,9 @@ object MODComparison extends App {
       display(s"$name: subsumption check failed: $v > $abs at $p.\n")
   }
 
-  def forMachine(name: String, machine: Machine, cMap: Map[Position, Set[Value]]): Unit = {
+  def forMachine(name: String, machine: Machine, cMap: Map[Position, Set[Value]], timeout: Duration): Unit = try {
     displayErr("* " + name + "\n")
-    machine.analyze()
+    Await.ready(Future { machine.analyze() }, timeout)
 
     val deps  = machine.deps
     val store = machine.store
@@ -256,9 +261,13 @@ object MODComparison extends App {
 
     for (elem <- cMap.keySet)
       check(name, cMap(elem), elem, machine.lattice, pMap(elem))
+  } catch {
+    case _: TimeoutException => displayErr(s"$name timed out!")
+    case e: Throwable => e.printStackTrace()
+      println()
   }
 
-  def forFile(file: String): Unit = try {
+  def forFile(file: String, timeout: Duration = Duration(10, MINUTES)): Unit = try {
     displayErr(file + "\n")
 
     val program = readFile(file)
@@ -269,12 +278,17 @@ object MODComparison extends App {
 
     // For every position, cMap keeps the concrete values encountered by the concrete interpreter.
     var cMap: Map[Position, Set[Value]] = Map().withDefaultValue(Set())
-    val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)), false)
-    interpreter.run(SchemeUndefiner.undefine(List(program)))
+    val interpreter = Future{ new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)), false) }
+    Await.ready(interpreter.map(_.run(SchemeUndefiner.undefine(List(program)))), timeout) // Easy timeout: we do not have to add the timeout to the concrete interpreter itself.
 
-    machines.foreach(m => forMachine(m._1, m._2, cMap))
+    display(s"-> Inferred ${cMap.keySet.size} positions to check values.\n")
+
+    machines.foreach(m => forMachine(m._1, m._2, cMap, timeout))
+
+    display("\n")
 
   } catch {
+    case _: TimeoutException => displayErr("Concrete machine timed out!")
     case e: Throwable => e.printStackTrace()
       println()
   }
