@@ -1,6 +1,7 @@
 package scalaam.core
 
-import java.util.concurrent.TimeoutException
+import java.util.concurrent._
+
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -29,10 +30,11 @@ object Timeout {
 object Interruptable {
   def inFuture[T](block: => T, timeout: Duration): T = {
     var thread: Thread = null
-    val fut = Future { thread = Thread.currentThread(); block}
     try {
+      val fut = Future { thread = Thread.currentThread(); block}
       Await.result(fut, timeout)
     } catch {
+      case e: java.util.concurrent.ExecutionException => throw e.getCause // Unbox boxed errors.
       case _: TimeoutException =>
         thread.interrupt()
         throw new TimeoutException()

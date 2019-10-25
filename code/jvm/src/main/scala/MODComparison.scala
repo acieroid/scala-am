@@ -268,7 +268,7 @@ object MODComparison extends App {
     for (elem <- cMap.keySet)
       check(name, cMap(elem), elem, machine.lattice, pMap(elem))
   } catch {
-    case _: TimeoutException => displayErr(s"$name timed out!")
+    case _: TimeoutException => displayErr(s"$name timed out!\n")
     case e: Throwable => e.printStackTrace()
       println()
   }
@@ -294,7 +294,7 @@ object MODComparison extends App {
     display("\n")
 
   } catch {
-    case _: TimeoutException => displayErr("Concrete machine timed out!")
+    case _: TimeoutException => displayErr("Concrete machine timed out!\n")
     case e: Throwable => e.printStackTrace()
       displayErr("***\n")
   }
@@ -303,7 +303,6 @@ object MODComparison extends App {
   val out = new BufferedWriter(new FileWriter(output))
   writer = new CSVWriter(out, ',', CSVWriter.NO_QUOTE_CHARACTER)
 
-  forFile("test/ad/dict.scm")
-  //benchmarks.foreach(forFile)
+  benchmarks.foreach(forFile(_))
   writer.close()
 }
