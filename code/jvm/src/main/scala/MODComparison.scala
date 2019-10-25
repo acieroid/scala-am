@@ -3,6 +3,8 @@ package scalaam.cli
 import java.text.SimpleDateFormat
 import java.util.concurrent.TimeoutException
 import java.util.{Calendar, Date}
+import java.io.{BufferedWriter, FileWriter}
+import au.com.bytecode.opencsv.CSVWriter
 
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Value
@@ -198,18 +200,24 @@ object MODComparison extends App {
     exp
   }
 
+  var writer: CSVWriter =  _
+
   // Avoid output being buffered.
   def display(data: String): Unit = {
     print(data)
     Console.out.flush()
+    writer.writeNext(data.trim)
+    writer.flush()
   }
 
   def displayErr(data: String): Unit = {
     System.err.print(data)
     System.err.flush()
+    writer.writeNext(data.trim)
+    writer.flush()
   }
 
-  val outputDir: String = "./"
+  val outputDir: String = "./out/"
 
   /** Creates a fileName including the given name, suffix and a timestamp. */
   def ts(name: String, suffix: String): String = {
@@ -288,9 +296,14 @@ object MODComparison extends App {
   } catch {
     case _: TimeoutException => displayErr("Concrete machine timed out!")
     case e: Throwable => e.printStackTrace()
-      println()
+      displayErr("***\n")
   }
+
+  val output: String = ts("MODComparison",  ".txt")
+  val out = new BufferedWriter(new FileWriter(output))
+  writer = new CSVWriter(out, ',', CSVWriter.NO_QUOTE_CHARACTER)
 
   forFile("test/ad/dict.scm")
   //benchmarks.foreach(forFile)
+  writer.close()
 }
