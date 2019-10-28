@@ -23,7 +23,7 @@ object MODComparison extends App {
     "test/ad/abstrct.scm",
     //"test/ad/bfirst.scm", // VARARG
     // "test/ad/bst.scm", // VARARG
-    "test/ad/btree.scm",
+    //"test/ad/btree.scm", // TODO add a body
     "test/ad/bubsort.scm",
     "test/ad/dict.scm",
     // "test/ad/dictExamples.scm", // EMPTY
