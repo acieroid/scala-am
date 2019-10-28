@@ -28,6 +28,20 @@ object Timeout {
 
 /** Inspired by https://viktorklang.com/blog/Futures-in-Scala-protips-6.html */
 object Interruptable {
+
+  class NotInterruptedException extends RuntimeException
+
+  /**
+   * Executes a given block. If the execution of the block exceeds the given timeout, an exception is thrown.
+   * Uses multithreaded computations, meaning that the actual computation time may be (slightly) longer than the given duration.
+   * @param block   The block to be executed.
+   * @param timeout The maximal duration for the execution of the block.
+   * @tparam T      The return type of the given block.
+   * @return        The return value of the block if its computation finishes in time.
+   * @throws        {@link TimeoutException} if the execution of the block exceeds the given duration and this is noticed.<br>
+   *                {@link NotInterruptedException} if the execution of the block exceeds the given duration but its computation is still continuing in another thread.
+   *                Any exception thrown by the execution of the block.
+   */
   def inFuture[T](block: => T, timeout: Duration): T = {
     var thread: Thread = null
     try {
@@ -35,9 +49,11 @@ object Interruptable {
       Await.result(fut, timeout)
     } catch {
       case e: java.util.concurrent.ExecutionException => throw e.getCause // Unbox boxed errors.
-      case _: TimeoutException =>
+      case _: TimeoutException if thread != null =>
         thread.interrupt()
         throw new TimeoutException()
+      case _: TimeoutException => // Should not happen! Might only happen when `fut` has performed no work.
+        throw new NotInterruptedException // Since we do not have a reference to the thread, we cannot interrupt it.
     }
   }
 }
