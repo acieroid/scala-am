@@ -37,8 +37,8 @@ object Main {
   }
 
   def loadFile(text: String): Unit = {
-    val program = SchemeUndefiner.undefine(List(SchemeParser.parse(text)))
-    val analysis = new ModAnalysis(program) with SmallStepSchemeModFSemantics
+    val program = SchemeParser.parse(text)
+    val analysis = new ModAnalysis(program) with BigStepSchemeModFSemantics
                                             with FullArgumentSensitivity
                                             with ConstantPropagationDomain {
       // stub implementation to keep the compiler happy
