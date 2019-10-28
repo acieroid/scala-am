@@ -1,16 +1,23 @@
 package scalaam.cli
 
 import java.text.SimpleDateFormat
+import java.util.concurrent.TimeoutException
 import java.util.{Calendar, Date}
+import java.io.{BufferedWriter, FileWriter}
+import au.com.bytecode.opencsv.CSVWriter
 
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Value
 import scalaam.language.scheme.SchemeInterpreter.Value._
-import scalaam.language.scheme.{SchemeExp, SchemeLattice, SchemeParser}
+import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
 
+import scala.concurrent.duration._
+
 object MODComparison extends App {
+
+  type Machine = ModAnalysis[SchemeExp] with FullArgumentSensitivity with ConstantPropagationDomain
 
   val benchmarks: List[String] = List(
     "test/ad/abstrct.scm",
@@ -193,18 +200,24 @@ object MODComparison extends App {
     exp
   }
 
+  var writer: CSVWriter =  _
+
   // Avoid output being buffered.
   def display(data: String): Unit = {
     print(data)
     Console.out.flush()
+    writer.writeNext(data.trim)
+    writer.flush()
   }
 
   def displayErr(data: String): Unit = {
     System.err.print(data)
     System.err.flush()
+    writer.writeNext(data.trim)
+    writer.flush()
   }
 
-  val outputDir: String = "./"
+  val outputDir: String = "./out/"
 
   /** Creates a fileName including the given name, suffix and a timestamp. */
   def ts(name: String, suffix: String): String = {
@@ -213,7 +226,7 @@ object MODComparison extends App {
     outputDir + format.format(now) + name + suffix
   }
 
-  def checkSubsumption[A <: Address, L](v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v match {
+  def checkSubsumption[A <: Address, L](v: Set[Value], lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v.forall( _ match {
       case Value.Undefined(_) => true
       case Value.Unbound(_)   => true
       case Clo(_, _)          => lat.getClosures(abs).nonEmpty
@@ -228,52 +241,69 @@ object MODComparison extends App {
       case Cons(_, _)         => lat.getPointerAddresses(abs).nonEmpty
       case Vector(_)          => lat.getPointerAddresses(abs).nonEmpty
       case v                  => throw new Exception(s"Unknown concrete value type: $v")
-    }
+    })
 
-  def check[A <: Address, L](name: String, v: Value, p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
-    if (!checkSubsumption(v, p, lat, abs))
-      displayErr(s"$name: subsumption check failed: $v > $abs at $p.\n")
+  def check[A <: Address, L](name: String, v: Set[Value], p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
+    if (!checkSubsumption(v, lat, abs))
+      display(s"$name: subsumption check failed: $v > $abs at $p.\n")
   }
 
-  def forFile(file: String): Unit = try {
-    display(file + "\n")
+  def forMachine(name: String, machine: Machine, cMap: Map[Position, Set[Value]], timeout: Duration): Unit = try {
+    displayErr("* " + name + "\n")
+    Interruptable.inFuture({ machine.analyze() }, timeout)
 
-    val program = readFile(file)
-    val bStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics
-    val sStep = new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics
+    val deps  = machine.deps
+    val store = machine.store
 
-    //bStep.analyze()
-    //sStep.analyze()
+    val pMap: Map[Position, machine.Value] = store.groupBy({_._1 match {
+      case machine.GlobalAddr(addr)       => addr.pos()
+      case machine.ComponentAddr(_, addr) => addr.pos()
+      case _                              => Position.none
+    }}).mapValues(_.values.foldLeft(machine.lattice.bottom)((a, b) => machine.lattice.join(a, b)))
 
-    val bStepDeps  = bStep.deps
-    val sStepDeps  = sStep.deps
-    val bStepStore = bStep.store
-    val sStepStore = sStep.store
+    display(s"Number of components: ${machine.allComponents.size}.\n")
+    display(s"Store keyset size ${store.keySet.size}.\n")
+    display(s"Dependency keyset size: ${deps.keySet.size}.\n")
 
-    val diff = bStep.allComponents.asInstanceOf[Set[SchemeModFSemantics#IntraComponent]] -- sStep.allComponents.asInstanceOf[Set[SchemeModFSemantics#IntraComponent]]
-    diff.foreach { d => println(d.toString()); println() }
-
-    displayErr(s"Number of components\n* bStep: ${bStep.allComponents.size}\n* sStep: ${sStep.allComponents.size}.\n")
-    displayErr(s"Store keyset size\n* bStep: ${bStepStore.keySet.size}\n* sStep: ${sStepStore.keySet.size}.\n")
-    displayErr(s"Dependency keyset size\n* bStep: ${bStepDeps.keySet.size}\n* sStep: ${sStepDeps.keySet.size}.\n")
-
-    //sStepStore.keySet.foreach(k => display(s"$k => ${sStepStore(k)}\n"))
-    //val interpreter = new SchemeInterpreter({(pos, v) =>
-      //val sSAddr = sStepStore.keySet.filter(_.addr.pos == pos)
-      //val bSAddr = bStepStore.keySet.filter(_.addr.pos == pos)
-      //println(s"$v@$pos --> $sSAddr")
-      //val sSValues = sSAddr.map(sStepStore.getOrElse(_, sStep.lattice.bottom))
-      //check("SmallStep", v, pos, sStep.lattice, sSValues.foldLeft(sStep.lattice.bottom)((a, b) => sStep.lattice.join(a, b)))
-      //check("BigStep", v, pos, bStep.lattice, bStepStore.getOrElse(bStepStore.keySet.find(a => a.addr.pos == pos).getOrElse(bStep.GlobalAddr(bStep.NoAddr()(Position.none))), bStep.lattice.top))
-    //})
-    //val res = interpreter.run(SchemeUndefiner.undefine(List(program)))
-    //println(s"Result: $res")
-
+    for (elem <- cMap.keySet)
+      check(name, cMap(elem), elem, machine.lattice, pMap(elem))
   } catch {
+    case _: TimeoutException => displayErr(s"$name timed out!")
     case e: Throwable => e.printStackTrace()
       println()
   }
 
+  def forFile(file: String, timeout: Duration = Duration(10, MINUTES)): Unit = try {
+    displayErr(file + "\n")
+
+    val program = readFile(file)
+    val machines: List[(String, Machine)] = List(
+      ("bigStep",   new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics),
+      ("smallStep", new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics),
+    )
+
+    // For every position, cMap keeps the concrete values encountered by the concrete interpreter.
+    var cMap: Map[Position, Set[Value]] = Map().withDefaultValue(Set())
+    val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)), false)
+    Interruptable.inFuture(interpreter.run(SchemeUndefiner.undefine(List(program))), timeout) // Easy timeout: we do not have to add the timeout to the concrete interpreter itself.
+
+    display(s"-> Inferred ${cMap.keySet.size} positions to check values.\n")
+
+    machines.foreach(m => forMachine(m._1, m._2, cMap, timeout))
+
+    display("\n")
+
+  } catch {
+    case _: TimeoutException => displayErr("Concrete machine timed out!")
+    case e: Throwable => e.printStackTrace()
+      displayErr("***\n")
+  }
+
+  val output: String = ts("MODComparison",  ".txt")
+  val out = new BufferedWriter(new FileWriter(output))
+  writer = new CSVWriter(out, ',', CSVWriter.NO_QUOTE_CHARACTER)
+
   forFile("test/ad/dict.scm")
   //benchmarks.foreach(forFile)
+  writer.close()
 }

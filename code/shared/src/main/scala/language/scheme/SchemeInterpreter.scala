@@ -7,7 +7,7 @@ import scalaam.language.sexp._
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
   * This interpreter dictates the concrete semantics of the Scheme language analyzed by Scala-AM.
  */
-class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
+class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, output: Boolean = true) {
   import SchemeInterpreter._
   /**
     * Evaluates `program`.
@@ -18,14 +18,14 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
   }
 
   var compared = 0
-  def check(e: SchemeExp, v : Value): Value = {
+  def check(p: Position, v : Value): Value = {
     compared += 1
     v match {
       case Value.Undefined(pos@_) => () // println(s"Undefined behavior arising from position $pos seen at ${e.pos}")
-      case Value.Unbound(id) => println(s"Seen unbound identifier $id at ${e.pos}")
+      case Value.Unbound(id) => println(s"Seen unbound identifier $id at ${p}")
       case _ => ()
     }
-    callback(e.pos, v)
+    callback(p, v)
     v
   }
   var lastAddr = 0
@@ -38,7 +38,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     store = store + (a -> v)
   }
 
-  def eval(e: SchemeExp, env: Env): Value = check(e, e match {
+  def eval(e: SchemeExp, env: Env): Value = e match {
     case SchemeLambda(_, _, _) => Value.Clo(e, env)
     case SchemeFuncall(f, args, pos) =>
       eval(f, env) match {
@@ -48,7 +48,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
           }
           val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
             val addr = newAddr()
-            extendStore(addr, eval(arg._2, env))
+            extendStore(addr, check(arg._1.pos ,eval(arg._2, env)))
             (env3 + (arg._1.name -> addr))
           })
           eval(SchemeBegin(body, pos2), envExt)
@@ -65,14 +65,14 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     case SchemeLet(bindings, body, pos) =>
       val envExt = bindings.foldLeft(env)((env2, binding) => {
         val addr = newAddr()
-        extendStore(addr, eval(binding._2, env))
+        extendStore(addr, check(binding._1.pos, eval(binding._2, env)))
         (env2 + (binding._1.name -> addr))
       })
       eval(SchemeBegin(body, pos), envExt)
     case SchemeLetStar(bindings, body, pos) =>
       val envExt = bindings.foldLeft(env)((env2, binding) => {
         val addr = newAddr()
-        extendStore(addr, eval(binding._2, env2 /* this is the difference with let */))
+        extendStore(addr, check(binding._1.pos, eval(binding._2, env2 /* this is the difference with let */)))
         (env2 + (binding._1.name -> addr))
       })
       eval(SchemeBegin(body, pos), envExt)
@@ -82,7 +82,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         /* These are the differences with let* (store and env) */
         extendStore(addr, Value.Unbound(binding._1))
         val env3 = env2 + (binding._1.name -> addr)
-        extendStore(addr, eval(binding._2, env3))
+        extendStore(addr, check(binding._1.pos, eval(binding._2, env3)))
         env3
       })
       eval(SchemeBegin(body, pos), envExt)
@@ -137,7 +137,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
         case ValueCharacter(c) => Value.Character(c)
         case ValueNil => Value.Nil
       }
-  })
+  }
   def allocateCons(car: Value, cdr: Value): Value = {
     val addr1 = newAddr()
     val addr2 = newAddr()
@@ -740,7 +740,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
     object Display extends SingleArgumentPrim("display") {
       def fun = {
         case x =>
-          print(x)
+          if (output) print(x)
           Value.Undefined(Position.none)
       }
     }
@@ -748,7 +748,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit) {
       val name = "newline"
       def call(args: List[Value]) = args match {
         case Nil =>
-          println("")
+          if (output) println("")
           Value.Undefined(Position.none)
         case _ => throw new Exception(s"newline: wrong number of arguments, 0 expected, got ${args.length}")
       }
