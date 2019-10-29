@@ -66,6 +66,7 @@ class GAAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E
           case _: ControlEval  => Colors.Green
           case _: ControlKont  => Colors.Pink
           case _: ControlError => Colors.Red
+          case _: ControlCall  => Colors.Green
         }
       }
     override def metadata =       GraphMetadataMap(
@@ -75,6 +76,7 @@ class GAAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E
             case _: ControlEval  => GraphMetadataString("eval")
             case _: ControlKont  => GraphMetadataString("kont")
             case _: ControlError => GraphMetadataString("error")
+            case _: ControlCall  => GraphMetadataString("call")
           })
         ) ++ (control match {
           case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
@@ -82,9 +84,10 @@ class GAAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E
         })
       )
     def halted: Boolean = control match {
-      case ControlEval(_, _) => false
-      case ControlKont(_)    => lkont.next == HaltKontAddr && lkont.isEmpty
-      case ControlError(_)   => true
+      case _: ControlEval    => false
+      case _: ControlKont    => lkont.next == HaltKontAddr && lkont.isEmpty
+      case _: ControlError   => true
+      case _: ControlCall    => false
     }
 
     private def integrate(actions: Set[Action.A]): Set[State] = {
@@ -99,6 +102,8 @@ class GAAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E
           val next = KontAddr(e, t)
           kstore.extend(next, Set(lkont))
           State(ControlEval(e, env), LKont.empty(next), Timestamp[T, E].tick(t, fexp))
+        case Action.Call(f, fexp, args, _) =>
+          State(ControlCall(f, fexp, args), lkont, Timestamp[T, E].tick(t, fexp))
         case Action.Err(err) =>
           State(ControlError(err), lkont, Timestamp[T, E].tick(t))
       })
@@ -107,6 +112,7 @@ class GAAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E
     def step: Set[State] =
       control match {
         case ControlEval(e, env) => integrate(sem.stepEval(e, env, store, t))
+        case ControlCall(f, fexp, args) => integrate(sem.stepCall(f, fexp, args, store, t))
         case ControlKont(v)      =>
           /* XXX This case should be double checked */
           lkont.get match {
