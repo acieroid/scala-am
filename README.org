@@ -16,9 +16,8 @@ The test suite of Scala-AM can be run using =sbt test=.
 $ sbt
 > project scalaam
 > runMain scalaam.cli.RunConcrete test/church.scm # run church.scm in concrete (<1s)
-> runMain scalaam.cli.SchemeRunAAM test/church.scm # run it with AAM
-> runMain scalaam.cli.SchemeRunGAAM test/church.scm # run it with AAM and a
-global store
+> runMain scalaam.cli.SchemeRunAAM test/church.scm # run it with AAM (~15s)
+> runMain scalaam.cli.SchemeRunGAAM test/church.scm # run it with AAM and a global store (~1s)
 #+END_SRC
 
 * References and Relevant publications
