@@ -51,6 +51,7 @@ class ConcreteMachine[E <: Expression, A <: Address, V, T](val sem: Semantics[E,
           case _: ControlEval  => Colors.Green
           case _: ControlKont  => Colors.Pink
           case _: ControlError => Colors.Red
+          case _: ControlCall  => Colors.Green
         }
       }
     override def metadata =
@@ -61,6 +62,7 @@ class ConcreteMachine[E <: Expression, A <: Address, V, T](val sem: Semantics[E,
             case _: ControlEval  => GraphMetadataString("eval")
             case _: ControlKont  => GraphMetadataString("kont")
             case _: ControlError => GraphMetadataString("error")
+            case _: ControlCall  => GraphMetadataString("call")
           })
         ) ++ (control match {
           case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
@@ -72,6 +74,7 @@ class ConcreteMachine[E <: Expression, A <: Address, V, T](val sem: Semantics[E,
       case _: ControlEval  => false
       case _: ControlKont  => konts.isEmpty
       case _: ControlError => true
+      case _: ControlCall  => false
     }
   }
 
@@ -109,6 +112,8 @@ class ConcreteMachine[E <: Expression, A <: Address, V, T](val sem: Semantics[E,
             State(ControlEval(e, env), store2, konts, Timestamp[T, E].tick(state.t))
           case Action.StepIn(fexp, _, e, env, store2) =>
             State(ControlEval(e, env), store2, konts, Timestamp[T, E].tick(state.t, fexp))
+          case Action.Call(f, fexp, args, store2) =>
+            State(ControlCall(f, fexp, args), store2, konts, Timestamp[T, E].tick(state.t))
           case Action.Err(err) =>
             State(ControlError(err), state.store, konts, Timestamp[T, E].tick(state.t))
         }
@@ -123,6 +128,8 @@ class ConcreteMachine[E <: Expression, A <: Address, V, T](val sem: Semantics[E,
         state.control match {
           case ControlEval(e, env) =>
             applyAction(state.konts, sem.stepEval(e, env, state.store, state.t))
+          case ControlCall(f, fexp, args) =>
+            applyAction(state.konts, sem.stepCall(f, fexp, args, state.store, state.t))
           case ControlKont(v) =>
             state.konts match {
               case frame :: tl =>
