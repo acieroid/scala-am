@@ -18,6 +18,9 @@ trait AAMUtils[E <: Expression, A <: Address, V, T] {
   case class ControlError(err: Error) extends Control {
     override def toString = s"err($err)"
   }
+  case class ControlCall(f: V, fexp: E, args: List[(V, E)]) extends Control {
+    override def toString = s"call(${f})"
+  }
 
   /** Kontinuation addresses */
   trait KA extends Address with SmartHash {
