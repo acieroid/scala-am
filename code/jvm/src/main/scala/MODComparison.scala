@@ -4,8 +4,8 @@ import java.text.SimpleDateFormat
 import java.util.concurrent.TimeoutException
 import java.util.{Calendar, Date}
 import java.io.{BufferedWriter, FileWriter}
-import au.com.bytecode.opencsv.CSVWriter
 
+import au.com.bytecode.opencsv.CSVWriter
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Value
 import scalaam.language.scheme.SchemeInterpreter.Value._
@@ -192,6 +192,7 @@ object MODComparison extends App {
     "test/widen.scm",
     "test/work.scm",
   )
+  val defaultTimeout: Duration = Duration(10, MINUTES)
 
   def readFile(file: String): SchemeExp = {
     val f   = scala.io.Source.fromFile(file)
@@ -226,31 +227,35 @@ object MODComparison extends App {
     outputDir + format.format(now) + name + suffix
   }
 
-  def checkSubsumption[A <: Address, L](v: Set[Value], lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v.forall( _ match {
-      case Value.Undefined(_) => true
-      case Value.Unbound(_)   => true
-      case Clo(_, _)          => lat.getClosures(abs).nonEmpty
-      case Primitive(p)       => lat.subsumes(abs, lat.primitive(p))
-      case Str(s)             => lat.subsumes(abs, lat.string(s))
-      case Symbol(s)          => lat.subsumes(abs, lat.symbol(s))
-      case Integer(i)         => lat.subsumes(abs, lat.number(i))
-      case Real(r)            => lat.subsumes(abs, lat.real(r))
-      case Bool(b)            => lat.subsumes(abs, lat.bool(b))
-      case Character(c)       => lat.subsumes(abs, lat.char(c))
-      case Nil                => lat.subsumes(abs, lat.nil)
-      case Cons(_, _)         => lat.getPointerAddresses(abs).nonEmpty
-      case Vector(_)          => lat.getPointerAddresses(abs).nonEmpty
-      case v                  => throw new Exception(s"Unknown concrete value type: $v")
-    })
+  def checkSubsumption[A <: Address, L](v: Set[Value], machine: Machine, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v.forall {
+    case Value.Undefined(_) => true
+    case Value.Unbound(_)   => true
+    case Clo(_, _)          => lat.getClosures(abs).nonEmpty
+    case Primitive(p)       =>
+      machine.schemeSemantics.primitives.get(p.name) match {
+        case None       => false
+        case Some(prim) => lat.subsumes(abs, lat.primitive(prim))
+      }
+    case Str(s)             => lat.subsumes(abs, lat.string(s))
+    case Symbol(s)          => lat.subsumes(abs, lat.symbol(s))
+    case Integer(i)         => lat.subsumes(abs, lat.number(i))
+    case Real(r)            => lat.subsumes(abs, lat.real(r))
+    case Bool(b)            => lat.subsumes(abs, lat.bool(b))
+    case Character(c)       => lat.subsumes(abs, lat.char(c))
+    case Nil                => lat.subsumes(abs, lat.nil)
+    case Cons(_, _)         => lat.getPointerAddresses(abs).nonEmpty
+    case Vector(_)          => lat.getPointerAddresses(abs).nonEmpty
+    case v                  => throw new Exception(s"Unknown concrete value type: $v")
+  }
 
-  def check[A <: Address, L](name: String, v: Set[Value], p: Position, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
-    if (!checkSubsumption(v, lat, abs))
+  def check[A <: Address, L](name: String, v: Set[Value], p: Position, machine: Machine, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
+    if (!checkSubsumption(v, machine, lat, abs))
       display(s"$name: subsumption check failed: $v > $abs at $p.\n")
   }
 
   def forMachine(name: String, machine: Machine, cMap: Map[Position, Set[Value]], timeout: Duration): Unit = try {
     displayErr("* " + name + "\n")
-    Interruptable.inFuture({ machine.analyze() }, timeout)
+    machine.analyze(Timeout.duration(timeout))
 
     val deps  = machine.deps
     val store = machine.store
@@ -266,14 +271,14 @@ object MODComparison extends App {
     display(s"Dependency keyset size: ${deps.keySet.size}.\n")
 
     for (elem <- cMap.keySet)
-      check(name, cMap(elem), elem, machine.lattice, pMap(elem))
+      check(name, cMap(elem), elem, machine, machine.lattice, pMap(elem))
   } catch {
     case _: TimeoutException => displayErr(s"$name timed out!\n")
     case e: Throwable => e.printStackTrace()
       println()
   }
 
-  def forFile(file: String, timeout: Duration = Duration(10, MINUTES)): Unit = try {
+  def forFile(file: String, timeout: Duration = defaultTimeout): Unit = try {
     displayErr(file + "\n")
 
     val program = readFile(file)
@@ -285,7 +290,7 @@ object MODComparison extends App {
     // For every position, cMap keeps the concrete values encountered by the concrete interpreter.
     var cMap: Map[Position, Set[Value]] = Map().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)), false)
-    Interruptable.inFuture(interpreter.run(SchemeUndefiner.undefine(List(program))), timeout) // Easy timeout: we do not have to add the timeout to the concrete interpreter itself.
+    interpreter.run(SchemeUndefiner.undefine(List(program)), Timeout.duration(timeout))
 
     display(s"-> Inferred ${cMap.keySet.size} positions to check values.\n")
 

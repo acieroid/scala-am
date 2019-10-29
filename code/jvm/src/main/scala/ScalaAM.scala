@@ -28,7 +28,7 @@ object RunConcrete extends Interpreter {
     f.close()
     val parsed = SchemeUndefiner.undefine(List(SchemeParser.parse(content)))
     val interpreter = new SchemeInterpreter((pos, v) => ())
-    val res = interpreter.run(parsed)
+    val res = interpreter.run(parsed, timeout)
     println(s"Result: $res")
     (0, 0)
   }

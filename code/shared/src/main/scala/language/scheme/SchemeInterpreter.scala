@@ -3,6 +3,8 @@ package scalaam.language.scheme
 import scalaam.core._
 import scalaam.language.sexp._
 
+import scala.concurrent.TimeoutException
+
 /**
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
   * This interpreter dictates the concrete semantics of the Scheme language analyzed by Scala-AM.
@@ -13,8 +15,8 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     * Evaluates `program`.
     * Will check the analysis result by calling `compare` on all encountered values.
     */
-  def run(program: SchemeExp): Value = {
-    eval(program, Map.empty)
+  def run(program: SchemeExp, timeout: Timeout.T): Value = {
+    eval(program, Map.empty, timeout)
   }
 
   var compared = 0
@@ -38,105 +40,108 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     store = store + (a -> v)
   }
 
-  def eval(e: SchemeExp, env: Env): Value = e match {
-    case SchemeLambda(_, _, _) => Value.Clo(e, env)
-    case SchemeFuncall(f, args, pos) =>
-      eval(f, env) match {
-        case Value.Clo(SchemeLambda(argsNames, body, pos2), env2) =>
-          if (argsNames.length != args.length) {
-            throw new Exception(s"Invalid function call at position ${pos}: ${args.length} given, while ${argsNames.length} are expected")
+  def eval(e: SchemeExp, env: Env, timeout: Timeout.T): Value = {
+    if (timeout.reached) throw new TimeoutException()
+    e match {
+      case SchemeLambda(_, _, _) => Value.Clo(e, env)
+      case SchemeFuncall(f, args, pos) =>
+        eval(f, env, timeout) match {
+          case Value.Clo(SchemeLambda(argsNames, body, pos2), env2) =>
+            if (argsNames.length != args.length) {
+              throw new Exception(s"Invalid function call at position ${pos}: ${args.length} given, while ${argsNames.length} are expected")
+            }
+            val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
+              val addr = newAddr()
+              extendStore(addr, check(arg._1.pos, eval(arg._2, env, timeout)))
+              (env3 + (arg._1.name -> addr))
+            })
+            eval(SchemeBegin(body, pos2), envExt, timeout)
+          case Value.Primitive(p) =>
+            p.call(args.map(arg => eval(arg, env, timeout)))
+          case v =>
+            throw new Exception(s"Invalid function call at position ${pos}: ${v} is not a closure or a primitive")
+        }
+      case SchemeIf(cond, cons, alt, _) =>
+        eval(cond, env, timeout) match {
+          case Value.Bool(false) => eval(alt, env, timeout)
+          case _ => eval(cons, env, timeout)
+        }
+      case SchemeLet(bindings, body, pos) =>
+        val envExt = bindings.foldLeft(env)((env2, binding) => {
+          val addr = newAddr()
+          extendStore(addr, check(binding._1.pos, eval(binding._2, env, timeout)))
+          (env2 + (binding._1.name -> addr))
+        })
+        eval(SchemeBegin(body, pos), envExt, timeout)
+      case SchemeLetStar(bindings, body, pos) =>
+        val envExt = bindings.foldLeft(env)((env2, binding) => {
+          val addr = newAddr()
+          extendStore(addr, check(binding._1.pos, eval(binding._2, env2 /* this is the difference with let */ , timeout)))
+          (env2 + (binding._1.name -> addr))
+        })
+        eval(SchemeBegin(body, pos), envExt, timeout)
+      case SchemeLetrec(bindings, body, pos) =>
+        val envExt = bindings.foldLeft(env)((env2, binding) => {
+          val addr = newAddr()
+          /* These are the differences with let* (store and env) */
+          extendStore(addr, Value.Unbound(binding._1))
+          val env3 = env2 + (binding._1.name -> addr)
+          extendStore(addr, check(binding._1.pos, eval(binding._2, env3, timeout)))
+          env3
+        })
+        eval(SchemeBegin(body, pos), envExt, timeout)
+      case SchemeNamedLet(_, _, _, _) => ???
+      case SchemeSet(id, v, pos) =>
+        /* TODO: primitives can be reassigned with set! without being redefined */
+        val addr = env.get(id.name) match {
+          case Some(addr) => addr
+          case None => throw new Exception(s"Unbound variable $id accessed at position $pos")
+        }
+        extendStore(addr, eval(v, env, timeout))
+        Value.Undefined(pos)
+      case SchemeBegin(exps, pos) =>
+        val init: Value = Value.Undefined(pos)
+        exps.foldLeft(init)((_, e) => eval(e, env, timeout))
+      case SchemeAnd(Nil, _) =>
+        Value.Bool(true)
+      case SchemeAnd(e :: exps, pos) =>
+        eval(e, env, timeout) match {
+          case Value.Bool(false) => Value.Bool(false)
+          case _ => eval(SchemeAnd(exps, pos), env, timeout)
+        }
+      case SchemeOr(Nil, _) =>
+        Value.Bool(false)
+      case SchemeOr(e :: exps, pos) =>
+        eval(e, env, timeout) match {
+          case Value.Bool(false) => eval(SchemeOr(exps, pos), env, timeout)
+          case v => v
+        }
+      case SchemeDefineVariable(_, _, _) => ???
+      case SchemeDefineFunction(_, _, _, _) => ???
+      case SchemeVar(id) =>
+        env.get(id.name) match {
+          case Some(addr) => store.get(addr) match {
+            case Some(v) => v
+            case None => throw new Exception(s"Unbound variable $id at position ${id.pos}")
           }
-          val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
-            val addr = newAddr()
-            extendStore(addr, check(arg._1.pos ,eval(arg._2, env)))
-            (env3 + (arg._1.name -> addr))
-          })
-          eval(SchemeBegin(body, pos2), envExt)
-        case Value.Primitive(p) =>
-          p.call(args.map(arg => eval(arg, env)))
-        case v =>
-          throw new Exception(s"Invalid function call at position ${pos}: ${v} is not a closure or a primitive")
-      }
-    case SchemeIf(cond, cons, alt, _) =>
-      eval(cond, env) match {
-        case Value.Bool(false) => eval(alt, env)
-        case _ => eval(cons, env)
-      }
-    case SchemeLet(bindings, body, pos) =>
-      val envExt = bindings.foldLeft(env)((env2, binding) => {
-        val addr = newAddr()
-        extendStore(addr, check(binding._1.pos, eval(binding._2, env)))
-        (env2 + (binding._1.name -> addr))
-      })
-      eval(SchemeBegin(body, pos), envExt)
-    case SchemeLetStar(bindings, body, pos) =>
-      val envExt = bindings.foldLeft(env)((env2, binding) => {
-        val addr = newAddr()
-        extendStore(addr, check(binding._1.pos, eval(binding._2, env2 /* this is the difference with let */)))
-        (env2 + (binding._1.name -> addr))
-      })
-      eval(SchemeBegin(body, pos), envExt)
-    case SchemeLetrec(bindings, body, pos) =>
-      val envExt = bindings.foldLeft(env)((env2, binding) => {
-        val addr = newAddr()
-        /* These are the differences with let* (store and env) */
-        extendStore(addr, Value.Unbound(binding._1))
-        val env3 = env2 + (binding._1.name -> addr)
-        extendStore(addr, check(binding._1.pos, eval(binding._2, env3)))
-        env3
-      })
-      eval(SchemeBegin(body, pos), envExt)
-    case SchemeNamedLet(_, _, _, _) => ???
-    case SchemeSet(id, v, pos) =>
-      /* TODO: primitives can be reassigned with set! without being redefined */
-      val addr = env.get(id.name) match {
-        case Some(addr) => addr
-        case None => throw new Exception(s"Unbound variable $id accessed at position $pos")
-      }
-      extendStore(addr, eval(v, env))
-      Value.Undefined(pos)
-    case SchemeBegin(exps, pos) =>
-      val init: Value = Value.Undefined(pos)
-      exps.foldLeft(init)((_, e) => eval(e, env))
-    case SchemeAnd(Nil, _) =>
-      Value.Bool(true)
-    case SchemeAnd(e :: exps, pos) =>
-      eval(e, env) match {
-        case Value.Bool(false) => Value.Bool(false)
-        case _ => eval(SchemeAnd(exps, pos), env)
-      }
-    case SchemeOr(Nil, _) =>
-      Value.Bool(false)
-    case SchemeOr(e :: exps, pos) =>
-      eval(e, env) match {
-        case Value.Bool(false) => eval(SchemeOr(exps, pos), env)
-        case v => v
-      }
-    case SchemeDefineVariable(_, _, _) => ???
-    case SchemeDefineFunction(_, _, _, _) => ???
-    case SchemeVar(id) =>
-      env.get(id.name) match {
-        case Some(addr) => store.get(addr) match {
-          case Some(v) => v
-          case None => throw new Exception(s"Unbound variable $id at position ${id.pos}")
+          case None => primitive(id.name) match {
+            case Some(prim) => prim
+            case None => throw new Exception(s"Undefined variable $id at position ${id.pos}")
+          }
         }
-        case None => primitive(id.name) match {
-          case Some(prim) => prim
-          case None => throw new Exception(s"Undefined variable $id at position ${id.pos}")
+      case SchemeQuoted(quoted, _) =>
+        evalQuoted(quoted)
+      case SchemeValue(v, _) =>
+        v match {
+          case ValueString(s) => Value.Str(s)
+          case ValueSymbol(s) => Value.Symbol(s)
+          case ValueInteger(n) => Value.Integer(n)
+          case ValueReal(r) => Value.Real(r)
+          case ValueBoolean(b) => Value.Bool(b)
+          case ValueCharacter(c) => Value.Character(c)
+          case ValueNil => Value.Nil
         }
-      }
-    case SchemeQuoted(quoted, _) =>
-      evalQuoted(quoted)
-    case SchemeValue(v, _) =>
-      v match {
-        case ValueString(s) => Value.Str(s)
-        case ValueSymbol(s) => Value.Symbol(s)
-        case ValueInteger(n) => Value.Integer(n)
-        case ValueReal(r) => Value.Real(r)
-        case ValueBoolean(b) => Value.Bool(b)
-        case ValueCharacter(c) => Value.Character(c)
-        case ValueNil => Value.Nil
-      }
+    }
   }
   def allocateCons(car: Value, cdr: Value): Value = {
     val addr1 = newAddr()
