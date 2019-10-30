@@ -282,13 +282,13 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       /* [x]  peek-char?: Reading */
       Positivep, /* [vv] positive?: Comparison */
       /* [x]  procedure?: Procedure Properties */
-      // TODO Quotient, /* [vv] quotient: Integer Operations */
+      Quotient, /* [vv] quotient: Integer Operations */
       /* [x]  rational?: Reals and Rationals */
       /* [x]  read: Scheme Read */
       /* [x]  read-char?: Reading */
       /* [x]  real-part: Complex */
       Realp, /* [vv] real?: Reals and Rationals */
-      // TODO Remainder, /* [vv] remainder: Integer Operations */
+      Remainder, /* [vv] remainder: Integer Operations */
       /* [x]  reverse: Append/Reverse */
       Round, /* [vv] round: Arithmetic */
       SetCar, /* [vv] set-car!: Pairs */
@@ -525,6 +525,20 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         case Value.Real(x) => Value.Real(x.floor)
       }
     }
+    object Quotient extends Prim {
+      val name = "quotient"
+      def call(args: List[Value]): Value = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x / y)
+        case _ => throw new Exception(s"$name: invalid arguments $args")
+      }
+    }
+    object Remainder extends Prim {
+      val name = "remainder"
+      def call(args: List[Value]): Value = args match {
+        case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x % y)
+        case _ => throw new Exception(s"$name: invalid arguments $args")
+      }
+    }
     object Round extends SingleArgumentPrim("round") {
       def fun = {
         case x: Value.Integer => x
@@ -537,7 +551,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         case _: Value.Integer => Value.Bool(false)
       }
     }
-    object Oddp extends SingleArgumentPrim("even?") {
+    object Oddp extends SingleArgumentPrim("odd?") {
       def fun = {
         case Value.Integer(x) if x % 2 == 1 => Value.Bool(true)
         case _: Value.Integer => Value.Bool(false)
@@ -555,7 +569,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         case _: Value.Integer => Value.Bool(false)
       }
     }
-    object Zerop extends SingleArgumentPrim("zero??") {
+    object Zerop extends SingleArgumentPrim("zero?") {
       def fun = {
         case Value.Integer(0) => Value.Bool(true)
         case _: Value.Integer => Value.Bool(false)

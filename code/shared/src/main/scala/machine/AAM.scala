@@ -51,6 +51,7 @@ class AAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E]
           case _: ControlEval  => Colors.Green
           case _: ControlKont  => Colors.Pink
           case _: ControlError => Colors.Red
+          case _: ControlCall => Colors.Green
         }
       }
     override def metadata =
@@ -61,6 +62,7 @@ class AAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E]
             case _: ControlEval  => GraphMetadataString("eval")
             case _: ControlKont  => GraphMetadataString("kont")
             case _: ControlError => GraphMetadataString("error")
+            case _: ControlCall  => GraphMetadataString("call")
           })
         ) ++ (control match {
           case ControlKont(v) => Map("value" -> GraphMetadataValue[V](v))
@@ -76,6 +78,7 @@ class AAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E]
       case _: ControlEval  => false
       case _: ControlKont  => a == HaltKontAddr
       case _: ControlError => true
+      case _: ControlCall => false
     }
 
     /**
@@ -107,6 +110,9 @@ class AAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E]
         /* When a function is stepped in, we also go to an eval state */
         case Action.StepIn(fexp, _, e, env, store) =>
           Set(State(ControlEval(e, env), store, kstore, a, Timestamp[T, E].tick(t, fexp)))
+        /* Function call */
+        case Action.Call(f, fexp, args, store) =>
+          Set(State(ControlCall(f, fexp, args), store, kstore, a, Timestamp[T, E].tick(t, fexp)))
         /* When an error is reached, we go to an error state */
         case Action.Err(err) =>
           Set(State(ControlError(err), store, kstore, a, Timestamp[T, E].tick(t)))
@@ -127,6 +133,9 @@ class AAM[E <: Expression, A <: Address, V, T](val sem: Semantics[E, A, V, T, E]
             })
           case None => Set()
         }
+      /** In a call state, step inside the function */
+      case ControlCall(f, fexp, args) =>
+        integrate(a, sem.stepCall(f, fexp, args, store, t))
       /** In an error state, the state is not able to make a step */
       case ControlError(_) => Set()
     }
