@@ -1,8 +1,7 @@
 package scalaam.modular
 
-import core.Annotations.mutable
 import scalaam.core._
-import scalaam.core.Timeout
+import scalaam.core.Annotations._
 import scalaam.util._
 import scalaam.util.MonoidImplicits._
 
@@ -61,11 +60,12 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
     allComponents ++= newComponents
     componentDeps += (current -> intra.components)
   }
-  def analyze(timeout: Timeout.T): Unit = while(!finished()) {
-    if (timeout.reached)
-      throw new TimeoutException()
-    step()
-  }
+  def analyze(timeout: Timeout.T = Timeout.Infinity): Unit =
+    while(!finished()) {
+      if (timeout.reached)
+        throw new TimeoutException()
+      step()
+    }
 }
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {

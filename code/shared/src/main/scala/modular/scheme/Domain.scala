@@ -1,46 +1,73 @@
 package scalaam.modular.scheme
 
+import scalaam.core._
 import scalaam.lattice._
 import scalaam.language.scheme._
 
-/* A type lattice for ModF */
-trait TypeDomain extends SchemeModFSemantics {
-  lazy val valueLattice: MakeSchemeLattice[SchemeExp,
-                                           Addr,
-                                           Type.S,
-                                           Concrete.B,
-                                           Type.I,
-                                           Type.R,
-                                           Type.C,
-                                           Type.Sym] = new MakeSchemeLattice
+trait AbstractDomain extends SchemeModFSemantics {
+  // parameterized by different abstract domains for each type
+  type S
+  type B
+  type I
+  type R
+  type C
+  type Sym
+  // which are used to construct a "modular" (~ product) lattice
+  val valueLattice: MakeSchemeLattice[SchemeExp,Addr,S,B,I,R,C,Sym]
   type Value = valueLattice.L
   lazy val lattice = valueLattice.schemeLattice
+}
+
+trait AdaptiveAbstractDomain extends AdaptiveSchemeModFSemantics with AbstractDomain {
+  override def alphaValue(value: Value) = value match {
+    case valueLattice.Element(v)    => valueLattice.Element(alphaV(v))
+    case valueLattice.Elements(vs)  => valueLattice.Elements(vs.map(alphaV))
+  }
+  private def alphaV(value: valueLattice.Value): valueLattice.Value = value match {
+    case valueLattice.Pointer(addr)     => valueLattice.Pointer(alphaAddr(addr))
+    case valueLattice.Clo(lam,env,nam)  => valueLattice.Clo(lam,alphaEnv(env),nam)
+    case valueLattice.Cons(car,cdr)     => valueLattice.Cons(alphaValue(car),alphaValue(cdr))
+    case valueLattice.Vec(siz,els,ini)  => valueLattice.Vec(siz,els.mapValues(alphaValue),alphaValue(ini))
+    case _                              => value
+  }
+  private def alphaEnv(env: Environment[Addr]) = ???
+}
+
+/* A type lattice for ModF */
+trait TypeDomain extends AbstractDomain {
+  // use type domains everywhere, except for booleans
+  type S    = Type.S
+  type B    = Concrete.B
+  type I    = Type.I
+  type R    = Type.R
+  type C    = Type.C
+  type Sym  = Type.Sym
+  // make the scheme lattice
+  lazy val valueLattice = new MakeSchemeLattice
 }
 
 /* A constant propagation lattice for ModF */
-trait ConstantPropagationDomain extends SchemeModFSemantics {
-  lazy val valueLattice: MakeSchemeLattice[SchemeExp,
-                                           Addr,
-                                           ConstantPropagation.S,
-                                           Concrete.B,
-                                           ConstantPropagation.I,
-                                           ConstantPropagation.R,
-                                           ConstantPropagation.C,
-                                           ConstantPropagation.Sym] = new MakeSchemeLattice
-  type Value = valueLattice.L
-  lazy val lattice = valueLattice.schemeLattice
+trait ConstantPropagationDomain extends AbstractDomain {
+  // use constant propagation domains everywhere, except for booleans
+  type S    = ConstantPropagation.S
+  type B    = Concrete.B
+  type I    = ConstantPropagation.I
+  type R    = ConstantPropagation.R
+  type C    = ConstantPropagation.C
+  type Sym  = ConstantPropagation.Sym
+  // make the scheme lattice
+  lazy val valueLattice = new MakeSchemeLattice
 }
 
 /* A powerset lattice for ModF */
-trait PowersetDomain extends SchemeModFSemantics {
-  lazy val valueLattice: MakeSchemeLattice[SchemeExp,
-                                           Addr,
-                                           Concrete.S,
-                                           Concrete.B,
-                                           Concrete.I,
-                                           Concrete.R,
-                                           Concrete.C,
-                                           Concrete.Sym] = new MakeSchemeLattice
-  type Value = valueLattice.L
-  lazy val lattice = valueLattice.schemeLattice
+trait PowersetDomain extends AbstractDomain {
+  // use powerset domains everywhere
+  type S    = Concrete.S
+  type B    = Concrete.B
+  type I    = Concrete.I
+  type R    = Concrete.R
+  type C    = Concrete.C
+  type Sym  = Concrete.Sym
+  // make the scheme lattice
+  lazy val valueLattice = new MakeSchemeLattice
 }

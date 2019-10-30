@@ -1,7 +1,7 @@
 package scalaam.modular
 
-import core.Annotations.mutable
 import scalaam.core._
+import scalaam.core.Annotations._
 import scalaam.util.MonoidImplicits._
 
 trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {

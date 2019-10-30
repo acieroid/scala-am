@@ -74,5 +74,4 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                   with AdaptiveGlobalStore[SchemeExp]
                                   with AdaptiveReturnResult[SchemeExp] {
   def alpha(cmp: IntraComponent) = ???
-  def alphaValue(value: Value) = ???
 }
