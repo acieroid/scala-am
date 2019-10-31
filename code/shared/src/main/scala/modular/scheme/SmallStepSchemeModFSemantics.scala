@@ -5,6 +5,8 @@ import scalaam.graph.{Color, Colors, GraphElement, GraphMetadataBool, GraphMetad
 import scalaam.language.scheme._
 import scalaam.util.Show
 
+import scala.concurrent.TimeoutException
+
 /** MODF analysis using an AAM intra-component analysis. */
 trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intraAnalysis
@@ -152,7 +154,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       lattice.getPrimitives[schemeSemantics.Primitive](fval).flatMap(prim => prim.callAction(fexp, args.map(_.swap), StoreAdapter, this))
 
     // analysis entry point
-    def analyze(): Unit = {
+    def analyze(timeout: Timeout.T): Unit = {
       val exp = component match {
         case MainComponent => SchemeUndefiner.undefine(List(program))
         case CallComponent(SchemeLambda(_,body,_),_,_,_) => SchemeBody(body)
@@ -167,6 +169,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       var visited: Set[State] = Set[State]()
       var result: Value = lattice.bottom
       while(work.nonEmpty) {
+        if (timeout.reached) throw new TimeoutException()
         val state = work.head
         work = work.tail
         if (state.finished) {

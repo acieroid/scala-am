@@ -34,7 +34,7 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
     @mutable private[ModAnalysis] var components = Set[IntraComponent]()
     protected def spawn(cmp: IntraComponent) = components += cmp
     // analyses the given component
-    def analyze(): Unit
+    def analyze(timeout: Timeout.T): Unit
   }
 
   // inter-analysis using a simple worklist algorithm
@@ -43,13 +43,13 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
   @mutable var allComponents = Set[IntraComponent](initialComponent)
   @mutable var componentDeps = Map[IntraComponent,Set[IntraComponent]]()
   def finished() = work.isEmpty
-  def step() = {
+  def step(timeout: Timeout.T) = {
     // take the next component
     val current = work.head
     work -= current
     // do the intra-analysis
     val intra = intraAnalysis(current)
-    intra.analyze()
+    intra.analyze(timeout)
     // add the successors to the worklist
     val newComponents = intra.components.filterNot(visited)
     val componentsToUpdate = intra.deps.flatMap(deps)
@@ -60,12 +60,11 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
     allComponents ++= newComponents
     componentDeps += (current -> intra.components)
   }
-  def analyze(timeout: Timeout.T = Timeout.Infinity): Unit =
-    while(!finished()) {
-      if (timeout.reached)
-        throw new TimeoutException()
-      step()
-    }
+  def analyze(timeout: Timeout.T = Timeout.Infinity): Unit = while(!finished()) {
+    if (timeout.reached)
+      throw new TimeoutException()
+    step(timeout)
+  }
 }
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
