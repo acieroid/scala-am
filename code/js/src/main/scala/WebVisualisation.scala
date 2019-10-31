@@ -1,5 +1,6 @@
 package scalaam.web
 
+import scalaam.core.Timeout
 import scalaam.modular._
 
 // Scala.js-related imports
@@ -225,7 +226,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   private def stepAnalysis() =
     if (!analysis.finished()) {
       val component = analysis.work.head
-      analysis.step()
+      analysis.step(Timeout.Infinity)
       refreshDataAfterStep(component)
       refreshVisualisation()
     }

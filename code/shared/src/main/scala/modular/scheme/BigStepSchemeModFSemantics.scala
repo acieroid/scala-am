@@ -4,38 +4,47 @@ import scalaam.core._
 import scalaam.language.sexp
 import scalaam.language.scheme._
 
+import scala.concurrent.TimeoutException
+
 trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
+    var timeout: Timeout.T = _ // Avoid having to add the timeout to every call.
     // analysis entry point
-    def analyze(): Unit = writeResult(component match {
-      case MainComponent =>
-        eval(program)
-      case CallComponent(SchemeLambda(pars,body,_),_,_,_) =>
-        bindPars(pars)
-        evalSequence(body)
-    })
+    def analyze(to: Timeout.T): Unit = {
+      timeout = to
+      writeResult(component match {
+        case MainComponent =>
+          eval(program)
+        case CallComponent(SchemeLambda(pars,body,_),_,_,_) =>
+          bindPars(pars)
+          evalSequence(body)
+      })
+    }
     // simple big-step eval
     private var env = component.env
-    private def eval(exp: SchemeExp): Value = exp match {
-      case SchemeValue(value,_)                   => evalLiteralValue(value)
-      case lambda: SchemeLambda                   => lattice.closure((lambda,env),None)
-      case SchemeVar(id)                          => lookupVariable(id.name)
-      case SchemeBegin(exps,_)                    => evalSequence(exps)
-      case SchemeDefineVariable(id,vexp,_)        => evalDefineVariable(id,vexp)
-      case SchemeDefineFunction(id,args,body,pos) => evalDefineFunction(id,args,body,pos)
-      case SchemeSet(name,variable,_)             => evalSet(name,variable)
-      case SchemeIf(prd,csq,alt,_)                => evalIf(prd,csq,alt)
-      case SchemeLet(bindings,body,_)             => evalLet(bindings,body)
-      case SchemeLetStar(bindings,body,_)         => evalLetStar(bindings,body)
-      case SchemeLetrec(bindings,body,_)          => evalLetrec(bindings,body)
-      case SchemeNamedLet(name,bindings,body,pos) => evalNamedLet(name,bindings,body,pos)
-      case SchemeFuncall(fun,args,_)              => evalCall(fun,args)
-      case SchemeAnd(exps,_)                      => evalAnd(exps)
-      case SchemeOr(exps,_)                       => evalOr(exps)
-      case SchemeQuoted(quo,_)                    => evalQuoted(quo)
-      case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
+    private def eval(exp: SchemeExp): Value = {
+      if (timeout.reached) throw new TimeoutException()
+      exp match {
+        case SchemeValue(value, _) => evalLiteralValue(value)
+        case lambda: SchemeLambda => lattice.closure((lambda, env), None)
+        case SchemeVar(id) => lookupVariable(id.name)
+        case SchemeBegin(exps, _) => evalSequence(exps)
+        case SchemeDefineVariable(id, vexp, _) => evalDefineVariable(id, vexp)
+        case SchemeDefineFunction(id, args, body, pos) => evalDefineFunction(id, args, body, pos)
+        case SchemeSet(name, variable, _) => evalSet(name, variable)
+        case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
+        case SchemeLet(bindings, body, _) => evalLet(bindings, body)
+        case SchemeLetStar(bindings, body, _) => evalLetStar(bindings, body)
+        case SchemeLetrec(bindings, body, _) => evalLetrec(bindings, body)
+        case SchemeNamedLet(name, bindings, body, pos) => evalNamedLet(name, bindings, body, pos)
+        case SchemeFuncall(fun, args, _) => evalCall(fun, args)
+        case SchemeAnd(exps, _) => evalAnd(exps)
+        case SchemeOr(exps, _) => evalOr(exps)
+        case SchemeQuoted(quo, _) => evalQuoted(quo)
+        case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
+      }
     }
     private def evalLiteralValue(literal: sexp.Value): Value = literal match {
       case sexp.ValueInteger(n)   => lattice.number(n)

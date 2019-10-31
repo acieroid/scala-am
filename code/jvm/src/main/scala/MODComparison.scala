@@ -129,7 +129,7 @@ object MODComparison extends App {
     "test/scp1/3.4.scm",
     "test/scp1/3.6.scm",
     "test/scp1/3.8.scm",
-    "test/scp1/3.9.scm",
+    //"test/scp1/3.9.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
     "test/scp1/4.1.scm",
     "test/scp1/4.8.scm",
     "test/scp1/5.14.3.scm",
@@ -283,7 +283,7 @@ object MODComparison extends App {
 
     val program = readFile(file)
     val machines: List[(String, Machine)] = List(
-      ("bigStep",   new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics),
+      //("bigStep",   new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics),
       ("smallStep", new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics),
     )
 
