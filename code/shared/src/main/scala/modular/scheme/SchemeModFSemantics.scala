@@ -9,9 +9,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                           with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address { def pos(): Position }
-  case class VarAddr(id: Identifier)          extends LocalAddr { def printable = true;  def pos(): Position = id.pos  }
-  case class PtrAddr[E <: Expression](exp: E) extends LocalAddr { def printable = false; def pos(): Position = exp.pos }
-  case class PrmAddr(name: String)            extends LocalAddr { def printable = false; def pos(): Position = Position.none }
+  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def pos(): Position = id.pos  }
+  case class PtrAddr(exp: Expression) extends LocalAddr { def printable = false; def pos(): Position = exp.pos }
+  case class PrmAddr(name: String)    extends LocalAddr { def printable = false; def pos(): Position = Position.none }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
   // Some glue code to Scala-AM to reuse the primitives and environment

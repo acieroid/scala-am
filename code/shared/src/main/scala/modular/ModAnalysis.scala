@@ -60,11 +60,13 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
     allComponents ++= newComponents
     componentDeps += (current -> intra.components)
   }
-  def analyze(timeout: Timeout.T = Timeout.Infinity): Unit = while(!finished()) {
-    if (timeout.reached)
-      throw new TimeoutException()
-    step(timeout)
-  }
+  def analyze(timeout: Timeout.T = Timeout.Infinity): Unit =
+    while(!finished()) {
+      if (timeout.reached) {
+        throw new TimeoutException()
+      }
+      step(timeout)
+    }
 }
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
