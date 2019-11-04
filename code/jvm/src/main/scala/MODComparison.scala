@@ -218,14 +218,14 @@ object MODComparison extends App {
     writer.flush()
   }
 
-  val outputDir: String = "./out/"
+  val outputDir: String           = "./out/"
+  val  calendar: Calendar         = Calendar.getInstance()
+  val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH'h'mm")
+  val detformat: SimpleDateFormat = new SimpleDateFormat("HH:mm:ss")
 
   /** Creates a fileName including the given name, suffix and a timestamp. */
-  def ts(name: String, suffix: String): String = {
-    val now: Date                = Calendar.getInstance().getTime
-    val format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH'h'mm_")
-    outputDir + format.format(now) + name + suffix
-  }
+  def ts(name: String, suffix: String): String =
+    outputDir + format.format(calendar.getTime) + "_" + name + suffix
 
   def checkSubsumption[A <: Address, L](v: Set[Value], machine: Machine, lat: SchemeLattice[L, SchemeExp, A], abs: L): Boolean = v.forall {
     case Value.Undefined(_) => true
@@ -248,14 +248,15 @@ object MODComparison extends App {
     case v                  => throw new Exception(s"Unknown concrete value type: $v")
   }
 
-  def check[A <: Address, L](name: String, v: Set[Value], p: Position, machine: Machine, lat: SchemeLattice[L, SchemeExp, A], abs: L): Unit = {
-    if (!checkSubsumption(v, machine, lat, abs))
-      display(s"$name: subsumption check failed: $v > $abs at $p.\n")
+  def check[A <: Address, L](name: String, v: Set[Value], p: Position, machine: Machine, lat: SchemeLattice[L, SchemeExp, A], abs: Option[L]): Unit = abs match {
+    case None       => display(s"No corresponding abstract value for $v at $p.\n")
+    case Some(absv) => if (!checkSubsumption(v, machine, lat, absv)) display(s"$name: subsumption check failed: $v > $absv at $p.\n")
   }
 
   def forMachine(name: String, machine: Machine, cMap: Map[Position, Set[Value]], timeout: Duration): Unit = try {
-    displayErr("* " + name + "\n")
+    displayErr(s"* $name\n  - started:  ${detformat.format(calendar.getTime)}\n")
     machine.analyze(Timeout.duration(timeout))
+    displayErr(s"  - finished: ${detformat.format(calendar.getTime)}\n")
 
     val deps  = machine.deps
     val store = machine.store
@@ -271,11 +272,12 @@ object MODComparison extends App {
     display(s"Dependency keyset size: ${deps.keySet.size}.\n")
 
     for (elem <- cMap.keySet)
-      check(name, cMap(elem), elem, machine, machine.lattice, pMap(elem))
+      check(name, cMap(elem), elem, machine, machine.lattice, pMap.get(elem))
   } catch {
     case _: TimeoutException => displayErr(s"$name timed out!\n")
     case e: Throwable => e.printStackTrace()
-      println()
+      writer.writeNext("*** Stacktrace omitted ***")
+      writer.flush()
   }
 
   def forFile(file: String, timeout: Duration = defaultTimeout): Unit = try {
@@ -290,9 +292,11 @@ object MODComparison extends App {
     // For every position, cMap keeps the concrete values encountered by the concrete interpreter.
     var cMap: Map[Position, Set[Value]] = Map().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((p, v) => cMap = cMap + (p -> (cMap(p) + v)), false)
+    displayErr(s"* concrete\n  - started:  ${detformat.format(calendar.getTime)}\n")
     interpreter.run(SchemeUndefiner.undefine(List(program)), Timeout.duration(timeout))
+    displayErr(s"  - finished: ${detformat.format(calendar.getTime)}\n")
 
-    display(s"-> Inferred ${cMap.keySet.size} positions to check values.\n")
+    display(s"  -> Inferred ${cMap.keySet.size} positions to check values.\n")
 
     machines.foreach(m => forMachine(m._1, m._2, cMap, timeout))
 
