@@ -20,7 +20,7 @@ object MODComparison extends App {
   type Machine = ModAnalysis[SchemeExp] with FullArgumentSensitivity with ConstantPropagationDomain
 
   val benchmarks: List[String] = List(
-    "test/ad/abstrct.scm",
+  /*  "test/ad/abstrct.scm",
     //"test/ad/bfirst.scm", // VARARG
     // "test/ad/bst.scm", // VARARG
     //"test/ad/btree.scm", // TODO add a body
@@ -130,8 +130,8 @@ object MODComparison extends App {
     "test/scp1/3.6.scm",
     "test/scp1/3.8.scm",
     //"test/scp1/3.9.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
-    "test/scp1/4.1.scm",
-    "test/scp1/4.8.scm",
+    "test/scp1/4.1.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
+   */ "test/scp1/4.8.scm",
     "test/scp1/5.14.3.scm",
     "test/scp1/5.19.scm",
     "test/scp1/5.20.4.scm",
@@ -155,7 +155,7 @@ object MODComparison extends App {
     //"test/scp1/7.9.scm",
     "test/scp1/8.1.1.scm",
     "test/scp1/8.1.3.scm",
-    "test/scp1/8.10.scm",
+    //"test/scp1/8.10.scm", // SMALLSTEP LOOPS, EVEN WITH FINER TIMEOUT TODO
     //"test/scp1/8.11.scm", // VARARG
     "test/scp1/8.12.scm",
     "test/scp1/8.13.scm",
@@ -192,7 +192,7 @@ object MODComparison extends App {
     "test/widen.scm",
     "test/work.scm",
   )
-  val defaultTimeout: Duration = Duration(10, MINUTES)
+  val defaultTimeout: Duration = Duration(2, MINUTES)
 
   def readFile(file: String): SchemeExp = {
     val f   = scala.io.Source.fromFile(file)
@@ -283,7 +283,7 @@ object MODComparison extends App {
 
     val program = readFile(file)
     val machines: List[(String, Machine)] = List(
-      //("bigStep",   new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics),
+      ("bigStep",   new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics),
       ("smallStep", new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics),
     )
 
