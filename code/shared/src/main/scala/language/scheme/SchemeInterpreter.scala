@@ -81,13 +81,16 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         })
         eval(SchemeBegin(body, pos), envExt, timeout)
       case SchemeLetrec(bindings, body, pos) =>
+        /* First extend the environment with all bindings set to unbound */
         val envExt = bindings.foldLeft(env)((env2, binding) => {
           val addr = newAddr()
-          /* These are the differences with let* (store and env) */
           extendStore(addr, Value.Unbound(binding._1))
           val env3 = env2 + (binding._1.name -> addr)
-          extendStore(addr, check(binding._1.pos, eval(binding._2, env3, timeout)))
           env3
+        })
+        /* Then evaluate all bindings in the extended environment */
+        bindings.foreach(binding => {
+          extendStore(envExt(binding._1.name), check(binding._1.pos, eval(binding._2, envExt, timeout)))
         })
         eval(SchemeBegin(body, pos), envExt, timeout)
       case SchemeNamedLet(_, _, _, _) => ???
