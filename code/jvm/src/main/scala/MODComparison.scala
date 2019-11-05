@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 
 object MODComparison extends App {
 
-  type Machine = ModAnalysis[SchemeExp] with FullArgumentSensitivity with ConstantPropagationDomain
+  type Machine = ModAnalysis[SchemeExp] with SchemeModFSemantics
 
   val benchmarks: List[String] = List(
     "test/ad/abstrct.scm",
