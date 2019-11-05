@@ -141,7 +141,7 @@ object MODComparison extends App {
     "test/scp1/5.7.scm",
     "test/scp1/7.11.scm",
     "test/scp1/7.12.scm",
-    "test/scp1/7.13.scm",
+    //"test/scp1/7.13.scm", // SOMETIMES LOOPS TODO
     "test/scp1/7.14.scm",
     "test/scp1/7.15.scm",
     "test/scp1/7.16.scm",
