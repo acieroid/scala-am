@@ -13,35 +13,38 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
   type IntraComponent
   val initialComponent: IntraComponent
 
+  // Parameterised by a 'restart target': when a dependency is triggered, the analysis can restart from this target onwards.
+  type RestartTarget = IntraComponent
+
   // an intra-analysis of a component can cause dependencies that impact the analysis of other components
   // an intra-analysis therefore can:
   // - register a dependency on an effect (e.g., when it reads an address)
   // - trigger an effect (e.g., when it writes to an address)
   protected trait Dependency
   // here, we track which components depend on which effects
-  @mutable var deps = Map[Dependency,Set[IntraComponent]]().withDefaultValue(Set())
-  private def addDep(component: IntraComponent, dep: Dependency) =
-    deps += (dep -> (deps(dep) + component))
+  @mutable var deps = Map[Dependency,Set[RestartTarget]]().withDefaultValue(Set())
+  protected def addDep(target: RestartTarget, dep: Dependency): Unit =
+    deps += (dep -> (deps(dep) + target))
 
   // parameterized by an 'intra-component analysis'
   protected def intraAnalysis(component: IntraComponent): IntraAnalysis
   protected abstract class IntraAnalysis(val component: IntraComponent) {
     // keep track of dependencies triggered by this intra-analysis
     @mutable private[ModAnalysis] var deps = Set[Dependency]()
-    protected def triggerDependency(dep: Dependency) = deps += dep
-    protected def registerDependency(dep: Dependency) = addDep(component,dep)
+    protected def triggerDependency(dep: Dependency): Unit = deps += dep
+    protected def registerDependency(dep: Dependency): Unit //= addDep(target, dep)
     // keep track of components called by this intra-analysis
     @mutable private[ModAnalysis] var components = Set[IntraComponent]()
-    protected def spawn(cmp: IntraComponent) = components += cmp
+    protected def spawn(cmp: IntraComponent): Unit = components += cmp
     // analyses the given component
     def analyze(timeout: Timeout.T): Unit
   }
 
   // inter-analysis using a simple worklist algorithm
-  @mutable var work = Set[IntraComponent](initialComponent)
-  @mutable var visited = Set[IntraComponent]()
-  @mutable var allComponents = Set[IntraComponent](initialComponent)
-  @mutable var componentDeps = Map[IntraComponent,Set[IntraComponent]]()
+  @mutable var work:          Set[RestartTarget]  = Set(initialComponent)
+  @mutable var visited:       Set[IntraComponent] = Set()
+  @mutable var allComponents: Set[IntraComponent] = Set(initialComponent)
+  @mutable var dependencies:  Map[RestartTarget, Set[IntraComponent]] = Map()
   def finished() = work.isEmpty
   def step(timeout: Timeout.T) = {
     // take the next component
@@ -58,7 +61,7 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
     // update the analysis
     visited += current
     allComponents ++= newComponents
-    componentDeps += (current -> intra.components)
+    dependencies += (current -> intra.components)
   }
   def analyze(timeout: Timeout.T = Timeout.Infinity): Unit =
     while(!finished()) {
@@ -70,7 +73,6 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
 }
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
-
   // parameterized by an alpha function, which further 'abstracts' components
   // alpha can be used to drive an adaptive strategy for the analysis
   protected def alpha(cmp: IntraComponent): IntraComponent
@@ -89,7 +91,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
     work            = alphaSet(alpha)(work)
     visited         = alphaSet(alpha)(visited)
     allComponents   = alphaSet(alpha)(allComponents)
-    componentDeps   = alphaMap(alpha,alphaSet(alpha))(componentDeps)
+    dependencies   = alphaMap(alpha,alphaSet(alpha))(dependencies)
     deps            = alphaMap(alphaDep,alphaSet(alpha))(deps)
   }
 }

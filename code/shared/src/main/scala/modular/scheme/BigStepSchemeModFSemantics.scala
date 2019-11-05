@@ -10,6 +10,7 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
+    def registerDependency(dep: Dependency): Unit = addDep(component, dep)
     var timeout: Timeout.T = _ // Avoid having to add the timeout to every call.
     // analysis entry point
     def analyze(to: Timeout.T): Unit = {

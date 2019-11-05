@@ -13,6 +13,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
   // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
+    def registerDependency(dep: Dependency): Unit = addDep(component, dep)
     trait Control extends SmartHash
     case class ControlEval(exp: SchemeExp, env: Environment[Addr]) extends Control {
       override def toString = s"ev($exp)"

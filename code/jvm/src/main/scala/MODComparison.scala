@@ -2,7 +2,7 @@ package scalaam.cli
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.TimeoutException
-import java.util.{Calendar, Date}
+import java.util.Calendar
 import java.io.{BufferedWriter, FileWriter}
 
 import au.com.bytecode.opencsv.CSVWriter
