@@ -41,7 +41,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     val Action = schemeSemantics.Action
 
     // State in the small-step semantics.
-    case class State(control: Control, kstore: KStore, a: KAddr, ctx: IntraAnalysis) extends GraphElement with SmartHash {
+    case class State(control: Control, localKStore: KStore, a: KAddr, ctx: IntraAnalysis) extends GraphElement with SmartHash {
       override def toString: String = control.toString
 
       override def label = toString
@@ -91,22 +91,15 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
        */
       private def integrate(a: KAddr, actions: Set[Action.A]): Set[State] =
         actions.flatMap({
-          /** When a value is reached, we go to a continuation state */
-          case Action.Value(v, _) =>
-            Set(State(ControlKont(v), kstore, a, ctx))
-          /** When a continuation needs to be pushed, push it in the continuation store */
-          case Action.Push(frame, e, env, _) => {
-            val next = KontAddr(e)
-            Set(State(ControlEval(e, env),kstore.extend(next, Set(Kont(frame, a))),next,ctx))
-          }
-          /** When a value needs to be evaluated, we go to an eval state */
-          case Action.Eval(e, env, _) => Set(State(ControlEval(e, env), kstore, a, ctx))
-          /** When a function is called, generate a call state */
-          case Action.Call(fval,fexp,args,_) => Set(State(ControlCall(fval,fexp,args),kstore,a,ctx))
-          /** Getting a StepIn action should not happen in a MODF analysis. */
-          case Action.StepIn(_, _, _, _, _) => throw new Exception("Illegal state: MODF should not encounter a StepIn action.")
-          /** When an error is reached, we go to an error state */
-          case Action.Err(err) => Set(State(ControlError(err), kstore, a, ctx))
+          case Action.Value(v, _)            => Set(State(ControlKont(v), localKStore, a, ctx))                                  // When a value is reached, we go to a continuation state.
+          case Action.Push(frame, e, env, _) => val next = KontAddr(e)                                                           // When a continuation needs to be pushed, push it in the continuation store.
+                                                Set(State(ControlEval(e, env),
+                                                    localKStore.extend(next, Set(Kont(frame, a))),
+                                                    next, ctx))
+          case Action.Eval(e, env, _)        => Set(State(ControlEval(e, env), localKStore, a, ctx))                             // When a value needs to be evaluated, we go to an eval state.
+          case Action.Call(fval,fexp,args,_) => Set(State(ControlCall(fval,fexp,args),localKStore,a,ctx))                        // When a function is called, generate a call state.
+          case Action.StepIn(_, _, _, _, _)  => throw new Exception("Illegal state: MODF should not encounter a StepIn action.") // Getting a StepIn action should not happen in a MODF analysis.
+          case Action.Err(err) => Set(State(ControlError(err), localKStore, a, ctx))                                             // When an error is reached, we go to an error state.
         })
 
       /**
@@ -117,7 +110,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         case ControlEval(e, env) => integrate(a, schemeSemantics.stepEval(e, env, StoreAdapter, ctx))
         /** In a continuation state, call the semantics' continuation method */
         case ControlKont(v) =>
-          kstore.lookup(a) match {
+          localKStore.lookup(a) match {
             case Some(konts) =>
               konts.flatMap({
                 case Kont(frame, next) => integrate(next, schemeSemantics.stepKont(v, frame, StoreAdapter, ctx))
@@ -130,7 +123,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
             val fromPrimitives = applyPrimitives(fexp,fval,args)
             integrate(a, fromClosures ++ fromPrimitives)
           } else {
-            Set(State(ControlKont(lattice.bottom),kstore,a,ctx))
+            Set(State(ControlKont(lattice.bottom),localKStore,a,ctx))
           }
         /** In an error state, the state is not able to make a step */
         case ControlError(_) => Set()
