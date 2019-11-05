@@ -16,7 +16,7 @@ object SchemeLexicalAddresser {
   type Defs = List[String]
 
   /** Extract the identifier names of all definitions in a given body
-    * Follows R5RS specificaiton on where such definitions can appear */
+    * Follows R5RS specification on where such definitions can appear */
   def defs(exp: SchemeExp): Defs = defs(List(exp))
   def defs(bdy: List[SchemeExp]): Defs = defs(bdy, Nil)
   def defs(bdy: List[SchemeExp], acc: Defs): Defs = bdy match {
@@ -148,7 +148,7 @@ object SchemeLexicalAddresser {
   }
 
   def extendScope(scope: Scope, vrs: List[String]): Scope =
-    vrs.foldLeft(scope)((acc,vrb) => extendScope(acc,vrb))
+    vrs.foldLeft(scope)(extendScope)
 
   /** When a new frame is added to the scope, it is initially empty *
     * Therefore, we need to reset the 'next offset'/'count' to zero */
