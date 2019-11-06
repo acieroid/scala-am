@@ -22,7 +22,7 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
   // - trigger an effect (e.g., when it writes to an address)
   protected trait Dependency
   // here, we track which components depend on which effects
-  @mutable var deps = Map[Dependency,Set[RestartTarget]]().withDefaultValue(Set())
+  @mutable var deps: Map[Dependency,Set[RestartTarget]] = Map[Dependency,Set[RestartTarget]]().withDefaultValue(Set())
   protected def addDep(target: RestartTarget, dep: Dependency): Unit =
     deps += (dep -> (deps(dep) + target))
 
@@ -45,8 +45,8 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
   @mutable var visited:       Set[IntraComponent] = Set()
   @mutable var allComponents: Set[IntraComponent] = Set(initialComponent)
   @mutable var dependencies:  Map[RestartTarget, Set[IntraComponent]] = Map()
-  def finished() = work.isEmpty
-  def step(timeout: Timeout.T) = {
+  def finished(): Boolean = work.isEmpty
+  def step(timeout: Timeout.T): Unit = {
     // take the next component
     val current = work.head
     work -= current
@@ -87,7 +87,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
     }
 
   // when alpha changes, we need to call this function to update the analysis' components
-  def onAlphaChange() = {
+  def onAlphaChange(): Unit = {
     work            = alphaSet(alpha)(work)
     visited         = alphaSet(alpha)(visited)
     allComponents   = alphaSet(alpha)(allComponents)
@@ -100,7 +100,7 @@ trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
   // keep a cache between a component and its most recent abstraction
   private var cache = Map[IntraComponent,IntraComponent]()
   // look in the cache first, before applying a potentially complicated alpha function
-  abstract override def alpha(cmp: IntraComponent) = cache.get(cmp) match {
+  abstract override def alpha(cmp: IntraComponent): IntraComponent = cache.get(cmp) match {
     case Some(cmpAbs) => cmpAbs
     case None =>
       val cmpAbs = super.alpha(cmp)
@@ -108,7 +108,7 @@ trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
       cmpAbs
   }
   // when alpha is updated, the cache needs to be cleared
-  override def onAlphaChange() = {
+  override def onAlphaChange(): Unit = {
     cache = Map[IntraComponent,IntraComponent]()
     super.onAlphaChange()
   }

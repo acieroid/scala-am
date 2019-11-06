@@ -15,25 +15,22 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   // addresses in the global analysis are (local) addresses of the intra-analysis + the component
   trait Addr extends Address
   case class GlobalAddr(addr: LocalAddr) extends Addr {
-    def printable = addr.printable
+    def printable: Boolean = addr.printable
   }
   case class ComponentAddr(component: IntraComponent, addr: LocalAddr) extends Addr {
-    def printable = addr.printable
+    def printable: Boolean = addr.printable
   }
 
   // the global store of the analysis
-  @mutable var store = Map[Addr,Value]().withDefaultValue(lattice.bottom)
+  @mutable var store: Map[Addr,Value] = Map().withDefaultValue(lattice.bottom)
   private def updateAddr(addr: Addr, value: Value): Boolean = store.get(addr) match {
-    case None if value == lattice.bottom =>
-      false
-    case None =>
-      store = store + (addr -> value)
-      return true
+    case None if value == lattice.bottom => false
+    case None => store = store + (addr -> value); true
     case Some(oldValue) =>
       val newValue = lattice.join(oldValue,value)
       if (newValue == oldValue) { return false }
       store = store + (addr -> newValue)
-      return true
+      true
   }
 
   // Dependency that is triggered when an abstract value at address 'addr' is updated
@@ -76,7 +73,7 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
   // requires an implementation of alpha for the abstract domain
   def alphaValue(value: Value): Value
   // when abstraction map changes, need to update the store
-  override def onAlphaChange() = {
+  override def onAlphaChange(): Unit = {
     super.onAlphaChange()
     store = alphaMap(alphaAddr,alphaValue)(store)
   }

@@ -401,7 +401,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     object Plus extends Prim {
       val name = "+"
       val default: Value = Value.Integer(0)
-      def call(args: List[Value]) = args.foldLeft(default)({
+      def call(args: List[Value]): Value = args.foldLeft(default)({
           case (Value.Integer(n1), Value.Integer(n2)) => Value.Integer(n1 + n2)
           case (Value.Integer(n1), Value.Real(n2)) => Value.Real(n1 + n2)
           case (Value.Real(n1), Value.Integer(n2)) => Value.Real(n1 + n2)
@@ -412,7 +412,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     object Times extends Prim {
       val name = "*"
       val default: Value = Value.Integer(1)
-      def call(args: List[Value]) = args.foldLeft(default)({
+      def call(args: List[Value]): Value = args.foldLeft(default)({
         case (Value.Integer(n1), Value.Integer(n2)) => Value.Integer(n1 * n2)
           case (Value.Integer(n1), Value.Real(n2)) => Value.Real(n1 * n2)
           case (Value.Real(n1), Value.Integer(n2)) => Value.Real(n1 * n2)
@@ -598,7 +598,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
           }
         }, rest)
       }
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value = args match {
         case Nil => throw new Exception("max: wrong number of arguments")
         case Value.Integer(first) :: rest =>
           max(Value.Integer(first), rest)
@@ -626,7 +626,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
           }
         }, rest)
       }
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value = args match {
         case Nil => throw new Exception("min: wrong number of arguments")
         case Value.Integer(first) :: rest =>
           min(Value.Integer(first), rest)
@@ -638,7 +638,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     object Gcd extends Prim {
       val name = "gcd"
       def gcd(a: Int, b: Int): Int = if (b == 0) { a } else { gcd(b, a % b) }
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Integer = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(gcd(x, y))
         case _ => throw new Exception(s"gcd: invalid arguments $args")
       }
@@ -646,7 +646,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
 
     object LessThan extends Prim {
       val name = "<"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
         case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x < y)
         case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
@@ -657,7 +657,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
 
     object LessOrEqual extends Prim {
       val name = "<="
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
         case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x <= y)
         case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
@@ -668,7 +668,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
 
     object GreaterThan extends Prim {
       val name = ">"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
         case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x > y)
         case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
@@ -679,7 +679,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
 
     object GreaterOrEqual extends Prim {
       val name = ">="
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
         case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x >= y)
         case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
@@ -690,6 +690,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
 
     object NumEq extends Prim {
       val name = "="
+      @scala.annotation.tailrec
       def numEqInt(first: Int, l: List[Value]): Value = l match {
         case Nil => Value.Bool(true)
         case Value.Integer(x) :: rest if x == first => numEqInt(first, rest)
@@ -698,6 +699,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         case (_: Value.Real) :: _ => Value.Bool(false)
         case _ => throw new Exception(s"=: invalid type of arguments $l")
       }
+      @scala.annotation.tailrec
       def numEqReal(first: Double, l: List[Value]): Value = l match {
         case Nil => Value.Bool(true)
         case Value.Integer(x) :: rest if x == first => numEqReal(first, rest)
@@ -706,7 +708,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         case (_: Value.Real) :: _ => Value.Bool(false)
         case _ => throw new Exception(s"=: invalid type of arguments $l")
       }
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value = args match {
         case Nil => Value.Bool(true)
         case Value.Integer(x) :: rest => numEqInt(x, rest)
         case Value.Real(x) :: rest => numEqReal(x, rest)
@@ -863,7 +865,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     }
     object StringRef extends Prim {
       val name = "string-ref"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Character = args match {
         case Value.Str(x) :: Value.Integer(n) :: Nil =>
           Value.Character(x(n))
         case _ => throw new Exception(s"string-ref: invalid arguments $args")
@@ -871,7 +873,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     }
     object StringLt extends Prim {
       val name = "string<?"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Bool = args match {
         case Value.Str(x) :: Value.Str(y) :: Nil => Value.Bool(x < y)
         case _ => throw new Exception(s"string<?: invalid arguments $args")
       }
@@ -883,7 +885,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
 
     object Eq extends Prim {
       val name = "eq?"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Bool = args match {
         case x :: y :: Nil => Value.Bool(x == y)
         case _ => throw new Exception(s"eq?: wrong number of arguments ${args.length}")
       }
@@ -905,7 +907,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         case (x: Value.Vector, y: Value.Vector) => x == y
         case _ => false
       }
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value.Bool = args match {
         case x :: y :: Nil => Value.Bool(equal(x, y))
         case _ => throw new Exception(s"equal?: wrong number of arguments ${args.length}")
       }
@@ -1048,7 +1050,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         case (_, Value.Cons(_, cdr)) => listRef(store(cdr), n-1)
         case _ => throw new Exception(s"list-ref: invalid list $l")
       }
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value]): Value = args match {
         case l :: Value.Integer(n) :: Nil => listRef(l, n)
         case _ => throw new Exception(s"list-ref: wrong number of arguments ${args.length}")
       }

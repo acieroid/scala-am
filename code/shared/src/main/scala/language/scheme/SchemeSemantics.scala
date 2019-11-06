@@ -121,10 +121,9 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       t: T
   ): (Environment[A], Store[A, V]) =
     l.foldLeft((env, store))({
-      case ((env, store), (id, value)) => {
+      case ((env, store), (id, value)) =>
         val a = allocator.variable(id, t)
         (env.extend(id.name, a), store.extend(a, value))
-      }
     })
 
   protected def funcallArgs(
@@ -217,14 +216,13 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
     case SchemeOr(Nil, _)                   => Action.Value(bool(false), store)
     case SchemeOr(exp :: exps, _)           => Action.Push(FrameOr(exps, env), exp, env, store)
     case SchemeDefineVariable(name, exp, _) => Action.Push(FrameDefine(name, env), exp, env, store)
-    case SchemeDefineFunction(f @ _, args, body, pos) => {
+    case SchemeDefineFunction(f @ _, args, body, pos) =>
       //val a = allocator.variable(f, t)
       val v = closure((SchemeLambda(args, body, pos), env),Some(f.name))
       // TODO: remove DefineFunction from the language?
       //val env1 = env.extend(f.name, a)
       //val store1 = store.extend(a, v)
       Action.Value(v, store)
-    }
     case SchemeVar(variable) =>
       env.lookup(variable.name) match {
         case Some(a) =>
@@ -250,13 +248,13 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
       }
   }
 
-  def stepKont(v: V, frame: Frame, store: Sto, t: T) = frame match {
+  def stepKont(v: V, frame: Frame, store: Sto, t: T): Actions = frame match {
     case FrameFuncallOperator(fexp, args, env) => funcallArgs(v, fexp, args, env, store, t)
     case FrameFuncallOperands(f, fexp, exp, args, toeval, env) =>
       funcallArgs(f, fexp, (v,exp) :: args, toeval, env, store, t)
     case FrameIf(cons, alt, env) =>
       conditional(v, Action.Eval(cons, env, store), Action.Eval(alt, env, store))
-    case FrameLet(name, bindings, Nil, body, env) => {
+    case FrameLet(name, bindings, Nil, body, env) =>
       val variables = name :: bindings.reverseIterator.map(_._1).toList
       val addresses = variables.map(variable => allocator.variable(variable, t))
       val (env1, store1) = ((name, v) :: bindings)
@@ -266,10 +264,9 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
             (env.extend(variable.name, a), store.extend(a, value))
         })
       evalBody(body, env1, store1)
-    }
     case FrameLet(name, bindings, (variable, e) :: toeval, body, env) =>
       Action.Push(FrameLet(variable, (name, v) :: bindings, toeval, body, env), e, env, store)
-    case FrameLetStar(variable, bindings, body, env) => {
+    case FrameLetStar(variable, bindings, body, env) =>
       val a      = allocator.variable(variable, t)
       val env1   = env.extend(variable.name, a)
       val store1 = store.extend(a, v)
@@ -278,7 +275,6 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
         case (variable, exp) :: rest =>
           Action.Push(FrameLetStar(variable, rest, body, env1), exp, env1, store1)
       }
-    }
     case FrameLetrec(a, Nil, body, env) => evalBody(body, env, store.update(a, v))
     case FrameLetrec(a, (a1, exp) :: rest, body, env) =>
       Action.Push(FrameLetrec(a1, rest, body, env), exp, env, store.update(a, v))
@@ -305,7 +301,7 @@ class BaseSchemeSemantics[A <: Address, V, T, C](val allocator: Allocator[A, T, 
   }
 
   def primitives: Map[String, V] = allPrimitives.map(p => (p.name, primitive[Primitive](p))).toMap
-  override def initialBindings   =
+  override def initialBindings: List[(String, A, V)] =
     allPrimitives.map(p => (p.name, allocator.primitive(p.name), primitive[Primitive](p))) ++ Set(
       ("null", allocator.primitive("null"), nil)
     )
@@ -367,9 +363,9 @@ class OptimizedSchemeSemantics[A <: Address, V, T, C](allocator: Allocator[A, T,
       }
   }
 
-  override def stepEval(e: SchemeExp, env: Env, store: Sto, t: T) =
+  override def stepEval(e: SchemeExp, env: Env, store: Sto, t: T): Actions =
     optimizeAtomic(super.stepEval(e, env, store, t), t)
 
-  override def stepKont(v: V, frame: Frame, store: Sto, t: T) =
+  override def stepKont(v: V, frame: Frame, store: Sto, t: T): Actions =
     optimizeAtomic(super.stepKont(v, frame, store, t), t)
 }

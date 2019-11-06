@@ -22,7 +22,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       override def toString = s"ko($v)"
     }
     case class ControlCall(fval: Value, fexp: SchemeExp, args: List[(Value,SchemeExp)]) extends Control {
-      override def toString = s"${fval}(${args.map(_._1)})"
+      override def toString = s"$fval(${args.map(_._1)})"
     }
     case class ControlError(err: Error) extends Control {
       override def toString = s"err($err)"
@@ -34,9 +34,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     case class KontAddr(exp: SchemeExp) extends KAddr { override def toString = s"Kont(${exp.toString.take(10)})" }
     case object HaltKontAddr extends KAddr { override def toString = "Halt" }
     case class Kont(f: Frame, next: KAddr) extends SmartHash
-    implicit val kontShow: Show[Kont] = new Show[Kont] {
-      def show(k: Kont) = "kont($f)"
-    }
+    implicit val kontShow: Show[Kont] = (k: Kont) => "kont($f)"
     type KStore = Store[KAddr, Set[Kont]]
     val Action = schemeSemantics.Action
 
@@ -44,7 +42,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     case class State(control: Control, localKStore: KStore, a: KAddr, ctx: IntraAnalysis) extends GraphElement with SmartHash {
       override def toString: String = control.toString
 
-      override def label = toString
+      override def label: String = toString
       override def color: Color = control match {
         case ControlEval(_, _)        => Colors.Blue
         case ControlCall(_, _, _)     => Colors.White
@@ -79,7 +77,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         case _: ControlError => true
       }
 
-      def finished = control match {
+      def finished: Boolean = control match {
         case _: ControlKont => a == HaltKontAddr
         case _              => false
       }

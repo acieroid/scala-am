@@ -32,52 +32,52 @@ class MakeSchemeLattice[
     * used to build the set lattice */
   sealed trait Value extends SmartHash
   case object Bot extends Value {
-    override def toString = "⊥"
+    override def toString: String = "⊥"
   }
   case class Str(s: S) extends Value {
-    override def toString = StringLattice[S].show(s)
+    override def toString: String = StringLattice[S].show(s)
   }
   case class Bool(b: B) extends Value {
-    override def toString = BoolLattice[B].show(b)
+    override def toString: String = BoolLattice[B].show(b)
   }
   case class Int(i: I) extends Value {
-    override def toString = IntLattice[I].show(i)
+    override def toString: String = IntLattice[I].show(i)
   }
   case class Real(r: R) extends Value {
-    override def toString = RealLattice[R].show(r)
+    override def toString: String = RealLattice[R].show(r)
   }
   case class Char(c: C) extends Value {
-    override def toString = CharLattice[C].show(c)
+    override def toString: String = CharLattice[C].show(c)
   }
   case class Symbol(s: Sym) extends Value {
-    override def toString = SymbolLattice[Sym].show(s)
+    override def toString: String = SymbolLattice[Sym].show(s)
   }
 
   /** TODO[medium] find a way not to have a type parameter here */
   case class Prim[Primitive](prim: Primitive) extends Value {
-    override def toString = s"#prim<$prim>"
+    override def toString: String = s"#prim<$prim>"
   }
   case class Clo(lambda: E, env: Environment[A], name: Option[String]) extends Value {
-    def printName = name match {
+    def printName: String = name match {
       case None => s"anonymous@${lambda.pos}"
       case Some(name) => name
     }
-    override def toString = s"#<closure $printName>"
+    override def toString: String = s"#<closure $printName>"
   }
 
   case class Cons(car: L, cdr: L) extends Value {
-    override def toString = s"($car . $cdr)"
+    override def toString: String = s"($car . $cdr)"
   }
   case object Nil extends Value {
-    override def toString = "()"
+    override def toString: String = "()"
   }
 
   case class Pointer(a: A) extends Value {
-    override def toString = s"#pointer($a)"
+    override def toString: String = s"#pointer($a)"
   }
 
   case class Vec(size: I, elements: Map[I, L], init: L) extends Value {
-    override def toString = {
+    override def toString: String = {
       val els = elements.toList
         .map({
           case (k, v) => s"$k: $v"
@@ -568,7 +568,7 @@ class MakeSchemeLattice[
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X = f(v)
   }
   case class Elements(vs: Set[Value]) extends L {
-    override def toString = "{" + vs.mkString(",") + "}"
+    override def toString: String = "{" + vs.mkString(",") + "}"
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X =
       vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
   }

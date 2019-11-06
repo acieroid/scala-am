@@ -6,7 +6,7 @@ import scalaam.language.scheme._
 /* Simplest (and most imprecise): no context-sensitivity */
 trait NoSensitivity extends SchemeModFSemantics {
   type Context = Unit
-  def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]) = ()
+  def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]): Unit = ()
 }
 
 /* Full argument sensitivity for ModF */

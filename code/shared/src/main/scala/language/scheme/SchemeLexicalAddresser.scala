@@ -42,6 +42,7 @@ object SchemeLexicalAddresser {
       case (scp, ofs)                         => NonLocalVar(scp,ofs)
     }
 
+  @scala.annotation.tailrec
   def resolveAddr(name: String, scope: Scope, scp: Int): (Int,Int) =
     if (scope.isEmpty) {
       throw new Exception(s"Undefined variable reference: $name")

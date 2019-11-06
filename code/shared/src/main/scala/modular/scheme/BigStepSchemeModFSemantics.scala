@@ -195,11 +195,11 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       writeAddr(addr,vlu)
       addr
     }
-    private def bindPars(pars: List[Identifier]) = pars.foreach { par =>
+    private def bindPars(pars: List[Identifier]): Unit = pars.foreach { par =>
       val addr = allocAddr(VarAddr(par))
       env = env.extend(par.name,addr)
     }
-    private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) = pars.zip(args).foreach { case (par,arg) =>
+    private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]): Unit = pars.zip(args).foreach { case (par,arg) =>
       val localAddr = VarAddr(par)
       writeAddr(localAddr,arg,component)
     }
