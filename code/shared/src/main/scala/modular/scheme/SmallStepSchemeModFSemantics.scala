@@ -15,6 +15,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
   // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
+    def registerDependency(dep: Dependency): Unit = addDep(component, dep)
     trait Control extends SmartHash
     case class ControlEval(exp: SchemeExp, env: Environment[Addr]) extends Control {
       override def toString = s"ev($exp)"
@@ -23,7 +24,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       override def toString = s"ko($v)"
     }
     case class ControlCall(fval: Value, fexp: SchemeExp, args: List[(Value,SchemeExp)]) extends Control {
-      override def toString = s"${fval}(${args.map(_._1)})"
+      override def toString = s"$fval(${args.map(_._1)})"
     }
     case class ControlError(err: Error) extends Control {
       override def toString = s"err($err)"
@@ -35,17 +36,15 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     case class KontAddr(exp: SchemeExp) extends KAddr { override def toString = s"Kont(${exp.toString.take(10)})" }
     case object HaltKontAddr extends KAddr { override def toString = "Halt" }
     case class Kont(f: Frame, next: KAddr) extends SmartHash
-    implicit val kontShow: Show[Kont] = new Show[Kont] {
-      def show(k: Kont) = "kont($f)"
-    }
+    implicit val kontShow: Show[Kont] = (k: Kont) => "kont($f)"
     type KStore = Store[KAddr, Set[Kont]]
     val Action = schemeSemantics.Action
 
     // State in the small-step semantics.
-    case class State(control: Control, kstore: KStore, a: KAddr, ctx: IntraAnalysis) extends GraphElement with SmartHash {
+    case class State(control: Control, localKStore: KStore, a: KAddr, ctx: IntraAnalysis) extends GraphElement with SmartHash {
       override def toString: String = control.toString
 
-      override def label = toString
+      override def label: String = toString
       override def color: Color = control match {
         case ControlEval(_, _)        => Colors.Blue
         case ControlCall(_, _, _)     => Colors.White
@@ -76,30 +75,29 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         case _: ControlError => true
       }
 
-      def finished = control match {
+      def finished: Boolean = control match {
         case _: ControlKont => a == HaltKontAddr
         case _              => false
       }
 
       private def integrate(a: KAddr, actions: Set[Action.A]): Set[State] =
         actions.flatMap({
-          case Action.Value(v, _) =>
-            Set(State(ControlKont(v), kstore, a, ctx))
-          case Action.Push(frame, e, env, _) => {
-            val next = KontAddr(e)
-            Set(State(ControlEval(e, env),kstore.extend(next, Set(Kont(frame, a))),next,ctx))
-          }
-          case Action.Eval(e, env, _) => Set(State(ControlEval(e, env), kstore, a, ctx))
-          case Action.Call(fval,fexp,args,_) => Set(State(ControlCall(fval,fexp,args),kstore,a,ctx))
-          case Action.StepIn(_, _, _, _, _) => throw new Exception("Illegal state: MODF should not encounter a StepIn action.")
-          case Action.Err(err) => Set(State(ControlError(err), kstore, a, ctx))
+          case Action.Value(v, _)            => Set(State(ControlKont(v), localKStore, a, ctx))                                  // When a value is reached, we go to a continuation state.
+          case Action.Push(frame, e, env, _) => val next = KontAddr(e)                                                           // When a continuation needs to be pushed, push it in the continuation store.
+                                                Set(State(ControlEval(e, env),
+                                                    localKStore.extend(next, Set(Kont(frame, a))),
+                                                    next, ctx))
+          case Action.Eval(e, env, _)        => Set(State(ControlEval(e, env), localKStore, a, ctx))                             // When a value needs to be evaluated, we go to an eval state.
+          case Action.Call(fval,fexp,args,_) => Set(State(ControlCall(fval,fexp,args),localKStore,a,ctx))                        // When a function is called, generate a call state.
+          case Action.StepIn(_, _, _, _, _)  => throw new Exception("Illegal state: MODF should not encounter a StepIn action.") // Getting a StepIn action should not happen in a MODF analysis.
+          case Action.Err(err) => Set(State(ControlError(err), localKStore, a, ctx))                                             // When an error is reached, we go to an error state.
         })
 
 
       def step(): Set[State] = control match {
         case ControlEval(e, env) => integrate(a, schemeSemantics.stepEval(e, env, StoreAdapter, ctx))
         case ControlKont(v) =>
-          kstore.lookup(a) match {
+          localKStore.lookup(a) match {
             case Some(konts) =>
               konts.flatMap({
                 case Kont(frame, next) => integrate(next, schemeSemantics.stepKont(v, frame, StoreAdapter, ctx))
@@ -112,7 +110,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
             val fromPrimitives = applyPrimitives(fexp,fval,args)
             integrate(a, fromClosures ++ fromPrimitives)
           } else {
-            Set(State(ControlKont(lattice.bottom),kstore,a,ctx))
+            Set(State(ControlKont(lattice.bottom),localKStore,a,ctx))
           }
         case ControlError(_) => Set()
       }

@@ -7,7 +7,7 @@ import scalaam.language.scheme._
 object Main {
 
   def main(args: Array[String]): Unit = {
-    testLex("test/rotate.scm")
+    testLex("test/sat.scm")
   }
 
   def testLex(file: String) = {

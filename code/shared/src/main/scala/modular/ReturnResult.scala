@@ -12,7 +12,7 @@ trait ReturnResult[Expr <: Expression] extends GlobalStore[Expr] {
   // intra-analysis can now also update and read the result of a component
   trait ReturnResultIntra extends GlobalStoreIntra {
     // updating the result of a component (default: of the current component)
-    protected def writeResult(result: Value, component: IntraComponent = component) =
+    protected def writeResult(result: Value, component: IntraComponent = component): Unit =
       writeAddr(ReturnAddr(component),result)
     // reading the result of a component
     protected def readResult(component: IntraComponent): Value =

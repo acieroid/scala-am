@@ -164,7 +164,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   // ensures that `nodesData` and `edgesData` are in sync with the analysis
   def refreshData() = {
     analysis.allComponents.foreach(addNode)
-    analysis.componentDeps.foreach { case (source,targets) =>
+    analysis.dependencies.foreach { case (source,targets) =>
       val sourceNode = addNode(source)
       targets.foreach(target => {
         val targetNode = addNode(target)
@@ -176,7 +176,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   // more efficient than `refreshData`: updates only data that may have changed after stepping
   def refreshDataAfterStep(component: analysis.IntraComponent) = {
     val sourceNode = addNode(component)
-    analysis.componentDeps(component).foreach { otherComponent =>
+    analysis.dependencies(component).foreach { otherComponent =>
       val targetNode = addNode(otherComponent)
       addEdge(sourceNode,targetNode)
     }

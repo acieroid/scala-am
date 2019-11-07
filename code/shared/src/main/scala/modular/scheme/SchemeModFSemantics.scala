@@ -37,8 +37,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                            nam: Option[String],
                            ctx: Context) extends IntraComponent {
     override def toString = nam match {
-      case None => s"anonymous@${lambda.pos} [${ctx.toString()}]"
-      case Some(name) => s"$name [${ctx.toString()}]"
+      case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
+      case Some(name) => s"$name [${ctx.toString}]"
     }
   }
   lazy val initialComponent = MainComponent

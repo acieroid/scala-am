@@ -200,7 +200,7 @@ object SchemeRenamer {
         st match {
           case (l, ns, cs) =>
             count1(v, ns, cs) match {
-              case (v1, ns1, cs1) => ((v1 :: l), ns1, cs1)
+              case (v1, ns1, cs1) => (v1 :: l, ns1, cs1)
             }
         }
     ) match {
