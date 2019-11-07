@@ -1,5 +1,7 @@
 package scalaam.modular.scheme
 
+/*
+
 import scalaam.core._
 import scalaam.graph.{Color, Colors, GraphElement, GraphMetadataBool, GraphMetadataMap, GraphMetadataString, GraphMetadataValue}
 import scalaam.language.scheme._
@@ -7,8 +9,7 @@ import scalaam.util.Show
 
 import scala.concurrent.TimeoutException
 
-/** MODF analysis using an AAM intra-component analysis. */
-/*
+// MODF analysis using an AAM intra-component analysis.
 trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intraAnalysis
   // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).

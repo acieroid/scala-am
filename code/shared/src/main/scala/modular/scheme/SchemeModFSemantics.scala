@@ -9,28 +9,24 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                           with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address { def pos(): Position }
-  case class VarAddr(offset: Int)     extends LocalAddr { def printable = true;  def pos(): Position = ??? }
+  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def pos(): Position = id.pos }
   case class PtrAddr(exp: Expression) extends LocalAddr { def printable = false; def pos(): Position = exp.pos }
+  case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def pos(): Position = Position.none }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   type Prim = SchemePrimitive[Value, Addr]
   implicit val lattice: SchemeLattice[Value, Addr, Prim, IntraComponent]
   lazy val primitives = new SchemePrimitives[Value, Addr]
   // setup initial environment and install the primitives in the global store
-  private def initStore() = {
-    var currentOfs = 0
-    primitives.allPrimitives.foreach { p =>
-      val addr = ComponentAddr(MainComponent,VarAddr(currentOfs))
-      store += (addr -> lattice.primitive(p))
-      currentOfs += 1
-    }
+  primitives.allPrimitives.foreach { p =>
+    val addr = ComponentAddr(MainComponent,PrmAddr(p.name))
+    store += (addr -> lattice.primitive(p))
   }
-  initStore()
   // in ModF, components are function calls in some context
   trait IntraComponent
   case object MainComponent extends IntraComponent {
     override def toString = "main"
   }
-  case class CallComponent(lambda: SchemeLambdaLex,
+  case class CallComponent(lambda: SchemeLambda,
                            parent: IntraComponent,
                            nam: Option[String],
                            ctx: Context) extends IntraComponent {
@@ -65,5 +61,5 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                   with SchemeModFSemantics
                                   with AdaptiveGlobalStore[SchemeExp]
                                   with AdaptiveReturnResult[SchemeExp] {
-  def alpha(cmp: IntraComponent) = ???
+  def alpha(cmp: IntraComponent) = cmp // TODO!
 }

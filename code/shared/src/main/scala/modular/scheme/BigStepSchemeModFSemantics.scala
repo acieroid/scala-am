@@ -14,14 +14,14 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       case cmp: CallComponent => evalSequence(cmp.lambda.body)
     })
     // resolve a lexical address to the corresponding address in the store
-    private def resolveAddr(lex: LexicalAddr): Addr = lex match {
-      case LocalVar(ofs) =>
-        ComponentAddr(component,VarAddr(ofs))
-      case GlobalVar(ofs) =>
-        ComponentAddr(MainComponent,VarAddr(ofs))
-      case NonLocalVar(scp,ofs) =>
+    private def resolveAddr(lex: LexicalRef): Addr = lex match {
+      case LocalRef(identifier) =>
+        ComponentAddr(component,VarAddr(identifier))
+      case GlobalRef(identifier) =>
+        ComponentAddr(MainComponent,VarAddr(identifier))
+      case NonLocalRef(identifier,scp) =>
         val cmp = resolveParent(component,scp)
-        ComponentAddr(cmp,VarAddr(ofs))
+        ComponentAddr(cmp,VarAddr(identifier))
     }
     private def resolveParent(cmp: IntraComponent, scp: Int): IntraComponent =
       if (scp == 0) { cmp } else cmp match {
@@ -31,22 +31,22 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       }
     // simple big-step eval
     private def eval(exp: SchemeExp): Value = exp match {
-      case SchemeValue(value, _)                      => evalLiteralValue(value)
-      case lambda: SchemeLambdaLex                    => lattice.closure((lambda, component), None)
-      case SchemeVarLex(_,lex)                        => lookupVariable(lex)
-      case SchemeBegin(exps, _)                       => evalSequence(exps)
-      case SchemeDefineVariableLex(_, ofs, vexp, _)   => evalDefineVariable(ofs, vexp)
-      case defExp: SchemeDefineFunctionLex            => evalDefineFunction(defExp)
-      case SchemeSetLex(_, lex, variable, _)          => evalSet(lex, variable)
-      case SchemeIf(prd, csq, alt, _)                 => evalIf(prd, csq, alt)
-      case SchemeLetLex(_, bindings, body, _, _)      => evalLetExp(bindings, body)
-      case SchemeLetStarLex(_, bindings, body, _, _)  => evalLetExp(bindings, body)
-      case SchemeLetrecLex(_, bindings, body, _, _)   => evalLetExp(bindings, body)
-      case namedLet: SchemeNamedLetLex                => evalNamedLet(namedLet)
-      case SchemeFuncall(fun, args, _)                => evalCall(fun, args)
-      case SchemeAnd(exps, _)                         => evalAnd(exps)
-      case SchemeOr(exps, _)                          => evalOr(exps)
-      case SchemeQuoted(quo, _)                       => evalQuoted(quo)
+      case SchemeValue(value, _)                    => evalLiteralValue(value)
+      case lambda: SchemeLambda                     => lattice.closure((lambda, component), None)
+      case SchemeVarLex(_, lex)                     => lookupVariable(lex)
+      case SchemeBegin(exps, _)                     => evalSequence(exps)
+      case SchemeDefineVariable(id, vexp, _)        => evalDefineVariable(id, vexp)
+      case SchemeDefineFunction(id, prs, bdy, pos)  => evalDefineFunction(id, prs, bdy, pos)
+      case SchemeSetLex(_, lex, variable, _)        => evalSet(lex, variable)
+      case SchemeIf(prd, csq, alt, _)               => evalIf(prd, csq, alt)
+      case SchemeLet(bindings, body, _)             => evalLetExp(bindings, body)
+      case SchemeLetStar(bindings, body, _)         => evalLetExp(bindings, body)
+      case SchemeLetrec(bindings, body, _)          => evalLetExp(bindings, body)
+      case SchemeNamedLet(name,bindings,body,pos)   => evalNamedLet(name,bindings,body,pos)
+      case SchemeFuncall(fun, args, _)              => evalCall(fun, args)
+      case SchemeAnd(exps, _)                       => evalAnd(exps)
+      case SchemeOr(exps, _)                        => evalOr(exps)
+      case SchemeQuoted(quo, _)                     => evalQuoted(quo)
       case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
     }
     private def evalLiteralValue(literal: sexp.Value): Value = literal match {
@@ -72,23 +72,22 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       case sexp.SExpQuoted(q,pos)   =>
         evalQuoted(sexp.SExpPair(sexp.SExpId(Identifier("quote",pos)),sexp.SExpPair(q,sexp.SExpValue(sexp.ValueNil,pos),pos),pos))
     }
-    private def lookupVariable(lex: LexicalAddr): Value =
+    private def lookupVariable(lex: LexicalRef): Value =
       readAddr(resolveAddr(lex))
-    private def evalDefineVariable(ofs: Int, exp: SchemeExp): Value = {
+    private def evalDefineVariable(id: Identifier, exp: SchemeExp): Value = {
       val value = eval(exp)
-      writeAddr(VarAddr(ofs),value)
+      writeAddr(VarAddr(id),value)
       value
     }
-    private def evalDefineFunction(defExp: SchemeDefineFunctionLex): Value = {
-      val SchemeDefineFunctionLex(id,ofs,pars,body,frmSiz,frmOfs,pos) = defExp
-      val lambda = SchemeLambdaLex(pars,body,frmSiz,frmOfs,pos)
+    private def evalDefineFunction(id: Identifier, prs: List[Identifier], body: List[SchemeExp], pos: Position): Value = {
+      val lambda = SchemeLambda(prs,body,pos)
       val value = lattice.closure((lambda,component),Some(id.name))
-      writeAddr(VarAddr(ofs),value)
+      writeAddr(VarAddr(id),value)
       value
     }
     private def evalSequence(exps: List[SchemeExp]): Value =
       exps.foldLeft(lattice.bottom)((_,exp) => eval(exp))
-    private def evalSet(lex: LexicalAddr, exp: SchemeExp): Value = {
+    private def evalSet(lex: LexicalRef, exp: SchemeExp): Value = {
       val addr = resolveAddr(lex)
       val newValue = eval(exp)
       writeAddr(addr,newValue)
@@ -96,15 +95,15 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     }
     private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value =
       conditional(eval(prd), eval(csq), eval(alt))
-    private def evalLetExp(bindings: List[(Int,SchemeExp)], body: List[SchemeExp]): Value = {
+    private def evalLetExp(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = {
       evalLetBindings(bindings)
       evalSequence(body)
     }
-    private def evalNamedLet(namedLet: SchemeNamedLetLex): Value = {
-      val SchemeNamedLetLex(id,ofs,bds,ags,bdy,fSiz,fOfs,pos) = namedLet
-      val lambda = SchemeLambdaLex(bds.map(_._1),bdy,fSiz,fOfs,pos)
+    private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], pos: Position): Value = {
+      val (prs,ags) = bindings.unzip
+      val lambda = SchemeLambda(prs,body,pos)
       val closure = lattice.closure((lambda,component),Some(id.name))
-      writeAddr(VarAddr(ofs),closure)
+      writeAddr(VarAddr(id),closure)
       val argVals = ags.map(eval)
       applyClosures(closure,argVals)
     }
@@ -133,24 +132,23 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       } else {
         lattice.bottom
       }
-
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyClosures(fun: Value, args: List[Value]): Value = {
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
-        case (clo@(lam: SchemeLambdaLex, cmp), nam) if lam.args.length == arity =>
-          val context = allocCtx(clo,args)
+        case ((lam@SchemeLambda(prs,_,_), cmp), nam) if prs.length == arity =>
+          val context = allocCtx((lam,cmp),args)
           val component = CallComponent(lam,cmp,nam,context)
-          bindArgs(component, args)
+          bindArgs(component, prs, args)
           call(component)
         case _ => lattice.bottom
       }))
     }
-    // TODO[minor]: use foldMap instead of foldLeft
     val allocator = new SchemeAllocator[Addr] {
       def pointer(exp: SchemeExp) = allocAddr(PtrAddr(exp))
     }
+    // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
         prm.call(fexp, args, StoreAdapter, allocator) match {
@@ -164,15 +162,10 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       val altVal = if (lattice.isFalse(prd)) alt else lattice.bottom
       lattice.join(csqVal,altVal)
     }
-    private def evalLetBindings(bindings: List[(Int,SchemeExp)]) =
-      bindings.foreach { case (ofs,exp) => writeAddr(VarAddr(ofs),eval(exp)) }
-    private def bindArgs(component: IntraComponent, args: List[Value]) = {
-      var ofs = 0
-      args.foreach(arg => {
-        writeAddr(VarAddr(ofs),arg,component)
-        ofs = ofs + 1
-      })
-    }
+    private def evalLetBindings(bindings: List[(Identifier,SchemeExp)]) =
+      bindings.foreach { case (id,exp) => writeAddr(VarAddr(id), eval(exp)) }
+    private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) =
+      pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par),arg,component) }
   }
 }
 

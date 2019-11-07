@@ -27,14 +27,6 @@ case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Posi
     }
   }
 
-case class SchemeLambdaLex(args: List[Identifier], body: List[SchemeExp], frmSiz: Int, frmOfs: List[Int], pos: Position)
-  extends SchemeLambdaExp {
-    override def toString = {
-      val b = body.mkString(" ")
-      s"(lambda #:arity=${args.length} #:count=$frmSiz $b)"
-    }
-  }
-
 /**
   * A function call: (f args...)
   */
@@ -81,15 +73,6 @@ case class SchemeLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeE
     }
   }
 
-case class SchemeLetLex(bindings: List[(Identifier, SchemeExp)], bindingsLex: List[(Int, SchemeExp)], body: List[SchemeExp], frmOfs: List[Int], pos: Position)
-  extends SchemeLetExp {
-    override def toString = {
-      val bi = bindingsLex.map({ case (ofs, exp) => s"(var@$ofs $exp)" }).mkString(" ")
-      val bo = body.mkString(" ")
-      s"(let ($bi) $bo)"
-    }
-  }
-
 /**
   * Let*-bindings: (let* ((v1 e1) ...) body...)
   */
@@ -116,15 +99,6 @@ case class SchemeLetStar(bindings: List[(Identifier, SchemeExp)], body: List[Sch
     }
   }
 
-case class SchemeLetStarLex(bindings: List[(Identifier, SchemeExp)], bindingsLex: List[(Int, SchemeExp)], body: List[SchemeExp], frmOfs: List[Int], pos: Position)
-  extends SchemeLetStarExp {
-    override def toString = {
-      val bi = bindingsLex.map({ case (ofs,exp) => s"(var@$ofs $exp)" }).mkString(" ")
-      val bo = body.mkString(" ")
-      s"(let* ($bi) $bo)"
-    }
-  }
-
 /**
   * Letrec-bindings: (letrec ((v1 e1) ...) body...)
   */
@@ -141,15 +115,6 @@ case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)], body: List[Sche
   extends SchemeLetrecExp {
     override def toString = {
       val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
-      val bo = body.mkString(" ")
-      s"(letrec ($bi) $bo)"
-    }
-  }
-
-case class SchemeLetrecLex(bindings: List[(Identifier, SchemeExp)], bindingsLex: List[(Int, SchemeExp)], body: List[SchemeExp], frmOfs: List[Int], pos: Position)
-  extends SchemeLetrecExp {
-    override def toString = {
-      val bi = bindingsLex.map({ case (ofs,exp) => s"(var@$ofs $exp)" }).mkString(" ")
       val bo = body.mkString(" ")
       s"(letrec ($bi) $bo)"
     }
@@ -178,15 +143,6 @@ case class SchemeNamedLet(name: Identifier, bindings: List[(Identifier, SchemeEx
     }
   }
 
-case class SchemeNamedLetLex(name: Identifier, offset: Int, bindings: List[(Identifier, SchemeExp)], args: List[SchemeExp], body: List[SchemeExp], frmSiz: Int, frmOfs: List[Int], pos: Position)
-  extends SchemeNamedLetExp {
-    override def toString = {
-      val bi = args.mkString(" ")
-      val bo = body.mkString(" ")
-      s"(let fun@$offset ($bi) $bo)"
-    }
-  }
-
 /**
   * A set! expression: (set! variable value)
   */
@@ -201,13 +157,9 @@ case class SchemeSet(variable: Identifier, value: SchemeExp, pos: Position)
     override def toString = s"(set! $variable $value)"
   }
 
-case class SchemeSetLex(variable: Identifier, lexAddr: LexicalAddr, value: SchemeExp, pos: Position)
+case class SchemeSetLex(variable: Identifier, lexAddr: LexicalRef, value: SchemeExp, pos: Position)
   extends SchemeSetExp {
-    override def toString = lexAddr match {
-      case LocalVar(ofs) => s"(set-local! @$ofs $value)"
-      case GlobalVar(ofs) => s"(set-global! @$ofs $value)"
-      case NonLocalVar(scp,ofs) => s"(set-non-local! @$scp:$ofs $value)"
-    }
+    override def toString = s"(set! $lexAddr $value)"
   }
 
 
@@ -343,11 +295,6 @@ case class SchemeDefineVariable(name: Identifier, value: SchemeExp, pos: Positio
     override def toString = s"(define $name $value)"
   }
 
-case class SchemeDefineVariableLex(name: Identifier, offset: Int, value: SchemeExp, pos: Position)
-  extends SchemeDefineVariableExp {
-    override def toString = s"(define var@$offset $value)"
-  }
-
 /**
   * A function definition: (define (name args...) body...)
   */
@@ -364,14 +311,6 @@ case class SchemeDefineFunction(name: Identifier, args: List[Identifier], body: 
       val a = args.mkString(" ")
       val b = body.mkString(" ")
       s"(define ($name $a) $b)"
-    }
-  }
-
-case class SchemeDefineFunctionLex(name: Identifier, offset: Int, args: List[Identifier], body: List[SchemeExp], frmSiz: Int, frmOfs: List[Int], pos: Position)
-  extends SchemeDefineFunctionExp {
-    override def toString = {
-      val b = body.mkString(" ")
-      s"(define (fun@$offset #:arity=${args.length} #:count=$frmSiz) $b)"
     }
   }
 
@@ -432,13 +371,9 @@ case class SchemeVar(id: Identifier)
     override def toString = id.name
   }
 
-case class SchemeVarLex(id: Identifier, lexAddr: LexicalAddr)
+case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef)
   extends SchemeVarExp {
-    override def toString = lexAddr match {
-      case LocalVar(ofs) => s"(local @$ofs)"
-      case GlobalVar(ofs) => s"(global @$ofs)"
-      case NonLocalVar(scp,ofs) => s"(non-local @$scp:$ofs)"
-    }
+    override def toString = lexAddr.toString
   }
 
 /**

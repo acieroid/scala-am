@@ -11,9 +11,9 @@ object Main {
   def testLexer(file: String) = {
     val txt = loadFile(file)
     val prg = SchemeParser.parse(txt)
-    val bds = List("+","-","*","/","=","<","<=",">",">=","modulo","cons","car","cdr",
-                   "eq?","assq","pair?","set-car!","set-cdr!","cadr","error","null?",
-                   "not","equal?","member","caddr","cadddr")
+    val bds = Set("+","-","*","/","=","<","<=",">",">=","modulo","cons","car","cdr",
+                  "eq?","assq","pair?","set-car!","set-cdr!","cadr","error","null?",
+                  "not","equal?","member","caddr","cadddr")
     val lex = SchemeLexicalAddresser.translateProgram(prg,bds)
     println(lex)
   }
