@@ -7,6 +7,12 @@ import scalaam.language.scheme._
 trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                           with GlobalStore[SchemeExp]
                           with ReturnResult[SchemeExp] {
+  // ensure that the program is translated with lexical addresses first!
+  override lazy val program = {
+    val originalProgram = super.program
+    val initialBindings = primitives.allPrimitives.map(_.name).toSet
+    SchemeLexicalAddresser.translateProgram(originalProgram,initialBindings)
+  }
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address { def pos(): Position }
   case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def pos(): Position = id.pos }

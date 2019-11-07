@@ -125,8 +125,8 @@ object ConstantPropagation {
         case Bottom      => RealLattice[R2].bottom
       }
       def random(n: I): I = n match {
-        case Constant(x) => Constant(MathOps.random(x))
-        case _           => n
+        case Bottom => Bottom
+        case _      => Top
       }
       private def binop(op: (Int, Int) => Int, n1: I, n2: I) = (n1, n2) match {
         case (Top, Top)                 => Top

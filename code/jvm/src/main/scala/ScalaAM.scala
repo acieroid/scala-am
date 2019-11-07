@@ -1,21 +1,33 @@
 package scalaam.cli
 
+import scalaam.modular._
+import scalaam.modular.scheme._
+import scalaam.language.scheme._
+
 object Main {
 
-  import scalaam.language.scheme._
-
   def main(args: Array[String]): Unit = {
-    println("boe")
+    testLex("test/rotate.scm")
   }
 
-  def testLexer(file: String) = {
+  def testLex(file: String) = {
     val txt = loadFile(file)
     val prg = SchemeParser.parse(txt)
-    val bds = Set("+","-","*","/","=","<","<=",">",">=","modulo","cons","car","cdr",
-                  "eq?","assq","pair?","set-car!","set-cdr!","cadr","error","null?",
-                  "not","equal?","member","caddr","cadddr")
-    val lex = SchemeLexicalAddresser.translateProgram(prg,bds)
-    println(lex)
+    val analysis = new ModAnalysis(prg) with BigStepSchemeModFSemantics
+                                        with ConstantPropagationDomain
+                                        with FullArgumentSensitivity
+    analysis.analyze()
+    debugResults(analysis)
+  }
+
+  type Machine = ModAnalysis[SchemeExp] with BigStepSchemeModFSemantics
+
+  def debugResults(machine: Machine) = {
+    machine.store.foreach {
+      case (machine.ReturnAddr(cmp),result) =>
+        println(s"$cmp => $result")
+      case _ => {}
+    }
   }
 
   def loadFile(file: String): String = {

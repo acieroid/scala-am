@@ -19,6 +19,8 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
         ComponentAddr(component,VarAddr(identifier))
       case GlobalRef(identifier) =>
         ComponentAddr(MainComponent,VarAddr(identifier))
+      case PrimRef(name) =>
+        ComponentAddr(MainComponent,PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
         val cmp = resolveParent(component,scp)
         ComponentAddr(cmp,VarAddr(identifier))

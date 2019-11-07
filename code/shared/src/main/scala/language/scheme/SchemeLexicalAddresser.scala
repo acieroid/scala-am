@@ -5,13 +5,21 @@ import scalaam.core.Identifier
 /** Lexical references can either be: */
 trait LexicalRef
 /** A reference to a primitive in the global environment */
-case class PrimRef(nam: String)                     extends LexicalRef
+case class PrimRef(nam: String)                     extends LexicalRef {
+  override def toString = s"<prim ${nam}>"
+}
 /** A reference to a local variable */
-case class LocalRef(id: Identifier)                 extends LexicalRef
+case class LocalRef(id: Identifier)                 extends LexicalRef {
+  override def toString = s"<local ${id.name}>"
+}
 /** A reference to a non-local variable (in the lexical scope) */
-case class NonLocalRef(id: Identifier, depth: Int)  extends LexicalRef
+case class NonLocalRef(id: Identifier, depth: Int)  extends LexicalRef {
+  override def toString = s"<non-local@${depth} ${id.name}>"
+}
 /** A reference to a global variable (=> at the top of the lexical scope) */
-case class GlobalRef(id: Identifier)                extends LexicalRef
+case class GlobalRef(id: Identifier)                extends LexicalRef {
+  override def toString = s"<global ${id.name}>"
+}
 
 object SchemeLexicalAddresser {
 

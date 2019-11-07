@@ -7,11 +7,14 @@ import scalaam.util.MonoidImplicits._
 
 import scala.concurrent.TimeoutException
 
-abstract class ModAnalysis[Expr <: Expression](val program: Expr) {
+abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
   // parameterized by a 'intra-component' representation
   type IntraComponent
   val initialComponent: IntraComponent
+
+  // Retrieve a (possibly modified) version of the program
+  def program: Expr = prog
 
   // an intra-analysis of a component can cause dependencies that impact the analysis of other components
   // an intra-analysis therefore can:
