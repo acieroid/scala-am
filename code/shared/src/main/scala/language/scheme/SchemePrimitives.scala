@@ -6,11 +6,6 @@ trait SchemeAllocator[A] {
   def pointer(exp: SchemeExp): A
 }
 
-// TODO: Put this in package scalaam.core
-trait Primitive {
-  def name: String
-}
-
 trait SchemePrimitive[V, A <: Address] extends Primitive {
   def call(fexp: SchemeExp,
            args: List[(SchemeExp, V)],

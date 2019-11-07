@@ -1,6 +1,5 @@
 package scalaam.cli
 
-/*
 import java.text.SimpleDateFormat
 import java.util.concurrent.TimeoutException
 import java.util.{Calendar, Date}
@@ -9,7 +8,6 @@ import java.io.{BufferedWriter, FileWriter}
 import au.com.bytecode.opencsv.CSVWriter
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Value
-import scalaam.language.scheme.SchemeInterpreter.Value._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
@@ -202,7 +200,7 @@ object MODComparison extends App {
     exp
   }
 
-  var writer: CSVWriter =  _
+  var writer: CSVWriter = _
 
   // Avoid output being buffered.
   def display(data: String): Unit = {
@@ -228,32 +226,31 @@ object MODComparison extends App {
     outputDir + format.format(now) + name + suffix
   }
 
-  def checkSubsumption[A <: Address, L, P, Env](v: Set[Value], machine: Machine, lat: SchemeLattice[L, A, P, Env], abs: L): Boolean = v.forall {
+  def checkSubsumption(machine: Machine)(v: Set[Value], abs: machine.Value)
+                      (implicit lat: SchemeLattice[machine.Value, machine.Addr, machine.Prim,_]): Boolean = v.forall {
     case Value.Undefined(_) => true
     case Value.Unbound(_)   => true
-    case Clo(_, _)          => lat.getClosures(abs).nonEmpty
-    case Primitive(_)       => true
-    // TODO: fix this
-    //
-    //  machine.schemeSemantics.primitives.get(p.name) match {
-    //    case None       => false
-    //    case Some(prim) => lat.subsumes(abs, lat.primitive(prim))
-    //  }
-    //
-    case Str(s)             => lat.subsumes(abs, lat.string(s))
-    case Symbol(s)          => lat.subsumes(abs, lat.symbol(s))
-    case Integer(i)         => lat.subsumes(abs, lat.number(i))
-    case Real(r)            => lat.subsumes(abs, lat.real(r))
-    case Bool(b)            => lat.subsumes(abs, lat.bool(b))
-    case Character(c)       => lat.subsumes(abs, lat.char(c))
-    case Nil                => lat.subsumes(abs, lat.nil)
-    case Cons(_, _)         => lat.getPointerAddresses(abs).nonEmpty
-    case Vector(_)          => lat.getPointerAddresses(abs).nonEmpty
+    case Value.Clo(_, _)    => lat.getClosures(abs).nonEmpty
+    case Value.Primitive(p) =>
+      machine.primitives.allPrimitives.find(_.name == p.name) match {
+        case None       => false
+        case Some(prim) => lat.subsumes(abs, lat.primitive(prim))
+      }
+    case Value.Str(s)             => lat.subsumes(abs, lat.string(s))
+    case Value.Symbol(s)          => lat.subsumes(abs, lat.symbol(s))
+    case Value.Integer(i)         => lat.subsumes(abs, lat.number(i))
+    case Value.Real(r)            => lat.subsumes(abs, lat.real(r))
+    case Value.Bool(b)            => lat.subsumes(abs, lat.bool(b))
+    case Value.Character(c)       => lat.subsumes(abs, lat.char(c))
+    case Value.Nil                => lat.subsumes(abs, lat.nil)
+    case Value.Cons(_, _)         => lat.getPointerAddresses(abs).nonEmpty
+    case Value.Vector(_)          => lat.getPointerAddresses(abs).nonEmpty
     case v                  => throw new Exception(s"Unknown concrete value type: $v")
   }
 
-  def check[A <: Address, L, P, Env](name: String, v: Set[Value], p: Position, machine: Machine, lat: SchemeLattice[L, A, P, Env], abs: L): Unit = {
-    if (!checkSubsumption(v, machine, lat, abs))
+  def check(name: String, p: Position, machine: Machine)(v: Set[Value], abs: machine.Value)
+           (implicit lat: SchemeLattice[machine.Value, machine.Addr, machine.Prim, _]): Unit = {
+    if (!checkSubsumption(machine)(v,abs))
       display(s"$name: subsumption check failed: $v > $abs at $p.\n")
   }
 
@@ -274,7 +271,7 @@ object MODComparison extends App {
     display(s"Dependency keyset size: ${deps.keySet.size}.\n")
 
     for (elem <- cMap.keySet)
-      check(name, cMap(elem), elem, machine, machine.lattice, pMap(elem))
+      check(name, elem, machine)(cMap(elem), pMap(elem))(machine.lattice)
   } catch {
     case _: TimeoutException => displayErr(s"$name timed out!\n")
     case e: Throwable => e.printStackTrace()
@@ -314,4 +311,3 @@ object MODComparison extends App {
   benchmarks.foreach(forFile(_))
   writer.close()
 }
-*/
