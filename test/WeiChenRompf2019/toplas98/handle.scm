@@ -3,10 +3,10 @@
 
 (defmacro def-macro args 
   (match args
-    [((name . pat) . body)
+    (((name . pat) . body)
      `(defmacro ,name args2
         (match args2
-          [,pat (let () ,@body)]))]))
+          (,pat (let () ,@body)))))))
 
 (def-macro (with-aspace aspace exp)
   `(let ((current-aspace (lambda () ,aspace)))

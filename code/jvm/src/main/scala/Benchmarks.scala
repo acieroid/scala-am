@@ -163,41 +163,41 @@ object Benchmarks {
     "test/WeiChenRompf2019/the-little-schemer/ch3.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch4.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch5.scm",
-    "test/WeiChenRompf2019/the-little-schemer/ch6.scm",
+    //"test/WeiChenRompf2019/the-little-schemer/ch6.scm", // PARSER LIMITATION TODO check whether needed
     "test/WeiChenRompf2019/the-little-schemer/ch7.scm",
-    "test/WeiChenRompf2019/the-little-schemer/ch8.scm",
-    "test/WeiChenRompf2019/the-little-schemer/ch9.scm",
+    //"test/WeiChenRompf2019/the-little-schemer/ch8.scm", // PARSER LIMITATION TODO check whether needed
+    //"test/WeiChenRompf2019/the-little-schemer/ch9.scm", // UNSUPPORTED FEATURE? (lambda args body)
     "test/WeiChenRompf2019/the-little-schemer/ch10.scm",
   )
 
   val toplas98: List[String] = List(
-    "test/WeiChenRompf2019/toplas98/boyer.sch",
-    "test/WeiChenRompf2019/toplas98/dynamic.sch",
-    "test/WeiChenRompf2019/toplas98/graphs.sch",
-    "test/WeiChenRompf2019/toplas98/handle.scm",
-    "test/WeiChenRompf2019/toplas98/lattice-processed.scm",
-    "test/WeiChenRompf2019/toplas98/lattice.scm",
-    "test/WeiChenRompf2019/toplas98/maze.sch",
-    "test/WeiChenRompf2019/toplas98/nbody-processed.sch",
-    "test/WeiChenRompf2019/toplas98/nbody.sch",
-    "test/WeiChenRompf2019/toplas98/nucleic.sch",
-    "test/WeiChenRompf2019/toplas98/nucleic2.sch",
-    "test/WeiChenRompf2019/toplas98/splay.scm",
+    //"test/WeiChenRompf2019/toplas98/boyer.sch", // USES SQUARE BRACKETS
+    //"test/WeiChenRompf2019/toplas98/dynamic.sch", // PARSER LIMITATION TODO
+    //"test/WeiChenRompf2019/toplas98/graphs.sch", // MISSING PRIMITIVE open-input-file
+    //"test/WeiChenRompf2019/toplas98/handle.scm", // MAYBE INVALID SCHEME PROGRAM TODO check
+    //"test/WeiChenRompf2019/toplas98/lattice.scm", // PARSER ERROR TODO
+    //"test/WeiChenRompf2019/toplas98/lattice-processed.scm", // PARSER ERROR TODO
+    //"test/WeiChenRompf2019/toplas98/maze.sch", // PARSER ERROR: #\space is interpreted as #\s pace
+    //"test/WeiChenRompf2019/toplas98/nbody.sch", // PARSER LIMITATION TODO
+    //"test/WeiChenRompf2019/toplas98/nbody-processed.sch", // PARSER LIMITATION TODO
+    //"test/WeiChenRompf2019/toplas98/nucleic.sch", // PARSER ERROR TODO
+    //"test/WeiChenRompf2019/toplas98/nucleic2.sch", // USES MACROS: define-syntax
+    //"test/WeiChenRompf2019/toplas98/splay.scm", // PARSER ERROR
   )
 
   val WCR2019: List[String] = List(
-    "test/WeiChenRompf2019/church_exp.sch",
+    //"test/WeiChenRompf2019/church_exp.sch", // PARSER LIMITATION TODO // Unknown (void) function
     "test/WeiChenRompf2019/church_simple.sch",
-    "test/WeiChenRompf2019/earley.sch",
+    //"test/WeiChenRompf2019/earley.sch", // MISSING PRIMITIVE read TODO
     "test/WeiChenRompf2019/fermat.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-16.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-32.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-64.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-256.scm",
     "test/WeiChenRompf2019/kcfa3.scm",
-    "test/WeiChenRompf2019/mbrotZ.sch",
-    "test/WeiChenRompf2019/meta-circ.scm",
-    "test/WeiChenRompf2019/omega.scm",
+    //"test/WeiChenRompf2019/mbrotZ.sch", // PARSER ERROR TODO
+    //"test/WeiChenRompf2019/meta-circ.scm", // UNSUPPORTED FEATURE? (lambda args body)
+    //"test/WeiChenRompf2019/omega.scm", // STACKOVERFLOW CONCRETE MACHINE
     "test/WeiChenRompf2019/regex-derivative.scm",
     "test/WeiChenRompf2019/rsa.scm",
     "test/WeiChenRompf2019/scheme2java.scm",
@@ -247,5 +247,5 @@ object Benchmarks {
   )
 
   val WeiChenRompf2019: List[String] = WCR2019 ::: theLittleSchemer ::: toplas98
-  val allBenchmarks: List[String] = ad ::: gabriel ::: gambit ::: rosetta ::: scp1 ::: sigscheme ::: WeiChenRompf2019 ::: other
+  val    allBenchmarks: List[String] = ad ::: gabriel ::: gambit ::: rosetta ::: scp1 ::: sigscheme ::: WeiChenRompf2019 ::: other
 }

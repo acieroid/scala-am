@@ -112,8 +112,8 @@ object MODComparison extends App {
 
     val program = readFile(file)
     val machines: List[(String, Machine)] = List(
-      ("bigStep",   new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics),
-      ("smallStep", new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics),
+    //  ("bigStep",   new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with BigStepSchemeModFSemantics),
+    //  ("smallStep", new ModAnalysis(program) with FullArgumentSensitivity with ConstantPropagationDomain with SmallStepSchemeModFSemantics),
     )
 
     // For every position, cMap keeps the concrete values encountered by the concrete interpreter.
@@ -139,6 +139,6 @@ object MODComparison extends App {
   val out = new BufferedWriter(new FileWriter(output))
   writer = new CSVWriter(out, ',', CSVWriter.NO_QUOTE_CHARACTER)
 
-  scalaam.cli.Benchmarks.WeiChenRompf2019.foreach(forFile(_))
+  scalaam.cli.Benchmarks.allBenchmarks.foreach(forFile(_))
   writer.close()
 }

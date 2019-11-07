@@ -651,17 +651,17 @@
          (s2 (number->string count))
          (s1 (number->string input1))
          (name "earley"))
-    (let ([ok?
-           (lambda (result) (equal? result output))]
-          [thunk (lambda () (test (vector->list (make-vector input1 'a))))])
-      (let loop ([i 0]
-                 [result (void)])
-        (cond [(< i count)
-               (loop (+ i 1) (thunk))]
-              [(ok? result) result]
-              [else
+    (let ((ok?
+           (lambda (result) (equal? result output)))
+          (thunk (lambda () (test (vector->list (make-vector input1 'a))))))
+      (let loop ((i 0)
+                 (result (void)))
+        (cond ((< i count)
+               (loop (+ i 1) (thunk)))
+              ((ok? result) result)
+              (else
                (display "ERROR: returned incorrect result: ")
                (write result)
                (newline)
-               result])))))
+               result))))))
 (main)

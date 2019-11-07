@@ -39,7 +39,7 @@
 
 (cdr '((a b c) x y z))
 
-(cdr '())
+;(cdr '())
 
 (cons 'peanut '(butter and jelly))
 

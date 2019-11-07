@@ -70,7 +70,7 @@
         (vector)
         (let ((x (make-vector size (f 0))))
           (let loop ((i 1))
-            (if (< i size) (begin               ; [wdc - was when]
+            (if (< i size) (begin               ; (wdc - was when)
                              (vector-set! x i (f i))
                              (loop (+ i 1)))
                 #t))
@@ -117,7 +117,7 @@
 		    (_-*- limit
 			(cons limit res)))))))
 
-; Fold over the integers [0, limit).
+; Fold over the integers (0, limit).
 (define gnatural-fold
     (lambda (limit folder state)
 	'(assert (and (integer? limit)
@@ -133,7 +133,7 @@
 	    ((= i limit)
 		state))))
 
-; Iterate over the integers [0, limit).
+; Iterate over the integers (0, limit).
 (define gnatural-for-each
     (lambda (limit proc!)
 	'(assert (and (integer? limit)
@@ -612,12 +612,12 @@
 			    (lambda (f)
 				(let ((from-f
 					    (vector-ref res f)))
-				    (if (vector-ref from-f m); [wdc - was when]
+				    (if (vector-ref from-f m); (wdc - was when)
                                        (begin
 					(gnatural-for-each size
 					    (lambda (t)
 						(if (vector-ref from-m t)
-                                                   (begin ; [wdc - was when]
+                                                   (begin ; (wdc - was when)
 						    (vector-set! from-f t #t))
                                                    #t))))
                                        #t)))))))
@@ -636,7 +636,7 @@
 ;      cons
 ;      '())))
 
-(let* ([fp (open-input-file "input.txt")]
+(let* ((fp (open-input-file "input.txt"))
        (input (read fp)))
   (close-input-port fp)
   (time

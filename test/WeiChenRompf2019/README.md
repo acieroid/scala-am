@@ -9,4 +9,5 @@ Following benchmarks were already present (in original or modified form) and hav
   <li>toplas98/matrix.scm</li>
 </ul> 
 Some benchmarks with identical names were kept since the file contents were
-sufficiently different.
+sufficiently different. Where needed, benchmarks were modified to make them work (e.g., some benchmarks
+did not use valid Scheme syntax such as square brackets or had missing parentheses).

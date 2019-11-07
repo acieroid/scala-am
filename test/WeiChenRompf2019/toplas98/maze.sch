@@ -206,7 +206,7 @@
   (let lp ((i (- (vector-length v) 1)))
     (cond ((> i 1)
            (let ((elt-i (vector-ref v i))
-                 (j (random-int i random-state)))       ; j in [0,i)
+                 (j (random-int i random-state)))       ; j in (0,i)
              (vector-set! v i (vector-ref v j))
              (vector-set! v j elt-i))
            (lp (- i 1)))))
@@ -460,7 +460,7 @@
 
 ;;; Find the cell ctop from the top row, and the cell cbot from the bottom
 ;;; row such that cbot is furthest from ctop. 
-;;; Return [ctop-x, ctop-y, cbot-x, cbot-y].
+;;; Return (ctop-x, ctop-y, cbot-x, cbot-y).
 
 (define (pick-entrances harr)
   (dfs-maze harr (href/rc harr 0 0) for-each-hex-child)
@@ -645,7 +645,7 @@
 (define (bit-test j bit)
   (not (zero? (bitwise-and j bit))))
 
-;;; Return a . if harr[r,c] is marked, otherwise a space.
+;;; Return a . if harr(r,c) is marked, otherwise a space.
 ;;; We use the dot to mark the solution path.
 (define (dot/space harr r c)
   (if (and (>= r 0) (cell:mark (href/rc harr r c))) #\. #\space))
@@ -669,8 +669,8 @@
 
 ;------------------------------------------------------------------------------
 
-(let* ([fp (open-input-file "input.txt")]
-       [input (read fp)])
+(let* ((fp (open-input-file "input.txt"))
+       (input (read fp)))
   (close-input-port fp)  
   (time (let loop ((n 1000) (v 0))
           (if (zero? n)
