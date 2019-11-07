@@ -8,6 +8,7 @@ import scalaam.util.Show
 import scala.concurrent.TimeoutException
 
 /** MODF analysis using an AAM intra-component analysis. */
+/*
 trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intraAnalysis
   // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).
@@ -67,10 +68,6 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
           })
         )
 
-      /**
-       * Checks if the current state is a final state. It is the case if it
-       * reached the end of the computation, or an error
-       */
       def halted: Boolean = control match {
         case _: ControlEval  => false
         case _: ControlCall  => false
@@ -83,38 +80,23 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         case _              => false
       }
 
-      /**
-       * Integrates a set of actions (returned by the semantics, see
-       * Semantics.scala), in order to generate a set of states that succeeds this
-       * one.
-       */
       private def integrate(a: KAddr, actions: Set[Action.A]): Set[State] =
         actions.flatMap({
-          /** When a value is reached, we go to a continuation state */
           case Action.Value(v, _) =>
             Set(State(ControlKont(v), kstore, a, ctx))
-          /** When a continuation needs to be pushed, push it in the continuation store */
           case Action.Push(frame, e, env, _) => {
             val next = KontAddr(e)
             Set(State(ControlEval(e, env),kstore.extend(next, Set(Kont(frame, a))),next,ctx))
           }
-          /** When a value needs to be evaluated, we go to an eval state */
           case Action.Eval(e, env, _) => Set(State(ControlEval(e, env), kstore, a, ctx))
-          /** When a function is called, generate a call state */
           case Action.Call(fval,fexp,args,_) => Set(State(ControlCall(fval,fexp,args),kstore,a,ctx))
-          /** Getting a StepIn action should not happen in a MODF analysis. */
           case Action.StepIn(_, _, _, _, _) => throw new Exception("Illegal state: MODF should not encounter a StepIn action.")
-          /** When an error is reached, we go to an error state */
           case Action.Err(err) => Set(State(ControlError(err), kstore, a, ctx))
         })
 
-      /**
-       * Computes the set of states that follow the current state
-       */
+
       def step(): Set[State] = control match {
-        /** In a eval state, call the semantic's evaluation method */
         case ControlEval(e, env) => integrate(a, schemeSemantics.stepEval(e, env, StoreAdapter, ctx))
-        /** In a continuation state, call the semantics' continuation method */
         case ControlKont(v) =>
           kstore.lookup(a) match {
             case Some(konts) =>
@@ -131,7 +113,6 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
           } else {
             Set(State(ControlKont(lattice.bottom),kstore,a,ctx))
           }
-        /** In an error state, the state is not able to make a step */
         case ControlError(_) => Set()
       }
     }
@@ -184,3 +165,4 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     }
   }
 }
+*/

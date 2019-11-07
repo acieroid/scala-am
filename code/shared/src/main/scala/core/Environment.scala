@@ -5,6 +5,12 @@ package scalaam.core
   */
 case class UnboundVariable(id: Identifier) extends Error
 
+trait LexicalEnvironment[LA, A <: Address] {
+  def lookup(lex: LA): A
+  def extend(ofs: Int, adr: A): LexicalEnvironment[LA,A]
+  def newFrame(size: Int): LexicalEnvironment[LA,A]
+}
+
 /** Mapping from variable name to addresses */
 trait Environment[A <: Address] {
 

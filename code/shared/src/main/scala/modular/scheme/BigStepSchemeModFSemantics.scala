@@ -4,47 +4,50 @@ import scalaam.core._
 import scalaam.language.sexp
 import scalaam.language.scheme._
 
-import scala.concurrent.TimeoutException
-
 trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
-    var timeout: Timeout.T = _ // Avoid having to add the timeout to every call.
     // analysis entry point
-    def analyze(to: Timeout.T): Unit = {
-      timeout = to
-      writeResult(component match {
-        case MainComponent =>
-          eval(program)
-        case CallComponent(SchemeLambda(pars,body,_),_,_,_) =>
-          bindPars(pars)
-          evalSequence(body)
-      })
+    def analyze(ignore: Timeout.T) = writeResult(component match {
+      case MainComponent      => eval(program)
+      case cmp: CallComponent => evalSequence(cmp.lambda.body)
+    })
+    // resolve a lexical address to the corresponding address in the store
+    private def resolveAddr(lex: LexicalAddr): Addr = lex match {
+      case LocalVar(ofs) =>
+        ComponentAddr(component,VarAddr(ofs))
+      case GlobalVar(ofs) =>
+        ComponentAddr(MainComponent,VarAddr(ofs))
+      case NonLocalVar(scp,ofs) =>
+        val cmp = resolveParent(component,scp)
+        ComponentAddr(cmp,VarAddr(ofs))
     }
-    // simple big-step eval
-    private var env = component.env
-    private def eval(exp: SchemeExp): Value = {
-      if (timeout.reached) throw new TimeoutException()
-      exp match {
-        case SchemeValue(value, _) => evalLiteralValue(value)
-        case lambda: SchemeLambda => lattice.closure((lambda, env), None)
-        case SchemeVar(id) => lookupVariable(id.name)
-        case SchemeBegin(exps, _) => evalSequence(exps)
-        case SchemeDefineVariable(id, vexp, _) => evalDefineVariable(id, vexp)
-        case SchemeDefineFunction(id, args, body, pos) => evalDefineFunction(id, args, body, pos)
-        case SchemeSet(name, variable, _) => evalSet(name, variable)
-        case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
-        case SchemeLet(bindings, body, _) => evalLet(bindings, body)
-        case SchemeLetStar(bindings, body, _) => evalLetStar(bindings, body)
-        case SchemeLetrec(bindings, body, _) => evalLetrec(bindings, body)
-        case SchemeNamedLet(name, bindings, body, pos) => evalNamedLet(name, bindings, body, pos)
-        case SchemeFuncall(fun, args, _) => evalCall(fun, args)
-        case SchemeAnd(exps, _) => evalAnd(exps)
-        case SchemeOr(exps, _) => evalOr(exps)
-        case SchemeQuoted(quo, _) => evalQuoted(quo)
-        case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
+    private def resolveParent(cmp: IntraComponent, scp: Int): IntraComponent =
+      if (scp == 0) { cmp } else cmp match {
+        case cmp: CallComponent => resolveParent(cmp.parent, scp - 1)
+        // If the program has succesfully passed the lexical translation, the lookup should never fail!
+        case MainComponent => throw new Exception("This should not happen!")
       }
+    // simple big-step eval
+    private def eval(exp: SchemeExp): Value = exp match {
+      case SchemeValue(value, _)                      => evalLiteralValue(value)
+      case lambda: SchemeLambdaLex                    => lattice.closure((lambda, component), None)
+      case SchemeVarLex(_,lex)                        => lookupVariable(lex)
+      case SchemeBegin(exps, _)                       => evalSequence(exps)
+      case SchemeDefineVariableLex(_, ofs, vexp, _)   => evalDefineVariable(ofs, vexp)
+      case defExp: SchemeDefineFunctionLex            => evalDefineFunction(defExp)
+      case SchemeSetLex(_, lex, variable, _)          => evalSet(lex, variable)
+      case SchemeIf(prd, csq, alt, _)                 => evalIf(prd, csq, alt)
+      case SchemeLetLex(_, bindings, body, _, _)      => evalLetExp(bindings, body)
+      case SchemeLetStarLex(_, bindings, body, _, _)  => evalLetExp(bindings, body)
+      case SchemeLetrecLex(_, bindings, body, _, _)   => evalLetExp(bindings, body)
+      case namedLet: SchemeNamedLetLex                => evalNamedLet(namedLet)
+      case SchemeFuncall(fun, args, _)                => evalCall(fun, args)
+      case SchemeAnd(exps, _)                         => evalAnd(exps)
+      case SchemeOr(exps, _)                          => evalOr(exps)
+      case SchemeQuoted(quo, _)                       => evalQuoted(quo)
+      case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
     }
     private def evalLiteralValue(literal: sexp.Value): Value = literal match {
       case sexp.ValueInteger(n)   => lattice.number(n)
@@ -69,64 +72,42 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       case sexp.SExpQuoted(q,pos)   =>
         evalQuoted(sexp.SExpPair(sexp.SExpId(Identifier("quote",pos)),sexp.SExpPair(q,sexp.SExpValue(sexp.ValueNil,pos),pos),pos))
     }
-    private def lookupVariable(name: String): Value = env.lookup(name) match {
-      case Some(addr) => readAddr(addr)
-      case None => lattice.bottom
-    }
-    private def evalDefineVariable(id: Identifier, exp: SchemeExp): Value = {
-      val addr = bind(id,lattice.bottom)
+    private def lookupVariable(lex: LexicalAddr): Value =
+      readAddr(resolveAddr(lex))
+    private def evalDefineVariable(ofs: Int, exp: SchemeExp): Value = {
       val value = eval(exp)
-      writeAddr(addr,value)
+      writeAddr(VarAddr(ofs),value)
       value
     }
-    private def evalDefineFunction(id: Identifier, pars: List[Identifier], body: List[SchemeExp], pos: Position): Value = {
-      val addr = bind(id,lattice.bottom)
-      val value = lattice.closure((SchemeLambda(pars,body,pos),env),Some(id.name))
-      writeAddr(addr,value)
+    private def evalDefineFunction(defExp: SchemeDefineFunctionLex): Value = {
+      val SchemeDefineFunctionLex(id,ofs,pars,body,frmSiz,frmOfs,pos) = defExp
+      val lambda = SchemeLambdaLex(pars,body,frmSiz,frmOfs,pos)
+      val value = lattice.closure((lambda,component),Some(id.name))
+      writeAddr(VarAddr(ofs),value)
       value
     }
     private def evalSequence(exps: List[SchemeExp]): Value =
       exps.foldLeft(lattice.bottom)((_,exp) => eval(exp))
-    private def evalSet(id: Identifier, exp: SchemeExp): Value = env.lookup(id.name) match {
-      case Some(addr) =>
-        val newValue = eval(exp)
-        writeAddr(addr,newValue)
-        newValue
-      case None => lattice.bottom
+    private def evalSet(lex: LexicalAddr, exp: SchemeExp): Value = {
+      val addr = resolveAddr(lex)
+      val newValue = eval(exp)
+      writeAddr(addr,newValue)
+      newValue
     }
-    private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value = {
-      val prdVal = eval(prd)
-      thunkify { conditional(prdVal,eval(csq),eval(alt)) }
-    }
-    private def evalLet(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = {
-      val vals = bindings.map(bnd => eval(bnd._2))
-      thunkify {
-        val vars = bindings.map(_._1)
-        vars.zip(vals).foreach { case (vrb,vlu) => bind(vrb,vlu) }
-        evalSequence(body)
-      }
-    }
-    private def evalLetStar(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = thunkify {
-      bindings.foreach { case (id,exp) =>
-        val vlu = eval(exp)
-        bind(id,vlu)
-      }
+    private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value =
+      conditional(eval(prd), eval(csq), eval(alt))
+    private def evalLetExp(bindings: List[(Int,SchemeExp)], body: List[SchemeExp]): Value = {
+      evalLetBindings(bindings)
       evalSequence(body)
     }
-    private def evalLetrec(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = thunkify {
-      val addrs = bindings.map(bnd => bind(bnd._1, lattice.bottom))
-      val vals = bindings.map(bnd => eval(bnd._2))
-      addrs.zip(vals).foreach( { case (addr,vlu) => writeAddr(addr,vlu) })
-      evalSequence(body)
+    private def evalNamedLet(namedLet: SchemeNamedLetLex): Value = {
+      val SchemeNamedLetLex(id,ofs,bds,ags,bdy,fSiz,fOfs,pos) = namedLet
+      val lambda = SchemeLambdaLex(bds.map(_._1),bdy,fSiz,fOfs,pos)
+      val closure = lattice.closure((lambda,component),Some(id.name))
+      writeAddr(VarAddr(ofs),closure)
+      val argVals = ags.map(eval)
+      applyClosures(closure,argVals)
     }
-    private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], pos: Position): Value =
-      thunkify {
-        val addr = bind(id,lattice.bottom)
-        val closure = lattice.closure((SchemeLambda(bindings.map(_._1),body,pos),env),Some(id.name))
-        writeAddr(addr,closure)
-        val args = bindings.map(bnd => eval(bnd._2))
-        applyClosures(closure,args)
-      }
     // R5RS specification: if all exps are 'thruty', then the value is that of the last expression
     private def evalAnd(exps: List[SchemeExp]): Value =
       if (exps.isEmpty) { lattice.bool(true) } else { evalAndLoop(exps) }
@@ -158,49 +139,39 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
-        case ((lambda@SchemeLambda(prs,_,_),env),nam) if prs.length == arity =>
-          val context = allocCtx(lambda,env,args)
-          val component = CallComponent(lambda,env,nam,context)
-          bindArgs(component,prs,args)
+        case (clo@(lam: SchemeLambdaLex, cmp), nam) if lam.args.length == arity =>
+          val context = allocCtx(clo,args)
+          val component = CallComponent(lam,cmp,nam,context)
+          bindArgs(component, args)
           call(component)
         case _ => lattice.bottom
       }))
     }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value = {
-      val primitives = lattice.getPrimitives[schemeSemantics.Primitive](fval)
-      primitives.foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
-        prm.call(fexp, args, StoreAdapter, this) match {
+    val allocator = new SchemeAllocator[Addr] {
+      def pointer(exp: SchemeExp) = allocAddr(PtrAddr(exp))
+    }
+    private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
+        prm.call(fexp, args, StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom
         }))
-    }
     // some helpers
-    private def thunkify(f: => Value): Value = {
-      val savedEnv = env
-      val result = f
-      env = savedEnv
-      result
-    }
     private def conditional(prd: Value, csq: => Value, alt: => Value): Value = {
       val csqVal = if (lattice.isTrue(prd)) csq else lattice.bottom
       val altVal = if (lattice.isFalse(prd)) alt else lattice.bottom
       lattice.join(csqVal,altVal)
     }
-    private def bind(vrb: Identifier, vlu: Value): Addr  = {
-      val addr = allocAddr(VarAddr(vrb))
-      env = env.extend(vrb.name,addr)
-      writeAddr(addr,vlu)
-      addr
-    }
-    private def bindPars(pars: List[Identifier]) = pars.foreach { par =>
-      val addr = allocAddr(VarAddr(par))
-      env = env.extend(par.name,addr)
-    }
-    private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) = pars.zip(args).foreach { case (par,arg) =>
-      val localAddr = VarAddr(par)
-      writeAddr(localAddr,arg,component)
+    private def evalLetBindings(bindings: List[(Int,SchemeExp)]) =
+      bindings.foreach { case (ofs,exp) => writeAddr(VarAddr(ofs),eval(exp)) }
+    private def bindArgs(component: IntraComponent, args: List[Value]) = {
+      var ofs = 0
+      args.foreach(arg => {
+        writeAddr(VarAddr(ofs),arg,component)
+        ofs = ofs + 1
+      })
     }
   }
 }

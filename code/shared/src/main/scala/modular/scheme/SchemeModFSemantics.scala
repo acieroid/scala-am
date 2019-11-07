@@ -9,39 +9,31 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                           with ReturnResult[SchemeExp] {
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address { def pos(): Position }
-  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def pos(): Position = id.pos  }
+  case class VarAddr(offset: Int)     extends LocalAddr { def printable = true;  def pos(): Position = ??? }
   case class PtrAddr(exp: Expression) extends LocalAddr { def printable = false; def pos(): Position = exp.pos }
-  case class PrmAddr(name: String)    extends LocalAddr { def printable = false; def pos(): Position = Position.none }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
-  implicit val lattice: SchemeLattice[Value, SchemeExp, Addr]
-  // Some glue code to Scala-AM to reuse the primitives and environment
-  // not actually used, but required by the interface of SchemeSemantics
-  implicit case object TimestampAdapter extends Timestamp[SchemeModFSemanticsIntra,Unit] {
-    def initial(s: String)                  = throw new Exception("Operation not allowed!")
-    def tick(cmp: SchemeModFSemanticsIntra) = throw new Exception("Operation not allowed!")
-  }
-  // The AllocAdapter makes sure the right dependencies are registered upon address allocation.
-  case object AllocAdapter extends Allocator[Addr,SchemeModFSemanticsIntra,Unit] {
-    def variable(id: Identifier, intra: SchemeModFSemanticsIntra): Addr =
-      intra.allocAddr(VarAddr(id))
-    def pointer[E <: Expression](exp: E, intra: SchemeModFSemanticsIntra): Addr =
-      intra.allocAddr(PtrAddr(exp))
-    def primitive(name: String): Addr =
-      GlobalAddr(PrmAddr(name))
-  }
-  lazy val schemeSemantics = new BaseSchemeSemantics[Addr, Value, SchemeModFSemanticsIntra, Unit](AllocAdapter)
+  type Prim = SchemePrimitive[Value, Addr]
+  implicit val lattice: SchemeLattice[Value, Addr, Prim, IntraComponent]
+  lazy val primitives = new SchemePrimitives[Value, Addr]
   // setup initial environment and install the primitives in the global store
-  def initialEnv = Environment.initial(schemeSemantics.initialEnv)
-  schemeSemantics.initialStore.foreach { case (a,v) => store = store + (a -> v) }
-  // in ModF, components are function calls in some context
-  trait IntraComponent {
-    def env: Environment[Addr]
+  private def initStore() = {
+    var currentOfs = 0
+    primitives.allPrimitives.foreach { p =>
+      val addr = ComponentAddr(MainComponent,VarAddr(currentOfs))
+      store += (addr -> lattice.primitive(p))
+      currentOfs += 1
+    }
   }
+  initStore()
+  // in ModF, components are function calls in some context
+  trait IntraComponent
   case object MainComponent extends IntraComponent {
-    val env = initialEnv
     override def toString = "main"
   }
-  case class CallComponent(lambda: SchemeLambda, env: Environment[Addr], nam: Option[String], ctx: Context) extends IntraComponent {
+  case class CallComponent(lambda: SchemeLambdaLex,
+                           parent: IntraComponent,
+                           nam: Option[String],
+                           ctx: Context) extends IntraComponent {
     override def toString = nam match {
       case None => s"anonymous@${lambda.pos} [${ctx.toString()}]"
       case Some(name) => s"$name [${ctx.toString()}]"
@@ -50,7 +42,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   lazy val initialComponent = MainComponent
   // this abstract class is parameterized by the choice of Context and allocation strategy of Contexts
   type Context
-  def allocCtx(lambda: SchemeLambda, env: Environment[Addr], args: List[Value]): Context
+  def allocCtx(clo: lattice.Closure, args: List[Value]): Context
   // extension for the intraAnalysis
   trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
     // primitives glue code

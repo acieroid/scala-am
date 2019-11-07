@@ -50,13 +50,17 @@ object SchemeLexicalAddresser {
       case Some(ofs)  => (scp, ofs)
     }
 
-  def localOffset(id: Identifier, scope: Scope): Int = scope.head(id.name)
+  def localOffset(name: String, scope: Scope): Int = scope.head(name)
+  def localOffset(id: Identifier, scope: Scope): Int = localOffset(id.name, scope)
 
   def translateProgram(prg: SchemeExp, initialBindings: List[String]): SchemeExp =
     newFrame(Nil) { freshScp =>
-      val allBindings = initialBindings ++ defs(prg)
+      val definitions = defs(prg)
+      val allBindings = initialBindings ++ definitions
       val initialScp = extendScope(freshScp, allBindings)
-      translate(prg, initialScp)
+      val defOffsets = definitions.map(d => localOffset(d,initialScp))
+      val translated = translate(prg, initialScp)
+      translated
     }
 
   // TODO: use a state monad or something else that is less ugly ...
@@ -66,8 +70,8 @@ object SchemeLexicalAddresser {
     case vexp: SchemeValue => vexp
     case quoted: SchemeQuoted => quoted
     case SchemeLambda(prs,bdy,pos) =>
-      val (bdyLex,lamCount) = translateLambda(prs, bdy, scope)
-      SchemeLambdaLex(prs, bdyLex, lamCount, pos)
+      val (bdyLex,lamSiz,lamOfs) = translateLambda(prs, bdy, scope)
+      SchemeLambdaLex(prs, bdyLex, lamSiz, lamOfs, pos)
     case SchemeVar(id) =>
       SchemeVarLex(id, resolve(id.name, scope))
     case SchemeBegin(eps,pos) =>
@@ -77,9 +81,9 @@ object SchemeLexicalAddresser {
       val varOffset = localOffset(id, scope)
       SchemeDefineVariableLex(id,varOffset,vexpLex,pos)
     case SchemeDefineFunction(id,prs,bdy,pos) =>
-      val (bdyLex, lamCount) = translateLambda(prs, bdy, scope)
+      val (bdyLex, lamSiz, lamOfs) = translateLambda(prs, bdy, scope)
       val funOffset = localOffset(id, scope)
-      SchemeDefineFunctionLex(id,funOffset,prs,bdyLex,lamCount,pos)
+      SchemeDefineFunctionLex(id,funOffset,prs,bdyLex,lamSiz,lamOfs,pos)
     case SchemeSet(id, vexp, pos) =>
       val vexpLex = translate(vexp, scope)
       val varAddr = resolve(id.name, scope)
@@ -97,9 +101,12 @@ object SchemeLexicalAddresser {
       val epsLex = eps.map { translate(_,scope) }
       val extScp = extendScope(scope, vrs.map(_.name))
       val bdsLex = vrs.map(localOffset(_,extScp)).zip(epsLex)
-      val bdyScp = extendScope(extScp, defs(body))
+      val bdyDfs = defs(body)
+      val bdyScp = extendScope(extScp, bdyDfs)
+      val bdyOfs = bdyDfs.map(localOffset(_,bdyScp))
       val bdyLex = translate(body,bdyScp)
-      SchemeLetLex(bindings,bdsLex,bdyLex,pos)
+      // TODO: bindings still contains untranslated expressions!
+      SchemeLetLex(bindings,bdsLex,bdyLex,bdyOfs,pos)
     case SchemeLetStar(bindings,body,pos) =>
       val (bdsLex, extScp) = bindings.foldLeft((List[(Int,SchemeExp)](),scope)) {
         case ((curBds,curScp),(nxtVar,nxtExp)) =>
@@ -108,36 +115,45 @@ object SchemeLexicalAddresser {
           val vrbOfs = localOffset(nxtVar,nxtScp)
           ((vrbOfs,expLex) :: curBds, nxtScp)
       }
+      val bdyDfs = defs(body)
       val bdyScp = extendScope(extScp, defs(body))
+      val bdyOfs = bdyDfs.map(localOffset(_,bdyScp))
       val bdyLex = translate(body, bdyScp)
-      SchemeLetStarLex(bindings,bdsLex.reverse,bdyLex,pos)
+      // TODO: bindings still contains untranslated expressions!
+      SchemeLetStarLex(bindings,bdsLex.reverse,bdyLex,bdyOfs,pos)
     case SchemeLetrec(bindings,body,pos) =>
       val (vrs,eps) = bindings.unzip
       val extScp = extendScope(scope, vrs.map(_.name))
       val epsLex = eps.map { translate(_,extScp) }
       val bdsLex = vrs.map(localOffset(_,extScp)).zip(epsLex)
-      val bdyScp = extendScope(extScp, defs(body))
+      val bdyDfs = defs(body)
+      val bdyScp = extendScope(extScp, bdyDfs)
+      val bdyOfs = bdyDfs.map(localOffset(_,bdyScp))
       val bdyLex = translate(body,bdyScp)
-      SchemeLetrecLex(bindings,bdsLex,bdyLex,pos)
+      // TODO: bindings still contains untranslated expressions!
+      SchemeLetrecLex(bindings,bdsLex,bdyLex,bdyOfs,pos)
     case SchemeNamedLet(name,bindings,body,pos) =>
       val (prs,eps) = bindings.unzip
       val epsLex = eps.map { translate(_,scope) }
       val extScp = extendScope(scope, name.name)
       val offset = localOffset(name, extScp)
-      val (bdyLex,lamCount) = translateLambda(prs,body,scope)
-      SchemeNamedLetLex(name,offset,bindings,epsLex,bdyLex,lamCount,pos)
+      val (bdyLex,lamSiz,lamOfs) = translateLambda(prs,body,scope)
+      // TODO: bindings still contains untranslated expressions!
+      SchemeNamedLetLex(name,offset,bindings,epsLex,bdyLex,lamSiz,lamOfs,pos)
     case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
   }
 
   def translate(bdy: List[SchemeExp], scope: Scope): List[SchemeExp] =
     bdy.map { exp => translate(exp,scope) }
 
-  def translateLambda(prs: List[Identifier], bdy: List[SchemeExp], scope: Scope): (List[SchemeExp], Int) =
+  def translateLambda(prs: List[Identifier], bdy: List[SchemeExp], scope: Scope): (List[SchemeExp], Int, List[Int]) =
     newFrame(scope) { freshScp =>
-      val bdyDfs = prs.map(_.name) ++ defs(bdy)
-      val extScp = extendScope(freshScp,bdyDfs)
+      val bdyDfs = defs(bdy)
+      val allDfs = prs.map(_.name) ++ bdyDfs
+      val extScp = extendScope(freshScp,allDfs)
       val bdyLex = translate(bdy,extScp)
-      (bdyLex, count)
+      val bdyOfs = bdyDfs.map(d => localOffset(d,extScp))
+      (bdyLex, count, bdyOfs)
     }
 
   def extendScope(scope: Scope, vrb: String): Scope = {

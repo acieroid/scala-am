@@ -13,7 +13,7 @@ trait AbstractDomain extends SchemeModFSemantics {
   type C
   type Sym
   // which are used to construct a "modular" (~ product) lattice
-  val valueLattice: MakeSchemeLattice[SchemeExp,Addr,S,B,I,R,C,Sym]
+  val valueLattice: MakeSchemeLattice[Addr,IntraComponent,S,B,I,R,C,Sym]
   type Value = valueLattice.L
   lazy val lattice = valueLattice.schemeLattice
 }
@@ -25,12 +25,11 @@ trait AdaptiveAbstractDomain extends AdaptiveSchemeModFSemantics with AbstractDo
   }
   private def alphaV(value: valueLattice.Value): valueLattice.Value = value match {
     case valueLattice.Pointer(addr)     => valueLattice.Pointer(alphaAddr(addr))
-    case valueLattice.Clo(lam,env,nam)  => valueLattice.Clo(lam,alphaEnv(env),nam)
+    case valueLattice.Clo(lam,cmp,nam)  => valueLattice.Clo(lam,alpha(cmp),nam)
     case valueLattice.Cons(car,cdr)     => valueLattice.Cons(alphaValue(car),alphaValue(cdr))
     case valueLattice.Vec(siz,els,ini)  => valueLattice.Vec(siz,els.mapValues(alphaValue),alphaValue(ini))
     case _                              => value
   }
-  private def alphaEnv(env: Environment[Addr]) = ???
 }
 
 /* A type lattice for ModF */

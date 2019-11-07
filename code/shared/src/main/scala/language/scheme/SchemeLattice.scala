@@ -3,7 +3,10 @@ package scalaam.language.scheme
 import scalaam.core._
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L, E <: Expression, A <: Address] extends Lattice[L] {
+trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
+
+  /** We only work with SchemeExp */
+  type E = SchemeExp
 
   /** Can this value be considered true for conditionals? */
   def isTrue(x: L): Boolean
@@ -34,14 +37,13 @@ trait SchemeLattice[L, E <: Expression, A <: Address] extends Lattice[L] {
   }
 
   /** The representation of a closure */
-  type Closure = (E, Environment[A])
+  type Closure = (E, Env)
 
   /** Extract closures contained in this value */
   def getClosures(x: L): Set[(Closure,Option[String])]
 
-  /** Extract primitives contained in this value
-    *  TODO[medium] find a way not to have a type parameter here */
-  def getPrimitives[Primitive](x: L): Set[Primitive]
+  /** Extract primitives contained in this value */
+  def getPrimitives(x: L): Set[P]
 
   def getPointerAddresses(x: L): Set[A]
 
@@ -61,7 +63,7 @@ trait SchemeLattice[L, E <: Expression, A <: Address] extends Lattice[L] {
   def char(x: Char): L
 
   /** Injection of a primitive function */
-  def primitive[Primitive](x: Primitive): L
+  def primitive(x: P): L
 
   /** Injection of a closure */
   def closure(x: Closure, name: Option[String]): L
@@ -164,7 +166,7 @@ trait SchemeLattice[L, E <: Expression, A <: Address] extends Lattice[L] {
 }
 
 object SchemeLattice {
-  def apply[L, E <: Expression, A <: Address](
-      implicit lat: SchemeLattice[L, E, A]
-  ): SchemeLattice[L, E, A] = lat
+  def apply[L, A <: Address, P <: Primitive, Env](
+      implicit lat: SchemeLattice[L, A, P, Env]
+  ): SchemeLattice[L, A, P, Env] = lat
 }

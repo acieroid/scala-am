@@ -14,9 +14,6 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
 
   // addresses in the global analysis are (local) addresses of the intra-analysis + the component
   trait Addr extends Address
-  case class GlobalAddr(addr: LocalAddr) extends Addr {
-    def printable = addr.printable
-  }
   case class ComponentAddr(component: IntraComponent, addr: LocalAddr) extends Addr {
     def printable = addr.printable
   }
@@ -66,7 +63,6 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
 trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] {
   // alpha definition for addresses and dependencies
   def alphaAddr(addr: Addr): Addr = addr match {
-    case GlobalAddr(_) => addr
     case ComponentAddr(cmp,localAddr) => ComponentAddr(alpha(cmp),localAddr)
   }
   override def alphaDep(dep: Dependency): Dependency = dep match {

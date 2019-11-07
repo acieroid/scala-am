@@ -17,8 +17,8 @@ import BinaryOperator._
   */
 /** TODO[medium]: use Show and ShowStore here */
 class MakeSchemeLattice[
-    E <: Expression,
     A <: Address,
+    Env,
     S: StringLattice,
     B: BoolLattice,
     I: IntLattice,
@@ -26,6 +26,9 @@ class MakeSchemeLattice[
     C: CharLattice,
     Sym: SymbolLattice
 ] {
+
+  type E = SchemeExp
+  type P = SchemePrimitive[L,A]
 
   /** We first implement all possible operations on single values, that can be
     * only joined when compatible. This therefore is not a lattice but will be
@@ -52,12 +55,10 @@ class MakeSchemeLattice[
   case class Symbol(s: Sym) extends Value {
     override def toString = SymbolLattice[Sym].show(s)
   }
-
-  /** TODO[medium] find a way not to have a type parameter here */
-  case class Prim[Primitive](prim: Primitive) extends Value {
-    override def toString = s"#prim<$prim>"
+  case class Prim(prim: P) extends Value {
+    override def toString = s"#<primitive ${prim.name}>"
   }
-  case class Clo(lambda: E, env: Environment[A], name: Option[String]) extends Value {
+  case class Clo(lambda: E, env: Env, name: Option[String]) extends Value {
     def printName = name match {
       case None => s"anonymous@${lambda.pos}"
       case Some(name) => name
@@ -451,8 +452,8 @@ class MakeSchemeLattice[
     def string(x: String): Value                  = Str(StringLattice[S].inject(x))
     def bool(x: Boolean): Value                   = Bool(BoolLattice[B].inject(x))
     def char(x: scala.Char): Value                = Char(CharLattice[C].inject(x))
-    def primitive[Primitive](x: Primitive): Value = Prim(x)
-    def closure(x: schemeLattice.Closure, name: Option[String]): Value  = Clo(x._1, x._2.restrictTo(x._1.fv),name)
+    def primitive(x: P): Value                    = Prim(x)
+    def closure(x: schemeLattice.Closure, name: Option[String]): Value  = Clo(x._1,x._2,name)
     def symbol(x: String): Value                  = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value                                = Nil
     def cons(car: L, cdr: L): Value               = Cons(car, cdr)
@@ -460,11 +461,11 @@ class MakeSchemeLattice[
 
     def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
       case Clo(lam, env, name) => Set(((lam, env),name))
-      case _                => Set()
+      case _                   => Set()
     }
-    def getPrimitives[Primitive](x: Value): Set[Primitive] = x match {
-      case Prim(p: Primitive @unchecked) => Set(p)
-      case _                             => Set()
+    def getPrimitives(x: Value): Set[P] = x match {
+      case Prim(p) => Set(p)
+      case _       => Set()
     }
     def getPointerAddresses(x: Value): Set[A] = x match {
       case Pointer(a) => Set(a)
@@ -620,7 +621,7 @@ class MakeSchemeLattice[
   }
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
-  val schemeLattice: SchemeLattice[L, E, A] = new SchemeLattice[L, E, A] {
+  val schemeLattice: SchemeLattice[L, A, P, Env] = new SchemeLattice[L, A, P, Env] {
     def show(x: L)             = x.toString /* TODO[easy]: implement better */
     def isTrue(x: L): Boolean  = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
@@ -645,8 +646,8 @@ class MakeSchemeLattice[
       vector.foldMapL(vec => index.foldMapL(i => Value.vectorSet(vec, i, newval)))
 
     def getClosures(x: L): Set[(Closure,Option[String])] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
-    def getPrimitives[Primitive](x: L): Set[Primitive] =
-      x.foldMapL(x => Value.getPrimitives[Primitive](x))(setMonoid)
+    def getPrimitives(x: L): Set[P] =
+      x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
 
     def bottom: L                             = Element(Value.bottom)
@@ -655,8 +656,9 @@ class MakeSchemeLattice[
     def string(x: String): L                  = Element(Value.string(x))
     def char(x: scala.Char): L                = Element(Value.char(x))
     def bool(x: Boolean): L                   = Element(Value.bool(x))
-    def primitive[Primitive](x: Primitive): L = Element(Value.primitive[Primitive](x))
-    def closure(x: Closure, name: Option[String]): L = Element(Value.closure(x,name))
+    def primitive(x: P): L                    = Element(Value.primitive(x))
+    def closure(x: Closure,
+                name: Option[String]): L      = Element(Value.closure(x,name))
     def symbol(x: String): L                  = Element(Value.symbol(x))
     def cons(car: L, cdr: L): L               = Element(Value.cons(car, cdr))
     def pointer(a: A): L                      = Element(Value.pointer(a))
@@ -673,6 +675,6 @@ class MakeSchemeLattice[
   }
 
   object L {
-    implicit val lattice: SchemeLattice[L, E, A] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A, P, Env] = schemeLattice
   }
 }

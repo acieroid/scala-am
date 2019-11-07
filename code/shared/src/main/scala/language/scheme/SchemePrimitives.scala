@@ -2,35 +2,31 @@ package scalaam.language.scheme
 
 import scalaam.core._
 
-trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C] {
-  implicit val timestamp: Timestamp[T, C]
-  implicit val schemeLattice: SchemeLattice[V, SchemeExp, A]
+trait SchemeAllocator[A] {
+  def pointer(exp: SchemeExp): A
+}
+
+// TODO: Put this in package scalaam.core
+trait Primitive {
+  def name: String
+}
+
+trait SchemePrimitive[V, A <: Address] extends Primitive {
+  def call(fexp: SchemeExp,
+           args: List[(SchemeExp, V)],
+           store: Store[A, V],
+           alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error]
+}
+
+class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
 
   case class PrimitiveArityError(name: String, expected: Int, got: Int)                extends Error
   case class PrimitiveVariadicArityError(name: String, expectedAtLeast: Int, got: Int) extends Error
   case class PrimitiveNotApplicable(name: String, args: List[V])                       extends Error
   case class UserError(message: String)                                                extends Error
-  trait Primitive {
-    def name: String
-    override def toString = name
-    def callAction(
-        fexp: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        t: T
-    ): Set[Action.A] =
-      call(fexp, args, store, t)
-        .mapSet[Action.A](vstore => Action.Value(vstore._1, vstore._2))(err => Action.Err(err))
-    def call(
-        fexp: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        t: T
-    ): MayFail[(V, Store[A, V]), Error]
-  }
 
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
-  def allPrimitives: List[Primitive] = {
+  def allPrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
     List(
       Times, /* [vv] *: Arithmetic */
@@ -241,7 +237,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
 
     /** Helper for defining operations that do not modify the store */
     abstract class NoStoreOperation(val name: String, val nargs: Option[Int] = None)
-        extends Primitive {
+        extends SchemePrimitive[V,A] {
       def call(args: List[V]): MayFail[V, Error] =
         MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
       def call(arg1: V, arg2: V): MayFail[V, Error] = call(List(arg1, arg2))
@@ -257,7 +253,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
           fexp: SchemeExp,
           args: List[(SchemeExp, V)],
           store: Store[A, V],
-          t: T
+          alloc: SchemeAllocator[A]
       ): MayFail[(V, Store[A, V]), Error] =
         (args match {
           case Nil           => call()
@@ -268,7 +264,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
     }
 
     abstract class StoreOperation(val name: String, val nargs: Option[Int] = None)
-        extends Primitive {
+        extends SchemePrimitive[V,A] {
       def call(args: List[V], store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
         MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
       def call(arg: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
@@ -293,7 +289,7 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
           fexp: SchemeExp,
           args: List[(SchemeExp, V)],
           store: Store[A, V],
-          t: T
+          alloc: SchemeAllocator[A]
       ): MayFail[(V, Store[A, V]), Error] = args match {
         case Nil           => call(store)
         case x :: Nil      => call(fexp, x, store)
@@ -806,11 +802,11 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
         MayFail.failure(UserError(x._2.toString))
     }
 
-    object Cons extends Primitive {
+    object Cons extends SchemePrimitive[V,A] {
       val name = "cons"
-      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T) = args match {
+      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val consa = allocator.pointer(fexp, t)
+          val consa = alloc.pointer(fexp)
           (pointer(consa), store.extend(consa, cons(car, cdr)))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
@@ -1033,14 +1029,14 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
               args))))
       */
     object ListPrim extends StoreOperation("list", None) {
-      override def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T) =
+      override def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) =
         args match {
           case Nil => (nil, store)
           case (exp, v) :: rest =>
             for {
-              (restv, store2) <- call(fexp, rest, store, t)
+              (restv, store2) <- call(fexp, rest, store, alloc)
               consv  = cons(v, restv)
-              consa  = allocator.pointer(exp, t)
+              consa  = alloc.pointer(exp)
               store3 = store2.extend(consa, consv)
             } yield (pointer(consa), store3)
         }
@@ -1234,14 +1230,14 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
         )
     object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
 
-    object MakeVector extends Primitive {
+    object MakeVector extends SchemePrimitive[V,A] {
       val name = "make-vector"
-      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T) = {
+      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
         def createVec(size: V, init: V): MayFail[(V, Store[A, V]), Error] = {
           isInteger(size) >>= (
               isint =>
                 if (isTrue(isint)) {
-                  val veca = allocator.pointer(fexp, t)
+                  val veca = alloc.pointer(fexp)
                   vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
                 } else {
                   MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
@@ -1256,10 +1252,10 @@ trait SchemePrimitives[A <: Address, V, T, C] extends SchemeSemantics[A, V, T, C
       }
     }
 
-    object Vector extends Primitive {
+    object Vector extends SchemePrimitive[V,A] {
       val name = "vector"
-      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], t: T) = {
-        val veca = allocator.pointer(fexp, t)
+      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
+        val veca = alloc.pointer(fexp)
         vector(number(args.size), bottom) >>= (
             emptyvec =>
               args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))(
