@@ -179,7 +179,7 @@ object ConstantPropagation {
         case _           => n
       }
       def random(n: R): R = n match {
-        case Constant(x) => Constant(MathOps.random(x))
+        case Constant(_) => Top
         case _           => n
       }
       def log(n: R): R = n match {

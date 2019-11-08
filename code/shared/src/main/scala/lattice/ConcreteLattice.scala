@@ -147,7 +147,7 @@ object Concrete {
         case Top             => RealLattice[R2].top
         case Values(content) => content.foldMap((n: Int) => RealLattice[R2].inject(n.toDouble))
       }
-      def random(n: I): I           = n.map(n => MathOps.random(n))
+      def random(n: I): I           = if (n == bottom) bottom else Top
       def plus(n1: I, n2: I): I     = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 + n2)) }
       def minus(n1: I, n2: I): I    = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 - n2)) }
       def times(n1: I, n2: I): I    = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => n1 * n2)) }
@@ -184,7 +184,7 @@ object Concrete {
       def floor(n: R): R                  = n.map(_.floor)
       def round(n: R): R                  = n.map(n => MathOps.round(n))
       def log(n: R): R                    = n.map(n => scala.math.log(n))
-      def random(n: R): R                 = n.map(n => MathOps.random(n))
+      def random(n: R): R                 = if (n == bottom) bottom else Top
       def sin(n: R): R                    = n.map(n => scala.math.sin(n))
       def asin(n: R): R                   = n.map(n => scala.math.asin(n))
       def cos(n: R): R                    = n.map(n => scala.math.cos(n))
