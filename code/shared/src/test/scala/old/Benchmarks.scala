@@ -219,6 +219,8 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
   val unused: List[Benchmark] = allBenchmarks.filter(b => b.supported.isEmpty)
 }
 
+/**
 class UnusedBenchmarksTests extends FlatSpec with Matchers {
   OldBenchmarks.unused.foreach(bench => bench.file should "be used" in { cancel("unused") })
 }
+*/
