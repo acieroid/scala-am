@@ -1,3 +1,4 @@
+/*
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.machine._
@@ -25,7 +26,7 @@ abstract class SchemeInterpreterTests[A <: Address, V, T, C](
   Benchmarks.benchmarksFor(kind).foreach(b =>
     BenchmarksUtil.fileContent(b).foreach(program =>
       property(s"[$machineName] $b should result in ${fromValue(b.result)}") {
-        System.gc() /* Runs a GC before, to (maybe) avoid some GC overhead errors */
+        System.gc() // Runs a GC before, to (maybe) avoid some GC overhead errors
         checkResult(processProgram(SchemeParser.parse(program)), fromValue(b.result), Timeout.seconds(10))
       }
     ))
@@ -54,3 +55,4 @@ abstract class SchemeInterpreterGAAMTests[A <: Address, T, V](
 }
 
 class TypeSchemeInterpreterGAAMTests extends SchemeInterpreterGAAMTests[NameAddress.A, ZeroCFASchemeTimestamp.T, TypeSchemeLattice.L](NameAddress.Alloc[ZeroCFASchemeTimestamp.T, SchemeExp], BenchmarkTestKind.SchemeRunAbstract, "GAAM/Type")
+*/

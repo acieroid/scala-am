@@ -4,4 +4,4 @@ scala:
 jdk:
   - openjdk8
 
-script: travis_wait 30 sbt test
+script: travis_wait 30 sbt scalaam/test

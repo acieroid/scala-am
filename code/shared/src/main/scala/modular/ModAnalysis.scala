@@ -5,8 +5,6 @@ import scalaam.core.Annotations._
 import scalaam.util._
 import scalaam.util.MonoidImplicits._
 
-import scala.concurrent.TimeoutException
-
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
   // parameterized by a 'intra-component' representation
@@ -37,7 +35,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     @mutable private[ModAnalysis] var components = Set[IntraComponent]()
     protected def spawn(cmp: IntraComponent): Unit = components += cmp
     // analyses the given component
-    def analyze(timeout: Timeout.T): Unit
+    def analyze(): Unit
   }
 
   // inter-analysis using a simple worklist algorithm
@@ -46,13 +44,13 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   @mutable var allComponents: Set[IntraComponent] = Set(initialComponent)
   @mutable var dependencies:  Map[IntraComponent, Set[IntraComponent]] = Map()
   def finished(): Boolean = work.isEmpty
-  def step(timeout: Timeout.T): Unit = {
+  def step(): Unit = {
     // take the next component
     val current = work.head
     work -= current
     // do the intra-analysis
     val intra = intraAnalysis(current)
-    intra.analyze(timeout)
+    intra.analyze()
     // add the successors to the worklist
     val newComponents = intra.components.filterNot(visited)
     val componentsToUpdate = intra.deps.flatMap(deps)
@@ -63,12 +61,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     allComponents ++= newComponents
     dependencies += (current -> intra.components)
   }
-  def analyze(timeout: Timeout.T = Timeout.Infinity): Unit =
-    while(!finished()) {
-      if (timeout.reached) {
-        throw new TimeoutException()
-      }
-      step(timeout)
+  def analyze(timeout: Timeout.T = Timeout.Infinity) =
+    while(!finished() && !timeout.reached) {
+      step()
     }
 }
 

@@ -1,5 +1,3 @@
-package scalaam.test.lattice
-
 import org.scalacheck.{Arbitrary, Gen}
 
 import scalaam.core.Lattice

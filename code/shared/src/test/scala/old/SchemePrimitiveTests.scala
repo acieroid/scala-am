@@ -1,9 +1,12 @@
+/*
+
 import org.scalatest.prop._
 
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.machine._
 import scalaam.lattice._
+*/
 
 /** Tests that encodes Chapter 6 of R5RS (only for specified behaviour,
  * unspecified behaviour is not tested because it's... unspecified). This is
@@ -11,6 +14,8 @@ import scalaam.lattice._
  * not tested (because they aren't given any test case in R5RS). Unsupported
  * primitives with test cases defined in R5RS are explicitly stated in
  * comments. If you're bored, you can implement some of them. */
+
+/*
 abstract class SchemePrimitiveTests[A <: Address, V, T, C](
   override implicit val timestamp: Timestamp[T, C],
   override implicit val lat: SchemeLattice[V, SchemeExp, A])
@@ -23,7 +28,7 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
   val t = bool(true)
   val f = bool(false)
 
-  /* 6.1 Equivalence predicates */
+  // 6.1 Equivalence predicates
   // eqv? is not implemented
   r5rs("eq?", Table(
     ("program", "answer"),
@@ -51,7 +56,7 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
     ("(equal? '(a b c) '(a c b))", f)
   ))
 
-  /* 6.2 Numbers */
+  // 6.2 Numbers
   // complex? is not implemented
   r5rs("real?", Table(
     ("program", "answer"),
@@ -86,14 +91,14 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
   r5rs("max", Table(
     ("program", "answer"),
     ("(max 3 4)", number(4)),
-    ("(max 3.9 4)", number(4)), /* TODO: Does not exactly follow spec (should be 4.0) */
+    ("(max 3.9 4)", number(4)), // TODO: Does not exactly follow spec (should be 4.0)
     ("(max 1)", number(1)),
     ("(max 1 2 3 4 5 4 3 2 1)", number(5))))
 
   r5rs("min", Table(
     ("program", "answer"),
     ("(min 3 4)", number(3)),
-    ("(min 3 4.9)", number(3)), /* TODO: should be 3.0 */
+    ("(min 3 4.9)", number(3)), // TODO: should be 3.0
     ("(min 1)", number(1)),
     ("(min 5 4 3 2 1 2 3 4 5)", number(1))))
 
@@ -122,7 +127,7 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
   r5rs("/", Table(
     ("program", "answer"),
     ("(/ 4 2)", number(2)),
-    ("(/ 1 2)", real(0.5)), /* should be 1/2 */
+    ("(/ 1 2)", real(0.5)), // should be 1/2
     ("(/ 1.0 1)", real(1.0)),
     ("(/ 1 1.0)", real(1.0)),
     ("(/ 4 2.0)", real(2.0))
@@ -339,7 +344,7 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
     ("(number->string -123.456)", string("-123.456"))
   ))
 
-  /* 6.3 Other data types */
+  // 6.3 Other data types
   r5rs("not", Table(
     ("program", "answer"),
     ("(not #t)", f),
@@ -549,7 +554,7 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
       ("(vector-length (vector 0 1 0))", number(3))
     ))
 
-  /* 6.4 Control features */
+  // 6.4 Control features
   // procedure not implemented
   // apply not implemented
   // map not implemented
@@ -558,10 +563,10 @@ abstract class SchemePrimitiveTests[A <: Address, V, T, C](
   // call/cc not implemented
   // call-with-values not implemented
 
-  /* 6.5 Eval */
+  // 6.5 Eval
   // eval not implemented
 
-  /* 6.6 Input and output */
+  // 6.6 Input and output
 }
 
 abstract class SchemePrimitiveAAMTests[A <: Address, T, V](
@@ -584,3 +589,4 @@ object ConcreteTypeSchemeLattice extends MakeSchemeLattice[SchemeExp, ConcreteSc
 class ConcreteSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteSchemeLattice.L](ConcreteSchemeAddress.Alloc)
 class ConstantPropagationSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteConstantPropagationSchemeLattice.L](ConcreteSchemeAddress.Alloc)
 class TypeSchemePrimitiveAAMTests extends SchemePrimitiveAAMTests[ConcreteSchemeAddress.A, ConcreteSchemeTimestamp.T, ConcreteTypeSchemeLattice.L](ConcreteSchemeAddress.Alloc)
+*/

@@ -1,3 +1,5 @@
+/*
+
 package scalaam.cli
 
 import java.text.SimpleDateFormat
@@ -49,7 +51,7 @@ object MODComparison extends App {
   val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH'h'mm")
   val detformat: SimpleDateFormat = new SimpleDateFormat("HH:mm:ss")
 
-  /** Creates a fileName including the given name, suffix and a timestamp. */
+  // Creates a fileName including the given name, suffix and a timestamp.
   def ts(name: String, suffix: String): String =
     outputDir + format.format(calendar.getTime) + "_" + name + suffix
 
@@ -139,6 +141,7 @@ object MODComparison extends App {
   val out = new BufferedWriter(new FileWriter(output))
   writer = new CSVWriter(out, ',', CSVWriter.NO_QUOTE_CHARACTER)
 
-  scalaam.cli.Benchmarks.allBenchmarks.foreach(forFile(_))
+  Benchmarks.allBenchmarks.foreach(forFile(_))
   writer.close()
 }
+*/

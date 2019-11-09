@@ -1,5 +1,3 @@
-package scalaam.test.lattice
-
 import org.scalacheck.{Prop, Properties}
 import Prop.forAll
 
