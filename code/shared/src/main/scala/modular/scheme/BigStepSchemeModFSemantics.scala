@@ -59,13 +59,13 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     }
     private def evalDefineVariable(id: Identifier, exp: SchemeExp): Value = {
       val value = eval(exp)
-      writeAddr(VarAddr(id),value)
+      defineVariable(id,value)
       value
     }
     private def evalDefineFunction(id: Identifier, prs: List[Identifier], body: List[SchemeExp], pos: Position): Value = {
       val lambda = SchemeLambda(prs,body,pos)
       val value = lattice.closure((lambda,component),Some(id.name))
-      writeAddr(VarAddr(id),value)
+      defineVariable(id,value)
       value
     }
     private def evalSequence(exps: List[SchemeExp]): Value =
@@ -78,14 +78,14 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value =
       conditional(eval(prd), eval(csq), eval(alt))
     private def evalLetExp(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = {
-      bindings.foreach { case (id,exp) => writeAddr(VarAddr(id), eval(exp)) }
+      bindings.foreach { case (id,exp) => defineVariable(id, eval(exp)) }
       evalSequence(body)
     }
     private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], pos: Position): Value = {
       val (prs,ags) = bindings.unzip
       val lambda = SchemeLambda(prs,body,pos)
       val closure = lattice.closure((lambda,component),Some(id.name))
-      writeAddr(VarAddr(id),closure)
+      defineVariable(id,closure)
       val argsVals = ags.map(argExp => (argExp, eval(argExp)))
       applyFun(lambda,closure,argsVals)
     }

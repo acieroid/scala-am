@@ -53,6 +53,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       readAddr(resolveAddr(lex))
     protected def setVariable(lex: LexicalRef, vlu: Value) =
       writeAddr(resolveAddr(lex),vlu)
+    protected def defineVariable(id: Identifier, vlu: Value) =
+      writeAddr(VarAddr(id),vlu)
     // resolve a lexical address to the corresponding address in the store
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
       case LocalRef(identifier) =>
