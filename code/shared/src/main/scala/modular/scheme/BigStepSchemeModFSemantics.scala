@@ -3,6 +3,7 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.language.sexp
 import scalaam.language.scheme._
+import scalaam.util.MonoidImplicits._
 
 trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
@@ -13,24 +14,6 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       case MainComponent      => eval(program)
       case cmp: CallComponent => evalSequence(cmp.lambda.body)
     })
-    // resolve a lexical address to the corresponding address in the store
-    private def resolveAddr(lex: LexicalRef): Addr = lex match {
-      case LocalRef(identifier) =>
-        ComponentAddr(component,VarAddr(identifier))
-      case GlobalRef(identifier) =>
-        ComponentAddr(MainComponent,VarAddr(identifier))
-      case PrimRef(name) =>
-        ComponentAddr(MainComponent,PrmAddr(name))
-      case NonLocalRef(identifier,scp) =>
-        val cmp = resolveParent(component,scp)
-        ComponentAddr(cmp,VarAddr(identifier))
-    }
-    private def resolveParent(cmp: IntraComponent, scp: Int): IntraComponent =
-      if (scp == 0) { cmp } else cmp match {
-        case cmp: CallComponent => resolveParent(cmp.parent, scp - 1)
-        // If the program has succesfully passed the lexical translation, the lookup should never fail!
-        case MainComponent => throw new Exception("This should not happen!")
-      }
     // simple big-step eval
     private def eval(exp: SchemeExp): Value = exp match {
       case SchemeValue(value, _)                    => evalLiteralValue(value)
@@ -74,8 +57,6 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       case sexp.SExpQuoted(q,pos)   =>
         evalQuoted(sexp.SExpPair(sexp.SExpId(Identifier("quote",pos)),sexp.SExpPair(q,sexp.SExpValue(sexp.ValueNil,pos),pos),pos))
     }
-    private def lookupVariable(lex: LexicalRef): Value =
-      readAddr(resolveAddr(lex))
     private def evalDefineVariable(id: Identifier, exp: SchemeExp): Value = {
       val value = eval(exp)
       writeAddr(VarAddr(id),value)
@@ -98,7 +79,7 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value =
       conditional(eval(prd), eval(csq), eval(alt))
     private def evalLetExp(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = {
-      evalLetBindings(bindings)
+      bindings.foreach { case (id,exp) => writeAddr(VarAddr(id), eval(exp)) }
       evalSequence(body)
     }
     private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], pos: Position): Value = {
@@ -106,8 +87,8 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       val lambda = SchemeLambda(prs,body,pos)
       val closure = lattice.closure((lambda,component),Some(id.name))
       writeAddr(VarAddr(id),closure)
-      val argVals = ags.map(eval)
-      applyClosures(closure,argVals)
+      val argsVals = ags.map(argExp => (argExp, eval(argExp)))
+      applyFun(lambda,closure,argsVals)
     }
     // R5RS specification: if all exps are 'thruty', then the value is that of the last expression
     private def evalAnd(exps: List[SchemeExp]): Value =
@@ -125,49 +106,6 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       val argVals = args.map(eval)
       applyFun(fun,funVal,args.zip(argVals))
     }
-    // apply
-    private def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
-      if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args.map(_._2))
-        val fromPrimitives = applyPrimitives(fexp,fval,args)
-        lattice.join(fromClosures,fromPrimitives)
-      } else {
-        lattice.bottom
-      }
-    // TODO[minor]: use foldMap instead of foldLeft
-    private def applyClosures(fun: Value, args: List[Value]): Value = {
-      val arity = args.length
-      val closures = lattice.getClosures(fun)
-      closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
-        case ((lam@SchemeLambda(prs,_,_), cmp), nam) if prs.length == arity =>
-          val context = allocCtx((lam,cmp),args)
-          val component = CallComponent(lam,cmp,nam,context)
-          bindArgs(component, prs, args)
-          call(component)
-        case _ => lattice.bottom
-      }))
-    }
-    val allocator = new SchemeAllocator[Addr] {
-      def pointer(exp: SchemeExp) = allocAddr(PtrAddr(exp))
-    }
-    // TODO[minor]: use foldMap instead of foldLeft
-    private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
-      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
-        prm.call(fexp, args, StoreAdapter, allocator) match {
-          case MayFailSuccess((vlu,_))  => vlu
-          case MayFailBoth((vlu,_),_)   => vlu
-          case MayFailError(_)          => lattice.bottom
-        }))
-    // some helpers
-    private def conditional(prd: Value, csq: => Value, alt: => Value): Value = {
-      val csqVal = if (lattice.isTrue(prd)) csq else lattice.bottom
-      val altVal = if (lattice.isFalse(prd)) alt else lattice.bottom
-      lattice.join(csqVal,altVal)
-    }
-    private def evalLetBindings(bindings: List[(Identifier,SchemeExp)]) =
-      bindings.foreach { case (id,exp) => writeAddr(VarAddr(id), eval(exp)) }
-    private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) =
-      pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par),arg,component) }
   }
 }
 

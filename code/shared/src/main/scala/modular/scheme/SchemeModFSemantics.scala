@@ -3,6 +3,7 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.modular._
 import scalaam.language.scheme._
+import scalaam.util._
 
 trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                           with GlobalStore[SchemeExp]
@@ -47,6 +48,62 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   def allocCtx(clo: lattice.Closure, args: List[Value]): Context
   // extension for the intraAnalysis
   trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
+    // variable lookup
+    protected def lookupVariable(lex: LexicalRef): Value =
+      readAddr(resolveAddr(lex))
+    // resolve a lexical address to the corresponding address in the store
+    protected def resolveAddr(lex: LexicalRef): Addr = lex match {
+      case LocalRef(identifier) =>
+        ComponentAddr(component,VarAddr(identifier))
+      case GlobalRef(identifier) =>
+        ComponentAddr(MainComponent,VarAddr(identifier))
+      case PrimRef(name) =>
+        ComponentAddr(MainComponent,PrmAddr(name))
+      case NonLocalRef(identifier,scp) =>
+        val cmp = resolveParent(component,scp)
+        ComponentAddr(cmp,VarAddr(identifier))
+    }
+    private def resolveParent(cmp: IntraComponent, scp: Int): IntraComponent =
+      if (scp == 0) { cmp } else cmp match {
+        case cmp: CallComponent => resolveParent(cmp.parent, scp - 1)
+        // If the program has succesfully passed the lexical translation, the lookup should never fail!
+        case MainComponent => throw new Exception("This should not happen!")
+      }
+    // apply
+    protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+      if(args.forall(_._2 != lattice.bottom)) {
+        val fromClosures = applyClosures(fval,args.map(_._2))
+        val fromPrimitives = applyPrimitives(fexp,fval,args)
+        lattice.join(fromClosures,fromPrimitives)
+      } else {
+        lattice.bottom
+      }
+    // TODO[minor]: use foldMap instead of foldLeft
+    private def applyClosures(fun: Value, args: List[Value]): Value = {
+      val arity = args.length
+      val closures = lattice.getClosures(fun)
+      closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
+        case ((lam@SchemeLambda(prs,_,_), cmp), nam) if prs.length == arity =>
+          val context = allocCtx((lam,cmp),args)
+          val component = CallComponent(lam,cmp,nam,context)
+          bindArgs(component, prs, args)
+          call(component)
+        case _ => lattice.bottom
+      }))
+    }
+    private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) =
+      pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par),arg,component) }
+    private val allocator = new SchemeAllocator[Addr] {
+      def pointer(exp: SchemeExp) = allocAddr(PtrAddr(exp))
+    }
+    // TODO[minor]: use foldMap instead of foldLeft
+    private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
+        prm.call(fexp, args, StoreAdapter, allocator) match {
+          case MayFailSuccess((vlu,_))  => vlu
+          case MayFailBoth((vlu,_),_)   => vlu
+          case MayFailError(_)          => lattice.bottom
+        }))
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
     case object StoreAdapter extends Store[Addr,Value] {
@@ -59,6 +116,12 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       def forall(p: ((Addr, Value)) => Boolean) = throw new Exception("Operation not allowed!")
       def join(that: Store[Addr, Value])        = throw new Exception("Operation not allowed!")
       def subsumes(that: Store[Addr, Value])    = throw new Exception("Operation not allowed!")
+    }
+    // some helpers
+    protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
+      val csqVal = if (lattice.isTrue(prd)) csq else Monoid[M].zero
+      val altVal = if (lattice.isFalse(prd)) alt else Monoid[M].zero
+      Monoid[M].append(csqVal,altVal)
     }
   }
 }
