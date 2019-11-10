@@ -71,9 +71,8 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     private def evalSequence(exps: List[SchemeExp]): Value =
       exps.foldLeft(lattice.bottom)((_,exp) => eval(exp))
     private def evalSet(lex: LexicalRef, exp: SchemeExp): Value = {
-      val addr = resolveAddr(lex)
       val newValue = eval(exp)
-      writeAddr(addr,newValue)
+      setVariable(lex,newValue)
       newValue
     }
     private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value =
