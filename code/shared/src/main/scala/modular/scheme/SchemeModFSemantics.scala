@@ -3,6 +3,7 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.modular._
 import scalaam.language.scheme._
+import scalaam.language.sexp
 import scalaam.util._
 
 trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
@@ -121,7 +122,31 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       def join(that: Store[Addr, Value])        = throw new Exception("Operation not allowed!")
       def subsumes(that: Store[Addr, Value])    = throw new Exception("Operation not allowed!")
     }
-    // some helpers
+    // evaluation helpers
+    protected def evalLiteralValue(literal: sexp.Value): Value = literal match {
+      case sexp.ValueInteger(n)   => lattice.number(n)
+      case sexp.ValueReal(r)      => lattice.real(r)
+      case sexp.ValueBoolean(b)   => lattice.bool(b)
+      case sexp.ValueString(s)    => lattice.string(s)
+      case sexp.ValueCharacter(c) => lattice.char(c)
+      case sexp.ValueSymbol(s)    => lattice.symbol(s)
+      case sexp.ValueNil          => lattice.nil
+      case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
+    }
+    protected def evalQuoted(quoted: sexp.SExp): Value = quoted match {
+      case sexp.SExpId(id)          => lattice.symbol(id.name)
+      case sexp.SExpValue(vlu,_)    => evalLiteralValue(vlu)
+      case sexp.SExpPair(car,cdr,_) =>
+        val carv = evalQuoted(car)
+        val cdrv = evalQuoted(cdr)
+        val pair = lattice.cons(carv,cdrv)
+        val addr = allocAddr(PtrAddr(quoted))
+        writeAddr(addr,pair)
+        lattice.pointer(addr)
+      case sexp.SExpQuoted(q,pos)   =>
+        evalQuoted(sexp.SExpPair(sexp.SExpId(Identifier("quote",pos)),sexp.SExpPair(q,sexp.SExpValue(sexp.ValueNil,pos),pos),pos))
+    }
+    // other helpers
     protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
       val csqVal = if (lattice.isTrue(prd)) csq else Monoid[M].zero
       val altVal = if (lattice.isFalse(prd)) alt else Monoid[M].zero

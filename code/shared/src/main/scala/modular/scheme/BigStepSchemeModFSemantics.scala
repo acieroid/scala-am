@@ -1,7 +1,6 @@
 package scalaam.modular.scheme
 
 import scalaam.core._
-import scalaam.language.sexp
 import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
 
@@ -11,8 +10,8 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
     // analysis entry point
     def analyze() = writeResult(component match {
-      case MainComponent      => eval(program)
-      case cmp: CallComponent => evalSequence(cmp.lambda.body)
+      case MainComponent        => eval(program)
+      case call: CallComponent  => evalSequence(call.lambda.body)
     })
     // simple big-step eval
     private def eval(exp: SchemeExp): Value = exp match {
@@ -33,29 +32,6 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       case SchemeOr(exps, _)                        => evalOr(exps)
       case SchemeQuoted(quo, _)                     => evalQuoted(quo)
       case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
-    }
-    private def evalLiteralValue(literal: sexp.Value): Value = literal match {
-      case sexp.ValueInteger(n)   => lattice.number(n)
-      case sexp.ValueReal(r)      => lattice.real(r)
-      case sexp.ValueBoolean(b)   => lattice.bool(b)
-      case sexp.ValueString(s)    => lattice.string(s)
-      case sexp.ValueCharacter(c) => lattice.char(c)
-      case sexp.ValueSymbol(s)    => lattice.symbol(s)
-      case sexp.ValueNil          => lattice.nil
-      case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
-    }
-    private def evalQuoted(quoted: sexp.SExp): Value = quoted match {
-      case sexp.SExpId(id)          => lattice.symbol(id.name)
-      case sexp.SExpValue(vlu,_)    => evalLiteralValue(vlu)
-      case sexp.SExpPair(car,cdr,_) =>
-        val carv = evalQuoted(car)
-        val cdrv = evalQuoted(cdr)
-        val pair = lattice.cons(carv,cdrv)
-        val addr = allocAddr(PtrAddr(quoted))
-        writeAddr(addr,pair)
-        lattice.pointer(addr)
-      case sexp.SExpQuoted(q,pos)   =>
-        evalQuoted(sexp.SExpPair(sexp.SExpId(Identifier("quote",pos)),sexp.SExpPair(q,sexp.SExpValue(sexp.ValueNil,pos),pos),pos))
     }
     private def evalDefineVariable(id: Identifier, exp: SchemeExp): Value = {
       val value = eval(exp)

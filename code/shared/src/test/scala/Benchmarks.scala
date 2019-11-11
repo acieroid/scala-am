@@ -224,7 +224,7 @@ object Benchmarks {
     "test/kernighanvanwyk/ack.scm",
     "test/letrec-begin.scm",
     "test/loop2.scm",
-    "test/mceval.scm",
+    // "test/mceval.scm",  // TODO: examine non-deterministic behaviour?
     "test/mj09.scm",
     "test/mut-rec.scm",
     "test/nested-defines.scm",

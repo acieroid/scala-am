@@ -20,7 +20,7 @@ object Main {
     debugResults(analysis)
   }
 
-  type Machine = ModAnalysis[SchemeExp] with BigStepSchemeModFSemantics
+  type Machine = ModAnalysis[SchemeExp] with SchemeModFSemantics
 
   def debugResults(machine: Machine) = {
     machine.store.foreach {

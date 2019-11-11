@@ -1,167 +1,197 @@
 package scalaam.modular.scheme
 
-/*
-
 import scalaam.core._
-import scalaam.graph.{Color, Colors, GraphElement, GraphMetadataBool, GraphMetadataMap, GraphMetadataString, GraphMetadataValue}
 import scalaam.language.scheme._
-import scalaam.util.Show
+import scalaam.util.MonoidImplicits._
 
-import scala.concurrent.TimeoutException
-
-// MODF analysis using an AAM intra-component analysis.
 trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
-  // defining the intraAnalysis
-  // TODO Perhaps mix in AAMUtil instead of copying the useful bits (but alleviates the need for timestamps).
+  // defining the intra-analysis
   override def intraAnalysis(cmp: IntraComponent) = new IntraAnalysis(cmp)
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
-    def registerDependency(dep: Dependency): Unit = addDep(component, dep)
-    trait Control extends SmartHash
-    case class ControlEval(exp: SchemeExp, env: Environment[Addr]) extends Control {
-      override def toString = s"ev($exp)"
-    }
-    case class ControlKont(v: Value) extends Control {
-      override def toString = s"ko($v)"
-    }
-    case class ControlCall(fval: Value, fexp: SchemeExp, args: List[(Value,SchemeExp)]) extends Control {
-      override def toString = s"$fval(${args.map(_._1)})"
-    }
-    case class ControlError(err: Error) extends Control {
-      override def toString = s"err($err)"
-    }
-    trait KAddr extends Address with SmartHash {
-      def printable = true
-      def primitive = false
-    }
-    case class KontAddr(exp: SchemeExp) extends KAddr { override def toString = s"Kont(${exp.toString.take(10)})" }
-    case object HaltKontAddr extends KAddr { override def toString = "Halt" }
-    case class Kont(f: Frame, next: KAddr) extends SmartHash
-    implicit val kontShow: Show[Kont] = (k: Kont) => "kont($f)"
-    type KStore = Store[KAddr, Set[Kont]]
-    val Action = schemeSemantics.Action
+    // the intermediate states in the intra-analysis
+    sealed trait State
+    case class EvalState(exp: SchemeExp, cnt: Kont) extends State
+    case class KontState(vlu: Value, cnt: Kont) extends State
+    case class CallState(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)], cnt: Kont) extends State
+    // the frames used to build the continuation
+    type Kont = List[Frame]
+    sealed trait Frame
+    case class SeqFrame(exps: List[SchemeExp])          extends Frame
+    case class DefVarFrame(id: Identifier)              extends Frame
+    case class SetFrame(lex: LexicalRef)                extends Frame
+    case class IfFrame(csq: SchemeExp,
+                       alt: SchemeExp)                  extends Frame
+    case class LetFrame(id: Identifier,
+                        bds: List[(Identifier, SchemeExp)],
+                        bdy: List[SchemeExp])           extends Frame
+    case class ArgsFrame(fexp: SchemeExp,
+                         fval: Value,
+                         curExp: SchemeExp,
+                         toEval: List[SchemeExp],
+                         args: List[(SchemeExp,Value)]) extends Frame
+    case class FunFrame(fexp: SchemeExp,
+                        args: List[SchemeExp])          extends Frame
+    case class AndFrame(exps: List[SchemeExp])          extends Frame
+    case class OrFrame(exps: List[SchemeExp])           extends Frame
 
-    // State in the small-step semantics.
-    case class State(control: Control, localKStore: KStore, a: KAddr, ctx: IntraAnalysis) extends GraphElement with SmartHash {
-      override def toString: String = control.toString
-
-      override def label: String = toString
-      override def color: Color = control match {
-        case ControlEval(_, _)        => Colors.Blue
-        case ControlCall(_, _, _)     => Colors.White
-        case ControlKont(_) if halted => Colors.Grass
-        case ControlKont(_)           => Colors.Yellow
-        case ControlError(_)          => Colors.Pink
+    // the main analyze method
+    def analyze() = {
+      // determine the initial state
+      val initialExp = component match {
+        case MainComponent        => program
+        case call: CallComponent  => SchemeBody(call.lambda.body)
       }
-      override def metadata =
-        GraphMetadataMap(
-          Map(
-            "halted" -> GraphMetadataBool(halted),
-            "type" -> (control match {
-              case _: ControlEval  => GraphMetadataString("eval")
-              case _: ControlKont  => GraphMetadataString("kont")
-              case _: ControlError => GraphMetadataString("error")
-              case _: ControlCall  => GraphMetadataString("call")
-            })
-          ) ++ (control match {
-            case ControlKont(v) => Map("value" -> GraphMetadataValue[Value](v))
-            case _              => Map()
-          })
-        )
-
-      def halted: Boolean = control match {
-        case _: ControlEval  => false
-        case _: ControlCall  => false
-        case _: ControlKont  => a == HaltKontAddr
-        case _: ControlError => true
-      }
-
-      def finished: Boolean = control match {
-        case _: ControlKont => a == HaltKontAddr
-        case _              => false
-      }
-
-      private def integrate(a: KAddr, actions: Set[Action.A]): Set[State] =
-        actions.flatMap({
-          case Action.Value(v, _)            => Set(State(ControlKont(v), localKStore, a, ctx))                                  // When a value is reached, we go to a continuation state.
-          case Action.Push(frame, e, env, _) => val next = KontAddr(e)                                                           // When a continuation needs to be pushed, push it in the continuation store.
-                                                Set(State(ControlEval(e, env),
-                                                    localKStore.extend(next, Set(Kont(frame, a))),
-                                                    next, ctx))
-          case Action.Eval(e, env, _)        => Set(State(ControlEval(e, env), localKStore, a, ctx))                             // When a value needs to be evaluated, we go to an eval state.
-          case Action.Call(fval,fexp,args,_) => Set(State(ControlCall(fval,fexp,args),localKStore,a,ctx))                        // When a function is called, generate a call state.
-          case Action.StepIn(_, _, _, _, _)  => throw new Exception("Illegal state: MODF should not encounter a StepIn action.") // Getting a StepIn action should not happen in a MODF analysis.
-          case Action.Err(err) => Set(State(ControlError(err), localKStore, a, ctx))                                             // When an error is reached, we go to an error state.
-        })
-
-
-      def step(): Set[State] = control match {
-        case ControlEval(e, env) => integrate(a, schemeSemantics.stepEval(e, env, StoreAdapter, ctx))
-        case ControlKont(v) =>
-          localKStore.lookup(a) match {
-            case Some(konts) =>
-              konts.flatMap({
-                case Kont(frame, next) => integrate(next, schemeSemantics.stepKont(v, frame, StoreAdapter, ctx))
-              })
-            case None => Set()
-          }
-        case ControlCall(fval,fexp,args) =>
-          if(args.forall(_._1 != lattice.bottom)) {
-            val fromClosures = applyClosures(fexp,fval,args.map(_._1))
-            val fromPrimitives = applyPrimitives(fexp,fval,args)
-            integrate(a, fromClosures ++ fromPrimitives)
-          } else {
-            Set(State(ControlKont(lattice.bottom),localKStore,a,ctx))
-          }
-        case ControlError(_) => Set()
-      }
-    }
-
-    private def applyClosures(fexp: SchemeExp, fval: Value, args: List[Value]): Set[Action.A] =
-      lattice.getClosures(fval).map {
-          case ((lambda@SchemeLambda(pars,_,_), env1), nam) if pars.length == args.length =>
-            val context = allocCtx(lambda,env1,args)
-            val component = CallComponent(lambda,env1,nam,context)
-            val result = call(component)
-            pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par),arg,component) }
-            Action.Value(result, StoreAdapter)
-          case ((SchemeLambda(pars,_,_), _), _) =>
-            Action.Err(ArityError(fexp, pars.length, args.length))
-          case ((lambda,env1),_) =>
-            Action.Err(TypeError("operator expected to be a closure, but is not", lattice.closure((lambda, env1), None)))
-      }
-
-    private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(Value,SchemeExp)]): Set[Action.A] =
-      lattice.getPrimitives[schemeSemantics.Primitive](fval).flatMap(prim => prim.callAction(fexp, args.map(_.swap), StoreAdapter, this))
-
-    // analysis entry point
-    def analyze(timeout: Timeout.T): Unit = {
-      val exp = component match {
-        case MainComponent => SchemeUndefiner.undefine(List(program))
-        case CallComponent(SchemeLambda(_,body,_),_,_,_) => SchemeBody(body)
-      }
-      val env = component match {
-        case MainComponent => initialEnv
-        case CallComponent(SchemeLambda(pars,_,_),lex,_,_) =>
-          pars.foldLeft(lex)((acc,par) => acc.extend(par.name,allocAddr(VarAddr(par))))
-      }
-      val state: State = State(ControlEval(exp, env), Store.empty[KAddr, Set[Kont]], HaltKontAddr, this)
-      var work: Set[State] = Set[State](state)
-      var visited: Set[State] = Set[State]()
-      var result: Value = lattice.bottom
+      val initialState = EvalState(initialExp,Nil)
+      // standard worklist algorithm
+      var work    = Set[State](initialState)
+      var visited = Set[State]()
+      var result  = lattice.bottom
       while(work.nonEmpty) {
-        if (timeout.reached) throw new TimeoutException()
-        val state = work.head
-        work = work.tail
-        if (state.finished) {
-          result = lattice.join(result, state.control.asInstanceOf[ControlKont].v)
-        } else if (!visited.contains(state) && !state.halted) {
-          val successors = state.step()
-          work ++= successors
+        work.head match {
+          case KontState(vlu,Nil) =>
+            result = lattice.join(result,vlu)
+          case state if !visited.contains(state) =>
+            val successors = step(state)
+            work ++= successors
+            visited += state
+          case _ => ()
         }
-        visited += state
+        work = work.tail
       }
       writeResult(result)
     }
+    // stepping a state
+    private def step(state: State): Set[State] = state match {
+      case EvalState(exp, cnt) =>
+        eval(exp, cnt)
+      case KontState(vlu, cnt) =>
+        val frm = cnt.head
+        continue(frm, vlu, cnt.tail)
+      case CallState(fexp, fval, args, cnt) =>
+        val result = applyFun(fexp, fval, args)
+        Set(KontState(result, cnt))
+    }
+    // eval
+    private def eval(exp: SchemeExp, cnt: Kont): Set[State] = exp match {
+      case SchemeValue(value, _) =>
+        val result = evalLiteralValue(value)
+        Set(KontState(result, cnt))
+      case lambda: SchemeLambda =>
+        val result = lattice.closure((lambda, component), None)
+        Set(KontState(result, cnt))
+      case SchemeVarLex(_, lex) =>
+        val result = lookupVariable(lex)
+        Set(KontState(result, cnt))
+      case SchemeBegin(exps, _) =>
+        evalSequence(exps, cnt)
+      case SchemeDefineVariable(id, vexp, _) =>
+        val frm = DefVarFrame(id)
+        Set(EvalState(vexp, frm :: cnt))
+      case SchemeDefineFunction(id, prs, bdy, pos) =>
+        val lambda = SchemeLambda(prs, bdy, pos)
+        val result = lattice.closure((lambda,component),Some(id.name))
+        defineVariable(id, result)
+        Set(KontState(result, cnt))
+      case SchemeSetLex(_, lex, vexp, _) =>
+        val frm = SetFrame(lex)
+        Set(EvalState(vexp, frm :: cnt))
+      case SchemeIf(prd, csq, alt, _) =>
+        val frm = IfFrame(csq, alt)
+        Set(EvalState(prd, frm :: cnt))
+      case SchemeLet(bindings, body, _) =>
+        evalLet(bindings,body,cnt)
+      case SchemeLetStar(bindings, body, _) =>
+        evalLet(bindings,body,cnt)
+      case SchemeLetrec(bindings, body, _) =>
+        evalLet(bindings,body,cnt)
+      case SchemeNamedLet(id,bindings,body,pos) =>
+        val (prs,ags) = bindings.unzip
+        val lambda = SchemeLambda(prs,body,pos)
+        val closure = lattice.closure((lambda,component),Some(id.name))
+        defineVariable(id, closure)
+        evalArgs(lambda,closure,ags,Nil,cnt)
+      case SchemeFuncall(fexp,args,_) =>
+        val frm = FunFrame(fexp,args)
+        Set(EvalState(fexp, frm :: cnt))
+      case SchemeAnd(Nil,_) =>
+        Set(KontState(lattice.bool(true), cnt))
+      case SchemeAnd(first :: rest, _) =>
+        evalAnd(first,rest,cnt)
+      case SchemeOr(exps,_) =>
+        evalOr(exps,cnt)
+      case SchemeQuoted(quo, _) =>
+        val result = evalQuoted(quo)
+        Set(KontState(result,cnt))
+      case _ =>
+        throw new Exception(s"Unsupported Scheme expression: $exp")
+    }
+    private def evalSequence(exps: List[SchemeExp], cnt: Kont): Set[State] =
+      if (exps.tail.isEmpty) {
+        Set(EvalState(exps.head, cnt))
+      } else {
+        val frm = SeqFrame(exps.tail)
+        Set(EvalState(exps.head, frm :: cnt))
+      }
+    private def evalLet(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], cnt: Kont): Set[State] =
+      if (bindings.isEmpty) {
+        evalSequence(body,cnt)
+      } else {
+        val (id,vexp) = bindings.head
+        val frm = LetFrame(id,bindings.tail,body)
+        Set(EvalState(vexp, frm :: cnt))
+      }
+    private def evalArgs(fexp: SchemeExp, fval: Value, toEval: List[SchemeExp], ags: List[(SchemeExp,Value)], cnt: Kont): Set[State] =
+      if (toEval.isEmpty) {
+        Set(CallState(fexp,fval,ags.reverse,cnt))
+      } else {
+        val curExp = toEval.head
+        val frm = ArgsFrame(fexp, fval, curExp, toEval.tail, ags)
+        Set(EvalState(curExp, frm :: cnt))
+      }
+    private def evalAnd(first: SchemeExp, rest: List[SchemeExp], cnt: Kont): Set[State] =
+      if (rest.isEmpty) {
+        Set(EvalState(first,cnt))
+      } else {
+        val frm = AndFrame(rest)
+        Set(EvalState(first, frm :: cnt))
+      }
+    private def evalOr(exps: List[SchemeExp], cnt: Kont): Set[State] = exps match {
+      case Nil =>
+        Set(KontState(lattice.bool(false),cnt))
+      case nxt :: rst =>
+        val frm = OrFrame(rst)
+        Set(EvalState(nxt, frm :: cnt))
+      }
+    // continue
+    private def continue(frm: Frame, vlu: Value, cnt: Kont): Set[State] = frm match {
+      case SeqFrame(exps) =>
+        evalSequence(exps, cnt)
+      case DefVarFrame(id) =>
+        defineVariable(id,vlu)
+        Set(KontState(vlu,cnt))
+      case SetFrame(lex) =>
+        setVariable(lex,vlu)
+        Set(KontState(vlu,cnt))
+      case IfFrame(csq, alt) =>
+        conditional(vlu,
+                    Set(EvalState(csq,cnt)),
+                    Set(EvalState(alt,cnt)))
+      case LetFrame(id,bindings,body) =>
+        defineVariable(id, vlu)
+        evalLet(bindings, body, cnt)
+      case FunFrame(fexp, args) =>
+        evalArgs(fexp,vlu,args,Nil,cnt)
+      case ArgsFrame(fexp,fval,curExp,toEval,args) =>
+        val newArgs = (curExp, vlu) :: args
+        evalArgs(fexp,fval,toEval,newArgs,cnt)
+      case AndFrame(exps) =>
+        conditional(vlu,
+                    evalAnd(exps.head,exps.tail,cnt),
+                    Set(KontState(lattice.bool(false),cnt)))
+      case OrFrame(exps) =>
+        conditional(vlu,
+                    Set(KontState(vlu,cnt)),
+                    evalOr(exps,cnt))
+    }
   }
 }
-*/
