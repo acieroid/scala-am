@@ -1,5 +1,7 @@
 package scalaam.cli
 
+import scalaam.core._
+import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -7,7 +9,15 @@ import scalaam.language.scheme._
 object Main {
 
   def main(args: Array[String]): Unit = {
-    testLex("test/sat.scm")
+    val interpreter = new SchemeInterpreter((p: Position, v: SchemeInterpreter.Value) => ())
+    val txt = loadFile("test/infinite-1.scm")
+    val prg = SchemeUndefiner.undefine(List(SchemeParser.parse(txt)))
+    try {
+      val res = interpreter.run(prg, Timeout.Infinity)
+      println(res)
+    } catch {
+      case t : Throwable => println(t)
+    }
   }
 
   def testLex(file: String) = {

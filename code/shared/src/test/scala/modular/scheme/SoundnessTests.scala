@@ -3,6 +3,7 @@ import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
 import scalaam.core._
+import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -15,7 +16,7 @@ trait SchemeModFSoundnessTests extends PropSpec {
   def benchmarks: List[Benchmark]
   // the analysis that is used to analyse the programs
   def analysis(b: Benchmark): Analysis
-  // the timeout for the analysis of a single benchmark program (default: 5min.)
+  // the timeout for the analysis of a single benchmark program (default: 1min.)
   def timeout(b: Benchmark) = Timeout.duration(Duration(1, MINUTES))
   // the actual testing code
   protected def loadFile(file: String): SchemeExp = {
@@ -24,15 +25,24 @@ trait SchemeModFSoundnessTests extends PropSpec {
     f.close()
     exp
   }
-  private def evalConcrete(benchmark: Benchmark, t: Timeout.T): (Value, Map[Position,Set[Value]]) = try {
+  private def evalConcrete(benchmark: Benchmark, t: Timeout.T): (Option[Value], Map[Position,Set[Value]]) = {
     val program = SchemeUndefiner.undefine(List(loadFile(benchmark)))
     var posResults = Map[Position,Set[Value]]().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((p, v) => posResults += (p -> (posResults(p) + v)), false)
-    val endResult = interpreter.run(program, t)
-    (endResult, posResults)
-  } catch {
-    case _ : TimeoutException => cancel(s"Concrete evaluation for $benchmark timed out")
-    case _ : Throwable        => cancel(s"Concrete evaluation for $benchmark failed")
+    try {
+      val endResult = interpreter.run(program, t)
+      (Some(endResult), posResults)
+    } catch {
+      case _ : TimeoutException =>
+        alert(s"Concrete evaluation for $benchmark timed out")
+        (None, posResults)
+      case _ : StackOverflowError =>
+        alert(s"Concrete evaluation for $benchmark ran out of stack space")
+        (None, posResults)
+      case _ : Throwable =>
+        cancel(s"Concrete evaluation for $benchmark failed")
+
+    }
   }
   private def checkSubsumption(analysis: Analysis)(v: Set[Value], abs: analysis.Value): Boolean = {
     val lat = analysis.lattice
@@ -72,16 +82,20 @@ trait SchemeModFSoundnessTests extends PropSpec {
 
   benchmarks.foreach { benchmark =>
     property(s"Analysis of $benchmark is sound") {
-      val t = timeout(benchmark)
-      val (cResult, cPosResults) = evalConcrete(benchmark,t)
+      // run the program using a concrete interpreter
+      val (cResult, cPosResults) = evalConcrete(benchmark,timeout(benchmark))
+      // analyze the program using a ModF analysis
       val a = analysis(benchmark)
-      a.analyze(t)
-      if (a.finished) {
-        compareResult(a, cResult)
-        comparePositions(a, cPosResults)
-      } else {
-        cancel(s"Analysis of $benchmark timed out")
-      }
+      a.analyze(timeout(benchmark))
+      // assume that the analysis finished
+      // if not, cancel the test for this benchmark
+      assume(a.finished, s"Analysis of $benchmark timed out")
+      // check if the final result of the analysis soundly approximates the final result of concrete evaluation
+      // of course, this can only be done if the
+      if (cResult.isDefined) { compareResult(a, cResult.get) }
+      // check if the intermediate results at various program points are soundly approximated by the analysis
+      // this can be done, regardless of whether the concrete evaluation terminated succesfully or not
+      comparePositions(a, cPosResults)
     }
   }
 }
