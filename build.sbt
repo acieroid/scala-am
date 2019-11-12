@@ -10,7 +10,7 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                       .settings(
                         /** General settings */
                         name := "scalaam",
-                        version := "0.1.2018",
+                        version := "2.0",
                         scalaVersion := "2.12.8",
                         /** Dependencies */
                         libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "1.1.2",
