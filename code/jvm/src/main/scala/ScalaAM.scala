@@ -1,9 +1,5 @@
 package scalaam.cli
 
-import com.github.gumtreediff.client.Run
-import com.github.gumtreediff.gen.Generators
-import com.github.gumtreediff.matchers.{Matcher, Matchers}
-import com.github.gumtreediff.tree.ITree
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
