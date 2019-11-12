@@ -37,7 +37,7 @@ with full argument sensitivity and a type domain:
 #+BEGIN_SRC scala
 scala> val machine = new ModAnalysis(program) with BigStepSchemeModFSemantics
                                               with FullArgumentSensitivity
-                                              with ConstantPropagationDomain
+                                              with TypePropagationDomain
 scala> machine.analyze()
 #+END_SRC
 This function can take an optional parameter to specify a timeout, which is obtained from a Java Duration
