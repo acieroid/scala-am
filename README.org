@@ -41,7 +41,7 @@ scala> val machine = new ModAnalysis(program) with BigStepSchemeModFSemantics
 scala> machine.analyze()
 #+END_SRC
 This function can take an optional parameter to specify a timeout, which is obtained from a Java Duration
-like =Timeout.duration(d)=. The analysis will stop approximately when the timeout has been reached. Note that
+like =Timeout.start(duration)=. The analysis will stop approximately when the timeout has been reached. Note that
 the timer starts from the moment where the =duration= method is called.
 
 * References and Relevant publications

@@ -61,7 +61,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     allComponents ++= newComponents
     dependencies += (current -> intra.components)
   }
-  def analyze(timeout: Timeout.T = Timeout.Infinity) =
+  def analyze(timeout: Timeout.T = Timeout.none) =
     while(!finished() && !timeout.reached) {
       step()
     }

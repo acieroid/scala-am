@@ -10,5 +10,5 @@ import scala.runtime.ScalaRunTime
 // improve performance by orders of magnitude.
 trait SmartHash extends Product {
   private lazy val cached = ScalaRunTime._hashCode(this)
-  override def hashCode() = cached
+  override def hashCode(): Int = cached
 }

@@ -19,7 +19,7 @@ trait SchemeModFSoundnessTests extends PropSpec {
   // the analysis that is used to analyse the programs
   def analysis(b: Benchmark): Analysis
   // the timeout for the analysis of a single benchmark program (default: 1min.)
-  def timeout(b: Benchmark) = Timeout.duration(Duration(1, MINUTES))
+  def timeout(b: Benchmark) = Timeout.start(Duration(1, MINUTES))
   // the actual testing code
   protected def loadFile(file: String): SchemeExp = {
     val f   = scala.io.Source.fromFile(file)

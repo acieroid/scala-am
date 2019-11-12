@@ -13,7 +13,7 @@ object Main {
     val txt = loadFile("test/infinite-1.scm")
     val prg = SchemeUndefiner.undefine(List(SchemeParser.parse(txt)))
     try {
-      val res = interpreter.run(prg, Timeout.Infinity)
+      val res = interpreter.run(prg, Timeout.none)
       println(res)
     } catch {
       case t : Throwable => println(t)

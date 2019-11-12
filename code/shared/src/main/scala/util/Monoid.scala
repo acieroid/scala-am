@@ -46,11 +46,11 @@ object MonoidInstances {
     def append(x: Set[M], y: => Set[M]): Set[M] = x ++ y
     def zero: Set[M]                            = Set[M]()
   }
-  val boolOrMonoid = new Monoid[Boolean] {
+  val boolOrMonoid: Monoid[Boolean] = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x || y
     def zero: Boolean                              = false
   }
-  val boolAndMonoid = new Monoid[Boolean] {
+  val boolAndMonoid: Monoid[Boolean] = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x && y
     def zero: Boolean                              = true
   }
