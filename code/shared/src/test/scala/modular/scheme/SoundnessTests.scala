@@ -1,4 +1,5 @@
 import org.scalatest._
+
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
@@ -8,6 +9,7 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
+import scalaam.util.Timeout
 
 trait SchemeModFSoundnessTests extends PropSpec {
   type Benchmark = String   // a benchmark is just a file name

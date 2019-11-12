@@ -21,6 +21,8 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                         logBuffered in Test := false,
                         libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test",
                         libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.1" % "test",
+
+                        libraryDependencies += "com.github.gumtreediff" % "client.diff" % "2.0.0" pomOnly(),
                         /** Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
                         scalacOptions ++= Seq(
                           "-deprecation",                      // Emit warning and location for usages of deprecated APIs.
