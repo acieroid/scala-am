@@ -9,25 +9,19 @@ import scalaam.language.scheme._
 object Main {
 
   def main(args: Array[String]): Unit = {
-    val interpreter = new SchemeInterpreter((p: Position, v: SchemeInterpreter.Value) => ())
-    val txt = loadFile("test/infinite-1.scm")
-    val prg = SchemeUndefiner.undefine(List(SchemeParser.parse(txt)))
-    try {
-      val res = interpreter.run(prg, Timeout.none)
-      println(res)
-    } catch {
-      case t : Throwable => println(t)
-    }
+    testLex("test/mceval.scm")
   }
 
-  def testLex(file: String) = {
+  def testLex(file: String): Unit = {
     val txt = loadFile(file)
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with BigStepSchemeModFSemantics
-                                        with ConstantPropagationDomain
-                                        with FullArgumentSensitivity
-    analysis.analyze()
-    debugResults(analysis)
+    for(_ <- 1 to 10) {
+      val analysis = new ModAnalysis(prg) with BigStepSchemeModFSemantics
+        with ConstantPropagationDomain
+        with NoSensitivity
+      System.err.println(Timer.time(analysis.analyze())._1)
+    }
+    //debugResults(analysis)
   }
 
   type Machine = ModAnalysis[SchemeExp] with SchemeModFSemantics
