@@ -14,7 +14,7 @@ trait Expression extends SmartHash {
 
 /** An identifier. It has a name and a position */
 case class Identifier(name: String, pos: Position) extends Expression with SmartHash {
-  def fullString        = s"$name@$pos"
-  override def toString = name
-  def fv                = Set(name)
+  def fullString:        String  = s"$name@$pos"
+  override def toString: String  = name
+  def fv:            Set[String] = Set(name)
 }

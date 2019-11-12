@@ -419,13 +419,7 @@ class MakeSchemeLattice[
               case (_: Clo, _: Clo)         => Bool(BoolLattice[B].inject(x == y))
               case (_: Cons, _: Cons)       => Bool(BoolLattice[B].inject(x == y))
               case (_: Vec, _: Vec)         => Bool(BoolLattice[B].inject(x == y))
-              case (_: Pointer, _: Pointer) =>
-                if (Config.concrete) {
-                  Bool(BoolLattice[B].inject(x == y))
-                } else {
-                   /* we can't know for sure that equal addresses are eq (in the abstract). */
-                  Bool(BoolLattice[B].top)
-                }
+              case (_: Pointer, _: Pointer) => Bool(BoolLattice[B].top) // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
               case _                        => False
             })
           case StringAppend =>
@@ -480,34 +474,25 @@ class MakeSchemeLattice[
       case Cons(_, cdr) => MayFail.success(cdr)
       case _            => MayFail.failure(TypeError("expecting cons to access cdr", x))
     }
+
+    // This implementation is not suited for use in a concrete machine!
     def vectorRef(vector: Value, index: Value): MayFail[L, Error] = (vector, index) match {
-      case (Vec(size, content, init), Int(index)) => {
+      case (Vec(size, content, init), Int(index)) =>
         val comp = IntLattice[I].lt(index, size)
         val t: L = if (BoolLattice[B].isTrue(comp)) {
           val vals = content.filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2))).values
-          if (Config.concrete) {
-            val res = vals.foldLeft(schemeLattice.bottom)((acc, v) => schemeLattice.join(acc, v))
-            if (res == schemeLattice.bottom) {
-              /* No element stored, return init */
-              init
-            } else {
-              res
-            }
-          } else {
-            /* XXX: init doesn't have to be included if we know for sure that index is precise enough */
-            vals.foldLeft(init)((acc, v) => schemeLattice.join(acc, v))
-          }
+          vals.foldLeft(init)((acc, v) => schemeLattice.join(acc, v))
         } else {
           schemeLattice.bottom
         }
         /* Don't perform bound checks here because we would get too many spurious flows */
         val f: L = schemeLattice.bottom
         MayFail.success(schemeLattice.join(t, f))
-      }
       case (_: Vec, _) => MayFail.failure(TypeError("expecting int to access vector", index))
       case _           => MayFail.failure(TypeError("vector-ref: expecting vector", vector))
     }
 
+    // This implementation is not suited for use in a concrete machine!
     def vectorSet(vector: Value, index: Value, newval: L): MayFail[L, Error] =
       (vector, index) match {
         case (Vec(size, content, init), Int(index)) => {
@@ -516,14 +501,7 @@ class MakeSchemeLattice[
             Element(
               Vec(
                 size,
-                content + (index ->
-                  (if (Config.concrete) {
-                    newval
-                  } else {
-                    /* Joins the new value with the previous in index, if it exists */
-                    schemeLattice.join(content.get(index).getOrElse(schemeLattice.bottom), newval)
-                  })
-                ),
+                content + (index -> schemeLattice.join(content.getOrElse(index, schemeLattice.bottom), newval)),
                 init
               )
             )
