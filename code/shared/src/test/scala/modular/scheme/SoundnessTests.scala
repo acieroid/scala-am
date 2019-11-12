@@ -39,9 +39,6 @@ trait SchemeModFSoundnessTests extends PropSpec {
       case _ : StackOverflowError =>
         alert(s"Concrete evaluation for $benchmark ran out of stack space")
         (None, posResults)
-      case _ : Throwable =>
-        cancel(s"Concrete evaluation for $benchmark failed")
-
     }
   }
   private def checkSubsumption(analysis: Analysis)(v: Set[Value], abs: analysis.Value): Boolean = {
