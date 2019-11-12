@@ -46,8 +46,8 @@ trait SchemeModFSoundnessTests extends PropSpec {
     v.forall {
       case Value.Undefined(_)   => true
       case Value.Unbound(_)     => true
-      case Value.Clo(_, _)      => lat.getClosures(abs).nonEmpty
-      case Value.Primitive(_)   => lat.getPrimitives(abs).nonEmpty
+      case Value.Clo(lam, _)    => lat.getClosures(abs).exists(_._1._1.pos == lam.pos)
+      case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_.name == p.name)
       case Value.Str(s)         => lat.subsumes(abs, lat.string(s))
       case Value.Symbol(s)      => lat.subsumes(abs, lat.symbol(s))
       case Value.Integer(i)     => lat.subsumes(abs, lat.number(i))
