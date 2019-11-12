@@ -1,4 +1,4 @@
-package scalaam.core
+package scalaam.util
 
 object Annotations {
   class unsound(reason: String = "")      extends scala.annotation.StaticAnnotation

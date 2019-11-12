@@ -1,4 +1,4 @@
-package scalaam.graph
+package scalaam.util.graph
 
 /** A graph representation that can be saved in a .dot file for visualization
   * purposes */

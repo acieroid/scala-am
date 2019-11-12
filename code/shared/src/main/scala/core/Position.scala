@@ -1,5 +1,7 @@
 package scalaam.core
 
+import scalaam.util.SmartHash
+
 /** A position in a source file */
 sealed trait Position {
   def column: Int

@@ -1,4 +1,4 @@
-package scalaam.graph
+package scalaam.util.graph
 
 case class ReachableStatesConditionGraph[N <: GraphElement, E <: GraphElement](
     condition: N => Boolean

@@ -1,8 +1,8 @@
 package scalaam.modular
 
 import scalaam.core._
-import scalaam.core.Annotations._
 import scalaam.util._
+import scalaam.util.Annotations._
 import scalaam.util.MonoidImplicits._
 
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) {

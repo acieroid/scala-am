@@ -1,6 +1,7 @@
 package scalaam.language.scheme
 
 import scalaam.core._
+import scalaam.util.Timeout
 import scalaam.language.sexp._
 
 import scala.concurrent.TimeoutException

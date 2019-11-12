@@ -1,9 +1,8 @@
 package scalaam.language.scheme
 
 import scalaam.core._
-import scalaam.core.ConcreteVal._
 import scalaam.lattice._
-import scalaam.util.{Monoid, MonoidInstances}
+import scalaam.util._
 
 import SchemeOps._
 import UnaryOperator._
@@ -542,23 +541,6 @@ class MakeSchemeLattice[
       case Int(size) => MayFail.success(Vec(size, Map[I, L](), init))
       case _         => MayFail.failure(TypeError("expected int size when constructing vector", size))
     }
-
-    def concreteValues(x: Value): Set[ConcreteVal] = x match {
-      case Bot              => Set()
-      case Str(s)           => StringLattice[S].concreteValues(s)
-      case Bool(b)          => BoolLattice[B].concreteValues(b)
-      case Int(i)           => IntLattice[I].concreteValues(i)
-      case Real(r)          => RealLattice[R].concreteValues(r)
-      case Char(c)          => CharLattice[C].concreteValues(c)
-      case Symbol(s)        => SymbolLattice[Sym].concreteValues(s)
-      case Prim(prim)       => Set(ConcretePrim(prim))
-      case Clo(lambda, env, name) => Set(ConcreteClosure(lambda, env, name))
-      case Nil              => Set(ConcreteNil)
-      case Pointer(a)       => Set(ConcretePointer(a))
-      case _: Cons          => ???
-      case _: Vec           => ???
-    }
-
   }
 
   sealed trait L extends SmartHash {
@@ -667,11 +649,6 @@ class MakeSchemeLattice[
     def nil: L = Element(Value.nil)
 
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
-
-    override def concreteValues(x: L): Set[ConcreteVal] = {
-      implicit val setMono = setMonoid[ConcreteVal]
-      x.foldMapL(v => Value.concreteValues(v))
-    }
   }
 
   object L {

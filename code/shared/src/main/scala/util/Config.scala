@@ -1,4 +1,4 @@
-package scalaam.core
+package scalaam.util
 
 /** Configuration object, to tune some behaviors of the analyses */
 object Config {

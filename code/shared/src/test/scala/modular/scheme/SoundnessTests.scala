@@ -111,5 +111,5 @@ class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                          with SimpleBenchmarks
 // ... for small-step semantics
 class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
-                                          with SmallStepSchemeModF
-                                          with SimpleBenchmarks
+                                           with SmallStepSchemeModF
+                                           with SimpleBenchmarks

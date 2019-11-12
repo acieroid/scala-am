@@ -1,4 +1,4 @@
-package scalaam.core
+package scalaam.util
 
 object Timeout {
   import scala.concurrent.duration.Duration

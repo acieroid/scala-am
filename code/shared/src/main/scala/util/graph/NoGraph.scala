@@ -1,4 +1,4 @@
-package scalaam.graph
+package scalaam.util.graph
 
 /** A graph that preserves no information */
 class NoGraph[N <: GraphElement, E <: GraphElement] {

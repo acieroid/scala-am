@@ -1,4 +1,4 @@
-package scalaam.core
+package scalaam.util
 
 import scala.runtime.ScalaRunTime
 
