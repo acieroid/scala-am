@@ -1,6 +1,5 @@
 package scalaam.cli
 
-import scalaam.core._
 import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -16,7 +15,7 @@ object Main {
     val txt = loadFile(file)
     val prg = SchemeParser.parse(txt)
     for(_ <- 1 to 10) {
-      val analysis = new ModAnalysis(prg) with BigStepSchemeModFSemantics
+      val analysis = new ModAnalysis(prg) with SmallStepSchemeModFSemantics
         with ConstantPropagationDomain
         with NoSensitivity
       System.err.println(Timer.time(analysis.analyze())._1)
@@ -26,7 +25,7 @@ object Main {
 
   type Machine = ModAnalysis[SchemeExp] with SchemeModFSemantics
 
-  def debugResults(machine: Machine) = {
+  def debugResults(machine: Machine): Unit = {
     machine.store.foreach {
       case (machine.ReturnAddr(cmp),result) =>
         println(s"$cmp => $result")

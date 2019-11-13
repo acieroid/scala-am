@@ -3,19 +3,20 @@ package scalaam.language.scheme
 import scalaam.core._
 import scalaam.lattice._
 import scalaam.util._
-
 import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
 
+import scala.annotation.tailrec
+
 /** Defines a Scheme lattice based on other lattices.
   * Example usage:
   *    val address = NameAddress
-  *    val lattice = new MakeSchemeLattice[SchemeExp, address.A, Type.S, Type.B, Type.I, Type.R, Type.C, Type.Sym]
+  *    val lattice = new ModularSchemeLattice[SchemeExp, address.A, Type.S, Type.B, Type.I, Type.R, Type.C, Type.Sym]
   * Now `lattice.L` is a SchemeLattice, of which the implicit for the typeclass is available in the current scope.
   */
 /** TODO[medium]: use Show and ShowStore here */
-class MakeSchemeLattice[
+class ModularSchemeLattice[
     A <: Address,
     Env,
     S: StringLattice,
@@ -58,7 +59,7 @@ class MakeSchemeLattice[
     override def toString = s"#<primitive ${prim.name}>"
   }
   case class Clo(lambda: E, env: Env, name: Option[String]) extends Value {
-    def printName = name match {
+    def printName: String = name match {
       case None => s"anonymous@${lambda.pos}"
       case Some(name) => name
     }
@@ -495,22 +496,21 @@ class MakeSchemeLattice[
     // This implementation is not suited for use in a concrete machine!
     def vectorSet(vector: Value, index: Value, newval: L): MayFail[L, Error] =
       (vector, index) match {
-        case (Vec(size, content, init), Int(index)) => {
-          val comp = IntLattice[I].lt(index, size)
-          val t: L = if (BoolLattice[B].isTrue(comp)) {
-            Element(
-              Vec(
-                size,
-                content + (index -> schemeLattice.join(content.getOrElse(index, schemeLattice.bottom), newval)),
-                init
+        case (Vec(size, content, init), Int(index)) =>
+            val comp = IntLattice[I].lt(index, size)
+            val t: L = if (BoolLattice[B].isTrue(comp)) {
+              Element(
+                Vec(
+                  size,
+                  content + (index -> schemeLattice.join(content.getOrElse(index, schemeLattice.bottom), newval)),
+                  init
+                )
               )
-            )
-          } else {
-            schemeLattice.bottom
-          }
-          val f: L = schemeLattice.bottom
-          MayFail.success(schemeLattice.join(t, f))
-        }
+            } else {
+              schemeLattice.bottom
+            }
+            val f: L = schemeLattice.bottom
+            MayFail.success(schemeLattice.join(t, f))
         case (_: Vec, _) => MayFail.failure(TypeError("expecting int to set vector", index))
         case _           => MayFail.failure(TypeError("vector-set!: expecting vector", vector))
       }
@@ -525,7 +525,7 @@ class MakeSchemeLattice[
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X
   }
   case class Element(v: Value) extends L {
-    override def toString                                         = v.toString
+    override def toString: String                                 = v.toString
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X = f(v)
   }
   case class Elements(vs: Set[Value]) extends L {
@@ -535,7 +535,8 @@ class MakeSchemeLattice[
   }
 
   import MonoidInstances.{boolOrMonoid, boolAndMonoid, setMonoid}
-  implicit val lMonoid = new Monoid[L] {
+  implicit val lMonoid: Monoid[L] = new Monoid[L] {
+    @tailrec
     def append(x: L, y: => L): L = x match {
       case Element(Bot) => y
       case Element(a) =>
@@ -582,8 +583,8 @@ class MakeSchemeLattice[
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
   val schemeLattice: SchemeLattice[L, A, P, Env] = new SchemeLattice[L, A, P, Env] {
-    def show(x: L)             = x.toString /* TODO[easy]: implement better */
-    def isTrue(x: L): Boolean  = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
+    def    show(x: L):  String = x.toString /* TODO[easy]: implement better */
+    def  isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
     def unaryOp(op: UnaryOperator)(x: L): MayFail[L, Error] =
       x.foldMapL(x => Value.unaryOp(op)(x).map(x => Element(x)))
@@ -596,8 +597,8 @@ class MakeSchemeLattice[
           /* For every element in y, there exists an element of x that subsumes it */
           x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid)
       )(boolAndMonoid)
-    def car(x: L) = x.foldMapL(Value.car(_))
-    def cdr(x: L) = x.foldMapL(Value.cdr(_))
+    def car(x: L): MayFail[L, Error] = x.foldMapL(Value.car(_))
+    def cdr(x: L): MayFail[L, Error] = x.foldMapL(Value.cdr(_))
     def top: L    = throw LatticeTopUndefined
 
     def vectorRef(vector: L, index: L): MayFail[L, Error] =

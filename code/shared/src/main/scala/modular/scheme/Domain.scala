@@ -12,7 +12,7 @@ trait AbstractDomain extends SchemeModFSemantics {
   type C
   type Sym
   // which are used to construct a "modular" (~ product) lattice
-  val valueLattice: MakeSchemeLattice[Addr,IntraComponent,S,B,I,R,C,Sym]
+  val valueLattice: ModularSchemeLattice[Addr,IntraComponent,S,B,I,R,C,Sym]
   type Value = valueLattice.L
   lazy val lattice = valueLattice.schemeLattice
 }
@@ -41,7 +41,7 @@ trait TypeDomain extends AbstractDomain {
   type C    = Type.C
   type Sym  = Type.Sym
   // make the scheme lattice
-  lazy val valueLattice = new MakeSchemeLattice
+  lazy val valueLattice = new ModularSchemeLattice
 }
 
 /* A constant propagation lattice for ModF */
@@ -54,7 +54,7 @@ trait ConstantPropagationDomain extends AbstractDomain {
   type C    = ConstantPropagation.C
   type Sym  = ConstantPropagation.Sym
   // make the scheme lattice
-  lazy val valueLattice = new MakeSchemeLattice
+  lazy val valueLattice = new ModularSchemeLattice
 }
 
 /* A powerset lattice for ModF */
@@ -67,5 +67,5 @@ trait PowersetDomain extends AbstractDomain {
   type C    = Concrete.C
   type Sym  = Concrete.Sym
   // make the scheme lattice
-  lazy val valueLattice = new MakeSchemeLattice
+  lazy val valueLattice = new ModularSchemeLattice
 }
