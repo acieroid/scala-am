@@ -6,10 +6,7 @@ import scalaam.language.sexp._
 /**
   * Abstract syntax of Scheme programs
   */
-trait SchemeExp extends Expression {
-  /** The height of the AST represented by this Scheme expression. */
-  val height: Int
-}
+trait SchemeExp extends Expression
 
 /**
   * A lambda expression: (lambda (args...) body...)
@@ -23,7 +20,7 @@ case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Posi
     s"(lambda ($a) $b)"
   }
   def fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet
-  val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
+  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
 }
 
 /**
@@ -39,7 +36,7 @@ case class SchemeFuncall(f: SchemeExp, args: List[SchemeExp], pos: Position) ext
     }
   }
   def fv: Set[String] = f.fv ++ args.flatMap(_.fv).toSet
-  val height: Int = 1 + args.foldLeft(0)((mx, a) => mx.max(a.height).max(f.height))
+  override val height: Int = 1 + args.foldLeft(0)((mx, a) => mx.max(a.height).max(f.height))
 }
 
 /**
@@ -50,7 +47,7 @@ case class SchemeIf(cond: SchemeExp, cons: SchemeExp, alt: SchemeExp, pos: Posit
     extends SchemeExp {
   override def toString: String = s"(if $cond $cons $alt)"
   def fv: Set[String] = cond.fv ++ cons.fv ++ alt.fv
-  val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
+  override val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
 }
 
 /**
@@ -66,7 +63,7 @@ case class SchemeLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeE
     bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- bindings
       .map(_._1.name)
       .toSet)
-  val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
+  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
 }
 
 /**
@@ -87,7 +84,7 @@ case class SchemeLetStar(bindings: List[(Identifier, SchemeExp)], body: List[Sch
           }
       )
       ._2 ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1.name).toSet)
-  val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
+  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
 }
 
 /**
@@ -103,7 +100,7 @@ case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)], body: List[Sche
     (bindings.map(_._2).flatMap(_.fv).toSet ++ body.flatMap(_.fv).toSet) -- bindings
       .map(_._1.name)
       .toSet
-  val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
+  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
 }
 
 /**
@@ -120,7 +117,7 @@ case class SchemeNamedLet(name: Identifier, bindings: List[(Identifier, SchemeEx
     bindings.map(_._2).flatMap(_.fv).toSet ++ (body
       .flatMap(_.fv)
       .toSet -- (bindings.map(_._1.name).toSet + name.name))
-  val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
+  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
 }
 
 /**
@@ -130,7 +127,7 @@ trait SchemeSetExp extends SchemeExp {
   val variable: Identifier
   val value: SchemeExp
   def fv: Set[String] = value.fv + variable.name
-  val height: Int = 1 + value.height
+  override val height: Int = 1 + value.height
 }
 
 case class SchemeSet(variable: Identifier, value: SchemeExp, pos: Position) extends SchemeSetExp {
@@ -150,7 +147,7 @@ case class SchemeBegin(exps: List[SchemeExp], pos: Position) extends SchemeExp {
     s"(begin $body)"
   }
   def fv: Set[String] = exps.flatMap(_.fv).toSet
-  val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
+  override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
 }
 
 /**
@@ -246,7 +243,7 @@ case class SchemeAnd(exps: List[SchemeExp], pos: Position) extends SchemeExp {
     s"(and $e)"
   }
   def fv: Set[String] = exps.flatMap(_.fv).toSet
-  val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
+  override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
 }
 
 /**
@@ -258,7 +255,7 @@ case class SchemeOr(exps: List[SchemeExp], pos: Position) extends SchemeExp {
     s"(or $e)"
   }
   def fv: Set[String] = exps.flatMap(_.fv).toSet
-  val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
+  override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
 }
 
 /**
@@ -267,7 +264,7 @@ case class SchemeOr(exps: List[SchemeExp], pos: Position) extends SchemeExp {
 case class SchemeDefineVariable(name: Identifier, value: SchemeExp, pos: Position) extends SchemeExp {
   override def toString: String = s"(define $name $value)"
   def fv: Set[String] = value.fv
-  val height: Int = 1 + value.height
+  override val height: Int = 1 + value.height
 }
 
 /**
@@ -281,7 +278,7 @@ extends SchemeExp {
     s"(define ($name $a) $b)"
   }
   def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
-  val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
+  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
 }
 
 /**
@@ -332,7 +329,7 @@ object SchemeDo {
   */
 trait SchemeVarExp extends SchemeExp {
   val id: Identifier
-  val     height: Int = 1
+  override val height: Int = 1
   val   pos: Position = id.pos
   def fv: Set[String] = Set(id.name)
 }
@@ -355,7 +352,7 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef)
 case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
   override def toString: String = s"'$quoted"
   def fv: Set[String] = Set()
-  val height: Int = 1
+  override val height: Int = 1
 }
 
 /**
@@ -364,5 +361,5 @@ case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
 case class SchemeValue(value: Value, pos: Position) extends SchemeExp {
   override def toString: String = value.toString
   def fv: Set[String] = Set()
-  val height: Int = 1
+  override val height: Int = 1
 }
