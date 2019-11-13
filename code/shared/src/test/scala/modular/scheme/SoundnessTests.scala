@@ -15,7 +15,7 @@ trait SchemeModFSoundnessTests extends PropSpec {
   type Benchmark = String   // a benchmark is just a file name
   type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   // the table of benchmark programs to execute
-  def benchmarks: List[Benchmark]
+  def benchmarks: Set[Benchmark]
   // the analysis that is used to analyse the programs
   def analysis(b: Benchmark): Analysis
   // the timeout for the analysis of a single benchmark program (default: 1min.)

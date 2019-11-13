@@ -1,6 +1,6 @@
 object Benchmarks {
 
-  val ad: List[String] = List(
+  val ad: Set[String] = Set(
     "test/ad/abstrct.scm",
     //"test/ad/bfirst.scm", // VARARG
     // "test/ad/bst.scm", // VARARG
@@ -24,7 +24,7 @@ object Benchmarks {
     //"test/ad/stspaceCODE.scm", // VARARG
   )
 
-  val gabriel: List[String] = List(
+  val gabriel: Set[String] = Set(
     "test/gabriel/boyer.scm",
     "test/gabriel/browse.scm",
     "test/gabriel/cpstak.scm",
@@ -38,7 +38,7 @@ object Benchmarks {
     "test/gabriel/triangl.scm",
   )
 
-  val gambit: List[String] = List(
+  val gambit: Set[String] = Set(
     "test/gambit/array1.scm",
     "test/gambit/browse.scm",
     "test/gambit/cat.scm",
@@ -73,12 +73,12 @@ object Benchmarks {
     "test/gambit/wc.scm",
   )
 
-  val rosetta: List[String] = List(
+  val rosetta: Set[String] = Set(
     "test/rosetta/easter.scm",
     "test/rosetta/quadratic.scm",
   )
 
-  val scp1: List[String] = List(
+  val scp1: Set[String] = Set(
     "test/scp1/2.1.scm",
     "test/scp1/2.4.scm",
 
@@ -145,7 +145,7 @@ object Benchmarks {
     "test/scp1/9.18.scm",
   )
 
-  val sigscheme: List[String] = List(
+  val sigscheme: Set[String] = Set(
     "test/sigscheme/arithint.scm",
     "test/sigscheme/case.scm",
     "test/sigscheme/let-loop.scm",
@@ -155,7 +155,7 @@ object Benchmarks {
     "test/sigscheme/takr.scm",
   )
 
-  val theLittleSchemer: List[String] = List(
+  val theLittleSchemer: Set[String] = Set(
     "test/WeiChenRompf2019/the-little-schemer/ch1.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch2.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch3.scm",
@@ -168,7 +168,7 @@ object Benchmarks {
     "test/WeiChenRompf2019/the-little-schemer/ch10.scm",
   )
 
-  val toplas98: List[String] = List(
+  val toplas98: Set[String] = Set(
     //"test/WeiChenRompf2019/toplas98/boyer.sch", // USES SQUARE BRACKETS
     //"test/WeiChenRompf2019/toplas98/dynamic.sch", // PARSER LIMITATION TODO
     //"test/WeiChenRompf2019/toplas98/graphs.sch", // MISSING PRIMITIVE open-input-file
@@ -183,7 +183,7 @@ object Benchmarks {
     //"test/WeiChenRompf2019/toplas98/splay.scm", // PARSER ERROR
   )
 
-  val WCR2019: List[String] = List(
+  val WCR2019: Set[String] = Set(
     //"test/WeiChenRompf2019/church_exp.sch", // PARSER LIMITATION TODO // Unknown (void) function
     "test/WeiChenRompf2019/church_simple.sch",
     //"test/WeiChenRompf2019/earley.sch", // MISSING PRIMITIVE read TODO
@@ -202,7 +202,7 @@ object Benchmarks {
     "test/WeiChenRompf2019/solovay-strassen.scm",
   )
 
-  val other: List[String] = List(
+  val other: Set[String] = Set(
     "test/blur.scm",
     "test/bound-precision.scm",
     "test/church-2-num.scm",
@@ -224,7 +224,7 @@ object Benchmarks {
     "test/kernighanvanwyk/ack.scm",
     "test/letrec-begin.scm",
     "test/loop2.scm",
-    // "test/mceval.scm",  // TODO: examine non-deterministic behaviour?
+    "test/mceval.scm",
     "test/mj09.scm",
     "test/mut-rec.scm",
     "test/nested-defines.scm",
@@ -244,6 +244,6 @@ object Benchmarks {
     "test/work.scm",
   )
 
-  val WeiChenRompf2019: List[String] = WCR2019 ::: theLittleSchemer ::: toplas98
-  val    allBenchmarks: List[String] = ad ::: gabriel ::: gambit ::: rosetta ::: scp1 ::: sigscheme ::: WeiChenRompf2019 ::: other
+  val WeiChenRompf2019: Set[String] = WCR2019 ++ theLittleSchemer ++ toplas98
+  val    allBenchmarks: Set[String] = ad ++ gabriel ++ gambit ++ rosetta ++ scp1 ++ sigscheme ++ WeiChenRompf2019 ++ other
 }
