@@ -14,12 +14,11 @@ object Main {
   def testLex(file: String): Unit = {
     val txt = loadFile(file)
     val prg = SchemeParser.parse(txt)
-    for(_ <- 1 to 10) {
-      val analysis = new ModAnalysis(prg) with SmallStepSchemeModFSemantics
-        with ConstantPropagationDomain
-        with NoSensitivity
-      System.err.println(Timer.time(analysis.analyze())._1)
-    }
+    val analysis = new ModAnalysis(prg) with SmallStepSchemeModFSemantics
+                                        with ConstantPropagationDomain
+                                        with NoSensitivity
+    analysis.analyze()
+    println(analysis.store.keys.size)
     //debugResults(analysis)
   }
 
