@@ -10,9 +10,14 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
   class IntraAnalysis(component: IntraComponent) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
     // the intermediate states in the intra-analysis
     sealed trait State
-    case class EvalState(exp: SchemeExp, cnt: Kont) extends State
-    case class KontState(vlu: Value, cnt: Kont) extends State
-    case class CallState(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)], cnt: Kont) extends State
+    case class EvalState(exp: SchemeExp,
+                         cnt: Kont) extends State
+    case class KontState(vlu: Value,
+                         cnt: Kont) extends State
+    case class CallState(fexp: SchemeExp,
+                         fval: Value,
+                         args: List[(SchemeExp,Value)],
+                         cnt: Kont) extends State
     // the frames used to build the continuation
     type Kont = List[Frame]
     sealed trait Frame
@@ -47,16 +52,17 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       var visited = Set[State]()
       var result  = lattice.bottom
       while(work.nonEmpty) {
-        work.head match {
+        val state = work.head
+        work = work.tail
+        state match {
           case KontState(vlu,Nil) =>
             result = lattice.join(result,vlu)
-          case state if !visited.contains(state) =>
+          case _ if !visited.contains(state) =>
             val successors = step(state)
             work ++= successors
             visited += state
           case _ => ()
         }
-        work = work.tail
       }
       writeResult(result)
     }
