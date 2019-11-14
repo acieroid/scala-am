@@ -14,65 +14,101 @@ import scala.util.control.Breaks._
 object GumTreeDiff {
 
   type E  = Expression
-  type MP = Set[(E,E)] // Mapping
+  type T  = TreeNode
+  type MP = Map[T, T] // Mapping (parent1, node1) -> (parent2, node2)
 
-  def topDown(source: E, dest: E, minHeight: Int = 3): MP = {
-    var L1 = new mutable.PriorityQueue[(E, E)]()(Ordering.by(_._2.height)) // (parent, node)
-    var L2 = new mutable.PriorityQueue[(E, E)]()(Ordering.by(_._2.height))
-    L1 += ((source, source))
-    L2 += ((dest, dest))
+  case class TreeNode(self: E)(parent: E) { // Parent is excluded from equals (== and !=).
+    val height:     Int = self.height
+    val opened: List[T] = open(this) // Cache direct descendants.
+    val      s: List[T] = opened ::: opened.flatMap(_.s) // Cache all descendants.
+    val   sSiz:     Int = s.size
+  }
 
-    var A: Set[((E, E), (E, E))] = Set() // List of candidate mappings. ((parent1, node1), (parent2, node2))
-    var M: MP = Set()
+  def topDown(E1: E, E2: E, minHeight: Int = 3): MP = {
+    val T1 = TreeNode(E1)(null)
+    val T2 = TreeNode(E2)(null)
+    var L1 = new mutable.PriorityQueue[T]()(Ordering.by(_.height))
+    var L2 = new mutable.PriorityQueue[T]()(Ordering.by(_.height))
+    L1 += T1
+    L2 += T2
 
-    val subs1 = s(source)
-    val subs2 = s(dest)
+    var A: Set[(T, T)] = Set() // List of candidate mappings. ((parent1, node1), (parent2, node2))
+    var M: MP = Map()
+
+    val subs1 = s(T1)
+    val subs2 = s(T2)
     breakable {
       while (true) {
-        val (_, n1) = L1.headOption.getOrElse(break())
-        val (_, n2) = L2.headOption.getOrElse(break())
+        val n1 = L1.headOption.getOrElse(break())
+        val n2 = L2.headOption.getOrElse(break())
         if (n1.height.min(n2.height) <= minHeight) break()
 
         if (n1.height > n2.height)
-          L1.dequeueAll.foreach(e => L1 ++= open(e._2).map((e._2, _)))
+          L1.dequeueAll.foreach(n => L1 ++= open(n))
         else if (n2.height > n1.height)
-          L2.dequeueAll.foreach(e => L2 ++= open(e._2).map((e._2, _)))
+          L2.dequeueAll.foreach(n => L2 ++= open(n))
         else {
           val height = n1.height
-          val H1 = L1.takeWhile(_._2.height == height).toList
-          val H2 = L2.takeWhile(_._2.height == height).toList
+          val H1 = L1.takeWhile(_.height == height).toList
+          val H2 = L2.takeWhile(_.height == height).toList
           L1 = L1.drop(H1.length)
           L2 = L2.drop(H2.length)
           for (t1 <- H1) {
-            val s1 = s(t1._2)
+            val s1 = s(t1)
             for (t2 <- H2) {
-              if (isomorphic(t1._2, t2._2)) {
-                if (subs2.exists(tx => isomorphic(t1._2, tx) && tx != t2._2) || subs1.exists(tx => isomorphic(tx, t2._2) && tx != t1._2))
+              if (isomorphic(t1, t2)) {
+                if (subs2.exists(tx => isomorphic(t1, tx) && tx != t2) || subs1.exists(tx => isomorphic(tx, t2) && tx != t1))
                   A = A + ((t1, t2))
                 else {
-                  val s2 = s(t2._2)
+                  val s2 = s(t2)
                   s1.zip(s2).foreach(t => M = M + t) // TODO is this correct?
                 }
               }
             }
           }
-          val AM = A ++ M
+          val AM = A ++ M.toSet
           for (t1 <- H1)
-            if (!AM.exists(_._1 == t1)) L1 ++= open(t1._2).map((t1._2, _))
+            if (!AM.exists(_._1 == t1)) L1 ++= open(t1)
           for (t2 <- H2)
-            if (!AM.exists(_._2 == t2)) L2 ++= open(t2._2).map((t2._2, _))
+            if (!AM.exists(_._2 == t2)) L2 ++= open(t2)
         }
       }
     }
-    var Asorted = A.toList.sortBy({case (t1, t2) => dice(t1._1, t2._2, M)})
+    var Asorted = A.toList.sortBy({case (t1, t2) => dice(t1, t2, M)})
     while (Asorted.nonEmpty) {
       val (t1, t2) = Asorted.head
       Asorted = Asorted.tail
-      s(t1._2).zip(s(t2._2)).foreach(t => M = M + t) // TODO is this correct?
+      s(t1).zip(s(t2)).foreach(t => M = M + t) // TODO is this correct?
       A.filterNot({case (x, y) => x == t1 || y == t2})
     }
     M
   }
+
+  def bottomUp(e1: E, e2: E, m: MP, maxSize: Int, minDice: Double): MP = {
+    val T1 = TreeNode(e1)(null)
+    val T2 = TreeNode(e2)(null)
+    var M: MP = m
+    val Q = new mutable.PriorityQueue[T]()(Ordering.by(_.height * -1)) // Reverse the order.
+    Q ++= s(T1).filter(t => M.get(t).isEmpty && open(t).flatMap(M.get(_)).nonEmpty)
+    while (Q.nonEmpty) {
+      val t1 = Q.dequeue()
+      candidate(t1, T2, M) match {
+        case Some(t2) if dice(t1, t2, M) > minDice =>
+          M = M + (t1 -> t2)
+          if (t1.sSiz.max(t2.sSiz) < maxSize)
+            opt(t1, t2).foreach{ case (ta, tb) =>
+              if (   !m.contains(ta)
+                  && !m.exists{case (_, t) => t == tb}
+                  && label(ta) == label(tb))
+                M = M + (ta -> tb)
+            }
+        case _ =>
+      }
+    }
+    M
+  }
+
+  def open(n: T): List[T] = open(n.self).map(TreeNode(_)(n.self))
 
   def open(e: E): List[E] = e match {
     case                             _: Identifier => List()
@@ -103,7 +139,10 @@ object GumTreeDiff {
     o1.zip(o2).forall(t => isomorphic(t._1, t._2))
   }
 
+  def isomorphic(t1: T, t2: T): Boolean = isomorphic(t1.self, t2.self)
+
   // TODO: use another isoMorphic comparison method (paper: O(1) ?)
+  // TODO: can this function be derived from s?
   def isomorphic(e1: E, e2: E): Boolean = (e1, e2) match {
     case (x:         SchemeLambda, y:         SchemeLambda) => isoRec(x, y)
     case (x:        SchemeFuncall, y:        SchemeFuncall) => isoRec(x, y)
@@ -122,27 +161,18 @@ object GumTreeDiff {
     case (x:            SchemeVar, y:            SchemeVar) => isoRec(x, y)
     case (x:         SchemeVarLex, y:         SchemeVarLex) => isoRec(x, y)
     case (x:         SchemeQuoted, y:         SchemeQuoted) => isoRec(x, y)
-    case (x:          SchemeValue, y:          SchemeValue) => isoRec(x, y)
-    case (_:           Identifier, _:           Identifier) => true
+    case (x:          SchemeValue, y:          SchemeValue) => true // x.value == y.value
+    case (x:           Identifier, y:           Identifier) => true // x.name  == y.name
     case  _                                                 => false
   }
 
-  // All subexpressions
-  def s(e: E): List[E] = {
-    var   todo: Set[E] = Set(e)
-    var   done: Set[E] = Set( )
-    var result: Set[E] = Set()
-    while (todo.nonEmpty) {
-      done = done ++ todo
-      val nw: Set[E] = todo.flatMap(open)
-      result = result ++ nw
-      todo = todo ++ (nw -- done)
-    }
-    result.toList
-  }
+  def s(n: T): List[T] = n.s
 
-  def dice(t1: E, t2: E, M: MP): Double = {
-    val s1 = s(t1)
-    2.0 * s1.count(e => M.exists(_._1 == e)).toDouble / (s1.size + s(t2).size).toDouble
-  }
+  def dice(t1: T, t2: T, M: MP): Double = 2.0 * s(t1).count(M.contains).toDouble / (t1.sSiz + t2.sSiz).toDouble
+
+  def candidate(t1: T, T2: T, M: MP): Option[T] = ???
+
+  def opt(t1: T, t2: T): List[(T, T)] = ???
+
+  def label(t: T): String = ???
 }
