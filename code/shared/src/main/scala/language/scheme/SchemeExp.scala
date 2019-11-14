@@ -23,6 +23,21 @@ case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Posi
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
 }
 
+case class SchemeVarArgLambda(args: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position) extends SchemeExp {
+  require(body.nonEmpty)
+  override def toString: String = {
+    val a = if (args.isEmpty) {
+      vararg.toString
+    } else {
+      s"(${args.mkString(" ")} . $vararg)"
+    }
+    val b = body.mkString(" ")
+    s"(lambda $a $b)"
+  }
+  def fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet - vararg.name
+  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
+}
+
 /**
   * A function call: (f args...)
   */
@@ -278,6 +293,17 @@ extends SchemeExp {
     s"(define ($name $a) $b)"
   }
   def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
+  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
+}
+
+case class SchemeDefineVarArgFunction(name: Identifier, args: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position)
+extends SchemeExp {
+  override def toString: String = {
+    val a = s"${args.mkString(" ")} . $vararg"
+    val b = body.mkString(" ")
+    s"(define ($name $a) $b)"
+  }
+  def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name) - vararg.name
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
 }
 

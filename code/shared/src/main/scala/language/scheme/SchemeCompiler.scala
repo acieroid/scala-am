@@ -32,7 +32,7 @@ object SchemeCompiler {
         argsv  <- tailcall(compileArgs(args))
         firstv <- tailcall(_compile(first))
         restv  <- tailcall(compileBody(rest))
-      } yield SchemeLambda(argsv, firstv :: restv, exp.pos)
+      } yield makeLambda(argsv, firstv :: restv, exp.pos)
     case SExpPair(SExpId(Identifier("lambda", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme lambda: $exp", exp.pos)
     case SExpPair(
@@ -50,7 +50,7 @@ object SchemeCompiler {
         SExpPair(cond, SExpPair(cons, SExpValue(ValueNil, _), _), _),
         _
         ) =>
-      /* Empty else branch is replaced by #f (R5RS states it's unspecified) */
+      // Empty else branch is replaced by #f (R5RS states it's unspecified)
       for {
         condv <- tailcall(_compile(cond))
         consv <- tailcall(_compile(cons))
@@ -140,7 +140,7 @@ object SchemeCompiler {
         argsv  <- tailcall(compileArgs(args))
         firstv <- tailcall(_compile(first))
         restv  <- tailcall(compileBody(rest))
-      } yield SchemeDefineFunction(name, argsv, firstv :: restv, exp.pos)
+      } yield makeDefineFunction(name, argsv, firstv :: restv, exp.pos)
     case SExpPair(
         SExpId(Identifier("do", _)),
         SExpPair(bindings, SExpPair(SExpPair(test, finals, _), commands, _), _),
@@ -167,12 +167,13 @@ object SchemeCompiler {
     case SExpQuoted(quoted, _) => done(SchemeQuoted(quoted, exp.pos))
   }
 
-  def compileArgs(args: SExp): TailRec[List[Identifier]] = args match {
+  def compileArgs(args: SExp): TailRec[(List[Identifier],Option[Identifier])] = args match {
     case SExpPair(SExpId(id), rest, _) =>
       for {
         restv <- tailcall(compileArgs(rest))
-      } yield id :: restv
-    case SExpValue(ValueNil, _) => done(Nil)
+      } yield (id :: restv._1, restv._2)
+    case SExpValue(ValueNil, _) => done((Nil,None))
+    case SExpId(id)             => done((Nil,Some(id)))
     case _                      => throw new SchemeCompilerException(s"Invalid Scheme argument list: $args", args.pos)
   }
 
@@ -296,12 +297,25 @@ object SchemeCompiler {
         restv <- tailcall(compileCaseObjects(rest))
       } yield SchemeValue(v, objects.pos) :: restv
     case SExpPair(SExpId(id), rest, _) =>
-      /* identifiers in case expressions are treated as symbols */
+      // identifiers in case expressions are treated as symbols
       for {
         restv <- tailcall(compileCaseObjects(rest))
       } yield SchemeValue(ValueSymbol(id.name), id.pos) :: restv
     case SExpValue(ValueNil, _) => done(Nil)
     case _ =>
       throw new SchemeCompilerException(s"Invalid Scheme case objects: $objects", objects.pos)
+  }
+  def makeLambda(args: (List[Identifier],Option[Identifier]),
+                 body: List[SchemeExp],
+                 pos: Position) = args._2 match {
+    case Some(vararg) => SchemeVarArgLambda(args._1,vararg,body,pos)
+    case None         => SchemeLambda(args._1,body,pos)
+  }
+  def makeDefineFunction(id: Identifier,
+                         args: (List[Identifier],Option[Identifier]),
+                         body: List[SchemeExp],
+                         pos: Position) = args._2 match {
+    case Some(vararg) => SchemeDefineVarArgFunction(id,args._1,vararg,body,pos)
+    case None         => SchemeDefineFunction(id,args._1,body,pos)
   }
 }
