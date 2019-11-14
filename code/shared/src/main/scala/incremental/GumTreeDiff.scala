@@ -14,19 +14,19 @@ import scala.util.control.Breaks._
 object GumTreeDiff {
 
   type E  = Expression
-  type MP = Set[(E,E)] // Mapping
+  type MP = Map[(E, E),(E, E)] // Mapping (parent1, node1) -> (parent2, node2)
 
-  def topDown(source: E, dest: E, minHeight: Int = 3): MP = {
+  def topDown(T1: E, T2: E, minHeight: Int = 3): MP = {
     var L1 = new mutable.PriorityQueue[(E, E)]()(Ordering.by(_._2.height)) // (parent, node)
     var L2 = new mutable.PriorityQueue[(E, E)]()(Ordering.by(_._2.height))
-    L1 += ((source, source))
-    L2 += ((dest, dest))
+    L1 += ((T1, T1))
+    L2 += ((T2, T2))
 
     var A: Set[((E, E), (E, E))] = Set() // List of candidate mappings. ((parent1, node1), (parent2, node2))
-    var M: MP = Set()
+    var M: MP = Map()
 
-    val subs1 = s(source)
-    val subs2 = s(dest)
+    val subs1 = s(T1)
+    val subs2 = s(T2)
     breakable {
       while (true) {
         val (_, n1) = L1.headOption.getOrElse(break())
@@ -47,7 +47,7 @@ object GumTreeDiff {
             val s1 = s(t1._2)
             for (t2 <- H2) {
               if (isomorphic(t1._2, t2._2)) {
-                if (subs2.exists(tx => isomorphic(t1._2, tx) && tx != t2._2) || subs1.exists(tx => isomorphic(tx, t2._2) && tx != t1._2))
+                if (subs2.exists(tx => isomorphic(t1._2, tx._2) && tx._2 != t2._2) || subs1.exists(tx => isomorphic(tx._2, t2._2) && tx._2 != t1._2))
                   A = A + ((t1, t2))
                 else {
                   val s2 = s(t2._2)
@@ -56,7 +56,7 @@ object GumTreeDiff {
               }
             }
           }
-          val AM = A ++ M
+          val AM = A ++ M.toSet
           for (t1 <- H1)
             if (!AM.exists(_._1 == t1)) L1 ++= open(t1._2).map((t1._2, _))
           for (t2 <- H2)
@@ -73,6 +73,16 @@ object GumTreeDiff {
     }
     M
   }
+
+  /*
+  def bottomUp(T1: E, T2: E, m: MP, maxSize: Int, minDice: Double): MP = {
+    var M: MP = m
+    val Q = new mutable.PriorityQueue[(E, E)]()(Ordering.by(_._2.height * -1)) // Reverse the order.
+    Q ++= s(T1).filter(t => M.get(t).isEmpty && open(t._2).map((t._2, _)).flatMap(M.get(_)).nonEmpty)
+    while (Q.nonEmpty) {
+      val t1 = Q.dequeue()
+    }
+  } */
 
   def open(e: E): List[E] = e match {
     case                             _: Identifier => List()
@@ -104,6 +114,7 @@ object GumTreeDiff {
   }
 
   // TODO: use another isoMorphic comparison method (paper: O(1) ?)
+  // TODO: can this function be derived from s?
   def isomorphic(e1: E, e2: E): Boolean = (e1, e2) match {
     case (x:         SchemeLambda, y:         SchemeLambda) => isoRec(x, y)
     case (x:        SchemeFuncall, y:        SchemeFuncall) => isoRec(x, y)
@@ -122,19 +133,19 @@ object GumTreeDiff {
     case (x:            SchemeVar, y:            SchemeVar) => isoRec(x, y)
     case (x:         SchemeVarLex, y:         SchemeVarLex) => isoRec(x, y)
     case (x:         SchemeQuoted, y:         SchemeQuoted) => isoRec(x, y)
-    case (x:          SchemeValue, y:          SchemeValue) => isoRec(x, y)
-    case (_:           Identifier, _:           Identifier) => true
+    case (x:          SchemeValue, y:          SchemeValue) => true // x.value == y.value
+    case (x:           Identifier, y:           Identifier) => true // x.name  == y.name
     case  _                                                 => false
   }
 
-  // All subexpressions
-  def s(e: E): List[E] = {
-    var   todo: Set[E] = Set(e)
-    var   done: Set[E] = Set( )
-    var result: Set[E] = Set()
+  // All subexpressions as (parent, subtree)
+  def s(e: E): List[(E, E)] = {
+    var   todo: Set[(E, E)] = Set((e, e))
+    var   done: Set[(E, E)] = Set( )
+    var result: Set[(E, E)] = Set()
     while (todo.nonEmpty) {
       done = done ++ todo
-      val nw: Set[E] = todo.flatMap(open)
+      val nw: Set[(E, E)] = todo.flatMap(t => open(t._2).map((t._2, _)))
       result = result ++ nw
       todo = todo ++ (nw -- done)
     }
