@@ -14,19 +14,22 @@ import scala.util.control.Breaks._
 object GumTreeDiff {
 
   type E  = Expression
-  type T  = TreeNode
   type MP = Map[T, T] // Mapping (parent1, node1) -> (parent2, node2)
 
-  case class TreeNode(self: E)(parent: E) { // Parent is excluded from equals (== and !=).
+  case class T(self: E)(parent: E) { // Parent is excluded from equals (== and !=).
     val height:     Int = self.height
     val opened: List[T] = open(this) // Cache direct descendants.
     val      s: List[T] = opened ::: opened.flatMap(_.s) // Cache all descendants.
     val   sSiz:     Int = s.size
   }
 
-  def topDown(E1: E, E2: E, minHeight: Int = 3): MP = {
-    val T1 = TreeNode(E1)(null)
-    val T2 = TreeNode(E2)(null)
+  def diff(E1: E, E2: E, minHeight: Int = 3, maxSize: Int = 100, minDice: Double = 0.5): MP = {
+    val T1 = T(E1)(null)
+    val T2 = T(E2)(null)
+    bottomUp(T1, T2, topDown(T1, T2, minHeight), maxSize, minDice)
+  }
+
+  def topDown(T1: T, T2: T, minHeight: Int): MP = {
     var L1 = new mutable.PriorityQueue[T]()(Ordering.by(_.height))
     var L2 = new mutable.PriorityQueue[T]()(Ordering.by(_.height))
     L1 += T1
@@ -44,9 +47,9 @@ object GumTreeDiff {
         if (n1.height.min(n2.height) <= minHeight) break()
 
         if (n1.height > n2.height)
-          L1.dequeueAll.foreach(n => L1 ++= open(n))
+          L1.dequeueAll.foreach(n => L1 ++= n.opened)
         else if (n2.height > n1.height)
-          L2.dequeueAll.foreach(n => L2 ++= open(n))
+          L2.dequeueAll.foreach(n => L2 ++= n.opened)
         else {
           val height = n1.height
           val H1 = L1.takeWhile(_.height == height).toList
@@ -84,9 +87,7 @@ object GumTreeDiff {
     M
   }
 
-  def bottomUp(e1: E, e2: E, m: MP, maxSize: Int, minDice: Double): MP = {
-    val T1 = TreeNode(e1)(null)
-    val T2 = TreeNode(e2)(null)
+  def bottomUp(T1: T, T2: T, m: MP, maxSize: Int, minDice: Double): MP = {
     var M: MP = m
     val Q = new mutable.PriorityQueue[T]()(Ordering.by(_.height * -1)) // Reverse the order.
     Q ++= s(T1).filter(t => M.get(t).isEmpty && open(t).flatMap(M.get(_)).nonEmpty)
@@ -108,7 +109,7 @@ object GumTreeDiff {
     M
   }
 
-  def open(n: T): List[T] = open(n.self).map(TreeNode(_)(n.self))
+  def open(t: T): List[T] = open(t.self).map(T(_)(t.self))
 
   def open(e: E): List[E] = e match {
     case                             _: Identifier => List()
@@ -166,13 +167,21 @@ object GumTreeDiff {
     case  _                                                 => false
   }
 
-  def s(n: T): List[T] = n.s
+  def s(t: T): List[T] = t.s
 
   def dice(t1: T, t2: T, M: MP): Double = 2.0 * s(t1).count(M.contains).toDouble / (t1.sSiz + t2.sSiz).toDouble
 
-  def candidate(t1: T, T2: T, M: MP): Option[T] = ???
+  def candidate(t1: T, T2: T, M: MP): Option[T] = {
+    T2.s.filter{t => label(t) == label(t1) && !M.contains(t1) && haveMatchedDescendants(t1, t, M)} match {
+      case Nil => None
+      case lst => Some(lst.maxBy(dice(t1, _, M)))
+    }
+  }
 
-  def opt(t1: T, t2: T): List[(T, T)] = ???
+  def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = s(t1).exists(t => s(t2).contains(M(t)))
 
-  def label(t: T): String = ???
+  // TODO - the current implementation is a dummy implementation
+  def opt(t1: T, t2: T): List[(T, T)] = for { s1 <- s(t1); s2 <- s(t2)} yield (s1, s2)
+
+  def label(t: T): String = t.toString // TODO is this correct?
 }
