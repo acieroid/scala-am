@@ -1,4 +1,26 @@
-object Benchmarks {
+import org.scalatest._
+
+import scalaam.language.scheme._
+
+trait SchemeBenchmarkTests extends PropSpec {
+  // a benchmark is just a file name
+  type Benchmark = String
+  // the benchmarks involved in the tests
+  def benchmarks: Set[Benchmark] = Set.empty
+  // helper to load and parse a benchmark file
+  protected def loadFile(file: String): SchemeExp = {
+    val f   = scala.io.Source.fromFile(file)
+    val exp = SchemeParser.parse(f.getLines().mkString("\n"))
+    f.close()
+    exp
+  }
+}
+
+trait SimpleBenchmarks extends SchemeBenchmarkTests {
+  override def benchmarks = super.benchmarks ++ SchemeBenchmarks.other
+}
+
+object SchemeBenchmarks {
 
   val ad: Set[String] = Set(
     "test/ad/abstrct.scm",

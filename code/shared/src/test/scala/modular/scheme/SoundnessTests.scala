@@ -1,5 +1,3 @@
-import org.scalatest._
-
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
@@ -9,10 +7,9 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
-import scalaam.util.Timeout
 
-trait SchemeModFSoundnessTests extends PropSpec {
-  type Benchmark = String   // a benchmark is just a file name
+trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
+  // analysis must support Scheme's ModF Semantics
   type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   // the table of benchmark programs to execute
   def benchmarks: Set[Benchmark]
@@ -21,12 +18,6 @@ trait SchemeModFSoundnessTests extends PropSpec {
   // the timeout for the analysis of a single benchmark program (default: 1min.)
   def timeout(b: Benchmark) = Timeout.start(Duration(1, MINUTES))
   // the actual testing code
-  protected def loadFile(file: String): SchemeExp = {
-    val f   = scala.io.Source.fromFile(file)
-    val exp = SchemeParser.parse(f.getLines().mkString("\n"))
-    f.close()
-    exp
-  }
   private def evalConcrete(benchmark: Benchmark, t: Timeout.T): (Option[Value], Map[Position,Set[Value]]) = {
     val program = SchemeUndefiner.undefine(List(loadFile(benchmark)))
     var posResults = Map[Position,Set[Value]]().withDefaultValue(Set())
@@ -111,10 +102,6 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                   with SmallStepSchemeModFSemantics
                                   with ConstantPropagationDomain
                                   with NoSensitivity
-}
-
-trait SimpleBenchmarks extends SchemeModFSoundnessTests {
-  def benchmarks = Benchmarks.other
 }
 
 // concrete test suites to run ...

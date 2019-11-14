@@ -4,11 +4,16 @@ import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
+import scalaam.language.sexp._
 
 object Main {
 
   def main(args: Array[String]): Unit = {
-    testLex("test/mceval.scm")
+    val lexical = new SExpLexer
+    val text = "3.14"
+    val input = new scala.util.parsing.input.CharArrayReader(text.toCharArray)
+    val output = lexical.number(input)
+    println(output)
   }
 
   def testLex(file: String): Unit = {
