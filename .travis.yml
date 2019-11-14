@@ -11,7 +11,7 @@ jobs:
   include:
     - stage: test
       name: "Parser Tests"
-      script: sbt "scalaam/testOnly scalaam.test.parser.*""
+      script: sbt "scalaam/testOnly scalaam.test.parser.*"
     - stage: test
       name: "Lattice Tests"
       script: sbt "scalaam/testOnly scalaam.test.lattice.*"
