@@ -14,6 +14,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // the table of benchmark programs to execute
   def benchmarks: Set[Benchmark]
   // the analysis that is used to analyse the programs
+  def name: String
   def analysis(b: Benchmark): Analysis
   // the timeout for the analysis of a single benchmark program (default: 1min.)
   def timeout(b: Benchmark) = Timeout.start(Duration(1, MINUTES))
@@ -70,8 +71,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     }
   }
 
-  benchmarks.foreach { benchmark =>
-    property(s"Analysis of $benchmark is sound") {
+  def onBenchmark(benchmark: Benchmark) =
+    property(s"Analysis of $benchmark using $name is sound") {
       // run the program using a concrete interpreter
       val (cResult, cPosResults) = evalConcrete(benchmark,timeout(benchmark))
       // analyze the program using a ModF analysis
@@ -87,10 +88,10 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       // this can be done, regardless of whether the concrete evaluation terminated succesfully or not
       comparePositions(a, cPosResults)
     }
-  }
 }
 
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
+  def name = "big-step semantics"
   def analysis(b: Benchmark) = new ModAnalysis(loadFile(b))
                                   with BigStepSchemeModFSemantics
                                   with ConstantPropagationDomain
@@ -98,6 +99,7 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
 }
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
+  def name = "small-step semantics"
   def analysis(b: Benchmark) = new ModAnalysis(loadFile(b))
                                   with SmallStepSchemeModFSemantics
                                   with ConstantPropagationDomain

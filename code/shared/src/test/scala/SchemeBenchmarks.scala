@@ -14,6 +14,10 @@ trait SchemeBenchmarkTests extends PropSpec {
     f.close()
     exp
   }
+  // needs to be implemented to specify the testing behaviour per benchmark
+  protected def onBenchmark(b: Benchmark): Unit
+  // run the benchmarks
+  benchmarks.foreach(onBenchmark)
 }
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
