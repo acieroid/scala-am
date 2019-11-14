@@ -18,20 +18,25 @@ object GumTreeDiff {
   type MP = Map[T, T] // Mapping (parent1, node1) -> (parent2, node2)
 
   case class TreeNode(self: E)(parent: E) { // Parent is excluded from equals (== and !=).
-    val height: Int = self.height
+    val height:     Int = self.height
+    val opened: List[T] = open(this) // Cache direct descendants.
+    val      s: List[T] = opened ::: opened.flatMap(_.s) // Cache all descendants.
+    val   sSiz:     Int = s.size
   }
 
-  def topDown(T1: E, T2: E, minHeight: Int = 3): MP = {
+  def topDown(E1: E, E2: E, minHeight: Int = 3): MP = {
+    val T1 = TreeNode(E1)(null)
+    val T2 = TreeNode(E2)(null)
     var L1 = new mutable.PriorityQueue[T]()(Ordering.by(_.height))
     var L2 = new mutable.PriorityQueue[T]()(Ordering.by(_.height))
-    L1 += TreeNode(T1)(null)
-    L2 += TreeNode(T2)(null)
+    L1 += T1
+    L2 += T2
 
     var A: Set[(T, T)] = Set() // List of candidate mappings. ((parent1, node1), (parent2, node2))
     var M: MP = Map()
 
-    val subs1 = s(TreeNode(T1)(null))
-    val subs2 = s(TreeNode(T2)(null))
+    val subs1 = s(T1)
+    val subs2 = s(T2)
     breakable {
       while (true) {
         val n1 = L1.headOption.getOrElse(break())
@@ -79,15 +84,29 @@ object GumTreeDiff {
     M
   }
 
-  /*
-  def bottomUp(T1: E, T2: E, m: MP, maxSize: Int, minDice: Double): MP = {
+  def bottomUp(e1: E, e2: E, m: MP, maxSize: Int, minDice: Double): MP = {
+    val T1 = TreeNode(e1)(null)
+    val T2 = TreeNode(e2)(null)
     var M: MP = m
-    val Q = new mutable.PriorityQueue[(E, E)]()(Ordering.by(_._2.height * -1)) // Reverse the order.
-    Q ++= s(T1).filter(t => M.get(t).isEmpty && open(t._2).map((t._2, _)).flatMap(M.get(_)).nonEmpty)
+    val Q = new mutable.PriorityQueue[T]()(Ordering.by(_.height * -1)) // Reverse the order.
+    Q ++= s(T1).filter(t => M.get(t).isEmpty && open(t).flatMap(M.get(_)).nonEmpty)
     while (Q.nonEmpty) {
       val t1 = Q.dequeue()
+      candidate(t1, T2, M) match {
+        case Some(t2) if dice(t1, t2, M) > minDice =>
+          M = M + (t1 -> t2)
+          if (t1.sSiz.max(t2.sSiz) < maxSize)
+            opt(t1, t2).foreach{ case (ta, tb) =>
+              if (   !m.contains(ta)
+                  && !m.exists{case (_, t) => t == tb}
+                  && label(ta) == label(tb))
+                M = M + (ta -> tb)
+            }
+        case _ =>
+      }
     }
-  } */
+    M
+  }
 
   def open(n: T): List[T] = open(n.self).map(TreeNode(_)(n.self))
 
@@ -147,22 +166,13 @@ object GumTreeDiff {
     case  _                                                 => false
   }
 
-  // All subexpressions as (parent, subtree)
-  def s(n: T): List[T] = {
-    var   todo: Set[T] = Set(n)
-    var   done: Set[T] = Set( )
-    var result: Set[T] = Set( )
-    while (todo.nonEmpty) {
-      done = done ++ todo
-      val nw: Set[T] = todo.flatMap(open)
-      result = result ++ nw
-      todo = todo ++ (nw -- done)
-    }
-    result.toList
-  }
+  def s(n: T): List[T] = n.s
 
-  def dice(t1: T, t2: T, M: MP): Double = {
-    val s1 = s(t1)
-    2.0 * s1.count(M.contains).toDouble / (s1.size + s(t2).size).toDouble
-  }
+  def dice(t1: T, t2: T, M: MP): Double = 2.0 * s(t1).count(M.contains).toDouble / (t1.sSiz + t2.sSiz).toDouble
+
+  def candidate(t1: T, T2: T, M: MP): Option[T] = ???
+
+  def opt(t1: T, t2: T): List[(T, T)] = ???
+
+  def label(t: T): String = ???
 }
