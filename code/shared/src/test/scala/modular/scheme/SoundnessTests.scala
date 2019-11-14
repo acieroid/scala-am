@@ -1,5 +1,9 @@
+package scalaam.test.soundness
+
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
+
+import scalaam.test._
 
 import scalaam.core._
 import scalaam.util._
@@ -11,8 +15,6 @@ import scalaam.language.scheme.SchemeInterpreter._
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
   type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
-  // the table of benchmark programs to execute
-  def benchmarks: Set[Benchmark]
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: Benchmark): Analysis

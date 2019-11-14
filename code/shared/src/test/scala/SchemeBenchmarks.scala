@@ -1,3 +1,5 @@
+package scalaam.test
+
 import org.scalatest._
 
 import scalaam.language.scheme._
@@ -8,12 +10,14 @@ trait SchemeBenchmarkTests extends PropSpec {
   // the benchmarks involved in the tests
   def benchmarks: Set[Benchmark] = Set.empty
   // helper to load and parse a benchmark file
-  protected def loadFile(file: String): SchemeExp = {
+  protected def loadFileText(file: String): String = {
     val f   = scala.io.Source.fromFile(file)
-    val exp = SchemeParser.parse(f.getLines().mkString("\n"))
+    val txt = f.getLines().mkString("\n")
     f.close()
-    exp
+    txt
   }
+  protected def loadFile(file: String): SchemeExp =
+    SchemeParser.parse(loadFileText(file))
   // needs to be implemented to specify the testing behaviour per benchmark
   protected def onBenchmark(b: Benchmark): Unit
   // run the benchmarks
@@ -22,6 +26,10 @@ trait SchemeBenchmarkTests extends PropSpec {
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks = super.benchmarks ++ SchemeBenchmarks.other
+}
+
+trait AllBenchmarks extends SchemeBenchmarkTests {
+  override def benchmarks = SchemeBenchmarks.allBenchmarks
 }
 
 object SchemeBenchmarks {
