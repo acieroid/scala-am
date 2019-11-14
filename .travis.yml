@@ -11,10 +11,10 @@ jobs:
   include:
     - stage: test
       name: "Parser Tests"
-      script: sbt scalaam/testOnly scalaam.test.parser.*
+      script: sbt "scalaam/testOnly scalaam.test.parser.*""
     - stage: test
       name: "Lattice Tests"
-      script: sbt scalaam/testOnly scalaam.test.lattice.*
+      script: sbt "scalaam/testOnly scalaam.test.lattice.*"
     - stage: test
       name: "ModF Soundness Tests"
-      script: travis_wait 30 sbt scalaam/testOnly scalaam.test.soundness.*
+      script: travis_wait 30 sbt "scalaam/testOnly scalaam.test.soundness.*"
