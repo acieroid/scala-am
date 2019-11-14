@@ -68,13 +68,13 @@ case class SExpPair(car: SExp, cdr: SExp, pos: Position) extends SExp {
 }
 
 object SExpList {
-  /* Alternative constructor to automatically construct a bunch of pair from a
-   * list of expressions */
-  def apply(content: List[SExp], pos: Position) = fromList(content, pos)
+  /** Alternative constructor to automatically construct a bunch of pair from a
+    * list of expressions */
+  def apply(content: List[SExp], end: SExp) = fromList(content, end)
 
-  def fromList(content: List[SExp], pos: Position): SExp = content match {
-    case Nil          => SExpValue(ValueNil, pos)
-    case head :: tail => SExpPair(head, SExpList(tail, pos), head.pos)
+  def fromList(content: List[SExp], end: SExp): SExp = content match {
+    case Nil          => end
+    case head :: tail => SExpPair(head, SExpList(tail, end), head.pos)
   }
 }
 
@@ -98,4 +98,22 @@ case class SExpValue(value: Value, pos: Position) extends SExp {
   */
 case class SExpQuoted(content: SExp, pos: Position) extends SExp {
   override def toString = s"'$content"
+}
+/**
+  * A quasiquoted element, such as `foo
+  */
+case class SExpQuasiQuoted(content: SExp, pos: Position) extends SExp {
+  override def toString = s"`$content"
+}
+/**
+  * An unquoted element, such as ,foo
+  */
+case class SExpUnquoted(content: SExp, pos: Position) extends SExp {
+  override def toString = s",$content"
+}
+/**
+  * A unquoted-splicing element, such as ,@foo
+  */
+case class SExpUnquotedSplicing(content: SExp, pos: Position) extends SExp {
+  override def toString = s",@$content"
 }

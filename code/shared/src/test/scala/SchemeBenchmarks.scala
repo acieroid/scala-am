@@ -263,16 +263,16 @@ object SchemeBenchmarks {
     "test/mut-rec.scm",
     "test/nested-defines.scm",
     "test/primtest.scm",
-    //"test/quasiquoting-simple.scm", // PARSER ERROR TODO
-    // "test/quasiquoting.scm", // PARSER LIMITATION TODO // VARARG
+    "test/quasiquoting-simple.scm", // PARSER ERROR TODO
+    "test/quasiquoting.scm", // PARSER LIMITATION TODO // VARARG
     "test/regex.scm",
     "test/rotate.scm",
     "test/rsa.scm",
     "test/sat.scm",
-    //"test/scm2c.scm", // PARSER ERROR TODO
-    //"test/scm2java.scm", // char->integer NOT SUPPORTED IN SCALA-AM
+    "test/scm2c.scm", // PARSER ERROR TODO
+    "test/scm2java.scm", // char->integer NOT SUPPORTED IN SCALA-AM
     "test/sq.scm",
-    //"test/Streams.scm", // VARARG
+    "test/Streams.scm", // VARARG
     "test/sym.scm",
     "test/widen.scm",
     "test/work.scm",

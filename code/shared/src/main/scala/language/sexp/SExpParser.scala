@@ -120,7 +120,7 @@ class SExpLexer extends Lexical with SExpTokens {
       stringContentNoEscape
   }
 
-  /* R5RS: Tokens which require implicit termination (identifiers, numbers, characters, and dot) may be terminated by any <delimiter>, but not necessarily by anything else.  */
+  // R5RS: Tokens which require implicit termination (identifiers, numbers, characters, and dot) may be terminated by any <delimiter>, but not necessarily by anything else.  */
   def delimiter: Parser[Unit] =
     (whitespaceChar | eol | eoi | chr('(') | chr(')') | chr('"') | chr(';')) ^^ (_ => ())
 
@@ -150,7 +150,7 @@ class SExpLexer extends Lexical with SExpTokens {
     def specialSubsequent: Parser[Char]    = chr('+') | chr('-') | chr('.') | chr('@')
     def subsequent: Parser[Char]           = initial | digit | specialSubsequent
     def peculiarIdentifier: Parser[String] =
-      /* R5RS specifies + | - | ..., not clear what ... is supposed to be */
+      // R5RS specifies + | - | ..., not clear what ... is supposed to be
       ((chr('+') | chr('-')) ^^ (_.toString)) |
         ((chr('1') ~ chr('+') | chr('1') ~ chr('-')) ^^ { case c1 ~ c2 => s"$c1$c2" })
     (initial ~ rep(subsequent) ^^ { case i ~ s => s"$i${s.mkString}" }
@@ -165,7 +165,7 @@ class SExpLexer extends Lexical with SExpTokens {
   def unquoteSplicing: Parser[SExpToken] = chr(',') ~ chr('@') ^^^ TUnquoteSplicing()
   def dot: Parser[SExpToken]             = chr('.') <~ guard(delimiter) ^^^ TDot()
   def real: Parser[SExpToken] =
-    sign ~ rep(digit) ~ opt('.' ~ rep(digit)) ~ opt('e' ~ integer) <~ guard(delimiter) ^? {
+    sign ~ rep(digit) ~ opt('.' ~ rep1(digit)) ~ opt('e' ~ integer) <~ guard(delimiter) ^? {
       case s ~ pre ~ post ~ exp if (exp.isDefined || post.isDefined) =>
         val signstr = s.map(_.toString).getOrElse("")
         val poststr = post.map({ case _ ~ digits => s".${digits.mkString}" }).getOrElse("")
@@ -184,7 +184,7 @@ class SExpLexer extends Lexical with SExpTokens {
       boolean | number | identifier |
         character | string |
         leftParen | rightParen | hashParen | quote | backquote |
-        unquote | unquoteSplicing | dot
+        unquoteSplicing | unquote | dot
     }) <~ nonRelevant
 }
 
@@ -225,23 +225,52 @@ object SExpParser extends TokenParsers {
     }
   }
 
-  def leftParen  = elem("left parenthesis", _.isInstanceOf[TLeftParen])
-  def rightParen = elem("right parenthesis", _.isInstanceOf[TRightParen])
-  def quote      = elem("quote", _.isInstanceOf[TQuote])
+  def leftParen   = elem("left parenthesis", _.isInstanceOf[TLeftParen])
+  def rightParen  = elem("right parenthesis", _.isInstanceOf[TRightParen])
+  def dot         = elem("dot", _.isInstanceOf[TDot])
+  def quote       = elem("quote", _.isInstanceOf[TQuote])
+  def quasiquote  = elem("quasiquote", _.isInstanceOf[TBackquote])
+  def unquote     = elem("unquote", _.isInstanceOf[TUnquote])
+  def unquoteSpl  = elem("unquote-splicing", _.isInstanceOf[TUnquoteSplicing])
+
   def list: Parser[SExp] = Parser { in =>
-    (leftParen ~> rep1(exp) <~ rightParen)(in) match {
-      case Success(es, in1) => Success(SExpList(es, Position(in.pos)), in1)
-      case ns: NoSuccess    => ns
+    (leftParen ~> rep1(exp) ~ opt(dot ~> exp) <~ rightParen)(in) match {
+      case Success(es ~ None, in1) =>
+        val nil = SExpValue(ValueNil, Position(in.pos))
+        Success(SExpList(es, nil), in1)
+      case Success(es ~ Some(tail), in1) =>
+        Success(SExpList(es, tail), in1)
+      case ns: NoSuccess => ns
     }
   }
+
   def quoted: Parser[SExp] = Parser { in =>
     (quote ~> exp)(in) match {
       case Success(e, in1) => Success(SExpQuoted(e, Position(in.pos)), in1)
       case ns: NoSuccess   => ns
     }
   }
+  def quasiquoted: Parser[SExp] = Parser { in =>
+    (quasiquote ~> exp)(in) match {
+      case Success(e, in1) => Success(SExpQuasiQuoted(e, Position(in.pos)), in1)
+      case ns: NoSuccess   => ns
+    }
+  }
+  def unquoted: Parser[SExp] = Parser { in =>
+    (unquote ~> exp)(in) match {
+      case Success(e, in1) => Success(SExpUnquoted(e, Position(in.pos)), in1)
+      case ns: NoSuccess   => ns
+    }
+  }
+  def unquotedSplicing: Parser[SExp] = Parser { in =>
+    (unquoteSpl ~> exp)(in) match {
+      case Success(e, in1) => Success(SExpUnquotedSplicing(e, Position(in.pos)), in1)
+      case ns: NoSuccess   => ns
+    }
+  }
 
-  def exp: Parser[SExp]           = value | identifier | list | quoted
+
+  def exp: Parser[SExp]           = value | identifier | list | quoted | quasiquoted | unquoted | unquotedSplicing
   def expList: Parser[List[SExp]] = rep1(exp)
 
   def parse(s: String): List[SExp] = expList(new lexical.Scanner(s)) match {

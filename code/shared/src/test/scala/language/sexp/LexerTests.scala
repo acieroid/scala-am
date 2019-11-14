@@ -44,12 +44,12 @@ class SExpLexerTests extends PropSpec with TableDrivenPropertyChecks with Matche
     forAll(strings) { s => check(lexical.string)(s); check(lexical.token)(s) }
   }
 
-  val identifiers = Table("identifier", "foo", "+", "1+", "1-")
+  val identifiers = Table("identifier", "foo", "+", "1+", "1-", "<<test>>")
   property("SExpLexer should lex identifiers without error") {
     forAll(identifiers) { s => check(lexical.identifier)(s); check(lexical.token)(s) }
   }
 
-  val specialTokens = Table("special token", "'", "(", ")")
+  val specialTokens = Table("special token", "(", ")", ",", "`", "'", ",@", "#(")
   property("SExpLexer should lex special tokens without error") {
     forAll(specialTokens) { check(lexical.token) }
   }
