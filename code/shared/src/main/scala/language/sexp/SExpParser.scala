@@ -225,50 +225,35 @@ object SExpParser extends TokenParsers {
     }
   }
 
-  def leftParen   = elem("left parenthesis", _.isInstanceOf[TLeftParen])
-  def rightParen  = elem("right parenthesis", _.isInstanceOf[TRightParen])
-  def dot         = elem("dot", _.isInstanceOf[TDot])
-  def quote       = elem("quote", _.isInstanceOf[TQuote])
-  def quasiquote  = elem("quasiquote", _.isInstanceOf[TBackquote])
-  def unquote     = elem("unquote", _.isInstanceOf[TUnquote])
-  def unquoteSpl  = elem("unquote-splicing", _.isInstanceOf[TUnquoteSplicing])
+  def leftParen       = elem("left parenthesis",  _.isInstanceOf[TLeftParen])
+  def rightParen      = elem("right parenthesis", _.isInstanceOf[TRightParen])
+  def dot             = elem("dot",               _.isInstanceOf[TDot])
+  def quote           = elem("quote",             _.isInstanceOf[TQuote])
+  def quasiquote      = elem("quasiquote",        _.isInstanceOf[TBackquote])
+  def unquote         = elem("unquote",           _.isInstanceOf[TUnquote])
+  def unquoteSplicing = elem("unquote-splicing",  _.isInstanceOf[TUnquoteSplicing])
 
   def list: Parser[SExp] = Parser { in =>
     (leftParen ~> rep1(exp) ~ opt(dot ~> exp) <~ rightParen)(in) match {
       case Success(es ~ None, in1) =>
-        val nil = SExpValue(ValueNil, Position(in.pos))
-        Success(SExpList(es, nil), in1)
+        Success(SExpList(es, Position(in.pos)), in1)
       case Success(es ~ Some(tail), in1) =>
         Success(SExpList(es, tail), in1)
       case ns: NoSuccess => ns
     }
   }
 
-  def quoted: Parser[SExp] = Parser { in =>
-    (quote ~> exp)(in) match {
-      case Success(e, in1) => Success(SExpQuoted(e, Position(in.pos)), in1)
-      case ns: NoSuccess   => ns
-    }
-  }
-  def quasiquoted: Parser[SExp] = Parser { in =>
-    (quasiquote ~> exp)(in) match {
-      case Success(e, in1) => Success(SExpQuasiQuoted(e, Position(in.pos)), in1)
-      case ns: NoSuccess   => ns
-    }
-  }
-  def unquoted: Parser[SExp] = Parser { in =>
-    (unquote ~> exp)(in) match {
-      case Success(e, in1) => Success(SExpUnquoted(e, Position(in.pos)), in1)
-      case ns: NoSuccess   => ns
-    }
-  }
-  def unquotedSplicing: Parser[SExp] = Parser { in =>
-    (unquoteSpl ~> exp)(in) match {
-      case Success(e, in1) => Success(SExpUnquotedSplicing(e, Position(in.pos)), in1)
+  def withQuote(p: Parser[_], make: (SExp, Position) => SExp) = Parser { in =>
+    (p ~> exp)(in) match {
+      case Success(e, in1) => Success(make(e, Position(in.pos)), in1)
       case ns: NoSuccess   => ns
     }
   }
 
+  def quoted            : Parser[SExp] = withQuote(quote,           SExpQuoted(_,_))
+  def quasiquoted       : Parser[SExp] = withQuote(quasiquote,      SExpQuasiquoted(_,_))
+  def unquoted          : Parser[SExp] = withQuote(unquote,         SExpUnquoted(_,_))
+  def unquotedSplicing  : Parser[SExp] = withQuote(unquoteSplicing, SExpUnquotedSplicing(_,_))
 
   def exp: Parser[SExp]           = value | identifier | list | quoted | quasiquoted | unquoted | unquotedSplicing
   def expList: Parser[List[SExp]] = rep1(exp)

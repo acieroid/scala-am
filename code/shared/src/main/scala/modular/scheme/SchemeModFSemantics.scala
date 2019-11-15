@@ -143,8 +143,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
         val addr = allocAddr(PtrAddr(quoted))
         writeAddr(addr,pair)
         lattice.pointer(addr)
-      case sexp.SExpQuoted(q,pos)   =>
-        evalQuoted(sexp.SExpPair(sexp.SExpId(Identifier("quote",pos)),sexp.SExpPair(q,sexp.SExpValue(sexp.ValueNil,pos),pos),pos))
     }
     // other helpers
     protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {

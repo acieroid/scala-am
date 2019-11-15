@@ -19,8 +19,9 @@ object SchemeCompiler {
   def compile(exp: SExp): SchemeExp = _compile(exp).result
 
   def _compile(exp: SExp): TailRec[SchemeExp] = exp match {
+    // quote
     case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(ValueNil, _), _), _) =>
-      _compile(SExpQuoted(quoted, exp.pos))
+      done(SchemeQuoted(quoted, exp.pos))
     case SExpPair(SExpId(Identifier("quote", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme quote: $exp", exp.pos)
     case SExpPair(
@@ -164,7 +165,6 @@ object SchemeCompiler {
         done(SchemeVar(v))
       }
     case SExpValue(value, _)   => done(SchemeValue(value, exp.pos))
-    case SExpQuoted(quoted, _) => done(SchemeQuoted(quoted, exp.pos))
   }
 
   def compileArgs(args: SExp): TailRec[(List[Identifier],Option[Identifier])] = args match {

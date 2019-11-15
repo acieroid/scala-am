@@ -168,9 +168,6 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       case ValueBoolean(b)   => Value.Bool(b)
       case ValueNil          => Value.Nil
     }
-    case SExpQuoted(q, pos) =>
-      evalQuoted(
-        SExpPair(SExpId(Identifier("quote", pos)), SExpPair(q, SExpValue(ValueNil, pos), pos), pos))
   }
 
   def primitive(name: String): Option[Value] = Primitives.primitiveMap.get(name).map(p => Value.Primitive(p))
