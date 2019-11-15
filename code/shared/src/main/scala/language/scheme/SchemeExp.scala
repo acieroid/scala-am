@@ -381,6 +381,11 @@ case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
   override val height: Int = 1
 }
 
+case class SchemeQuasiquoted(qq: ESExp, pos: Position) extends SchemeExp {
+  override def toString: String = s"`$qq"
+  def fv: Set[String] = ???       //TODO: iterate over sub-expressions in qq!
+}
+
 /**
   * A literal value (number, symbol, string, ...)
   */

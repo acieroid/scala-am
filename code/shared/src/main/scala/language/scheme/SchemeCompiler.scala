@@ -19,11 +19,16 @@ object SchemeCompiler {
   def compile(exp: SExp): SchemeExp = _compile(exp).result
 
   def _compile(exp: SExp): TailRec[SchemeExp] = exp match {
-    // quote
     case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(ValueNil, _), _), _) =>
       done(SchemeQuoted(quoted, exp.pos))
     case SExpPair(SExpId(Identifier("quote", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme quote: $exp", exp.pos)
+    case SExpPair(SExpId(Identifier("quasiquote", _)), SExpPair(quasiquoted, SExpValue(ValueNil, _), _), _) =>
+      for {
+        qq <- tailcall(compileQuasiquoted(quasiquoted,1))
+      } yield SchemeQuasiquoted(qq, exp.pos)
+    case SExpPair(SExpId(Identifier("quasiquote", _)), _, _) =>
+      throw new SchemeCompilerException(s"Invalid Scheme quasiquote: $exp", exp.pos)
     case SExpPair(
         SExpId(Identifier("lambda", _)),
         SExpPair(args, SExpPair(first, rest, _), _),
@@ -305,17 +310,79 @@ object SchemeCompiler {
     case _ =>
       throw new SchemeCompilerException(s"Invalid Scheme case objects: $objects", objects.pos)
   }
-  def makeLambda(args: (List[Identifier],Option[Identifier]),
+  private def makeLambda(args: (List[Identifier],Option[Identifier]),
                  body: List[SchemeExp],
                  pos: Position) = args._2 match {
     case Some(vararg) => SchemeVarArgLambda(args._1,vararg,body,pos)
     case None         => SchemeLambda(args._1,body,pos)
   }
-  def makeDefineFunction(id: Identifier,
+  private def makeDefineFunction(id: Identifier,
                          args: (List[Identifier],Option[Identifier]),
                          body: List[SchemeExp],
                          pos: Position) = args._2 match {
     case Some(vararg) => SchemeDefineVarArgFunction(id,args._1,vararg,body,pos)
     case None         => SchemeDefineFunction(id,args._1,body,pos)
   }
+  private def compileQuasiquoted(qq: SExp, depth: Int): TailRec[ESExp] = qq match {
+    case SExpPair(SExpId(id@Identifier("quasiquote",_)),pair@SExpPair(quasiquoted, nil@SExpValue(ValueNil, _), _),_) =>
+      for {
+        innerQq <- tailcall(compileQuasiquoted(quasiquoted, depth + 1))
+      } yield ESExpPair(ESExpId(id),ESExpPair(innerQq, ESExpValue(ValueNil, nil.pos), pair.pos), qq.pos)
+    case SExpPair(SExpId(Identifier("unquote",_)),SExpPair(unquoted, SExpValue(ValueNil, _), _),_) if depth == 1 =>
+      for {
+        compiled <- tailcall(_compile(unquoted))
+      } yield ESExpUnquote(compiled, qq.pos)
+    case SExpPair(SExpId(id@Identifier("unquote",_)),pair@SExpPair(unquoted, nil@SExpValue(ValueNil, _), _),_) =>
+      for {
+        innerUq <- tailcall(compileQuasiquoted(unquoted, depth - 1))
+      } yield ESExpPair(ESExpId(id),ESExpPair(innerUq, ESExpValue(ValueNil,nil.pos), pair.pos), qq.pos)
+    case SExpPair(SExpId(Identifier("unquote-splicing",_)),SExpPair(unquoted, SExpValue(ValueNil, _), _),_) if depth == 1 =>
+      for {
+        compiled <- tailcall(_compile(unquoted))
+      } yield ESExpUnquoteSplicing(compiled, qq.pos)
+    case SExpPair(SExpId(id@Identifier("unquote-splicing",_)),pair@SExpPair(unquoted, nil@SExpValue(ValueNil, _), _),_) =>
+      for {
+        innerUq <- tailcall(compileQuasiquoted(unquoted, depth - 1))
+      } yield ESExpPair(ESExpId(id),ESExpPair(innerUq, ESExpValue(ValueNil,nil.pos), pair.pos), qq.pos)
+    case SExpPair(car,cdr,pos) =>
+      for {
+        carQq <- tailcall(compileQuasiquoted(car,depth))
+        cdrQq <- tailcall(compileQuasiquoted(cdr,depth))
+      } yield ESExpPair(carQq,cdrQq,pos)
+    case SExpId(id) =>
+      done(ESExpId(id))
+    case SExpValue(value,pos) =>
+      done(ESExpValue(value,pos))
+  }
+}
+
+// Escapable S-expressions
+
+trait ESExp extends SExp
+case class ESExpPair(car: ESExp, cdr: ESExp, pos: Position) extends ESExp {
+  override def toString: String = {
+    val content = toStringRest
+    s"($content)"
+  }
+  def toStringRest: String =
+    cdr match {
+      case pair: ESExpPair =>
+        val rest = pair.toStringRest
+        s"$car $rest"
+      case ESExpValue(ValueNil, _) => s"$car"
+      case _                       => s"$car . $cdr"
+    }
+}
+case class ESExpId(id: Identifier) extends ESExp {
+  val pos = id.pos
+  override def toString: String = id.toString
+}
+case class ESExpValue(value: Value, pos: Position) extends ESExp {
+  override def toString: String = value.toString
+}
+case class ESExpUnquote(exp: SchemeExp, pos: Position) extends ESExp {
+  override def toString: String = s"(unquote $exp)"
+}
+case class ESExpUnquoteSplicing(exp: SchemeExp, pos: Position) extends ESExp {
+  override def toString: String = s"(unquote-splicing $exp)"
 }
