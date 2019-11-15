@@ -1,19 +1,25 @@
 package scalaam.cli
 
+import incremental.GumTreeDiff
 import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
-import scalaam.language.sexp._
 
 object Main {
 
   def main(args: Array[String]): Unit = {
-    val lexical = new SExpLexer
-    val text = "3.14"
-    val input = new scala.util.parsing.input.CharArrayReader(text.toCharArray)
-    val output = lexical.number(input)
-    println(output)
+    testMap()
+  }
+
+  def testMap(): Unit = {
+    val prg1 = SchemeParser.parse("(define (f x) (if (= x 0) 'foo))")
+    val prg2 = SchemeParser.parse("(define (f x) (if (= x 0) 'bar (if (= x -1) 'foo)))")
+    println(prg1)
+    println(prg2)
+    println()
+    val map = GumTreeDiff.map(prg1, prg2)
+    map.foreach(println)
   }
 
   def testLex(file: String): Unit = {

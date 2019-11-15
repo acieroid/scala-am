@@ -7,20 +7,20 @@ import scalaam.core.{Position, Identifier, Expression}
   */
 sealed abstract class Value
 case class ValueString(value: String) extends Value {
-  override def toString = s""""$value""""
+  override def toString: String = s""""$value""""
 }
 case class ValueSymbol(sym: String) extends Value {
-  override def toString = sym
+  override def toString: String = sym
 }
 case class ValueInteger(value: Int) extends Value {
-  override def toString = value.toString
+  override def toString: String = value.toString
 }
 case class ValueReal(value: Double) extends Value {
   override def toString =
     f"$value%e" // Might not preserve full precision, but will be in a Scheme-compatible format
 }
 case class ValueBoolean(value: Boolean) extends Value {
-  override def toString =
+  override def toString: String =
     if (value) {
       "#t"
     } else {
@@ -42,7 +42,7 @@ object ValueNil extends Value {
   */
 trait SExp extends Expression {
   val pos: Position
-  def fv = Set()
+  def fv: Set[String] = Set()
 }
 
 /**
@@ -53,7 +53,7 @@ trait SExp extends Expression {
   * . ()))
   */
 case class SExpPair(car: SExp, cdr: SExp, pos: Position) extends SExp {
-  override def toString = {
+  override def toString: String = {
     val content = toStringRest
     s"($content)"
   }
@@ -84,15 +84,15 @@ object SExpList {
   * An identifier, such as foo, bar, etc.
   */
 case class SExpId(id: Identifier) extends SExp {
-  val pos               = id.pos
-  override def toString = id.toString
+  val pos: Position = id.pos
+  override def toString: String = id.toString
 }
 
 /**
   * A literal value, such as 1, "foo", 'foo, etc.
   */
 case class SExpValue(value: Value, pos: Position) extends SExp {
-  override def toString = value.toString
+  override def toString: String = value.toString
 }
 
 /**
