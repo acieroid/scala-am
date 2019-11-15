@@ -22,16 +22,30 @@ object GumTreeDiff {
     val      s: List[T] = opened ::: opened.flatMap(_.s) // Cache all descendants.
     val   sSiz:     Int = s.size
 
-    override def toString: String = s"T(${self.toString}@${self.pos.toString})"
+    override def toString: String = s"$self@${self.pos}"
   }
 
+  /**
+   * This procedure implements the GumTree differencing algorithm, specialised for the Scheme AST of Scala-AM.
+   * This procedure outputs a mapping between the old and new AST. More information about the algorithm can be found here: <br>
+   * <pre>
+   *    Jean-Rémy Falleri, Floréal Morandat, Xavier Blanc, Matias Martinez, Martin Monperrus:
+   *    Fine-grained and accurate source code differencing. ASE 2014: 313-324.
+   * </pre>
+   * @param E1          The source AST, the original AST before changes.
+   * @param E2          The destination ADT, the AST after changes.
+   * @param minHeight   The minimum height subtrees must have to be matched, default: 2.
+   * @param maxSize     The maximum size subtrees may have to be used with an algorithm that finds the smallest edit scripts without move actions. RTED is currently used.
+   * @param minDice     The minimum common descendant ratio for subtrees to be matched.
+   * @return A mapping between nodes from the old AST to nodes from the updated AST. Nodes are represented using the class T defined within this object.
+   */
   def map(E1: E, E2: E, minHeight: Int = 2, maxSize: Int = 100, minDice: Double = 0.5): MP = {
     val T1 = T(E1)(null)
     val T2 = T(E2)(null)
     bottomUp(T1, T2, topDown(T1, T2, minHeight), maxSize, minDice)
   }
 
-  def topDown(T1: T, T2: T, minHeight: Int): MP = {
+  private def topDown(T1: T, T2: T, minHeight: Int): MP = {
     // Height-indexed priority lists
     var L1 = new mutable.PriorityQueue[T]()(Ordering.by(_.height))
     var L2 = new mutable.PriorityQueue[T]()(Ordering.by(_.height))
@@ -94,7 +108,7 @@ object GumTreeDiff {
     M
   }
 
-  def bottomUp(T1: T, T2: T, m: MP, maxSize: Int, minDice: Double): MP = {
+  private def bottomUp(T1: T, T2: T, m: MP, maxSize: Int, minDice: Double): MP = {
     var M: MP = m
     val Q = new mutable.PriorityQueue[T]()(Ordering.by(_.height * -1)) // Reverse the order.
     Q ++= s(T1).filter(t => M.get(t).isEmpty && t.opened.flatMap(M.get(_)).nonEmpty)
@@ -116,9 +130,9 @@ object GumTreeDiff {
     M
   }
 
-  def open(t: T): List[T] = open(t.self).map(T(_)(t.self))
+  private def open(t: T): List[T] = open(t.self).map(T(_)(t.self))
 
-  def open(e: E): List[E] = e match {
+  private def open(e: E): List[E] = e match {
     case                             _: Identifier => List()
     case              SchemeLambda(args, body,  _) => args ::: body
     case                SchemeFuncall(f, args,  _) => f :: args
@@ -140,55 +154,55 @@ object GumTreeDiff {
     case                                        _  => throw new Exception("Unknown expression type.")
   }
 
-  def isoRec(e1: SchemeExp, e2: SchemeExp): Boolean = {
-    val o1 = open(e1)
-    val o2 = open(e2)
-    if (o1.length != o2.length) return false
-    o1.zip(o2).forall(t => isomorphic(t._1, t._2))
+  private def isoRec(e1: T, e2: T): Boolean = {
+    val o1 = e1.opened // Use the cached opened list.
+    val o2 = e2.opened
+    if (o1.length != o2.length)
+      false
+    else
+      o1.zip(o2).forall(t => isomorphic(t._1, t._2))
   }
-
-  def isomorphic(t1: T, t2: T): Boolean = isomorphic(t1.self, t2.self)
 
   // TODO: use another isoMorphic comparison method (paper: O(1) ?)
   // TODO: can this function be derived from s or can caching be used to increase efficiency?
-  def isomorphic(e1: E, e2: E): Boolean = (e1, e2) match {
-    case (x:         SchemeLambda, y:         SchemeLambda) => isoRec(x, y)
-    case (x:        SchemeFuncall, y:        SchemeFuncall) => isoRec(x, y)
-    case (x:             SchemeIf, y:             SchemeIf) => isoRec(x, y)
-    case (x:            SchemeLet, y:            SchemeLet) => isoRec(x, y)
-    case (x:        SchemeLetStar, y:        SchemeLetStar) => isoRec(x, y)
-    case (x:         SchemeLetrec, y:         SchemeLetrec) => isoRec(x, y)
-    case (x:       SchemeNamedLet, y:       SchemeNamedLet) => isoRec(x, y)
-    case (x:            SchemeSet, y:            SchemeSet) => isoRec(x, y)
-    case (x:         SchemeSetLex, y:         SchemeSetLex) => isoRec(x, y)
-    case (x:          SchemeBegin, y:          SchemeBegin) => isoRec(x, y)
-    case (x:            SchemeAnd, y:            SchemeAnd) => isoRec(x, y)
-    case (x:             SchemeOr, y:             SchemeOr) => isoRec(x, y)
-    case (x: SchemeDefineVariable, y: SchemeDefineVariable) => isoRec(x, y)
-    case (x: SchemeDefineFunction, y: SchemeDefineFunction) => isoRec(x, y)
-    case (x:            SchemeVar, y:            SchemeVar) => isoRec(x, y)
-    case (x:         SchemeVarLex, y:         SchemeVarLex) => isoRec(x, y)
-    case (x:         SchemeQuoted, y:         SchemeQuoted) => isoRec(x, y)
+  private def isomorphic(t1: T, t2: T): Boolean = (t1.self, t2.self) match {
+    case (_:         SchemeLambda, _:         SchemeLambda) => isoRec(t1, t2)
+    case (_:        SchemeFuncall, _:        SchemeFuncall) => isoRec(t1, t2)
+    case (_:             SchemeIf, _:             SchemeIf) => isoRec(t1, t2)
+    case (_:            SchemeLet, _:            SchemeLet) => isoRec(t1, t2)
+    case (_:        SchemeLetStar, _:        SchemeLetStar) => isoRec(t1, t2)
+    case (_:         SchemeLetrec, _:         SchemeLetrec) => isoRec(t1, t2)
+    case (_:       SchemeNamedLet, _:       SchemeNamedLet) => isoRec(t1, t2)
+    case (_:            SchemeSet, _:            SchemeSet) => isoRec(t1, t2)
+    case (_:         SchemeSetLex, _:         SchemeSetLex) => isoRec(t1, t2)
+    case (_:          SchemeBegin, _:          SchemeBegin) => isoRec(t1, t2)
+    case (_:            SchemeAnd, _:            SchemeAnd) => isoRec(t1, t2)
+    case (_:             SchemeOr, _:             SchemeOr) => isoRec(t1, t2)
+    case (_: SchemeDefineVariable, _: SchemeDefineVariable) => isoRec(t1, t2)
+    case (_: SchemeDefineFunction, _: SchemeDefineFunction) => isoRec(t1, t2)
+    case (_:            SchemeVar, _:            SchemeVar) => isoRec(t1, t2)
+    case (_:         SchemeVarLex, _:         SchemeVarLex) => isoRec(t1, t2)
+    case (_:         SchemeQuoted, _:         SchemeQuoted) => isoRec(t1, t2)
     case (x:          SchemeValue, y:          SchemeValue) => true // x.value == y.value
     case (x:           Identifier, y:           Identifier) => true // x.name  == y.name
     case  _                                                 => false
   }
 
-  def s(t: T): List[T] = t.s
+  private def s(t: T): List[T] = t.s
 
-  def dice(t1: T, t2: T, M: MP): Double = 2.0 * s(t1).count(M.contains).toDouble / (t1.sSiz + t2.sSiz).toDouble
+  private def dice(t1: T, t2: T, M: MP): Double = 2.0 * s(t1).count(M.contains).toDouble / (t1.sSiz + t2.sSiz).toDouble
 
-  def candidate(t1: T, T2: T, M: MP): Option[T] = {
+  private def candidate(t1: T, T2: T, M: MP): Option[T] = {
     s(T2).filter{t => label(t) == label(t1) && !M.contains(t1) && haveMatchedDescendants(t1, t, M)} match {
       case Nil => None
       case lst => Some(lst.maxBy(dice(t1, _, M)))
     }
   }
 
-  def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = s(t1).exists(t => s(t2).contains(M(t)))
+  private def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = s(t1).exists(t => s(t2).contains(M(t)))
 
   // TODO - the current implementation is a dummy implementation
-  def opt(t1: T, t2: T): List[(T, T)] = for { s1 <- s(t1); s2 <- s(t2)} yield (s1, s2)
+  private def opt(t1: T, t2: T): List[(T, T)] = for { s1 <- s(t1); s2 <- s(t2)} yield (s1, s2)
 
-  def label(t: T): String = t.toString // TODO is this correct?
+  private def label(t: T): String = t.toString // TODO is this correct?
 }
