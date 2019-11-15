@@ -381,9 +381,14 @@ case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
   override val height: Int = 1
 }
 
-case class SchemeQuasiquoted(qq: ESExp, pos: Position) extends SchemeExp {
-  override def toString: String = s"`$qq"
-  def fv: Set[String] = ???       //TODO: iterate over sub-expressions in qq!
+case class SchemePair(car: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {
+  override def toString: String = s"`(,$car . ,$cdr)"
+  def fv: Set[String] = car.fv ++ cdr.fv
+}
+
+case class SchemeSplice(splice: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {
+  override def toString: String = s"`(,@$splice . ,$cdr)"
+  def fv: Set[String] = splice.fv ++ cdr.fv
 }
 
 /**

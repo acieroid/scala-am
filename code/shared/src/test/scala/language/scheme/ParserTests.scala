@@ -14,7 +14,7 @@ trait SchemeParserTests extends SchemeBenchmarkTests {
       // Check that printing and parsing the result again gives the same result
       val printed = parsed.toString
       val reparsed = SchemeParser.parse(printed)
-      assert(parsed.toString== reparsed.toString,
+      assert(parsed.toString == reparsed.toString,
         "Printing and parsing again gives a result different from the original parse")
     }
 }

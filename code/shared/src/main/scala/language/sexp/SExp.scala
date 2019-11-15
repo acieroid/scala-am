@@ -10,7 +10,7 @@ case class ValueString(value: String) extends Value {
   override def toString: String = s""""$value""""
 }
 case class ValueSymbol(sym: String) extends Value {
-  override def toString: String = sym
+  override def toString: String = s"'$sym"
 }
 case class ValueInteger(value: Int) extends Value {
   override def toString: String = value.toString
