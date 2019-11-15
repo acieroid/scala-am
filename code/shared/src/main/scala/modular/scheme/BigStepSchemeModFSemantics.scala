@@ -30,7 +30,8 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       case SchemeFuncall(fun, args, _)              => evalCall(fun, args)
       case SchemeAnd(exps, _)                       => evalAnd(exps)
       case SchemeOr(exps, _)                        => evalOr(exps)
-      case SchemeQuoted(quo, _)                     => evalQuoted(quo)
+      case pair: SchemePair                         => evalPair(pair)
+      case SchemeSplice(splice, cdr, _)             => evalSplice(splice,cdr)
       case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
     }
     private def evalDefineVariable(id: Identifier, exp: SchemeExp): Value = {
@@ -81,6 +82,17 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       val argVals = args.map(eval)
       applyFun(fun,funVal,args.zip(argVals))
     }
+    private def evalPair(pairExp: SchemePair): Value = {
+      val carv = eval(pairExp.car)
+      val cdrv = eval(pairExp.cdr)
+      val pair = lattice.cons(carv,cdrv)
+      val addr = allocAddr(PtrAddr(pairExp))
+      writeAddr(addr,pair)
+      lattice.pointer(addr)
+    }
+    private def evalSplice(splice: SchemeExp, cdr: SchemeExp): Value =
+      // TODO: implement append-like behaviour here ...
+      throw new Exception("unquote-splicing is not yet implemented")
   }
 }
 

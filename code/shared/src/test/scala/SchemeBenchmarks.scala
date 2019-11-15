@@ -264,15 +264,15 @@ object SchemeBenchmarks {
     "test/nested-defines.scm",
     "test/primtest.scm",
     "test/quasiquoting-simple.scm",
-    "test/quasiquoting.scm", // VARARG
+    //"test/quasiquoting.scm", // unquote-splicing
     "test/regex.scm",
     "test/rotate.scm",
     "test/rsa.scm",
     "test/sat.scm",
-    "test/scm2c.scm",
-    "test/scm2java.scm", // char->integer NOT SUPPORTED IN SCALA-AM
+    //"test/scm2c.scm", // unquote-splicing
+    //"test/scm2java.scm", // char->integer NOT SUPPORTED IN SCALA-AM
     "test/sq.scm",
-    "test/Streams.scm", // VARARG
+    //"test/Streams.scm", // VARARG
     "test/sym.scm",
     "test/widen.scm",
     "test/work.scm",

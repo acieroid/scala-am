@@ -216,7 +216,7 @@ object SchemeCase {
       default: List[SchemeExp],
       pos: Position
   ): SchemeExp = key match {
-    case _: SchemeVar | _: SchemeValue | SchemeQuoted(SExpId(_), _) =>
+    case _: SchemeVar | _: SchemeValue =>
       /** Atomic key */
       val eqv = SchemeVar(Identifier("eq?", NoPosition)) /* TODO: should be eqv? instead of eq? */
       clauses.foldRight[SchemeExp](SchemeBody(default))(
@@ -229,11 +229,7 @@ object SchemeCase {
             SchemeOr(
               clause._1.map(
                 atom =>
-                  SchemeFuncall(eqv, List(key, atom match {
-                    case SchemeValue(ValueSymbol(sym), pos) =>
-                      SchemeQuoted(SExpId(Identifier(sym, pos)), pos)
-                    case _ => atom
-                  }), atom.pos)
+                  SchemeFuncall(eqv, List(key, atom), atom.pos)
               ),
               pos
             ),
@@ -369,17 +365,6 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef)
   extends SchemeVarExp {
     override def toString = lexAddr.toString
   }
-
-/**
-  * A quoted expression: '(foo (bar baz))
-  *  The quoted expression is *not* converted to a Scheme expression, and remains
-  * a simple s-expression, because that's exactly what it should be.
-  */
-case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
-  override def toString: String = s"'$quoted"
-  def fv: Set[String] = Set()
-  override val height: Int = 1
-}
 
 case class SchemePair(car: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {
   override def toString: String = s"`(,$car . ,$cdr)"

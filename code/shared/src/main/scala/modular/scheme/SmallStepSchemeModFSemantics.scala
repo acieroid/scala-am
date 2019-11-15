@@ -38,6 +38,9 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
                         args: List[SchemeExp])          extends Frame
     case class AndFrame(exps: List[SchemeExp])          extends Frame
     case class OrFrame(exps: List[SchemeExp])           extends Frame
+    case class PairCarFrm(pairExp: SchemePair)          extends Frame
+    case class PairCdrFrm(carValue: Value,
+                          pairExp: SchemePair)          extends Frame
 
     // the main analyze method
     def analyze() = {
@@ -125,9 +128,9 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         evalAnd(first,rest,cnt)
       case SchemeOr(exps,_) =>
         evalOr(exps,cnt)
-      case SchemeQuoted(quo, _) =>
-        val result = evalQuoted(quo)
-        Set(KontState(result,cnt))
+      case pair: SchemePair =>
+        val frm = PairCarFrm(pair)
+        Set(EvalState(pair.car, frm :: cnt))
       case _ =>
         throw new Exception(s"Unsupported Scheme expression: $exp")
     }
@@ -198,6 +201,15 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         conditional(vlu,
                     Set(KontState(vlu,cnt)),
                     evalOr(exps,cnt))
+      case PairCarFrm(pair) =>
+        val frm = PairCdrFrm(vlu,pair)
+        Set(EvalState(pair.cdr, frm :: cnt))
+      case PairCdrFrm(carVlu,pairExp) =>
+        val pair = lattice.cons(carVlu,vlu)
+        val addr = allocAddr(PtrAddr(pairExp))
+        writeAddr(addr,pair)
+        val result = lattice.pointer(addr)
+        Set(KontState(result,cnt))
     }
   }
 }
