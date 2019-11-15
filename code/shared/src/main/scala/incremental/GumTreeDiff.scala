@@ -1,5 +1,8 @@
 package incremental
 
+import incremental.Apted.costmodel.{PerEditOperationStringNodeDataCostModel, StringUnitCostModel}
+import incremental.Apted.distance.APTED
+import incremental.Apted.node.Node
 import scalaam.core.{Expression, Identifier}
 import scalaam.language.scheme._
 
@@ -16,14 +19,71 @@ object GumTreeDiff {
   type E  = Expression
   type MP = Map[T, T]
 
+  /** Class of AST nodes. Contains extra metadata in comparison to the plain AST used by Scala-AM. */
   case class T(self: E)(parent: E) { // Parent is excluded from equals (== and !=).
     val height:     Int = self.height
-    val opened: List[T] = open(this) // Cache direct descendants.
+    val opened: List[T] = open(self).map(T(_)(self)) // Cache direct descendants.
     val      s: List[T] = opened ::: opened.flatMap(_.s) // Cache all descendants.
     val   sSiz:     Int = s.size
+    val  label:  String = this.toString // The label of this node. TODO is this correct?
 
     override def toString: String = s"$self@${self.pos}"
+
+    /** Returns a list of all children of e. */
+    private def open(e: E): List[E] = e match {
+      case                             _: Identifier => List()
+      case              SchemeLambda(args, body,  _) => args ::: body
+      case                SchemeFuncall(f, args,  _) => f :: args
+      case              SchemeIf(cond, cons, alt, _) => List(cond, cons, alt)
+      case              SchemeLet(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
+      case          SchemeLetStar(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
+      case           SchemeLetrec(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
+      case   SchemeNamedLet(name, bindings, body, _) => name :: bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
+      case             SchemeSet(variable, value, _) => List(variable, value)
+      case       SchemeSetLex(variable, _, value, _) => List(variable, value)
+      case                      SchemeBegin(exps, _) => exps
+      case                        SchemeAnd(exps, _) => exps
+      case                         SchemeOr(exps, _) => exps
+      case      SchemeDefineVariable(name, value, _) => List(name, value)
+      case SchemeDefineFunction(name, args, body, _) => name :: args ::: body
+      case                          SchemeVar(id   ) => List(id)
+      case                       SchemeVarLex(id, _) => List(id)
+      case      _: SchemeQuoted  |_: SchemeValue     => List()
+      case                                        _  => throw new Exception("Unknown expression type.")
+    }
+
+    // TODO: use another isomorphic comparison method (paper: O(1) ?)
+    // TODO: can this function be derived from s or can caching be used to increase efficiency?
+    /** Returns a boolean indicating whether t1 and t2 are isomorphic. */
+    def isomorphic(other: T): Boolean = (self, other.self) match {
+      case (_:         SchemeLambda, _:         SchemeLambda)
+        |  (_:        SchemeFuncall, _:        SchemeFuncall)
+        |  (_:             SchemeIf, _:             SchemeIf)
+        |  (_:            SchemeLet, _:            SchemeLet)
+        |  (_:        SchemeLetStar, _:        SchemeLetStar)
+        |  (_:         SchemeLetrec, _:         SchemeLetrec)
+        |  (_:       SchemeNamedLet, _:       SchemeNamedLet)
+        |  (_:            SchemeSet, _:            SchemeSet)
+        |  (_:         SchemeSetLex, _:         SchemeSetLex)
+        |  (_:          SchemeBegin, _:          SchemeBegin)
+        |  (_:            SchemeAnd, _:            SchemeAnd)
+        |  (_:             SchemeOr, _:             SchemeOr)
+        |  (_: SchemeDefineVariable, _: SchemeDefineVariable)
+        |  (_: SchemeDefineFunction, _: SchemeDefineFunction)
+        |  (_:            SchemeVar, _:            SchemeVar)
+        |  (_:         SchemeVarLex, _:         SchemeVarLex)
+        |  (_:         SchemeQuoted, _:         SchemeQuoted)
+        if opened.length == other.opened.length               => opened.zip(other.opened).forall(t => t._1.isomorphic(t._2))
+      case (x:          SchemeValue, y:          SchemeValue) => true // x.value == y.value
+      case (x:           Identifier, y:           Identifier) => true // x.name  == y.name
+      case  _                                                 => false
+    }
   }
+
+  // Another layer needed since apted may modify the tree?
+  //case class N(node: T) extends Node(node) {
+  //  val children: List[N] = node.opened.map(N)
+  //}
 
   /**
    * This procedure implements the GumTree differencing algorithm, specialised for the Scheme AST of Scala-AM.
@@ -55,8 +115,8 @@ object GumTreeDiff {
     var A: Set[(T, T)] = Set() // Set of candidate mappings.
     var M: MP = Map()          // Mapping.
 
-    val subs1 = s(T1) // All subexpressions of T1.
-    val subs2 = s(T2) // All subexpressions of T2.
+    val subs1 = T1.s // All subexpressions of T1.
+    val subs2 = T2.s // All subexpressions of T2.
     breakable {
       while (true) {                                        // While the biggest subexpressions are of sufficient height.
         val n1 = L1.headOption.getOrElse(break())
@@ -66,25 +126,25 @@ object GumTreeDiff {
         if (n1.height > n2.height) {                        // If one tree is higher than the other, open all expressions of the corresponding length.
           val toOpen = L1.takeWhile(_.height == n1.height)  // toOpen = pop(L1)
           L1 = L1.drop(toOpen.length)                           // Actual pop
-          toOpen.foreach(t => L1 ++= t.opened)              // foreach t elem toOpen do open(t, L1)
+          toOpen.foreach(t => L1 ++= t.opened)              // foreach t ∈ toOpen do open(t, L1)
         } else if (n2.height > n1.height) {
           val toOpen = L2.takeWhile(_.height == n2.height)
           L2 = L2.drop(toOpen.length)
           toOpen.foreach(t => L2 ++= t.opened)
-        } else {                                            // If the trees have equal height, try to match isomorphic nodes. TODO what is the difference between s(T) and t elem T
+        } else {                                            // If the trees have equal height, try to match isomorphic nodes. TODO what is the difference between s(T) and t ∈ T
           val height = n1.height
           val H1 = L1.takeWhile(_.height == height).toList  // H1 = pop(L1)
           val H2 = L2.takeWhile(_.height == height).toList  // H2 = pop(L2)
           L1 = L1.drop(H1.length)                               // Actual pop
           L2 = L2.drop(H2.length)                               // Actual pop
-          for (t1 <- H1) {                                  // Foreach (t1, t1) elem H1 x H2
-            val s1 = s(t1)
+          for (t1 <- H1) {                                  // Foreach (t1, t1) ∈ H1 x H2
+            val s1 = t1.s
             for (t2 <- H2) {
-              if (isomorphic(t1, t2)) {
-                if (subs2.exists(tx => isomorphic(t1, tx) && tx != t2) || subs1.exists(tx => isomorphic(tx, t2) && tx != t1)) // TODO is this what is meant with exists tx elem T2
+              if (t1.isomorphic(t2)) {
+                if (subs2.exists(tx => t1.isomorphic(tx) && tx != t2) || subs1.exists(tx => tx.isomorphic(t2) && tx != t1)) // TODO is this what is meant with exists tx ∈ T2
                   A = A + ((t1, t2))                        // Add t1 -> t2 to the set of candidate mappings.
                 else {
-                  val s2 = s(t2)
+                  val s2 = t2.s
                   s1.zip(s2).foreach(t => M = M + t)        // Add all pairs of isomorphic nodes of s(t1) and s(t2) to M. TODO is this correct or do we need the explicit cartesian product?
                 }
               }
@@ -102,16 +162,16 @@ object GumTreeDiff {
     while (Asorted.nonEmpty) {
       val (t1, t2) = Asorted.head                           // (t1, t2) <- remove(A, 0)
       Asorted = Asorted.tail
-      s(t1).zip(s(t2)).foreach(t => M = M + t)              // Add all pairs of isomorphic nodes of s(t1) and s(t2) to M. TODO is this correct or do we need the explicit cartesian product?
-      A.filterNot({case (x, y) => x == t1 || y == t2})      // A <- A \ {(t1, tx) elem A} \ {(tx, t2) elem A}
+      t1.s.zip(t2.s).foreach(t => M = M + t)                // Add all pairs of isomorphic nodes of s(t1) and s(t2) to M. TODO is this correct or do we need the explicit cartesian product?
+      A.filterNot({case (x, y) => x == t1 || y == t2})      // A <- A \ {(t1, tx) ∈ A} \ {(tx, t2) ∈ A}
     }
     M
   }
 
   private def bottomUp(T1: T, T2: T, m: MP, maxSize: Int, minDice: Double): MP = {
     var M: MP = m
-    val Q = new mutable.PriorityQueue[T]()(Ordering.by(_.height * -1)) // Reverse the order.
-    Q ++= s(T1).filter(t => M.get(t).isEmpty && t.opened.flatMap(M.get(_)).nonEmpty)
+    val Q = new mutable.PriorityQueue[T]()(Ordering.by((_: T).height).reverse) // Reverse the order.
+    Q ++= T1.s.filter(t => M.get(t).isEmpty && t.opened.flatMap(M.get(_)).nonEmpty)
     while (Q.nonEmpty) {
       val t1 = Q.dequeue()
       candidate(t1, T2, M) match {
@@ -121,7 +181,7 @@ object GumTreeDiff {
             opt(t1, t2).foreach{ case (ta, tb) =>
               if (   !m.contains(ta)
                   && !m.exists{case (_, t) => t == tb}
-                  && label(ta) == label(tb))
+                  && ta.label == tb.label)
                 M = M + (ta -> tb)
             }
         case _ =>
@@ -130,79 +190,37 @@ object GumTreeDiff {
     M
   }
 
-  private def open(t: T): List[T] = open(t.self).map(T(_)(t.self))
+  /** dice(t1, t2, M) = 2 * |{ t1 ∈ s(t1)  |(t1 , t2) ∈ M } |/ (|s(t1) |+ |s(t2)|)  */
+  private def dice(t1: T, t2: T, M: MP): Double = 2.0 * t1.s.count(M.contains).toDouble / (t1.sSiz + t2.sSiz).toDouble
 
-  private def open(e: E): List[E] = e match {
-    case                             _: Identifier => List()
-    case              SchemeLambda(args, body,  _) => args ::: body
-    case                SchemeFuncall(f, args,  _) => f :: args
-    case              SchemeIf(cond, cons, alt, _) => List(cond, cons, alt)
-    case              SchemeLet(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
-    case          SchemeLetStar(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
-    case           SchemeLetrec(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
-    case   SchemeNamedLet(name, bindings, body, _) => name :: bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
-    case             SchemeSet(variable, value, _) => List(variable, value)
-    case       SchemeSetLex(variable, _, value, _) => List(variable, value)
-    case                      SchemeBegin(exps, _) => exps
-    case                        SchemeAnd(exps, _) => exps
-    case                         SchemeOr(exps, _) => exps
-    case      SchemeDefineVariable(name, value, _) => List(name, value)
-    case SchemeDefineFunction(name, args, body, _) => name :: args ::: body
-    case                          SchemeVar(id   ) => List(id)
-    case                       SchemeVarLex(id, _) => List(id)
-    case      _: SchemeQuoted | _: SchemeValue     => List()
-    case                                        _  => throw new Exception("Unknown expression type.")
-  }
-
-  private def isoRec(e1: T, e2: T): Boolean = {
-    val o1 = e1.opened // Use the cached opened list.
-    val o2 = e2.opened
-    if (o1.length != o2.length)
-      false
-    else
-      o1.zip(o2).forall(t => isomorphic(t._1, t._2))
-  }
-
-  // TODO: use another isoMorphic comparison method (paper: O(1) ?)
-  // TODO: can this function be derived from s or can caching be used to increase efficiency?
-  private def isomorphic(t1: T, t2: T): Boolean = (t1.self, t2.self) match {
-    case (_:         SchemeLambda, _:         SchemeLambda) => isoRec(t1, t2)
-    case (_:        SchemeFuncall, _:        SchemeFuncall) => isoRec(t1, t2)
-    case (_:             SchemeIf, _:             SchemeIf) => isoRec(t1, t2)
-    case (_:            SchemeLet, _:            SchemeLet) => isoRec(t1, t2)
-    case (_:        SchemeLetStar, _:        SchemeLetStar) => isoRec(t1, t2)
-    case (_:         SchemeLetrec, _:         SchemeLetrec) => isoRec(t1, t2)
-    case (_:       SchemeNamedLet, _:       SchemeNamedLet) => isoRec(t1, t2)
-    case (_:            SchemeSet, _:            SchemeSet) => isoRec(t1, t2)
-    case (_:         SchemeSetLex, _:         SchemeSetLex) => isoRec(t1, t2)
-    case (_:          SchemeBegin, _:          SchemeBegin) => isoRec(t1, t2)
-    case (_:            SchemeAnd, _:            SchemeAnd) => isoRec(t1, t2)
-    case (_:             SchemeOr, _:             SchemeOr) => isoRec(t1, t2)
-    case (_: SchemeDefineVariable, _: SchemeDefineVariable) => isoRec(t1, t2)
-    case (_: SchemeDefineFunction, _: SchemeDefineFunction) => isoRec(t1, t2)
-    case (_:            SchemeVar, _:            SchemeVar) => isoRec(t1, t2)
-    case (_:         SchemeVarLex, _:         SchemeVarLex) => isoRec(t1, t2)
-    case (_:         SchemeQuoted, _:         SchemeQuoted) => isoRec(t1, t2)
-    case (x:          SchemeValue, y:          SchemeValue) => true // x.value == y.value
-    case (x:           Identifier, y:           Identifier) => true // x.name  == y.name
-    case  _                                                 => false
-  }
-
-  private def s(t: T): List[T] = t.s
-
-  private def dice(t1: T, t2: T, M: MP): Double = 2.0 * s(t1).count(M.contains).toDouble / (t1.sSiz + t2.sSiz).toDouble
-
+  /**
+   * Returns all possible candidate matches for t1. A node t ∈ T2 is a candidate for t1 if
+   * <ul>
+   *   <li>label(t1) = label(t),</li>
+   *   <li>t is unmatched,</li>
+   *   <li>t1 and t have some matching descendants.</li>
+   * </ul>
+   **/
   private def candidate(t1: T, T2: T, M: MP): Option[T] = {
-    s(T2).filter{t => label(t) == label(t1) && !M.contains(t1) && haveMatchedDescendants(t1, t, M)} match {
+    T2.s.filter{t => t.label == t1.label && !M.contains(t1) && haveMatchedDescendants(t1, t, M)} match {
       case Nil => None
       case lst => Some(lst.maxBy(dice(t1, _, M)))
     }
   }
 
-  private def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = s(t1).exists(t => s(t2).contains(M(t)))
+  /** Returns a boolean indicating whether t1 and t2 have matched descendants in mapping M. */
+  private def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = t1.s.exists(t => t2.s.contains(M(t)))
 
   // TODO - the current implementation is a dummy implementation
-  private def opt(t1: T, t2: T): List[(T, T)] = for { s1 <- s(t1); s2 <- s(t2)} yield (s1, s2)
-
-  private def label(t: T): String = t.toString // TODO is this correct?
+  /** Finds the mapping corresponding to the shortest edit script without move actions.
+   *  Gumtree originally uses RTED (Pawlik and Augsten, 2011).
+   **/
+  private def opt(t1: T, t2: T): List[(T, T)] = for { s1 <- t1.s; s2 <- t2.s} yield (s1, s2)
+  /* {
+    val apted = new APTED[StringUnitCostModel, T](new StringUnitCostModel())
+    apted.computeEditDistance(N(t1), N(t2))
+    val map = apted.computeEditMapping()
+    println(map)
+    List()
+  } */
 }
