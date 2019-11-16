@@ -5,9 +5,6 @@ import scalaam.core._
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
 
-  /** We only work with SchemeExp */
-  type E = SchemeExp
-
   /** Can this value be considered true for conditionals? */
   def isTrue(x: L): Boolean
 
@@ -37,7 +34,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   }
 
   /** The representation of a closure */
-  type Closure = (E, Env)
+  type Closure = (SchemeLambdaExp, Env)
 
   /** Extract closures contained in this value */
   def getClosures(x: L): Set[(Closure,Option[String])]

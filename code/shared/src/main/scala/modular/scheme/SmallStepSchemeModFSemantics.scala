@@ -85,8 +85,8 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       case SchemeValue(value, _) =>
         val result = evalLiteralValue(value)
         Set(KontState(result, cnt))
-      case lambda: SchemeLambda =>
-        val result = lattice.closure((lambda, component), None)
+      case lambda: SchemeLambdaExp =>
+        val result = makeClosure(lambda, None)
         Set(KontState(result, cnt))
       case SchemeVarLex(_, lex) =>
         val result = lookupVariable(lex)
@@ -98,7 +98,12 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         Set(EvalState(vexp, frm :: cnt))
       case SchemeDefineFunction(id, prs, bdy, pos) =>
         val lambda = SchemeLambda(prs, bdy, pos)
-        val result = lattice.closure((lambda,component),Some(id.name))
+        val result = makeClosure(lambda,Some(id.name))
+        defineVariable(id, result)
+        Set(KontState(result, cnt))
+      case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos) =>
+        val lambda = SchemeVarArgLambda(prs, vararg, bdy, pos)
+        val result = makeClosure(lambda,Some(id.name))
         defineVariable(id, result)
         Set(KontState(result, cnt))
       case SchemeSetLex(_, lex, vexp, _) =>
@@ -116,7 +121,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       case SchemeNamedLet(id,bindings,body,pos) =>
         val (prs,ags) = bindings.unzip
         val lambda = SchemeLambda(prs,body,pos)
-        val closure = lattice.closure((lambda,component),Some(id.name))
+        val closure = makeClosure(lambda,Some(id.name))
         defineVariable(id, closure)
         evalArgs(lambda,closure,ags,Nil,cnt)
       case SchemeFuncall(fexp,args,_) =>
@@ -205,10 +210,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         val frm = PairCdrFrm(vlu,pair)
         Set(EvalState(pair.cdr, frm :: cnt))
       case PairCdrFrm(carVlu,pairExp) =>
-        val pair = lattice.cons(carVlu,vlu)
-        val addr = allocAddr(PtrAddr(pairExp))
-        writeAddr(addr,pair)
-        val result = lattice.pointer(addr)
+        val result = allocateCons(pairExp)(carVlu,vlu)
         Set(KontState(result,cnt))
     }
   }

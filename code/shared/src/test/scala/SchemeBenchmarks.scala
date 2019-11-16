@@ -272,7 +272,7 @@ object SchemeBenchmarks {
     //"test/scm2c.scm", // unquote-splicing
     //"test/scm2java.scm", // char->integer NOT SUPPORTED IN SCALA-AM
     "test/sq.scm",
-    //"test/Streams.scm", // VARARG
+    //"test/Streams.scm", // define-macro
     "test/sym.scm",
     "test/widen.scm",
     "test/work.scm",

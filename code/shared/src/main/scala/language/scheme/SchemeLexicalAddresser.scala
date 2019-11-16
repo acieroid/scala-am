@@ -34,6 +34,8 @@ object SchemeLexicalAddresser {
       defs(rest, id :: acc)
     case SchemeDefineFunction(id,_,_,_) :: rest =>
       defs(rest, id :: acc)
+    case SchemeDefineVarArgFunction(id,_,_,_,_) :: rest =>
+      defs(rest, id :: acc)
     case SchemeBegin(exps,_) :: rest =>
       defs(rest, defs(exps, acc))
     case _ :: rest =>

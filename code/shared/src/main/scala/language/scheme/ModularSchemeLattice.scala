@@ -27,7 +27,6 @@ class ModularSchemeLattice[
     Sym: SymbolLattice
 ] {
 
-  type E = SchemeExp
   type P = SchemePrimitive[L,A]
 
   /** We first implement all possible operations on single values, that can be
@@ -58,7 +57,7 @@ class ModularSchemeLattice[
   case class Prim(prim: P) extends Value {
     override def toString = s"#<primitive ${prim.name}>"
   }
-  case class Clo(lambda: E, env: Env, name: Option[String]) extends Value {
+  case class Clo(lambda: SchemeLambdaExp, env: Env, name: Option[String]) extends Value {
     def printName: String = name match {
       case None => s"anonymous@${lambda.pos}"
       case Some(name) => name
