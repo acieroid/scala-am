@@ -9,7 +9,7 @@ import scalaam.language.scheme._
 object Main {
 
   def main(args: Array[String]): Unit = {
-    testMap()
+    testLex("test/fact.scm")
   }
 
   def testMap(): Unit = {
@@ -27,10 +27,9 @@ object Main {
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with SmallStepSchemeModFSemantics
                                         with ConstantPropagationDomain
-                                        with NoSensitivity
+                                        with FullArgumentSensitivity
     analysis.analyze()
-    println(analysis.store.keys.size)
-    //debugResults(analysis)
+    debugResults(analysis)
   }
 
   type Machine = ModAnalysis[SchemeExp] with SchemeModFSemantics

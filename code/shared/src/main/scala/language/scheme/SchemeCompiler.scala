@@ -353,7 +353,7 @@ object SchemeCompiler {
         for {
           exp <- tailcall(_compile(unquotedSpl))
           cdrExp <- tailcall(expandQuasiquoted(cdr, depth))
-        } yield SchemeSplice(exp,cdrExp,pos)
+        } yield SchemeSplicedPair(exp,cdrExp,pos)
       } else {
         for {
           uqExp <- tailcall(expandQuasiquoted(unquotedSpl, depth - 1))

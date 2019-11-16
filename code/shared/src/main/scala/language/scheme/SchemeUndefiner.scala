@@ -143,6 +143,11 @@ object SchemeUndefiner {
             carUndef <- tailcall(undefine1(car))
             cdrUndef <- tailcall(undefine1(cdr))
           } yield SchemePair(carUndef, cdrUndef, pos)
+        case SchemeSplicedPair(exps,cdr,pos) =>
+          for {
+            spliceUndef <- tailcall(undefine1(exps))
+            cdrUndef <- tailcall(undefine1(cdr))
+          } yield SchemeSplicedPair(spliceUndef, cdrUndef, pos)
         case SchemeVar(id)             => done(SchemeVar(id))
         case SchemeValue(value, pos)   => done(SchemeValue(value, pos))
       }

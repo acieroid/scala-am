@@ -387,7 +387,7 @@ case class SchemePair(car: SchemeExp, cdr: SchemeExp, pos: Position) extends Sch
   def fv: Set[String] = car.fv ++ cdr.fv
 }
 
-case class SchemeSplice(splice: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {
+case class SchemeSplicedPair(splice: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {
   override def toString: String = s"`(,@$splice . ,$cdr)"
   def fv: Set[String] = splice.fv ++ cdr.fv
 }

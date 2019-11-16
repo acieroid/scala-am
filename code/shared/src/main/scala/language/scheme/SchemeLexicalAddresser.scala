@@ -116,8 +116,8 @@ object SchemeLexicalAddresser {
       SchemeIf(translate(prd,scope),translate(csq,scope),translate(alt,scope),pos)
     case SchemePair(car, cdr, pos) =>
       SchemePair(translate(car,scope),translate(cdr,scope),pos)
-    case SchemeSplice(splice, cdr, pos) =>
-      SchemeSplice(translate(splice,scope),translate(cdr,scope),pos)
+    case SchemeSplicedPair(splice, cdr, pos) =>
+      SchemeSplicedPair(translate(splice,scope),translate(cdr,scope),pos)
     case SchemeFuncall(fun,args,pos) =>
       SchemeFuncall(translate(fun,scope),translate(args,scope),pos)
     case SchemeAnd(exps,pos) =>
