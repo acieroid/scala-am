@@ -11,16 +11,6 @@ object Main {
     testLex("test/fact.scm")
   }
 
-  def testMap(): Unit = {
-    val prg1 = SchemeParser.parse("(define (f x) (if (= x 0) 'foo))")
-    val prg2 = SchemeParser.parse("(define (f x) (if (= x 0) 'bar (if (= x -1) 'foo)))")
-    println(prg1)
-    println(prg2)
-    println()
-    val map = GumTreeDiff.map(prg1, prg2)
-    map.foreach(println)
-  }
-
   def testLex(file: String): Unit = {
     val txt = loadFile(file)
     val prg = SchemeParser.parse(txt)
@@ -51,8 +41,8 @@ object Main {
 
 object DiffMain {
   def main(args: Array[String]): Unit = {
-    val prg1 = SchemeParser.parse("(define (f x) (if (= x 0) 'foo))")
-    val prg2 = SchemeParser.parse("(define (f x) (if (= x 0) 'bar (if (= x -1) 'foo)))")
+    val prg1 = SchemeParser.parse("(define (fib n)\n  (if (< n 2)\n      n\n      (+ (fib (- n 2))\n         (fib (- n 1)))))\n\n(fib 10)")
+    val prg2 = SchemeParser.parse("(define (fib n)\n  (if (< n 2)\n      n\n      (+ (fib (- n 1))\n         (fib (- n 2)))))\n\n(fib 10)")
     println(prg1)
     println(prg2)
     println()
