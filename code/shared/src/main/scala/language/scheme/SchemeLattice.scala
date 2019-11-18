@@ -47,6 +47,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** Injection of an integer */
   def number(x: Int): L
 
+  /** Top element for all integers */
+  def numTop: L
+
   /** Injection of a float */
   def real(x: Double): L
 
