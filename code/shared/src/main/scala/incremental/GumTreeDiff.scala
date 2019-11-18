@@ -23,35 +23,12 @@ object GumTreeDiff {
   /** Class of AST nodes. Contains extra metadata in comparison to the plain AST used by Scala-AM. */
   case class T(self: E)(parent: E) { // Parent is excluded from equals (== and !=).
     val height:     Int = self.height
-    val opened: List[T] = open().map(T(_)(self)) // Cache direct descendants.
+    val opened: List[T] = self.subexpressions.map(T(_)(self)) // Cache direct descendants.
     val      s: List[T] = opened ::: opened.flatMap(_.s) // Cache all descendants.
     val   sSiz:     Int = s.size
     val  label:   Label = self.label // Labels of nodes correspond to the name of their production rule in the grammar.
 
     override def toString: String = s"$self@${self.pos}"
-
-    /** Returns a list of all children of e. */
-    private def open(): List[E] = self match {
-      case                             _: Identifier => List()
-      case              SchemeLambda(args, body,  _) => args ::: body
-      case                SchemeFuncall(f, args,  _) => f :: args
-      case              SchemeIf(cond, cons, alt, _) => List(cond, cons, alt)
-      case              SchemeLet(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
-      case          SchemeLetStar(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
-      case           SchemeLetrec(bindings, body, _) =>         bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
-      case   SchemeNamedLet(name, bindings, body, _) => name :: bindings.foldLeft(List[E]())((a, b) => b._2 :: b._1 :: a) ::: body
-      case             SchemeSet(variable, value, _) => List(variable, value)
-      case       SchemeSetLex(variable, _, value, _) => List(variable, value)
-      case                      SchemeBegin(exps, _) => exps
-      case                        SchemeAnd(exps, _) => exps
-      case                         SchemeOr(exps, _) => exps
-      case      SchemeDefineVariable(name, value, _) => List(name, value)
-      case SchemeDefineFunction(name, args, body, _) => name :: args ::: body
-      case                          SchemeVar(id   ) => List(id)
-      case                       SchemeVarLex(id, _) => List(id)
-      case                        _: SchemeValue     => List()
-      case                                        _  => throw new Exception("Unknown expression type.")
-    }
 
     // TODO: use another isomorphic comparison method (paper: O(1) ?)
     // TODO: can this function be derived from s or can caching be used to increase efficiency?

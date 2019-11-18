@@ -16,6 +16,9 @@ trait Expression extends SmartHash {
 
   /** A label indicating the type of an expression. */
   val label: Label
+
+  /** Returns the list of subexpressions of the given expression. */
+  def subexpressions: List[Expression] // Uses `def` instead of `val` to avoid continuous memory overheads.
 }
 
 trait Label
@@ -23,9 +26,10 @@ case object ID extends Label
 
 /** An identifier. It has a name and a position */
 case class Identifier(name: String, pos: Position) extends Expression with SmartHash {
-  def fullString:        String  = s"$name@$pos"
-  override def toString: String  = name
-  def fv:            Set[String] = Set(name)
-  override val height:       Int = 0
-  val label:               Label = ID
+  def fullString:              String  = s"$name@$pos"
+  override def toString:       String  = name
+  def fv:                  Set[String] = Set(name)
+  override val height:             Int = 0
+  val label:                     Label = ID
+  def subexpressions: List[Expression] = List()
 }

@@ -70,6 +70,7 @@ case class SExpPair(car: SExp, cdr: SExp, pos: Position) extends SExp {
       case _                      => s"$car . $cdr"
     }
   val label: Label = SPAI
+  def subexpressions: List[Expression] = List(car, cdr)
 }
 
 object SExpList {
@@ -92,6 +93,7 @@ case class SExpId(id: Identifier) extends SExp {
   val pos: Position = id.pos
   override def toString: String = id.toString
   val label: Label = SID
+  def subexpressions: List[Expression] = List(id)
 }
 
 /**
@@ -100,6 +102,7 @@ case class SExpId(id: Identifier) extends SExp {
 case class SExpValue(value: Value, pos: Position) extends SExp {
   override def toString: String = value.toString
   val label: Label = SVAL
+  def subexpressions: List[Expression] = List()
 }
 
 /**
