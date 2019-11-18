@@ -3,7 +3,7 @@ package incremental
 import incremental.Apted.costmodel.{PerEditOperationStringNodeDataCostModel, StringUnitCostModel}
 import incremental.Apted.distance.APTED
 import incremental.Apted.node.Node
-import scalaam.core.{Expression, Identifier}
+import scalaam.core.{Expression, Identifier, Label}
 import scalaam.language.scheme._
 
 import scala.collection.mutable
@@ -12,7 +12,8 @@ import scala.util.control.Breaks._
 /**
  * This file contains the implementations of the Gumtree code differences as presented in <br><br>
  *    Jean-Rémy Falleri, Floréal Morandat, Xavier Blanc, Matias Martinez, Martin Monperrus:<br>
- *    Fine-grained and accurate source code differencing. ASE 2014: 313-324.
+ *    Fine-grained and accurate source code differencing. ASE 2014: 313-324.<br><br>
+ * For clarity, comments in this code may stem from this paper.
  */
 object GumTreeDiff {
 
@@ -22,15 +23,15 @@ object GumTreeDiff {
   /** Class of AST nodes. Contains extra metadata in comparison to the plain AST used by Scala-AM. */
   case class T(self: E)(parent: E) { // Parent is excluded from equals (== and !=).
     val height:     Int = self.height
-    val opened: List[T] = open(self).map(T(_)(self)) // Cache direct descendants.
+    val opened: List[T] = open().map(T(_)(self)) // Cache direct descendants.
     val      s: List[T] = opened ::: opened.flatMap(_.s) // Cache all descendants.
     val   sSiz:     Int = s.size
-    val  label:  String = this.toString // The label of this node. TODO is this correct?
+    val  label:   Label = self.label // Labels of nodes correspond to the name of their production rule in the grammar.
 
     override def toString: String = s"$self@${self.pos}"
 
     /** Returns a list of all children of e. */
-    private def open(e: E): List[E] = e match {
+    private def open(): List[E] = self match {
       case                             _: Identifier => List()
       case              SchemeLambda(args, body,  _) => args ::: body
       case                SchemeFuncall(f, args,  _) => f :: args
@@ -55,28 +56,7 @@ object GumTreeDiff {
     // TODO: use another isomorphic comparison method (paper: O(1) ?)
     // TODO: can this function be derived from s or can caching be used to increase efficiency?
     /** Returns a boolean indicating whether t1 and t2 are isomorphic. */
-    def isomorphic(other: T): Boolean = (self, other.self) match {
-      case (_:         SchemeLambda, _:         SchemeLambda)
-        |  (_:        SchemeFuncall, _:        SchemeFuncall)
-        |  (_:             SchemeIf, _:             SchemeIf)
-        |  (_:            SchemeLet, _:            SchemeLet)
-        |  (_:        SchemeLetStar, _:        SchemeLetStar)
-        |  (_:         SchemeLetrec, _:         SchemeLetrec)
-        |  (_:       SchemeNamedLet, _:       SchemeNamedLet)
-        |  (_:            SchemeSet, _:            SchemeSet)
-        |  (_:         SchemeSetLex, _:         SchemeSetLex)
-        |  (_:          SchemeBegin, _:          SchemeBegin)
-        |  (_:            SchemeAnd, _:            SchemeAnd)
-        |  (_:             SchemeOr, _:             SchemeOr)
-        |  (_: SchemeDefineVariable, _: SchemeDefineVariable)
-        |  (_: SchemeDefineFunction, _: SchemeDefineFunction)
-        |  (_:            SchemeVar, _:            SchemeVar)
-        |  (_:         SchemeVarLex, _:         SchemeVarLex)
-        if opened.length == other.opened.length               => opened.zip(other.opened).forall(t => t._1.isomorphic(t._2))
-      case (x:          SchemeValue, y:          SchemeValue) => true // x.value == y.value
-      case (x:           Identifier, y:           Identifier) => true // x.name  == y.name
-      case  _                                                 => false
-    }
+    def isomorphic(other: T): Boolean = label == other.label && opened.zip(other.opened).forall(t => t._1.isomorphic(t._2)) // Makes use of laziness of &&.
   }
 
   // Another layer needed since apted may modify the tree?

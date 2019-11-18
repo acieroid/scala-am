@@ -1,6 +1,6 @@
 package scalaam.language.sexp
 
-import scalaam.core.{Position, Identifier, Expression}
+import scalaam.core.{Expression, Identifier, Label, Position}
 
 /**
   * S-expressions and related values
@@ -45,6 +45,10 @@ trait SExp extends Expression {
   def fv: Set[String] = Set()
 }
 
+case object SPAI extends Label
+case object SID  extends Label
+case object SVAL extends Label
+
 /**
   * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair
   * with identifier foo as car and another pair -- with identifier bar as car and
@@ -65,6 +69,7 @@ case class SExpPair(car: SExp, cdr: SExp, pos: Position) extends SExp {
       case SExpValue(ValueNil, _) => s"$car"
       case _                      => s"$car . $cdr"
     }
+  val label: Label = SPAI
 }
 
 object SExpList {
@@ -86,6 +91,7 @@ object SExpList {
 case class SExpId(id: Identifier) extends SExp {
   val pos: Position = id.pos
   override def toString: String = id.toString
+  val label: Label = SID
 }
 
 /**
@@ -93,6 +99,7 @@ case class SExpId(id: Identifier) extends SExp {
   */
 case class SExpValue(value: Value, pos: Position) extends SExp {
   override def toString: String = value.toString
+  val label: Label = SVAL
 }
 
 /**
