@@ -171,8 +171,8 @@ object GumTreeDiff {
   private def bottomUp(T1: T, T2: T, m: MP, maxSize: Int, minDice: Double): MP = {
     var M: MP = m
     val Q = new mutable.PriorityQueue[T]()(Ordering.by((_: T).height).reverse) // Reverse the order.
-    Q ++= T1.s.filter(t => M.get(t).isEmpty && t.opened.flatMap(M.get(_)).nonEmpty)
-    while (Q.nonEmpty) {
+    Q ++= T1.s.filter(t => M.get(t).isEmpty && t.opened.flatMap(M.get(_)).nonEmpty) // TODO is this correct or should the tests really happen one after another (after more matches are made)?
+    while (Q.nonEmpty) {                                    // Foreach t1 ∈ T1 | t1 is not matched and t1 has matched children, in post-order
       val t1 = Q.dequeue()
       candidate(t1, T2, M) match {
         case Some(t2) if dice(t1, t2, M) > minDice =>
