@@ -3,8 +3,7 @@ package incremental
 import incremental.Apted.costmodel.{PerEditOperationStringNodeDataCostModel, StringUnitCostModel}
 import incremental.Apted.distance.APTED
 import incremental.Apted.node.Node
-import scalaam.core.{Expression, Identifier, Label}
-import scalaam.language.scheme._
+import scalaam.core.{Expression, Label}
 import scalaam.util.Annotations.toCheck
 
 import scala.collection.mutable
@@ -22,9 +21,9 @@ object GumTreeDiff {
   type MP = Map[T, T]
 
   /** Class of AST nodes. Contains extra metadata in comparison to the plain AST used by Scala-AM. */
-  case class T(self: E)(parent: E) {                                        // Parent is excluded from equality (== and !=).
+  case class T(self: E, parent: T) {                                        // Parent is excluded from equality (== and !=).
     val height:          Int = self.height                                  // The height of a tree is defined so that leaf nodes have height 1.
-    val children:    List[T] = self.subexpressions.map(T(_)(self))          // Cache direct descendants.
+    val children:    List[T] = self.subexpressions.map(T(_, this))          // Cache direct descendants.
     val descendants: List[T] = children ::: children.flatMap(_.descendants) // Cache all descendants.
     val descSize:        Int = descendants.size
     val label:         Label = self.label                                   // Labels of nodes correspond to the name of their production rule in the grammar.
@@ -57,8 +56,8 @@ object GumTreeDiff {
    * @return A mapping between nodes from the old AST to nodes from the updated AST. Nodes are represented using the class T defined within this object.
    */
   def map(E1: E, E2: E, minHeight: Int = 2, maxSize: Int = 100, minDice: Double = 0.5): MP = {
-    val T1 = T(E1)(null)
-    val T2 = T(E2)(null)
+    val T1 = T(E1, null)
+    val T2 = T(E2, null)
     bottomUp(T1, T2, topDown(T1, T2, minHeight), maxSize, minDice)
   }
 
@@ -121,7 +120,7 @@ object GumTreeDiff {
         }
       }
     }
-    var Asorted = A.toList.sortBy({case (t1, t2) => dice(t1, t2, M)})
+    var Asorted = A.toList.sortBy({case (t1, t2) => dice(t1.parent, t2.parent, M)})
     while (Asorted.nonEmpty) {
       val (t1, t2) = Asorted.head                           // (t1, t2) <- remove(A, 0)
       Asorted = Asorted.tail
