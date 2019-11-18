@@ -261,6 +261,8 @@ object SchemeBenchmarks {
     "test/mceval.scm",
     "test/mj09.scm",
     "test/mut-rec.scm",
+    "test/my-list-1.scm", // TODO: this is really unsound!
+    "test/my-list-2.scm", // TODO: this is really unsound!
     "test/nested-defines.scm",
     "test/primtest.scm",
     "test/quasiquoting-simple.scm",
