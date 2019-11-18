@@ -48,7 +48,7 @@ object GumTreeDiff {
       case SchemeDefineFunction(name, args, body, _) => name :: args ::: body
       case                          SchemeVar(id   ) => List(id)
       case                       SchemeVarLex(id, _) => List(id)
-      case      _: SchemeQuoted  |_: SchemeValue     => List()
+      case                        _: SchemeValue     => List()
       case                                        _  => throw new Exception("Unknown expression type.")
     }
 
@@ -72,7 +72,6 @@ object GumTreeDiff {
         |  (_: SchemeDefineFunction, _: SchemeDefineFunction)
         |  (_:            SchemeVar, _:            SchemeVar)
         |  (_:         SchemeVarLex, _:         SchemeVarLex)
-        |  (_:         SchemeQuoted, _:         SchemeQuoted)
         if opened.length == other.opened.length               => opened.zip(other.opened).forall(t => t._1.isomorphic(t._2))
       case (x:          SchemeValue, y:          SchemeValue) => true // x.value == y.value
       case (x:           Identifier, y:           Identifier) => true // x.name  == y.name

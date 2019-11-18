@@ -34,6 +34,8 @@ object SchemeLexicalAddresser {
       defs(rest, id :: acc)
     case SchemeDefineFunction(id,_,_,_) :: rest =>
       defs(rest, id :: acc)
+    case SchemeDefineVarArgFunction(id,_,_,_,_) :: rest =>
+      defs(rest, id :: acc)
     case SchemeBegin(exps,_) :: rest =>
       defs(rest, defs(exps, acc))
     case _ :: rest =>
@@ -83,11 +85,14 @@ object SchemeLexicalAddresser {
 
   def translate(exp: SchemeExp, scope: Scope): SchemeExp = exp match {
     case vexp: SchemeValue => vexp
-    case quoted: SchemeQuoted => quoted
     case SchemeLambda(prs,bdy,pos) =>
       val extScp = extend(newFrame(scope),prs)
       val bdyLex = translateBody(bdy,extScp)
       SchemeLambda(prs,bdyLex,pos)
+    case SchemeVarArgLambda(prs,vararg,bdy,pos) =>
+      val extScp = extend(extend(newFrame(scope),prs),vararg)
+      val bdyLex = translateBody(bdy,extScp)
+      SchemeVarArgLambda(prs,vararg,bdyLex,pos)
     case SchemeVar(id) =>
       SchemeVarLex(id, resolve(id, scope))
     case SchemeBegin(eps,pos) =>
@@ -99,12 +104,20 @@ object SchemeLexicalAddresser {
       val extScp = extend(newFrame(scope),prs)
       val bdyLex = translateBody(bdy, extScp)
       SchemeDefineFunction(id,prs,bdyLex,pos)
+    case SchemeDefineVarArgFunction(id,prs,vararg,bdy,pos) =>
+      val extScp = extend(extend(newFrame(scope),prs),vararg)
+      val bdyLex = translateBody(bdy, extScp)
+      SchemeDefineVarArgFunction(id,prs,vararg,bdyLex,pos)
     case SchemeSet(id, vexp, pos) =>
       val vexpLex = translate(vexp, scope)
       val varAddr = resolve(id, scope)
       SchemeSetLex(id, varAddr, vexpLex, pos)
     case SchemeIf(prd,csq,alt,pos) =>
       SchemeIf(translate(prd,scope),translate(csq,scope),translate(alt,scope),pos)
+    case SchemePair(car, cdr, pos) =>
+      SchemePair(translate(car,scope),translate(cdr,scope),pos)
+    case SchemeSplicedPair(splice, cdr, pos) =>
+      SchemeSplicedPair(translate(splice,scope),translate(cdr,scope),pos)
     case SchemeFuncall(fun,args,pos) =>
       SchemeFuncall(translate(fun,scope),translate(args,scope),pos)
     case SchemeAnd(exps,pos) =>

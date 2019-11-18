@@ -44,12 +44,13 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
   def eval(e: SchemeExp, env: Env, timeout: Timeout.T): Value = {
     if (timeout.reached) throw new TimeoutException()
     e match {
-      case SchemeLambda(_, _, _) => Value.Clo(e, env)
+      case _ : SchemeLambda | _ : SchemeVarArgLambda =>
+        Value.Clo(e, env)
       case SchemeFuncall(f, args, pos) =>
         eval(f, env, timeout) match {
           case Value.Clo(SchemeLambda(argsNames, body, pos2), env2) =>
             if (argsNames.length != args.length) {
-              throw new Exception(s"Invalid function call at position ${pos}: ${args.length} given, while ${argsNames.length} are expected")
+              throw new Exception(s"Invalid function call at position ${pos}: ${args.length} arguments given, while exactly ${argsNames.length} are expected")
             }
             val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
               val addr = newAddr()
@@ -57,6 +58,21 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
               (env3 + (arg._1.name -> addr))
             })
             eval(SchemeBegin(body, pos2), envExt, timeout)
+          case Value.Clo(SchemeVarArgLambda(argsNames, vararg, body, pos2), env2) =>
+            val arity = argsNames.length
+            if (args.length < arity) {
+              throw new Exception(s"Invalid function call at position $pos: ${args.length} arguments given, while at least ${argsNames.length} are expected")
+            }
+            val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
+              val addr = newAddr()
+              extendStore(addr, check(arg._1.pos, eval(arg._2, env, timeout)))
+              (env3 + (arg._1.name -> addr))
+            })
+            val varArgVals = args.drop(arity).map(eval(_,env,timeout))
+            val varArgAddr = newAddr()
+            extendStore(varArgAddr, makeList(varArgVals))
+            val envExt2 = envExt + (vararg.name -> varArgAddr)
+            eval(SchemeBegin(body, pos2), envExt2, timeout)
           case Value.Primitive(p) =>
             p.call(args.map(arg => eval(arg, env, timeout)))
           case v =>
@@ -122,6 +138,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         }
       case SchemeDefineVariable(_, _, _) => ???
       case SchemeDefineFunction(_, _, _, _) => ???
+      case SchemeDefineVarArgFunction(_, _, _, _, _) => ???
       case SchemeVar(id) =>
         env.get(id.name) match {
           case Some(addr) => store.get(addr) match {
@@ -133,8 +150,10 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
             case None => throw new Exception(s"Undefined variable $id at position ${id.pos}")
           }
         }
-      case SchemeQuoted(quoted, _) =>
-        evalQuoted(quoted)
+      case SchemePair(car,cdr,_) =>
+        val carv = eval(car,env,timeout)
+        val cdrv = eval(cdr,env,timeout)
+        allocateCons(carv,cdrv)
       case SchemeValue(v, _) =>
         v match {
           case ValueString(s) => Value.Str(s)
@@ -155,22 +174,9 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     Value.Cons(addr1, addr2)
   }
 
-  def evalQuoted(quoted: SExp): Value = quoted match {
-    case SExpId(Identifier(sym, _)) => Value.Symbol(sym)
-    case SExpPair(car, cdr, _) =>
-      allocateCons(evalQuoted(car), evalQuoted(cdr))
-    case SExpValue(v, _) => v match {
-      case ValueString(str)  => Value.Str(str)
-      case ValueCharacter(c) => Value.Character(c)
-      case ValueSymbol(sym)  => Value.Symbol(sym) /* shouldn't happen */
-      case ValueInteger(n)   => Value.Integer(n)
-      case ValueReal(n)      => Value.Real(n)
-      case ValueBoolean(b)   => Value.Bool(b)
-      case ValueNil          => Value.Nil
-    }
-    case SExpQuoted(q, pos) =>
-      evalQuoted(
-        SExpPair(SExpId(Identifier("quote", pos)), SExpPair(q, SExpValue(ValueNil, pos), pos), pos))
+  def makeList(values: List[Value]): Value = values match {
+    case Nil            => Value.Nil
+    case value :: rest  => allocateCons(value, makeList(rest))
   }
 
   def primitive(name: String): Option[Value] = Primitives.primitiveMap.get(name).map(p => Value.Primitive(p))

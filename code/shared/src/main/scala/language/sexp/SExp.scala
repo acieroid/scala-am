@@ -10,7 +10,7 @@ case class ValueString(value: String) extends Value {
   override def toString: String = s""""$value""""
 }
 case class ValueSymbol(sym: String) extends Value {
-  override def toString: String = sym
+  override def toString: String = s"'$sym"
 }
 case class ValueInteger(value: Int) extends Value {
   override def toString: String = value.toString
@@ -68,13 +68,15 @@ case class SExpPair(car: SExp, cdr: SExp, pos: Position) extends SExp {
 }
 
 object SExpList {
-  /* Alternative constructor to automatically construct a bunch of pair from a
-   * list of expressions */
-  def apply(content: List[SExp], pos: Position): SExp = fromList(content, pos)
+  /** Alternative constructor to automatically construct a bunch of pair from a
+    * list of expressions */
+  def apply(content: List[SExp], end: SExp) = fromList(content, end)
+  def apply(content: List[SExp], pos: Position) =
+    fromList(content, SExpValue(ValueNil,pos))
 
-  def fromList(content: List[SExp], pos: Position): SExp = content match {
-    case Nil          => SExpValue(ValueNil, pos)
-    case head :: tail => SExpPair(head, SExpList(tail, pos), head.pos)
+  def fromList(content: List[SExp], end: SExp): SExp = content match {
+    case Nil          => end
+    case head :: tail => SExpPair(head, SExpList(tail, end), head.pos)
   }
 }
 
@@ -96,6 +98,28 @@ case class SExpValue(value: Value, pos: Position) extends SExp {
 /**
   * A quoted element, such as 'foo, '(foo (bar)), etc.
   */
-case class SExpQuoted(content: SExp, pos: Position) extends SExp {
-  override def toString: String = s"'$content"
+object SExpQuoted {
+  def apply(content: SExp, pos: Position): SExp =
+    SExpList(List(SExpId(Identifier("quote",pos)), content), pos)
+}
+/**
+  * A quasiquoted element, such as `foo
+  */
+object SExpQuasiquoted {
+  def apply(content: SExp, pos: Position): SExp =
+    SExpList(List(SExpId(Identifier("quasiquote",pos)), content), pos)
+}
+/**
+  * An unquoted element, such as ,foo
+  */
+object SExpUnquoted {
+  def apply(content: SExp, pos: Position): SExp =
+    SExpList(List(SExpId(Identifier("unquote",pos)), content), pos)
+}
+/**
+  * A unquoted-splicing element, such as ,@foo
+  */
+object SExpUnquotedSplicing {
+  def apply(content: SExp, pos: Position): SExp =
+    SExpList(List(SExpId(Identifier("unquote-splicing",pos)), content), pos)
 }

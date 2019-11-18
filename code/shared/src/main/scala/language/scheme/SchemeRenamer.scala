@@ -127,8 +127,6 @@ object SchemeRenamer {
               (SchemeDefineFunction(name, args1, body1, pos), count2)
           }
       }
-    case SchemeQuoted(quoted, pos) =>
-      (SchemeQuoted(quoted, pos), count)
     case SchemeVar(id) =>
       names.get(id.name) match {
         case Some(n) => (SchemeVar(Identifier(n, id.pos)), count)

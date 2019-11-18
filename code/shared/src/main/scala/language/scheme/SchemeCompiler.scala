@@ -20,9 +20,13 @@ object SchemeCompiler {
 
   def _compile(exp: SExp): TailRec[SchemeExp] = exp match {
     case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(ValueNil, _), _), _) =>
-      _compile(SExpQuoted(quoted, exp.pos))
+      tailcall(expandQuoted(quoted))
     case SExpPair(SExpId(Identifier("quote", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme quote: $exp", exp.pos)
+    case SExpPair(SExpId(Identifier("quasiquote", _)), SExpPair(quasiquoted, SExpValue(ValueNil, _), _), _) =>
+      tailcall(expandQuasiquoted(quasiquoted,1))
+    case SExpPair(SExpId(Identifier("quasiquote", _)), _, _) =>
+      throw new SchemeCompilerException(s"Invalid Scheme quasiquote: $exp", exp.pos)
     case SExpPair(
         SExpId(Identifier("lambda", _)),
         SExpPair(args, SExpPair(first, rest, _), _),
@@ -32,7 +36,7 @@ object SchemeCompiler {
         argsv  <- tailcall(compileArgs(args))
         firstv <- tailcall(_compile(first))
         restv  <- tailcall(compileBody(rest))
-      } yield SchemeLambda(argsv, firstv :: restv, exp.pos)
+      } yield makeLambda(argsv, firstv :: restv, exp.pos)
     case SExpPair(SExpId(Identifier("lambda", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme lambda: $exp", exp.pos)
     case SExpPair(
@@ -50,7 +54,7 @@ object SchemeCompiler {
         SExpPair(cond, SExpPair(cons, SExpValue(ValueNil, _), _), _),
         _
         ) =>
-      /* Empty else branch is replaced by #f (R5RS states it's unspecified) */
+      // Empty else branch is replaced by #f (R5RS states it's unspecified)
       for {
         condv <- tailcall(_compile(cond))
         consv <- tailcall(_compile(cons))
@@ -140,7 +144,7 @@ object SchemeCompiler {
         argsv  <- tailcall(compileArgs(args))
         firstv <- tailcall(_compile(first))
         restv  <- tailcall(compileBody(rest))
-      } yield SchemeDefineFunction(name, argsv, firstv :: restv, exp.pos)
+      } yield makeDefineFunction(name, argsv, firstv :: restv, exp.pos)
     case SExpPair(
         SExpId(Identifier("do", _)),
         SExpPair(bindings, SExpPair(SExpPair(test, finals, _), commands, _), _),
@@ -164,15 +168,15 @@ object SchemeCompiler {
         done(SchemeVar(v))
       }
     case SExpValue(value, _)   => done(SchemeValue(value, exp.pos))
-    case SExpQuoted(quoted, _) => done(SchemeQuoted(quoted, exp.pos))
   }
 
-  def compileArgs(args: SExp): TailRec[List[Identifier]] = args match {
+  def compileArgs(args: SExp): TailRec[(List[Identifier],Option[Identifier])] = args match {
     case SExpPair(SExpId(id), rest, _) =>
       for {
         restv <- tailcall(compileArgs(rest))
-      } yield id :: restv
-    case SExpValue(ValueNil, _) => done(Nil)
+      } yield (id :: restv._1, restv._2)
+    case SExpValue(ValueNil, _) => done((Nil,None))
+    case SExpId(id)             => done((Nil,Some(id)))
     case _                      => throw new SchemeCompilerException(s"Invalid Scheme argument list: $args", args.pos)
   }
 
@@ -296,7 +300,7 @@ object SchemeCompiler {
         restv <- tailcall(compileCaseObjects(rest))
       } yield SchemeValue(v, objects.pos) :: restv
     case SExpPair(SExpId(id), rest, _) =>
-      /* identifiers in case expressions are treated as symbols */
+      // identifiers in case expressions are treated as symbols
       for {
         restv <- tailcall(compileCaseObjects(rest))
       } yield SchemeValue(ValueSymbol(id.name), id.pos) :: restv
@@ -304,4 +308,73 @@ object SchemeCompiler {
     case _ =>
       throw new SchemeCompilerException(s"Invalid Scheme case objects: $objects", objects.pos)
   }
+  private def makeLambda(args: (List[Identifier],Option[Identifier]),
+                 body: List[SchemeExp],
+                 pos: Position) = args._2 match {
+    case Some(vararg) => SchemeVarArgLambda(args._1,vararg,body,pos)
+    case None         => SchemeLambda(args._1,body,pos)
+  }
+  private def makeDefineFunction(id: Identifier,
+                         args: (List[Identifier],Option[Identifier]),
+                         body: List[SchemeExp],
+                         pos: Position) = args._2 match {
+    case Some(vararg) => SchemeDefineVarArgFunction(id,args._1,vararg,body,pos)
+    case None         => SchemeDefineFunction(id,args._1,body,pos)
+  }
+
+  private def expandQuoted(sexp: SExp): TailRec[SchemeExp] = sexp match {
+    case sexpVal : SExpValue    => done(value(sexpVal))
+    case sexpId : SExpId        => done(value(sexpId))
+    case SExpPair(car,cdr,pos)  =>
+      for {
+        carExp <- tailcall(expandQuoted(car))
+        cdrExp <- tailcall(expandQuoted(cdr))
+      } yield SchemePair(carExp,cdrExp,pos)
+  }
+
+  private def expandQuasiquoted(sexp: SExp, depth: Int): TailRec[SchemeExp] = sexp match {
+    // nested quasiquote
+    case SExpPair(id@SExpId(Identifier("quasiquote",_)),pair@SExpPair(quasiquoted, nil@SExpValue(ValueNil, _), _),pos) =>
+      for {
+        qqExp <- expandQuasiquoted(quasiquoted, depth + 1)
+      } yield SchemePair(value(id), SchemePair(qqExp, value(nil), pair.pos), pos)
+    // unquote
+    case SExpPair(id@SExpId(Identifier("unquote",_)),pair@SExpPair(unquoted, nil@SExpValue(ValueNil, _), _),pos) =>
+      if (depth == 1) {
+        tailcall(_compile(unquoted))
+      } else {
+        for {
+          uqExp <- expandQuasiquoted(unquoted, depth - 1)
+        } yield SchemePair(value(id), SchemePair(uqExp, value(nil), pair.pos), pos)
+      }
+    // unquote-splicing
+    case SExpPair(carp@SExpPair(id@SExpId(Identifier("unquote-splicing",_)),pair@SExpPair(unquotedSpl, nil@SExpValue(ValueNil, _), _),_),cdr,pos) =>
+      if (depth == 1) {
+        for {
+          exp <- tailcall(_compile(unquotedSpl))
+          cdrExp <- tailcall(expandQuasiquoted(cdr, depth))
+        } yield SchemeSplicedPair(exp,cdrExp,pos)
+      } else {
+        for {
+          uqExp <- tailcall(expandQuasiquoted(unquotedSpl, depth - 1))
+          cdrExp <- tailcall(expandQuasiquoted(cdr, depth))
+        } yield SchemePair(SchemePair(value(id), SchemePair(uqExp, value(nil), pair.pos), carp.pos), cdrExp ,pos)
+      }
+    // throw compiler exceptions on illegal patterns
+    case SExpPair(SExpId(Identifier(id,_)), _, _) if Set("quasiquote,unquote,unquote-splicing").contains(id) =>
+      throw new SchemeCompilerException(s"Illegal pattern in quasiquote: $sexp", sexp.pos)
+    // other s-expressions are expanded as expected
+    case sexpId : SExpId        => done(value(sexpId))
+    case sexpVal : SExpValue    => done(value(sexpVal))
+    case SExpPair(car,cdr,pos)  =>
+      for {
+        carExp <- tailcall(expandQuasiquoted(car,depth))
+        cdrExp <- tailcall(expandQuasiquoted(cdr,depth))
+      } yield SchemePair(carExp, cdrExp, pos)
+  }
+
+  private def value(sexp: SExpValue): SchemeExp =
+    SchemeValue(sexp.value, sexp.pos)
+  private def value(sexp: SExpId): SchemeExp =
+    SchemeValue(ValueSymbol(sexp.id.name), sexp.id.pos)
 }

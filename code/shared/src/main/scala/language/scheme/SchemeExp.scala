@@ -12,15 +12,46 @@ trait SchemeExp extends Expression
   * A lambda expression: (lambda (args...) body...)
   * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
   */
-case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Position) extends SchemeExp {
+trait SchemeLambdaExp extends SchemeExp {
+  // a lambda takes arguments, and has a non-empty body
+  val args: List[Identifier]
+  val body: List[SchemeExp]
   require(body.nonEmpty)
+  // does the lambda support a variable number of arguments
+  def varArgId: Option[Identifier]
+  // can this lambda be called with a given number of arguments
+  def check(argc: Int) =
+    if (varArgId.isDefined) {
+      argc == args.length
+    } else {
+      argc >= args.length
+    }
+  // free variables
+  def fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
+  // height
+  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
+}
+
+case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Position) extends SchemeLambdaExp {
   override def toString: String = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
     s"(lambda ($a) $b)"
   }
-  def fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet
-  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
+  def varArgId = None
+}
+
+case class SchemeVarArgLambda(args: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position) extends SchemeLambdaExp {
+  override def toString: String = {
+    val a = if (args.isEmpty) {
+      vararg.toString
+    } else {
+      s"(${args.mkString(" ")} . $vararg)"
+    }
+    val b = body.mkString(" ")
+    s"(lambda $a $b)"
+  }
+  def varArgId = Some(vararg)
 }
 
 /**
@@ -201,7 +232,7 @@ object SchemeCase {
       default: List[SchemeExp],
       pos: Position
   ): SchemeExp = key match {
-    case _: SchemeVar | _: SchemeValue | SchemeQuoted(SExpId(_), _) =>
+    case _: SchemeVar | _: SchemeValue =>
       /** Atomic key */
       val eqv = SchemeVar(Identifier("eq?", NoPosition)) /* TODO: should be eqv? instead of eq? */
       clauses.foldRight[SchemeExp](SchemeBody(default))(
@@ -214,11 +245,7 @@ object SchemeCase {
             SchemeOr(
               clause._1.map(
                 atom =>
-                  SchemeFuncall(eqv, List(key, atom match {
-                    case SchemeValue(ValueSymbol(sym), pos) =>
-                      SchemeQuoted(SExpId(Identifier(sym, pos)), pos)
-                    case _ => atom
-                  }), atom.pos)
+                  SchemeFuncall(eqv, List(key, atom), atom.pos)
               ),
               pos
             ),
@@ -278,6 +305,17 @@ extends SchemeExp {
     s"(define ($name $a) $b)"
   }
   def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
+  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
+}
+
+case class SchemeDefineVarArgFunction(name: Identifier, args: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position)
+extends SchemeExp {
+  override def toString: String = {
+    val a = s"${args.mkString(" ")} . $vararg"
+    val b = body.mkString(" ")
+    s"(define ($name $a) $b)"
+  }
+  def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name) - vararg.name
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
 }
 
@@ -344,15 +382,14 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef)
     override def toString = lexAddr.toString
   }
 
-/**
-  * A quoted expression: '(foo (bar baz))
-  *  The quoted expression is *not* converted to a Scheme expression, and remains
-  * a simple s-expression, because that's exactly what it should be.
-  */
-case class SchemeQuoted(quoted: SExp, pos: Position) extends SchemeExp {
-  override def toString: String = s"'$quoted"
-  def fv: Set[String] = Set()
-  override val height: Int = 1
+case class SchemePair(car: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {
+  override def toString: String = s"`(,$car . ,$cdr)"
+  def fv: Set[String] = car.fv ++ cdr.fv
+}
+
+case class SchemeSplicedPair(splice: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {
+  override def toString: String = s"`(,@$splice . ,$cdr)"
+  def fv: Set[String] = splice.fv ++ cdr.fv
 }
 
 /**

@@ -38,6 +38,9 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
                         args: List[SchemeExp])          extends Frame
     case class AndFrame(exps: List[SchemeExp])          extends Frame
     case class OrFrame(exps: List[SchemeExp])           extends Frame
+    case class PairCarFrm(pairExp: SchemePair)          extends Frame
+    case class PairCdrFrm(carValue: Value,
+                          pairExp: SchemePair)          extends Frame
 
     // the main analyze method
     def analyze() = {
@@ -82,8 +85,8 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       case SchemeValue(value, _) =>
         val result = evalLiteralValue(value)
         Set(KontState(result, cnt))
-      case lambda: SchemeLambda =>
-        val result = lattice.closure((lambda, component), None)
+      case lambda: SchemeLambdaExp =>
+        val result = makeClosure(lambda, None)
         Set(KontState(result, cnt))
       case SchemeVarLex(_, lex) =>
         val result = lookupVariable(lex)
@@ -95,7 +98,12 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         Set(EvalState(vexp, frm :: cnt))
       case SchemeDefineFunction(id, prs, bdy, pos) =>
         val lambda = SchemeLambda(prs, bdy, pos)
-        val result = lattice.closure((lambda,component),Some(id.name))
+        val result = makeClosure(lambda,Some(id.name))
+        defineVariable(id, result)
+        Set(KontState(result, cnt))
+      case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos) =>
+        val lambda = SchemeVarArgLambda(prs, vararg, bdy, pos)
+        val result = makeClosure(lambda,Some(id.name))
         defineVariable(id, result)
         Set(KontState(result, cnt))
       case SchemeSetLex(_, lex, vexp, _) =>
@@ -113,7 +121,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       case SchemeNamedLet(id,bindings,body,pos) =>
         val (prs,ags) = bindings.unzip
         val lambda = SchemeLambda(prs,body,pos)
-        val closure = lattice.closure((lambda,component),Some(id.name))
+        val closure = makeClosure(lambda,Some(id.name))
         defineVariable(id, closure)
         evalArgs(lambda,closure,ags,Nil,cnt)
       case SchemeFuncall(fexp,args,_) =>
@@ -125,9 +133,9 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         evalAnd(first,rest,cnt)
       case SchemeOr(exps,_) =>
         evalOr(exps,cnt)
-      case SchemeQuoted(quo, _) =>
-        val result = evalQuoted(quo)
-        Set(KontState(result,cnt))
+      case pair: SchemePair =>
+        val frm = PairCarFrm(pair)
+        Set(EvalState(pair.car, frm :: cnt))
       case _ =>
         throw new Exception(s"Unsupported Scheme expression: $exp")
     }
@@ -198,6 +206,12 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         conditional(vlu,
                     Set(KontState(vlu,cnt)),
                     evalOr(exps,cnt))
+      case PairCarFrm(pair) =>
+        val frm = PairCdrFrm(vlu,pair)
+        Set(EvalState(pair.cdr, frm :: cnt))
+      case PairCdrFrm(carVlu,pairExp) =>
+        val result = allocateCons(pairExp)(carVlu,vlu)
+        Set(KontState(result,cnt))
     }
   }
 }

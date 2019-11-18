@@ -33,6 +33,16 @@ object SchemeUndefiner {
               )
           )
         )
+      case SchemeDefineVarArgFunction(name, args, vararg, body, pos) :: rest =>
+        tailcall(
+          tailcall(undefineBody(body)).flatMap(
+            bodyv =>
+              undefine(
+                SchemeDefineVariable(name, SchemeVarArgLambda(args, vararg, bodyv, exps.head.pos), pos) :: rest,
+                defs
+              )
+          )
+        )
       case SchemeDefineVariable(name, value, _) :: rest =>
         tailcall(undefine1(value)).flatMap(v => tailcall(undefine(rest, (name, v) :: defs)))
       case _ :: _ =>
@@ -58,12 +68,15 @@ object SchemeUndefiner {
 
   def undefineBody(exps: List[SchemeExp]): TailRec[List[SchemeExp]] = exps match {
     case Nil                                   => done(Nil)
-    case SchemeDefineFunction(_, _, _, _) :: _ => tailcall(undefine(exps, List())).map(v => List(v))
-    case SchemeDefineVariable(_, _, _) :: _    => tailcall(undefine(exps, List())).map(v => List(v))
+    case SchemeDefineFunction(_, _, _, _) :: _          => tailcall(undefine(exps, List())).map(v => List(v))
+    case SchemeDefineVarArgFunction(_, _, _, _, _) :: _ => tailcall(undefine(exps, List())).map(v => List(v))
+    case SchemeDefineVariable(_, _, _) :: _             => tailcall(undefine(exps, List())).map(v => List(v))
     case exp :: rest => {
       val exp2 = exp match {
         case SchemeLambda(args, body, pos) =>
           tailcall(undefineBody(body)).map(b => SchemeLambda(args, b, pos))
+        case SchemeVarArgLambda(args, vararg, body, pos) =>
+          tailcall(undefineBody(body)).map(b => SchemeVarArgLambda(args, vararg, b, pos))
         case SchemeFuncall(f, args, pos) =>
           tailcall(undefine1(f)).flatMap(
             fun => trampolineM(undefine1, args).map(argsv => SchemeFuncall(fun, argsv, pos))
@@ -125,8 +138,17 @@ object SchemeUndefiner {
         case SchemeAnd(args, pos) =>
           trampolineM(undefine1, args).map(argsv => SchemeAnd(argsv, pos))
         case SchemeOr(args, pos)       => trampolineM(undefine1, args).map(argsv => SchemeOr(argsv, pos))
+        case SchemePair(car,cdr,pos)   =>
+          for {
+            carUndef <- tailcall(undefine1(car))
+            cdrUndef <- tailcall(undefine1(cdr))
+          } yield SchemePair(carUndef, cdrUndef, pos)
+        case SchemeSplicedPair(exps,cdr,pos) =>
+          for {
+            spliceUndef <- tailcall(undefine1(exps))
+            cdrUndef <- tailcall(undefine1(cdr))
+          } yield SchemeSplicedPair(spliceUndef, cdrUndef, pos)
         case SchemeVar(id)             => done(SchemeVar(id))
-        case SchemeQuoted(quoted, pos) => done(SchemeQuoted(quoted, pos))
         case SchemeValue(value, pos)   => done(SchemeValue(value, pos))
       }
       exp2.flatMap(e2 => tailcall(undefineBody(rest)).flatMap(e3 => done(e2 :: e3)))

@@ -34,7 +34,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   case object MainComponent extends IntraComponent {
     override def toString = "main"
   }
-  case class CallComponent(lambda: SchemeLambda,
+  case class CallComponent(lambda: SchemeLambdaExp,
                            parent: IntraComponent,
                            nam: Option[String],
                            ctx: Context) extends IntraComponent {
@@ -77,27 +77,50 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // apply
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args.map(_._2))
+        val fromClosures = applyClosures(fval,args)
         val fromPrimitives = applyPrimitives(fexp,fval,args)
         lattice.join(fromClosures,fromPrimitives)
       } else {
         lattice.bottom
       }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyClosures(fun: Value, args: List[Value]): Value = {
+    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)]): Value = {
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case ((lam@SchemeLambda(prs,_,_), cmp), nam) if prs.length == arity =>
-          val context = allocCtx((lam,cmp),args)
+          val argVals = args.map(_._2)
+          val context = allocCtx((lam,cmp),argVals)
           val component = CallComponent(lam,cmp,nam,context)
-          bindArgs(component, prs, args)
+          bindArgs(component, prs, argVals)
+          call(component)
+        case ((lam@SchemeVarArgLambda(prs,vararg,_,_),cmp),nam) if prs.length < arity =>
+          val (fixedArgs,varArgs) = args.splitAt(prs.length)
+          val fixedArgVals = fixedArgs.map(_._2)
+          val varArgVal = allocateList(varArgs)
+          val context = allocCtx((lam,cmp), fixedArgVals :+ varArgVal)
+          val component = CallComponent(lam,cmp,nam,context)
+          bindArgs(component,prs,fixedArgVals)
+          bindArg(component,vararg,varArgVal)
           call(component)
         case _ => lattice.bottom
       }))
     }
+    protected def allocateList(elms: List[(SchemeExp,Value)]): Value = elms match {
+      case Nil                => lattice.nil
+      case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
+    }
+    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value) = {
+      val pair = lattice.cons(car,cdr)
+      val addr = allocAddr(PtrAddr(pairExp))
+      writeAddr(addr,pair)
+      lattice.pointer(addr)
+    }
+    private def bindArg(component: IntraComponent, par: Identifier, arg: Value) =
+      writeAddr(VarAddr(par),arg,component)
     private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) =
-      pars.zip(args).foreach { case (par,arg) => writeAddr(VarAddr(par),arg,component) }
+      pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
+
     private val allocator = new SchemeAllocator[Addr] {
       def pointer(exp: SchemeExp) = allocAddr(PtrAddr(exp))
     }
@@ -133,19 +156,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case sexp.ValueNil          => lattice.nil
       case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
-    protected def evalQuoted(quoted: sexp.SExp): Value = quoted match {
-      case sexp.SExpId(id)          => lattice.symbol(id.name)
-      case sexp.SExpValue(vlu,_)    => evalLiteralValue(vlu)
-      case sexp.SExpPair(car,cdr,_) =>
-        val carv = evalQuoted(car)
-        val cdrv = evalQuoted(cdr)
-        val pair = lattice.cons(carv,cdrv)
-        val addr = allocAddr(PtrAddr(quoted))
-        writeAddr(addr,pair)
-        lattice.pointer(addr)
-      case sexp.SExpQuoted(q,pos)   =>
-        evalQuoted(sexp.SExpPair(sexp.SExpId(Identifier("quote",pos)),sexp.SExpPair(q,sexp.SExpValue(sexp.ValueNil,pos),pos),pos))
-    }
+    protected def makeClosure(lambda: SchemeLambdaExp, name: Option[String]): Value =
+      // the current component serves as the lexical environment of the closure 
+      lattice.closure((lambda, component), name)
     // other helpers
     protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
       val csqVal = if (lattice.isTrue(prd)) csq else Monoid[M].zero

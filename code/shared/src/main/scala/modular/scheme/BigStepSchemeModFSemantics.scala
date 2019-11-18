@@ -15,22 +15,24 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     })
     // simple big-step eval
     private def eval(exp: SchemeExp): Value = exp match {
-      case SchemeValue(value, _)                    => evalLiteralValue(value)
-      case lambda: SchemeLambda                     => lattice.closure((lambda, component), None)
-      case SchemeVarLex(_, lex)                     => lookupVariable(lex)
-      case SchemeBegin(exps, _)                     => evalSequence(exps)
-      case SchemeDefineVariable(id, vexp, _)        => evalDefineVariable(id, vexp)
-      case SchemeDefineFunction(id, prs, bdy, pos)  => evalDefineFunction(id, prs, bdy, pos)
-      case SchemeSetLex(_, lex, variable, _)        => evalSet(lex, variable)
-      case SchemeIf(prd, csq, alt, _)               => evalIf(prd, csq, alt)
-      case SchemeLet(bindings, body, _)             => evalLetExp(bindings, body)
-      case SchemeLetStar(bindings, body, _)         => evalLetExp(bindings, body)
-      case SchemeLetrec(bindings, body, _)          => evalLetExp(bindings, body)
-      case SchemeNamedLet(name,bindings,body,pos)   => evalNamedLet(name,bindings,body,pos)
-      case SchemeFuncall(fun, args, _)              => evalCall(fun, args)
-      case SchemeAnd(exps, _)                       => evalAnd(exps)
-      case SchemeOr(exps, _)                        => evalOr(exps)
-      case SchemeQuoted(quo, _)                     => evalQuoted(quo)
+      case SchemeValue(value, _)                                  => evalLiteralValue(value)
+      case lambda: SchemeLambdaExp                                => makeClosure(lambda,None)
+      case SchemeVarLex(_, lex)                                   => lookupVariable(lex)
+      case SchemeBegin(exps, _)                                   => evalSequence(exps)
+      case SchemeDefineVariable(id, vexp, _)                      => evalDefineVariable(id, vexp)
+      case SchemeDefineFunction(id, prs, bdy, pos)                => evalDefineFunction(id, prs, bdy, pos)
+      case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos)  => evalDefineVarArgFunction(id, prs, vararg, bdy, pos)
+      case SchemeSetLex(_, lex, variable, _)                      => evalSet(lex, variable)
+      case SchemeIf(prd, csq, alt, _)                             => evalIf(prd, csq, alt)
+      case SchemeLet(bindings, body, _)                           => evalLetExp(bindings, body)
+      case SchemeLetStar(bindings, body, _)                       => evalLetExp(bindings, body)
+      case SchemeLetrec(bindings, body, _)                        => evalLetExp(bindings, body)
+      case SchemeNamedLet(name,bindings,body,pos)                 => evalNamedLet(name,bindings,body,pos)
+      case SchemeFuncall(fun, args, _)                            => evalCall(fun, args)
+      case SchemeAnd(exps, _)                                     => evalAnd(exps)
+      case SchemeOr(exps, _)                                      => evalOr(exps)
+      case pair: SchemePair                                       => evalPair(pair)
+      case pair: SchemeSplicedPair                                => evalSplicedPair(pair)
       case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
     }
     private def evalDefineVariable(id: Identifier, exp: SchemeExp): Value = {
@@ -40,7 +42,13 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     }
     private def evalDefineFunction(id: Identifier, prs: List[Identifier], body: List[SchemeExp], pos: Position): Value = {
       val lambda = SchemeLambda(prs,body,pos)
-      val value = lattice.closure((lambda,component),Some(id.name))
+      val value = makeClosure(lambda,Some(id.name))
+      defineVariable(id,value)
+      value
+    }
+    private def evalDefineVarArgFunction(id: Identifier, prs: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position): Value = {
+      val lambda = SchemeVarArgLambda(prs,vararg,body,pos)
+      val value = makeClosure(lambda,Some(id.name))
       defineVariable(id,value)
       value
     }
@@ -60,7 +68,7 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
     private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], pos: Position): Value = {
       val (prs,ags) = bindings.unzip
       val lambda = SchemeLambda(prs,body,pos)
-      val closure = lattice.closure((lambda,component),Some(id.name))
+      val closure = makeClosure(lambda,Some(id.name))
       defineVariable(id,closure)
       val argsVals = ags.map(argExp => (argExp, eval(argExp)))
       applyFun(lambda,closure,argsVals)
@@ -81,6 +89,14 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       val argVals = args.map(eval)
       applyFun(fun,funVal,args.zip(argVals))
     }
+    private def evalPair(pairExp: SchemePair): Value = {
+      val carv = eval(pairExp.car)
+      val cdrv = eval(pairExp.cdr)
+      allocateCons(pairExp)(carv,cdrv)
+    }
+    private def evalSplicedPair(pairExp: SchemeSplicedPair): Value =
+      // TODO: implement append-like behaviour here ...
+      throw new Exception("unquote-splicing is not yet implemented")
   }
 }
 
