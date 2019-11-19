@@ -157,7 +157,7 @@ object GumTreeDiff {
    * Measure for the ratio of common descendants between two nodes give a mapping.<br>
    * dice(t1, t2, M) = 2 * |{ t1 ∈ s(t1), t2 ∈ s(t2) | (t1 , t2) ∈ M }| / (|s(t1)| + |s(t2)|)
    **/
-  @toCheck("This definition differs from the definition in the paper! (Assume formula in paper is not entirely correct.")
+  @toCheck("This definition differs from the definition in the paper! (Assume formula in paper is not entirely correct.)")
   private def dice(t1: T, t2: T, M: MP): Double = 2.0 * t1.descendants.count(t => M.contains(t) && t2.descendants.contains(M(t))).toDouble / (t1.descendants.size + t2.descendants.size).toDouble
 
   /**

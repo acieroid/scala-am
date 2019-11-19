@@ -66,7 +66,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     val absPos: Map[Position, a.Value] = a.store.groupBy({_._1 match {
       case a.ComponentAddr(_, addr) => addr.pos()
       case _                        => Position.none
-    }}).mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y)))
+    }}).mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
     concPos.foreach { case (pos,values) =>
       assert(checkSubsumption(a)(values, absPos(pos)),
             s"intermediate result at $pos is not sound: ${absPos(pos)} does not subsume $values")

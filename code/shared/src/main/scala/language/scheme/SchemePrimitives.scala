@@ -907,7 +907,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       override def call(l: V, store: Store[A, V]) = {
         def length(l: V, visited: Set[V]): TailRec[MayFail[V, Error]] =
           if (visited.contains(l)) {
-            done(bottom)
+            done(numTop)
           } else {
             ifThenElseTR(isPointer(l)) {
               /* dereferences the pointer and applies length to the result */
@@ -1072,6 +1072,22 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
 
+    /** (define (append l1 l2)
+          (if (null? l1)
+              l2
+              (cons (car l1)
+                    (append (cdr l1) l2)))) */
+    object Append extends StoreOperation("append", Some(2)) {
+      override def call(l1: V, l2: V, store: Store[A, V]) = {
+        def append(cur: V, idx: Int, visited: Set[V]): TailRec[MayFail[V,Error]] =
+          if(visited.contains(cur) || cur == bottom) {
+            done(bottom)
+          } else {
+            ???
+          }
+        append(l1, 0, Set.empty).result.map(v => (v, store))
+      }
+    }
     /** (define (list-ref l index)
           (if (pair? l)
             (if (= index 0)
@@ -1085,17 +1101,17 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
             done(bottom)
           } else {
             ifThenElseTR(isPointer(l)) {
-              /* dereferences the pointer and list-ref that */
+              // dereferences the pointer and list-ref that
               dereferencePointerTR(l, store) { consv =>
                 tailcall(listRef(consv, index, visited + ((l, index))))
               }
             } {
               ifThenElseTR(isCons(l)) {
                 ifThenElseTR(numEq(index, number(0))) {
-                  /* index is 0, return car */
+                  // index is 0, return car
                   done(car(l))
                 } {
-                  /* index is >0, decrease it and continue looking into the cdr */
+                  // index is >0, decrease it and continue looking into the cdr
                   liftTailRec(
                     cdr(l) >>= (
                         cdrl =>
@@ -1106,7 +1122,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
                   )
                 }
               } {
-                /* not a list */
+                // not a list
                 done(MayFail.failure(PrimitiveNotApplicable("list-ref", List(l, index))))
               }
             }
