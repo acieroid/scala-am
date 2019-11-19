@@ -1,8 +1,8 @@
 package incremental
 
-import incremental.Apted.costmodel.{PerEditOperationStringNodeDataCostModel, StringUnitCostModel}
-import incremental.Apted.distance.APTED
-import incremental.Apted.node.Node
+//import incremental.Apted.costmodel.{PerEditOperationStringNodeDataCostModel, StringUnitCostModel}
+//import incremental.Apted.distance.APTED
+//import incremental.Apted.node.Node
 import scalaam.core.{Expression, Label}
 import scalaam.util.Annotations.toCheck
 
@@ -16,6 +16,8 @@ import scala.util.control.Breaks._
  * For clarity, comments in this code may stem from this paper.
  */
 object GumTreeDiff {
+
+  import scala.math.Ordering.Double.IeeeOrdering // TODO Do we want this order (import required for Scala 2.13).
 
   type E  = Expression
   type MP = Map[T, T]
@@ -32,7 +34,6 @@ object GumTreeDiff {
     // TODO: use another isomorphic comparison method (paper: O(1) ?)
     /** Returns a boolean indicating whether t1 and t2 are isomorphic. */
     def isomorphic(other: T): Boolean = label == other.label && children.zip(other.children).forall(t => t._1.isomorphic(t._2)) // Makes use of laziness of &&.
-
   }
 
   /** Returns all tx ∈ t, which are the descendants of t and the t itself. */
@@ -81,6 +82,9 @@ object GumTreeDiff {
     var A: Set[(T, T)] = Set() // Set of candidate mappings.
     var M: MP = Map()          // Mapping.
 
+    //var MOD1: Set[T] = Set()
+    //var MOD2: Set[T] = Set()
+
     breakable {
       while (true) {                                        // While the biggest subexpressions are of sufficient height.
         val h1 = L1.headOption.getOrElse(break()).height
@@ -101,9 +105,10 @@ object GumTreeDiff {
               if (t1.isomorphic(t2)) {
                 // If there are multiple possible mappings, add them to the list of candidate mappings which is processed later.
                 // Otherwise, there is only one possibility to match the nodes. Hence, add them to the list of mappings (including all their descendants which are matched).
-                if (elem(T2).exists(tx => t1.isomorphic(tx) && tx != t2) || elem(T1).exists(tx => tx.isomorphic(t2) && tx != t1))
+                if (elem(T2).exists(tx => t1.isomorphic(tx) && tx != t2) || elem(T1).exists(tx => tx.isomorphic(t2) && tx != t1)) {
                   A = A + ((t1, t2))
-                else
+                  println(s"{$t1, $t2}")
+                } else
                   t1.descendants.zip(t2.descendants).foreach(t => M = M + t)
               }
           val AM = A ++ M.toSet

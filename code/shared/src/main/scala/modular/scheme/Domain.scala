@@ -26,7 +26,7 @@ trait AdaptiveAbstractDomain extends AdaptiveSchemeModFSemantics with AbstractDo
     case valueLattice.Pointer(addr)     => valueLattice.Pointer(alphaAddr(addr))
     case valueLattice.Clo(lam,cmp,nam)  => valueLattice.Clo(lam,alpha(cmp),nam)
     case valueLattice.Cons(car,cdr)     => valueLattice.Cons(alphaValue(car),alphaValue(cdr))
-    case valueLattice.Vec(siz,els,ini)  => valueLattice.Vec(siz,els.mapValues(alphaValue).toMap,alphaValue(ini))
+    case valueLattice.Vec(siz,els,ini)  => valueLattice.Vec(siz,els.view.mapValues(alphaValue).toMap,alphaValue(ini))
     case _                              => value
   }
 }

@@ -480,7 +480,7 @@ class ModularSchemeLattice[
       case (Vec(size, content, init), Int(index)) =>
         val comp = IntLattice[I].lt(index, size)
         val t: L = if (BoolLattice[B].isTrue(comp)) {
-          val vals = content.filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2))).values
+          val vals = content.view.filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2))).values
           vals.foldLeft(init)((acc, v) => schemeLattice.join(acc, v))
         } else {
           schemeLattice.bottom

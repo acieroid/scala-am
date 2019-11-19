@@ -40,13 +40,22 @@ object Main {
 }
 
 object DiffMain {
+
+  def loadFile(file: String): String = {
+    val fHandle = scala.io.Source.fromFile(file)
+    val content = fHandle.getLines.mkString("\n")
+    fHandle.close()
+    content
+  }
+
   def main(args: Array[String]): Unit = {
-    val prg1 = SchemeParser.parse("(define (fib n)\n  (if (< n 2)\n      n\n      (+ (fib (- n 2))\n         (fib (- n 1)))))\n\n(fib 10)")
-    val prg2 = SchemeParser.parse("(define (fib n)\n  (if (< n 2)\n      n\n      (+ (fib (- n 1))\n         (fib (- n 2)))))\n\n(fib 10)")
+    val prg1 = SchemeParser.parse(loadFile("./test/grid.scm"))
+    val prg2 = SchemeParser.parse(loadFile("./test/grid-scrambled.scm"))
     println(prg1)
     println(prg2)
     println()
     val map = GumTreeDiff.map(prg1, prg2)
     map.foreach(println)
+    println(map.keySet.size)
   }
 }
