@@ -26,11 +26,7 @@ package incremental.Apted.node;
 import incremental.Apted.costmodel.CostModel;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Arrays;
 import java.util.Iterator;
-//import at.unisalzburg.dbresearch.apted.node.Node;
-//import at.unisalzburg.dbresearch.apted.costmodel.CostModel;
 
 /**
  * Indexes nodes of the input tree to the algorithm that is already parsed to

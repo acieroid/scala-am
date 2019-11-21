@@ -19,6 +19,12 @@ trait Expression extends SmartHash {
 
   /** Returns the list of subexpressions of the given expression. */
   def subexpressions: List[Expression] // Uses `def` instead of `val` to avoid continuous memory overheads.
+
+  /** Returns whether this expression is isomorphic to another expression. This is a basic implementation which should be specialised in subclasses. */
+  def isomorphic(other: Expression): Boolean =
+    label == other.label &&
+    subexpressions.length == other.subexpressions.length &&
+    subexpressions.zip(other.subexpressions).forall { case (x, y) => x.isomorphic(y) }
 }
 
 trait Label

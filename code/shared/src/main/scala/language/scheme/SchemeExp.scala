@@ -51,6 +51,7 @@ trait SchemeLambdaExp extends SchemeExp {
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
   val label: Label = LAM
   val subexpressions: List[Expression] = args ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
 }
 
 case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Position) extends SchemeLambdaExp {
@@ -122,6 +123,7 @@ case class SchemeLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeE
   override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   val label: Label = LET
   def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLet].body.length
 }
 
 /**
@@ -145,6 +147,7 @@ case class SchemeLetStar(bindings: List[(Identifier, SchemeExp)], body: List[Sch
   override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   val label: Label = LTS
   def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLetStar].body.length
 }
 
 /**
@@ -163,6 +166,7 @@ case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)], body: List[Sche
   override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   val label: Label = LTR
   def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLetrec].body.length
 }
 
 /**
@@ -182,6 +186,7 @@ case class SchemeNamedLet(name: Identifier, bindings: List[(Identifier, SchemeEx
   override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   val label: Label = NLT
   def subexpressions: List[Expression] = name :: bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeNamedLet].body.length
 }
 
 /**
@@ -351,6 +356,7 @@ extends SchemeExp {
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
   val label: Label = DFF
   def subexpressions: List[Expression] = name :: args ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineFunction].args.length
 }
 
 case class SchemeDefineVarArgFunction(name: Identifier, args: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position)
@@ -364,6 +370,7 @@ extends SchemeExp {
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
   val label: Label = DVA
   def subexpressions: List[Expression] = name :: vararg :: args ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineVarArgFunction].args.length
 }
 
 /**
