@@ -8,24 +8,24 @@ import scalaam.language.sexp._
   */
 trait SchemeExp extends Expression
 
-case object LAM extends Label
-case object FNC extends Label
-case object IF  extends Label
-case object LET extends Label
-case object LTS extends Label
-case object LTR extends Label
-case object NLT extends Label
-case object SET extends Label
-case object BEG extends Label
-case object AND extends Label
-case object OR  extends Label
-case object DFV extends Label
-case object DFF extends Label
-case object DVA extends Label
-case object VAR extends Label
-case object PAI extends Label
-case object SPA extends Label
-case object VAL extends Label
+case object AND extends Label // And
+case object BEG extends Label // Begin
+case object DFF extends Label // Function definition
+case object DFV extends Label // Variable definition
+case object DVA extends Label // Variable argument definition
+case object FNC extends Label // Function call (application)
+case object IFF extends Label // If expression
+case object LAM extends Label // Lambda expression
+case object LET extends Label // Let expression
+case object LTR extends Label // Letrec expression
+case object LTS extends Label // Let* expression
+case object NLT extends Label // Named let
+case object ORR extends Label // Or
+case object PAI extends Label // Pair
+case object SET extends Label // Assignment
+case object SPA extends Label // Spliced pair
+case object VAL extends Label // Value
+case object VAR extends Label // Variable
 
 /**
   * A lambda expression: (lambda (args...) body...)
@@ -39,7 +39,7 @@ trait SchemeLambdaExp extends SchemeExp {
   // does the lambda support a variable number of arguments
   def varArgId: Option[Identifier]
   // can this lambda be called with a given number of arguments
-  def check(argc: Int) =
+  def check(argc: Int): Boolean =
     if (varArgId.isDefined) {
       argc == args.length
     } else {
@@ -60,7 +60,7 @@ case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Posi
     val b = body.mkString(" ")
     s"(lambda ($a) $b)"
   }
-  def varArgId = None
+  def varArgId: Option[Identifier] = None
 }
 
 case class SchemeVarArgLambda(args: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position) extends SchemeLambdaExp {
@@ -73,7 +73,7 @@ case class SchemeVarArgLambda(args: List[Identifier], vararg: Identifier, body: 
     val b = body.mkString(" ")
     s"(lambda $a $b)"
   }
-  def varArgId = Some(vararg)
+  def varArgId: Option[Identifier] = Some(vararg)
 }
 
 /**
@@ -103,14 +103,24 @@ case class SchemeIf(cond: SchemeExp, cons: SchemeExp, alt: SchemeExp, pos: Posit
   override def toString: String = s"(if $cond $cons $alt)"
   def fv: Set[String] = cond.fv ++ cons.fv ++ alt.fv
   override val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
-  val label: Label = IF
+  val label: Label = IFF
   def subexpressions: List[Expression] = List(cond, cons, alt)
+}
+
+/** A let-like expression. */
+trait SchemeLettishExp extends SchemeExp {
+  val bindings: List[(Identifier, SchemeExp)]
+  val body: List[SchemeExp]
+  val pos: Position
+  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
+  def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLettishExp].body.length
 }
 
 /**
   * Let-bindings: (let ((v1 e1) ...) body...)
   */
-case class SchemeLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
+case class SchemeLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeLettishExp {
   override def toString: String = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
@@ -120,16 +130,13 @@ case class SchemeLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeE
     bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- bindings
       .map(_._1.name)
       .toSet)
-  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   val label: Label = LET
-  def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
-  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLet].body.length
 }
 
 /**
   * Let*-bindings: (let* ((v1 e1) ...) body...)
   */
-case class SchemeLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
+case class SchemeLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeLettishExp {
   override def toString: String = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
@@ -144,16 +151,13 @@ case class SchemeLetStar(bindings: List[(Identifier, SchemeExp)], body: List[Sch
           }
       )
       ._2 ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1.name).toSet)
-  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   val label: Label = LTS
-  def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
-  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLetStar].body.length
 }
 
 /**
   * Letrec-bindings: (letrec ((v1 e1) ...) body...)
   */
-case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
+case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeLettishExp {
   override def toString: String = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
@@ -163,17 +167,14 @@ case class SchemeLetrec(bindings: List[(Identifier, SchemeExp)], body: List[Sche
     (bindings.map(_._2).flatMap(_.fv).toSet ++ body.flatMap(_.fv).toSet) -- bindings
       .map(_._1.name)
       .toSet
-  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   val label: Label = LTR
-  def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
-  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLetrec].body.length
 }
 
 /**
   * Named-let: (let name ((v1 e1) ...) body...)
   * TODO: desugar to letrec according to R5RS
   */
-case class SchemeNamedLet(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeExp {
+case class SchemeNamedLet(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], pos: Position) extends SchemeLettishExp {
   override def toString: String = {
     val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
     val bo = body.mkString(" ")
@@ -183,10 +184,8 @@ case class SchemeNamedLet(name: Identifier, bindings: List[(Identifier, SchemeEx
     bindings.map(_._2).flatMap(_.fv).toSet ++ (body
       .flatMap(_.fv)
       .toSet -- (bindings.map(_._1.name).toSet + name.name))
-  override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   val label: Label = NLT
-  def subexpressions: List[Expression] = name :: bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
-  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeNamedLet].body.length
+  override def subexpressions: List[Expression] = name :: super.subexpressions
 }
 
 /**
@@ -327,7 +326,7 @@ case class SchemeOr(exps: List[SchemeExp], pos: Position) extends SchemeExp {
   }
   def fv: Set[String] = exps.flatMap(_.fv).toSet
   override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
-  val label: Label = OR
+  val label: Label = ORR
   def subexpressions: List[Expression] = exps
 }
 
@@ -345,32 +344,38 @@ case class SchemeDefineVariable(name: Identifier, value: SchemeExp, pos: Positio
 /**
   * A function definition: (define (name args...) body...)
   */
+trait SchemeDefineFunctionExp extends SchemeExp {
+  val name: Identifier
+  val args: List[Identifier]
+  val body: List[SchemeExp]
+  val pos: Position
+  def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
+  def subexpressions: List[Expression] = name :: args ::: body
+  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
+}
+
 case class SchemeDefineFunction(name: Identifier, args: List[Identifier], body: List[SchemeExp], pos: Position)
-extends SchemeExp {
+extends SchemeDefineFunctionExp {
   override def toString: String = {
     val a = args.mkString(" ")
     val b = body.mkString(" ")
     s"(define ($name $a) $b)"
   }
-  def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
   val label: Label = DFF
-  def subexpressions: List[Expression] = name :: args ::: body
-  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineFunction].args.length
 }
 
 case class SchemeDefineVarArgFunction(name: Identifier, args: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position)
-extends SchemeExp {
+extends SchemeDefineFunctionExp {
   override def toString: String = {
     val a = s"${args.mkString(" ")} . $vararg"
     val b = body.mkString(" ")
     s"(define ($name $a) $b)"
   }
-  def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name) - vararg.name
+  override def fv: Set[String] = super.fv - vararg.name
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
   val label: Label = DVA
-  def subexpressions: List[Expression] = name :: vararg :: args ::: body
-  override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineVarArgFunction].args.length
+  override def subexpressions: List[Expression] = vararg :: super.subexpressions
 }
 
 /**
@@ -435,7 +440,7 @@ case class SchemeVar(id: Identifier)
 
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef)
   extends SchemeVarExp {
-    override def toString = lexAddr.toString
+    override def toString: String = lexAddr.toString
   }
 
 case class SchemePair(car: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {

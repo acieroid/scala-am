@@ -1,6 +1,7 @@
 package scalaam.language.sexp
 
-import scalaam.core.{Expression, Identifier, Label, Position}
+import scalaam.core._
+import scalaam.language.scheme._
 
 /**
   * S-expressions and related values
@@ -16,16 +17,10 @@ case class ValueInteger(value: Int) extends Value {
   override def toString: String = value.toString
 }
 case class ValueReal(value: Double) extends Value {
-  override def toString =
-    f"$value%e" // Might not preserve full precision, but will be in a Scheme-compatible format
+  override def toString = f"$value%e" // Might not preserve full precision, but will be in a Scheme-compatible format
 }
 case class ValueBoolean(value: Boolean) extends Value {
-  override def toString: String =
-    if (value) {
-      "#t"
-    } else {
-      "#f"
-    }
+  override def toString: String = if (value) "#t" else "#f"
 }
 case class ValueCharacter(value: Char) extends Value {
   override def toString = s"#\\$value"
@@ -44,10 +39,6 @@ trait SExp extends Expression {
   val pos: Position
   def fv: Set[String] = Set()
 }
-
-case object SPAI extends Label
-case object SID  extends Label
-case object SVAL extends Label
 
 /**
   * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair
@@ -69,15 +60,15 @@ case class SExpPair(car: SExp, cdr: SExp, pos: Position) extends SExp {
       case SExpValue(ValueNil, _) => s"$car"
       case _                      => s"$car . $cdr"
     }
-  val label: Label = SPAI
+  val label: Label = PAI
   def subexpressions: List[Expression] = List(car, cdr)
 }
 
 object SExpList {
   /** Alternative constructor to automatically construct a bunch of pair from a
     * list of expressions */
-  def apply(content: List[SExp], end: SExp) = fromList(content, end)
-  def apply(content: List[SExp], pos: Position) =
+  def apply(content: List[SExp], end: SExp): SExp = fromList(content, end)
+  def apply(content: List[SExp], pos: Position): SExp =
     fromList(content, SExpValue(ValueNil,pos))
 
   def fromList(content: List[SExp], end: SExp): SExp = content match {
@@ -92,7 +83,7 @@ object SExpList {
 case class SExpId(id: Identifier) extends SExp {
   val pos: Position = id.pos
   override def toString: String = id.toString
-  val label: Label = SID
+  val label: Label = SYM
   def subexpressions: List[Expression] = List(id)
 }
 
@@ -101,7 +92,7 @@ case class SExpId(id: Identifier) extends SExp {
   */
 case class SExpValue(value: Value, pos: Position) extends SExp {
   override def toString: String = value.toString
-  val label: Label = SVAL
+  val label: Label = VAL
   def subexpressions: List[Expression] = List()
 }
 

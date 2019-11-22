@@ -71,7 +71,7 @@ object GumTreeDiff {
    * @param minDice     The minimum common descendant ratio to be exceeded for subtrees to be matched.
    * @return A mapping between nodes from the old AST to nodes from the updated AST. Nodes are represented using the class T defined within this object. Note that the roots of the trees can never be matched themselves.
    */
-  def map(E1: E, E2: E, minHeight: Int = 2, maxSize: Int = 100, minDice: Double = 0.5): MP = {
+  def computeMapping(E1: E, E2: E, minHeight: Int = 2, maxSize: Int = 100, minDice: Double = 0.5): MP = {
     val T1 = T(E1, null)
     val T2 = T(E2, null)
     bottomUp(T1, T2, topDown(T1, T2, minHeight), maxSize, minDice)
@@ -160,9 +160,9 @@ object GumTreeDiff {
           M = M + (t1 -> ((t2, Container)))
           if (t1.descendants.size.max(t2.descendants.size) < maxSize)
             opt(t1, t2).foreach { case (ta, tb) =>
-              if (!m.contains(ta)
-                && !m.exists { case (_, (t, _)) => t == tb }
-                && ta.label == tb.label)
+              if (ta.label == tb.label
+                  && !m.contains(ta)
+                  && !m.exists { case (_, (t, _)) => t == tb })
                 M = M + (ta -> ((tb, Recovery)))
             }
         case _ =>
@@ -194,7 +194,7 @@ object GumTreeDiff {
   }
 
   /** Returns a boolean indicating whether t1 and t2 have matched descendants in mapping M. */
-  private def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = t1.descendants.exists(t => t2.descendants.contains(M.get(t).contains(_: T)))
+  private def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = t1.descendants.exists(t => t2.descendants.contains(M.get(t).map(_._1).contains(_: T)))
 
   // TODO - the current implementation is a dummy implementation
   /** Finds the mapping corresponding to the shortest edit script without move actions.

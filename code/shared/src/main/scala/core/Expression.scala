@@ -28,7 +28,7 @@ trait Expression extends SmartHash {
 }
 
 trait Label
-case object ID extends Label
+case object SYM extends Label // Identifier
 
 /** An identifier. It has a name and a position */
 case class Identifier(name: String, pos: Position) extends Expression with SmartHash {
@@ -36,6 +36,6 @@ case class Identifier(name: String, pos: Position) extends Expression with Smart
   override def toString:       String  = name
   def fv:                  Set[String] = Set(name)
   override val height:             Int = 0
-  val label:                     Label = ID
+  val label:                     Label = SYM
   def subexpressions: List[Expression] = List()
 }
