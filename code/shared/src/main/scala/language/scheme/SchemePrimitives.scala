@@ -230,6 +230,9 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
   object PrimitiveDefs {
 
+    lazy val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
+    lazy val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
+
     /** Helper for defining operations that do not modify the store */
     abstract class NoStoreOperation(val name: String, val nargs: Option[Int] = None)
         extends SchemePrimitive[V,A] {
@@ -295,6 +298,71 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
     import schemeLattice._
     import scala.util.control.TailCalls._
+
+    abstract class FixpointPrimitive(val name: String, val nargs: Option[Int] = None) extends SchemePrimitive[V,A] {
+
+      type Args = List[V]
+
+      def call(fexp: SchemeExp,
+               argsWithExps: List[(SchemeExp, V)],
+               store: Store[A,V],
+               alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
+        val args = argsWithExps.map(_._2)
+        // keep track of results for "visited" arguments
+        var cache = Map[Args,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
+        // keep track of which calls depend on which other calls
+        var deps = Map[Args,Set[Args]]().withDefaultValue(Set())
+        // standard worklist algorithm
+        var visited = Set[Args]()
+        var worklist = Set(args)
+        while (worklist.nonEmpty) {
+          // take the next arguments from the worklist
+          val next = worklist.head
+          worklist = worklist - next
+          // call with the next arguments
+          val res = callWithArgs(next)(alloc, store, args => {
+            deps += (args -> (deps(args) + next))
+            if(!visited(args)) {
+              worklist = worklist + args
+              visited += args
+            }
+            cache(args)
+          })
+          // update the cache and worklist
+          val oldValue = cache(next)
+          val newValue = mfMon.append(oldValue,res)
+          if (newValue != oldValue) {
+            cache += (next -> newValue)
+            worklist ++= deps(next)
+          }
+        }
+        cache(args).map(v => (v,store))
+      }
+
+      def expectedArity = nargs.getOrElse(-1)
+
+      def callWithArgs(args: List[V])(alloc: SchemeAllocator[A],store: Store[A,V], cache: List[V] => MayFail[V,Error]): MayFail[V,Error] = args match {
+        case Nil => callWithArgs()(alloc, store, () => cache(List()))
+        case a1 :: Nil => callWithArgs(a1)(alloc, store, (a1: V) => cache(List(a1)))
+        case a1 :: a2 :: Nil => callWithArgs(a1,a2)(alloc, store, (a1: V, a2: V) => cache(List(a1,a2)))
+        case a1 :: a2 :: a3 :: Nil => callWithArgs(a1,a2,a3)(alloc, store, (a1: V, a2: V, a3: V) => cache(List(a1,a2,a3)))
+        case _ => MayFail.failure(PrimitiveArityError(name, expectedArity, args.length))
+      }
+
+      // 0-arg version
+      def callWithArgs()(alloc: SchemeAllocator[A], store: Store[A,V], cache: () => MayFail[V,Error]): MayFail[V,Error] =
+        MayFail.failure(PrimitiveArityError(name, expectedArity, 0))
+      // 1-arg version
+      def callWithArgs(a1: V)(alloc: SchemeAllocator[A], store: Store[A,V], cache: (V) => MayFail[V,Error]): MayFail[V,Error] =
+        MayFail.failure(PrimitiveArityError(name, expectedArity, 1))
+      // 2-arg version
+      def callWithArgs(a1: V, a2: V)(alloc: SchemeAllocator[A], store: Store[A,V], cache: (V,V) => MayFail[V,Error]): MayFail[V,Error] =
+        MayFail.failure(PrimitiveArityError(name, expectedArity, 2))
+      // 3-arg version
+      def callWithArgs(a1: V, a2: V, a3: V)(alloc: SchemeAllocator[A], store: Store[A,V], cache: (V,V,V) => MayFail[V,Error]): MayFail[V,Error] =
+        MayFail.failure(PrimitiveArityError(name, expectedArity, 3))
+    }
+
     def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
       x match {
         case MayFailSuccess(v)   => tailcall(v)
@@ -367,8 +435,6 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     def ifThenElse(
         cond: MayFail[V, Error]
     )(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
-      val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
-      val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
       cond >>= { condv =>
         val t = if (isTrue(condv)) {
           thenBranch
@@ -903,43 +969,6 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           .map(store => (bool(false) /* undefined */, store))
     }
 
-    object Length extends StoreOperation("length", Some(1)) {
-      override def call(l: V, store: Store[A, V]) = {
-        def length(l: V, visited: Set[V]): TailRec[MayFail[V, Error]] =
-          if (visited.contains(l)) {
-            done(numTop)
-          } else {
-            ifThenElseTR(isPointer(l)) {
-              /* dereferences the pointer and applies length to the result */
-              dereferencePointerTR(l, store) { consv =>
-                tailcall(length(consv, visited + l))
-              }
-            } {
-              ifThenElseTR(isCons(l)) {
-                /* length of the list is length of its cdr plus one */
-                liftTailRec(
-                  cdr(l) >>= (
-                      cdr =>
-                        tailcall(length(cdr, visited + l)).flatMap(
-                          lengthcdr => liftTailRec(lengthcdr.flatMap(l => done(plus(number(1), l))))
-                        )
-                    )
-                )
-              } {
-                ifThenElseTR(isNull(l)) {
-                  /* length of null is 0 */
-                  done(number(0))
-                } {
-                  /* not a list */
-                  done(MayFail.failure(PrimitiveNotApplicable("length", List(l))))
-                }
-              }
-            }
-          }
-        length(l, Set()).result.map(v => (v, store))
-      }
-    }
-
     /** (define (equal? a b)
           (or (eq? a b)
             (and (null? a) (null? b))
@@ -1016,6 +1045,28 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
 
+    object Length extends FixpointPrimitive("length",Some(1)) {
+      override def callWithArgs(l: V)(alloc: SchemeAllocator[A], store: Store[A,V], length: V => MayFail[V,Error]): MayFail[V,Error] =
+        ifThenElse(isNull(l)) {
+          // if we have l = '(), length(l) = 0
+          number(0)
+        } {
+          ifThenElse(isPointer(l)) {
+            // if we have l = cons(a,d), length(l) = length(d) + 1
+            dereferencePointer(l, store) { consv =>
+              for {
+                next      <- cdr(consv)
+                len_next  <- length(next)
+                result    <- plus(len_next, number(1))
+              } yield result
+            }
+          } {
+            // if we have have something else (i.e., not a list), length throws a type error!
+            MayFail.failure(PrimitiveNotApplicable("length", List(l)))
+          }
+        }
+    }
+
     /** (define list (lambda args
           (if (null? args)
             '()
@@ -1072,22 +1123,6 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
 
-    /** (define (append l1 l2)
-          (if (null? l1)
-              l2
-              (cons (car l1)
-                    (append (cdr l1) l2)))) */
-    object Append extends StoreOperation("append", Some(2)) {
-      override def call(l1: V, l2: V, store: Store[A, V]) = {
-        def append(cur: V, idx: Int, visited: Set[V]): TailRec[MayFail[V,Error]] =
-          if(visited.contains(cur) || cur == bottom) {
-            done(bottom)
-          } else {
-            ???
-          }
-        append(l1, 0, Set.empty).result.map(v => (v, store))
-      }
-    }
     /** (define (list-ref l index)
           (if (pair? l)
             (if (= index 0)
