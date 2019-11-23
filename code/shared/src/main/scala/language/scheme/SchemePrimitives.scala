@@ -1067,6 +1067,29 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         }
     }
 
+    object Append extends FixpointPrimitive("append", Some(2)) {
+      override def callWithArgs(l1: V, l2: V)(alloc: SchemeAllocator[A], store: Store[A,V], append: (V,V) => MayFail[V,Error]): MayFail[V,Error] =
+        ifThenElse(isNull(l1)) {
+          // if we have l1 = '(), append(l1,l2) = l2
+          l2
+        } {
+          ifThenElse(isPointer(l1)) {
+            // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
+            dereferencePointer(l1, store) { consv =>
+              for {
+                carv      <- car(consv)
+                cdrv      <- cdr(consv)
+                app_next  <- append(cdrv, l2)
+                result    <- cons(carv, app_next)
+              } yield result
+            }
+          } {
+            // if we have have something else (i.e., not a list), append throws a type error!
+            MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
+          }
+        }
+    }
+
     /** (define list (lambda args
           (if (null? args)
             '()
