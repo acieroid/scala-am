@@ -432,6 +432,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         v2 <- arg2
         res <- f(v1, v2)
       } yield res */
+
     def ifThenElse(
         cond: MayFail[V, Error]
     )(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
@@ -448,6 +449,18 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         }
         mfMon.append(t, f)
       }
+    }
+
+    private trait Clause {
+      def otherwise(act: => MayFail[V,Error]): MayFail[V,Error]
+      def otherwise(cls: Clause): Clause = otherwise_(cls, this)
+      def otherwise_(cls: Clause, parent: Clause) = new Clause {
+        def otherwise(alt: => MayFail[V,Error]) = parent.otherwise(cls.otherwise(alt))
+      }
+    }
+
+    private def ifV(prd: => MayFail[V,Error])(csq: => MayFail[V,Error]) = new Clause {
+      def otherwise(alt: => MayFail[V,Error]) = ifThenElse(prd) { csq } { alt }
     }
 
     def ifThenElseTR(cond: MayFail[V, Error])(
@@ -1047,46 +1060,42 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
     object Length extends FixpointPrimitive("length",Some(1)) {
       override def callWithArgs(l: V)(alloc: SchemeAllocator[A], store: Store[A,V], length: V => MayFail[V,Error]): MayFail[V,Error] =
-        ifThenElse(isNull(l)) {
+        ifV(isNull(l)) {
           // if we have l = '(), length(l) = 0
           number(0)
-        } {
-          ifThenElse(isPointer(l)) {
-            // if we have l = cons(a,d), length(l) = length(d) + 1
-            dereferencePointer(l, store) { consv =>
-              for {
-                next      <- cdr(consv)
-                len_next  <- length(next)
-                result    <- plus(len_next, number(1))
-              } yield result
-            }
-          } {
-            // if we have have something else (i.e., not a list), length throws a type error!
-            MayFail.failure(PrimitiveNotApplicable("length", List(l)))
+        } otherwise ifV(isPointer(l)) {
+          // if we have l = cons(a,d), length(l) = length(d) + 1
+          dereferencePointer(l, store) { consv =>
+            for {
+              next      <- cdr(consv)
+              len_next  <- length(next)
+              result    <- plus(len_next, number(1))
+            } yield result
           }
+        } otherwise {
+          // if we have have something else (i.e., not a list), length throws a type error!
+          MayFail.failure(PrimitiveNotApplicable("length", List(l)))
         }
     }
 
     object Append extends FixpointPrimitive("append", Some(2)) {
       override def callWithArgs(l1: V, l2: V)(alloc: SchemeAllocator[A], store: Store[A,V], append: (V,V) => MayFail[V,Error]): MayFail[V,Error] =
-        ifThenElse(isNull(l1)) {
+        ifV(isNull(l1)) {
           // if we have l1 = '(), append(l1,l2) = l2
           l2
-        } {
-          ifThenElse(isPointer(l1)) {
-            // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
-            dereferencePointer(l1, store) { consv =>
-              for {
-                carv      <- car(consv)
-                cdrv      <- cdr(consv)
-                app_next  <- append(cdrv, l2)
-                result    <- cons(carv, app_next)
-              } yield result
-            }
-          } {
-            // if we have have something else (i.e., not a list), append throws a type error!
-            MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
+        } otherwise ifV(isPointer(l1)) {
+          // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
+          dereferencePointer(l1, store) { consv =>
+            for {
+              carv      <- car(consv)
+              cdrv      <- cdr(consv)
+              app_next  <- append(cdrv, l2)
+              result    <- cons(carv, app_next)
+            } yield result
           }
+        } otherwise {
+          // if we have have something else (i.e., not a list), append throws a type error!
+          MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
         }
     }
 
