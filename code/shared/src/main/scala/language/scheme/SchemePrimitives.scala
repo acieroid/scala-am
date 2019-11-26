@@ -299,68 +299,76 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     import schemeLattice._
     import scala.util.control.TailCalls._
 
-    abstract class FixpointPrimitive(val name: String, val nargs: Option[Int] = None) extends SchemePrimitive[V,A] {
+    abstract class FixpointPrimitive(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
 
-      type Args = List[V]
+      // parameterized by
+      // - the arguments to the recursive call
+      type Args
+      // - the representation of 'call components' (tuning precision)
+      type Call
+      // - a mapping from arguments to call components
+      def callFor(args: Args): Call
+      // - a function to compute the initial arguments from the primitive input
+      def initialArgs(fexp: SchemeExp, argsWithExps: List[(SchemeExp, V)]): Option[Args]
+      // - a function for updating the arguments when upon a new call to a 'call'
+      def updateArgs(oldArgs: Args, newArgs: Args): Args
+      // - a function for updating the result of a function call
+      def updateResult(oldResult: MayFail[V,Error], newResult: MayFail[V,Error]) = mfMon.append(oldResult, newResult)
+      // - a function to execute a single 'call' with given arguments
+      def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
       def call(fexp: SchemeExp,
                argsWithExps: List[(SchemeExp, V)],
                store: Store[A,V],
                alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
-        val args = argsWithExps.map(_._2)
+        // determine the initial args & call from the primitive input
+        val initArgs = initialArgs(fexp, argsWithExps) match {
+          case Some(args) =>
+            args
+          case None =>
+            return MayFail.failure(PrimitiveArityError(name,arity.getOrElse(-1),argsWithExps.length))
+        }
+        val initCall = callFor(initArgs)
+        // for every call, keep track of the arguments
+        var callArgs = Map[Call,Args]((initCall -> initArgs))
         // keep track of results for "visited" arguments
-        var cache = Map[Args,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
+        var cache = Map[Call,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
         // keep track of which calls depend on which other calls
-        var deps = Map[Args,Set[Args]]().withDefaultValue(Set())
+        var deps = Map[Call,Set[Call]]().withDefaultValue(Set())
         // standard worklist algorithm
-        var visited = Set[Args]()
-        var worklist = Set(args)
+        var worklist = Set(initCall)
         while (worklist.nonEmpty) {
           // take the next arguments from the worklist
-          val next = worklist.head
-          worklist = worklist - next
+          val nextCall = worklist.head
+          worklist = worklist - nextCall
           // call with the next arguments
-          val res = callWithArgs(next)(alloc, store, args => {
-            deps += (args -> (deps(args) + next))
-            if(!visited(args)) {
-              worklist = worklist + args
-              visited += args
-            }
-            cache(args)
+          val nextArgs = callArgs(nextCall)
+          val res = callWithArgs(nextArgs)(alloc, store, args => {
+            val call = callFor(args)
+            deps += (call -> (deps(call) + nextCall))
+            callArgs.get(call) match {
+              case None => // first time calling this 'call'
+                worklist = worklist + call
+                callArgs += (call -> args)
+              case Some(oldArgs) => // call was already called
+                val updatedArgs = updateArgs(oldArgs,args)
+                if (updatedArgs != oldArgs) {
+                  worklist = worklist + call
+                  callArgs += (call -> updatedArgs)
+                }
+              }
+            cache(call)
           })
           // update the cache and worklist
-          val oldValue = cache(next)
-          val newValue = mfMon.append(oldValue,res)
-          if (newValue != oldValue) {
-            cache += (next -> newValue)
-            worklist ++= deps(next)
+          val oldValue = cache(nextCall)
+          val updatedValue = updateResult(oldValue, res)
+          if (updatedValue != oldValue) {
+            cache += (nextCall -> updatedValue)
+            worklist ++= deps(nextCall)
           }
         }
-        cache(args).map(v => (v,store))
+        cache(initCall).map(v => (v,store))
       }
-
-      def expectedArity = nargs.getOrElse(-1)
-
-      def callWithArgs(args: List[V])(alloc: SchemeAllocator[A],store: Store[A,V], cache: List[V] => MayFail[V,Error]): MayFail[V,Error] = args match {
-        case Nil => callWithArgs()(alloc, store, () => cache(List()))
-        case a1 :: Nil => callWithArgs(a1)(alloc, store, (a1: V) => cache(List(a1)))
-        case a1 :: a2 :: Nil => callWithArgs(a1,a2)(alloc, store, (a1: V, a2: V) => cache(List(a1,a2)))
-        case a1 :: a2 :: a3 :: Nil => callWithArgs(a1,a2,a3)(alloc, store, (a1: V, a2: V, a3: V) => cache(List(a1,a2,a3)))
-        case _ => MayFail.failure(PrimitiveArityError(name, expectedArity, args.length))
-      }
-
-      // 0-arg version
-      def callWithArgs()(alloc: SchemeAllocator[A], store: Store[A,V], cache: () => MayFail[V,Error]): MayFail[V,Error] =
-        MayFail.failure(PrimitiveArityError(name, expectedArity, 0))
-      // 1-arg version
-      def callWithArgs(a1: V)(alloc: SchemeAllocator[A], store: Store[A,V], cache: (V) => MayFail[V,Error]): MayFail[V,Error] =
-        MayFail.failure(PrimitiveArityError(name, expectedArity, 1))
-      // 2-arg version
-      def callWithArgs(a1: V, a2: V)(alloc: SchemeAllocator[A], store: Store[A,V], cache: (V,V) => MayFail[V,Error]): MayFail[V,Error] =
-        MayFail.failure(PrimitiveArityError(name, expectedArity, 2))
-      // 3-arg version
-      def callWithArgs(a1: V, a2: V, a3: V)(alloc: SchemeAllocator[A], store: Store[A,V], cache: (V,V,V) => MayFail[V,Error]): MayFail[V,Error] =
-        MayFail.failure(PrimitiveArityError(name, expectedArity, 3))
     }
 
     def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
@@ -1059,6 +1067,18 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     }
 
     object Length extends FixpointPrimitive("length",Some(1)) {
+      /** the argument to length is just the current pair */
+      type Args = V
+      def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
+        case (_, arg) :: Nil  => Some(arg)
+        case _                => None
+      }
+      /** calls are just that argument */
+      type Call = Args
+      def callFor(args: V) = args
+      /** since Args == Calls, the argument remains the same */
+      def updateArgs(oldArgs: V, newArgs: V) = { assert(oldArgs == newArgs) ; newArgs }
+      /** The actual implementation of the primitive */
       override def callWithArgs(l: V)(alloc: SchemeAllocator[A], store: Store[A,V], length: V => MayFail[V,Error]): MayFail[V,Error] =
         ifV(isNull(l)) {
           // if we have l = '(), length(l) = 0
@@ -1078,7 +1098,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         }
     }
 
-    object Append extends FixpointPrimitive("append", Some(2)) {
+    /**
+    object Append extends FixpointPrimitive("append") {
       override def callWithArgs(l1: V, l2: V)(alloc: SchemeAllocator[A], store: Store[A,V], append: (V,V) => MayFail[V,Error]): MayFail[V,Error] =
         ifV(isNull(l1)) {
           // if we have l1 = '(), append(l1,l2) = l2
@@ -1098,6 +1119,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
         }
     }
+    */
 
     /** (define list (lambda args
           (if (null? args)
