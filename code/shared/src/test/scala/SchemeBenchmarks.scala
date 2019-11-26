@@ -258,7 +258,7 @@ object SchemeBenchmarks {
     "test/kernighanvanwyk/ack.scm",
     "test/letrec-begin.scm",
     "test/loop2.scm",
-    //"test/mceval.scm",
+    "test/mceval.scm",
     "test/mj09.scm",
     "test/mut-rec.scm",
     "test/my-list.scm",
@@ -270,10 +270,10 @@ object SchemeBenchmarks {
     "test/rotate.scm",
     "test/rsa.scm",
     "test/sat.scm",
-    //"test/scm2c.scm",     // char->integer NOT SUPPORTED IN SCALA-AM
-    //"test/scm2java.scm",  // char->integer NOT SUPPORTED IN SCALA-AM
+    //"test/scm2c.scm",     // various unsupported primitives
+    //"test/scm2java.scm",  // various unsupported primitives
     "test/sq.scm",
-    //"test/Streams.scm", // define-macro
+    //"test/Streams.scm",   // define-macro
     "test/sym.scm",
     "test/widen.scm",
     "test/work.scm",
