@@ -7,16 +7,18 @@ import scalaam.language.scheme._
 
 object Main {
 
-  def main(args: Array[String]): Unit = {
-    testLex("test/fact.scm")
-  }
+  def main(args: Array[String]): Unit = test()
 
-  def testLex(file: String): Unit = {
-    val txt = loadFile(file)
+  def test(): Unit = {
+    val txt = """
+      (define lst '(1 2 3))
+      (define p `(,@lst 4 5))
+      (length p)
+    """
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with SmallStepSchemeModFSemantics
                                         with ConstantPropagationDomain
-                                        with FullArgumentSensitivity
+                                        with NoSensitivity
     analysis.analyze()
     debugResults(analysis)
   }

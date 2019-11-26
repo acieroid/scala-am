@@ -116,6 +116,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       writeAddr(addr,pair)
       lattice.pointer(addr)
     }
+    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)) = {
+      val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
+      applyFun(appendExp, appendPrim, List(l1,l2))
+    }
     private def bindArg(component: IntraComponent, par: Identifier, arg: Value) =
       writeAddr(VarAddr(par),arg,component)
     private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) =

@@ -21,26 +21,29 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     // the frames used to build the continuation
     type Kont = List[Frame]
     sealed trait Frame
-    case class SeqFrame(exps: List[SchemeExp])          extends Frame
-    case class DefVarFrame(id: Identifier)              extends Frame
-    case class SetFrame(lex: LexicalRef)                extends Frame
+    case class SeqFrame(exps: List[SchemeExp])            extends Frame
+    case class DefVarFrame(id: Identifier)                extends Frame
+    case class SetFrame(lex: LexicalRef)                  extends Frame
     case class IfFrame(csq: SchemeExp,
-                       alt: SchemeExp)                  extends Frame
+                       alt: SchemeExp)                    extends Frame
     case class LetFrame(id: Identifier,
                         bds: List[(Identifier, SchemeExp)],
-                        bdy: List[SchemeExp])           extends Frame
+                        bdy: List[SchemeExp])             extends Frame
     case class ArgsFrame(fexp: SchemeExp,
                          fval: Value,
                          curExp: SchemeExp,
                          toEval: List[SchemeExp],
-                         args: List[(SchemeExp,Value)]) extends Frame
+                         args: List[(SchemeExp,Value)])   extends Frame
     case class FunFrame(fexp: SchemeExp,
-                        args: List[SchemeExp])          extends Frame
-    case class AndFrame(exps: List[SchemeExp])          extends Frame
-    case class OrFrame(exps: List[SchemeExp])           extends Frame
-    case class PairCarFrm(pairExp: SchemePair)          extends Frame
+                        args: List[SchemeExp])            extends Frame
+    case class AndFrame(exps: List[SchemeExp])            extends Frame
+    case class OrFrame(exps: List[SchemeExp])             extends Frame
+    case class PairCarFrm(pairExp: SchemePair)            extends Frame
     case class PairCdrFrm(carValue: Value,
-                          pairExp: SchemePair)          extends Frame
+                          pairExp: SchemePair)            extends Frame
+    case class SplicedCarFrm(pairExp: SchemeSplicedPair)  extends Frame
+    case class SplicedCdrFrm(carValue: Value,
+                             pairExp: SchemeSplicedPair)  extends Frame
 
     // the main analyze method
     def analyze() = {
@@ -136,6 +139,9 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
       case pair: SchemePair =>
         val frm = PairCarFrm(pair)
         Set(EvalState(pair.car, frm :: cnt))
+      case spliced: SchemeSplicedPair =>
+        val frm = SplicedCarFrm(spliced)
+        Set(EvalState(spliced.splice, frm :: cnt))
       case _ =>
         throw new Exception(s"Unsupported Scheme expression: $exp")
     }
@@ -211,6 +217,12 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
         Set(EvalState(pair.cdr, frm :: cnt))
       case PairCdrFrm(carVlu,pairExp) =>
         val result = allocateCons(pairExp)(carVlu,vlu)
+        Set(KontState(result,cnt))
+      case SplicedCarFrm(spliced) =>
+        val frm = SplicedCdrFrm(vlu,spliced)
+        Set(EvalState(spliced.cdr, frm :: cnt))
+      case SplicedCdrFrm(spliceValue,pairExp) =>
+        val result = append(pairExp)((pairExp.splice, spliceValue), (pairExp.cdr,vlu))
         Set(KontState(result,cnt))
     }
   }

@@ -94,9 +94,11 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
       val cdrv = eval(pairExp.cdr)
       allocateCons(pairExp)(carv,cdrv)
     }
-    private def evalSplicedPair(pairExp: SchemeSplicedPair): Value =
-      // TODO: implement append-like behaviour here ...
-      throw new Exception("unquote-splicing is not yet implemented")
+    private def evalSplicedPair(pairExp: SchemeSplicedPair): Value = {
+      val splicev = eval(pairExp.splice)
+      val cdrv = eval(pairExp.cdr)
+      append(pairExp)((pairExp.splice, splicev), (pairExp.cdr, cdrv))
+    }
   }
 }
 
