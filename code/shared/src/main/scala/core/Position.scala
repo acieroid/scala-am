@@ -6,7 +6,7 @@ import scalaam.util.SmartHash
 sealed trait Position {
   def column: Int
   def line: Int
-  def <(that: Position): Boolean = column < that.column && line < that.line
+  def <(that: Position): Boolean = line < that.line || (line == that.line && column < that.column)
 }
 
 /** A position with a line and column */
