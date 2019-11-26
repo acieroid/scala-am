@@ -323,6 +323,11 @@ class ModularSchemeLattice[
               case Real(n) => MayFail.success(Int(RealLattice[R].toInt[I](n))) /* should introduce fractions */
               case _       => MayFail.failure(OperatorNotApplicable("inexact->exact", List(x)))
             }
+          case CharacterToInteger =>
+            x match {
+              case Char(c) => MayFail.success(Int(CharLattice[C].toInt[I](c)))
+              case _       => MayFail.failure(OperatorNotApplicable("char->integer", List(x)))
+            }
         }
       }
 

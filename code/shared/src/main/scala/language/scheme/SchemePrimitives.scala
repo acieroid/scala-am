@@ -47,7 +47,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       Car, /* [vv] car: Pairs */
       Cdr, /* [vv] cdr: Pairs */
       Ceiling, /* [vv] ceiling: Arithmetic */
-      /* [x]  char->integer: Characters */
+      CharacterToInteger, /* [x]  char->integer: Characters */
       /* [x]  char-alphabetic?: Characters */
       /* [x]  char-ci<=?: Characters */
       /* [x]  char-ci<?: Characters */
@@ -525,6 +525,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     def stringToSymbol = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
     def inexactToExact = schemeLattice.unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
     def exactToInexact = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ExactToInexact) _
+    def characterToInt = schemeLattice.unaryOp(SchemeOps.UnaryOperator.CharacterToInteger) _
 
     def plus         = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Plus) _
     def minus        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Minus) _
@@ -698,6 +699,9 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     }
     object InexactToExact extends NoStoreOperation("inexact->exact", Some(1)) {
       override def call(x: V) = inexactToExact(x)
+    }
+    object CharacterToInteger extends NoStoreOperation("char->integer", Some(1)) {
+      override def call(x: V) = characterToInt(x)
     }
 
     /** (define (zero? x) (= x 0)) */
