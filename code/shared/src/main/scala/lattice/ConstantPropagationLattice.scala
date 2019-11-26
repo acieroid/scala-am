@@ -240,6 +240,11 @@ object ConstantPropagation {
     }
     implicit val charCP: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char) = Constant(x)
+      def toInt[I2: IntLattice](c: C) = c match {
+        case Bottom       => IntLattice[I2].bottom
+        case Constant(c)  => IntLattice[I2].inject(c.toInt)
+        case Top          => IntLattice[I2].top
+      }
     }
     implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol")
     with SymbolLattice[Sym] {

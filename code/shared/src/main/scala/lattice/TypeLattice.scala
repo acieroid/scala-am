@@ -135,6 +135,10 @@ object Type {
     }
     implicit val typeIsChar: CharLattice[C] = new BaseInstance("Char") with CharLattice[C] {
       def inject(c: Char): T = Top
+      def toInt[I2: IntLattice](c: C) = c match {
+        case Bottom => IntLattice[I2].bottom
+        case Top    => IntLattice[I2].top
+      }
     }
     implicit val typeIsSymbol: SymbolLattice[Sym] = new BaseInstance("Sym")
     with SymbolLattice[Sym] {
