@@ -258,20 +258,20 @@ object SchemeBenchmarks {
     "test/kernighanvanwyk/ack.scm",
     "test/letrec-begin.scm",
     "test/loop2.scm",
-    "test/mceval.scm",
+    //"test/mceval.scm",
     "test/mj09.scm",
     "test/mut-rec.scm",
-    "test/my-list.scm", // TODO: this is really unsound!
+    "test/my-list.scm",
     "test/nested-defines.scm",
     "test/primtest.scm",
     "test/quasiquoting-simple.scm",
-    //"test/quasiquoting.scm", // unquote-splicing
+    "test/quasiquoting.scm",
     "test/regex.scm",
     "test/rotate.scm",
     "test/rsa.scm",
     "test/sat.scm",
-    //"test/scm2c.scm", // unquote-splicing
-    //"test/scm2java.scm", // char->integer NOT SUPPORTED IN SCALA-AM
+    //"test/scm2c.scm",     // char->integer NOT SUPPORTED IN SCALA-AM
+    //"test/scm2java.scm",  // char->integer NOT SUPPORTED IN SCALA-AM
     "test/sq.scm",
     //"test/Streams.scm", // define-macro
     "test/sym.scm",

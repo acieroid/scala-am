@@ -154,6 +154,10 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         val carv = eval(car,env,timeout)
         val cdrv = eval(cdr,env,timeout)
         allocateCons(carv,cdrv)
+      case SchemeSplicedPair(splice,cdr,_) =>
+        val splicev = eval(splice,env,timeout)
+        val cdrv    = eval(cdr,env,timeout)
+        Primitives.Append.append(splicev,cdrv)
       case SchemeValue(v, _) =>
         v match {
           case ValueString(s) => Value.Str(s)
@@ -1071,6 +1075,19 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       }
       def fun = {
         case l => Value.Integer(length(l, 0))
+      }
+    }
+
+    object Append extends Prim {
+      val name = "append"
+      def call(args: List[Value]): Value = args match {
+        case l1 :: l2 :: Nil =>
+          append(l1,l2)
+        case _ => throw new Exception(s"append: invalid arguments $args")
+      }
+      def append(l1: Value, l2: Value): Value = l1 match {
+        case Value.Nil        => l2
+        case Value.Cons(a,d)  => allocateCons(store(a), append(store(d),l2))
       }
     }
 
