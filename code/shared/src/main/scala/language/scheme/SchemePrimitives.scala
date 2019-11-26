@@ -3,7 +3,8 @@ package scalaam.language.scheme
 import scalaam.core._
 
 trait SchemeAllocator[A] {
-  def pointer(exp: SchemeExp): A
+  def pointer[C](exp: SchemeExp, c: C): A
+  def pointer(exp: SchemeExp): A = pointer(exp,())
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {
@@ -31,7 +32,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       Abs, /* [vv] abs: Arithmetic */
       ACos, /* [vv] acos: Scientific */
       /* [x]  angle: Complex */
-      /* [x]  append: Append/Reverse */
+      Append, /* [x]  append: Append/Reverse */
       /* [x]  apply: Fly Evaluation */
       ASin, /* [vv] asin: Scientific */
       Assoc, /* [vv] assoc: Retrieving Alist Entries */
@@ -312,7 +313,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       def initialArgs(fexp: SchemeExp, argsWithExps: List[(SchemeExp, V)]): Option[Args]
       // - a function for updating the arguments when upon a new call to a 'call'
       def updateArgs(oldArgs: Args, newArgs: Args): Args
-      // - a function for updating the result of a function call
+      // - (optional) a function for updating the result of a function call
       def updateResult(oldResult: MayFail[V,Error], newResult: MayFail[V,Error]) = mfMon.append(oldResult, newResult)
       // - a function to execute a single 'call' with given arguments
       def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
@@ -1066,6 +1067,11 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
 
+    /** (define (length l)
+          (if (null? l)
+              0
+              (+ 1 (length (cdr l)))))
+    */
     object Length extends FixpointPrimitive("length",Some(1)) {
       /** the argument to length is just the current pair */
       type Args = V
@@ -1077,7 +1083,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       type Call = Args
       def callFor(args: V) = args
       /** since Args == Calls, the argument remains the same */
-      def updateArgs(oldArgs: V, newArgs: V) = { assert(oldArgs == newArgs) ; newArgs }
+      def updateArgs(oldArgs: V, newArgs: V) = { assert(newArgs == oldArgs) ; oldArgs }
       /** The actual implementation of the primitive */
       override def callWithArgs(l: V)(alloc: SchemeAllocator[A], store: Store[A,V], length: V => MayFail[V,Error]): MayFail[V,Error] =
         ifV(isNull(l)) {
@@ -1098,28 +1104,50 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         }
     }
 
-    /**
-    object Append extends FixpointPrimitive("append") {
-      override def callWithArgs(l1: V, l2: V)(alloc: SchemeAllocator[A], store: Store[A,V], append: (V,V) => MayFail[V,Error]): MayFail[V,Error] =
-        ifV(isNull(l1)) {
-          // if we have l1 = '(), append(l1,l2) = l2
-          l2
-        } otherwise ifV(isPointer(l1)) {
-          // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
-          dereferencePointer(l1, store) { consv =>
-            for {
-              carv      <- car(consv)
-              cdrv      <- cdr(consv)
-              app_next  <- append(cdrv, l2)
-              result    <- cons(carv, app_next)
-            } yield result
-          }
-        } otherwise {
-          // if we have have something else (i.e., not a list), append throws a type error!
-          MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
-        }
-    }
+    /** (define (append l1 l2)
+          (if (null? l1)
+              l2
+              (cons (car l1)
+                    (append (cdr l1) l2))))
     */
+    object Append extends FixpointPrimitive("append", Some(2)) {
+      /** the arguments to append are the two given input arguments + the 'append expression' and 'the current index' into the list (used for allocation) */
+      type Args = (V,V,SchemeExp,Int)
+      def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
+        case (_, l1) :: (_, l2) :: Nil  => Some((l1, l2, fexp, 0))
+        case _                          => None
+      }
+      /** calls only take into account the current pair (= first argument of append) */
+      type Call = V
+      def callFor(args: Args) = args._1
+      /** arguments: ignore changes to the index to ensure termination (and other args are guaranteed to be the same anyway)*/
+      def updateArgs(oldArgs: Args, newArgs: Args) = oldArgs
+      /** The actual implementation of append */
+      override def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], append: Args => MayFail[V,Error]): MayFail[V,Error] = args match {
+        case (l1, l2, fexp, idx) =>
+          ifV(isNull(l1)) {
+            // if we have l1 = '(), append(l1,l2) = l2
+            l2
+          } otherwise ifV(isPointer(l1)) {
+            // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
+            val addr = alloc.pointer(fexp, idx)
+            dereferencePointer(l1, store) { consv =>
+              for {
+                carv      <- car(consv)
+                cdrv      <- cdr(consv)
+                app_next  <- append((cdrv, l2, fexp, idx + 1))
+                result    <- cons(carv, app_next)
+              } yield {
+                store.extend(addr, result)
+                pointer(addr)
+              }
+            }
+          } otherwise {
+            // if we have have something else (i.e., not a list), append throws a type error!
+            MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
+          }
+      }
+    }
 
     /** (define list (lambda args
           (if (null? args)

@@ -17,9 +17,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   }
   // local addresses are simply made out of lexical information
   trait LocalAddr extends Address { def pos(): Position }
-  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def pos(): Position = id.pos }
-  case class PtrAddr(exp: Expression) extends LocalAddr { def printable = false; def pos(): Position = exp.pos }
-  case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def pos(): Position = Position.none }
+  case class VarAddr(id: Identifier)            extends LocalAddr { def printable = true;  def pos(): Position = id.pos }
+  case class PtrAddr[C](exp: Expression, c: C)  extends LocalAddr { def printable = false; def pos(): Position = exp.pos }
+  case class PrmAddr(nam: String)               extends LocalAddr { def printable = true;  def pos(): Position = Position.none }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   type Prim = SchemePrimitive[Value, Addr]
   implicit val lattice: SchemeLattice[Value, Addr, Prim, IntraComponent]
@@ -112,7 +112,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value) = {
       val pair = lattice.cons(car,cdr)
-      val addr = allocAddr(PtrAddr(pairExp))
+      val addr = allocAddr(PtrAddr(pairExp,()))
       writeAddr(addr,pair)
       lattice.pointer(addr)
     }
@@ -122,7 +122,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
     private val allocator = new SchemeAllocator[Addr] {
-      def pointer(exp: SchemeExp) = allocAddr(PtrAddr(exp))
+      def pointer[C](exp: SchemeExp, c: C) = allocAddr(PtrAddr(exp,c))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
@@ -157,7 +157,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
     protected def makeClosure(lambda: SchemeLambdaExp, name: Option[String]): Value =
-      // the current component serves as the lexical environment of the closure 
+      // the current component serves as the lexical environment of the closure
       lattice.closure((lambda, component), name)
     // other helpers
     protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
