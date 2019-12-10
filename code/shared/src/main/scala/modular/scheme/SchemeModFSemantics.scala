@@ -34,10 +34,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   case object MainComponent extends Component {
     override def toString = "main"
   }
-  case class CallComponent(lambda: SchemeLambdaExp,
-                           parent: Component,
+  case class CallComponent(clo: lattice.Closure,
                            nam: Option[String],
                            ctx: Context) extends Component {
+    val (lambda, parent) = clo
     override def toString = nam match {
       case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
       case Some(name) => s"$name [${ctx.toString}]"
@@ -88,18 +88,18 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
-        case ((lam@SchemeLambda(prs,_,_), cmp), nam) if prs.length == arity =>
+        case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
-          val context = allocCtx((lam,cmp),argVals)
-          val component = CallComponent(lam,cmp,nam,context)
+          val context = allocCtx(clo,argVals)
+          val component = CallComponent(clo,nam,context)
           bindArgs(component, prs, argVals)
           call(component)
-        case ((lam@SchemeVarArgLambda(prs,vararg,_,_),cmp),nam) if prs.length < arity =>
+        case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
-          val context = allocCtx((lam,cmp), fixedArgVals :+ varArgVal)
-          val component = CallComponent(lam,cmp,nam,context)
+          val context = allocCtx(clo, fixedArgVals :+ varArgVal)
+          val component = CallComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
           call(component)
@@ -173,8 +173,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 }
 
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
-                                  with SchemeModFSemantics
-                                  with AdaptiveGlobalStore[SchemeExp]
-                                  with AdaptiveReturnResult[SchemeExp] {
-  def alpha(cmp: Component) = cmp // TODO!
-}
+                                     with AdaptiveGlobalStore[SchemeExp]
+                                     with AdaptiveReturnResult[SchemeExp]
+                                     with SchemeModFSemantics
