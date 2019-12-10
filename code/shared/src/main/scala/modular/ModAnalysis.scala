@@ -8,8 +8,8 @@ import scalaam.util.MonoidImplicits._
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
   // parameterized by a 'intra-component' representation
-  type IntraComponent
-  val initialComponent: IntraComponent
+  type Component
+  val initialComponent: Component
 
   // Retrieve a (possibly modified) version of the program
   def program: Expr = prog
@@ -20,29 +20,29 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // - trigger an effect (e.g., when it writes to an address)
   protected trait Dependency
   // here, we track which components depend on which effects
-  @mutable var deps: Map[Dependency,Set[IntraComponent]] = Map[Dependency,Set[IntraComponent]]().withDefaultValue(Set())
-  protected def addDep(target: IntraComponent, dep: Dependency): Unit =
+  @mutable var deps: Map[Dependency,Set[Component]] = Map[Dependency,Set[Component]]().withDefaultValue(Set())
+  protected def addDep(target: Component, dep: Dependency): Unit =
     deps += (dep -> (deps(dep) + target))
 
   // parameterized by an 'intra-component analysis'
-  protected def intraAnalysis(component: IntraComponent): IntraAnalysis
-  protected abstract class IntraAnalysis(val component: IntraComponent) {
+  protected def intraAnalysis(component: Component): IntraAnalysis
+  protected abstract class IntraAnalysis(val component: Component) {
     // keep track of dependencies triggered by this intra-analysis
     @mutable private[ModAnalysis] var deps = Set[Dependency]()
     protected def triggerDependency(dep: Dependency) = deps += dep
     protected def registerDependency(dep: Dependency) = addDep(component, dep)
     // keep track of components called by this intra-analysis
-    @mutable private[ModAnalysis] var components = Set[IntraComponent]()
-    protected def spawn(cmp: IntraComponent): Unit = components += cmp
+    @mutable private[ModAnalysis] var components = Set[Component]()
+    protected def spawn(cmp: Component): Unit = components += cmp
     // analyses the given component
     def analyze(): Unit
   }
 
   // inter-analysis using a simple worklist algorithm
-  @mutable var work:          Set[IntraComponent]  = Set(initialComponent)
-  @mutable var visited:       Set[IntraComponent] = Set()
-  @mutable var allComponents: Set[IntraComponent] = Set(initialComponent)
-  @mutable var dependencies:  Map[IntraComponent, Set[IntraComponent]] = Map()
+  @mutable var work:          Set[Component]  = Set(initialComponent)
+  @mutable var visited:       Set[Component] = Set()
+  @mutable var allComponents: Set[Component] = Set(initialComponent)
+  @mutable var dependencies:  Map[Component, Set[Component]] = Map()
   def finished(): Boolean = work.isEmpty
   def step(): Unit = {
     // take the next component
@@ -70,7 +70,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
   // parameterized by an alpha function, which further 'abstracts' components
   // alpha can be used to drive an adaptive strategy for the analysis
-  protected def alpha(cmp: IntraComponent): IntraComponent
+  protected def alpha(cmp: Component): Component
   // dependencies might require further abstraction too; subclasses can override this as needed ...
   protected def alphaDep(dep: Dependency): Dependency = dep
   // based on this definition of alpha, we can induce 'compound versions' of this function
@@ -93,9 +93,9 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
 
 trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
   // keep a cache between a component and its most recent abstraction
-  private var cache = Map[IntraComponent,IntraComponent]()
+  private var cache = Map[Component,Component]()
   // look in the cache first, before applying a potentially complicated alpha function
-  abstract override def alpha(cmp: IntraComponent): IntraComponent = cache.get(cmp) match {
+  abstract override def alpha(cmp: Component): Component = cache.get(cmp) match {
     case Some(cmpAbs) => cmpAbs
     case None =>
       val cmpAbs = super.alpha(cmp)
@@ -104,7 +104,7 @@ trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
   }
   // when alpha is updated, the cache needs to be cleared
   override def onAlphaChange(): Unit = {
-    cache = Map[IntraComponent,IntraComponent]()
+    cache = Map[Component,Component]()
     super.onAlphaChange()
   }
 }

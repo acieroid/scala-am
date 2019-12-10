@@ -42,7 +42,7 @@ object Main {
                                             with FullArgumentSensitivity
                                             with ConstantPropagationDomain {
       // stub implementation to keep the compiler happy
-      def alpha(cmp: IntraComponent): IntraComponent = cmp
+      def alpha(cmp: Component): Component = cmp
     }
     val visualisation = new WebVisualisation(analysis)
     // parameters for the visualisation

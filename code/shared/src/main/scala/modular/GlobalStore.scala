@@ -14,7 +14,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
 
   // addresses in the global analysis are (local) addresses of the intra-analysis + the component
   trait Addr extends Address
-  case class ComponentAddr(component: IntraComponent, addr: LocalAddr) extends Addr {
+  case class ComponentAddr(component: Component, addr: LocalAddr) extends Addr {
     def printable: Boolean = addr.printable
   }
 
@@ -39,7 +39,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
     def allocAddr(addr: LocalAddr) = ComponentAddr(component,addr)
 
     // reading addresses in the global store
-    protected def readAddr(addr: LocalAddr, component: IntraComponent = component): Value =
+    protected def readAddr(addr: LocalAddr, component: Component = component): Value =
       readAddr(ComponentAddr(component,addr))
 
     protected def readAddr(addr: Addr): Value = {
@@ -48,7 +48,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
     }
 
     // writing addresses of the global store
-    protected def writeAddr(addr: LocalAddr, value: Value, component: IntraComponent = component): Unit =
+    protected def writeAddr(addr: LocalAddr, value: Value, component: Component = component): Unit =
         writeAddr(ComponentAddr(component,addr),value)
 
     protected def writeAddr(addr: Addr, value: Value): Unit =

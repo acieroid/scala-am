@@ -22,7 +22,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   case class PrmAddr(nam: String)               extends LocalAddr { def printable = true;  def pos(): Position = Position.none }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   type Prim = SchemePrimitive[Value, Addr]
-  implicit val lattice: SchemeLattice[Value, Addr, Prim, IntraComponent]
+  implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
   lazy val primitives = new SchemePrimitives[Value, Addr]
   // setup initial environment and install the primitives in the global store
   primitives.allPrimitives.foreach { p =>
@@ -30,14 +30,14 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     store += (addr -> lattice.primitive(p))
   }
   // in ModF, components are function calls in some context
-  trait IntraComponent
-  case object MainComponent extends IntraComponent {
+  trait Component
+  case object MainComponent extends Component {
     override def toString = "main"
   }
   case class CallComponent(lambda: SchemeLambdaExp,
-                           parent: IntraComponent,
+                           parent: Component,
                            nam: Option[String],
-                           ctx: Context) extends IntraComponent {
+                           ctx: Context) extends Component {
     override def toString = nam match {
       case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
       case Some(name) => s"$name [${ctx.toString}]"
@@ -68,7 +68,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
         val cmp = resolveParent(component,scp)
         ComponentAddr(cmp,VarAddr(identifier))
     }
-    private def resolveParent(cmp: IntraComponent, scp: Int): IntraComponent =
+    private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else cmp match {
         case cmp: CallComponent => resolveParent(cmp.parent, scp - 1)
         // If the program has succesfully passed the lexical translation, the lookup should never fail!
@@ -120,9 +120,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
       applyFun(appendExp, appendPrim, List(l1,l2))
     }
-    private def bindArg(component: IntraComponent, par: Identifier, arg: Value) =
+    private def bindArg(component: Component, par: Identifier, arg: Value) =
       writeAddr(VarAddr(par),arg,component)
-    private def bindArgs(component: IntraComponent, pars: List[Identifier], args: List[Value]) =
+    private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]) =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
     private val allocator = new SchemeAllocator[Addr] {
@@ -176,5 +176,5 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                   with SchemeModFSemantics
                                   with AdaptiveGlobalStore[SchemeExp]
                                   with AdaptiveReturnResult[SchemeExp] {
-  def alpha(cmp: IntraComponent) = cmp // TODO!
+  def alpha(cmp: Component) = cmp // TODO!
 }
