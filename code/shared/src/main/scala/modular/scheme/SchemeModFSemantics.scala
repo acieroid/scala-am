@@ -10,7 +10,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                           with GlobalStore[SchemeExp]
                           with ReturnResult[SchemeExp] {
   // ensure that the program is translated with lexical addresses first!
-  override lazy val program = {
+  override lazy val program: SchemeExp = {
     val originalProgram = super.program
     val initialBindings = primitives.allPrimitives.map(_.name).toSet
     SchemeLexicalAddresser.translateProgram(originalProgram,initialBindings)
@@ -32,18 +32,18 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // in ModF, components are function calls in some context
   trait Component
   case object MainComponent extends Component {
-    override def toString = "main"
+    override def toString: String = "main"
   }
   case class CallComponent(clo: lattice.Closure,
                            nam: Option[String],
                            ctx: Context) extends Component {
     val (lambda, parent) = clo
-    override def toString = nam match {
+    override def toString: String = nam match {
       case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
       case Some(name) => s"$name [${ctx.toString}]"
     }
   }
-  lazy val initialComponent = MainComponent
+  lazy val initialComponent: Component = MainComponent
   // this abstract class is parameterized by the choice of Context and allocation strategy of Contexts
   type Context
   def allocCtx(clo: lattice.Closure, args: List[Value]): Context
@@ -52,9 +52,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // variable lookup
     protected def lookupVariable(lex: LexicalRef): Value =
       readAddr(resolveAddr(lex))
-    protected def setVariable(lex: LexicalRef, vlu: Value) =
+    protected def setVariable(lex: LexicalRef, vlu: Value): Unit =
       writeAddr(resolveAddr(lex),vlu)
-    protected def defineVariable(id: Identifier, vlu: Value) =
+    protected def defineVariable(id: Identifier, vlu: Value): Unit =
       writeAddr(VarAddr(id),vlu)
     // resolve a lexical address to the corresponding address in the store
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
@@ -68,6 +68,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
         val cmp = resolveParent(component,scp)
         ComponentAddr(cmp,VarAddr(identifier))
     }
+    @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else cmp match {
         case cmp: CallComponent => resolveParent(cmp.parent, scp - 1)
@@ -110,23 +111,23 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case Nil                => lattice.nil
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
-    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value) = {
+    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
       val pair = lattice.cons(car,cdr)
       val addr = allocAddr(PtrAddr(pairExp,()))
       writeAddr(addr,pair)
       lattice.pointer(addr)
     }
-    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)) = {
+    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
       val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
       applyFun(appendExp, appendPrim, List(l1,l2))
     }
-    private def bindArg(component: Component, par: Identifier, arg: Value) =
+    private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
       writeAddr(VarAddr(par),arg,component)
-    private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]) =
+    private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
-    private val allocator = new SchemeAllocator[Addr] {
-      def pointer[C](exp: SchemeExp, c: C) = allocAddr(PtrAddr(exp,c))
+    private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
+      def pointer[C](exp: SchemeExp, c: C): Addr = allocAddr(PtrAddr(exp,c))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
@@ -139,8 +140,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
     case object StoreAdapter extends Store[Addr,Value] {
-      def lookup(a: Addr)                       = Some(readAddr(a))
-      def extend(a: Addr, v: Value)             = { writeAddr(a,v) ; this }
+      def lookup(a: Addr): Option[Value] = Some(readAddr(a))
+      def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
       // all the other operations should not be used by the primitives ...
       def content                               = throw new Exception("Operation not allowed!")
       def keys                                  = throw new Exception("Operation not allowed!")
