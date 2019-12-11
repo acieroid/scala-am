@@ -29,8 +29,8 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   protected abstract class IntraAnalysis(val component: Component) {
     // keep track of dependencies triggered by this intra-analysis
     @mutable private[ModAnalysis] var deps = Set[Dependency]()
-    protected def triggerDependency(dep: Dependency) = deps += dep
-    protected def registerDependency(dep: Dependency) = addDep(component, dep)
+    protected def  triggerDependency(dep: Dependency): Unit = deps += dep
+    protected def registerDependency(dep: Dependency): Unit = addDep(component, dep)
     // keep track of components called by this intra-analysis
     @mutable private[ModAnalysis] var components = Set[Component]()
     protected def spawn(cmp: Component): Unit = components += cmp
@@ -39,7 +39,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   }
 
   // inter-analysis using a simple worklist algorithm
-  @mutable var work:          Set[Component]  = Set(initialComponent)
+  @mutable var work:          Set[Component] = Set(initialComponent)
   @mutable var visited:       Set[Component] = Set()
   @mutable var allComponents: Set[Component] = Set(initialComponent)
   @mutable var dependencies:  Map[Component, Set[Component]] = Map()
@@ -61,10 +61,17 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     allComponents ++= newComponents
     dependencies += (current -> intra.components)
   }
-  def analyze(timeout: Timeout.T = Timeout.none) =
+  def analyze(timeout: Timeout.T = Timeout.none): Unit =
     while(!finished() && !timeout.reached) {
       step()
     }
+
+  /** Reanalyses a given program starting from the set of components for which a change was detected. */
+  def reanalyze(components: Set[Component], timeout: Timeout.T = Timeout.none): Unit = {
+    // We can make use of the visited set and all data from the previous analysis that are still present.
+    work = components
+    analyze(timeout)
+  }
 }
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {

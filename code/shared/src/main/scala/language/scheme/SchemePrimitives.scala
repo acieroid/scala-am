@@ -314,7 +314,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       // - a function for updating the arguments when upon a new call to a 'call'
       def updateArgs(oldArgs: Args, newArgs: Args): Args
       // - (optional) a function for updating the result of a function call
-      def updateResult(oldResult: MayFail[V,Error], newResult: MayFail[V,Error]) = mfMon.append(oldResult, newResult)
+      def updateResult(oldResult: MayFail[V,Error], newResult: MayFail[V,Error]): MayFail[V, Error] = mfMon.append(oldResult, newResult)
       // - a function to execute a single 'call' with given arguments
       def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
 

@@ -52,6 +52,7 @@ trait SchemeLambdaExp extends SchemeExp {
   val label: Label = LAM
   val subexpressions: List[Expression] = args ::: body
   override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
+  override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
 }
 
 case class SchemeLambda(args: List[Identifier], body: List[SchemeExp], pos: Position) extends SchemeLambdaExp {
@@ -115,6 +116,7 @@ trait SchemeLettishExp extends SchemeExp {
   override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
   def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
   override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLettishExp].body.length
+  override def eql(other: Expression): Boolean = super.eql(other) && body.length == other.asInstanceOf[SchemeLettishExp].body.length
 }
 
 /**
@@ -352,6 +354,8 @@ trait SchemeDefineFunctionExp extends SchemeExp {
   def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
   def subexpressions: List[Expression] = name :: args ::: body
   override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
+  override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
+
 }
 
 case class SchemeDefineFunction(name: Identifier, args: List[Identifier], body: List[SchemeExp], pos: Position)
@@ -433,15 +437,13 @@ trait SchemeVarExp extends SchemeExp {
   def subexpressions: List[Expression] = List(id)
 }
 
-case class SchemeVar(id: Identifier)
-  extends SchemeVarExp {
-    override def toString: String = id.name
+case class SchemeVar(id: Identifier) extends SchemeVarExp {
+  override def toString: String = id.name
 }
 
-case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef)
-  extends SchemeVarExp {
-    override def toString: String = lexAddr.toString
-  }
+case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp {
+  override def toString: String = lexAddr.toString
+}
 
 case class SchemePair(car: SchemeExp, cdr: SchemeExp, pos: Position) extends SchemeExp {
   override def toString: String = s"`(,$car . ,$cdr)"
@@ -466,4 +468,5 @@ case class SchemeValue(value: Value, pos: Position) extends SchemeExp {
   override val height: Int = 1
   val label: Label = VAL
   def subexpressions: List[Expression] = List()
+  override lazy val hash: Int = (label, value).hashCode()
 }

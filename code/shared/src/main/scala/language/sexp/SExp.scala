@@ -94,6 +94,7 @@ case class SExpValue(value: Value, pos: Position) extends SExp {
   override def toString: String = value.toString
   val label: Label = VAL
   def subexpressions: List[Expression] = List()
+  override lazy val hash: Int = (label, value).hashCode()
 }
 
 /**
@@ -103,6 +104,7 @@ object SExpQuoted {
   def apply(content: SExp, pos: Position): SExp =
     SExpList(List(SExpId(Identifier("quote",pos)), content), pos)
 }
+
 /**
   * A quasiquoted element, such as `foo
   */
@@ -110,6 +112,7 @@ object SExpQuasiquoted {
   def apply(content: SExp, pos: Position): SExp =
     SExpList(List(SExpId(Identifier("quasiquote",pos)), content), pos)
 }
+
 /**
   * An unquoted element, such as ,foo
   */
@@ -117,6 +120,7 @@ object SExpUnquoted {
   def apply(content: SExp, pos: Position): SExp =
     SExpList(List(SExpId(Identifier("unquote",pos)), content), pos)
 }
+
 /**
   * A unquoted-splicing element, such as ,@foo
   */

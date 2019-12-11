@@ -46,7 +46,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
                              pairExp: SchemeSplicedPair)  extends Frame
 
     // the main analyze method
-    def analyze() = {
+    def analyze(): Unit = {
       // determine the initial state
       val initialExp = component match {
         case MainComponent        => program

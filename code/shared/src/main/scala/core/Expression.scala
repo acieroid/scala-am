@@ -25,6 +25,19 @@ trait Expression extends SmartHash {
     label == other.label &&
     subexpressions.length == other.subexpressions.length &&
     subexpressions.zip(other.subexpressions).forall { case (x, y) => x.isomorphic(y) }
+
+  /** Indicates whether this expression is equal to another expression when positional information of the expression within the source file is ignored. */
+  def eql(other: Expression): Boolean = (hash == other.hash
+                                        && label == other.label
+                                        && subexpressions.length == other.subexpressions.length
+                                        && subexpressions.zip(other.subexpressions).forall(p => p._1.eql(p._2)))
+
+  /** A hash code that ignores positional information of the expression within the source code. */
+  lazy val hash: Int = (label, subexpressions.map(_.hash)).hashCode()
+}
+
+object Expression {
+  def eql(e1: Expression, e2: Expression): Boolean = e1.eql(e2)
 }
 
 trait Label
@@ -38,4 +51,5 @@ case class Identifier(name: String, pos: Position) extends Expression with Smart
   override val height:             Int = 0
   val label:                     Label = SYM
   def subexpressions: List[Expression] = List()
+  override lazy val hash:          Int = (label, name).hashCode()
 }
