@@ -66,10 +66,21 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
       step()
     }
 
-  /** Reanalyses a given program starting from the set of components for which a change was detected. */
+}
+
+abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
+
+  // TODO: should we just implement an 'update' method that adds the required components to the work list and updates all state to account for the program changes?
+
+  /**
+   * Reanalyses a given program starting from the set of components for which a change was detected.
+   * Does not assume the work list to be empty, but will result in the work list being empty.
+   **/
   def reanalyze(components: Set[Component], timeout: Timeout.T = Timeout.none): Unit = {
     // We can make use of the visited set and all data from the previous analysis that are still present.
-    work = components
+    // Work is not necessarily empty when reanalyze is called (due to the step method which is publicly available).
+    // However, when this procedure terminates, work is guaranteed to be empty.
+    work ++= components
     analyze(timeout)
   }
 }
