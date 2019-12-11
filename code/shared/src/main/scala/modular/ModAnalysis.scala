@@ -68,7 +68,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   /** Reanalyses a given program starting from the set of components for which a change was detected. */
   def reanalyze(components: Set[IntraComponent], timeout: Timeout.T = Timeout.none): Unit = {
     // We can make use of the visited set and all data from the previous analysis that are still present.
-    work = Set(components)
+    work = components
     analyze(timeout)
   }
 }

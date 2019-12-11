@@ -54,11 +54,14 @@ object DiffMain {
     val prg1 = SchemeParser.parse(loadFile("./test/grid.scm"))
     val prg2 = SchemeParser.parse(loadFile("./test/grid-scrambled.scm"))
     println(prg1)
-    prg1.subexpressions.foreach(v => println(v.height + " " + v))
+    //prg1.subexpressions.foreach(v => println(v.height + " " + v))
     println(prg2)
     println()
-    val map = GumTreeDiff.computeMapping(prg1, prg2)
-    map.foreach(println)
-    println(map.keySet.size)
+    //val map = GumTreeDiff.computeMapping(prg1, prg2)
+    //map.foreach(println)
+    //println(map.keySet.size)
+    println(prg1.hash)
+    println(prg2.hash)
+    println(prg1.eql(prg2))
   }
 }
