@@ -20,7 +20,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     cMapR = cMapR + (cmp -> cAddr)
   }
 
-  private def allocCAddr(cmp: Component): CAddr = {
+  def allocCAddr(cmp: Component): CAddr = {
     val addr = count
     count += 1
     register(cmp, addr)
