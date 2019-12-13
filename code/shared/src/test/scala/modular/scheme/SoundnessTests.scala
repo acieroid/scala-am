@@ -58,7 +58,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
-    val aRes = a.store(a.ReturnAddr(a.MainComponent))
+    val aRes = a.store(a.ReturnAddr(a.initialComponentAddr))
     assert(checkSubsumption(a)(Set(concRes), aRes), "the end result is not sound")
   }
 

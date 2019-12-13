@@ -6,8 +6,8 @@ import scalaam.util.MonoidImplicits._
 
 trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
-  override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp)
-  class IntraAnalysis(component: Component) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
+  override def intraAnalysis(cmp: CAddr) = new IntraAnalysis(cmp)
+  class IntraAnalysis(cAddr: CAddr) extends super.IntraAnalysis(cAddr) with SchemeModFSemanticsIntra {
     // the intermediate states in the intra-analysis
     sealed trait State
     case class EvalState(exp: SchemeExp,
@@ -48,7 +48,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemantics {
     // the main analyze method
     def analyze(): Unit = {
       // determine the initial state
-      val initialExp = component match {
+      val initialExp = getComponent(cAddr) match {
         case MainComponent        => program
         case call: CallComponent  => SchemeBody(call.lambda.body)
       }
