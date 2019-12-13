@@ -5,32 +5,45 @@ import scalaam.util._
 import scalaam.util.Annotations._
 import scalaam.util.MonoidImplicits._
 
+object ModAnalysis {
+  // helper class to efficiently represent component pointers in a type-safe way
+  // i.e., we don't directly refer to components, but rather reference them through a pointer
+  case class ComponentPointer(ptr: Int) extends AnyVal
+}
+
+import ModAnalysis._
+
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
   // parameterized by a 'intra-component' representation
   type Component
-  type CAddr = Int
+  def initialComponent: Component
+  lazy val initialComponentPtr = ref(initialComponent)
 
   @mutable private var count = 0 // Could also use keyset size of cMap.
-  @mutable private var cMap : Map[CAddr, Component] = Map()
-  @mutable private var cMapR: Map[Component, CAddr] = Map()
+  // TODO: use weak hash-maps here?
+  @mutable private var cMap : Map[ComponentPointer, Component] = Map()
+  @mutable private var cMapR: Map[Component, ComponentPointer] = Map()
 
-  private def register(cmp: Component, cAddr: CAddr): Unit = {
-    cMap  = cMap  + (cAddr -> cmp)
-    cMapR = cMapR + (cmp -> cAddr)
-  }
-
-  def allocCAddr(cmp: Component): CAddr = {
+  private def allocPointer(): ComponentPointer = {
     val addr = count
     count += 1
-    register(cmp, addr)
-    addr
+    ComponentPointer(addr)
   }
 
-  def getComponent(cAddr: CAddr): Component = cMap(cAddr)
-  def getAddress(cmp: Component): CAddr = if (componentExists(cmp)) cMapR(cmp) else allocCAddr(cmp)
-  def componentExists(cmp: Component): Boolean = cMapR.contains(cmp)
-  val initialComponentAddr: CAddr
+  private def newComponent(cmp: Component): ComponentPointer = {
+    val ptr = allocPointer()
+    register(cmp, ptr)
+    return ptr
+  }
+  private def register(cmp: Component, ptr: ComponentPointer) = {
+    cMap  = cMap  + (ptr -> cmp)
+    cMapR = cMapR + (cmp -> ptr)
+  }
+
+  def deref(ptr: ComponentPointer): Component = cMap(ptr)
+  def ref(cmp: Component): ComponentPointer = cMapR.get(cmp)
+                                                   .getOrElse(newComponent(cmp))
 
   // Retrieve a (possibly modified) version of the program
   def program: Expr = prog
@@ -41,33 +54,32 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // - trigger an effect (e.g., when it writes to an address)
   protected trait Dependency
   // here, we track which components depend on which effects
-  @mutable var deps: Map[Dependency,Set[CAddr]] = Map[Dependency,Set[CAddr]]().withDefaultValue(Set())
-  protected def addDep(target: CAddr, dep: Dependency): Unit =
+  @mutable var deps: Map[Dependency,Set[ComponentPointer]] =
+    Map[Dependency,Set[ComponentPointer]]().withDefaultValue(Set.empty)
+  protected def addDep(target: ComponentPointer, dep: Dependency): Unit =
     deps += (dep -> (deps(dep) + target))
 
   // parameterized by an 'intra-component analysis'
-  protected def intraAnalysis(component: CAddr): IntraAnalysis
-  protected abstract class IntraAnalysis(val cAddr: CAddr) {
+  protected def intraAnalysis(component: ComponentPointer): IntraAnalysis
+  protected abstract class IntraAnalysis(val ptr: ComponentPointer) {
+    // automatically dereference the component
+    val component = deref(ptr)
     // keep track of dependencies triggered by this intra-analysis
     @mutable private[ModAnalysis] var deps = Set[Dependency]()
-    protected def  triggerDependency(dep: Dependency): Unit = deps += dep
-    protected def registerDependency(dep: Dependency): Unit = addDep(cAddr, dep)
+    protected def triggerDependency(dep: Dependency): Unit = deps += dep
+    protected def registerDependency(dep: Dependency): Unit = addDep(ptr, dep)
     // keep track of components called by this intra-analysis
-    @mutable private[ModAnalysis] var components = Set[CAddr]()
-    protected def spawn(cmp: Component): CAddr = {
-      val cAddr = if (componentExists(cmp)) getAddress(cmp) else allocCAddr(cmp)
-      components += cAddr
-      cAddr
-    }
+    @mutable private[ModAnalysis] var components = Set[ComponentPointer]()
+    protected def spawn(cmp: Component) = components += ref(cmp)
     // analyses the given component
     def analyze(): Unit
   }
 
   // inter-analysis using a simple worklist algorithm
-  @mutable var work:          Set[CAddr] = Set(initialComponentAddr)
-  @mutable var visited:       Set[CAddr] = Set()
-  @mutable var allComponents: Set[CAddr] = Set(initialComponentAddr)
-  @mutable var dependencies:  Map[CAddr, Set[CAddr]] = Map()
+  @mutable var work:          Set[ComponentPointer] = Set(initialComponentPtr)
+  @mutable var visited:       Set[ComponentPointer] = Set()
+  @mutable var allComponents: Set[ComponentPointer] = Set(initialComponentPtr)
+  @mutable var dependencies:  Map[ComponentPointer, Set[ComponentPointer]] = Map()
   def finished(): Boolean = work.isEmpty
   def step(): Unit = {
     // take the next component
@@ -101,7 +113,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
    * Reanalyses a given program starting from the set of components for which a change was detected.
    * Does not assume the work list to be empty, but will result in the work list being empty.
    **/
-  def reanalyze(components: Set[CAddr], timeout: Timeout.T = Timeout.none): Unit = {
+  def reanalyze(components: Set[ComponentPointer], timeout: Timeout.T = Timeout.none): Unit = {
     // We can make use of the visited set and all data from the previous analysis that are still present.
     // Work is not necessarily empty when reanalyze is called (due to the step method which is publicly available).
     // However, when this procedure terminates, work is guaranteed to be empty.
@@ -114,7 +126,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
 
   // parameterized by an alpha function, which further 'abstracts' components
   // alpha can be used to drive an adaptive strategy for the analysis
-  protected def alpha(cmp: CAddr): CAddr
+  protected def alpha(cmp: ComponentPointer): ComponentPointer
   // dependencies might require further abstraction too; subclasses can override this as needed ...
   protected def alphaDep(dep: Dependency): Dependency = dep
   // based on this definition of alpha, we can induce 'compound versions' of this function
@@ -138,9 +150,9 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
 trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
 
   // keep a cache between a component and its most recent abstraction
-  private var cache = Map[CAddr,CAddr]()
+  private var cache = Map[ComponentPointer,ComponentPointer]()
   // look in the cache first, before applying a potentially complicated alpha function
-  abstract override def alpha(cmp: CAddr): CAddr = cache.get(cmp) match {
+  abstract override def alpha(cmp: ComponentPointer): ComponentPointer = cache.get(cmp) match {
     case Some(cmpAbs) => cmpAbs
     case None =>
       val cmpAbs = super.alpha(cmp)
@@ -149,7 +161,7 @@ trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
   }
   // when alpha is updated, the cache needs to be cleared
   override def onAlphaChange(): Unit = {
-    cache = Map[CAddr,CAddr]()
+    cache = Map[ComponentPointer,ComponentPointer]()
     super.onAlphaChange()
   }
 }

@@ -1,25 +1,27 @@
 package scalaam.modular
 
 import scalaam.core._
+import ModAnalysis._
 
 trait ReturnResult[Expr <: Expression] extends GlobalStore[Expr] {
 
   // add a special address, where we can store the result of a component
-  case class ReturnAddr(cmp: CAddr) extends Addr {
+  case class ReturnAddr(ptr: ComponentPointer) extends Addr {
     def printable = true
   }
 
   // intra-analysis can now also update and read the result of a component
   trait ReturnResultIntra extends GlobalStoreIntra {
     // updating the result of a component (default: of the current component)
-    protected def writeResult(result: Value, cAddr: CAddr = cAddr): Unit =
-      writeAddr(ReturnAddr(cAddr),result)
+    protected def writeResult(result: Value, cmp: Component = component): Unit =
+      writeAddr(ReturnAddr(ref(cmp)),result)
     // reading the result of a component
-    protected def readResult(cAddr: CAddr): Value =
-      readAddr(ReturnAddr(cAddr))
+    protected def readResult(cmp: Component): Value =
+      readAddr(ReturnAddr(ref(cmp)))
     // convenience method: calling other components and immediately reading their result
-    protected def call(component: Component): Value = {
-      readResult(spawn(component))
+    protected def call(cmp: Component): Value = {
+      spawn(cmp)
+      readResult(cmp)
     }
   }
 }

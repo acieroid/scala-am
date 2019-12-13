@@ -1,6 +1,7 @@
 package scalaam.web
 
 import scalaam.modular._
+import scalaam.modular.ModAnalysis._
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -36,11 +37,11 @@ object WebVisualisation {
 class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   // TODO: make this abstract
-  def displayText(cmp: analysis.CAddr): String = analysis.getComponent(cmp).toString()
+  def displayText(cmp: analysis.Component): String = cmp.toString()
 
   import WebVisualisation._
 
-  class Node(val component: analysis.CAddr) extends js.Object
+  class Node(val component: ComponentPointer) extends js.Object
   class Edge(val source: Node, val target: Node) extends js.Object
 
   //
@@ -49,12 +50,12 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   val nodesData = new js.Array[Node]()
   val edgesData = new js.Array[Edge]()
-  val nodesColl = Map[analysis.CAddr, Node]()
+  val nodesColl = Map[ComponentPointer, Node]()
   val edgesColl = Map[(Node,Node),Edge]()
-  private def addNode(cmp: analysis.CAddr): Node = nodesColl.get(cmp) match {
+  private def addNode(ptr: ComponentPointer): Node = nodesColl.get(ptr) match {
     case None =>
-      val newNode = new Node(cmp)
-      nodesColl(cmp) = newNode
+      val newNode = new Node(ptr)
+      nodesColl(ptr) = newNode
       nodesData.push(newNode)
       return newNode
     case Some(existingNode) =>
@@ -173,10 +174,10 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   }
 
   // more efficient than `refreshData`: updates only data that may have changed after stepping
-  def refreshDataAfterStep(component: analysis.CAddr) = {
-    val sourceNode = addNode(component)
-    analysis.dependencies(component).foreach { otherComponent =>
-      val targetNode = addNode(otherComponent)
+  def refreshDataAfterStep(ptr: ComponentPointer) = {
+    val sourceNode = addNode(ptr)
+    analysis.dependencies(ptr).foreach { otherPtr =>
+      val targetNode = addNode(otherPtr)
       addEdge(sourceNode,targetNode)
     }
   }
@@ -192,7 +193,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     newGroup.append("text")
             .attr("dx",__CIRCLE_RADIUS__)
             .attr("dy",__CIRCLE_RADIUS__)
-            .text((node: Node) => displayText(node.component))
+            .text((node: Node) => displayText(analysis.deref(node.component)))
     nodes = newGroup.merge(nodesUpdate)
     nodes.classed(__CSS_FINISHED__, (_: Node) => analysis.finished())
          .classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))

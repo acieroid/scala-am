@@ -2,6 +2,7 @@ package scalaam.modular.scheme
 
 import scalaam.lattice._
 import scalaam.language.scheme._
+import scalaam.modular.ModAnalysis._
 
 trait AbstractDomain extends SchemeModFSemantics {
   // parameterized by different abstract domains for each type
@@ -12,7 +13,7 @@ trait AbstractDomain extends SchemeModFSemantics {
   type C
   type Sym
   // which are used to construct a "modular" (~ product) lattice
-  val valueLattice: ModularSchemeLattice[Addr,CAddr,S,B,I,R,C,Sym]
+  val valueLattice: ModularSchemeLattice[Addr,ComponentPointer,S,B,I,R,C,Sym]
   type Value = valueLattice.L
   lazy val lattice = valueLattice.schemeLattice
 }

@@ -1,10 +1,8 @@
 package scalaam.cli
 
-import incremental.GumTreeDiff
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
-import scalaam.util.Timeout
 
 object Main {
 
@@ -43,7 +41,6 @@ object Main {
 }
 
 object DiffMain extends App {
-  import scala.concurrent.duration.Duration
 
   def loadFile(file: String): String = {
     val fHandle = scala.io.Source.fromFile(file)

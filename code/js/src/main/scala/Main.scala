@@ -40,10 +40,7 @@ object Main {
     val program = SchemeParser.parse(text)
     val analysis = new ModAnalysis(program) with BigStepSchemeModFSemantics
                                             with FullArgumentSensitivity
-                                            with ConstantPropagationDomain {
-      // stub implementation to keep the compiler happy
-      def alpha(cmp: Component): CAddr = getAddress(cmp)
-    }
+                                            with ConstantPropagationDomain
     val visualisation = new WebVisualisation(analysis)
     // parameters for the visualisation
     val body = document.body

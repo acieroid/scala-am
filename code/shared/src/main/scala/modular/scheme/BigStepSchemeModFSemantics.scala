@@ -3,13 +3,14 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
+import scalaam.modular.ModAnalysis._
 
 trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
-  override def intraAnalysis(cmp: CAddr) = new IntraAnalysis(cmp)
-  class IntraAnalysis(cAddr: CAddr) extends super.IntraAnalysis(cAddr) with SchemeModFSemanticsIntra {
+  override def intraAnalysis(ptr: ComponentPointer) = new IntraAnalysis(ptr)
+  class IntraAnalysis(ptr: ComponentPointer) extends super.IntraAnalysis(ptr) with SchemeModFSemanticsIntra {
     // analysis entry point
-    def analyze(): Unit = writeResult(getComponent(cAddr) match {
+    def analyze(): Unit = writeResult(component match {
       case MainComponent        => eval(program)
       case call: CallComponent  => evalSequence(call.lambda.body)
     })
