@@ -36,11 +36,11 @@ object WebVisualisation {
 class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   // TODO: make this abstract
-  def displayText(cmp: analysis.Component): String = cmp.toString()
+  def displayText(cmp: analysis.CAddr): String = analysis.getComponent(cmp).toString()
 
   import WebVisualisation._
 
-  class Node(val component: analysis.Component) extends js.Object
+  class Node(val component: analysis.CAddr) extends js.Object
   class Edge(val source: Node, val target: Node) extends js.Object
 
   //
@@ -49,9 +49,9 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   val nodesData = new js.Array[Node]()
   val edgesData = new js.Array[Edge]()
-  val nodesColl = Map[analysis.Component,Node]()
+  val nodesColl = Map[analysis.CAddr, Node]()
   val edgesColl = Map[(Node,Node),Edge]()
-  private def addNode(cmp: analysis.Component): Node = nodesColl.get(cmp) match {
+  private def addNode(cmp: analysis.CAddr): Node = nodesColl.get(cmp) match {
     case None =>
       val newNode = new Node(cmp)
       nodesColl(cmp) = newNode
@@ -173,7 +173,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   }
 
   // more efficient than `refreshData`: updates only data that may have changed after stepping
-  def refreshDataAfterStep(component: analysis.Component) = {
+  def refreshDataAfterStep(component: analysis.CAddr) = {
     val sourceNode = addNode(component)
     analysis.dependencies(component).foreach { otherComponent =>
       val targetNode = addNode(otherComponent)

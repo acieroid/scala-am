@@ -10,7 +10,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                           with GlobalStore[SchemeExp]
                           with ReturnResult[SchemeExp] {
   // ensure that the program is translated with lexical addresses first!
-  override lazy val program = {
+  override lazy val program: SchemeExp = {
     val originalProgram = super.program
     val initialBindings = primitives.allPrimitives.map(_.name).toSet
     SchemeLexicalAddresser.translateProgram(originalProgram,initialBindings)
@@ -22,28 +22,29 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   case class PrmAddr(nam: String)               extends LocalAddr { def printable = true;  def pos(): Position = Position.none }
   // abstract values come from a Scala-AM Scheme lattice (a type lattice)
   type Prim = SchemePrimitive[Value, Addr]
-  implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
+  implicit val lattice: SchemeLattice[Value, Addr, Prim, CAddr]
   lazy val primitives = new SchemePrimitives[Value, Addr]
   // setup initial environment and install the primitives in the global store
   primitives.allPrimitives.foreach { p =>
-    val addr = ComponentAddr(MainComponent,PrmAddr(p.name))
+    val addr = ComponentAddr(initialComponentAddr, PrmAddr(p.name))
     store += (addr -> lattice.primitive(p))
   }
   // in ModF, components are function calls in some context
   trait Component
   case object MainComponent extends Component {
-    override def toString = "main"
+    override def toString: String = "main"
   }
   case class CallComponent(clo: lattice.Closure,
                            nam: Option[String],
                            ctx: Context) extends Component {
     val (lambda, parent) = clo
-    override def toString = nam match {
+    override def toString: String = nam match {
       case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
       case Some(name) => s"$name [${ctx.toString}]"
     }
   }
-  lazy val initialComponent = MainComponent
+  lazy val initialComponent: Component = MainComponent
+  lazy val initialComponentAddr: CAddr = allocCAddr(MainComponent)
   // this abstract class is parameterized by the choice of Context and allocation strategy of Contexts
   type Context
   def allocCtx(clo: lattice.Closure, args: List[Value]): Context
@@ -52,24 +53,25 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // variable lookup
     protected def lookupVariable(lex: LexicalRef): Value =
       readAddr(resolveAddr(lex))
-    protected def setVariable(lex: LexicalRef, vlu: Value) =
+    protected def setVariable(lex: LexicalRef, vlu: Value): Unit =
       writeAddr(resolveAddr(lex),vlu)
-    protected def defineVariable(id: Identifier, vlu: Value) =
+    protected def defineVariable(id: Identifier, vlu: Value): Unit =
       writeAddr(VarAddr(id),vlu)
     // resolve a lexical address to the corresponding address in the store
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
       case LocalRef(identifier) =>
-        ComponentAddr(component,VarAddr(identifier))
+        ComponentAddr(cAddr,VarAddr(identifier))
       case GlobalRef(identifier) =>
-        ComponentAddr(MainComponent,VarAddr(identifier))
+        ComponentAddr(initialComponentAddr,VarAddr(identifier))
       case PrimRef(name) =>
-        ComponentAddr(MainComponent,PrmAddr(name))
+        ComponentAddr(initialComponentAddr,PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
-        val cmp = resolveParent(component,scp)
+        val cmp = resolveParent(cAddr,scp)
         ComponentAddr(cmp,VarAddr(identifier))
     }
-    private def resolveParent(cmp: Component, scp: Int): Component =
-      if (scp == 0) { cmp } else cmp match {
+    @scala.annotation.tailrec
+    private def resolveParent(cmp: CAddr, scp: Int): CAddr =
+      if (scp == 0) { cmp } else getComponent(cmp) match {
         case cmp: CallComponent => resolveParent(cmp.parent, scp - 1)
         // If the program has succesfully passed the lexical translation, the lookup should never fail!
         case MainComponent => throw new Exception("This should not happen!")
@@ -92,7 +94,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val argVals = args.map(_._2)
           val context = allocCtx(clo,argVals)
           val component = CallComponent(clo,nam,context)
-          bindArgs(component, prs, argVals)
+          bindArgs(getAddress(component), prs, argVals)
           call(component)
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
@@ -100,8 +102,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val varArgVal = allocateList(varArgs)
           val context = allocCtx(clo, fixedArgVals :+ varArgVal)
           val component = CallComponent(clo,nam,context)
-          bindArgs(component,prs,fixedArgVals)
-          bindArg(component,vararg,varArgVal)
+          bindArgs(getAddress(component),prs,fixedArgVals)
+          bindArg(getAddress(component),vararg,varArgVal)
           call(component)
         case _ => lattice.bottom
       }))
@@ -110,23 +112,23 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case Nil                => lattice.nil
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
-    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value) = {
+    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
       val pair = lattice.cons(car,cdr)
       val addr = allocAddr(PtrAddr(pairExp,()))
       writeAddr(addr,pair)
       lattice.pointer(addr)
     }
-    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)) = {
+    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
       val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
       applyFun(appendExp, appendPrim, List(l1,l2))
     }
-    private def bindArg(component: Component, par: Identifier, arg: Value) =
+    private def bindArg(component: CAddr, par: Identifier, arg: Value): Unit =
       writeAddr(VarAddr(par),arg,component)
-    private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]) =
+    private def bindArgs(component: CAddr, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
-    private val allocator = new SchemeAllocator[Addr] {
-      def pointer[C](exp: SchemeExp, c: C) = allocAddr(PtrAddr(exp,c))
+    private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
+      def pointer[C](exp: SchemeExp, c: C): Addr = allocAddr(PtrAddr(exp,c))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
@@ -139,8 +141,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
     case object StoreAdapter extends Store[Addr,Value] {
-      def lookup(a: Addr)                       = Some(readAddr(a))
-      def extend(a: Addr, v: Value)             = { writeAddr(a,v) ; this }
+      def lookup(a: Addr): Option[Value] = Some(readAddr(a))
+      def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
       // all the other operations should not be used by the primitives ...
       def content                               = throw new Exception("Operation not allowed!")
       def keys                                  = throw new Exception("Operation not allowed!")
@@ -162,7 +164,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     protected def makeClosure(lambda: SchemeLambdaExp, name: Option[String]): Value =
       // the current component serves as the lexical environment of the closure
-      lattice.closure((lambda, component), name)
+      lattice.closure((lambda, cAddr), name)
     // other helpers
     protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
       val csqVal = if (lattice.isTrue(prd)) csq else Monoid[M].zero

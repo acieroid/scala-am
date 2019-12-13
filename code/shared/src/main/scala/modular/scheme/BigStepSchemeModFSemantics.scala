@@ -6,10 +6,10 @@ import scalaam.util.MonoidImplicits._
 
 trait BigStepSchemeModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
-  override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp)
-  class IntraAnalysis(component: Component) extends super.IntraAnalysis(component) with SchemeModFSemanticsIntra {
+  override def intraAnalysis(cmp: CAddr) = new IntraAnalysis(cmp)
+  class IntraAnalysis(cAddr: CAddr) extends super.IntraAnalysis(cAddr) with SchemeModFSemanticsIntra {
     // analysis entry point
-    def analyze(): Unit = writeResult(component match {
+    def analyze(): Unit = writeResult(getComponent(cAddr) match {
       case MainComponent        => eval(program)
       case call: CallComponent  => evalSequence(call.lambda.body)
     })
