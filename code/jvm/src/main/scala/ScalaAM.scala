@@ -15,7 +15,7 @@ object Main {
       (length p)
     """
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with SmallStepSchemeModFSemantics
+    val analysis = new ModAnalysis(prg) with BaseSmallStepSchemeModFSemantics
                                         with ConstantPropagationDomain
                                         with NoSensitivity
     analysis.analyze()
@@ -50,7 +50,7 @@ object DiffMain extends App {
   }
 
   def analyze(text: SchemeExp) = {
-    val analyzer = new ModAnalysis(text) with SmallStepSchemeModFSemantics
+    val analyzer = new ModAnalysis(text) with BaseSmallStepSchemeModFSemantics
       with ConstantPropagationDomain
       with NoSensitivity
     analyzer.analyze()//Timeout.start(Duration(2, "MINUTES")))

@@ -18,7 +18,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // parameterized by a 'intra-component' representation
   type Component
   def initialComponent: Component
-  lazy val initialComponentPtr = ref(initialComponent)
+  lazy val initialComponentPtr: ComponentPointer = ref(initialComponent)
 
   @mutable private var count = 0 // Could also use keyset size of cMap.
   // TODO: use weak hash-maps here?
@@ -34,16 +34,17 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   private def newComponent(cmp: Component): ComponentPointer = {
     val ptr = allocPointer()
     register(cmp, ptr)
-    return ptr
+    ptr
   }
-  private def register(cmp: Component, ptr: ComponentPointer) = {
+
+  private def register(cmp: Component, ptr: ComponentPointer): Unit = {
     cMap  = cMap  + (ptr -> cmp)
     cMapR = cMapR + (cmp -> ptr)
   }
 
   def deref(ptr: ComponentPointer): Component = cMap(ptr)
-  def ref(cmp: Component): ComponentPointer = cMapR.get(cmp)
-                                                   .getOrElse(newComponent(cmp))
+  def   ref(cmp: Component): ComponentPointer = cMapR.getOrElse(cmp, newComponent(cmp))
+  protected def update(cmp: Component, ptr: ComponentPointer): Unit = register(cmp, ptr)
 
   // Retrieve a (possibly modified) version of the program
   def program: Expr = prog
@@ -56,21 +57,20 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // here, we track which components depend on which effects
   @mutable var deps: Map[Dependency,Set[ComponentPointer]] =
     Map[Dependency,Set[ComponentPointer]]().withDefaultValue(Set.empty)
-  protected def addDep(target: ComponentPointer, dep: Dependency): Unit =
-    deps += (dep -> (deps(dep) + target))
+  protected def addDep(target: ComponentPointer, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
 
   // parameterized by an 'intra-component analysis'
   protected def intraAnalysis(component: ComponentPointer): IntraAnalysis
   protected abstract class IntraAnalysis(val ptr: ComponentPointer) {
     // automatically dereference the component
-    val component = deref(ptr)
+    val component: Component = deref(ptr) // TODO use def?
     // keep track of dependencies triggered by this intra-analysis
     @mutable private[ModAnalysis] var deps = Set[Dependency]()
     protected def triggerDependency(dep: Dependency): Unit = deps += dep
     protected def registerDependency(dep: Dependency): Unit = addDep(ptr, dep)
     // keep track of components called by this intra-analysis
     @mutable private[ModAnalysis] var components = Set[ComponentPointer]()
-    protected def spawn(cmp: Component) = components += ref(cmp)
+    protected def spawn(cmp: Component): Unit = components += ref(cmp)
     // analyses the given component
     def analyze(): Unit
   }
@@ -107,6 +107,24 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
 abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
 
+  type Module = Position
+
+  trait LinkedComponent {
+    val module: Module // Reference to the position of the statical module in which this component has its roots.
+  }
+
+  type Component <: LinkedComponent // By knowing from which module a component stems, it should become easier to find the components affected by a change.
+
+  // Map static modules to dynamic components.
+  @mutable var mMap: Map[Module, Set[ComponentPointer]] = Map()
+
+  trait IntraAnalysis extends super.IntraAnalysis {
+    override def spawn(cmp: Component): Unit = {
+      super.spawn(cmp)
+      mMap = mMap + (cmp.module -> (mMap(cmp.module) + ref(cmp)))
+    }
+  }
+
   // TODO: should we just implement an 'update' method that adds the required components to the work list and updates all state to account for the program changes?
 
   /**
@@ -119,6 +137,13 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
     // However, when this procedure terminates, work is guaranteed to be empty.
     work ++= components
     analyze(timeout)
+  }
+
+  /**
+   * Updates the state of the analysis, including all components.
+   */
+  def updateAnalysisState(): Unit = {
+
   }
 }
 

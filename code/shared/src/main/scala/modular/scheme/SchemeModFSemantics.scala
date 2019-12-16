@@ -31,20 +31,14 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     store += (addr -> lattice.primitive(p))
   }
   // in ModF, components are function calls in some context
-  trait Component
-  case object MainComponent extends Component {
-    override def toString: String = "main"
-  }
-  case class CallComponent(clo: lattice.Closure,
-                           nam: Option[String],
-                           ctx: Context) extends Component {
-    val (lambda, parent) = clo
-    override def toString: String = nam match {
-      case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
-      case Some(name) => s"$name [${ctx.toString}]"
-    }
-  }
-  lazy val initialComponent: Component = MainComponent
+  type MainComponent <: Component
+  type CallComponent <: Component
+  val MainComponent: Component
+  val initialComponent: Component
+  def getParent(c: CallComponent): ComponentPointer
+  def getLambda(c: CallComponent): SchemeLambdaExp
+  def newCC(clo: lattice.Closure, nam: Option[String], ctx: Context): CallComponent
+
   // this abstract class is parameterized by the choice of Context and allocation strategy of Contexts
   type Context
   def allocCtx(clo: lattice.Closure, args: List[Value]): Context
@@ -72,7 +66,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     @scala.annotation.tailrec
     private def resolveParent(ptr: ComponentPointer, scp: Int): ComponentPointer =
       if (scp == 0) { ptr } else deref(ptr) match {
-        case cmp: CallComponent => resolveParent(cmp.parent, scp - 1)
+        case cmp: CallComponent => resolveParent(getParent(cmp), scp - 1)
         // If the program has succesfully passed the lexical translation, the lookup should never fail!
         case MainComponent => throw new Exception("This should not happen!")
       }
@@ -93,7 +87,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
           val context = allocCtx(clo,argVals)
-          val component = CallComponent(clo,nam,context)
+          val component = newCC(clo,nam,context)
           bindArgs(component, prs, argVals)
           call(component)
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
@@ -101,7 +95,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
           val context = allocCtx(clo, fixedArgVals :+ varArgVal)
-          val component = CallComponent(clo,nam,context)
+          val component = newCC(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
           call(component)
@@ -174,7 +168,52 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   }
 }
 
+trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
+                                 with GlobalStore[SchemeExp]
+                                 with ReturnResult[SchemeExp]
+                                 with SchemeModFSemantics {
+  trait Component
+  case object MainComponent extends Component {
+    override def toString: String = "main"
+  }
+  case class CallComponent(clo: lattice.Closure,
+                           nam: Option[String],
+                           ctx: Context) extends Component {
+    val (lambda, parent) = clo
+    override def toString: String = nam match {
+      case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
+      case Some(name) => s"$name [${ctx.toString}]"
+    }
+  }
+  lazy val initialComponent: Component = MainComponent
+  def getParent(c: CallComponent): ComponentPointer = c.parent
+  def getLambda(c: CallComponent): SchemeLambdaExp  = c.lambda
+  def newCC(clo: lattice.Closure, nam: Option[String], ctx: Context): CallComponent = CallComponent(clo, nam, ctx)
+}
+
+trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
+                                        with GlobalStore[SchemeExp]
+                                        with ReturnResult[SchemeExp]
+                                        with SchemeModFSemantics {
+  trait Component extends LinkedComponent
+  case object MainComponent extends Component {
+    override def toString: String = "main"
+    val module: Module = SimplePosition(0, 0)
+  }
+  case class CallComponent(clo: lattice.Closure,
+                           nam: Option[String],
+                           ctx: Context) extends Component {
+    val (lambda, parent) = clo
+    override def toString: String = nam match {
+      case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
+      case Some(name) => s"$name [${ctx.toString}]"
+    }
+    val module: Module = lambda.pos
+  }
+  override lazy val initialComponent: Component = MainComponent
+}
+
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                      with AdaptiveGlobalStore[SchemeExp]
                                      with AdaptiveReturnResult[SchemeExp]
-                                     with SchemeModFSemantics
+                                     with BaseSchemeModFSemantics
