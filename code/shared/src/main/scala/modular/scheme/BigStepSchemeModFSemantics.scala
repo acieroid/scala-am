@@ -12,7 +12,7 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemanticBase {
     // analysis entry point
     def analyze(): Unit = writeResult(component match {
       case MainComponent        => eval(program)
-      case call: CallComponent  => evalSequence(getLambda(call).body)
+      case call: CallComponent@unchecked  => evalSequence(getLambda(call).body)
     })
     // simple big-step eval
     private def eval(exp: SchemeExp): Value = exp match {

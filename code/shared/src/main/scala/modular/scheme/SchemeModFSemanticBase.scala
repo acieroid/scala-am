@@ -96,9 +96,9 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
     @scala.annotation.tailrec
     private def resolveParent(ptr: ComponentPointer, scp: Int): ComponentPointer =
       if (scp == 0) { ptr } else deref(ptr) match {
-        case cmp: CallComponent => resolveParent(getParent(cmp), scp - 1)
         // If the program has succesfully passed the lexical translation, the lookup should never fail!
         case MainComponent => throw new Exception("Incorrect lexical address: trying to resolve the parent of the MainComponent.")
+        case cmp: CallComponent@unchecked => resolveParent(getParent(cmp), scp - 1)
       }
     // apply
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =

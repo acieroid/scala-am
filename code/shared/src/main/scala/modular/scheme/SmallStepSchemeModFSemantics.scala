@@ -51,7 +51,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemanticBase {
       // determine the initial state
       val initialExp = component match {
         case MainComponent        => program
-        case call: CallComponent  => SchemeBody(getLambda(call).body)
+        case call: CallComponent@unchecked  => SchemeBody(getLambda(call).body)
       }
       val initialState = EvalState(initialExp,Nil)
       // standard worklist algorithm
