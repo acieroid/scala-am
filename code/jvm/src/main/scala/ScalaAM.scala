@@ -15,14 +15,15 @@ object Main {
       (length p)
     """
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with SmallStepSchemeModFSemantics
-                                        with ConstantPropagationDomain
-                                        with NoSensitivity
+    val analysis = new IncrementalModAnalysis(prg) with IncrementalSchemeModFSemantics
+                                                   with BigStepSchemeModFSemanticBase
+                                                   with ConstantPropagationDomain
+                                                   with NoSensitivity
     analysis.analyze()
     debugResults(analysis)
   }
 
-  type Machine = ModAnalysis[SchemeExp] with SchemeModFSemantics
+  type Machine = ModAnalysis[SchemeExp] with SchemeModFSemanticBase
 
   def debugResults(machine: Machine): Unit = {
     machine.store.foreach {
