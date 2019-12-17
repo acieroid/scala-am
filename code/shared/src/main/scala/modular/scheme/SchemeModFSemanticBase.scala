@@ -56,17 +56,34 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
   // * A MainComponent type representing the main function of the program.
   // * A CallComponent type representing function calls. CallComponents must have a parent pointer and lambda expression, contain a context and may contain a name.
   // The MainComponent should be unique and can hence be an object. CallComponents can be created using the `newCallComponent` function.
-  type MainComponent <: Component
-  type CallComponent <: Component
-  val MainComponent: Component
-  val initialComponent: Component
-  def getParent(c: CallComponent): ComponentPointer
-  def getLambda(c: CallComponent): SchemeLambdaExp
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): CallComponent
+  type Component <: SchemeComponent
+  sealed trait SchemeComponent { def body: SchemeExp }
+  trait MainComponent extends SchemeComponent {
+    lazy val body = program
+    override def toString: String = "main"
+  }
+  trait CallComponent extends SchemeComponent {
+    // requires at least a name, closure and string
+    def nam: Option[String]
+    def clo: lattice.Closure
+    def ctx: Context
+    // convenience accessors
+    lazy val (lambda, parent) = clo
+    lazy val body = SchemeBody(lambda.body)
+    override def toString: String = nam match {
+      case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
+      case Some(name) => s"$name [${ctx.toString}]"
+    }
+  }
+
+  def newCallComponent(clo: lattice.Closure,
+                       nam: Option[String],
+                       ctx: Context): Component
 
   // This abstract class is also parameterized by the choice of Context and allocation strategy for Contexts.
   type Context
-  def allocCtx(clo: lattice.Closure, args: List[Value]): Context
+  def allocCtx(clo: lattice.Closure,
+               args: List[Value]): Context
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -86,9 +103,9 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
       case LocalRef(identifier) =>
         ComponentAddr(ptr,VarAddr(identifier))
       case GlobalRef(identifier) =>
-        ComponentAddr(ref(MainComponent),VarAddr(identifier))
+        ComponentAddr(initialComponentPtr,VarAddr(identifier))
       case PrimRef(name) =>
-        ComponentAddr(ref(MainComponent),PrmAddr(name))
+        ComponentAddr(initialComponentPtr,PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
         val cmp = resolveParent(ptr,scp)
         ComponentAddr(cmp,VarAddr(identifier))
@@ -97,8 +114,7 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
     private def resolveParent(ptr: ComponentPointer, scp: Int): ComponentPointer =
       if (scp == 0) { ptr } else deref(ptr) match {
         // If the program has succesfully passed the lexical translation, the lookup should never fail!
-        case MainComponent => throw new Exception("Incorrect lexical address: trying to resolve the parent of the MainComponent.")
-        case cmp: CallComponent@unchecked => resolveParent(getParent(cmp), scp - 1)
+        case cmp: CallComponent@unchecked => resolveParent(cmp.parent, scp - 1)
       }
     // apply
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
@@ -198,28 +214,14 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
   }
 }
 
-/** Standard semantics for a Scheme MODF analysis. */
-trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
-                             with GlobalStore[SchemeExp]
-                             with ReturnResult[SchemeExp]
-                             with SchemeModFSemanticBase {
-  trait Component
-  case object MainComponent extends Component {
-    override def toString: String = "main"
-  }
-  case class CallComponent(clo: lattice.Closure,
-                           nam: Option[String],
-                           ctx: Context) extends Component {
-    val (lambda, parent) = clo
-    override def toString: String = nam match {
-      case None => s"anonymous@${lambda.pos} [${ctx.toString}]"
-      case Some(name) => s"$name [${ctx.toString}]"
-    }
-  }
-  lazy val initialComponent: Component = MainComponent
-  def getParent(c: CallComponent): ComponentPointer = c.parent
-  def getLambda(c: CallComponent): SchemeLambdaExp  = c.lambda
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): CallComponent = CallComponent(clo, nam, ctx)
+trait SchemeModFSemantics extends SchemeModFSemanticBase {
+  // components are just normal SchemeComponents, without any extra fancy features
+  type Component = SchemeComponent
+  case object Main extends MainComponent
+  case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends CallComponent
+  // definitions for the initial and new components
+  lazy val initialComponent = Main
+  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context) = Call(clo,nam,ctx)
 }
 
 /** Semantics for an incremental Scheme MODF analysis. */
@@ -227,25 +229,19 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
                                         with GlobalStore[SchemeExp]
                                         with ReturnResult[SchemeExp]
                                         with SchemeModFSemanticBase {
-
-  // Every component holds a pointer to the corresponding lexical module.
-  trait Component extends LinkedComponent
-  case object MainComponent extends Component {
-    override def toString: String = "MAIN"
+  // components are 'normal' Scheme components + extra module information
+  trait Component extends SchemeComponent with LinkedComponent
+  case object Main extends Component with MainComponent {
     val module: Module = SimplePosition(0, 0)
   }
-  case class CallComponent(clo: lattice.Closure,
-                           nam: Option[String],
-                           ctx: Context) extends Component {
-    val (lambda, parent) = clo
-    override def toString: String = nam match {
-      case None => s"λ@${lambda.pos} [${ctx.toString}]"
-      case Some(name) => s"$name [${ctx.toString}]"
-    }
+  case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends Component with CallComponent {
     val module: Module = lambda.pos
   }
-  override lazy val initialComponent: Component = MainComponent
+  // definitions for the initial and new components
+  val initialComponent: Component = Main
+  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context) = Call(clo,nam,ctx)
 }
+
 
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]

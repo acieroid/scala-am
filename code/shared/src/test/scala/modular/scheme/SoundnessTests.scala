@@ -95,7 +95,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
   def analysis(b: Benchmark) = new ModAnalysis(loadFile(b))
-                                  with BaseBigStepSchemeModFSemantics
+                                  with BigStepSchemeModFSemantics
                                   with ConstantPropagationDomain
                                   with NoSensitivity
 }
@@ -103,7 +103,7 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   def analysis(b: Benchmark) = new ModAnalysis(loadFile(b))
-                                  with BaseSmallStepSchemeModFSemantics
+                                  with SmallStepSchemeModFSemantics
                                   with ConstantPropagationDomain
                                   with NoSensitivity
 }

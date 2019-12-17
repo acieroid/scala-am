@@ -5,7 +5,7 @@ import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
 import scalaam.modular.ModAnalysis._
 
-trait SmallStepSchemeModFSemantics extends SchemeModFSemanticBase {
+trait SmallStepSchemeModFSemanticBase extends SchemeModFSemanticBase {
   // defining the intra-analysis
   override def intraAnalysis(ptr: ComponentPointer) = new IntraAnalysis(ptr)
   class IntraAnalysis(ptr: ComponentPointer) extends super.IntraAnalysis(ptr) with SchemeModFSemanticsIntra {
@@ -49,11 +49,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemanticBase {
     // the main analyze method
     def analyze(): Unit = {
       // determine the initial state
-      val initialExp = component match {
-        case MainComponent        => program
-        case call: CallComponent@unchecked  => SchemeBody(getLambda(call).body)
-      }
-      val initialState = EvalState(initialExp,Nil)
+      val initialState = EvalState(component.body, Nil)
       // standard worklist algorithm
       var work    = Set[State](initialState)
       var visited = Set[State]()
@@ -229,5 +225,5 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemanticBase {
   }
 }
 
-trait BaseSmallStepSchemeModFSemantics extends SmallStepSchemeModFSemantics with SchemeModFSemantics
-
+trait SmallStepSchemeModFSemantics extends SmallStepSchemeModFSemanticBase
+                                      with SchemeModFSemantics
