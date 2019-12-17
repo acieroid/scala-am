@@ -1,12 +1,11 @@
 package scalaam.modular
 
 import scalaam.core._
-import ModAnalysis._
 
 trait ReturnResult[Expr <: Expression] extends GlobalStore[Expr] {
 
   // add a special address, where we can store the result of a component
-  case class ReturnAddr(ptr: ComponentPointer) extends Addr {
+  case class ReturnAddr(cmp: Component) extends Addr {
     def printable = true
   }
 
@@ -14,10 +13,10 @@ trait ReturnResult[Expr <: Expression] extends GlobalStore[Expr] {
   trait ReturnResultIntra extends GlobalStoreIntra {
     // updating the result of a component (default: of the current component)
     protected def writeResult(result: Value, cmp: Component = component): Unit =
-      writeAddr(ReturnAddr(ref(cmp)),result)
+      writeAddr(ReturnAddr(cmp),result)
     // reading the result of a component
     protected def readResult(cmp: Component): Value =
-      readAddr(ReturnAddr(ref(cmp)))
+      readAddr(ReturnAddr(cmp))
     // convenience method: calling other components and immediately reading their result
     protected def call(cmp: Component): Value = {
       spawn(cmp)

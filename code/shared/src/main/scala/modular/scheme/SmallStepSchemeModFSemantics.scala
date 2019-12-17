@@ -3,12 +3,11 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
-import scalaam.modular.ModAnalysis._
 
 trait SmallStepSchemeModFSemanticBase extends SchemeModFSemanticBase {
   // defining the intra-analysis
-  override def intraAnalysis(ptr: ComponentPointer) = new IntraAnalysis(ptr)
-  class IntraAnalysis(ptr: ComponentPointer) extends super.IntraAnalysis(ptr) with SchemeModFSemanticsIntra {
+  override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp)
+  class IntraAnalysis(cmp: Component) extends super.IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
     // the intermediate states in the intra-analysis
     sealed trait State
     case class EvalState(exp: SchemeExp,
