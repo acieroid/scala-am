@@ -90,7 +90,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemanticBase {
         val result = evalLiteralValue(value)
         Set(KontState(result, cnt))
       case lambda: SchemeLambdaExp =>
-        val result = makeClosure(lambda, None)
+        val result = newClosure(lambda, None)
         Set(KontState(result, cnt))
       case SchemeVarLex(_, lex) =>
         val result = lookupVariable(lex)
@@ -102,12 +102,12 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemanticBase {
         Set(EvalState(vexp, frm :: cnt))
       case SchemeDefineFunction(id, prs, bdy, pos) =>
         val lambda = SchemeLambda(prs, bdy, pos)
-        val result = makeClosure(lambda,Some(id.name))
+        val result = newClosure(lambda,Some(id.name))
         defineVariable(id, result)
         Set(KontState(result, cnt))
       case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos) =>
         val lambda = SchemeVarArgLambda(prs, vararg, bdy, pos)
-        val result = makeClosure(lambda,Some(id.name))
+        val result = newClosure(lambda,Some(id.name))
         defineVariable(id, result)
         Set(KontState(result, cnt))
       case SchemeSetLex(_, lex, vexp, _) =>
@@ -125,7 +125,7 @@ trait SmallStepSchemeModFSemantics extends SchemeModFSemanticBase {
       case SchemeNamedLet(id,bindings,body,pos) =>
         val (prs,ags) = bindings.unzip
         val lambda = SchemeLambda(prs,body,pos)
-        val closure = makeClosure(lambda,Some(id.name))
+        val closure = newClosure(lambda,Some(id.name))
         defineVariable(id, closure)
         evalArgs(lambda,closure,ags,Nil,cnt)
       case SchemeFuncall(fexp,args,_) =>

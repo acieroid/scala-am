@@ -17,7 +17,7 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemanticBase {
     // simple big-step eval
     private def eval(exp: SchemeExp): Value = exp match {
       case SchemeValue(value, _)                                  => evalLiteralValue(value)
-      case lambda: SchemeLambdaExp                                => makeClosure(lambda,None)
+      case lambda: SchemeLambdaExp                                => newClosure(lambda,None)
       case SchemeVarLex(_, lex)                                   => lookupVariable(lex)
       case SchemeBegin(exps, _)                                   => evalSequence(exps)
       case SchemeDefineVariable(id, vexp, _)                      => evalDefineVariable(id, vexp)
@@ -43,13 +43,13 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemanticBase {
     }
     private def evalDefineFunction(id: Identifier, prs: List[Identifier], body: List[SchemeExp], pos: Position): Value = {
       val lambda = SchemeLambda(prs,body,pos)
-      val value = makeClosure(lambda,Some(id.name))
+      val value = newClosure(lambda,Some(id.name))
       defineVariable(id,value)
       value
     }
     private def evalDefineVarArgFunction(id: Identifier, prs: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position): Value = {
       val lambda = SchemeVarArgLambda(prs,vararg,body,pos)
-      val value = makeClosure(lambda,Some(id.name))
+      val value = newClosure(lambda,Some(id.name))
       defineVariable(id,value)
       value
     }
@@ -60,8 +60,7 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemanticBase {
       setVariable(lex,newValue)
       newValue
     }
-    private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value =
-      conditional(eval(prd), eval(csq), eval(alt))
+    private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value = conditional(eval(prd), eval(csq), eval(alt))
     private def evalLetExp(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = {
       bindings.foreach { case (id,exp) => defineVariable(id, eval(exp)) }
       evalSequence(body)
@@ -69,7 +68,7 @@ trait BigStepSchemeModFSemantics extends SchemeModFSemanticBase {
     private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], pos: Position): Value = {
       val (prs,ags) = bindings.unzip
       val lambda = SchemeLambda(prs,body,pos)
-      val closure = makeClosure(lambda,Some(id.name))
+      val closure = newClosure(lambda,Some(id.name))
       defineVariable(id,closure)
       val argsVals = ags.map(argExp => (argExp, eval(argExp)))
       applyFun(lambda,closure,argsVals)
