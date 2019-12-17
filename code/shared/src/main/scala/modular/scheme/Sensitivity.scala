@@ -1,7 +1,7 @@
 package scalaam.modular.scheme
 
 /* Simplest (and most imprecise): no context-sensitivity */
-trait NoSensitivity extends SchemeModFSemantics {
+trait NoSensitivity extends SchemeModFSemanticBase {
   case class Context() {
     override def toString = ""
   }
@@ -9,7 +9,7 @@ trait NoSensitivity extends SchemeModFSemantics {
 }
 
 /* Full argument sensitivity for ModF */
-trait FullArgumentSensitivity extends SchemeModFSemantics {
+trait FullArgumentSensitivity extends SchemeModFSemanticBase {
   case class Context(args: List[Value]) {
     override def toString = args.mkString(",")
   }

@@ -14,7 +14,7 @@ import scalaam.language.scheme.SchemeInterpreter._
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
-  type Analysis = ModAnalysis[SchemeExp] with BaseSchemeModFSemantics
+  type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: Benchmark): Analysis

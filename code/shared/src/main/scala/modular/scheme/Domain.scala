@@ -4,7 +4,7 @@ import scalaam.lattice._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis._
 
-trait AbstractDomain extends SchemeModFSemantics {
+trait AbstractDomain extends SchemeModFSemanticBase {
   // parameterized by different abstract domains for each type
   type S
   type B

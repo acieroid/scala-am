@@ -7,7 +7,7 @@ import scalaam.language.sexp
 import scalaam.util._
 import scalaam.modular.ModAnalysis._
 
-trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
+trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
                           with GlobalStore[SchemeExp]
                           with ReturnResult[SchemeExp] {
   // ensure that the program is translated with lexical addresses first!
@@ -168,10 +168,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   }
 }
 
-trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
-                                 with GlobalStore[SchemeExp]
-                                 with ReturnResult[SchemeExp]
-                                 with SchemeModFSemantics {
+trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
+                             with GlobalStore[SchemeExp]
+                             with ReturnResult[SchemeExp]
+                             with SchemeModFSemanticBase {
   trait Component
   case object MainComponent extends Component {
     override def toString: String = "main"
@@ -194,7 +194,7 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
 trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
                                         with GlobalStore[SchemeExp]
                                         with ReturnResult[SchemeExp]
-                                        with SchemeModFSemantics {
+                                        with SchemeModFSemanticBase {
   trait Component extends LinkedComponent
   case object MainComponent extends Component {
     override def toString: String = "main"
@@ -216,4 +216,4 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                      with AdaptiveGlobalStore[SchemeExp]
                                      with AdaptiveReturnResult[SchemeExp]
-                                     with BaseSchemeModFSemantics
+                                     with SchemeModFSemantics

@@ -22,7 +22,7 @@ object Main {
     debugResults(analysis)
   }
 
-  type Machine = ModAnalysis[SchemeExp] with SchemeModFSemantics
+  type Machine = ModAnalysis[SchemeExp] with SchemeModFSemanticBase
 
   def debugResults(machine: Machine): Unit = {
     machine.store.foreach {
