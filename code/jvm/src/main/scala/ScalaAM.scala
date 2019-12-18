@@ -29,7 +29,7 @@ object Main {
     machine.store.foreach {
       case (machine.ReturnAddr(cmp),result) =>
         println(s"$cmp => $result")
-      case _ => {}
+      case _ =>
     }
   }
 
@@ -50,7 +50,7 @@ object DiffMain extends App {
     content
   }
 
-  def analyze(text: SchemeExp) = {
+  def analyze(text: SchemeExp): Unit  = {
     val analyzer = new ModAnalysis(text) with SmallStepSchemeModFSemantics
       with ConstantPropagationDomain
       with NoSensitivity

@@ -71,14 +71,20 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program)
                                                                             with IndirectComponents[Expr] {
   type Module = Position
-  type ComponentData <: LinkedComponent // By knowing from which module a component stems, it should become easier to find the components affected by a change.
+
+  // Type of 'actual components'.
+  type ComponentData <: LinkedComponent
+  /** A linked component has a reference to its lexical module.
+   *  By knowing from which module a component stems, it should become easier to find the components affected by a change.
+   **/
   trait LinkedComponent {
     def module: Module // Reference to the position of the statical module in which this component has its roots.
   }
 
-  type Component <: IncrementalComponent
-  trait IncrementalComponent extends ComponentPointer with LinkedComponent {
-    def module = deref().module
+  type Component <: LinkedComponentPointer
+  /** Type of pointers for linked components. */
+  trait LinkedComponentPointer extends ComponentPointer with LinkedComponent {
+    def module: Module = deref().module
   }
 
   // Map static modules to dynamic components.

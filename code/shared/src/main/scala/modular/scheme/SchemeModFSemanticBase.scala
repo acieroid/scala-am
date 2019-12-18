@@ -221,8 +221,8 @@ trait SchemeModFSemantics extends SchemeModFSemanticBase {
   case object Main extends MainComponent
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends CallComponent
   // definitions for the initial and new components
-  lazy val initialComponent = Main
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context) = Call(clo,nam,ctx)
+  lazy val initialComponent: SchemeComponent = Main
+  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): SchemeComponent = Call(clo,nam,ctx)
 }
 
 /** Semantics for an incremental Scheme MODF analysis. */
@@ -235,13 +235,13 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
   case object Main extends ComponentData with MainComponent
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends ComponentData with CallComponent
   // components are pointers to this component data
-  case class Component(addr: Int) extends IncrementalComponent with SchemeComponent {
-    def body = deref().body
+  case class Component(addr: Int) extends LinkedComponentPointer with SchemeComponent {
+    def body: SchemeExp = deref().body
   }
-  def makePointer(addr: Int) = Component(addr)
+  def makePointer(addr: Int): Component = Component(addr)
   // definitions for the initial and new components
   lazy val initialComponent: Component = { init() ; ref(Main) }
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context) = ref(Call(clo,nam,ctx))
+  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
 }
 
 
