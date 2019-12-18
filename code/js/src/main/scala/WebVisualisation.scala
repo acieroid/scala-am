@@ -1,7 +1,6 @@
 package scalaam.web
 
 import scalaam.modular._
-import scalaam.modular.ModAnalysis._
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -41,7 +40,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   import WebVisualisation._
 
-  class Node(val component: ComponentPointer) extends js.Object
+  class Node(val component: analysis.Component) extends js.Object
   class Edge(val source: Node, val target: Node) extends js.Object
 
   //
@@ -50,12 +49,12 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   val nodesData = new js.Array[Node]()
   val edgesData = new js.Array[Edge]()
-  val nodesColl = Map[ComponentPointer, Node]()
+  val nodesColl = Map[analysis.Component, Node]()
   val edgesColl = Map[(Node,Node),Edge]()
-  private def addNode(ptr: ComponentPointer): Node = nodesColl.get(ptr) match {
+  private def addNode(cmp: analysis.Component): Node = nodesColl.get(cmp) match {
     case None =>
-      val newNode = new Node(ptr)
-      nodesColl(ptr) = newNode
+      val newNode = new Node(cmp)
+      nodesColl(cmp) = newNode
       nodesData.push(newNode)
       return newNode
     case Some(existingNode) =>
@@ -174,10 +173,10 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   }
 
   // more efficient than `refreshData`: updates only data that may have changed after stepping
-  def refreshDataAfterStep(ptr: ComponentPointer) = {
-    val sourceNode = addNode(ptr)
-    analysis.dependencies(ptr).foreach { otherPtr =>
-      val targetNode = addNode(otherPtr)
+  def refreshDataAfterStep(cmp: analysis.Component) = {
+    val sourceNode = addNode(cmp)
+    analysis.dependencies(cmp).foreach { otherCmp =>
+      val targetNode = addNode(otherCmp)
       addEdge(sourceNode,targetNode)
     }
   }
@@ -193,7 +192,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     newGroup.append("text")
             .attr("dx",__CIRCLE_RADIUS__)
             .attr("dy",__CIRCLE_RADIUS__)
-            .text((node: Node) => displayText(analysis.deref(node.component)))
+            .text((node: Node) => displayText(node.component))
     nodes = newGroup.merge(nodesUpdate)
     nodes.classed(__CSS_FINISHED__, (_: Node) => analysis.finished())
          .classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))

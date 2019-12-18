@@ -5,7 +5,6 @@ import scalaam.modular._
 import scalaam.language.scheme._
 import scalaam.language.sexp
 import scalaam.util._
-import scalaam.modular.ModAnalysis._
 
 /**
  * Base definitions for a Scheme MODF analysis.
@@ -37,12 +36,12 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
 
   // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
   type Prim = SchemePrimitive[Value, Addr]
-  implicit val lattice: SchemeLattice[Value, Addr, Prim, ComponentPointer]
+  implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
   lazy val primitives = new SchemePrimitives[Value, Addr]
 
   // Set up initial environment and install the primitives in the global store.
   primitives.allPrimitives.foreach { p =>
-    val addr = ComponentAddr(ref(initialComponent), PrmAddr(p.name))
+    val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
     store += (addr -> lattice.primitive(p))
   }
 
@@ -102,20 +101,20 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
     // resolve a lexical address to the corresponding address in the store
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
       case LocalRef(identifier) =>
-        ComponentAddr(ptr,VarAddr(identifier))
+        ComponentAddr(component,VarAddr(identifier))
       case GlobalRef(identifier) =>
-        ComponentAddr(initialComponentPtr,VarAddr(identifier))
+        ComponentAddr(initialComponent,VarAddr(identifier))
       case PrimRef(name) =>
-        ComponentAddr(initialComponentPtr,PrmAddr(name))
+        ComponentAddr(initialComponent,PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
-        val cmp = resolveParent(ptr,scp)
+        val cmp = resolveParent(component,scp)
         ComponentAddr(cmp,VarAddr(identifier))
     }
     @scala.annotation.tailrec
-    private def resolveParent(ptr: ComponentPointer, scp: Int): ComponentPointer =
-      if (scp == 0) { ptr } else deref(ptr) match {
+    private def resolveParent(cmp: Component, scp: Int): Component =
+      if (scp == 0) { cmp } else cmp match {
         // If the program has successfully passed the lexical translation, the lookup should never fail!
-        case cmp: CallComponent@unchecked => resolveParent(cmp.parent, scp - 1)
+        case call: CallComponent@unchecked => resolveParent(call.parent, scp - 1)
       }
     // apply
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
@@ -204,7 +203,8 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
       case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
     // The current component serves as the lexical environment of the closure.
-    protected def newClosure(lambda: SchemeLambdaExp, name: Option[String]): Value = lattice.closure((lambda, ptr), name)
+    protected def newClosure(lambda: SchemeLambdaExp, name: Option[String]): Value =
+      lattice.closure((lambda, component), name)
 
     // other helpers
     protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
@@ -221,24 +221,27 @@ trait SchemeModFSemantics extends SchemeModFSemanticBase {
   case object Main extends MainComponent
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends CallComponent
   // definitions for the initial and new components
-  lazy val initialComponent: SchemeComponent = Main
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Call = Call(clo,nam,ctx)
+  lazy val initialComponent = Main
+  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context) = Call(clo,nam,ctx)
 }
 
 /** Semantics for an incremental Scheme MODF analysis. */
 trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
-                                        with GlobalStore[SchemeExp]
-                                        with ReturnResult[SchemeExp]
                                         with SchemeModFSemanticBase {
-
   // Every component holds a pointer to the corresponding lexical module.
-  trait Component extends SchemeComponent with LinkedComponent { val module: Module = body.pos }
-  case object Main extends Component with MainComponent
-  case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends Component with CallComponent
-
-  // Definitions for the initial and new components.
-  val initialComponent: Component = Main
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Call = Call(clo,nam,ctx)
+  trait ComponentData extends SchemeComponent with LinkedComponent {
+    def module: Module = body.pos
+  }
+  case object Main extends ComponentData with MainComponent
+  case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends ComponentData with CallComponent
+  // components are pointers to this component data
+  case class Component(addr: Int) extends IncrementalComponent with SchemeComponent {
+    def body = deref().body
+  }
+  def makePointer(addr: Int) = Component(addr)
+  // definitions for the initial and new components
+  lazy val initialComponent: Component = { init() ; ref(Main) }
+  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context) = ref(Call(clo,nam,ctx))
 }
 
 
