@@ -38,7 +38,8 @@ object Main {
 
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
-    val analysis = new ModAnalysis(program) with BigStepSchemeModFSemantics
+    val analysis = new ModAnalysis(program) with BigStepSemantics
+                                            with StandardSchemeModFSemantics
                                             with FullArgumentSensitivity
                                             with ConstantPropagationDomain
     val visualisation = new WebVisualisation(analysis)

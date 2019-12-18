@@ -16,16 +16,16 @@ object Main {
     """
     val prg = SchemeParser.parse(txt)
     val analysis = new IncrementalModAnalysis(prg) with IncrementalSchemeModFSemantics
-                                                   with BigStepSchemeModFSemanticBase
+                                                   with BigStepSemantics
                                                    with ConstantPropagationDomain
                                                    with NoSensitivity
     analysis.analyze()
     debugResults(analysis)
   }
 
-  type Machine = ModAnalysis[SchemeExp] with SchemeModFSemanticBase
+  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
 
-  def debugResults(machine: Machine): Unit = {
+  def debugResults(machine: SchemeModFAnalysis): Unit = {
     machine.store.foreach {
       case (machine.ReturnAddr(cmp),result) =>
         println(s"$cmp => $result")
@@ -51,7 +51,8 @@ object DiffMain extends App {
   }
 
   def analyze(text: SchemeExp): Unit  = {
-    val analyzer = new ModAnalysis(text) with SmallStepSchemeModFSemantics
+    val analyzer = new ModAnalysis(text) with SmallStepSemantics
+      with StandardSchemeModFSemantics
       with ConstantPropagationDomain
       with NoSensitivity
     analyzer.analyze()//Timeout.start(Duration(2, "MINUTES")))

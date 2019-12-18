@@ -14,7 +14,7 @@ import scalaam.language.scheme.SchemeInterpreter._
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
-  type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
+  type Analysis = ModAnalysis[SchemeExp] with StandardSchemeModFSemantics
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: Benchmark): Analysis
@@ -95,7 +95,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
   def analysis(b: Benchmark) = new ModAnalysis(loadFile(b))
-                                  with BigStepSchemeModFSemantics
+                                  with BigStepSemantics
+                                  with StandardSchemeModFSemantics
                                   with ConstantPropagationDomain
                                   with NoSensitivity
 }
@@ -103,7 +104,8 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   def analysis(b: Benchmark) = new ModAnalysis(loadFile(b))
-                                  with SmallStepSchemeModFSemantics
+                                  with SmallStepSemantics
+                                  with StandardSchemeModFSemantics
                                   with ConstantPropagationDomain
                                   with NoSensitivity
 }

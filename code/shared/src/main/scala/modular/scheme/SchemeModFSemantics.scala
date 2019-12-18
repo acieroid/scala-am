@@ -9,9 +9,7 @@ import scalaam.util._
 /**
  * Base definitions for a Scheme MODF analysis.
  */
-trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
-                                with GlobalStore[SchemeExp]
-                                with ReturnResult[SchemeExp] {
+trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] {
 
   //XXXXXXXXXXXXXXXXXXXX//
   // LEXICAL ADDRESSING //
@@ -207,7 +205,7 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
   }
 }
 
-trait SchemeModFSemantics extends SchemeModFSemanticBase {
+trait StandardSchemeModFSemantics extends SchemeModFSemantics {
   // Components are just normal SchemeComponents, without any extra fancy features.
   // Hence, to view a component as a SchemeComponent, the component itself can be used.
   type Component = SchemeComponent
@@ -223,7 +221,7 @@ trait SchemeModFSemantics extends SchemeModFSemanticBase {
 }
 
 /** Semantics for an incremental Scheme MODF analysis. */
-trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with SchemeModFSemanticBase {
+trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with SchemeModFSemantics {
 
   // Every component holds a pointer to the corresponding lexical module.
   trait ComponentData extends SchemeComponent with LinkedComponent {
@@ -239,9 +237,8 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
   def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
 }
 
-
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                      with AdaptiveGlobalStore[SchemeExp]
-                                     with AdaptiveReturnResult[SchemeExp]
-                                     with SchemeModFSemantics
+                                     with AdaptiveReturnValue[SchemeExp]
+                                     with StandardSchemeModFSemantics

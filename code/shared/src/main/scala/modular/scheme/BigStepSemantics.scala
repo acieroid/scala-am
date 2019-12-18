@@ -4,7 +4,7 @@ import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
 
-trait BigStepSchemeModFSemanticBase extends SchemeModFSemanticBase {
+trait BigStepSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
   override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp)
   class IntraAnalysis(cmp: Component) extends super.IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
@@ -97,6 +97,3 @@ trait BigStepSchemeModFSemanticBase extends SchemeModFSemanticBase {
     }
   }
 }
-
-trait BigStepSchemeModFSemantics extends BigStepSchemeModFSemanticBase
-                                    with SchemeModFSemantics

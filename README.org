@@ -35,7 +35,8 @@ Additional preprocessing steps can be performed as well if needed.
 Now, the MODF instance can be created. For example, to analyze =exp= using a big-step MODF analysis
 with full argument sensitivity and a type domain:
 #+BEGIN_SRC scala
-scala> val machine = new ModAnalysis(program) with BigStepSchemeModFSemantics
+scala> val machine = new ModAnalysis(program) with BigStepSemantics
+                                              with StandardSchemeModFSemantics
                                               with FullArgumentSensitivity
                                               with TypePropagationDomain
 scala> machine.analyze()
