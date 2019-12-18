@@ -56,7 +56,8 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
   // * A CallComponent type representing function calls. CallComponents must have a parent pointer and lambda expression, contain a context and may contain a name.
   // The MainComponent should be unique and can hence be an object. CallComponents can be created using the `newCallComponent` function.
   // All components used together with this Scheme MODF analysis should be SchemeComponents.
-  type Component <: SchemeComponent
+//  type Component <: SchemeComponent
+  implicit def view(c: Component): SchemeComponent
   sealed trait SchemeComponent { def body: SchemeExp }
   trait MainComponent extends SchemeComponent {
     lazy val body: SchemeExp = program
@@ -218,6 +219,7 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
 trait SchemeModFSemantics extends SchemeModFSemanticBase {
   // components are just normal SchemeComponents, without any extra fancy features
   type Component = SchemeComponent
+  implicit def view(c: SchemeComponent): SchemeComponent = c
   case object Main extends MainComponent
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends CallComponent
   // definitions for the initial and new components
@@ -235,9 +237,7 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
   case object Main extends ComponentData with MainComponent
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends ComponentData with CallComponent
   // components are pointers to this component data
-  case class Component(addr: Int) extends LinkedComponentPointer with SchemeComponent {
-    def body: SchemeExp = deref().body
-  }
+  case class Component(addr: Int) extends ComponentPointer
   def makePointer(addr: Int): Component = Component(addr)
   // definitions for the initial and new components
   lazy val initialComponent: Component = { init() ; ref(Main) }

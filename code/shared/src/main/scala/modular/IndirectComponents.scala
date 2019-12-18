@@ -16,8 +16,8 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
     val addr: Int
     def deref(): ComponentData = cMap(addr)
     override def toString: String = s"#$addr: ${deref().toString}"
-    implicit def toData: ComponentData = deref()
   }
+  implicit def view(cmp: Component): ComponentData = cmp.deref()
   def makePointer(addr: Int): Component // needs to be overwritten in subclass!
   // The 'actual component (data)' can be anything that is considered useful.
   type ComponentData

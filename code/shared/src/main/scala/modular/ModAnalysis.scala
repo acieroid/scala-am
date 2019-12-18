@@ -80,12 +80,8 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
   trait LinkedComponent {
     def module: Module // Reference to the position of the statical module in which this component has its roots.
   }
-
-  type Component <: LinkedComponentPointer
   /** Type of pointers for linked components. */
-  trait LinkedComponentPointer extends ComponentPointer with LinkedComponent {
-    def module: Module = deref().module
-  }
+  trait LinkedComponentPointer extends ComponentPointer
 
   // Map static modules to dynamic components.
   @mutable var mMap: Map[Module, Set[Component]] = Map()
