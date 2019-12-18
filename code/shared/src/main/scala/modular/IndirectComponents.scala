@@ -1,7 +1,14 @@
 package scalaam.modular
 
 import scalaam.core._
+import scalaam.modular.IndirectComponents.ComponentPointer
 import scalaam.util.Annotations._
+
+object IndirectComponents {
+  case class ComponentPointer(addr: Int) extends AnyVal {
+    override def toString: String = s"#$addr"
+  }
+}
 
 /**
  *  Provides the ability to reference components 'by pointer'.
@@ -11,14 +18,12 @@ import scalaam.util.Annotations._
 trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
   // Secretly, every component is a pointer to an 'actual component', but that information is not leaked to the outside.
-  type Component <: ComponentPointer
-  trait ComponentPointer {
-    val addr: Int
-    def deref(): ComponentData = cMap(addr)
-    override def toString: String = s"#$addr: ${deref().toString}"
-  }
-  implicit def view(cmp: Component): ComponentData = cmp.deref()
-  def makePointer(addr: Int): Component // needs to be overwritten in subclass!
+  type Component = ComponentPointer
+
+  def deref(ptr: ComponentPointer): ComponentData = cMap(ptr.addr)
+
+  implicit def view(cmp: Component): ComponentData = deref(cmp)
+
   // The 'actual component (data)' can be anything that is considered useful.
   type ComponentData
 
@@ -52,7 +57,7 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
     addr
   }
   /** Returns the pointer corresponding to an (actual) component. */
-  def ref(cmp: ComponentData): Component = makePointer(cMapR.getOrElse(cmp, newComponent(cmp)))
+  def ref(cmp: ComponentData): Component = ComponentPointer(cMapR.getOrElse(cmp, newComponent(cmp)))
 
   /** Allows to update the 'actual component' corresponding to a given pointer. */
   protected def update(cmp: ComponentData, ptr: ComponentPointer): Unit = register(cmp, ptr.addr)

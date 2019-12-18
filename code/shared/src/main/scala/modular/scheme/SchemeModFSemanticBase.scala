@@ -219,7 +219,7 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
 trait SchemeModFSemantics extends SchemeModFSemanticBase {
   // components are just normal SchemeComponents, without any extra fancy features
   type Component = SchemeComponent
-  implicit def view(c: SchemeComponent): SchemeComponent = c
+  implicit def view(c: Component): SchemeComponent = c
   case object Main extends MainComponent
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends CallComponent
   // definitions for the initial and new components
@@ -236,9 +236,6 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
   }
   case object Main extends ComponentData with MainComponent
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends ComponentData with CallComponent
-  // components are pointers to this component data
-  case class Component(addr: Int) extends ComponentPointer
-  def makePointer(addr: Int): Component = Component(addr)
   // definitions for the initial and new components
   lazy val initialComponent: Component = { init() ; ref(Main) }
   def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
