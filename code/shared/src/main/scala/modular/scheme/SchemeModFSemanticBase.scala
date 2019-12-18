@@ -55,8 +55,7 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
   // * A MainComponent type representing the main function of the program.
   // * A CallComponent type representing function calls. CallComponents must have a parent pointer and lambda expression, contain a context and may contain a name.
   // The MainComponent should be unique and can hence be an object. CallComponents can be created using the `newCallComponent` function.
-  // All components used together with this Scheme MODF analysis should be SchemeComponents.
-//  type Component <: SchemeComponent
+  // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
   implicit def view(c: Component): SchemeComponent
   sealed trait SchemeComponent { def body: SchemeExp }
   trait MainComponent extends SchemeComponent {
@@ -77,14 +76,11 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
     }
   }
 
-  def newCallComponent(clo: lattice.Closure,
-                       nam: Option[String],
-                       ctx: Context): Component
+  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component
 
   // This abstract class is also parameterized by the choice of Context and allocation strategy for Contexts.
   type Context
-  def allocCtx(clo: lattice.Closure,
-               args: List[Value]): Context
+  def allocCtx(clo: lattice.Closure, args: List[Value]): Context
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -93,30 +89,25 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
   // Extensions to the intraAnalysis.
   trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
     // variable lookup
-    protected def lookupVariable(lex: LexicalRef): Value =
-      readAddr(resolveAddr(lex))
-    protected def setVariable(lex: LexicalRef, vlu: Value): Unit =
-      writeAddr(resolveAddr(lex),vlu)
-    protected def defineVariable(id: Identifier, vlu: Value): Unit =
-      writeAddr(VarAddr(id),vlu)
+    protected def lookupVariable(lex: LexicalRef): Value = readAddr(resolveAddr(lex))
+    protected def    setVariable(lex: LexicalRef, vlu: Value): Unit = writeAddr(resolveAddr(lex), vlu)
+    protected def defineVariable( id: Identifier, vlu: Value): Unit = writeAddr(    VarAddr( id), vlu)
     // resolve a lexical address to the corresponding address in the store
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
-      case LocalRef(identifier) =>
-        ComponentAddr(component,VarAddr(identifier))
-      case GlobalRef(identifier) =>
-        ComponentAddr(initialComponent,VarAddr(identifier))
-      case PrimRef(name) =>
-        ComponentAddr(initialComponent,PrmAddr(name))
+      case  LocalRef(identifier) => ComponentAddr(component,VarAddr(identifier))
+      case GlobalRef(identifier) => ComponentAddr(initialComponent,VarAddr(identifier))
+      case   PrimRef(      name) => ComponentAddr(initialComponent,PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
         val cmp = resolveParent(component,scp)
         ComponentAddr(cmp,VarAddr(identifier))
     }
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
-      if (scp == 0) { cmp } else cmp match {
+      if (scp == 0) { cmp } else resolveParent(cmp.asInstanceOf[CallComponent].parent, scp - 1)
+      /* cmp match {
         // If the program has successfully passed the lexical translation, the lookup should never fail!
         case call: CallComponent@unchecked => resolveParent(call.parent, scp - 1)
-      }
+      } */
     // apply
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       if(args.forall(_._2 != lattice.bottom)) {
@@ -217,27 +208,34 @@ trait SchemeModFSemanticBase extends ModAnalysis[SchemeExp]
 }
 
 trait SchemeModFSemantics extends SchemeModFSemanticBase {
-  // components are just normal SchemeComponents, without any extra fancy features
+  // Components are just normal SchemeComponents, without any extra fancy features.
+  // Hence, to view a component as a SchemeComponent, the component itself can be used.
   type Component = SchemeComponent
-  implicit def view(c: Component): SchemeComponent = c
+  implicit def view(cmp: Component): SchemeComponent = cmp
+
+  // Definition of the initial component.
   case object Main extends MainComponent
+  // Definition of call components.
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends CallComponent
-  // definitions for the initial and new components
+
   lazy val initialComponent: SchemeComponent = Main
   def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): SchemeComponent = Call(clo,nam,ctx)
 }
 
 /** Semantics for an incremental Scheme MODF analysis. */
-trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp]
-                                        with SchemeModFSemanticBase {
+trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with SchemeModFSemanticBase {
+
   // Every component holds a pointer to the corresponding lexical module.
   trait ComponentData extends SchemeComponent with LinkedComponent {
     def module: Module = body.pos
   }
+
+  // Definition of the initial component.
   case object Main extends ComponentData with MainComponent
+  // Definition of call components.
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends ComponentData with CallComponent
-  // definitions for the initial and new components
-  lazy val initialComponent: Component = { init() ; ref(Main) }
+
+  lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
   def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
 }
 

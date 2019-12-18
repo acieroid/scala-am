@@ -5,6 +5,7 @@ import scalaam.modular.IndirectComponents.ComponentPointer
 import scalaam.util.Annotations._
 
 object IndirectComponents {
+  // A component pointer just is an integer.
   case class ComponentPointer(addr: Int) extends AnyVal {
     override def toString: String = s"#$addr"
   }
@@ -20,8 +21,10 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   // Secretly, every component is a pointer to an 'actual component', but that information is not leaked to the outside.
   type Component = ComponentPointer
 
+  /** Retrieves the component data corresponding to a given component pointer. */
   def deref(ptr: ComponentPointer): ComponentData = cMap(ptr.addr)
 
+  // Allows to treat a component pointer as a component.
   implicit def view(cmp: Component): ComponentData = deref(cmp)
 
   // The 'actual component (data)' can be anything that is considered useful.
