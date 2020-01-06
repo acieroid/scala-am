@@ -5,8 +5,8 @@ import scalaam.util.SmartHash
 /** An expression */
 trait Expression extends SmartHash {
 
-  /** The position of the expression in its source file. */
-  def pos: Position
+  /** The identity of the expression. Can be used to get information about the position of the expression in its source file. */
+  def idn: Identity
 
   /** The set of free variables appearing in this expression. */
   def fv: Set[String]
@@ -44,8 +44,8 @@ trait Label
 case object SYM extends Label // Identifier
 
 /** An identifier. It has a name and a position */
-case class Identifier(name: String, pos: Position) extends Expression with SmartHash {
-  def fullString:              String  = s"$name@$pos"
+case class Identifier(name: String, idn: Identity) extends Expression with SmartHash {
+  def fullString:              String  = s"$name@$idn"
   override def toString:       String  = name
   def fv:                  Set[String] = Set(name)
   override val height:             Int = 0

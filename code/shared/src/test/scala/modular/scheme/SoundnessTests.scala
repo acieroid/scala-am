@@ -3,8 +3,8 @@ package scalaam.test.soundness
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
+import scalaam.core.Identity.Position
 import scalaam.test._
-
 import scalaam.core._
 import scalaam.util._
 import scalaam.modular._
@@ -21,9 +21,9 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // the timeout for the analysis of a single benchmark program (default: 1min.)
   def timeout(b: Benchmark) = Timeout.start(Duration(1, MINUTES))
   // the actual testing code
-  private def evalConcrete(benchmark: Benchmark, t: Timeout.T): (Option[Value], Map[Position,Set[Value]]) = {
+  private def evalConcrete(benchmark: Benchmark, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
     val program = SchemeUndefiner.undefine(List(loadFile(benchmark)))
-    var posResults = Map[Position,Set[Value]]().withDefaultValue(Set())
+    var posResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((p, v) => posResults += (p -> (posResults(p) + v)), false)
     try {
       val endResult = interpreter.run(program, t)
@@ -42,7 +42,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     v.forall {
       case Value.Undefined(_)   => true
       case Value.Unbound(_)     => true
-      case Value.Clo(lam, _)    => lat.getClosures(abs).exists(_._1._1.pos == lam.pos)
+      case Value.Clo(lam, _)    => lat.getClosures(abs).exists(_._1._1.idn.pos == lam.idn.pos)
       case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_.name == p.name)
       case Value.Str(s)         => lat.subsumes(abs, lat.string(s))
       case Value.Symbol(s)      => lat.subsumes(abs, lat.symbol(s))
@@ -62,14 +62,14 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     assert(checkSubsumption(a)(Set(concRes), aRes), "the end result is not sound")
   }
 
-  private def comparePositions(a: Analysis, concPos: Map[Position,Set[Value]]) = {
-    val absPos: Map[Position, a.Value] = a.store.groupBy({_._1 match {
-      case a.ComponentAddr(_, addr) => addr.pos()
-      case _                        => Position.none
-    }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
-    concPos.foreach { case (pos,values) =>
-      assert(checkSubsumption(a)(values, absPos(pos)),
-            s"intermediate result at $pos is not sound: ${absPos(pos)} does not subsume $values")
+  private def comparePositions(a: Analysis, concIdn: Map[Identity,Set[Value]]) = {
+    val absID: Map[Position, a.Value] = a.store.groupBy({_._1 match {
+        case a.ComponentAddr(_, addr) => addr.idn().pos
+        case _                        => Identity.none.pos
+      }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
+    concIdn.foreach { case (idn,values) =>
+      assert(checkSubsumption(a)(values, absID(idn.pos)),
+            s"intermediate result at $idn is not sound: ${absID(idn.pos)} does not subsume $values")
     }
   }
 

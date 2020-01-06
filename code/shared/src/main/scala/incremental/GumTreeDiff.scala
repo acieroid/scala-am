@@ -43,7 +43,7 @@ object GumTreeDiff {
     val descendants: List[T] = children ::: children.flatMap(_.descendants) // Cache all descendants.
     val label:         Label = self.label                                   // Labels of nodes correspond to the name of their production rule in the grammar.
 
-    override def toString: String = s"$self@${self.pos}"
+    override def toString: String = s"$self@${self.idn}"
 
     /** Returns a boolean indicating whether t1 and t2 are isomorphic. */
     def isomorphic(other: T): Boolean = self.isomorphic(other.self)

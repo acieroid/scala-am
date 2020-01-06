@@ -72,7 +72,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
                                                                             with IndirectComponents[Expr] {
 
   // A module refers to the lexical, static counterpart of a component (i.e. to a function definition).
-  type Module = Position // TODO: How to coop with changes of position upon source code changes?
+  type Module = Identity // TODO: How to coop with changes of position upon source code changes?
 
   // Type of 'actual components'.
   type ComponentData <: LinkedComponent

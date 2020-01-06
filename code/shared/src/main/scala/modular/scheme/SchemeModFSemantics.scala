@@ -23,10 +23,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
   }
 
   // Local addresses are simply made out of lexical information.
-  trait LocalAddr extends Address { def pos(): Position }
-  case class VarAddr(id: Identifier)           extends LocalAddr { def printable = true;  def pos(): Position =  id.pos }
-  case class PtrAddr[C](exp: Expression, c: C) extends LocalAddr { def printable = false; def pos(): Position = exp.pos }
-  case class PrmAddr(nam: String)              extends LocalAddr { def printable = true;  def pos(): Position = Position.none }
+  trait LocalAddr extends Address { def idn(): Identity }
+  case class VarAddr(id: Identifier)           extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
+  case class PtrAddr[C](exp: Expression, c: C) extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class PrmAddr(nam: String)              extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
@@ -69,7 +69,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
     lazy val (lambda, parent) = clo
     lazy val body: SchemeExp = SchemeBody(lambda.body)
     override def toString: String = nam match {
-      case None => s"λ@${lambda.pos} [${ctx.toString}]"
+      case None => s"λ@${lambda.idn} [${ctx.toString}]"
       case Some(name) => s"$name [${ctx.toString}]"
     }
   }
@@ -105,7 +105,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(cmp.asInstanceOf[CallComponent].parent, scp - 1)
-
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       if(args.forall(_._2 != lattice.bottom)) {
         val fromClosures = applyClosures(fval,args)
@@ -224,7 +223,7 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
 
   // Every component holds a pointer to the corresponding lexical module.
   trait ComponentData extends SchemeComponent with LinkedComponent {
-    def module: Module = body.pos
+    def module: Module = body.idn
   }
 
   // Definition of the initial component.

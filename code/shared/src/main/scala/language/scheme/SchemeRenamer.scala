@@ -98,7 +98,7 @@ object SchemeRenamer {
       rename(value, names, count) match {
         case (value1, count1) =>
           (SchemeSet(names.get(variable.name) match {
-            case Some(n) => Identifier(n, variable.pos)
+            case Some(n) => Identifier(n, variable.idn)
             case None    => variable
           }, value1, pos), count1)
       }
@@ -129,8 +129,8 @@ object SchemeRenamer {
       }
     case SchemeVar(id) =>
       names.get(id.name) match {
-        case Some(n) => (SchemeVar(Identifier(n, id.pos)), count)
-        case None    => (SchemeVar(Identifier(id.name, id.pos)), count) /* keep original name */
+        case Some(n) => (SchemeVar(Identifier(n, id.idn)), count)
+        case None    => (SchemeVar(Identifier(id.name, id.idn)), count) /* keep original name */
       }
     case SchemeValue(v, pos) =>
       (SchemeValue(v, pos), count)
@@ -184,7 +184,7 @@ object SchemeRenamer {
       case None    => 0
     }
     val n = s"_$variable$c"
-    (Identifier(n, variable.pos), names + (variable.name -> n), count + (variable.name -> c))
+    (Identifier(n, variable.idn), names + (variable.name -> n), count + (variable.name -> c))
   }
 
   /** Same as count1 but for a list of variables */

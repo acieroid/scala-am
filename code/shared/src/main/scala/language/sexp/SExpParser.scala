@@ -1,6 +1,6 @@
 package scalaam.language.sexp
 
-import scalaam.core.{Position, Identifier}
+import scalaam.core.{Identity, Identifier}
 
 /**
   * Implementation of a simple s-expression parser, which supports some
@@ -212,14 +212,14 @@ object SExpParser extends TokenParsers {
 
   def value: Parser[SExp] = Parser { in =>
     (bool | real | integer | character | string | nil)(in) match {
-      case Success(t, in1) => Success(SExpValue(t, Position(in.pos)), in1)
+      case Success(t, in1) => Success(SExpValue(t, Identity(in.pos)), in1)
       case ns: NoSuccess   => ns
     }
   }
 
   def identifier: Parser[SExp] = Parser { in =>
     elem("identifier", _.isInstanceOf[TIdentifier])(in) match {
-      case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, Position(in.pos))), in1)
+      case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, Identity(in.pos))), in1)
       case Success(v, in1)              => Failure(s"Expected identifier, got $v", in1)
       case ns: NoSuccess                => ns
     }
@@ -236,16 +236,16 @@ object SExpParser extends TokenParsers {
   def list: Parser[SExp] = Parser { in =>
     (leftParen ~> rep1(exp) ~ opt(dot ~> exp) <~ rightParen)(in) match {
       case Success(es ~ None, in1) =>
-        Success(SExpList(es, Position(in.pos)), in1)
+        Success(SExpList(es, Identity(in.pos)), in1)
       case Success(es ~ Some(tail), in1) =>
         Success(SExpList(es, tail), in1)
       case ns: NoSuccess => ns
     }
   }
 
-  def withQuote(p: Parser[_], make: (SExp, Position) => SExp) = Parser { in =>
+  def withQuote(p: Parser[_], make: (SExp, Identity) => SExp) = Parser { in =>
     (p ~> exp)(in) match {
-      case Success(e, in1) => Success(make(e, Position(in.pos)), in1)
+      case Success(e, in1) => Success(make(e, Identity(in.pos)), in1)
       case ns: NoSuccess   => ns
     }
   }
