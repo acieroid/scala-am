@@ -11,15 +11,12 @@ object IndirectComponents {
   }
 }
 
-/**
- *  Provides the ability to reference components 'by pointer'.
- *  This should allow components to be updates more easily without
- *  breaking analysis information such as inter-component dependencies.
- **/
+/** Provides the ability to reference components 'by pointer'. */
 trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
   // Secretly, every component is a pointer to an 'actual component', but that information is not leaked to the outside.
   type Component = ComponentPointer
+  type Address = Int
 
   /** Retrieves the component data corresponding to a given component pointer. */
   def deref(ptr: ComponentPointer): ComponentData = cMap(ptr.addr)
@@ -43,25 +40,36 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   }
 
   /** Returns the next unused address. */
-  private def alloc(): Int = {
+  private def alloc(): Address = {
     val addr = count
     count += 1
     addr
   }
   /** Registers a component at a given address. */
-  private def register(cmp: ComponentData, addr: Int): Unit = {
+  protected def register(cmp: ComponentData, addr: Address): Unit = {
     cMap  = cMap  + (addr -> cmp)
     cMapR = cMapR + (cmp -> addr)
   }
   /** Creates a component (pointer) from an 'actual component' */
-  private def newComponent(cmp: ComponentData): Int = {
+  private def newComponent(cmp: ComponentData): Address = {
     val addr = alloc()
     register(cmp, addr)
     addr
   }
   /** Returns the pointer corresponding to an (actual) component. */
   def ref(cmp: ComponentData): Component = ComponentPointer(cMapR.getOrElse(cmp, newComponent(cmp)))
+}
+
+/**
+ *  Extends component indirection by allowing updates to component pointers.
+ *  This should allow components to be updated more easily without
+ *  breaking analysis information such as inter-component dependencies.
+ */
+trait MutableIndirectComponents[Expr <: Expression] extends IndirectComponents[Expr] {
 
   /** Allows to update the 'actual component' corresponding to a given pointer. */
-  protected def update(cmp: ComponentData, ptr: ComponentPointer): Unit = register(cmp, ptr.addr)
+  def update(cmp: ComponentData, ptr: ComponentPointer): Unit = register(cmp, ptr.addr)
+
+  /** Allows to replace the data of a component with new data. */
+  def update(oldCmp: ComponentData, newCmp: ComponentData): Unit = update(newCmp, ref(oldCmp))
 }
