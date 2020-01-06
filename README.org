@@ -10,7 +10,7 @@ The Scala-AM framework can be used in several ways.
 The test suite of Scala-AM can be run using =sbt test=.
 #+BEGIN_SRC shell
 $ sbt
-> test
+> scalaam/test
 #+END_SRC
 
 ** Using the JavaScript visual front-end
