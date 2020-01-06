@@ -4,6 +4,10 @@ import scalaam.core._
 import scalaam.util.Annotations._
 import scalaam.util.MonoidImplicits._
 
+/**
+ * Adds a global store to the analysis. This store supports various addressing modes.
+ * @tparam Expr The type of the expressions under analysis.
+ */
 trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
 
   // parameterized by a type that represents (local) addresses
@@ -25,7 +29,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
     case None => store = store + (addr -> value); true
     case Some(oldValue) =>
       val newValue = lattice.join(oldValue,value)
-      if (newValue == oldValue) { return false }
+      if (newValue == oldValue) return false
       store = store + (addr -> newValue)
       true
   }

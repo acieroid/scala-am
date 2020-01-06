@@ -61,7 +61,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
     override def toString: String = "main"
   }
   trait CallComponent extends SchemeComponent {
-    // requires at least a name, closure and string
+    // Requires a closure and a context and may contain a name.
     def nam: Option[String]
     def clo: lattice.Closure
     def ctx: Context
@@ -74,10 +74,13 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
     }
   }
 
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component
+  /** Creates a new component, given a closure, context and an optional name. */
+  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component
 
   // This abstract class is also parameterized by the choice of Context and allocation strategy for Contexts.
   type Context
+
+  /** Creates a new context given a closure and a list of argument values. */
   def allocCtx(clo: lattice.Closure, args: List[Value]): Context
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -86,7 +89,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
 
   // Extensions to the intraAnalysis.
   trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
-    // variable lookup
+    // variable lookup: use the global store
     protected def lookupVariable(lex: LexicalRef): Value = readAddr(resolveAddr(lex))
     protected def    setVariable(lex: LexicalRef, vlu: Value): Unit = writeAddr(resolveAddr(lex), vlu)
     protected def defineVariable( id: Identifier, vlu: Value): Unit = writeAddr(    VarAddr( id), vlu)
@@ -102,11 +105,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(cmp.asInstanceOf[CallComponent].parent, scp - 1)
-      /* cmp match {
-        // If the program has successfully passed the lexical translation, the lookup should never fail!
-        case call: CallComponent@unchecked => resolveParent(call.parent, scp - 1)
-      } */
-    // apply
+
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       if(args.forall(_._2 != lattice.bottom)) {
         val fromClosures = applyClosures(fval,args)
@@ -123,7 +122,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
           val context = allocCtx(clo,argVals)
-          val component = newCallComponent(clo,nam,context)
+          val component = newComponent(clo,nam,context)
           bindArgs(component, prs, argVals)
           call(component)
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
@@ -131,7 +130,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
           val context = allocCtx(clo, fixedArgVals :+ varArgVal)
-          val component = newCallComponent(clo,nam,context)
+          val component = newComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
           call(component)
@@ -217,7 +216,7 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends CallComponent
 
   lazy val initialComponent: SchemeComponent = Main
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): SchemeComponent = Call(clo,nam,ctx)
+  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): SchemeComponent = Call(clo,nam,ctx)
 }
 
 /** Semantics for an incremental Scheme MODF analysis. */
@@ -234,7 +233,7 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends ComponentData with CallComponent
 
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
-  def newCallComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
+  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
 }
 
 /** Semantics for an adaptive Scheme MODF analysis. */

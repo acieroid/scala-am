@@ -18,12 +18,6 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   type Component = ComponentPointer
   type Address = Int
 
-  /** Retrieves the component data corresponding to a given component pointer. */
-  def deref(ptr: ComponentPointer): ComponentData = cMap(ptr.addr)
-
-  // Allows to treat a component pointer as a component.
-  implicit def view(cmp: Component): ComponentData = deref(cmp)
-
   // The 'actual component (data)' can be anything that is considered useful.
   type ComponentData
 
@@ -45,19 +39,28 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
     count += 1
     addr
   }
+
   /** Registers a component at a given address. */
   protected def register(cmp: ComponentData, addr: Address): Unit = {
     cMap  = cMap  + (addr -> cmp)
     cMapR = cMapR + (cmp -> addr)
   }
-  /** Creates a component (pointer) from an 'actual component' */
+
+  /** Creates a component (pointer) from an 'actual component'. */
   private def newComponent(cmp: ComponentData): Address = {
     val addr = alloc()
     register(cmp, addr)
     addr
   }
+
   /** Returns the pointer corresponding to an (actual) component. */
   def ref(cmp: ComponentData): Component = ComponentPointer(cMapR.getOrElse(cmp, newComponent(cmp)))
+
+  /** Retrieves the component data corresponding to a given component pointer. */
+  def deref(ptr: ComponentPointer): ComponentData = cMap(ptr.addr)
+
+  /** Allows to treat a component pointer as a component. */
+  implicit def view(cmp: Component): ComponentData = deref(cmp)
 }
 
 /**

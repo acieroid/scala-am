@@ -43,7 +43,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   @mutable var work:          Set[Component]                  = Set(initialComponent)
   @mutable var visited:       Set[Component]                  = Set()
   @mutable var allComponents: Set[Component]                  = Set(initialComponent)
-  @mutable var dependencies:  Map[Component, Set[Component]]  = Map()
+  @mutable var dependencies:  Map[Component, Set[Component]]  = Map() // Only needed for web visualisation.
   def finished(): Boolean = work.isEmpty
   def step(): Unit = {
     // take the next component
@@ -56,8 +56,8 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     val newComponents = intra.components.filterNot(visited)
     val componentsToUpdate = intra.deps.flatMap(deps)
     val succs = newComponents ++ componentsToUpdate
-    work ++= succs
     // update the analysis
+    work ++= succs
     visited += current
     allComponents ++= newComponents
     dependencies += (current -> intra.components)
@@ -70,7 +70,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
 abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program)
                                                                             with IndirectComponents[Expr] {
-  type Module = Position
+
+  // A module refers to the lexical, static counterpart of a component (i.e. to a function definition).
+  type Module = Position // TODO: How to coop with changes of position upon source code changes?
 
   // Type of 'actual components'.
   type ComponentData <: LinkedComponent
@@ -106,7 +108,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
   }
 
   /**
-   * Updates the state of the analysis, including all components.
+   * Updates the state of the analysis, including all components. TODO
    */
   def updateAnalysisState(): Unit = {}
 }
