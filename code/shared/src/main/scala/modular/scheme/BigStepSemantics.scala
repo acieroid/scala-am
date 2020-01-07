@@ -37,14 +37,14 @@ trait BigStepSemantics extends SchemeModFSemantics {
       defineVariable(id,value)
       value
     }
-    private def evalDefineFunction(id: Identifier, prs: List[Identifier], body: List[SchemeExp], pos: Position): Value = {
-      val lambda = SchemeLambda(prs,body,pos)
+    private def evalDefineFunction(id: Identifier, prs: List[Identifier], body: List[SchemeExp], idn: Identity): Value = {
+      val lambda = SchemeLambda(prs,body,idn)
       val value = newClosure(lambda,Some(id.name))
       defineVariable(id,value)
       value
     }
-    private def evalDefineVarArgFunction(id: Identifier, prs: List[Identifier], vararg: Identifier, body: List[SchemeExp], pos: Position): Value = {
-      val lambda = SchemeVarArgLambda(prs,vararg,body,pos)
+    private def evalDefineVarArgFunction(id: Identifier, prs: List[Identifier], vararg: Identifier, body: List[SchemeExp], idn: Identity): Value = {
+      val lambda = SchemeVarArgLambda(prs,vararg,body,idn)
       val value = newClosure(lambda,Some(id.name))
       defineVariable(id,value)
       value
@@ -61,9 +61,9 @@ trait BigStepSemantics extends SchemeModFSemantics {
       bindings.foreach { case (id,exp) => defineVariable(id, eval(exp)) }
       evalSequence(body)
     }
-    private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], pos: Position): Value = {
+    private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], idn: Identity): Value = {
       val (prs,ags) = bindings.unzip
-      val lambda = SchemeLambda(prs,body,pos)
+      val lambda = SchemeLambda(prs,body,idn)
       val closure = newClosure(lambda,Some(id.name))
       defineVariable(id,closure)
       val argsVals = ags.map(argExp => (argExp, eval(argExp)))

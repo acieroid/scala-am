@@ -1,6 +1,6 @@
 package scalaam.language.scheme
 
-import scalaam.core.{Position, Identifier}
+import scalaam.core.{Identity, Identifier}
 
 /**
   * Remove defines from a Scheme expression, replacing them by let bindings.
@@ -22,13 +22,13 @@ object SchemeUndefiner {
 
   def undefine(exps: List[SchemeExp], defs: List[(Identifier, SchemeExp)]): TailRec[SchemeExp] =
     exps match {
-      case Nil => done(SchemeBegin(Nil, Position.none))
+      case Nil => done(SchemeBegin(Nil, Identity.none))
       case SchemeDefineFunction(name, args, body, pos) :: rest =>
         tailcall(
           tailcall(undefineBody(body)).flatMap(
             bodyv =>
               undefine(
-                SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.pos), pos) :: rest,
+                SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.idn), pos) :: rest,
                 defs
               )
           )
@@ -38,7 +38,7 @@ object SchemeUndefiner {
           tailcall(undefineBody(body)).flatMap(
             bodyv =>
               undefine(
-                SchemeDefineVariable(name, SchemeVarArgLambda(args, vararg, bodyv, exps.head.pos), pos) :: rest,
+                SchemeDefineVariable(name, SchemeVarArgLambda(args, vararg, bodyv, exps.head.idn), pos) :: rest,
                 defs
               )
           )
@@ -48,13 +48,13 @@ object SchemeUndefiner {
       case _ :: _ =>
         if (defs.isEmpty) {
           tailcall(undefineBody(exps)).flatMap({
-            case Nil        => done(SchemeBegin(Nil, Position.none))
+            case Nil        => done(SchemeBegin(Nil, Identity.none))
             case exp :: Nil => done(exp)
-            case exps       => done(SchemeBegin(exps, exps.head.pos))
+            case exps       => done(SchemeBegin(exps, exps.head.idn))
           })
         } else {
           tailcall(undefineBody(exps))
-            .flatMap(body => done(SchemeLetrec(defs.reverse, body, exps.head.pos)))
+            .flatMap(body => done(SchemeLetrec(defs.reverse, body, exps.head.idn)))
         }
     }
 

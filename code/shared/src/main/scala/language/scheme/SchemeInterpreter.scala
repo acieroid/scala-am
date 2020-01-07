@@ -10,7 +10,7 @@ import scala.concurrent.TimeoutException
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
   * This interpreter dictates the concrete semantics of the Scheme language analyzed by Scala-AM.
  */
-class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, output: Boolean = true) {
+class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, output: Boolean = true) {
   import SchemeInterpreter._
   /**
     * Evaluates `program`.
@@ -21,14 +21,14 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
   }
 
   var compared = 0
-  def check(p: Position, v : Value): Value = {
+  def check(i: Identity, v : Value): Value = {
     compared += 1
     v match {
-      case Value.Undefined(pos@_) => () // println(s"Undefined behavior arising from position $pos seen at ${e.pos}")
-      case Value.Unbound(id) => println(s"Seen unbound identifier $id at ${p}")
+      case Value.Undefined(idn@_) => () // println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
+      case Value.Unbound(idn) => println(s"Seen unbound identifier $idn at ${i}")
       case _ => ()
     }
-    callback(p, v)
+    callback(i, v)
     v
   }
   var lastAddr = 0
@@ -46,26 +46,26 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
     e match {
       case _ : SchemeLambda | _ : SchemeVarArgLambda =>
         Value.Clo(e, env)
-      case SchemeFuncall(f, args, pos) =>
+      case SchemeFuncall(f, args, idn) =>
         eval(f, env, timeout) match {
           case Value.Clo(SchemeLambda(argsNames, body, pos2), env2) =>
             if (argsNames.length != args.length) {
-              throw new Exception(s"Invalid function call at position ${pos}: ${args.length} arguments given, while exactly ${argsNames.length} are expected")
+              throw new Exception(s"Invalid function call at position ${idn}: ${args.length} arguments given, while exactly ${argsNames.length} are expected")
             }
             val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
               val addr = newAddr()
-              extendStore(addr, check(arg._1.pos, eval(arg._2, env, timeout)))
+              extendStore(addr, check(arg._1.idn, eval(arg._2, env, timeout)))
               (env3 + (arg._1.name -> addr))
             })
             eval(SchemeBegin(body, pos2), envExt, timeout)
           case Value.Clo(SchemeVarArgLambda(argsNames, vararg, body, pos2), env2) =>
             val arity = argsNames.length
             if (args.length < arity) {
-              throw new Exception(s"Invalid function call at position $pos: ${args.length} arguments given, while at least ${argsNames.length} are expected")
+              throw new Exception(s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected")
             }
             val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
               val addr = newAddr()
-              extendStore(addr, check(arg._1.pos, eval(arg._2, env, timeout)))
+              extendStore(addr, check(arg._1.idn, eval(arg._2, env, timeout)))
               (env3 + (arg._1.name -> addr))
             })
             val varArgVals = args.drop(arity).map(eval(_,env,timeout))
@@ -76,7 +76,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
           case Value.Primitive(p) =>
             p.call(args.map(arg => eval(arg, env, timeout)))
           case v =>
-            throw new Exception(s"Invalid function call at position ${pos}: ${v} is not a closure or a primitive")
+            throw new Exception(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive")
         }
       case SchemeIf(cond, cons, alt, _) =>
         eval(cond, env, timeout) match {
@@ -86,14 +86,14 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       case SchemeLet(bindings, body, pos) =>
         val envExt = bindings.foldLeft(env)((env2, binding) => {
           val addr = newAddr()
-          extendStore(addr, check(binding._1.pos, eval(binding._2, env, timeout)))
+          extendStore(addr, check(binding._1.idn, eval(binding._2, env, timeout)))
           (env2 + (binding._1.name -> addr))
         })
         eval(SchemeBegin(body, pos), envExt, timeout)
       case SchemeLetStar(bindings, body, pos) =>
         val envExt = bindings.foldLeft(env)((env2, binding) => {
           val addr = newAddr()
-          extendStore(addr, check(binding._1.pos, eval(binding._2, env2 /* this is the difference with let */ , timeout)))
+          extendStore(addr, check(binding._1.idn, eval(binding._2, env2 /* this is the difference with let */ , timeout)))
           (env2 + (binding._1.name -> addr))
         })
         eval(SchemeBegin(body, pos), envExt, timeout)
@@ -107,7 +107,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         })
         /* Then evaluate all bindings in the extended environment */
         bindings.foreach(binding => {
-          extendStore(envExt(binding._1.name), check(binding._1.pos, eval(binding._2, envExt, timeout)))
+          extendStore(envExt(binding._1.name), check(binding._1.idn, eval(binding._2, envExt, timeout)))
         })
         eval(SchemeBegin(body, pos), envExt, timeout)
       case SchemeNamedLet(_, _, _, _) => ???
@@ -143,11 +143,11 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
         env.get(id.name) match {
           case Some(addr) => store.get(addr) match {
             case Some(v) => v
-            case None => throw new Exception(s"Unbound variable $id at position ${id.pos}")
+            case None => throw new Exception(s"Unbound variable $id at position ${id.idn}")
           }
           case None => primitive(id.name) match {
             case Some(prim) => prim
-            case None => throw new Exception(s"Undefined variable $id at position ${id.pos}")
+            case None => throw new Exception(s"Undefined variable $id at position ${id.idn}")
           }
         }
       case SchemePair(car,cdr,_) =>
@@ -776,7 +776,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       def fun = {
         case x =>
           if (output) print(x)
-          Value.Undefined(Position.none)
+          Value.Undefined(Identity.none)
       }
     }
     object Newline extends Prim {
@@ -784,7 +784,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       def call(args: List[Value]) = args match {
         case Nil =>
           if (output) println("")
-          Value.Undefined(Position.none)
+          Value.Undefined(Identity.none)
         case _ => throw new Exception(s"newline: wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
@@ -956,7 +956,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       def call(args: List[Value]): Value = args match {
         case Value.Vector(vec) :: Value.Integer(idx) :: v :: Nil =>
           vec(idx) = v
-          Value.Undefined(Position.none)
+          Value.Undefined(Identity.none)
         case _ => throw new Exception(s"vector-set!: invalid arguments $args")
       }
     }
@@ -1029,7 +1029,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       def call(args: List[Value]): Value = args match {
         case Value.Cons(car, _) :: v :: Nil =>
           extendStore(car, v)
-          Value.Undefined(Position.none)
+          Value.Undefined(Identity.none)
         case _ => throw new Exception(s"set-car!: invalid arguments $args")
       }
     }
@@ -1038,7 +1038,7 @@ class SchemeInterpreter(callback: (Position, SchemeInterpreter.Value) => Unit, o
       def call(args: List[Value]): Value = args match {
         case Value.Cons(_, cdr) :: v :: Nil =>
           extendStore(cdr, v)
-          Value.Undefined(Position.none)
+          Value.Undefined(Identity.none)
         case _ => throw new Exception(s"set-cdr!: invalid arguments $args")
       }
     }
@@ -1163,7 +1163,7 @@ object SchemeInterpreter {
   type Env = Map[String, Addr]
   type Store = Map[Addr, Value]
   object Value {
-    case class Undefined(pos: Position) extends Value /* arises from undefined behavior */
+    case class Undefined(idn: Identity) extends Value /* arises from undefined behavior */
     case class Unbound(id: Identifier) extends Value /* only used for letrec */
     case class Clo(lambda: SchemeExp, env: Env) extends Value
     case class Primitive(p: Prim) extends Value

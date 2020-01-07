@@ -59,7 +59,7 @@ class ModularSchemeLattice[
   }
   case class Clo(lambda: SchemeLambdaExp, env: Env, name: Option[String]) extends Value {
     def printName: String = name match {
-      case None => s"anonymous@${lambda.pos}"
+      case None => s"anonymous@${lambda.idn}"
       case Some(name) => name
     }
     override def toString: String = s"#<closure $printName>"

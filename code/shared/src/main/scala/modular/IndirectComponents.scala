@@ -22,9 +22,9 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   type ComponentData
 
   // Keep a mapping from component pointer addresses to actual component data.
-  @mutable private var count: Int = _
-  @mutable private var cMap : Map[Int, ComponentData] = _
-  @mutable private var cMapR: Map[ComponentData, Int] = _
+  @mutable private var count: Address = _
+  @mutable private var cMap : Map[Address, ComponentData] = _
+  @mutable private var cMapR: Map[ComponentData, Address] = _
 
   // Needed due to the initialisation order of Scala.
   protected def init(): Unit = {
