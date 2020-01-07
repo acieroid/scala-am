@@ -1,33 +1,36 @@
 package scalaam.core
 
-import java.util.UUID
-
 import scalaam.core.Identity._
 import scalaam.util.SmartHash
 
 /** An identity to distinguish expressions. */
-sealed trait Identity {
-  val idn: IDN
-  def pos: Position = iMap(idn) // Extra positional information of the element in the source code.
-  override def toString: String = s"${pos._1}:${pos._2}"
+trait Identity {
+  def pos: Position
 }
 
 /** A position with a line and column */
-case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
+case class SimpleIdentity(idn: Int) extends Identity with SmartHash {
+  def pos = Identity.synchronized { iMap(idn) }
+  override def toString: String = s"$idn (=> $pos)"
+}
 
 /** Neutral identity for to elements not in the code. */
-object NoCodeIdentity extends Identity { val idn: IDN = UUID.randomUUID() }
+case object NoCodeIdentity extends Identity {
+  val idn = -1
+  override def pos = ((-1, 0))
+}
 
 object Identity {
 
-  type IDN = UUID // Type name is IDN to avoid confusion with identifiers.
+  var nextId = 0
   type Position = (Int, Int)
 
   // Used for printing and during tests.
-  var iMap: Map[IDN, Position] = Map(NoCodeIdentity.idn -> ((-1, 0)))
+  var iMap: Map[Int, Position] = Map()
 
-  def apply(p: scala.util.parsing.input.Position): Identity = {
-    val idn: IDN = UUID.randomUUID()
+  def apply(p: scala.util.parsing.input.Position): Identity = this.synchronized {
+    val idn = nextId
+    nextId = nextId + 1
     iMap = iMap + (idn -> ((p.line, p.column)))
     SimpleIdentity(idn)
   }

@@ -41,7 +41,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     v.forall {
       case Value.Undefined(_)   => true
       case Value.Unbound(_)     => true
-      case Value.Clo(lam, _)    => lat.getClosures(abs).exists(_._1._1.idn.pos == lam.idn.pos)
+      case Value.Clo(lam, _)    => lat.getClosures(abs).exists(_._1._1.idn == lam.idn)
       case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_.name == p.name)
       case Value.Str(s)         => lat.subsumes(abs, lat.string(s))
       case Value.Symbol(s)      => lat.subsumes(abs, lat.symbol(s))
@@ -67,7 +67,6 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
         case _                        => Identity.none
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
     concIdn.foreach { case (idn,values) =>
-      assume(absID.contains(idn))
       assert(checkSubsumption(a)(values, absID(idn)),
             s"intermediate result at $idn is not sound: ${absID(idn)} does not subsume $values")
     }
