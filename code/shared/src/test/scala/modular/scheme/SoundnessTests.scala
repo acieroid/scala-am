@@ -16,12 +16,12 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   type Analysis = ModAnalysis[SchemeExp] with StandardSchemeModFSemantics
   // the analysis that is used to analyse the programs
   def name: String
-  def analysis(b: Benchmark): Analysis
+  def analysis(b: SchemeExp): Analysis
   // the timeout for the analysis of a single benchmark program (default: 1min.)
   def timeout(b: Benchmark) = Timeout.start(Duration(1, MINUTES))
   // the actual testing code
-  private def evalConcrete(benchmark: Benchmark, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
-    val program = SchemeUndefiner.undefine(List(loadFile(benchmark)))
+  private def evalConcrete(originalProgram: SchemeExp, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
+    val program = SchemeUndefiner.undefine(List(originalProgram))
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
     try {
@@ -29,10 +29,10 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       (Some(endResult), idnResults)
     } catch {
       case _ : TimeoutException =>
-        alert(s"Concrete evaluation for $benchmark timed out")
+        alert(s"Concrete evaluation timed out")
         (None, idnResults)
       case _ : StackOverflowError =>
-        alert(s"Concrete evaluation for $benchmark ran out of stack space")
+        alert(s"Concrete evaluation ran out of stack space")
         (None, idnResults)
     }
   }
@@ -67,6 +67,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
         case _                        => Identity.none
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
     concIdn.foreach { case (idn,values) =>
+      assume(absID.contains(idn))
       assert(checkSubsumption(a)(values, absID(idn)),
             s"intermediate result at $idn is not sound: ${absID(idn)} does not subsume $values")
     }
@@ -74,10 +75,12 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 
   def onBenchmark(benchmark: Benchmark) =
     property(s"Analysis of $benchmark using $name is sound") {
+      // load the benchmark program
+      val program = loadFile(benchmark)
       // run the program using a concrete interpreter
-      val (cResult, cPosResults) = evalConcrete(benchmark,timeout(benchmark))
+      val (cResult, cPosResults) = evalConcrete(program,timeout(benchmark))
       // analyze the program using a ModF analysis
-      val a = analysis(benchmark)
+      val a = analysis(program)
       a.analyze(timeout(benchmark))
       // assume that the analysis finished
       // if not, cancel the test for this benchmark
@@ -93,20 +96,20 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
-  def analysis(b: Benchmark) = new ModAnalysis(loadFile(b))
-                                  with BigStepSemantics
-                                  with StandardSchemeModFSemantics
-                                  with ConstantPropagationDomain
-                                  with NoSensitivity
+  def analysis(program: SchemeExp) = new ModAnalysis(program)
+                                      with BigStepSemantics
+                                      with StandardSchemeModFSemantics
+                                      with ConstantPropagationDomain
+                                      with NoSensitivity
 }
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
-  def analysis(b: Benchmark) = new ModAnalysis(loadFile(b))
-                                  with SmallStepSemantics
-                                  with StandardSchemeModFSemantics
-                                  with ConstantPropagationDomain
-                                  with NoSensitivity
+  def analysis(program: SchemeExp) = new ModAnalysis(program)
+                                      with SmallStepSemantics
+                                      with StandardSchemeModFSemantics
+                                      with ConstantPropagationDomain
+                                      with NoSensitivity
 }
 
 // concrete test suites to run ...
