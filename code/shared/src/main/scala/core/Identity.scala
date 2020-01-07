@@ -18,7 +18,7 @@ case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 /** Neutral identity for to elements not in the code (constructed by the analysis). */
 object NoCodeIdentity extends Identity {
   val idn: IDN = UUID.randomUUID()
-  override def pos: (Int, Int) = (-1, 0)
+  override def pos: Position = (-1, 0)
 }
 
 object Identity {
