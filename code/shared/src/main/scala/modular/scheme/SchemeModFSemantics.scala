@@ -56,11 +56,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
   implicit def view(c: Component): SchemeComponent
   sealed trait SchemeComponent { def body: SchemeExp }
-  trait MainComponent extends SchemeComponent {
+  sealed trait MainComponent extends SchemeComponent {
     lazy val body: SchemeExp = program
     override def toString: String = "main"
   }
-  trait CallComponent extends SchemeComponent {
+  sealed trait CallComponent extends SchemeComponent {
     // Requires a closure and a context and may contain a name.
     def nam: Option[String]
     def clo: lattice.Closure

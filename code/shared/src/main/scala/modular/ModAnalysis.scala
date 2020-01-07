@@ -39,11 +39,16 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     def analyze(): Unit
   }
 
+  // keep track of all components in the analysis
+  @mutable var allComponents: Set[Component]                  = Set(initialComponent)
+  protected def registerNewComponents(cmps: Set[Component])   = allComponents ++= cmps
+
+  // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
+  @mutable var dependencies:  Map[Component, Set[Component]]  = Map()
+
   // inter-analysis using a simple worklist algorithm
   @mutable var work:          Set[Component]                  = Set(initialComponent)
   @mutable var visited:       Set[Component]                  = Set()
-  @mutable var allComponents: Set[Component]                  = Set(initialComponent)
-  @mutable var dependencies:  Map[Component, Set[Component]]  = Map() // Only needed for web visualisation.
   def finished(): Boolean = work.isEmpty
   def step(): Unit = {
     // take the next component
@@ -59,8 +64,8 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     // update the analysis
     work ++= succs
     visited += current
-    allComponents ++= newComponents
     dependencies += (current -> intra.components)
+    registerNewComponents(newComponents)
   }
   def analyze(timeout: Timeout.T = Timeout.none): Unit =
     while(!finished() && !timeout.reached) {

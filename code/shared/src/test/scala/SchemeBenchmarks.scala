@@ -25,7 +25,7 @@ trait SchemeBenchmarkTests extends PropSpec {
 }
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks = super.benchmarks ++ SchemeBenchmarks.other
+  override def benchmarks = SchemeBenchmarks.other
 }
 
 trait AllBenchmarks extends SchemeBenchmarkTests {
