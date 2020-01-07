@@ -15,7 +15,7 @@ sealed trait Identity {
 /** A position with a line and column */
 case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 
-/** No position */
+/** Neutral identity for to elements not in the code. */
 object NoCodeIdentity extends Identity { val idn: IDN = UUID.randomUUID() }
 
 object Identity {

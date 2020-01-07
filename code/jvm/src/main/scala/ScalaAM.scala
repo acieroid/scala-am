@@ -1,5 +1,7 @@
 package scalaam.cli
 
+import scalaam.core.Identity
+import scalaam.core.Identity.Position
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -57,9 +59,16 @@ object DiffMain extends App {
       with NoSensitivity
     analyzer.analyze()//Timeout.start(Duration(2, "MINUTES")))
     println(s"Number of components: ${analyzer.allComponents.size}")
+
+    val absID: Map[Position, analyzer.Value] = analyzer.store.groupBy({_._1 match {
+      case analyzer.ComponentAddr(_, addr) => addr.idn().pos
+      case _                        => Identity.none.pos
+    }}).view.mapValues(_.values.foldLeft(analyzer.lattice.bottom)((x,y) => analyzer.lattice.join(x,y))).toMap
+    println(absID.keys.size)
   }
 
-  val prg1 = SchemeParser.parse(loadFile("./test/grid.scm"))
+  val prg1 = SchemeParser.parse(loadFile("./test/church.scm"))
+  println(prg1.idn.pos)
   /*
   val prg2 = SchemeParser.parse(loadFile("./test/grid-scrambled.scm"))
   println(prg1)

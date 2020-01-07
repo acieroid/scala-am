@@ -3,7 +3,6 @@ package scalaam.test.soundness
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
-import scalaam.core.Identity.Position
 import scalaam.test._
 import scalaam.core._
 import scalaam.util._
@@ -23,18 +22,18 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // the actual testing code
   private def evalConcrete(benchmark: Benchmark, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
     val program = SchemeUndefiner.undefine(List(loadFile(benchmark)))
-    var posResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
-    val interpreter = new SchemeInterpreter((p, v) => posResults += (p -> (posResults(p) + v)), false)
+    var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
+    val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
     try {
       val endResult = interpreter.run(program, t)
-      (Some(endResult), posResults)
+      (Some(endResult), idnResults)
     } catch {
       case _ : TimeoutException =>
         alert(s"Concrete evaluation for $benchmark timed out")
-        (None, posResults)
+        (None, idnResults)
       case _ : StackOverflowError =>
         alert(s"Concrete evaluation for $benchmark ran out of stack space")
-        (None, posResults)
+        (None, idnResults)
     }
   }
   private def checkSubsumption(analysis: Analysis)(v: Set[Value], abs: analysis.Value): Boolean = {
@@ -62,14 +61,14 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     assert(checkSubsumption(a)(Set(concRes), aRes), "the end result is not sound")
   }
 
-  private def comparePositions(a: Analysis, concIdn: Map[Identity,Set[Value]]) = {
-    val absID: Map[Position, a.Value] = a.store.groupBy({_._1 match {
-        case a.ComponentAddr(_, addr) => addr.idn().pos
-        case _                        => Identity.none.pos
+  private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
+    val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
+        case a.ComponentAddr(_, addr) => addr.idn()
+        case _                        => Identity.none
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
     concIdn.foreach { case (idn,values) =>
-      assert(checkSubsumption(a)(values, absID(idn.pos)),
-            s"intermediate result at $idn is not sound: ${absID(idn.pos)} does not subsume $values")
+      assert(checkSubsumption(a)(values, absID(idn)),
+            s"intermediate result at $idn is not sound: ${absID(idn)} does not subsume $values")
     }
   }
 
@@ -88,7 +87,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       if (cResult.isDefined) { compareResult(a, cResult.get) }
       // check if the intermediate results at various program points are soundly approximated by the analysis
       // this can be done, regardless of whether the concrete evaluation terminated succesfully or not
-      comparePositions(a, cPosResults)
+      compareIdentities(a, cPosResults)
     }
 }
 

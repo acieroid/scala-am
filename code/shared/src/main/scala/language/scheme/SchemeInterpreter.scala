@@ -21,14 +21,14 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
   }
 
   var compared = 0
-  def check(p: Identity, v : Value): Value = {
+  def check(i: Identity, v : Value): Value = {
     compared += 1
     v match {
-      case Value.Undefined(pos@_) => () // println(s"Undefined behavior arising from position $pos seen at ${e.pos}")
-      case Value.Unbound(id) => println(s"Seen unbound identifier $id at ${p}")
+      case Value.Undefined(idn@_) => () // println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
+      case Value.Unbound(idn) => println(s"Seen unbound identifier $idn at ${i}")
       case _ => ()
     }
-    callback(p, v)
+    callback(i, v)
     v
   }
   var lastAddr = 0
