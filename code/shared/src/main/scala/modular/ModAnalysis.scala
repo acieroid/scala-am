@@ -127,6 +127,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   protected def alphaDep(dep: Dependency): Dependency = dep
   // based on this definition of alpha, we can induce 'compound versions' of this function
   def alphaSet[A](alphaA: A => A)(set: Set[A]): Set[A] = set.map(alphaA)
+  def alphaMap[K,V](alphaV: V => V)(map: Map[K,V]): Map[K,V] = map.view.mapValues(alphaV).toMap
   def alphaMap[K, V : Monoid](alphaK: K => K, alphaV: V => V)(map: Map[K,V]): Map[K,V] =
     map.foldLeft(Map[K,V]().withDefaultValue(Monoid[V].zero)) { case (acc,(key,vlu)) =>
       val keyAbs = alphaK(key)
