@@ -5,7 +5,7 @@ import scalaam.util._
 import scalaam.util.Annotations._
 import scalaam.util.MonoidImplicits._
 
-abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
+abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
 
   // parameterized by a 'intra-component' representation
   type Component
@@ -41,7 +41,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
   // keep track of all components in the analysis
   @mutable var allComponents: Set[Component]                  = Set(initialComponent)
-  protected def registerNewComponents(cmps: Set[Component])   = allComponents ++= cmps
+  protected def registerNewComponents(cmps: Set[Component]): Unit   = allComponents ++= cmps
 
   // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
   @mutable var dependencies:  Map[Component, Set[Component]]  = Map()
@@ -73,11 +73,14 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     }
 }
 
-abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program)
-                                                                            with IndirectComponents[Expr] {
+abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) extends ModAnalysis(progr)
+                                                                         with IndirectComponents[Expr] {
 
   // A module refers to the lexical, static counterpart of a component (i.e. to a function definition).
   type Module = Identity // TODO: How to coop with changes of position upon source code changes?
+
+  type OldMod = Module
+  type NewMod = Module
 
   // Type of 'actual components'.
   type ComponentData <: LinkedComponent
@@ -98,13 +101,21 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
     }
   }
 
-  // TODO: should we just implement an 'update' method that adds the required components to the work list and updates all state to account for the program changes?
+  def updateResults(newProgram: Expr, moduleDelta: Map[OldMod, Option[NewMod]], modifiedModules: Set[NewMod], timeout: Timeout.T = Timeout.none): Unit = {
+    setProgram(newProgram)
+    updateAnalysisState(moduleDelta)
+    val toUpdate = computeWorkList(modifiedModules)
+    reanalyze(toUpdate, timeout)
+  }
+
+  /** Updates the content of the 'program' variable. */
+  def setProgram(newProgram: Expr): Unit = prog = newProgram
 
   /**
    * Reanalyses a given program starting from the set of components for which a change was detected.
    * Does not assume the work list to be empty, but will result in the work list being empty.
    **/
-  def reanalyze(components: Set[Component], timeout: Timeout.T = Timeout.none): Unit = {
+  private def reanalyze(components: Set[Component], timeout: Timeout.T): Unit = {
     // We can make use of the visited set and all data from the previous analysis that are still present.
     // Work is not necessarily empty when reanalyze is called (due to the step method which is publicly available).
     // However, when this procedure terminates, work is guaranteed to be empty.
@@ -113,9 +124,27 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
   }
 
   /**
-   * Updates the state of the analysis, including all components. TODO
+   * Updates the state of the analysis, including all components.
+   * @param moduleDelta A map of old modules to corresponding new modules (if a corresponding module exist).
    */
-  def updateAnalysisState(): Unit = {}
+  private def updateAnalysisState(moduleDelta: Map[OldMod, Option[NewMod]]): Unit = {
+    // Update ComponentData. Effects merely contain addresses and hence should not be updated.
+
+  }
+
+  /**
+   * Computes which components should be reanalysed.<br>
+   * These are:<br>
+   * * Components corresponding to a module whose body has changed (body excl. inner function definitions? TODO).<br>
+   * These are not:<br>
+   * * New modules. These should be analysed automatically by default when they are referenced somewhere else?<br>
+   * * Deleted modules. TODO Can information (dependencies, ...) containing these modules be deleted? Can the corresponding components be deleted? Probably they should.
+   * @param modifiedModules A set of new modules whose body has been modified. TODO: inner definitions?
+   * @return
+   */
+  private def computeWorkList(modifiedModules: Set[NewMod]): Set[Component] = {
+    allComponents.filter(c => modifiedModules.contains(c.module))
+  }
 }
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {

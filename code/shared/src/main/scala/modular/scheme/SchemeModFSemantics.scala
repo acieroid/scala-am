@@ -16,7 +16,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
   //XXXXXXXXXXXXXXXXXXXX//
 
   // Ensure that the program is translated to use lexical addresses first!
-  override lazy val program: SchemeExp = {
+  prog = {
     val originalProgram = super.program
     val initialBindings = primitives.allPrimitives.map(_.name).toSet
     SchemeLexicalAddresser.translateProgram(originalProgram, initialBindings)
@@ -233,6 +233,12 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
 
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
+
+  override def setProgram(newProgram: SchemeExp): Unit = prog = {
+    val originalProgram = newProgram
+    val initialBindings = primitives.allPrimitives.map(_.name).toSet
+    SchemeLexicalAddresser.translateProgram(originalProgram, initialBindings)
+  }
 }
 
 /** Semantics for an adaptive Scheme MODF analysis. */
