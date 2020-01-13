@@ -74,13 +74,12 @@ abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
 }
 
 abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) extends ModAnalysis(progr)
-                                                                         with IndirectComponents[Expr] {
+                                                                              with MutableIndirectComponents[Expr] {
 
   // A module refers to the lexical, static counterpart of a component (i.e. to a function definition).
-  type Module = Identity // TODO: How to coop with changes of position upon source code changes?
+  type Module = Identity
 
   type OldMod = Module
-  type NewMod = Module
 
   // Type of 'actual components'.
   type ComponentData <: LinkedComponent
@@ -101,15 +100,25 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
     }
   }
 
-  def updateResults(newProgram: Expr, moduleDelta: Map[OldMod, Option[NewMod]], modifiedModules: Set[NewMod], timeout: Timeout.T = Timeout.none): Unit = {
+  def updateResults(newProgram:      Expr,
+                    moduleDelta:     Map[OldMod, Option[Expr]],
+                    modifiedModules: Set[Module],
+                    timeout:         Timeout.T = Timeout.none): Unit = {
+    // Update the variable "program".
     setProgram(newProgram)
+    // Update the ComponentData for all components.
     updateAnalysisState(moduleDelta)
+    // Look which components need reanalysis.
     val toUpdate = computeWorkList(modifiedModules)
+    // Perform the actual reanalysis.
     reanalyze(toUpdate, timeout)
   }
 
   /** Updates the content of the 'program' variable. */
   def setProgram(newProgram: Expr): Unit = prog = newProgram
+
+  /** Updates a component given an updated module. Since we use an indirection, the corresponding internal data structures should be updated. */
+  def updateComponent(c: Component, exp: Expr): Unit
 
   /**
    * Reanalyses a given program starting from the set of components for which a change was detected.
@@ -125,11 +134,26 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
 
   /**
    * Updates the state of the analysis, including all components.
-   * @param moduleDelta A map of old modules to corresponding new modules (if a corresponding module exist).
+   * @param moduleDelta A map of old modules to corresponding new expressions of the module (if a corresponding module exist).
    */
-  private def updateAnalysisState(moduleDelta: Map[OldMod, Option[NewMod]]): Unit = {
-    // Update ComponentData. Effects merely contain addresses and hence should not be updated.
+  private def updateAnalysisState(moduleDelta: Map[Module, Option[Expr]]): Unit = {
+    /* This function updates the internal state of the analysis to account for updates to modules/components.
+       The following should be updated:
+        * ComponentData
+       The following should not be updated (mostly due to the component indirection):
+        * Effects (only contain addresses).
+        * Addresses (contain component pointers so automatically ok).
+        * The dependency map (contains component pointers).
+        * The store (maps addresses to values).
+        * The MainComponent (ok if the variable "program" is updated).
 
+       IMPORTANT
+       The mapping of old modules to new modules must be as such that the lexical addresses are not broken! Hence, a module
+       may not be moved to another scope. Inner functions must be rechecked when surrounding functions bind more or less variables,
+       but this should follow from the fact that the lexical addresses of the variables change (i.e. the change distiller should work
+       on the lexically addressed code!).
+    */
+    allComponents.foreach(c => moduleDelta(c.module).map(m => updateComponent(c, m)))
   }
 
   /**
@@ -140,9 +164,8 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
    * * New modules. These should be analysed automatically by default when they are referenced somewhere else?<br>
    * * Deleted modules. TODO Can information (dependencies, ...) containing these modules be deleted? Can the corresponding components be deleted? Probably they should.
    * @param modifiedModules A set of new modules whose body has been modified. TODO: inner definitions?
-   * @return
    */
-  private def computeWorkList(modifiedModules: Set[NewMod]): Set[Component] = {
+  private def computeWorkList(modifiedModules: Set[Module]): Set[Component] = {
     allComponents.filter(c => modifiedModules.contains(c.module))
   }
 }
