@@ -67,3 +67,37 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     }
   }
 }
+
+trait SimpleAdaptiveArgumentSensitivity extends AdaptiveArgumentSensitivity {
+  // parameterized by a simple limit
+  // every closure can only have at most "limit" components
+  val limit: Int
+  // track the number of components per closure
+  private var closureCmps = Map[lattice.Closure, Set[Component]]().withDefaultValue(Set())
+  // track all arguments for every closure parameter
+  private var closureArgs = Map[lattice.Closure, Map[Identifier,Set[Value]]]().withDefaultValue(Map[Identifier,Set[Value]]().withDefaultValue(Set()))
+  // the following policy is implemented in `adaptArguments`
+  def adaptArguments(call: Call): Set[Identifier] = {
+    val Call(clo, _, Context(bds)) = call
+    // update the set of components per closure
+    val prvCmps = closureCmps(clo)
+    val newCmps = prvCmps + call
+    closureCmps += (clo -> newCmps)
+    // update the argument mappings per closure
+    val prvArgs = closureArgs(clo)
+    val newArgs = bds.foldLeft(prvArgs) {
+      case (acc, (par, vlu)) => acc + (par -> (acc(par) + vlu))
+    }
+    closureArgs += (clo -> newArgs)
+    // if there are too many components => do something about it!
+    if (limit < newCmps.size) {
+      clo._1.args.toSet // naive policy: drop all of the argument-sensitivity
+    } else { // otherwise, not arguments need to be excluded
+      Set.empty
+    }
+  }
+  override def onAlphaChange() = {
+    super.onAlphaChange()
+    closureCmps = alphaMap(alphaSet(alpha))(closureCmps)
+  }
+}

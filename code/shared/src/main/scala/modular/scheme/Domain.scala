@@ -18,7 +18,7 @@ trait AbstractDomain extends SchemeModFSemantics {
 }
 
 trait AdaptiveAbstractDomain extends AdaptiveSchemeModFSemantics with AbstractDomain {
-  override def alphaValue(value: Value) = value match {
+  override def alphaValue(value: Value): Value = value match {
     case valueLattice.Element(v)    => valueLattice.Element(alphaV(v))
     case valueLattice.Elements(vs)  => valueLattice.Elements(vs.map(alphaV))
   }
@@ -56,6 +56,7 @@ trait ConstantPropagationDomain extends AbstractDomain {
   // make the scheme lattice
   lazy val valueLattice = new ModularSchemeLattice
 }
+trait AdaptiveConstantPropagationDomain extends AdaptiveAbstractDomain with ConstantPropagationDomain
 
 /* A powerset lattice for ModF */
 trait PowersetDomain extends AbstractDomain {
