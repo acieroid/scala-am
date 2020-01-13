@@ -16,7 +16,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
   //XXXXXXXXXXXXXXXXXXXX//
 
   // Ensure that the program is translated to use lexical addresses first!
-  override lazy val program: SchemeExp = {
+  prog = {
     val originalProgram = super.program
     val initialBindings = primitives.allPrimitives.map(_.name).toSet
     SchemeLexicalAddresser.translateProgram(originalProgram, initialBindings)
@@ -57,7 +57,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
   implicit def view(c: Component): SchemeComponent
   sealed trait SchemeComponent { def body: SchemeExp }
   sealed trait MainComponent extends SchemeComponent {
-    lazy val body: SchemeExp = program
+    def body: SchemeExp = program
     override def toString: String = "main"
   }
   sealed trait CallComponent extends SchemeComponent {
@@ -233,6 +233,22 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
 
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
+
+  // When a new program is set, we need to use the lexically addressed version!
+  override def setProgram(newProgram: SchemeExp): Unit = prog = {
+    val originalProgram = newProgram
+    val initialBindings = primitives.allPrimitives.map(_.name).toSet
+    SchemeLexicalAddresser.translateProgram(originalProgram, initialBindings)
+  }
+
+  def updateComponent(c: Component, exp: SchemeExp): Unit = deref(c) match {
+    case Main => // Do nothing, program is set by setProgram.
+    case Call((_, parent), nam, ctx) =>
+      exp match {
+        case e: SchemeLambdaExp => update(newComponent((e, parent), nam, ctx), c)
+        case _ => throw new Exception("A module must contain a lambda expression.")
+      }
+  }
 }
 
 /** Semantics for an adaptive Scheme MODF analysis. */

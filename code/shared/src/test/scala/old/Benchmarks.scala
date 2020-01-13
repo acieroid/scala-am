@@ -1,3 +1,4 @@
+/*
 import org.scalatest._
 
 /** The kind of tests that a benchmark can be used for */
@@ -223,4 +224,5 @@ Benchmark("test/gabriel/boyer.scm", ValueBoolean(true), all),
 class UnusedBenchmarksTests extends FlatSpec with Matchers {
   OldBenchmarks.unused.foreach(bench => bench.file should "be used" in { cancel("unused") })
 }
+*/
 */

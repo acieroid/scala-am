@@ -5,7 +5,7 @@ import scalaam.util._
 import scalaam.util.Annotations._
 import scalaam.util.MonoidImplicits._
 
-abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
+abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
 
   // parameterized by a 'intra-component' representation
   type Component
@@ -41,7 +41,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
   // keep track of all components in the analysis
   @mutable var allComponents: Set[Component]                  = Set(initialComponent)
-  protected def registerNewComponents(cmps: Set[Component])   = allComponents ++= cmps
+  protected def registerNewComponents(cmps: Set[Component]): Unit   = allComponents ++= cmps
 
   // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
   @mutable var dependencies:  Map[Component, Set[Component]]  = Map()
@@ -73,11 +73,13 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     }
 }
 
-abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program)
-                                                                            with IndirectComponents[Expr] {
+abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) extends ModAnalysis(progr)
+                                                                              with MutableIndirectComponents[Expr] {
 
   // A module refers to the lexical, static counterpart of a component (i.e. to a function definition).
-  type Module = Identity // TODO: How to coop with changes of position upon source code changes?
+  type Module = Identity
+
+  type OldMod = Module
 
   // Type of 'actual components'.
   type ComponentData <: LinkedComponent
@@ -98,13 +100,31 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
     }
   }
 
-  // TODO: should we just implement an 'update' method that adds the required components to the work list and updates all state to account for the program changes?
+  def updateResults(newProgram:      Expr,
+                    moduleDelta:     Map[OldMod, Option[Expr]],
+                    modifiedModules: Set[Module],
+                    timeout:         Timeout.T = Timeout.none): Unit = {
+    // Update the variable "program".
+    setProgram(newProgram)
+    // Update the ComponentData for all components.
+    updateAnalysisState(moduleDelta)
+    // Look which components need reanalysis.
+    val toUpdate = computeWorkList(modifiedModules)
+    // Perform the actual reanalysis.
+    reanalyze(toUpdate, timeout)
+  }
+
+  /** Updates the content of the 'program' variable. */
+  def setProgram(newProgram: Expr): Unit = prog = newProgram
+
+  /** Updates a component given an updated module. Since we use an indirection, the corresponding internal data structures should be updated. */
+  def updateComponent(c: Component, exp: Expr): Unit
 
   /**
    * Reanalyses a given program starting from the set of components for which a change was detected.
    * Does not assume the work list to be empty, but will result in the work list being empty.
    **/
-  def reanalyze(components: Set[Component], timeout: Timeout.T = Timeout.none): Unit = {
+  private def reanalyze(components: Set[Component], timeout: Timeout.T): Unit = {
     // We can make use of the visited set and all data from the previous analysis that are still present.
     // Work is not necessarily empty when reanalyze is called (due to the step method which is publicly available).
     // However, when this procedure terminates, work is guaranteed to be empty.
@@ -113,9 +133,41 @@ abstract class IncrementalModAnalysis[Expr <: Expression](program: Expr) extends
   }
 
   /**
-   * Updates the state of the analysis, including all components. TODO
+   * Updates the state of the analysis, including all components.
+   * @param moduleDelta A map of old modules to corresponding new expressions of the module (if a corresponding module exist).
    */
-  def updateAnalysisState(): Unit = {}
+  private def updateAnalysisState(moduleDelta: Map[Module, Option[Expr]]): Unit = {
+    /* This function updates the internal state of the analysis to account for updates to modules/components.
+       The following should be updated:
+        * ComponentData
+       The following should not be updated (mostly due to the component indirection):
+        * Effects (only contain addresses).
+        * Addresses (contain component pointers so automatically ok).
+        * The dependency map (contains component pointers).
+        * The store (maps addresses to values).
+        * The MainComponent (ok if the variable "program" is updated).
+
+       IMPORTANT
+       The mapping of old modules to new modules must be as such that the lexical addresses are not broken! Hence, a module
+       may not be moved to another scope. Inner functions must be rechecked when surrounding functions bind more or less variables,
+       but this should follow from the fact that the lexical addresses of the variables change (i.e. the change distiller should work
+       on the lexically addressed code!).
+    */
+    allComponents.foreach(c => moduleDelta(c.module).map(m => updateComponent(c, m)))
+  }
+
+  /**
+   * Computes which components should be reanalysed.<br>
+   * These are:<br>
+   * * Components corresponding to a module whose body has changed (body excl. inner function definitions? TODO).<br>
+   * These are not:<br>
+   * * New modules. These should be analysed automatically by default when they are referenced somewhere else?<br>
+   * * Deleted modules. TODO Can information (dependencies, ...) containing these modules be deleted? Can the corresponding components be deleted? Probably they should.
+   * @param modifiedModules A set of new modules whose body has been modified. TODO: inner definitions?
+   */
+  private def computeWorkList(modifiedModules: Set[Module]): Set[Component] = {
+    allComponents.filter(c => modifiedModules.contains(c.module))
+  }
 }
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
