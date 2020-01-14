@@ -79,8 +79,6 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
   // A module refers to the lexical, static counterpart of a component (i.e. to a function definition).
   type Module = Identity
 
-  type OldMod = Module
-
   // Type of 'actual components'.
   type ComponentData <: LinkedComponent
   /** A linked component has a reference to its lexical module.
@@ -101,42 +99,36 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
   }
 
   def updateResults(newProgram:      Expr,
-                    moduleDelta:     Map[OldMod, Option[Expr]],
+                    moduleDelta:     Map[Module, Option[(Module, Expr)]],
                     modifiedModules: Set[Module],
                     timeout:         Timeout.T = Timeout.none): Unit = {
-    // Update the variable "program".
-    setProgram(newProgram)
+
+    // Assume the previous analysis has been finished.
+    // This assumption is not really necessary. Hence, in theory, the program could be updated and reanalysed before a prior analysis has finished.
+    if (work.nonEmpty) throw new Exception("Previous analysis has not terminated yet.")
+
+    // Update the content of the 'program' variable.
+    prog = newProgram
     // Update the ComponentData for all components.
-    updateAnalysisState(moduleDelta)
+    updateState(moduleDelta)
     // Look which components need reanalysis.
-    val toUpdate = computeWorkList(modifiedModules)
-    // Perform the actual reanalysis.
-    reanalyze(toUpdate, timeout)
-  }
-
-  /** Updates the content of the 'program' variable. */
-  def setProgram(newProgram: Expr): Unit = prog = newProgram
-
-  /** Updates a component given an updated module. Since we use an indirection, the corresponding internal data structures should be updated. */
-  def updateComponent(c: Component, exp: Expr): Unit
-
-  /**
-   * Reanalyses a given program starting from the set of components for which a change was detected.
-   * Does not assume the work list to be empty, but will result in the work list being empty.
-   **/
-  private def reanalyze(components: Set[Component], timeout: Timeout.T): Unit = {
-    // We can make use of the visited set and all data from the previous analysis that are still present.
-    // Work is not necessarily empty when reanalyze is called (due to the step method which is publicly available).
-    // However, when this procedure terminates, work is guaranteed to be empty.
-    work ++= components
+    val toUpdate = computeWork(modifiedModules)
+    // Perform the actual reanalysis. We can make use of the visited set and all data from the previous analysis that are still present.
+    work ++= toUpdate
     analyze(timeout)
   }
+
+  /**
+   * Updates a component given the expression corresponding to the updated module.
+   * Since an indirection is used, the corresponding internal data structures should be updated.
+   */
+  def updateComponent(c: Component, exp: Expr): Unit
 
   /**
    * Updates the state of the analysis, including all components.
    * @param moduleDelta A map of old modules to corresponding new expressions of the module (if a corresponding module exist).
    */
-  private def updateAnalysisState(moduleDelta: Map[Module, Option[Expr]]): Unit = {
+  private def updateState(moduleDelta: Map[Module, Option[(Module, Expr)]]): Unit = {
     /* This function updates the internal state of the analysis to account for updates to modules/components.
        The following should be updated:
         * ComponentData
@@ -152,8 +144,21 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
        may not be moved to another scope. Inner functions must be rechecked when surrounding functions bind more or less variables,
        but this should follow from the fact that the lexical addresses of the variables change (i.e. the change distiller should work
        on the lexically addressed code!).
+
+       --
+
+       State corresponding to no longer existing modules can be removed. This should avoid spurious computations for modules/components that are no longer in the program.
     */
-    allComponents.foreach(c => moduleDelta(c.module).map(m => updateComponent(c, m)))
+    allComponents.foreach(c => moduleDelta(c.module).map(m => updateComponent(c, m._2)))
+
+    // All modules for which no updated version is available.
+    val removedModules: Set[Module] = moduleDelta.filter(_._2.isEmpty).keySet
+    val removedComponents : Set[Component] = removedModules.flatMap(mMap)
+    // 'dependencies' is currently only used for the webviz?
+    dependencies = dependencies -- removedComponents
+    // R/W dependencies.
+    deps = deps.view.mapValues(_.diff(removedComponents)).toMap
+    allComponents = allComponents -- removedComponents
   }
 
   /**
@@ -165,7 +170,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
    * * Deleted modules. TODO Can information (dependencies, ...) containing these modules be deleted? Can the corresponding components be deleted? Probably they should.
    * @param modifiedModules A set of new modules whose body has been modified. TODO: inner definitions?
    */
-  private def computeWorkList(modifiedModules: Set[Module]): Set[Component] = {
+  private def computeWork(modifiedModules: Set[Module]): Set[Component] = {
     allComponents.filter(c => modifiedModules.contains(c.module))
   }
 }
