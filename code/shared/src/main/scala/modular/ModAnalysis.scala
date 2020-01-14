@@ -108,7 +108,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
     if (work.nonEmpty) throw new Exception("Previous analysis has not terminated yet.")
 
     // Update the content of the 'program' variable.
-    prog = newProgram
+    setProgram(newProgram)
     // Update the ComponentData for all components.
     updateState(moduleDelta)
     // Look which components need reanalysis.
@@ -117,12 +117,6 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
     work ++= toUpdate
     analyze(timeout)
   }
-
-  /**
-   * Updates a component given the expression corresponding to the updated module.
-   * Since an indirection is used, the corresponding internal data structures should be updated.
-   */
-  def updateComponent(c: Component, exp: Expr): Unit
 
   /**
    * Updates the state of the analysis, including all components.
@@ -173,6 +167,17 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
   private def computeWork(modifiedModules: Set[Module]): Set[Component] = {
     allComponents.filter(c => modifiedModules.contains(c.module))
   }
+
+  // Methods to be implemented/overridden in subclasses.
+
+  /** Updates the content of the 'program' variable. */
+  def setProgram(newProgram: Expr): Unit = prog = newProgram
+
+  /**
+   * Updates a component given the expression corresponding to the updated module.
+   * Since an indirection is used, the corresponding internal data structures should be updated.
+   */
+  def updateComponent(c: Component, exp: Expr): Unit
 }
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
