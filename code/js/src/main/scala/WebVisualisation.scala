@@ -175,13 +175,21 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   }
 
   // more efficient than `refreshData`: updates only data that may have changed after stepping
-  def refreshDataAfterStep(cmp: analysis.Component) = {
-    refreshData()
-    //val sourceNode = getNode(cmp)
-    //analysis.dependencies(cmp).foreach { otherCmp =>
-    //  val targetNode = addNode(otherCmp)
-    //  addEdge(sourceNode,targetNode)
-    //}
+  def refreshDataAfterStep(cmp: analysis.Component, oldDeps: Set[analysis.Component]) = {
+    val sourceNode = getNode(cmp)
+    // remove old edges
+    oldDeps.foreach { otherCmp =>
+      val targetNode = getNode(otherCmp)
+      val edge = getEdge(sourceNode,targetNode)
+      edgesData -= edge
+    }
+    // add the new edges
+    analysis.dependencies(cmp).foreach { otherCmp =>
+      val targetNode = getNode(otherCmp)
+      val edge = getEdge(sourceNode,targetNode)
+      nodesData += targetNode
+      edgesData += edge
+    }
   }
 
   // updates the visualisation: draws all nodes/edges, sets correct CSS classes, etc.
@@ -229,8 +237,9 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   private def stepAnalysis() =
     if (!analysis.finished()) {
       val component = analysis.work.head
+      val oldDeps = analysis.dependencies(component)
       analysis.step()
-      refreshDataAfterStep(component)
+      refreshDataAfterStep(component, oldDeps)
       refreshVisualisation()
     } else {
       println("The analysis has already terminated.")

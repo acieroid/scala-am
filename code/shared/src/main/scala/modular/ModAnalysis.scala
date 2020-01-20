@@ -44,7 +44,7 @@ abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
   protected def registerNewComponents(cmps: Set[Component]): Unit   = allComponents ++= cmps
 
   // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
-  @mutable var dependencies:  Map[Component, Set[Component]]  = Map()
+  @mutable var dependencies:  Map[Component, Set[Component]]  = Map().withDefaultValue(Set.empty)
 
   // inter-analysis using a simple worklist algorithm
   @mutable var work:          Set[Component]                  = Set(initialComponent)
