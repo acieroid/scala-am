@@ -7,8 +7,6 @@ import scala.scalajs.js
 import org.scalajs.dom
 import dom.{document}
 
-import scala.collection.mutable._
-
 object WebVisualisation {
   // some shorthands
   type JsAny = js.Dynamic
@@ -20,7 +18,6 @@ object WebVisualisation {
   val __CSS_NOT_VISITED__ = "not_visited"
   val __CSS_IN_WORKLIST__ = "in_worklist"
   val __CSS_NEXT_COMPONENT__ = "next_component"
-  val __CSS_FINISHED__ = "finished"
   val __FORCE_COLLIDE__ = "collide"
   val __FORCE_CHARGE__ = "charge"
   val __FORCE_LINKS__ = "links"
@@ -47,27 +44,24 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   // BOOKKEEPING (needed to play nice with Scala.js and d3.js)
   //
 
-  val nodesData = new js.Array[Node]()
-  val edgesData = new js.Array[Edge]()
-  val nodesColl = Map[analysis.Component, Node]()
-  val edgesColl = Map[(Node,Node),Edge]()
-  private def addNode(cmp: analysis.Component): Node = nodesColl.get(cmp) match {
+  var nodesData = Set[Node]()
+  var edgesData = Set[Edge]()
+  // TODO: use weak maps here to prevent memory leaks?
+  var nodesColl = Map[analysis.Component, Node]()
+  var edgesColl = Map[(Node,Node),Edge]()
+  private def getNode(cmp: analysis.Component): Node = nodesColl.get(cmp) match {
     case None =>
       val newNode = new Node(cmp)
-      nodesColl(cmp) = newNode
-      nodesData.push(newNode)
-      return newNode
-    case Some(existingNode) =>
-      return existingNode
+      nodesColl += (cmp -> newNode)
+      newNode
+    case Some(existingNode) => existingNode
   }
-  private def addEdge(source: Node, target: Node): Edge = edgesColl.get((source,target)) match {
+  private def getEdge(source: Node, target: Node): Edge = edgesColl.get((source,target)) match {
     case None =>
       val newEdge = new Edge(source, target)
-      edgesColl((source,target)) = newEdge
-      edgesData.push(newEdge)
-      return newEdge
-    case Some(existingEdge) =>
-      return existingEdge
+      edgesColl += ((source,target) -> newEdge)
+      newEdge
+    case Some(existingEdge) => existingEdge
   }
 
   //
@@ -162,29 +156,38 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   // ensures that `nodesData` and `edgesData` are in sync with the analysis
   def refreshData() = {
-    analysis.allComponents.foreach(addNode)
+    // refresh the nodes
+    nodesData = Set.empty[Node]
+    analysis.allComponents.foreach { cmp =>
+      val node = getNode(cmp)
+      nodesData += node
+    }
+    // refresh the edges
+    edgesData = Set.empty[Edge]
     analysis.dependencies.foreach { case (source,targets) =>
-      val sourceNode = addNode(source)
+      val sourceNode = getNode(source)
       targets.foreach(target => {
-        val targetNode = addNode(target)
-        addEdge(sourceNode,targetNode)
+        val targetNode = getNode(target)
+        val edge = getEdge(sourceNode,targetNode)
+        edgesData += edge
       })
     }
   }
 
   // more efficient than `refreshData`: updates only data that may have changed after stepping
   def refreshDataAfterStep(cmp: analysis.Component) = {
-    val sourceNode = addNode(cmp)
-    analysis.dependencies(cmp).foreach { otherCmp =>
-      val targetNode = addNode(otherCmp)
-      addEdge(sourceNode,targetNode)
-    }
+    refreshData()
+    //val sourceNode = getNode(cmp)
+    //analysis.dependencies(cmp).foreach { otherCmp =>
+    //  val targetNode = addNode(otherCmp)
+    //  addEdge(sourceNode,targetNode)
+    //}
   }
 
   // updates the visualisation: draws all nodes/edges, sets correct CSS classes, etc.
   def refreshVisualisation() = {
     // update the nodes
-    val nodesUpdate = nodes.data(nodesData)
+    val nodesUpdate = nodes.data(nodesData, (n: Node) => n.component)
     val newGroup = nodesUpdate.enter().append("g")
                                       .call(dragEffect)
     newGroup.append("circle")
@@ -194,18 +197,19 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
             .attr("dy",__CIRCLE_RADIUS__)
             .text((node: Node) => displayText(node.component))
     nodes = newGroup.merge(nodesUpdate)
-    nodes.classed(__CSS_FINISHED__, (_: Node) => analysis.finished())
-         .classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
+    nodesUpdate.exit().remove()
+    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
          .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
          .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.work.headOption == Some(node.component))
     // update the edges
-    val edgesUpdate = edges.data(edgesData)
+    val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.component,e.target.component))
     edges = edgesUpdate.enter().append("path")
                                .attr("stroke","black")
                                .attr("stroke-width",2)
                                .attr("fill","none")
                                .attr("marker-end",s"url(#${__SVG_ARROW_ID__})")
                                .merge(edgesUpdate)
+    edgesUpdate.exit().remove()
     // update the simulation
     simulation.nodes(nodesData)
     simulation.force(__FORCE_LINKS__).links(edgesData)
@@ -228,6 +232,8 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
       analysis.step()
       refreshDataAfterStep(component)
       refreshVisualisation()
+    } else {
+      println("The analysis has already terminated.")
     }
 
   //
