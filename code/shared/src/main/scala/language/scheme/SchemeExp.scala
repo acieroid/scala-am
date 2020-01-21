@@ -50,7 +50,7 @@ trait SchemeLambdaExp extends SchemeExp {
   // height
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
   val label: Label = LAM
-  val subexpressions: List[Expression] = args ::: body
+  def subexpressions: List[Expression] = args ::: body
   override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
   override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
 }

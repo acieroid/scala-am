@@ -98,17 +98,24 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
     }
   }
 
-  def updateResults(newProgram:      Expr,
-                    moduleDelta:     Map[Module, Option[(Module, Expr)]],
-                    modifiedModules: Set[Module],
-                    timeout:         Timeout.T = Timeout.none): Unit = {
-
+  def updateAnalysis(newProgram: Expr, timeout: Timeout.T = Timeout.none): Unit = {
     // Assume the previous analysis has been finished.
     // This assumption is not really necessary. Hence, in theory, the program could be updated and reanalysed before a prior analysis has finished.
     if (work.nonEmpty) throw new Exception("Previous analysis has not terminated yet.")
 
     // Update the content of the 'program' variable.
     setProgram(newProgram)
+
+    // TODO: here, the change distiller should be run (after the program has been lexically addressed).
+
+    updateAnalysis(newProgram, ???, ???, timeout)
+  }
+
+  private def updateAnalysis(newProgram:      Expr,
+                             moduleDelta:     Map[Module, Option[(Module, Expr)]],
+                             modifiedModules: Set[Module],
+                             timeout:         Timeout.T): Unit = {
+
     // Update the ComponentData for all components.
     updateState(moduleDelta)
     // Look which components need reanalysis.
