@@ -39,13 +39,18 @@ abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
     def analyze(): Unit
   }
 
+  protected def processDependency(dep: Dependency): Unit = work ++= deps(dep)
+  protected def processDependencies(deps: Set[Dependency]): Unit =
+    deps.foreach(processDependency)
+  protected def processNewComponents(cmps: Set[Component]): Unit = {
+    work ++= cmps
+    allComponents ++= cmps
+  }
+
   // keep track of all components in the analysis
   @mutable var allComponents: Set[Component]                  = Set(initialComponent)
-  protected def registerNewComponents(cmps: Set[Component]): Unit   = allComponents ++= cmps
-
   // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
   @mutable var dependencies:  Map[Component, Set[Component]]  = Map().withDefaultValue(Set.empty)
-
   // inter-analysis using a simple worklist algorithm
   @mutable var work:          Set[Component]                  = Set(initialComponent)
   @mutable var visited:       Set[Component]                  = Set()
@@ -59,13 +64,11 @@ abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
     intra.analyze()
     // add the successors to the worklist
     val newComponents = intra.components.filterNot(visited)
-    val componentsToUpdate = intra.deps.flatMap(deps)
-    val succs = newComponents ++ componentsToUpdate
+    processNewComponents(newComponents)
+    processDependencies(intra.deps)
     // update the analysis
-    work ++= succs
     visited += current
     dependencies += (current -> intra.components)
-    registerNewComponents(newComponents)
   }
   def analyze(timeout: Timeout.T = Timeout.none): Unit =
     while(!finished() && !timeout.reached) {
