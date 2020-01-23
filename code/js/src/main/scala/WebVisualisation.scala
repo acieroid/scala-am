@@ -164,8 +164,8 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     }
     // refresh the edges
     edgesData = Set.empty[Edge]
-    analysis.dependencies.foreach { case (source,targets) =>
-      val sourceNode = getNode(source)
+    nodesData.foreach { sourceNode =>
+      val targets = analysis.dependencies(sourceNode.component)
       targets.foreach(target => {
         val targetNode = getNode(target)
         val edge = getEdge(sourceNode,targetNode)
@@ -193,7 +193,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   }
 
   // updates the visualisation: draws all nodes/edges, sets correct CSS classes, etc.
-  def refreshVisualisation() = {
+  def refreshVisualisation(): Unit = {
     // update the nodes
     val nodesUpdate = nodes.data(nodesData, (n: Node) => n.component)
     val newGroup = nodesUpdate.enter().append("g")
@@ -234,7 +234,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   def onClick() = stepAnalysis()
 
-  private def stepAnalysis() =
+  protected def stepAnalysis() =
     if (!analysis.finished()) {
       val component = analysis.work.head
       val oldDeps = analysis.dependencies(component)

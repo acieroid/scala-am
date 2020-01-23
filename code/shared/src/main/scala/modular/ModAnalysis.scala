@@ -172,9 +172,10 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
 
+  var adapted = false
   // parameterized by an alpha function, which further 'abstracts' components
   // alpha can be used to drive an adaptive strategy for the analysis
-  protected def alpha(cmp: Component): Component
+  def alpha(cmp: Component): Component
   // dependencies might require further abstraction too; subclasses can override this as needed ...
   protected def alphaDep(dep: Dependency): Dependency = dep
   // based on this definition of alpha, we can induce 'compound versions' of this function
@@ -188,6 +189,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
 
   // when alpha changes, we need to call this function to update the analysis' components
   def onAlphaChange(): Unit = {
+    adapted         = true  // hoist the flag
     work            = alphaSet(alpha)(work)
     visited         = alphaSet(alpha)(visited)
     allComponents   = alphaSet(alpha)(allComponents)

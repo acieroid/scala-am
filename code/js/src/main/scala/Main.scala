@@ -38,11 +38,14 @@ object Main {
 
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
-    val analysis = new ModAnalysis(program) with BigStepSemantics
-                                            with StandardSchemeModFSemantics
-                                            with FullArgumentSensitivity
-                                            with ConstantPropagationDomain
-    val visualisation = new WebVisualisation(analysis)
+    val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with AdaptiveConstantPropagationDomain
+                                                    with SimpleAdaptiveArgumentSensitivity {
+      val limit = 3
+      override def alphaValue(v: Value) = super.alphaValue(v)
+    }
+    val visualisation = new WebVisualisationAdaptive(analysis)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
