@@ -58,7 +58,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 
   private def compareResult(a: Analysis, concRes: Value) = {
     val aRes = a.store(a.ReturnAddr(a.initialComponent))
-    assert(checkSubsumption(a)(Set(concRes), aRes), "the end result is not sound")
+    assert(checkSubsumption(a)(Set(concRes), aRes),
+      s"program result is not sound: $aRes does not subsume $concRes")
   }
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
@@ -135,4 +136,6 @@ class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
 
 class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                                 with SimpleAdaptiveSchemeModF
-                                                with SimpleBenchmarks
+                                                with SimpleBenchmarks {
+  override def benchmarks = super.benchmarks - "test/mceval.scm"
+}
