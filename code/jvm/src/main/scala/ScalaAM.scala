@@ -11,16 +11,15 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = """
-      (define lst '(1 2 3))
-      (define p `(,@lst 4 5))
-      (length p)
-    """
-    val prg = SchemeParser.parse(txt)
-    val analysis = new IncrementalModAnalysis(prg) with IncrementalSchemeModFSemantics
-                                                   with BigStepSemantics
-                                                   with ConstantPropagationDomain
-                                                   with NoSensitivity
+    val prg = SchemeParser.parse(loadFile("test/sat.scm"))
+    val analysis = new AdaptiveModAnalysis(prg)
+                                          with AdaptiveSchemeModFSemantics
+                                          with BigStepSemantics
+                                          with AdaptiveConstantPropagationDomain
+                                          with SimpleAdaptiveArgumentSensitivity {
+      val limit = 5
+      override def alphaValue(v: Value) = super.alphaValue(v)
+    }
     analysis.analyze()
     debugResults(analysis)
   }
