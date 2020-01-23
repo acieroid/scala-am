@@ -50,8 +50,8 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   protected def adaptArguments(call: Call): Set[Identifier]
   // this gets called whenever new components are added to the analysis
   // it calls `adaptArguments` for every new component, and "adapts" the analysis if necessary
-  override protected def registerNewComponents(cmps: Set[Component]) = {
-    super.registerNewComponents(cmps)
+  override protected def processNewComponents(cmps: Set[Component]) = {
+    super.processNewComponents(cmps)
     val updates = cmps.foldLeft(List.empty[(lattice.Closure,Set[Identifier])]) {
       (acc, cmp) => cmp match {
         case Main => throw new Exception("This should not happen!")
