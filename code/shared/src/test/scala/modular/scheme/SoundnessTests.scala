@@ -111,6 +111,18 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                       with NoSensitivity
 }
 
+trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
+  def name = "simple adaptive argument sensitivity (limit = 5)"
+  def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
+                                        with AdaptiveSchemeModFSemantics
+                                        with BigStepSemantics
+                                        with AdaptiveConstantPropagationDomain
+                                        with SimpleAdaptiveArgumentSensitivity {
+    val limit = 5
+    override def alphaValue(v: Value) = super.alphaValue(v)
+  }
+}
+
 // concrete test suites to run ...
 // ... for big-step semantics
 class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
@@ -120,3 +132,7 @@ class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
 class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                            with SmallStepSchemeModF
                                            with SimpleBenchmarks
+
+class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
+                                                with SimpleAdaptiveSchemeModF
+                                                with SimpleBenchmarks
