@@ -39,13 +39,8 @@ abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
     def analyze(): Unit
   }
 
-  protected def processDependency(dep: Dependency): Unit = work ++= deps(dep)
-  protected def processDependencies(deps: Set[Dependency]): Unit =
-    deps.foreach(processDependency)
-  protected def processNewComponents(cmps: Set[Component]): Unit = {
-    work ++= cmps
-    allComponents ++= cmps
-  }
+  // technically, it is also possible to trigger a dependency in the inter-analysis itself
+  protected def triggerDependency(dep: Dependency): Unit = work ++= deps(dep)
 
   // keep track of all components in the analysis
   @mutable var allComponents: Set[Component]                  = Set(initialComponent)
@@ -54,20 +49,25 @@ abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
   // inter-analysis using a simple worklist algorithm
   @mutable var work:          Set[Component]                  = Set(initialComponent)
   @mutable var visited:       Set[Component]                  = Set()
+  @mutable var intra:         IntraAnalysis                   = null
+  @mutable var newComponents: Set[Component]                  = Set()
+  @mutable var componentsToUpdate: Set[Component]             = Set()
   def finished(): Boolean = work.isEmpty
   def step(): Unit = {
     // take the next component
     val current = work.head
     work -= current
     // do the intra-analysis
-    val intra = intraAnalysis(current)
+    intra = intraAnalysis(current)
     intra.analyze()
     // add the successors to the worklist
-    val newComponents = intra.components.filterNot(visited)
-    processNewComponents(newComponents)
-    processDependencies(intra.deps)
+    newComponents = intra.components.filterNot(visited)
+    componentsToUpdate = intra.deps.flatMap(deps)
+    val succs = newComponents ++ componentsToUpdate
     // update the analysis
+    work ++= succs
     visited += current
+    allComponents ++= newComponents
     dependencies += (current -> intra.components)
   }
   def analyze(timeout: Timeout.T = Timeout.none): Unit =
@@ -199,6 +199,14 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
       val keyAbs = alphaK(key)
       acc + (keyAbs -> Monoid[V].append(acc(keyAbs),alphaV(vlu)))
     }
+
+  // the adaptive analysis can decide how to adapt using a method `adaptAnalysis` ...
+  protected def adaptAnalysis(): Unit
+  // ... which is triggered after every step in the analysis
+  override def step(): Unit = {
+    super.step()
+    adaptAnalysis()
+  }
 
   // when alpha changes, we need to call this function to update the analysis' components
   def onAlphaChange(): Unit = {

@@ -81,7 +81,7 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
       val newKey = alphaAddr(oldKey)
       val newValue = store(newKey)
       if (oldValue != newValue) {
-        processDependency(ReadWriteDependency(newKey))
+        triggerDependency(ReadWriteDependency(newKey))
       }
     }
   }
