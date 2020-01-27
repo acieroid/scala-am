@@ -11,7 +11,8 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val prg = SchemeParser.parse(loadFile("test/sat.scm"))
+    val txt = loadFile("test/mceval.scm")
+    val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg)
                                           with AdaptiveSchemeModFSemantics
                                           with BigStepSemantics
@@ -53,9 +54,9 @@ object DiffMain extends App {
 
   def analyze(text: SchemeExp): Unit  = {
     val analyzer = new ModAnalysis(text) with SmallStepSemantics
-      with StandardSchemeModFSemantics
-      with ConstantPropagationDomain
-      with NoSensitivity
+                                          with StandardSchemeModFSemantics
+                                          with ConstantPropagationDomain
+                                          with NoSensitivity
     analyzer.analyze()//Timeout.start(Duration(2, "MINUTES")))
     println(s"Number of components: ${analyzer.allComponents.size}")
 
@@ -68,7 +69,7 @@ object DiffMain extends App {
 
   val prg1 = SchemeParser.parse(loadFile("./test/church.scm"))
   println(prg1.idn.pos)
-  /*
+  /**
   val prg2 = SchemeParser.parse(loadFile("./test/grid-scrambled.scm"))
   println(prg1)
   //prg1.subexpressions.foreach(v => println(v.height + " " + v))

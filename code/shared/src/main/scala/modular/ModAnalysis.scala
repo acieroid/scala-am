@@ -185,10 +185,22 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
 
+  // keep a cache between a component and its most recent abstraction
+  private var cache = Map[Component,Component]()
+  // look in the cache first, before applying a potentially complicated alpha function
+  def alpha(cmp: Component): Component = cache.get(cmp) match {
+    case Some(cmpAbs) => cmpAbs
+    case None =>
+      val cmpAbs = alphaCmp(cmp)
+      cache = cache + (cmp -> cmpAbs)
+      cmpAbs
+  }
+
+  // a flag that can be used to indicate that the analysis has been adapted recently
   var adapted = false
   // parameterized by an alpha function, which further 'abstracts' components
   // alpha can be used to drive an adaptive strategy for the analysis
-  def alpha(cmp: Component): Component
+  def alphaCmp(cmp: Component): Component
   // dependencies might require further abstraction too; subclasses can override this as needed ...
   protected def alphaDep(dep: Dependency): Dependency = dep
   // based on this definition of alpha, we can induce 'compound versions' of this function
@@ -210,30 +222,13 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
 
   // when alpha changes, we need to call this function to update the analysis' components
   def onAlphaChange(): Unit = {
-    adapted         = true  // hoist the flag
+    cache           = Map[Component,Component]()
+    adapted         = true  // hoist the flag\
+    // adapt some internal data structures
     work            = alphaSet(alpha)(work)
     visited         = alphaSet(alpha)(visited)
     allComponents   = alphaSet(alpha)(allComponents)
     dependencies    = alphaMap(alpha,alphaSet(alpha))(dependencies)
     deps            = alphaMap(alphaDep,alphaSet(alpha))(deps)
-  }
-}
-
-trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
-
-  // keep a cache between a component and its most recent abstraction
-  private var cache = Map[Component,Component]()
-  // look in the cache first, before applying a potentially complicated alpha function
-  abstract override def alpha(cmp: Component): Component = cache.get(cmp) match {
-    case Some(cmpAbs) => cmpAbs
-    case None =>
-      val cmpAbs = super.alpha(cmp)
-      cache = cache + (cmp -> cmpAbs)
-      cmpAbs
-  }
-  // when alpha is updated, the cache needs to be cleared
-  override def onAlphaChange(): Unit = {
-    cache = Map[Component,Component]()
-    super.onAlphaChange()
   }
 }

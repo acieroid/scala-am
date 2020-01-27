@@ -42,8 +42,15 @@ object Main {
                                                     with BigStepSemantics
                                                     with AdaptiveConstantPropagationDomain
                                                     with SimpleAdaptiveArgumentSensitivity {
-      val limit = 3
+      val limit = 5
       override def alphaValue(v: Value) = super.alphaValue(v)
+      override def step() = {
+        val component = work.head
+        val prevResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
+        super.step()
+        val newResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
+        println(s"$component => $newResult (previously: $prevResult)")
+      }
     }
     val visualisation = new WebVisualisationAdaptive(analysis)
     // parameters for the visualisation
