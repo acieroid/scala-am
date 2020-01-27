@@ -17,8 +17,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
-  // the timeout for the analysis of a single benchmark program (default: 1min.)
-  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
+  // the timeout for the analysis of a single benchmark program (default: 2min.)
+  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
   // the actual testing code
   private def evalConcrete(originalProgram: SchemeExp, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
     val program = SchemeUndefiner.undefine(List(originalProgram))
@@ -58,7 +58,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 
   private def compareResult(a: Analysis, concRes: Value) = {
     val aRes = a.store(a.ReturnAddr(a.initialComponent))
-    assert(checkSubsumption(a)(Set(concRes), aRes), "the end result is not sound")
+    assert(checkSubsumption(a)(Set(concRes), aRes),
+      s"program result is not sound: $aRes does not subsume $concRes")
   }
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
@@ -111,6 +112,18 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                       with NoSensitivity
 }
 
+trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
+  def name = "simple adaptive argument sensitivity (limit = 5)"
+  def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
+                                        with AdaptiveSchemeModFSemantics
+                                        with BigStepSemantics
+                                        with AdaptiveConstantPropagationDomain
+                                        with SimpleAdaptiveArgumentSensitivity {
+    val limit = 5
+    override def alphaValue(v: Value) = super.alphaValue(v)
+  }
+}
+
 // concrete test suites to run ...
 // ... for big-step semantics
 class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
@@ -120,3 +133,7 @@ class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
 class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                            with SmallStepSchemeModF
                                            with SimpleBenchmarks
+
+class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
+                                                with SimpleAdaptiveSchemeModF
+                                                with SimpleBenchmarks

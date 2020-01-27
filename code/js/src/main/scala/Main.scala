@@ -38,11 +38,21 @@ object Main {
 
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
-    val analysis = new ModAnalysis(program) with BigStepSemantics
-                                            with StandardSchemeModFSemantics
-                                            with FullArgumentSensitivity
-                                            with ConstantPropagationDomain
-    val visualisation = new WebVisualisation(analysis)
+    val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with AdaptiveConstantPropagationDomain
+                                                    with SimpleAdaptiveArgumentSensitivity {
+      val limit = 5
+      override def alphaValue(v: Value) = super.alphaValue(v)
+      override def step() = {
+        val component = work.head
+        val prevResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
+        super.step()
+        val newResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
+        println(s"$component => $newResult (previously: $prevResult)")
+      }
+    }
+    val visualisation = new WebVisualisationAdaptive(analysis)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]

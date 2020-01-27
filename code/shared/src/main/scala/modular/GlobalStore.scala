@@ -23,7 +23,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   }
 
   // the global store of the analysis
-  @mutable var store: Map[Addr,Value] = Map().withDefaultValue(lattice.bottom)
+  @mutable var store: Map[Addr,Value] = Map()
   private def updateAddr(addr: Addr, value: Value): Boolean = store.get(addr) match {
     case None if value == lattice.bottom => false
     case None => store = store + (addr -> value); true
@@ -48,7 +48,10 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
       readAddr(ComponentAddr(cmp, addr))
     protected def readAddr(addr: Addr): Value = {
       registerDependency(ReadWriteDependency(addr))
-      store(addr)
+      store.get(addr) match {
+        case None => store += (addr -> lattice.bottom) ; lattice.bottom
+        case Some(v) => v
+      }
     }
 
     // writing addresses of the global store
@@ -74,6 +77,15 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
   // when abstraction map changes, need to update the store
   override def onAlphaChange(): Unit = {
     super.onAlphaChange()
+    val oldStore = store
     store = alphaMap(alphaAddr,alphaValue)(store)
+    // look if we have to retrigger any dependencies due to the abstraction
+    oldStore.foreach { case (oldKey, oldValue) =>
+      val newKey = alphaAddr(oldKey)
+      val newValue = store(newKey)
+      if (oldValue != newValue) {
+        triggerDependency(ReadWriteDependency(newKey))
+      }
+    }
   }
 }

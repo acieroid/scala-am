@@ -39,33 +39,36 @@ abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
     def analyze(): Unit
   }
 
+  // technically, it is also possible to trigger a dependency in the inter-analysis itself
+  protected def triggerDependency(dep: Dependency): Unit = work ++= deps(dep)
+
   // keep track of all components in the analysis
   @mutable var allComponents: Set[Component]                  = Set(initialComponent)
-  protected def registerNewComponents(cmps: Set[Component]): Unit   = allComponents ++= cmps
-
   // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
-  @mutable var dependencies:  Map[Component, Set[Component]]  = Map()
-
+  @mutable var dependencies:  Map[Component, Set[Component]]  = Map().withDefaultValue(Set.empty)
   // inter-analysis using a simple worklist algorithm
   @mutable var work:          Set[Component]                  = Set(initialComponent)
   @mutable var visited:       Set[Component]                  = Set()
+  @mutable var intra:         IntraAnalysis                   = null
+  @mutable var newComponents: Set[Component]                  = Set()
+  @mutable var componentsToUpdate: Set[Component]             = Set()
   def finished(): Boolean = work.isEmpty
   def step(): Unit = {
     // take the next component
     val current = work.head
     work -= current
     // do the intra-analysis
-    val intra = intraAnalysis(current)
+    intra = intraAnalysis(current)
     intra.analyze()
     // add the successors to the worklist
-    val newComponents = intra.components.filterNot(visited)
-    val componentsToUpdate = intra.deps.flatMap(deps)
+    newComponents = intra.components.filterNot(visited)
+    componentsToUpdate = intra.deps.flatMap(deps)
     val succs = newComponents ++ componentsToUpdate
     // update the analysis
     work ++= succs
     visited += current
+    allComponents ++= newComponents
     dependencies += (current -> intra.components)
-    registerNewComponents(newComponents)
   }
   def analyze(timeout: Timeout.T = Timeout.none): Unit =
     while(!finished() && !timeout.reached) {
@@ -189,9 +192,22 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) exten
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) {
 
+  // keep a cache between a component and its most recent abstraction
+  private var cache = Map[Component,Component]()
+  // look in the cache first, before applying a potentially complicated alpha function
+  def alpha(cmp: Component): Component = cache.get(cmp) match {
+    case Some(cmpAbs) => cmpAbs
+    case None =>
+      val cmpAbs = alphaCmp(cmp)
+      cache = cache + (cmp -> cmpAbs)
+      cmpAbs
+  }
+
+  // a flag that can be used to indicate that the analysis has been adapted recently
+  var adapted = false
   // parameterized by an alpha function, which further 'abstracts' components
   // alpha can be used to drive an adaptive strategy for the analysis
-  protected def alpha(cmp: Component): Component
+  def alphaCmp(cmp: Component): Component
   // dependencies might require further abstraction too; subclasses can override this as needed ...
   protected def alphaDep(dep: Dependency): Dependency = dep
   // based on this definition of alpha, we can induce 'compound versions' of this function
@@ -203,31 +219,23 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
       acc + (keyAbs -> Monoid[V].append(acc(keyAbs),alphaV(vlu)))
     }
 
+  // the adaptive analysis can decide how to adapt using a method `adaptAnalysis` ...
+  protected def adaptAnalysis(): Unit
+  // ... which is triggered after every step in the analysis
+  override def step(): Unit = {
+    super.step()
+    adaptAnalysis()
+  }
+
   // when alpha changes, we need to call this function to update the analysis' components
   def onAlphaChange(): Unit = {
+    cache           = Map[Component,Component]()
+    adapted         = true  // hoist the flag\
+    // adapt some internal data structures
     work            = alphaSet(alpha)(work)
     visited         = alphaSet(alpha)(visited)
     allComponents   = alphaSet(alpha)(allComponents)
     dependencies    = alphaMap(alpha,alphaSet(alpha))(dependencies)
     deps            = alphaMap(alphaDep,alphaSet(alpha))(deps)
-  }
-}
-
-trait AlphaCaching[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
-
-  // keep a cache between a component and its most recent abstraction
-  private var cache = Map[Component,Component]()
-  // look in the cache first, before applying a potentially complicated alpha function
-  abstract override def alpha(cmp: Component): Component = cache.get(cmp) match {
-    case Some(cmpAbs) => cmpAbs
-    case None =>
-      val cmpAbs = super.alpha(cmp)
-      cache = cache + (cmp -> cmpAbs)
-      cmpAbs
-  }
-  // when alpha is updated, the cache needs to be cleared
-  override def onAlphaChange(): Unit = {
-    cache = Map[Component,Component]()
-    super.onAlphaChange()
   }
 }

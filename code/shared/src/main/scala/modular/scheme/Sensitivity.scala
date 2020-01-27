@@ -37,7 +37,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   def allocCtx(clo: lattice.Closure, args: List[Value]): Context =
     Context(clo._1.args.zip(args).toMap -- excludedArgs(clo))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
-  def alpha(cmp: Component): Component = cmp match {
+  def alphaCmp(cmp: Component): Component = cmp match {
     case Main => Main
     case Call(clo,nam,ctx) =>
       val updatedCtx = Context(ctx.args -- excludedArgs(clo))
@@ -50,8 +50,8 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   protected def adaptArguments(call: Call): Set[Identifier]
   // this gets called whenever new components are added to the analysis
   // it calls `adaptArguments` for every new component, and "adapts" the analysis if necessary
-  override protected def registerNewComponents(cmps: Set[Component]) = {
-    super.registerNewComponents(cmps)
+  override protected def adaptAnalysis() = {
+    val cmps = this.newComponents
     val updates = cmps.foldLeft(List.empty[(lattice.Closure,Set[Identifier])]) {
       (acc, cmp) => cmp match {
         case Main => throw new Exception("This should not happen!")
@@ -73,22 +73,22 @@ trait SimpleAdaptiveArgumentSensitivity extends AdaptiveArgumentSensitivity {
   // every closure can only have at most "limit" components
   val limit: Int
   // track the number of components per closure
-  private var closureCmps = Map[lattice.Closure, Set[Component]]().withDefaultValue(Set())
+  private var closureCmps = Map[lattice.Closure, Set[Component]]()
   // track all arguments for every closure parameter
   private var closureArgs = Map[lattice.Closure, Map[Identifier,Set[Value]]]().withDefaultValue(Map[Identifier,Set[Value]]().withDefaultValue(Set()))
   // the following policy is implemented in `adaptArguments`
   def adaptArguments(call: Call): Set[Identifier] = {
     val Call(clo, _, Context(bds)) = call
     // update the set of components per closure
-    val prvCmps = closureCmps(clo)
+    val prvCmps = closureCmps.get(clo).getOrElse(Set())
     val newCmps = prvCmps + call
     closureCmps += (clo -> newCmps)
     // update the argument mappings per closure
-    val prvArgs = closureArgs(clo)
-    val newArgs = bds.foldLeft(prvArgs) {
-      case (acc, (par, vlu)) => acc + (par -> (acc(par) + vlu))
-    }
-    closureArgs += (clo -> newArgs)
+    //val prvArgs = closureArgs(clo)
+    //val newArgs = bds.foldLeft(prvArgs) {
+    //  case (acc, (par, vlu)) => acc + (par -> (acc(par) + vlu))
+    //}
+    //closureArgs += (clo -> newArgs)
     // if there are too many components => do something about it!
     if (limit < newCmps.size) {
       clo._1.args.toSet // naive policy: drop all of the argument-sensitivity
