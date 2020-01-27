@@ -446,7 +446,18 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarEx
 }
 
 case class SchemePair(car: SchemeExp, cdr: SchemeExp, idn: Identity) extends SchemeExp {
-  override def toString: String = s"`(,$car . ,$cdr)"
+  override def toString: String = s"`(${contentToString})"
+  private def contentToString: String = cdr match {
+    case SchemeValue(ValueNil,_) => printElement(car)
+    case pair: SchemePair => s"${printElement(car)} ${pair.contentToString}"
+    case _ => s"${printElement(car)} . ${printElement(cdr)}"
+  }
+  private def printElement(elm: SchemeExp): String = elm match {
+    case SchemeValue(ValueSymbol(sym),_) => sym
+    case SchemeValue(v,_) => v.toString()
+    case pair: SchemePair => s"(${pair.contentToString})"
+    case _ => s",$elm"
+  }
   def fv: Set[String] = car.fv ++ cdr.fv
   val label: Label = PAI
   def subexpressions: List[Expression] = List(car, cdr)
