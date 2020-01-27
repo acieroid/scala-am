@@ -17,8 +17,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
-  // the timeout for the analysis of a single benchmark program (default: 1min.)
-  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
+  // the timeout for the analysis of a single benchmark program (default: 2min.)
+  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
   // the actual testing code
   private def evalConcrete(originalProgram: SchemeExp, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
     val program = SchemeUndefiner.undefine(List(originalProgram))
@@ -136,6 +136,4 @@ class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
 
 class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                                 with SimpleAdaptiveSchemeModF
-                                                with SimpleBenchmarks {
-  override def benchmarks = super.benchmarks - "test/mceval.scm"
-}
+                                                with SimpleBenchmarks

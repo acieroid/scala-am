@@ -48,7 +48,10 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
       readAddr(ComponentAddr(cmp, addr))
     protected def readAddr(addr: Addr): Value = {
       registerDependency(ReadWriteDependency(addr))
-      store.get(addr).getOrElse(lattice.bottom)
+      store.get(addr) match {
+        case None => store += (addr -> lattice.bottom) ; lattice.bottom
+        case Some(v) => v
+      }
     }
 
     // writing addresses of the global store
