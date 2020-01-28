@@ -1,9 +1,10 @@
-package incremental
+package scalaam.incremental
 
 //import incremental.Apted.costmodel.{PerEditOperationStringNodeDataCostModel, StringUnitCostModel}
 //import incremental.Apted.distance.APTED
 //import incremental.Apted.node.{Node, NodeIndexer}
 import scalaam.core.{Expression, Label}
+import scalaam.incremental.ModuleDifferencer.ModuleInfo
 import scalaam.util.Annotations.toCheck
 
 import scala.collection.mutable
@@ -15,7 +16,7 @@ import scala.util.control.Breaks._
  *    Fine-grained and accurate source code differencing. ASE 2014: 313-324.<br><br>
  * For clarity, comments in this code may stem from this paper.
  */
-object GumTreeDiff {
+trait GumTreeDiff {
 
   import scala.math.Ordering.Double.IeeeOrdering // TODO Do we want this order (import required for Scala 2.13).
 
@@ -33,24 +34,24 @@ object GumTreeDiff {
 
   import MappingKind._
 
-  type E  = Expression
-  type MP = Map[T, (T, MT)]
+  type Data
+  type T <: TreeNode
+  type MP = Map[TreeNode, (TreeNode, MT)]
 
-  /** Class of AST nodes. Contains extra metadata in comparison to the plain AST used by Scala-AM. */
-  case class T(self: E, parent: T) {
-    val height:          Int = self.height                                  // The height of a tree is defined so that leaf nodes have height 1.
-    val children:    List[T] = self.subexpressions.map(T(_, this))          // Cache direct descendants.
-    val descendants: List[T] = children ::: children.flatMap(_.descendants) // Cache all descendants.
-    val label:         Label = self.label                                   // Labels of nodes correspond to the name of their production rule in the grammar.
+  trait TreeNode {
+    val parent: T
+    val height: Int // The height of a tree is defined so that leaf nodes have height 1.
+    val children: List[T] // Cache direct descendants.
+    val descendants: List[T] = children ::: children.flatMap(_.descendants)  // Cache all descendants.
+    val label: Label // Labels of nodes correspond to the name of their production rule in the grammar.
 
-    override def toString: String = s"$self@${self.idn}"
-
-    /** Returns a boolean indicating whether t1 and t2 are isomorphic. */
-    def isomorphic(other: T): Boolean = self.isomorphic(other.self)
+    def isomorphic[T2 <: TreeNode](other: T2): Boolean
   }
 
+  def newNode(data: Data, parent: Option[T]): T
+
   /** Returns all tx ∈ t, which are the descendants of t and the t itself. */
-  def elem(t: T): List[T] = t :: t.descendants
+  def elem(t: TreeNode): List[TreeNode] = t :: t.descendants
 
   // Another layer needed since apted may modify the tree?
   //case class N(node: T) extends Node(node) {
@@ -71,9 +72,9 @@ object GumTreeDiff {
    * @param minDice     The minimum common descendant ratio to be exceeded for subtrees to be matched.
    * @return A mapping between nodes from the old AST to nodes from the updated AST. Nodes are represented using the class T defined within this object. Note that the roots of the trees can never be matched themselves.
    */
-  def computeMapping(E1: E, E2: E, minHeight: Int = 2, maxSize: Int = 100, minDice: Double = 0.5): MP = {
-    val T1 = T(E1, null)
-    val T2 = T(E2, null)
+  def computeMapping(E1: Data, E2: Data, minHeight: Int = 2, maxSize: Int = 100, minDice: Double = 0.5): MP = {
+    val T1 = newNode(E1, null)
+    val T2 = newNode(E2, null)
     bottomUp(T1, T2, topDown(T1, T2, minHeight), maxSize, minDice)
   }
 
@@ -149,9 +150,9 @@ object GumTreeDiff {
    * @param minDice   A minimum measure of similarity that is required to find mappings.
    * @return An extended mapping between T1 and T2.
    */
-  private def bottomUp(T1: T, T2: T, m: MP, maxSize: Int, minDice: Double): MP = {
+  private def bottomUp(T1: TreeNode, T2: TreeNode, m: MP, maxSize: Int, minDice: Double): MP = {
     var M: MP = m
-    val Q = new mutable.PriorityQueue[T]()(Ordering.by((_: T).height).reverse) // Reverse the order.
+    val Q = new mutable.PriorityQueue[TreeNode]()(Ordering.by((_: TreeNode).height).reverse) // Reverse the order.
     Q ++= elem(T1).filter(t => M.get(t).isEmpty && t.children.flatMap(M.get(_)).nonEmpty)
     while (Q.nonEmpty) {                                    // Foreach t1 ∈ T1 | t1 is not matched and t1 has matched children, in post-order
       val t1 = Q.dequeue()
@@ -176,7 +177,7 @@ object GumTreeDiff {
    * dice(t1, t2, M) = 2 * |{ t1 ∈ s(t1), t2 ∈ s(t2) | (t1 , t2) ∈ M }| / (|s(t1)| + |s(t2)|)
    **/
   @toCheck("This definition differs from the definition in the paper! (Assume formula in paper is not entirely correct.)")
-  private def dice(t1: T, t2: T, M: MP): Double = 2.0 * t1.descendants.count(t => M.contains(t) && t2.descendants.contains(M(t))).toDouble / (t1.descendants.size + t2.descendants.size).toDouble
+  private def dice(t1: TreeNode, t2: TreeNode, M: MP): Double = 2.0 * t1.descendants.count(t => M.contains(t) && t2.descendants.contains(M(t))).toDouble / (t1.descendants.size + t2.descendants.size).toDouble
 
   /**
    * Returns all possible candidate matches for t1. A node t ∈ T2 is a candidate for t1 if
@@ -186,7 +187,7 @@ object GumTreeDiff {
    *   <li>t1 and t have some matching descendants.</li>
    * </ul>
    **/
-  private def candidate(t1: T, T2: T, M: MP): Option[T] = {
+  private def candidate(t1: TreeNode, T2: TreeNode, M: MP): Option[TreeNode] = {
     elem(T2).filter{ t => t.label == t1.label && !M.contains(t1) && haveMatchedDescendants(t1, t, M)} match {
       case Nil => None
       case lst => Some(lst.maxBy(dice(t1, _, M)))
@@ -194,13 +195,13 @@ object GumTreeDiff {
   }
 
   /** Returns a boolean indicating whether t1 and t2 have matched descendants in mapping M. */
-  private def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = t1.descendants.exists(t => t2.descendants.contains(M.get(t).map(_._1).contains(_: T)))
+  private def haveMatchedDescendants(t1: TreeNode, t2: TreeNode, M: MP): Boolean = t1.descendants.exists(t => t2.descendants.contains(M.get(t).map(_._1).contains(_: TreeNode)))
 
   // TODO - the current implementation is a dummy implementation
   /** Finds the mapping corresponding to the shortest edit script without move actions.
    *  Gumtree originally uses RTED (Pawlik and Augsten, 2011).
    **/
-  private def opt(t1: T, t2: T): List[(T, T)] =  for {s1 <- elem(t1); s2 <- elem(t2)} yield (s1, s2)
+  private def opt(t1: TreeNode, t2: TreeNode): List[(TreeNode, TreeNode)] =  for {s1 <- elem(t1); s2 <- elem(t2)} yield (s1, s2)
   /*{
     import scala.collection.JavaConverters._
     val apted = new APTED[StringUnitCostModel, T](new StringUnitCostModel())
@@ -212,4 +213,48 @@ object GumTreeDiff {
       case x :: y :: Nil => (sourceIndexing.)
     }}
   }*/
+}
+
+object GumtreeASTDiff extends GumTreeDiff {
+
+  type Data = Expression
+  type T = ASTNode
+
+  /** Class of AST nodes. Contains extra metadata in comparison to the plain AST used by Scala-AM. */
+  case class ASTNode(self: Data, parent: T) extends TreeNode {
+    val height:          Int = self.height
+    val children:    List[T] = self.subexpressions.map(newNode(_, Some(this)))
+    val label:         Label = self.label
+
+    override def toString: String = s"$self@${self.idn}"
+
+    /** Returns a boolean indicating whether t1 and t2 are isomorphic. */
+    def isomorphic[T2 <: TreeNode](other: T2): Boolean = other match {
+      case ASTNode(e, _) => self.isomorphic(e)
+      case _ => false
+    }
+  }
+
+  def newNode(data: Data, parent: Option[T]): T = ASTNode(data, parent.orNull)
+}
+
+object GumtreeModuleDiff extends GumTreeDiff {
+
+  type Data = ModuleInfo
+  type T = ModuleNode
+
+  case class ModuleNode(self: Data, parent: T) extends TreeNode {
+    val children: List[T] = self.children.map(newNode(_, Some(this)))
+    val height: Int = if (self.children.isEmpty) 1 else 1 + children.map(_.height).max
+    val label: Label = self.exp.label
+
+    override def toString: String = self.exp.toString
+
+    def isomorphic[T2 <: TreeNode](other: T2): Boolean = other match {
+      case ModuleNode(m, _) => self.exp.isomorphic(m.exp)
+      case _ => false
+    }
+  }
+
+  def newNode(data: Data, parent: Option[T]): T = ModuleNode(data, parent.orNull)
 }

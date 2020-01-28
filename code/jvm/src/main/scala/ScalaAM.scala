@@ -1,6 +1,6 @@
 package scalaam.cli
 
-import incremental.ModuleDifferencer
+import scalaam.incremental.ModuleDifferencer
 import scalaam.modular.adaptive.AdaptiveModAnalysis
 import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
 import scalaam.modular.incremental.IncrementalModAnalysis

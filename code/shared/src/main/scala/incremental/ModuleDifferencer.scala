@@ -1,6 +1,6 @@
-package incremental
+package scalaam.incremental
 
-import scalaam.core.Expression
+import scalaam.core._
 import scalaam.language.scheme._
 
 object ModuleDifferencer {
