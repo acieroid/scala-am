@@ -3,6 +3,8 @@ package scalaam.test.soundness
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
+import modular.adaptive.AdaptiveModAnalysis
+import modular.adaptive.scheme.AdaptiveSchemeModFSemantics
 import scalaam.test._
 import scalaam.core._
 import scalaam.util._
@@ -52,14 +54,14 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       case Value.Nil            => lat.subsumes(abs, lat.nil)
       case Value.Cons(_, _)     => lat.getPointerAddresses(abs).nonEmpty
       case Value.Vector(_)      => lat.getPointerAddresses(abs).nonEmpty
-      case v                    => throw new Exception(s"Unknown concrete value type: $v")
+      case v                    => throw new Exception(s"Unknown concrete value type: $v.")
     }
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
     val aRes = a.store(a.ReturnAddr(a.initialComponent))
     assert(checkSubsumption(a)(Set(concRes), aRes),
-      s"program result is not sound: $aRes does not subsume $concRes")
+      s"program result is not sound: $aRes does not subsume $concRes.")
   }
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
@@ -69,12 +71,12 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
     concIdn.foreach { case (idn,values) =>
       assert(checkSubsumption(a)(values, absID(idn)),
-            s"intermediate result at $idn is not sound: ${absID(idn)} does not subsume $values")
+            s"intermediate result at $idn is not sound: ${absID(idn)} does not subsume $values.")
     }
   }
 
   def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name is sound") {
+    property(s"Analysis of $benchmark using $name is sound.") {
       // load the benchmark program
       val program = loadFile(benchmark)
       // run the program using a concrete interpreter
@@ -84,12 +86,12 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       a.analyze(timeout(benchmark))
       // assume that the analysis finished
       // if not, cancel the test for this benchmark
-      assume(a.finished(), s"Analysis of $benchmark timed out")
+      assume(a.finished(), s"Analysis of $benchmark timed out.")
       // check if the final result of the analysis soundly approximates the final result of concrete evaluation
       // of course, this can only be done if the
       if (cResult.isDefined) { compareResult(a, cResult.get) }
       // check if the intermediate results at various program points are soundly approximated by the analysis
-      // this can be done, regardless of whether the concrete evaluation terminated succesfully or not
+      // this can be done, regardless of whether the concrete evaluation terminated successfully or not
       compareIdentities(a, cPosResults)
     }
 }

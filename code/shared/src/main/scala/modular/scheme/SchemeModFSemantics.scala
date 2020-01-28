@@ -55,12 +55,12 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
   // The MainComponent should be unique and can hence be an object. CallComponents can be created using the `newCallComponent` function.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
   implicit def view(c: Component): SchemeComponent
-  sealed trait SchemeComponent { def body: SchemeExp }
-  sealed trait MainComponent extends SchemeComponent {
+  trait SchemeComponent { def body: SchemeExp }
+  trait MainComponent extends SchemeComponent {
     def body: SchemeExp = program
     override def toString: String = "main"
   }
-  sealed trait CallComponent extends SchemeComponent {
+  trait CallComponent extends SchemeComponent {
     // Requires a closure and a context and may contain a name.
     def nam: Option[String]
     def clo: lattice.Closure
@@ -217,42 +217,3 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
   lazy val initialComponent: SchemeComponent = Main
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): SchemeComponent = Call(clo,nam,ctx)
 }
-
-/** Semantics for an incremental Scheme MODF analysis. */
-trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with SchemeModFSemantics {
-
-  // Every component holds a pointer to the corresponding lexical module.
-  trait ComponentData extends SchemeComponent with LinkedComponent {
-    def module: Module = body.idn
-  }
-
-  // Definition of the initial component.
-  case object Main extends ComponentData with MainComponent
-  // Definition of call components.
-  case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends ComponentData with CallComponent
-
-  lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component = ref(Call(clo,nam,ctx))
-
-  // When a new program is set, we need to use the lexically addressed version!
-  override def setProgram(newProgram: SchemeExp): Unit = prog = {
-    val originalProgram = newProgram
-    val initialBindings = primitives.allPrimitives.map(_.name).toSet
-    SchemeLexicalAddresser.translateProgram(originalProgram, initialBindings)
-  }
-
-  def updateComponent(c: Component, exp: SchemeExp): Unit = deref(c) match {
-    case Main => // Do nothing, program is set by setProgram.
-    case Call((_, parent), nam, ctx) =>
-      exp match {
-        case e: SchemeLambdaExp => update(newComponent((e, parent), nam, ctx), c)
-        case _ => throw new Exception("A module must contain a lambda expression.")
-      }
-  }
-}
-
-/** Semantics for an adaptive Scheme MODF analysis. */
-trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
-                                     with AdaptiveGlobalStore[SchemeExp]
-                                     with AdaptiveReturnValue[SchemeExp]
-                                     with StandardSchemeModFSemantics

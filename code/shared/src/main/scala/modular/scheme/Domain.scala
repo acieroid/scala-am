@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import modular.adaptive.scheme.AdaptiveSchemeModFSemantics
 import scalaam.lattice._
 import scalaam.language.scheme._
 

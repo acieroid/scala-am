@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import modular.adaptive.scheme.AdaptiveSchemeModFSemantics
 import scalaam.core._
 
 /* Simplest (and most imprecise): no context-sensitivity */
