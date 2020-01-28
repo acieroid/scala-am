@@ -3,8 +3,8 @@ package scalaam.test.soundness
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
-import modular.adaptive.AdaptiveModAnalysis
-import modular.adaptive.scheme.AdaptiveSchemeModFSemantics
+import scalaam.modular.adaptive.AdaptiveModAnalysis
+import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
 import scalaam.test._
 import scalaam.core._
 import scalaam.util._

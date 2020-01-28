@@ -1,6 +1,6 @@
-package modular.incremental.scheme
+package scalaam.modular.incremental.scheme
 
-import modular.incremental.IncrementalModAnalysis
+import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
 import scalaam.modular.scheme.SchemeModFSemantics
 

@@ -1,4 +1,4 @@
-package modular.adaptive
+package scalaam.modular.adaptive
 
 import scalaam.core.Expression
 import scalaam.modular.ModAnalysis

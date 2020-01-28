@@ -1,6 +1,6 @@
 package scalaam.web
 
-import modular.adaptive.AdaptiveModAnalysis
+import scalaam.modular.adaptive.AdaptiveModAnalysis
 
 // Scala.js-related imports
 import scala.scalajs.js

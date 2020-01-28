@@ -1,4 +1,4 @@
-package modular.incremental
+package scalaam.modular.incremental
 
 import scalaam.core._
 import scalaam.modular._

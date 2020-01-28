@@ -1,6 +1,6 @@
-package modular.adaptive.scheme
+package scalaam.modular.adaptive.scheme
 
-import modular.adaptive.{AdaptiveGlobalStore, AdaptiveModAnalysis, AdaptiveReturnValue}
+import scalaam.modular.adaptive.{AdaptiveGlobalStore, AdaptiveModAnalysis, AdaptiveReturnValue}
 import scalaam.language.scheme.SchemeExp
 import scalaam.modular.scheme.StandardSchemeModFSemantics
 

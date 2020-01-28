@@ -1,10 +1,10 @@
 package scalaam.cli
 
 import incremental.ModuleDifferencer
-import modular.adaptive.AdaptiveModAnalysis
-import modular.adaptive.scheme.AdaptiveSchemeModFSemantics
-import modular.incremental.IncrementalModAnalysis
-import modular.incremental.scheme.IncrementalSchemeModFSemantics
+import scalaam.modular.adaptive.AdaptiveModAnalysis
+import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
+import scalaam.modular.incremental.IncrementalModAnalysis
+import scalaam.modular.incremental.scheme.IncrementalSchemeModFSemantics
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._

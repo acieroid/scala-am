@@ -1,7 +1,7 @@
 package scalaam.web
 
-import modular.adaptive.AdaptiveModAnalysis
-import modular.adaptive.scheme.AdaptiveSchemeModFSemantics
+import scalaam.modular.adaptive.AdaptiveModAnalysis
+import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 
