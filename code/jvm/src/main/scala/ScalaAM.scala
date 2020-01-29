@@ -1,6 +1,7 @@
 package scalaam.cli
 
-import scalaam.incremental.{GumtreeModuleDiff, ModuleDifferencer}
+import scalaam.diff.ModuleInferencer
+import scalaam.incremental._
 import scalaam.modular.adaptive.AdaptiveModAnalysis
 import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
 import scalaam.modular.incremental.IncrementalModAnalysis
@@ -57,8 +58,8 @@ object Incrementor extends App {
 
   def reanalyse(text: SchemeExp): Unit = analyzer.updateAnalysis(text)
 
-  val a = ModuleDifferencer.inferModules(SchemeParser.parse(FileUtil.loadFile("./test/ad/inssort.scm")))
-  val b = ModuleDifferencer.inferModules(SchemeParser.parse(FileUtil.loadFile("./test/ad/inssort2.scm")))
+  val a = ModuleInferencer.inferModules(SchemeParser.parse(FileUtil.loadFile("./test/ad/inssort.scm")))
+  val b = ModuleInferencer.inferModules(SchemeParser.parse(FileUtil.loadFile("./test/ad/inssort2.scm")))
   println(a)
   println(b)
   val mapping = GumtreeModuleDiff.computeMapping(a, b)

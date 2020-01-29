@@ -1,25 +1,9 @@
 package scalaam.incremental
 
-import scalaam.core._
-import scalaam.language.scheme._
+import scalaam.diff.ModuleData.ModuleInfo
 
+// WORK IN PROGRESS - Simple first attempt of mapping modules onto each other (but still buggy).
 object ModuleDifferencer {
-
-  case class ModuleInfo(name: Option[String], exp: Expression, children: List[ModuleInfo]) { // TODO: Verify that the right expressions are extracted.
-    override def toString: String = toStringWith(2, 2)
-    def toStringWith(i: Int, inc: Int): String = children.foldLeft(name.getOrElse("lambda") ++ "\n")((acc, chd) => acc ++ "." * i ++ chd.toStringWith(i + inc, inc))
-    def allDescendants(): List[ModuleInfo] = children ::: children.flatMap(_.allDescendants())
-  }
-
-  def inferModules(exp: Expression): ModuleInfo = {
-    ModuleInfo(Some("main"), exp, exp.subexpressions.flatMap(traverseAST))
-  }
-
-  def traverseAST(exp: Expression): List[ModuleInfo] = exp match {
-    case l: SchemeLambda => List(ModuleInfo(None, l, l.subexpressions.flatMap(traverseAST)))
-    case f: SchemeDefineFunctionExp => List(ModuleInfo(Some(f.name.toString), f, f.subexpressions.flatMap(traverseAST)))
-    case e => e.subexpressions.flatMap(traverseAST)
-  }
 
   def mapModules(source: ModuleInfo, target: ModuleInfo): Map[ModuleInfo, ModuleInfo] = {
     var mapping: Map[ModuleInfo, ModuleInfo] = Map()
