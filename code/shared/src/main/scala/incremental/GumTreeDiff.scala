@@ -73,8 +73,8 @@ trait GumTreeDiff {
    * @return A mapping between nodes from the old AST to nodes from the updated AST. Nodes are represented using the class T defined within this object. Note that the roots of the trees can never be matched themselves.
    */
   def computeMapping(E1: Data, E2: Data, minHeight: Int = 2, maxSize: Int = 100, minDice: Double = 0.5): MP = {
-    val T1 = newNode(E1, null)
-    val T2 = newNode(E2, null)
+    val T1 = newNode(E1, None)
+    val T2 = newNode(E2, None)
     bottomUp(T1, T2, topDown(T1, T2, minHeight), maxSize, minDice)
   }
 
@@ -202,17 +202,6 @@ trait GumTreeDiff {
    *  Gumtree originally uses RTED (Pawlik and Augsten, 2011).
    **/
   private def opt(t1: TreeNode, t2: TreeNode): List[(TreeNode, TreeNode)] =  for {s1 <- elem(t1); s2 <- elem(t2)} yield (s1, s2)
-  /*{
-    import scala.collection.JavaConverters._
-    val apted = new APTED[StringUnitCostModel, T](new StringUnitCostModel())
-    apted.computeEditDistance(N(t1), N(t2))
-    val sourceIndexing = new NodeIndexer(N(t1), new StringUnitCostModel())
-    val   destIndexing = new NodeIndexer(N(t2), new StringUnitCostModel())
-    val mapping: List[Array[Int]] = apted.computeEditMapping().asScala.toList
-    mapping.map{p => p.toList match {
-      case x :: y :: Nil => (sourceIndexing.)
-    }}
-  }*/
 }
 
 object GumtreeASTDiff extends GumTreeDiff {
@@ -244,8 +233,8 @@ object GumtreeModuleDiff extends GumTreeDiff {
   type T = ModuleNode
 
   case class ModuleNode(self: Data, parent: T) extends TreeNode {
-    val children: List[T] = self.children.map(newNode(_, Some(this)))
-    val height: Int = if (self.children.isEmpty) 1 else 1 + children.map(_.height).max
+    lazy val children: List[T] = self.children.map(newNode(_, Some(this)))
+    lazy val height: Int = if (self.children.isEmpty) 1 else 1 + children.map(_.height).max
     val label: Label = self.exp.label
 
     override def toString: String = self.exp.toString
