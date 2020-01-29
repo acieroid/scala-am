@@ -1,10 +1,7 @@
 package scalaam.incremental
 
-//import incremental.Apted.costmodel.{PerEditOperationStringNodeDataCostModel, StringUnitCostModel}
-//import incremental.Apted.distance.APTED
-//import incremental.Apted.node.{Node, NodeIndexer}
-import scalaam.core.{Expression, Label}
-import scalaam.incremental.ModuleDifferencer.ModuleInfo
+import scalaam.diff.ModuleData.ModuleInfo
+import scalaam.core._
 import scalaam.util.Annotations.toCheck
 
 import scala.collection.mutable
@@ -36,7 +33,7 @@ trait GumTreeDiff {
 
   type Data
   type T <: TreeNode
-  type MP = Map[TreeNode, (TreeNode, MT)]
+  type MP = Map[T, (T, MT)]
 
   trait TreeNode {
     val parent: T
@@ -45,13 +42,13 @@ trait GumTreeDiff {
     val descendants: List[T] = children ::: children.flatMap(_.descendants)  // Cache all descendants.
     val label: Label // Labels of nodes correspond to the name of their production rule in the grammar.
 
-    def isomorphic[T2 <: TreeNode](other: T2): Boolean
+    def isomorphic[T2 <: T](other: T2): Boolean
   }
 
   def newNode(data: Data, parent: Option[T]): T
 
   /** Returns all tx ∈ t, which are the descendants of t and the t itself. */
-  def elem(t: TreeNode): List[TreeNode] = t :: t.descendants
+  def elem(t: T): List[T] = t :: t.descendants
 
   // Another layer needed since apted may modify the tree?
   //case class N(node: T) extends Node(node) {
@@ -150,9 +147,9 @@ trait GumTreeDiff {
    * @param minDice   A minimum measure of similarity that is required to find mappings.
    * @return An extended mapping between T1 and T2.
    */
-  private def bottomUp(T1: TreeNode, T2: TreeNode, m: MP, maxSize: Int, minDice: Double): MP = {
+  private def bottomUp(T1: T, T2: T, m: MP, maxSize: Int, minDice: Double): MP = {
     var M: MP = m
-    val Q = new mutable.PriorityQueue[TreeNode]()(Ordering.by((_: TreeNode).height).reverse) // Reverse the order.
+    val Q = new mutable.PriorityQueue[T]()(Ordering.by((_: T).height).reverse) // Reverse the order.
     Q ++= elem(T1).filter(t => M.get(t).isEmpty && t.children.flatMap(M.get(_)).nonEmpty)
     while (Q.nonEmpty) {                                    // Foreach t1 ∈ T1 | t1 is not matched and t1 has matched children, in post-order
       val t1 = Q.dequeue()
@@ -177,7 +174,7 @@ trait GumTreeDiff {
    * dice(t1, t2, M) = 2 * |{ t1 ∈ s(t1), t2 ∈ s(t2) | (t1 , t2) ∈ M }| / (|s(t1)| + |s(t2)|)
    **/
   @toCheck("This definition differs from the definition in the paper! (Assume formula in paper is not entirely correct.)")
-  private def dice(t1: TreeNode, t2: TreeNode, M: MP): Double = 2.0 * t1.descendants.count(t => M.contains(t) && t2.descendants.contains(M(t))).toDouble / (t1.descendants.size + t2.descendants.size).toDouble
+  private def dice(t1: T, t2: T, M: MP): Double = 2.0 * t1.descendants.count(t => M.contains(t) && t2.descendants.contains(M(t))).toDouble / (t1.descendants.size + t2.descendants.size).toDouble
 
   /**
    * Returns all possible candidate matches for t1. A node t ∈ T2 is a candidate for t1 if
@@ -187,7 +184,7 @@ trait GumTreeDiff {
    *   <li>t1 and t have some matching descendants.</li>
    * </ul>
    **/
-  private def candidate(t1: TreeNode, T2: TreeNode, M: MP): Option[TreeNode] = {
+  private def candidate(t1: T, T2: T, M: MP): Option[T] = {
     elem(T2).filter{ t => t.label == t1.label && !M.contains(t1) && haveMatchedDescendants(t1, t, M)} match {
       case Nil => None
       case lst => Some(lst.maxBy(dice(t1, _, M)))
@@ -195,13 +192,13 @@ trait GumTreeDiff {
   }
 
   /** Returns a boolean indicating whether t1 and t2 have matched descendants in mapping M. */
-  private def haveMatchedDescendants(t1: TreeNode, t2: TreeNode, M: MP): Boolean = t1.descendants.exists(t => t2.descendants.contains(M.get(t).map(_._1).contains(_: TreeNode)))
+  private def haveMatchedDescendants(t1: T, t2: T, M: MP): Boolean = t1.descendants.exists(t => t2.descendants.contains(M.get(t).map(_._1).contains(_: TreeNode)))
 
   // TODO - the current implementation is a dummy implementation
   /** Finds the mapping corresponding to the shortest edit script without move actions.
    *  Gumtree originally uses RTED (Pawlik and Augsten, 2011).
    **/
-  private def opt(t1: TreeNode, t2: TreeNode): List[(TreeNode, TreeNode)] =  for {s1 <- elem(t1); s2 <- elem(t2)} yield (s1, s2)
+  private def opt(t1: T, t2: T): List[(T, T)] =  for {s1 <- elem(t1); s2 <- elem(t2)} yield (s1, s2)
 }
 
 object GumtreeASTDiff extends GumTreeDiff {
@@ -218,7 +215,7 @@ object GumtreeASTDiff extends GumTreeDiff {
     override def toString: String = s"$self@${self.idn}"
 
     /** Returns a boolean indicating whether t1 and t2 are isomorphic. */
-    def isomorphic[T2 <: TreeNode](other: T2): Boolean = other match {
+    def isomorphic[T2 <: T](other: T2): Boolean = other match {
       case ASTNode(e, _) => self.isomorphic(e)
       case _ => false
     }
@@ -239,7 +236,7 @@ object GumtreeModuleDiff extends GumTreeDiff {
 
     override def toString: String = self.exp.toString
 
-    def isomorphic[T2 <: TreeNode](other: T2): Boolean = other match {
+    def isomorphic[T2 <: T](other: T2): Boolean = other match {
       case ModuleNode(m, _) => self.exp.isomorphic(m.exp)
       case _ => false
     }
