@@ -9,7 +9,10 @@ import scalaam.util._
 /**
  * Base definitions for a Scheme MODF analysis.
  */
-trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] {
+trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
+                            with GlobalStore[SchemeExp]
+                            with ReturnValue[SchemeExp]
+                            with ContextSensitiveComponents[SchemeExp] {
 
   //XXXXXXXXXXXXXXXXXXXX//
   // LEXICAL ADDRESSING //
@@ -64,7 +67,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
     // Requires a closure and a context and may contain a name.
     def nam: Option[String]
     def clo: lattice.Closure
-    def ctx: Context
+    def ctx: ComponentContext
     // convenience accessors
     lazy val (lambda, parent) = clo
     lazy val body: SchemeExp = SchemeBody(lambda.body)
@@ -74,14 +77,21 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
     }
   }
 
-  /** Creates a new component, given a closure, context and an optional name. */
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): Component
+  type ComponentContent = Option[lattice.Closure]
+  def content(cmp: Component) = view(cmp) match {
+    case _ : MainComponent => None
+    case call: CallComponent => Some(call.clo)
+  }
+  def context(cmp: Component) = view(cmp) match {
+    case _ : MainComponent => None
+    case call: CallComponent => Some(call.ctx)
+  }
 
-  // This abstract class is also parameterized by the choice of Context and allocation strategy for Contexts.
-  type Context
+  /** Creates a new component, given a closure, context and an optional name. */
+  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
 
   /** Creates a new context given a closure and a list of argument values. */
-  def allocCtx(clo: lattice.Closure, args: List[Value]): Context
+  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -212,8 +222,8 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
   // Definition of the initial component.
   case object Main extends MainComponent
   // Definition of call components.
-  case class Call(clo: lattice.Closure, nam: Option[String], ctx: Context) extends CallComponent
+  case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends CallComponent
 
   lazy val initialComponent: SchemeComponent = Main
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: Context): SchemeComponent = Call(clo,nam,ctx)
+  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
 }

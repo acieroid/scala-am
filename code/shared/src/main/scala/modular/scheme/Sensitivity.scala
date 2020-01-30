@@ -5,24 +5,24 @@ import scalaam.core._
 
 /* Simplest (and most imprecise): no context-sensitivity */
 trait NoSensitivity extends SchemeModFSemantics {
-  case class Context() {
+  case class ComponentContext() {
     override def toString = ""
   }
-  def allocCtx(clo: lattice.Closure, args: List[Value]): Context = Context()
+  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext = ComponentContext()
 }
 
 /* Full argument sensitivity for ModF */
 trait FullArgumentSensitivity extends SchemeModFSemantics {
-  case class Context(args: List[Value]) {
+  case class ComponentContext(args: List[Value]) {
     override def toString: String = args.mkString(",")
   }
-  def allocCtx(clo: lattice.Closure, args: List[Value]): Context = Context(args)
+  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext = ComponentContext(args)
 }
 
 /* Adaptive argument sensitivity */
 trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // A context is a partial mapping from the closure's formal parameters to argument values
-  case class Context(args: Map[Identifier, Value]) {
+  case class ComponentContext(args: Map[Identifier, Value]) {
     override def toString = args.toList
                                 .map({ case (i,v) => s"$i -> $v" })
                                 .mkString(" ; ")
@@ -35,13 +35,13 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   private def excludeArgs(clo: lattice.Closure, prs: Set[Identifier]) =
     prs.foreach(par => excludeArg(clo,par))
   // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(clo: lattice.Closure, args: List[Value]): Context =
-    Context(clo._1.args.zip(args).toMap -- excludedArgs(clo))
+  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext =
+    ComponentContext(clo._1.args.zip(args).toMap -- excludedArgs(clo))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def alphaCmp(cmp: Component): Component = cmp match {
     case Main => Main
     case Call(clo,nam,ctx) =>
-      val updatedCtx = Context(ctx.args -- excludedArgs(clo))
+      val updatedCtx = ComponentContext(ctx.args -- excludedArgs(clo))
       Call(clo,nam,updatedCtx)
   }
   // The main logic for adaptive argument sensitivity
@@ -79,7 +79,7 @@ trait SimpleAdaptiveArgumentSensitivity extends AdaptiveArgumentSensitivity {
   private var closureArgs = Map[lattice.Closure, Map[Identifier,Set[Value]]]().withDefaultValue(Map[Identifier,Set[Value]]().withDefaultValue(Set()))
   // the following policy is implemented in `adaptArguments`
   def adaptArguments(call: Call): Set[Identifier] = {
-    val Call(clo, _, Context(bds)) = call
+    val Call(clo, _, ComponentContext(bds)) = call
     // update the set of components per closure
     val prvCmps = closureCmps.get(clo).getOrElse(Set())
     val newCmps = prvCmps + call
