@@ -19,7 +19,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   //XXXXXXXXXXXXXXXXXXXX//
 
   // Ensure that the program is translated to use lexical addresses first!
-  prog = {
+  override lazy val program = {
     val originalProgram = super.program
     val initialBindings = primitives.allPrimitives.map(_.name).toSet
     SchemeLexicalAddresser.translateProgram(originalProgram, initialBindings)
