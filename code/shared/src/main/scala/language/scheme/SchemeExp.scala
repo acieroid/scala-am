@@ -1,6 +1,6 @@
 package scalaam.language.scheme
 
-import scalaam.core.{Expression, Identifier, Label, NoCodeIdentity, Identity}
+import scalaam.core._
 import scalaam.language.sexp._
 
 /**
@@ -355,7 +355,6 @@ trait SchemeDefineFunctionExp extends SchemeExp {
   def subexpressions: List[Expression] = name :: args ::: body
   override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
   override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
-
 }
 
 case class SchemeDefineFunction(name: Identifier, args: List[Identifier], body: List[SchemeExp], idn: Identity)
