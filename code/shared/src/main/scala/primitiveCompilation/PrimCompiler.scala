@@ -86,7 +86,8 @@ object PrimCompiler {
                      Lat(Join(Inj(v1),
                               Inj(v2))))))
     case Let(v, init, body) => Bind(varToTarget(v), toTarget(init), toTarget(body))
-    case _ => ???
+    case PrimSource.PrimCall(prim, args) => PrimTarget.PrimCall(toTarget(prim), args.map(AExpToTarget))
+    case PrimSource.OpCall(op, args) => PrimTarget.OpCall(op, args.map(AExpToTarget))
   }
 
   /////////////////////////////

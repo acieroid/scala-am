@@ -9,7 +9,7 @@ object PrimTarget {
   case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp
   case class Fail() extends Exp
   case class PrimCall(prim: Exp, args: Args) extends Exp
-  case class OpCall(op: OpCall, args: Args) extends Exp
+  case class OpCall(op: PrimOp, args: Args) extends Exp
   case class Lat(l: LExp) extends Exp
   case class IfTrue(cond: LExp, cons: Exp) extends Exp
   case class IfFalse(cond: LExp, cons: Exp) extends Exp
