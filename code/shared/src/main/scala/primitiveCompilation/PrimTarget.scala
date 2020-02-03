@@ -1,7 +1,5 @@
 package primitiveCompilation
 
-import primitiveCompilation.PrimTarget.AExp
-
 object PrimTarget {
 
   type Args = Array[AExp]
@@ -22,14 +20,14 @@ object PrimTarget {
   case class Var(v: Id) extends AExp { override def toString: String = v.toString }
   case class CVa(v: Id = Id.genId()) extends AExp { override def toString: String = v.toString }
   case class Arg(a: Id) extends AExp { override def toString: String = a.toString }
-  case class Num(n: Int) extends AExp { override def toString: String = n.toString }
-  case class Boo(b: Boolean) extends AExp { override def toString: String = b.toString }
+  case class Num(n: Int) extends AExp { override def toString: String = s"SchemeLattice.number($n)" }
+  case class Boo(b: Boolean) extends AExp { override def toString: String = s"SchemeLattice.bool($b)" }
 
   sealed trait LExp
 
-  case object Bot extends LExp
-  case object Top extends LExp
-  case class Inj(e: AExp) extends LExp
+  case object Bot extends LExp { override def toString: String = "bottom" }
+  case object Top extends LExp { override def toString: String = "top" }
+  case class Inj(e: AExp) extends LExp { override def toString: String = e.toString }
   case class Join(l1: LExp, l2: LExp) extends LExp
 
 }

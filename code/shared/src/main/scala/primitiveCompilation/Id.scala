@@ -1,6 +1,6 @@
 package primitiveCompilation
 
-case class Id(name: String) extends AnyVal
+case class Id(name: String) extends AnyVal { override def toString: String = name }
 
 object Id {
 

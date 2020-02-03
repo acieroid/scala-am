@@ -9,7 +9,7 @@ object PrimSource {
   case class AE(ae: AExp)                        extends Exp
   case class If(cond: AExp, cons: Exp, alt: Exp) extends Exp
   case class Let(v: Var, exp: Exp, body: Exp)    extends Exp
-  //case class RecCall()                           extends PrimSourceExp
+  //case class RecCall()                           extends Exp
   case class PrimCall(prim: Exp, args: Args)     extends Exp
   case class OpCall(op: PrimOp, args: Args)      extends Exp
 
