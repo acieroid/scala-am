@@ -1,4 +1,4 @@
-package primitiveCompilation
+package scalaam.primitiveCompilation
 
 object PrimSource {
 
@@ -16,7 +16,6 @@ object PrimSource {
   sealed trait AExp
 
   case class Var(v: Id) extends AExp
-  case class Arg(a: Id) extends AExp
   case class Num(n: Int) extends AExp
   case class Boo(b: Boolean) extends AExp
 

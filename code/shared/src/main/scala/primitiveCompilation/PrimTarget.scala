@@ -1,4 +1,4 @@
-package primitiveCompilation
+package scalaam.primitiveCompilation
 
 object PrimTarget {
 
@@ -7,7 +7,6 @@ object PrimTarget {
   sealed trait Exp
 
   case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp
-  case class BindC(v: CVa, e1: Exp, e2: Exp) extends Exp
   case class Fail() extends Exp
   case class PrimCall(prim: Exp, args: Args) extends Exp
   case class OpCall(op: OpCall, args: Args) extends Exp
@@ -17,9 +16,7 @@ object PrimTarget {
 
   sealed trait AExp
 
-  case class Var(v: Id) extends AExp { override def toString: String = v.toString }
-  case class CVa(v: Id = Id.genId()) extends AExp { override def toString: String = v.toString }
-  case class Arg(a: Id) extends AExp { override def toString: String = a.toString }
+  case class Var(v: Id = Id.genId()) extends AExp { override def toString: String = v.toString }
   case class Num(n: Int) extends AExp { override def toString: String = s"SchemeLattice.number($n)" }
   case class Boo(b: Boolean) extends AExp { override def toString: String = s"SchemeLattice.bool($b)" }
 

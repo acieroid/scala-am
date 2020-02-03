@@ -1,4 +1,4 @@
-package primitiveCompilation
+package scalaam.primitiveCompilation
 
 case class Id(name: String) extends AnyVal { override def toString: String = name }
 
