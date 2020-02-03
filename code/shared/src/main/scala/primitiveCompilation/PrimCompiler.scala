@@ -18,7 +18,7 @@ object PrimCompiler {
     case PrimSource.Var(v) => PrimTarget.Var(v)
   }
 
-  def compileVar(v: PrimSource.Var): PrimTarget.Var = Var(v.v)
+  def compileVar(v: PrimSource.Var): PrimTarget.Var = PrimTarget.Var(v.v)
 
   def compile(exp: SE): TE = exp match {
     case AE(ae) => Lat(Inj(compileAExp(ae)))
