@@ -8,9 +8,12 @@ import scalaam.language.sexp._
 
 object Test extends App {
   val program = "(define (length l)\n  (let ((n (null? l)))\n    (if n\n        0\n        (let ((c (cdr l)))\n          (let ((len (length c)))\n            (+ 1 len))))))"
+  println(program)
   val text = SchemeParser.parse(program)
   val source = PrimCompiler.toSource(text)
   println(source)
+  val target = PrimCompiler.toTarget(source)
+  println(target)
 }
 
 object PrimCompiler {
@@ -86,8 +89,8 @@ object PrimCompiler {
                      Lat(Join(Inj(v1),
                               Inj(v2))))))
     case Let(v, init, body) => Bind(varToTarget(v), toTarget(init), toTarget(body))
-    case PrimSource.PrimCall(prim, args) => PrimTarget.PrimCall(toTarget(prim), args.map(AExpToTarget))
-    case PrimSource.OpCall(op, args) => PrimTarget.OpCall(op, args.map(AExpToTarget))
+    case PrimSource.PrimCall(prim, args) => PrimTarget.PrimCall(toTarget(prim), Args(args.map(AExpToTarget)))
+    case PrimSource.OpCall(op, args) => PrimTarget.OpCall(op, Args(args.map(AExpToTarget)))
   }
 
   /////////////////////////////
