@@ -4,7 +4,7 @@ object PrimSource {
 
   type Args = Array[AExp]
 
-  trait Exp
+  sealed trait Exp
 
   case class AE(ae: AExp)                        extends Exp
   case class If(cond: AExp, cons: Exp, alt: Exp) extends Exp
@@ -14,7 +14,7 @@ object PrimSource {
   case class OpCall(op: PrimOp, args: Args)      extends Exp
 
 
-  trait AExp
+  sealed trait AExp
 
   case class Var(v: Int) extends AExp
   case class Arg(a: Int) extends AExp
