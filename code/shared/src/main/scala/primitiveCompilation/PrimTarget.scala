@@ -1,13 +1,15 @@
 package primitiveCompilation
 
+import primitiveCompilation.PrimTarget.AExp
+
 object PrimTarget {
 
   type Args = Array[AExp]
 
   sealed trait Exp
 
-  case class Bind(e1: Exp, e2: Exp) extends Exp
-  case class BindC(e1: Exp, e2: Exp) extends Exp
+  case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp
+  case class BindC(v: CVa, e1: Exp, e2: Exp) extends Exp
   case class Fail() extends Exp
   case class PrimCall(prim: Exp, args: Args) extends Exp
   case class OpCall(op: OpCall, args: Args) extends Exp
@@ -17,11 +19,11 @@ object PrimTarget {
 
   sealed trait AExp
 
-  case class Var(v: Int) extends AExp
-  case class CVa(v: Int) extends AExp
-  case class Arg(a: Int) extends AExp
-  case class Num(n: Int) extends AExp
-  case class Boo(b: Boolean) extends AExp
+  case class Var(v: Id) extends AExp { override def toString: String = v.toString }
+  case class CVa(v: Id = Id.genId()) extends AExp { override def toString: String = v.toString }
+  case class Arg(a: Id) extends AExp { override def toString: String = a.toString }
+  case class Num(n: Int) extends AExp { override def toString: String = n.toString }
+  case class Boo(b: Boolean) extends AExp { override def toString: String = b.toString }
 
   sealed trait LExp
 
