@@ -33,7 +33,7 @@ object PrimTarget {
   sealed trait LExp
 
   case object Bot extends LExp { override def toString: String = "bottom" }
-  case object Top extends LExp { override def toString: String = "top" }
+  case object Top extends LExp { override def toString: String = "top" } // TODO: This is not needed.
   case class Inj(e: AExp) extends LExp { override def toString: String = e.toString }
   case class Join(l1: LExp, l2: LExp) extends LExp { override def toString: String = s"SchemeLattice.join($l1, $l2)"}
 
