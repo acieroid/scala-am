@@ -121,7 +121,7 @@ object PrimCompiler {
   def toScala(tar: (TE, PI)): String = {
     val PrimInfo(name, args) = tar._2
     val string =
-s"""object ${name.capitalize} extends NoStoreOperation($name, Some(${args.length})) {
+s"""object ${name.capitalize} extends NoStoreOperation("$name", Some(${args.length})) {
   def appl(args: List[V]): MayFail[V, Error] = {
     val ${args.mkString(" :: ")} :: Nil = args
 ${tar._1.print(4)}
