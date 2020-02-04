@@ -27,6 +27,30 @@ case object SPA extends Label // Spliced pair
 case object VAL extends Label // Value
 case object VAR extends Label // Variable
 
+/*
+    case SchemeLambda(args, body, idn) =>
+    case SchemeVarArgLambda(args, vararg, body, idn) =>
+    case SchemeFuncall(f, args, idn) =>
+    case SchemeIf(cond, cons, alt, idn) =>
+    case SchemeLet(bindings, body, idn) =>
+    case SchemeLetStar(bindings, body, idn) =>
+    case SchemeLetrec(bindings, body, idn) =>
+    case SchemeNamedLet(name, bindings, body, idn) =>
+    case SchemeSet(variable, value, idn) =>
+    case SchemeSetLex(variable, lexAddr, value, idn) =>
+    case SchemeBegin(exps, idn) =>
+    case SchemeAnd(exps, idn) =>
+    case SchemeOr(exps, idn) =>
+    case SchemeDefineVariable(name, value, idn) =>
+    case SchemeDefineFunction(name, args, body, idn) =>
+    case SchemeDefineVarArgFunction(name, args, vararg, body, idn) =>
+    case SchemeVar(id) =>
+    case SchemeVarLex(id, lexAdr) =>
+    case SchemePair(car, cdr, idn) =>
+    case SchemeSplicedPair(splice, cdr, idn) =>
+    case SchemeValue(value, idn) =>
+*/
+
 /**
   * A lambda expression: (lambda (args...) body...)
   * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
