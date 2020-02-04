@@ -15,7 +15,7 @@ object Test extends App {
   val source = PrimCompiler.toSource(text)
   println(source)
   val target = PrimCompiler.toTarget(source)
-  println(target)
+  println(PrimCompiler.toScala(target))
 }
 
 object PrimCompiler {
@@ -31,7 +31,7 @@ object PrimCompiler {
   case class  IllegalExpressionException(e: Expression) extends Exception // For expressions that should not occur in the language compiled in the current phase.
   case class ShouldNotEncounterException(e: Expression) extends Exception // For expressions that should not be encountered by the compiler in the current phase.
 
-  case class PrimInfo(name: String, arity: Int)
+  case class PrimInfo(name: String, args: List[Identifier])
   type PI = PrimInfo
 
   def compile(exp: SchemeExp): String = toScala(toTarget(toSource(exp)))
@@ -76,7 +76,7 @@ object PrimCompiler {
 
     exp match {
       // A primitive function is expected to be a function definition.
-      case SchemeDefineFunction(nam, args, body :: Nil, _) => (bodyToSource(body), PrimInfo(nam.name, args.length))
+      case SchemeDefineFunction(nam, args, body :: Nil, _) => (bodyToSource(body), PrimInfo(nam.name, args))
       case e => throw IllegalExpressionException(e)
     }
   }
@@ -118,6 +118,20 @@ object PrimCompiler {
   // THIRD COMPILATION PHASE //
   /////////////////////////////
 
-  def toScala(tar: (TE, PI)): String = tar._1.toString
+  def toScala(tar: (TE, PI)): String = {
+    val PrimInfo(name, args) = tar._2
+    val string =
+s"""object ${name.capitalize} extends NoStoreOperation($name, Some(${args.length})) {
+  def appl(args: List[V]): MayFail[V, Error] = {
+    val ${args.mkString(" :: ")} :: Nil = args
+${tar._1.print(4)}
+  }
+  override def call(args: List[V]): MayFail[V, Error] = args match {
+    case ${args.mkString(" :: ")} :: Nil => appl(args)
+    case args => MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
+  }
+}"""
+    string
+  }
 
 }

@@ -6,22 +6,32 @@ object PrimTarget {
     override def toString: String = "(" ++ args.map(_.toString).mkString(", ") ++ ")"
   }
 
-  sealed trait Exp
+  sealed trait Exp {
+    def indent(i: Int): String = " " * i
+    def jump(i: Int): Int = i + 2
+    def print(i: Int): String
+    override def toString: String = print(0)
+  }
 
-  case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp { override def toString: String = s"$e1 >>= { $v => $e2 }" }
-  case class Fail() extends Exp { override def toString: String = "MayFail.Failure"}
+  case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp {
+    def print(i: Int): String = s"${e1.print(i)} >>= { $v =>\n${e2.print(jump(i))}\n${indent(i)}}"
+  }
+  case class Fail() extends Exp {
+    def print(i: Int): String = indent(i) ++ "MayFail.Failure"
+  }
   case class PrimCall(prim: Exp, args: Args) extends Exp {
-    override def toString: String = prim.toString ++ args.toString
+    def print(i: Int): String = indent(i) ++ prim.toString ++ args.toString
   }
   case class OpCall(op: PrimOp, args: Args) extends Exp {
-    override def toString: String = op.name.toString ++ args.toString
+    def print(i: Int): String = indent(i) ++ op.name.toString ++ args.toString
   }
-  case class Lat(l: LExp) extends Exp { override def toString: String = l.toString }
+  case class Lat(l: LExp) extends Exp {
+    def print(i: Int): String = indent(i) ++ l.toString }
   case class IfTrue(cond: LExp, cons: Exp) extends Exp {
-    override def toString: String = s"{ if (isTrue($cond)) { $cons } else { MayFail.Success($Bot) } }"
+    def print(i: Int): String = s"${indent(i)}{ if (isTrue($cond)) {\n${cons.print(jump(jump(i)))}\n${indent(jump(i))}} else {\n${indent(jump(jump(i)))}MayFail.Success($Bot)\n${indent(jump(i))}}\n${indent(i)}}"
   }
   case class IfFalse(cond: LExp, cons: Exp) extends Exp {
-    override def toString: String = s"{ if (isFalse($cond)) { $cons } else { MayFail.Success($Bot) } }"
+    def print(i: Int): String = s"${indent(i)}{ if (isFalse($cond)) {\n${cons.print(jump(jump(i)))}\n${indent(jump(i))}} else {\n${indent(jump(jump(i)))}MayFail.Success($Bot)\n${indent(jump(i))}}\n${indent(i)}}"
   }
 
   sealed trait AExp
