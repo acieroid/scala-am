@@ -27,11 +27,16 @@ object PrimTarget {
   }
   case class Lat(l: LExp) extends Exp {
     def print(i: Int): String = indent(i) ++ l.toString }
+  /*
   case class IfTrue(cond: LExp, cons: Exp) extends Exp {
     def print(i: Int): String = s"${indent(i)}{ if (isTrue($cond)) {\n${cons.print(jump(jump(i)))}\n${indent(jump(i))}} else {\n${indent(jump(jump(i)))}MayFail.success($Bot)\n${indent(jump(i))}}\n${indent(i)}}"
   }
   case class IfFalse(cond: LExp, cons: Exp) extends Exp {
     def print(i: Int): String = s"${indent(i)}{ if (isFalse($cond)) {\n${cons.print(jump(jump(i)))}\n${indent(jump(i))}} else {\n${indent(jump(jump(i)))}MayFail.success($Bot)\n${indent(jump(i))}}\n${indent(i)}}"
+  }
+  */
+  case class Cond(cond: LExp, cons: Exp, alt: Exp) extends Exp {
+    def print(i: Int): String = s"${indent(i)}ifThenElse($cond)\n${indent(i)}{\n${cons.print(jump(i))}\n${indent(i)}}\n${indent(i)}{\n${alt.print(jump(i))}\n${indent(i)}}"
   }
 
   sealed trait AExp

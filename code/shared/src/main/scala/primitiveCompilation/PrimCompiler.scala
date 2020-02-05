@@ -1,6 +1,5 @@
 package scalaam.primitiveCompilation
 
-import primitiveCompilation.ANFCompiler
 import scalaam.primitiveCompilation.PrimSource._
 import scalaam.primitiveCompilation.PrimTarget._
 import scalaam.core._
@@ -94,6 +93,8 @@ object PrimCompiler {
 
     def toTarget(exp: SE): TE = exp match {
       case AE(ae) => Lat(Inj(AExpToTarget(ae)))
+      case If(cond, cons, alt) => Cond(Inj(AExpToTarget(cond)), toTarget(cons), toTarget(alt))
+      /*
       case If(cond, cons, alt) =>
         val v0 = PrimTarget.Var()
         val v1 = PrimTarget.Var()
@@ -103,6 +104,7 @@ object PrimCompiler {
             Bind(v2, IfFalse(Inj(v0), toTarget(alt)), // BindC
               Lat(Join(Inj(v1),
                 Inj(v2))))))
+      */
       case Let(v, init, body) => Bind(varToTarget(v), toTarget(init), toTarget(body))
       case PrimSource.PrimCall(prim, args) => PrimTarget.PrimCall(toTarget(prim), Args(args.map(AExpToTarget)))
       case PrimSource.OpCall(op, args) => PrimTarget.OpCall(op, Args(args.map(AExpToTarget)))
