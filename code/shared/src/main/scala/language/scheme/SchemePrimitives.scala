@@ -418,6 +418,54 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
 
+    // Simpler than FixpointPrimitiveUsingStore BUT allows callWithArgs to return a modified store...
+    abstract class SimpleFixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
+      type Args = List[V]
+
+      // Executes a single call with given arguments.
+      def callWithArgs(args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[(V, Store[A,V]),Error]
+
+      def call(fexp: SchemeExp,
+               argsWithExps: List[(SchemeExp, V)],
+               store: Store[A,V],
+               alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
+        // determine the initial args & call from the primitive input
+        val initArgs = arity match {
+          case Some(a) if argsWithExps.length == a =>
+            argsWithExps.map(_._2)
+          case None =>
+            return MayFail.failure(PrimitiveArityError(name,arity.getOrElse(-1),argsWithExps.length))
+        }
+        // for every call, keep track of the arguments
+        // keep track of results for "visited" arguments
+        var cache = Map[Args,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
+        // keep track of which calls depend on which other calls
+        var deps = Map[Args,Set[Args]]().withDefaultValue(Set())
+        // standard worklist algorithm
+        var worklist = Set(initArgs)
+        var curStore = store
+        while (worklist.nonEmpty) {
+          // take the next arguments from the worklist
+          val nextArgs = worklist.head
+          worklist = worklist - nextArgs
+          // call with the next arguments
+          val res = callWithArgs(nextArgs, store, args => {
+            deps += (args -> (deps(args) + nextArgs))
+            if (cache.get(args).isEmpty) worklist = worklist + args
+            cache(args)
+          })
+          // update the cache, worklist and store
+          val oldValue = cache(nextArgs)
+          val updatedValue = mfMon.append(oldValue, res >>= {case (vl, store) => curStore = store ; vl})
+          if (updatedValue != oldValue) {
+            cache += (nextArgs -> updatedValue)
+            worklist ++= deps(nextArgs)
+          }
+        }
+        cache(initArgs).map((_, curStore))
+      }
+    }
+
     def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
       x match {
         case MayFailSuccess(v)   => tailcall(v)
