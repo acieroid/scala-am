@@ -23,7 +23,7 @@ object PrimTarget {
     def print(i: Int): String = indent(i) ++ prim.toString ++ args.toString
   }
   case class OpCall(op: PrimOp, args: Args) extends Exp {
-    def print(i: Int): String = indent(i) ++ op.name.toString ++ args.toString
+    def print(i: Int): String = indent(i) ++ op.toString ++ args.toString
   }
   case class Lat(l: LExp) extends Exp {
     def print(i: Int): String = indent(i) ++ l.toString }

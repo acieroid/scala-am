@@ -10,12 +10,9 @@ import scalaam.language.sexp._
 object Test extends App {
   val program = "(define (length l) (let ((n (null? l))) (if n 0 (let ((c (cdr l))) (let ((len (length c))) (+ 1 len))))))"
   val program2 = "(define (length l) (if (null? l) 0 (+ 1 (length (cdr l)))))"
-  println(program)
-  val text = SchemeParser.parse(program)
-  val source = PrimCompiler.toSource(text)
-  println(source)
-  val target = PrimCompiler.toTarget(source)
-  println(PrimCompiler.toScala(target))
+  val program3 = "(define (gcd a b)(let ((null (= b 0))) (if null a (let ((mod (modulo a b))) (gcd b mod)))))"
+  val text = SchemeParser.parse(program3)
+  println(PrimCompiler.compile(text))
 }
 
 object PrimCompiler {
