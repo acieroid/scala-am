@@ -418,15 +418,6 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
 
-    object Gcd2 extends SimpleFixpointPrimitive("gcd", Some(2)) {
-      def callWithArgs(args: Args, gcd: Args => MayFail[V, Error]): MayFail[V, Error] = {
-          val a :: b :: Nil = args
-          ifThenElse(numEq(b, number(0))) { a } {
-            modulo(a, b) >>= (amodb => gcd(List(b, amodb)))
-          }
-      }
-    }
-
     def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
       x match {
         case MayFailSuccess(v)   => tailcall(v)
@@ -827,6 +818,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     }
 
     /** (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
+    /*
     object Gcd extends NoStoreOperation("gcd", Some(2)) {
       private def gcd(a: V, b: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
         if (visited.contains((a, b)) || a == bottom || b == bottom) {
@@ -840,6 +832,15 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         }
       }
       override def call(x: V, y: V) = gcd(x, y, Set()).result
+    }
+    */
+    object Gcd extends SimpleFixpointPrimitive("gcd", Some(2)) {
+      def callWithArgs(args: Args, gcd: Args => MayFail[V, Error]): MayFail[V, Error] = {
+        val a :: b :: Nil = args
+        ifThenElse(numEq(b, number(0))) { a } {
+          modulo(a, b) >>= (amodb => gcd(List(b, amodb)))
+        }
+      }
     }
 
     object Nullp extends NoStoreOperation("null?", Some(1)) {
