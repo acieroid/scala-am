@@ -42,14 +42,14 @@ object PrimTarget {
   sealed trait AExp
 
   case class Var(v: Id = Id.genId()) extends AExp { override def toString: String = v.toString }
-  case class Num(n: Int) extends AExp { override def toString: String = s"SchemeLattice.number($n)" }
-  case class Boo(b: Boolean) extends AExp { override def toString: String = s"SchemeLattice.bool($b)" }
+  case class Num(n: Int) extends AExp { override def toString: String = s"number($n)" }
+  case class Boo(b: Boolean) extends AExp { override def toString: String = s"bool($b)" }
 
   sealed trait LExp
 
   case object Bot extends LExp { override def toString: String = "bottom" }
   case object Top extends LExp { override def toString: String = "top" } // TODO: This is not needed.
   case class Inj(e: AExp) extends LExp { override def toString: String = e.toString }
-  case class Join(l1: LExp, l2: LExp) extends LExp { override def toString: String = s"SchemeLattice.join($l1, $l2)"}
+  case class Join(l1: LExp, l2: LExp) extends LExp { override def toString: String = s"join($l1, $l2)"}
 
 }
