@@ -300,7 +300,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     import schemeLattice._
     import scala.util.control.TailCalls._
 
-    abstract class FixpointPrimitive(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
+    abstract class FixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
 
       // parameterized by
       // - the arguments to the recursive call
@@ -369,6 +369,61 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           }
         }
         cache(initCall).map(v => (v,store))
+      }
+    }
+
+    abstract class SimpleFixpointPrimitive(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
+      type Args = List[V]
+
+      // Executes a single call with given arguments.
+      def callWithArgs(args: Args, cache: Args => MayFail[V,Error]): MayFail[V,Error]
+
+      def call(fexp: SchemeExp,
+               argsWithExps: List[(SchemeExp, V)],
+               store: Store[A,V],
+               alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
+        // determine the initial args & call from the primitive input
+        val initArgs = arity match {
+          case Some(a) if argsWithExps.length == a =>
+            argsWithExps.map(_._2)
+          case None =>
+            return MayFail.failure(PrimitiveArityError(name,arity.getOrElse(-1),argsWithExps.length))
+        }
+        // for every call, keep track of the arguments
+        // keep track of results for "visited" arguments
+        var cache = Map[Args,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
+        // keep track of which calls depend on which other calls
+        var deps = Map[Args,Set[Args]]().withDefaultValue(Set())
+        // standard worklist algorithm
+        var worklist = Set(initArgs)
+        while (worklist.nonEmpty) {
+          // take the next arguments from the worklist
+          val nextArgs = worklist.head
+          worklist = worklist - nextArgs
+          // call with the next arguments
+          val res = callWithArgs(nextArgs, args => {
+            deps += (args -> (deps(args) + nextArgs))
+            if (cache.get(args).isEmpty) worklist = worklist + args
+            cache(args)
+          })
+          // update the cache and worklist
+          val oldValue = cache(nextArgs)
+          val updatedValue = mfMon.append(oldValue, res)
+          if (updatedValue != oldValue) {
+            cache += (nextArgs -> updatedValue)
+            worklist ++= deps(nextArgs)
+          }
+        }
+        cache(initArgs).map((_, store))
+      }
+    }
+
+    object Gcd2 extends SimpleFixpointPrimitive("gcd", Some(2)) {
+      def callWithArgs(args: Args, gcd: Args => MayFail[V, Error]): MayFail[V, Error] = {
+          val a :: b :: Nil = args
+          ifThenElse(numEq(b, number(0))) { a } {
+            modulo(a, b) >>= (amodb => gcd(List(b, amodb)))
+          }
       }
     }
 
@@ -1076,7 +1131,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
               0
               (+ 1 (length (cdr l)))))
     */
-    object Length extends FixpointPrimitive("length",Some(1)) {
+    object Length extends FixpointPrimitiveUsingStore("length",Some(1)) {
       /** the argument to length is just the current pair */
       type Args = V
       def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
@@ -1114,7 +1169,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
               (cons (car l1)
                     (append (cdr l1) l2))))
     */
-    object Append extends FixpointPrimitive("append", Some(2)) {
+    object Append extends FixpointPrimitiveUsingStore("append", Some(2)) {
       /** the arguments to append are the two given input arguments + the 'append expression' and 'the current index' into the list (used for allocation) */
       type Args = (V,V,SchemeExp,Int)
       def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
