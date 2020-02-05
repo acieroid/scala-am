@@ -27,7 +27,7 @@ object PrimCompiler {
   case class  IllegalExpressionException(e: Expression) extends Exception // For expressions that should not occur in the language compiled in the current phase.
   case class ShouldNotEncounterException(e: Expression) extends Exception // For expressions that should not be encountered by the compiler in the current phase.
 
-  case class PrimInfo(name: String, args: List[Identifier])
+  case class PrimInfo(name: String, args: List[Identifier], recursive: Boolean)
   type PI = PrimInfo
 
   def compile(exp: SchemeExp): String = toScala(toTarget(toSource(exp)))
@@ -43,14 +43,22 @@ object PrimCompiler {
       case ValueInteger(int) => AE(PrimSource.Num(int))
     }
 
+    var rec: Boolean = false
+    var prm: String = ""
+
+    // Mark a primitive as recursive if a function with the same name is called within the body (note: we do not take into account bindings to the same name -> TODO).
+    // TODO write this in a functional way.
     def bodyToSource(exp: Expression): SE = exp match {
       case fc@SchemeFuncall(f, args, _) =>
         val argn = args.map(bodyToSource(_))
         if (!argn.forall(_.isInstanceOf[PrimSource.AE])) throw IllegalExpressionException(fc)
         val argv: PrimSource.Args = argn.map{case AE(ae) => ae}.toArray
         bodyToSource(f) match { // TODO maybe check arity?
+          case prim@AE(PrimSource.Var(Id(name))) if prm == name =>
+            rec = true
+            PrimSource.PrimCall(prim, argv, true)
           case AE(PrimSource.Var(Id(name))) if PrimitiveOperations.opNams.contains(name) => PrimSource.OpCall(PrimitiveOperations.ops.find(_.name == name).get, argv)
-          case prim => PrimSource.PrimCall(prim, argv)
+          case prim => PrimSource.PrimCall(prim, argv, false)
         }
       case SchemeIf(cond, cons, alt, _) => bodyToSource(cond) match {
         case AE(ae) => If(ae, bodyToSource(cons), bodyToSource(alt))
@@ -72,7 +80,9 @@ object PrimCompiler {
 
     exp match {
       // A primitive function is expected to be a function definition.
-      case SchemeDefineFunction(nam, args, body :: Nil, _) => (bodyToSource(body), PrimInfo(nam.name, args))
+      case SchemeDefineFunction(nam, args, body :: Nil, _) =>
+        prm = nam.name
+        (bodyToSource(body), PrimInfo(prm, args, rec))
       case e => throw IllegalExpressionException(e)
     }
   }
@@ -106,7 +116,7 @@ object PrimCompiler {
                 Inj(v2))))))
       */
       case Let(v, init, body) => Bind(varToTarget(v), toTarget(init), toTarget(body))
-      case PrimSource.PrimCall(prim, args) => PrimTarget.PrimCall(toTarget(prim), Args(args.map(AExpToTarget)))
+      case PrimSource.PrimCall(prim, args, rec) => PrimTarget.PrimCall(toTarget(prim), Args(args.map(AExpToTarget)), rec)
       case PrimSource.OpCall(op, args) => PrimTarget.OpCall(op, Args(args.map(AExpToTarget)))
     }
 
@@ -118,8 +128,8 @@ object PrimCompiler {
   /////////////////////////////
 
   def toScala(tar: (TE, PI)): String = {
-    val PrimInfo(name, args) = tar._2
-    val string =
+    val PrimInfo(name, args, rec) = tar._2
+    def nonRecursive: String =
 s"""object ${name.capitalize} extends NoStoreOperation("$name", Some(${args.length})) {
   def appl(args: List[V]): MayFail[V, Error] = {
     val ${args.mkString(" :: ")} :: Nil = args
@@ -130,7 +140,14 @@ ${tar._1.print(4)}
     case args => MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
   }
 }"""
-    string
+    def recursive: String =
+s"""object ${name.capitalize} extends SimpleFixpointPrimitive("$name", Some(${args.length})) {
+  def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = {
+    val ${args.mkString(" :: ")} :: Nil = args
+${tar._1.print(4)}
+  }
+}"""
+   if (rec) recursive else nonRecursive
   }
 
 }

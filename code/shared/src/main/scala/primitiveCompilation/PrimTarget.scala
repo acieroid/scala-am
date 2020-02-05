@@ -19,8 +19,8 @@ object PrimTarget {
   case class Fail() extends Exp {
     def print(i: Int): String = indent(i) ++ "MayFail.Failure"
   }
-  case class PrimCall(prim: Exp, args: Args) extends Exp {
-    def print(i: Int): String = indent(i) ++ prim.toString ++ args.toString
+  case class PrimCall(prim: Exp, args: Args, rec: Boolean) extends Exp {
+    def print(i: Int): String = if (rec) indent(i) ++ prim.toString ++ "(List" ++ args.toString ++")" else indent(i) ++ prim.toString ++ args.toString
   }
   case class OpCall(op: PrimOp, args: Args) extends Exp {
     def print(i: Int): String = indent(i) ++ op.toString ++ args.toString
