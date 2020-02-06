@@ -131,21 +131,19 @@ object PrimCompiler {
     val PrimInfo(name, args, rec) = tar._2
     def nonRecursive: String =
 s"""object ${name.capitalize} extends NoStoreOperation("$name", Some(${args.length})) {
-  def appl(args: List[V]): MayFail[V, Error] = {
+  private def appl(args: List[V]): MayFail[V, Error] = {
     val ${args.mkString(" :: ")} :: Nil = args
 ${tar._1.print(4)}
   }
-  override def call(args: List[V]): MayFail[V, Error] = args match {
-    case ${args.mkString(" :: ")} :: Nil => appl(args)
-    case args => MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
-  }
+  override def call(args: List[V]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
 }"""
     def recursive: String =
 s"""object ${name.capitalize} extends SimpleFixpointPrimitive("$name", Some(${args.length})) {
-  def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = {
+  private def appl(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = {
     val ${args.mkString(" :: ")} :: Nil = args
 ${tar._1.print(4)}
   }
+  def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args, $name) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
 }"""
    if (rec) recursive else nonRecursive
   }

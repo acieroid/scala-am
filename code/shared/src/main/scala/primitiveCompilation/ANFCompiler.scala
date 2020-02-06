@@ -1,3 +1,4 @@
+/*
 package primitiveCompilation
 
 import scalaam.core.{Identifier, Identity}
@@ -69,3 +70,4 @@ object ANFCompiler {
     }
   }
 }
+*/
