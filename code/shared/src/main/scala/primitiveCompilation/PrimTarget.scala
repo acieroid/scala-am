@@ -5,7 +5,7 @@ import scalaam.core._
 object PrimTarget {
 
   case class Args(args: Array[(AExp, Identity.Position)]) {
-    override def toString: String = "(" ++ args.map(_._1.toString).mkString(", ") ++ ")"
+    override def toString: String = "(" ++ args.map(_.toString).mkString(", ") ++ ")"
   }
 
   sealed trait Exp {
@@ -22,10 +22,12 @@ object PrimTarget {
     def print(i: Int): String = indent(i) ++ "MayFail.Failure"
   }
   case class PrimCall(prim: Exp, args: Args, rec: Boolean, pos: Identity.Position) extends Exp {
-    def print(i: Int): String = if (rec) indent(i) ++ prim.toString ++ "(List" ++ args.toString ++")" else indent(i) ++ prim.toString ++ args.toString
+    def print(i: Int): String =
+      s"${indent(i)}$prim.call($pos, originPos, $args, alloc)"
   }
   case class OpCall(op: PrimOp, args: Args, pos: Identity.Position) extends Exp {
-    def print(i: Int): String = indent(i) ++ op.toString ++ args.toString
+    def print(i: Int): String =
+      s"${indent(i)}$op.call($pos, originPos, $args, alloc)"
   }
   case class Lat(l: LExp) extends Exp {
     def print(i: Int): String = indent(i) ++ l.toString }
