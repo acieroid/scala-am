@@ -27,7 +27,7 @@ object PrimCompiler {
   case class  IllegalExpressionException(e: Expression) extends Exception // For expressions that should not occur in the language compiled in the current phase.
   case class ShouldNotEncounterException(e: Expression) extends Exception // For expressions that should not be encountered by the compiler in the current phase.
 
-  case class PrimInfo(name: String, args: List[Identifier], recursive: Boolean)
+  case class PrimInfo(name: String, args: List[Identifier], recursive: Boolean, storeUsage: Boolean)
   type PI = PrimInfo
 
   def compile(exp: SchemeExp): String = toScala(toTarget(toSource(exp)))
@@ -44,13 +44,14 @@ object PrimCompiler {
     }
 
     var rec: Boolean = false
+    var sto: Boolean = false
     var prm: String = ""
 
     // Mark a primitive as recursive if a function with the same name is called within the body (note: we do not take into account bindings to the same name -> TODO).
     // TODO write this in a functional way.
     def bodyToSource(exp: Expression): SE = exp match {
       case fc@SchemeFuncall(f, args, _) =>
-        val argn = args.map((arg) => (bodyToSource(arg), arg.idn.pos))
+        val argn = args.map(arg => (bodyToSource(arg), arg.idn.pos))
         if (!argn.forall(_._1.isInstanceOf[PrimSource.AE])) throw IllegalExpressionException(fc)
         val argv: PrimSource.Args = argn.map{case (AE(ae), pos) => (ae, pos)}.toArray
         bodyToSource(f) match { // TODO maybe check arity?
@@ -58,6 +59,7 @@ object PrimCompiler {
             rec = true
             PrimSource.PrimCall(prim, argv, true, fc.idn.pos)
           case AE(PrimSource.Var(Id(name))) if PrimitiveOperations.opNams.contains(name) =>
+            if (PrimitiveOperations.storeOps.contains(name)) sto = true // TODO is this list sufficient?
             PrimSource.OpCall(PrimitiveOperations.ops.find(_.name == name).get, argv, fc.idn.pos)
           case prim => PrimSource.PrimCall(prim, argv, false, fc.idn.pos)
         }
@@ -83,7 +85,8 @@ object PrimCompiler {
       // A primitive function is expected to be a function definition.
       case SchemeDefineFunction(nam, args, body :: Nil, _) =>
         prm = nam.name
-        (bodyToSource(body), PrimInfo(prm, args, rec))
+        val src = bodyToSource(body)
+        (src, PrimInfo(prm, args, rec, sto))
       case e => throw IllegalExpressionException(e)
     }
   }
@@ -93,6 +96,8 @@ object PrimCompiler {
   //////////////////////////////
 
   def toTarget(src: (SE, PI)): (TE, PI) = {
+
+    val sto = src._2.storeUsage
 
     def AExpToTarget(ae: SA): TA = ae match {
       case PrimSource.Boo(b) => PrimTarget.Boo(b)
@@ -118,7 +123,7 @@ object PrimCompiler {
       */
       case Let(v, init, body) => Bind(varToTarget(v), toTarget(init), toTarget(body))
       case PrimSource.PrimCall(prim, args, rec, pos) =>
-        PrimTarget.PrimCall(toTarget(prim), Args(args.map({ case (ae, pos) => (AExpToTarget(ae), pos) })), rec, pos)
+        PrimTarget.PrimCall(toTarget(prim), Args(args.map({ case (ae, pos) => (AExpToTarget(ae), pos) })), rec, sto, pos)
       case PrimSource.OpCall(op, args, pos) =>
         PrimTarget.OpCall(op, Args(args.map({ case (ae, pos) => (AExpToTarget(ae), pos) })), pos)
     }
@@ -131,7 +136,7 @@ object PrimCompiler {
   /////////////////////////////
 
   def toScala(tar: (TE, PI)): String = {
-    val PrimInfo(name, args, rec) = tar._2
+    val PrimInfo(name, args, rec, sto) = tar._2
     def nonRecursive: String =
 s"""object ${name.capitalize} extends NoStoreOperation("$name", Some(${args.length})) {
   private def appl(args: List[V]): MayFail[V, Error] = {
@@ -148,7 +153,12 @@ ${tar._1.print(4)}
   }
   def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args, $name) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
 }"""
-   if (rec) recursive else nonRecursive
+    (rec, sto) match {
+      case (true, false)  => recursive
+      case (false, false) => nonRecursive
+      case (true, true)   => ???
+      case (false, true)  => ???
+    }
   }
 
 }

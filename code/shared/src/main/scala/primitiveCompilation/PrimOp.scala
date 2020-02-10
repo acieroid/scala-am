@@ -14,10 +14,15 @@ case object And     extends PrimOp { val arity = 2; val name = "and"}
 case object Or      extends PrimOp { val arity = 2; val name = "or"}
 
 case object Null    extends PrimOp { val arity = 1; val name = "null?"; override def toString: String = "isNull"}
+case object Cons    extends PrimOp { val arity = 2; val name = "cons"}
 case object Car     extends PrimOp { val arity = 1; val name = "car"}
 case object Cdr     extends PrimOp { val arity = 1; val name = "cdr"}
+case object Vector  extends PrimOp { val arity = -1; val name = "vector"} // TODO Fix arity
+case object VectRef extends PrimOp { val arity = 2; val name = "vector-ref"}
+case object VectSet extends PrimOp { val arity = 3; val name = "vector-set!"}
 
 object PrimitiveOperations {
-  val    ops: List[PrimOp] = List(NumEq, NumPlus, And, Or, Null, Car, Cdr)
+  val    ops: List[PrimOp] = List(NumEq, NumPlus, And, Or, Null, Cons, Car, Cdr, Vector, VectRef, VectSet)
   val opNams: List[String] = ops.map(_.name)
+  val storeOps: List[PrimOp] = List(Null, Cons, Car, Cdr, Vector, VectRef, VectSet)
 }

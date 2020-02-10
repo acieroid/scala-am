@@ -174,9 +174,3 @@ object Primitives {
   // Parses a file and automatically adds the required prelude (over-approximated).
   def parseWithPrelude(path: String): SchemeExp = addPrelude(SchemeParser.parse(FileUtil.loadFile(path)))
 }
-
-object T extends App {
-  import Primitives._
-
-    println(parseWithPrelude("test/gabriel/puzzle.scm"))
-}
