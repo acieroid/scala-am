@@ -22,8 +22,7 @@ object PrimTarget {
     def print(i: Int): String = indent(i) ++ "MayFail.Failure"
   }
   case class PrimCall(prim: Exp, args: Args, rec: Boolean, pos: Identity.Position) extends Exp {
-    def print(i: Int): String =
-      s"${indent(i)}$prim.call($pos, originPos, $args, alloc)"
+    def print(i: Int): String = if (rec) s"${indent(i)}$prim.call($pos, originPos, (List $args), alloc)" else s"${indent(i)}$prim.call($pos, originPos, $args, alloc)"
   }
   case class OpCall(op: PrimOp, args: Args, pos: Identity.Position) extends Exp {
     def print(i: Int): String =
