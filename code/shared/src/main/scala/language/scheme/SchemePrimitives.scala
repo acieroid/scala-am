@@ -423,6 +423,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       type Args = List[V]
 
       // Executes a single call with given arguments.
+      // XXX: Maybe the store is not needed, because it is a mutable store. We may have a performance hit because of that.
       def callWithArgs(args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[(V, Store[A,V]),Error]
 
       def call(fexp: SchemeExp,
