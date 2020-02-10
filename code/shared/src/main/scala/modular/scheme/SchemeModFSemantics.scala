@@ -25,7 +25,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
   // Local addresses are simply made out of lexical information.
   trait LocalAddr extends Address { def idn(): Identity }
   case class VarAddr(id: Identifier)           extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
-  case class PtrAddr[C](exp: Expression, c: C) extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class PtrAddr[C](pos2: (Identity.Position, Identity.Position), c: C) extends LocalAddr { def printable = false; def idn(): Identity = Identity.none /* TODO */ }
   case class PrmAddr(nam: String)              extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
   //XXXXXXXXXXXXXXXXX//
@@ -142,26 +142,26 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp] with GlobalStore[Scheme
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
       val pair = lattice.cons(car,cdr)
-      val addr = allocAddr(PtrAddr(pairExp,()))
+      val addr = allocAddr(PtrAddr((pairExp.idn.pos, (-1, 0)),()))
       writeAddr(addr,pair)
       lattice.pointer(addr)
     }
-    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
-      val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
-      applyFun(appendExp, appendPrim, List(l1,l2))
-    }
+    // protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
+    //   val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
+    //   applyFun(appendExp, appendPrim, List(l1,l2))
+    // }
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
       writeAddr(VarAddr(par),arg,component)
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
     private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
-      def pointer[C](exp: SchemeExp, c: C): Addr = allocAddr(PtrAddr(exp,c))
+      def pointer[C](exp: (Identity.Position, Identity.Position), c: C): Addr = allocAddr(PtrAddr(exp,c))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
-        prm.call(fexp, args, StoreAdapter, allocator) match {
+        prm.call(fexp.idn.pos, (-1, 0), args.map({ case (exp, arg) => (exp.idn.pos, arg) }), StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom

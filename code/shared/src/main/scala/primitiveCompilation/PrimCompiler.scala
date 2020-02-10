@@ -50,15 +50,16 @@ object PrimCompiler {
     // TODO write this in a functional way.
     def bodyToSource(exp: Expression): SE = exp match {
       case fc@SchemeFuncall(f, args, _) =>
-        val argn = args.map(bodyToSource(_))
-        if (!argn.forall(_.isInstanceOf[PrimSource.AE])) throw IllegalExpressionException(fc)
-        val argv: PrimSource.Args = argn.map{case AE(ae) => ae}.toArray
+        val argn = args.map((arg) => (bodyToSource(arg), arg.idn.pos))
+        if (!argn.forall(_._1.isInstanceOf[PrimSource.AE])) throw IllegalExpressionException(fc)
+        val argv: PrimSource.Args = argn.map{case (AE(ae), pos) => (ae, pos)}.toArray
         bodyToSource(f) match { // TODO maybe check arity?
           case prim@AE(PrimSource.Var(Id(name))) if prm == name =>
             rec = true
-            PrimSource.PrimCall(prim, argv, true)
-          case AE(PrimSource.Var(Id(name))) if PrimitiveOperations.opNams.contains(name) => PrimSource.OpCall(PrimitiveOperations.ops.find(_.name == name).get, argv)
-          case prim => PrimSource.PrimCall(prim, argv, false)
+            PrimSource.PrimCall(prim, argv, true, fc.idn.pos)
+          case AE(PrimSource.Var(Id(name))) if PrimitiveOperations.opNams.contains(name) =>
+            PrimSource.OpCall(PrimitiveOperations.ops.find(_.name == name).get, argv, fc.idn.pos)
+          case prim => PrimSource.PrimCall(prim, argv, false, fc.idn.pos)
         }
       case SchemeIf(cond, cons, alt, _) => bodyToSource(cond) match {
         case AE(ae) => If(ae, bodyToSource(cons), bodyToSource(alt))
@@ -116,8 +117,10 @@ object PrimCompiler {
                 Inj(v2))))))
       */
       case Let(v, init, body) => Bind(varToTarget(v), toTarget(init), toTarget(body))
-      case PrimSource.PrimCall(prim, args, rec) => PrimTarget.PrimCall(toTarget(prim), Args(args.map(AExpToTarget)), rec)
-      case PrimSource.OpCall(op, args) => PrimTarget.OpCall(op, Args(args.map(AExpToTarget)))
+      case PrimSource.PrimCall(prim, args, rec, pos) =>
+        PrimTarget.PrimCall(toTarget(prim), Args(args.map({ case (ae, pos) => (AExpToTarget(ae), pos) })), rec, pos)
+      case PrimSource.OpCall(op, args, pos) =>
+        PrimTarget.OpCall(op, Args(args.map({ case (ae, pos) => (AExpToTarget(ae), pos) })), pos)
     }
 
     (toTarget(src._1), src._2)

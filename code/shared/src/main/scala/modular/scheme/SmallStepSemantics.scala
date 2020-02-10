@@ -218,8 +218,9 @@ trait SmallStepSemantics extends SchemeModFSemantics {
         val frm = SplicedCdrFrm(vlu,spliced)
         Set(EvalState(spliced.cdr, frm :: cnt))
       case SplicedCdrFrm(spliceValue,pairExp) =>
-        val result = append(pairExp)((pairExp.splice, spliceValue), (pairExp.cdr,vlu))
-        Set(KontState(result,cnt))
+        ???
+        // val result = append(pairExp)((pairExp.splice, spliceValue), (pairExp.cdr,vlu))
+        // Set(KontState(result,cnt))
     }
   }
 }

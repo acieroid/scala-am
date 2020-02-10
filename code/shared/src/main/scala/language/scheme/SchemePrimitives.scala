@@ -3,13 +3,13 @@ package scalaam.language.scheme
 import scalaam.core._
 
 trait SchemeAllocator[A] {
-  def pointer[C](exp: SchemeExp, c: C): A
-  def pointer(exp: SchemeExp): A = pointer(exp,())
+  def pointer[C](pos2: (Identity.Position, Identity.Position), c: C): A
+  def pointer(pos2: (Identity.Position, Identity.Position)): A = pointer(pos2,())
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {
-  def call(fexp: SchemeExp,
-           args: List[(SchemeExp, V)],
+  def call(callPos: Identity.Position, originPos: Identity.Position,
+           args: List[(Identity.Position, V)],
            store: Store[A, V],
            alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error]
 }
@@ -29,14 +29,14 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       Plus, /* [vv] +: Arithmetic */
       Minus, /* [vv] -: Arithmetic */
       Div, /* [vx] /: Arithmetic (no support for fractions) */
-      Abs, /* [vv] abs: Arithmetic */
+//      Abs, /* [vv] abs: Arithmetic */
       ACos, /* [vv] acos: Scientific */
       /* [x]  angle: Complex */
-      Append, /* [x]  append: Append/Reverse */
+//      Append, /* [x]  append: Append/Reverse */
       /* [x]  apply: Fly Evaluation */
       ASin, /* [vv] asin: Scientific */
-      Assoc, /* [vv] assoc: Retrieving Alist Entries */
-      Assq, /* [vv] assq: Retrieving Alist Entries */
+//      Assoc, /* [vv] assoc: Retrieving Alist Entries */
+//      Assq, /* [vv] assq: Retrieving Alist Entries */
       /* [x]  assv: Retrieving Alist Entries */
       ATan, /* [vv] atan: Scientific */
       Booleanp, /* [vv] boolean?: Booleans */
@@ -74,14 +74,14 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       Cos, /* [vv] cos: Scientific */
       /* [x]  current-input-port: Default Ports */
       /* [x]  current-output-port: Default Ports */
-      Display, /* [v]  display: Writing */
+//      Display, /* [v]  display: Writing */
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
       Eq, /* [vv] eq?: Equality */
-      Equal, /* [vx] equal?: Equality */
+//      Equal, /* [vx] equal?: Equality */
       /* [x]  eqv?: Equality */
       /* [x]  eval: Fly Evaluation */
-      Evenp, /* [vv] even?: Integer Operations */
+//      Evenp, /* [vv] even?: Integer Operations */
       ExactToInexact, /* [vv] exact->inexact: Exactness */
       /* [x]  exact?: Exactness */
       /* [x]  exp: Scientific */
@@ -89,7 +89,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       Floor, /* [vv] floor: Arithmetic */
       /* [x]  for-each: List Mapping */
       /* [x]  force: Delayed Evaluation */
-      Gcd, /* [vx] gcd: Integer Operations */
+//      Gcd, /* [vx] gcd: Integer Operations */
       /* [x]  imag-part: Complex */
       InexactToExact, /* [vv] inexact->exact: Exactness */
       /* [x]  inexact?: Exactness */
@@ -98,39 +98,39 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       Integerp, /* [vv] integer?: Integers */
       /* [x]  interaction-environment: Fly Evaluation */
       /* [x]  lcm: Integer Operations */
-      Length, /* [vv] length: List Selection */
+//      Length, /* [vv] length: List Selection */
       ListPrim, /* [vv] list: List Constructors */
       /* [x]  list->string: String Constructors */
       /* [x]  list->vector: Vector Creation */
-      ListRef, /* [vv] list-ref: List Selection */
+//      ListRef, /* [vv] list-ref: List Selection */
       /* [x]  list-tail: List Selection */
       Listp, /* [vv] list?: List Predicates */
-      /* [x]  load: Loading */
+//      /* [x]  load: Loading */
       Log, /* [vv] log: Scientific */
       /* [x]  magnitude: Complex */
       /* [x]  make-polar: Complex */
       /* [x]  make-rectangular: Complex */
       /* [x]  make-string: String Constructors */
       /* [x]  map: List Mapping */
-      Max, /* [vv] max: Arithmetic */
-      Member, /* [vv] member: List Searching */
-      Memq, /* [v]  memq: List Searching */
+//      Max, /* [vv] max: Arithmetic */
+//      Member, /* [vv] member: List Searching */
+//      Memq, /* [v]  memq: List Searching */
       /* [x]  memv: List Searching */
-      Min, /* [vv] min: Arithmetic */
-      Modulo, /* [vv] modulo: Integer Operations */
-      Negativep, /* [vv] negative?: Comparison */
-      Newline, /* [v]  newline: Writing */
-      Not, /* [vv] not: Booleans */
+//      Min, /* [vv] min: Arithmetic */
+//      Modulo, /* [vv] modulo: Integer Operations */
+//      Negativep, /* [vv] negative?: Comparison */
+//      Newline, /* [v]  newline: Writing */
+//      Not, /* [vv] not: Booleans */
       Nullp, /* [vv] null?: List Predicates */
       NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
       Numberp, /* [vv] number?: Numerical Tower */
-      Oddp, /* [vv] odd?: Integer Operations */
+//      Oddp, /* [vv] odd?: Integer Operations */
       /* [x]  open-input-file: File Ports */
       /* [x]  open-output-file: File Ports */
       /* [x]  output-port?: Ports */
       Pairp, /* [vv] pair?: Pairs */
       /* [x]  peek-char?: Reading */
-      Positivep, /* [vv] positive?: Comparison */
+//      Positivep, /* [vv] positive?: Comparison */
       /* [x]  procedure?: Procedure Properties */
       Quotient, /* [vv] quotient: Integer Operations */
       /* [x]  rational?: Reals and Rationals */
@@ -182,12 +182,12 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       /* [x]  with-input-from-file: File Ports */
       /* [x]  with-output-to-file: File Ports */
       /* [x]  write-char: Writing */
-      Zerop, /* [vv] zero?: Comparison */
+//      Zerop, /* [vv] zero?: Comparison */
       LessThan, /* [vv]  < */
-      LessOrEqual, /* [vv]  <= */
+//      LessOrEqual, /* [vv]  <= */
       NumEq, /* [vv]  = */
       GreaterThan, /* [vv]  > */
-      GreaterOrEqual, /* [vv]  >= */
+//      GreaterOrEqual, /* [vv]  >= */
       /* [x]  numerator */
       /* [x]  denominator */
       /* [x]  rationalize-string */
@@ -195,34 +195,34 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       /* [x]  null-environment */
       /* [x]  write transcript-on */
       /* [x]  transcript-off */
-      Caar,
-      Cadr, /* [v]  caar etc. */
-      Cdar,
-      Cddr,
-      Caaar,
-      Caadr,
-      Cadar,
-      Caddr,
-      Cdaar,
-      Cdadr,
-      Cddar,
-      Cdddr,
-      Caaaar,
-      Caaadr,
-      Caadar,
-      Caaddr,
-      Cadaar,
-      Cadadr,
-      Caddar,
-      Cadddr,
-      Cdaaar,
-      Cdaadr,
-      Cdadar,
-      Cdaddr,
-      Cddaar,
-      Cddadr,
-      Cdddar,
-      Cddddr,
+//      Caar,
+//      Cadr, /* [v]  caar etc. */
+//      Cdar,
+//      Cddr,
+//      Caaar,
+//      Caadr,
+//      Cadar,
+//      Caddr,
+//      Cdaar,
+//      Cdadr,
+//      Cddar,
+//      Cdddr,
+//      Caaaar,
+//      Caaadr,
+//      Caadar,
+//      Caaddr,
+//      Cadaar,
+//      Cadadr,
+//      Caddar,
+//      Cadddr,
+//      Cdaaar,
+//      Cdaadr,
+//      Cdadar,
+//      Cdaddr,
+//      Cddaar,
+//      Cddadr,
+//      Cdddar,
+//      Cddddr,
       /* Other primitives that are not R5RS */
       Random,
       Error
@@ -239,25 +239,25 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         extends SchemePrimitive[V,A] {
       def call(args: List[V]): MayFail[V, Error] =
         MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
-      def call(arg1: V, arg2: V): MayFail[V, Error] = call(List(arg1, arg2))
-      def call(arg1: (SchemeExp, V), arg2: (SchemeExp, V)): MayFail[V, Error] =
-        call(arg1._2, arg2._2)
-      def call(fexp: SchemeExp, arg1: (SchemeExp, V), arg2: (SchemeExp, V)): MayFail[V, Error] =
-        call(arg1, arg2)
+      def call2(arg1: V, arg2: V): MayFail[V, Error] = call(List(arg1, arg2))
+      def call2(arg1: (Identity.Position, V), arg2: (Identity.Position, V)): MayFail[V, Error] =
+        call2(arg1._2, arg2._2)
+      def call2pos(fexp: Identity.Position, arg1: (Identity.Position, V), arg2: (Identity.Position, V)): MayFail[V, Error] =
+        call2(arg1, arg2)
       def call(arg: V): MayFail[V, Error]                               = call(List(arg))
-      def call(arg: (SchemeExp, V)): MayFail[V, Error]                  = call(arg._2)
-      def call(fexp: SchemeExp, arg: (SchemeExp, V)): MayFail[V, Error] = call(arg)
+      def call(arg: (Identity.Position, V)): MayFail[V, Error]                  = call(arg._2)
+      def call1pos(fexp: Identity.Position, arg: (Identity.Position, V)): MayFail[V, Error] = call(arg)
       def call(): MayFail[V, Error]                                     = call(List())
       def call(
-          fexp: SchemeExp,
-          args: List[(SchemeExp, V)],
+          callPos: Identity.Position, originPos: Identity.Position,
+          args: List[(Identity.Position, V)],
           store: Store[A, V],
           alloc: SchemeAllocator[A]
       ): MayFail[(V, Store[A, V]), Error] =
         (args match {
           case Nil           => call()
-          case x :: Nil      => call(fexp, x)
-          case x :: y :: Nil => call(fexp, x, y)
+          case x :: Nil      => call1pos(callPos, x)
+          case x :: y :: Nil => call2pos(callPos, x, y)
           case _             => call(args.map({ case (_, v) => v }))
         }).map(v => (v, store))
     }
@@ -271,28 +271,28 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       def call(arg1: V, arg2: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error] =
         call(List(arg1, arg2), store)
       def call(
-          fexp: SchemeExp,
-          arg1: (SchemeExp, V),
-          arg2: (SchemeExp, V),
+          fexp: Identity.Position,
+          arg1: (Identity.Position, V),
+          arg2: (Identity.Position, V),
           store: Store[A, V]
       ): MayFail[(V, Store[A, V]), Error] =
         call(arg1._2, arg2._2, store)
       def call(
-          fexp: SchemeExp,
-          arg: (SchemeExp, V),
+          fexp: Identity.Position,
+          arg: (Identity.Position, V),
           store: Store[A, V]
       ): MayFail[(V, Store[A, V]), Error] =
         call(arg._2, store)
       def call(store: Store[A, V]): MayFail[(V, Store[A, V]), Error] = call(List(), store)
       def call(
-          fexp: SchemeExp,
-          args: List[(SchemeExp, V)],
+          callPos: Identity.Position, originPos: Identity.Position,
+          args: List[(Identity.Position, V)],
           store: Store[A, V],
           alloc: SchemeAllocator[A]
       ): MayFail[(V, Store[A, V]), Error] = args match {
         case Nil           => call(store)
-        case x :: Nil      => call(fexp, x, store)
-        case x :: y :: Nil => call(fexp, x, y, store)
+        case x :: Nil      => call(callPos, x, store)
+        case x :: y :: Nil => call(callPos, x, y, store)
         case _             => call(args.map({ case (_, v) => v }), store)
       }
     }
@@ -310,7 +310,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       // - a mapping from arguments to call components
       def callFor(args: Args): Call
       // - a function to compute the initial arguments from the primitive input
-      def initialArgs(fexp: SchemeExp, argsWithExps: List[(SchemeExp, V)]): Option[Args]
+      def initialArgs(fexp: Identity.Position, argsWithExps: List[(Identity.Position, V)]): Option[Args]
       // - a function for updating the arguments when upon a new call to a 'call'
       def updateArgs(oldArgs: Args, newArgs: Args): Args
       // - (optional) a function for updating the result of a function call
@@ -318,8 +318,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       // - a function to execute a single 'call' with given arguments
       def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
-      def call(fexp: SchemeExp,
-               argsWithExps: List[(SchemeExp, V)],
+      def call(fexp: Identity.Position,
+               argsWithExps: List[(Identity.Position, V)],
                store: Store[A,V],
                alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
         // determine the initial args & call from the primitive input
@@ -378,8 +378,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       // Executes a single call with given arguments.
       def callWithArgs(args: Args, cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
-      def call(fexp: SchemeExp,
-               argsWithExps: List[(SchemeExp, V)],
+      def call(fexp: Identity.Position,
+               argsWithExps: List[(Identity.Position, V)],
                store: Store[A,V],
                alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
         // determine the initial args & call from the primitive input
@@ -426,8 +426,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       // XXX: Maybe the store is not needed, because it is a mutable store. We may have a performance hit because of that.
       def callWithArgs(args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[(V, Store[A,V]),Error]
 
-      def call(fexp: SchemeExp,
-               argsWithExps: List[(SchemeExp, V)],
+      def call(fexp: Identity.Position,
+               argsWithExps: List[(Identity.Position, V)],
                store: Store[A,V],
                alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
         // determine the initial args & call from the primitive input
@@ -675,7 +675,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
     object Quotient extends NoStoreOperation("quotient", Some(2)) {
-      override def call(x: V, y: V) = quotient(x, y)
+      override def call2(x: V, y: V) = quotient(x, y)
     }
 
     object Expt extends NoStoreOperation("expt") {
@@ -696,15 +696,15 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           }
         }
       }
-      override def call(x: V, y: V) = expt(x, y, Set()).result
+      override def call2(x: V, y: V) = expt(x, y, Set()).result
     }
 
     object LessThan extends NoStoreOperation("<", Some(2)) {
-      override def call(x: V, y: V) =
+      override def call2(x: V, y: V) =
         lt(x, y) /* TODO[easy]: < should accept any number of arguments (same for <= etc.) */
     }
     object LessOrEqual extends NoStoreOperation("<=", Some(2)) {
-      override def call(x: V, y: V) = (or _)(lt(x, y), numEq(x, y)) /*for {
+      override def call2(x: V, y: V) = (or _)(lt(x, y), numEq(x, y)) /*for {
         ltres <- lt(x, y)
         eqres <- numEq(x, y)
       } yield or(ltres, eqres) */
@@ -725,16 +725,16 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
     object GreaterThan extends NoStoreOperation(">", Some(2)) {
-      override def call(x: V, y: V) = not(LessOrEqual.call(x, y))
+      override def call2(x: V, y: V) = not(LessOrEqual.call2(x, y))
     }
     object GreaterOrEqual extends NoStoreOperation(">=", Some(2)) {
-      override def call(x: V, y: V) = not(LessThan.call(x, y))
+      override def call2(x: V, y: V) = not(LessThan.call2(x, y))
     }
     object Modulo extends NoStoreOperation("modulo", Some(2)) {
-      override def call(x: V, y: V) = modulo(x, y)
+      override def call2(x: V, y: V) = modulo(x, y)
     }
     object Remainder extends NoStoreOperation("remainder", Some(2)) {
-      override def call(x: V, y: V) = remainder(x, y)
+      override def call2(x: V, y: V) = remainder(x, y)
     }
     object Random extends NoStoreOperation("random", Some(1)) {
       override def call(x: V) = random(x)
@@ -771,7 +771,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     }
     object Sqrt extends NoStoreOperation("sqrt", Some(1)) {
       override def call(x: V) =
-        ifThenElse(LessOrEqual.call(number(0), x)) {
+        ifThenElse(LessOrEqual.call2(number(0), x)) {
           /* n >= 0 */
           for {
             r          <- sqrt(x)
@@ -883,14 +883,14 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       override def call(x: V, y: V) = gcd(x, y, Set()).result
     }
     */
-    object Gcd extends SimpleFixpointPrimitive("gcd", Some(2)) {
+/*    object Gcd extends SimpleFixpointPrimitive("gcd", Some(2)) {
       def callWithArgs(args: Args, gcd: Args => MayFail[V, Error]): MayFail[V, Error] = {
         val a :: b :: Nil = args
         ifThenElse(numEq(b, number(0))) { a } {
           modulo(a, b) >>= (amodb => gcd(List(b, amodb)))
         }
       }
-    }
+    }*/
 
     object Nullp extends NoStoreOperation("null?", Some(1)) {
       override def call(x: V) = isNull(x)
@@ -942,7 +942,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         } yield (and(ispointer, isvector), store)
     }
     object Eq extends NoStoreOperation("eq?", Some(2)) {
-      override def call(x: V, y: V) = eqq(x, y)
+      override def call2(x: V, y: V) = eqq(x, y)
     }
     object Not extends NoStoreOperation("not", Some(1)) {
       override def call(x: V) = not(x)
@@ -969,7 +969,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
     object StringLt extends NoStoreOperation("string<?", Some(2)) {
-      override def call(x: V, y: V) = stringLt(x, y)
+      override def call2(x: V, y: V) = stringLt(x, y)
     }
     object StringLength extends NoStoreOperation("string-length", Some(1)) {
       override def call(x: V) = stringLength(x)
@@ -990,15 +990,15 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
     object Error extends NoStoreOperation("error", Some(1)) {
-      override def call(fexp: SchemeExp, x: (SchemeExp, V)) =
+      override def call1pos(fexp: Identity.Position, x: (Identity.Position, V)) =
         MayFail.failure(UserError(x._2.toString))
     }
 
     object Cons extends SchemePrimitive[V,A] {
       val name = "cons"
-      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
+      def call(callPos: Identity.Position, originPos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val consa = alloc.pointer(fexp)
+          val consa = alloc.pointer((callPos, originPos))
           (pointer(consa), store.extend(consa, cons(car, cdr)))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
@@ -1181,10 +1181,10 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
               0
               (+ 1 (length (cdr l)))))
     */
-    object Length extends FixpointPrimitiveUsingStore("length",Some(1)) {
+/*    object Length extends FixpointPrimitiveUsingStore("length",Some(1)) {
       /** the argument to length is just the current pair */
       type Args = V
-      def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
+      def initialArgs(fexp: Identity.Position, args: List[(Identity.Position, V)]) = args match {
         case (_, arg) :: Nil  => Some(arg)
         case _                => None
       }
@@ -1212,17 +1212,17 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           MayFail.failure(PrimitiveNotApplicable("length", List(l)))
         }
     }
-
+ */
     /** (define (append l1 l2)
           (if (null? l1)
               l2
               (cons (car l1)
                     (append (cdr l1) l2))))
     */
-    object Append extends FixpointPrimitiveUsingStore("append", Some(2)) {
+/*    object Append extends FixpointPrimitiveUsingStore("append", Some(2)) {
       /** the arguments to append are the two given input arguments + the 'append expression' and 'the current index' into the list (used for allocation) */
-      type Args = (V,V,SchemeExp,Int)
-      def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
+      type Args = (V,V,Identity.Position,Int)
+      def initialArgs(fexp: Identity.Position, args: List[(Identity.Position, V)]) = args match {
         case (_, l1) :: (_, l2) :: Nil  => Some((l1, l2, fexp, 0))
         case _                          => None
       }
@@ -1256,7 +1256,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
             MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
           }
       }
-    }
+    }*/
 
     /** (define list (lambda args
           (if (null? args)
@@ -1266,14 +1266,14 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
               args))))
       */
     object ListPrim extends StoreOperation("list", None) {
-      override def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) =
+      override def call(callPos: Identity.Position, originPos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) =
         args match {
           case Nil => (nil, store)
           case (exp, v) :: rest =>
             for {
-              (restv, store2) <- call(fexp, rest, store, alloc)
+              (restv, store2) <- call(callPos, originPos, rest, store, alloc)
               consv  = cons(v, restv)
-              consa  = alloc.pointer(exp)
+              consa  = alloc.pointer((exp, originPos))
               store3 = store2.extend(consa, consv)
             } yield (pointer(consa), store3)
         }
@@ -1409,7 +1409,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           "member",
           (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1)
         )
-    object Memq extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
+    object Memq extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => Eq.call2(x, y))
 
     abstract class AssocLike(
         override val name: String,
@@ -1465,16 +1465,16 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           "assoc",
           (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1)
         )
-    object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
+    object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call2(x, y))
 
     object MakeVector extends SchemePrimitive[V,A] {
       val name = "make-vector"
-      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
+      def call(callPos: Identity.Position, originPos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
         def createVec(size: V, init: V): MayFail[(V, Store[A, V]), Error] = {
           isInteger(size) >>= (
               isint =>
                 if (isTrue(isint)) {
-                  val veca = alloc.pointer(fexp)
+                  val veca = alloc.pointer((callPos, originPos))
                   vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
                 } else {
                   MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
@@ -1491,8 +1491,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
     object Vector extends SchemePrimitive[V,A] {
       val name = "vector"
-      def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
-        val veca = alloc.pointer(fexp)
+      def call(callPos: Identity.Position, originPos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
+        val veca = alloc.pointer((callPos, originPos))
         vector(number(args.size), bottom) >>= (
             emptyvec =>
               args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))(

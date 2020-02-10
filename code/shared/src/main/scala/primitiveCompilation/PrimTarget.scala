@@ -1,9 +1,11 @@
 package scalaam.primitiveCompilation
 
+import scalaam.core._
+
 object PrimTarget {
 
-  case class Args(args: Array[AExp]) {
-    override def toString: String = "(" ++ args.map(_.toString).mkString(", ") ++ ")"
+  case class Args(args: Array[(AExp, Identity.Position)]) {
+    override def toString: String = "(" ++ args.map(_._1.toString).mkString(", ") ++ ")"
   }
 
   sealed trait Exp {
@@ -19,10 +21,10 @@ object PrimTarget {
   case class Fail() extends Exp {
     def print(i: Int): String = indent(i) ++ "MayFail.Failure"
   }
-  case class PrimCall(prim: Exp, args: Args, rec: Boolean) extends Exp {
+  case class PrimCall(prim: Exp, args: Args, rec: Boolean, pos: Identity.Position) extends Exp {
     def print(i: Int): String = if (rec) indent(i) ++ prim.toString ++ "(List" ++ args.toString ++")" else indent(i) ++ prim.toString ++ args.toString
   }
-  case class OpCall(op: PrimOp, args: Args) extends Exp {
+  case class OpCall(op: PrimOp, args: Args, pos: Identity.Position) extends Exp {
     def print(i: Int): String = indent(i) ++ op.toString ++ args.toString
   }
   case class Lat(l: LExp) extends Exp {
