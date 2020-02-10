@@ -1,5 +1,9 @@
 package scalaam.primitiveCompilation
 
+import scalaam.core.{Expression, Identifier, Identity}
+import scalaam.language.scheme.{SchemeBegin, SchemeExp, SchemeParser, SchemeVar}
+import util.FileUtil
+
 object Primitives {
   val primitives = Map(
     // "*" is a primop
@@ -146,4 +150,33 @@ object Primitives {
     "cdddar" -> "(define (cdddar x) (cdr (cdr (cdr (car x)))))",
     "cddddr" -> "(define (cddddr x) (cdr (cdr (cdr (cdr x)))))",
     )
+
+  val names: Set[String] = primitives.keySet
+
+  def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(SchemeParser.parse(src))).mkString("\n\n")
+
+  // Chooses which functions to append to the beginning of a file by over-approximation. Avoids having to attach the entire prelude.
+  def addPrelude(exp: SchemeExp): SchemeExp = {
+    var identifiers: Set[String] = Set()
+    var work: List[Expression] = List(exp)
+
+    while (work.nonEmpty) {
+      val hd :: tl = work
+      work = tl
+      hd match {
+          case Identifier(name, _) if names.contains(name) => identifiers = identifiers + name
+          case e => work = e.subexpressions ::: work
+      }
+    }
+    SchemeBegin(identifiers.iterator.map(name => SchemeParser.parse(primitives(name))).toList ::: List(exp), Identity.none)
+  }
+
+  // Parses a file and automatically adds the required prelude (over-approximated).
+  def parseWithPrelude(path: String): SchemeExp = addPrelude(SchemeParser.parse(FileUtil.loadFile(path)))
+}
+
+object T extends App {
+  import Primitives._
+
+    println(parseWithPrelude("test/gabriel/puzzle.scm"))
 }
