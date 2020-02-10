@@ -46,11 +46,14 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
 
   // Map static modules to dynamic components.
   @mutable var mMap: Map[Module, Set[Component]] = Map()
+  // Map static modules to their corresponding expression. TODO is this map useful?
+  @mutable var eMap: Map[Module, Expr] = Map()
 
   trait IntraAnalysis extends super.IntraAnalysis {
     override def spawn(cmp: Component): Unit = {
       super.spawn(cmp)
       mMap = mMap + (cmp.module -> (mMap(cmp.module) + cmp))
+      if (!eMap.contains(cmp.module)) eMap = eMap + (cmp.module -> componentExpression(cmp)) // If test can be removed if needed.
     }
   }
 
@@ -64,16 +67,17 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
 
     // TODO: here, the change distiller should be run (after the program has been lexically addressed).
 
-    updateAnalysis(newProgram, ???, ???, timeout)
+    updateAnalysis(newProgram, ???, ???, ???, timeout)
   }
 
-  private def updateAnalysis(newProgram:      Expr,
-                             moduleDelta:     Map[Module, Option[(Module, Expr)]],
-                             modifiedModules: Set[Module],
-                             timeout:         Timeout.T): Unit = {
+  private def updateAnalysis(newProgram:      Expr,                                // The new version of the program.
+                             moduleDelta:     Map[Module, Option[(Module, Expr)]], // Maps old modules to updated ones (if present).
+                             modifiedModules: Set[Module],                         // The set of modules to be reanalysed. TODO can we determine this here?
+                             newIdentities:   Map[Identity, Option[Identity]],     // Maps old identities to new ones (if present).
+                             timeout:         Timeout.T): Unit = {                 // A timeout for the reanalysis
 
     // Update the ComponentData for all components.
-    updateState(moduleDelta)
+    updateState(moduleDelta, newIdentities)
     // Look which components need reanalysis.
     val toUpdate = computeWork(modifiedModules)
     // Perform the actual reanalysis. We can make use of the visited set and all data from the previous analysis that are still present.
@@ -85,16 +89,18 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
    * Updates the state of the analysis, including all components.
    * @param moduleDelta A map of old modules to corresponding new expressions of the module (if a corresponding module exist).
    */
-  private def updateState(moduleDelta: Map[Module, Option[(Module, Expr)]]): Unit = {
+  private def updateState(moduleDelta: Map[Module, Option[(Module, Expr)]], newIdentities: Map[Identity, Option[Identity]]): Unit = {
     /* This function updates the internal state of the analysis to account for updates to modules/components.
-       The following should be updated:
-        * ComponentData
-        * Lexical addresses ("environment") to account for the new identities of identifiers.
-       The following should not be updated (mostly due to the component indirection):
-        * Effects (only contain addresses).
-        * Addresses (contain component pointers so automatically ok).
-        * The dependency map (contains component pointers).
+       In the following parts, expressions should be updated:
+        * ComponentData of components,
+        * The "prog" variable,
+        * Local Addresses.
+       In the following parts, identities should be updated:
+        * Lexical addresses ("environment") to account for the new identities of identifiers,
+        * Effects (contain addresses),
         * The store (maps addresses to values).
+       The following should not be updated (mostly due to the component indirection):
+        * The dependency map (contains component pointers),
         * The MainComponent (ok if the variable "program" is updated).
 
        IMPORTANT
@@ -107,13 +113,15 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
        TODO: How is identity information related to the identity of components? Should this identity information be updated everywhere to make components identical?
             --> Partially: although a component indirection is used, component duplication may appear if component expressions are not updated.
        TODO: How to handle changes of scope? Does it suffice to just update the parent pointer?
+       TODO: Is it easier to change the data structures to account for new identities or to change the expression to contain the old identities?
 
        --
 
        State corresponding to no longer existing modules can be removed. This should avoid spurious computations for modules/components that are no longer in the program.
     */
+
     allComponents.foreach(c => moduleDelta(c.module).map(m => updateComponent(c, m._2)))
-    // TODO: update env.
+    updateIdentities(newIdentities)
 
     // All modules for which no updated version is available.
     val removedModules: Set[Module] = moduleDelta.filter(_._2.isEmpty).keySet
@@ -148,4 +156,12 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
    * Since an indirection is used, the corresponding internal data structures should be updated.
    */
   def updateComponent(c: Component, exp: Expr): Unit
+
+  /** Returns the lambda expression of the given component. */
+  def componentExpression(c : Component): Expr
+
+  /**
+   * Updates all identities in the analysis' data structures to correspond with the identities assigned to the new AST.
+   */
+  def updateIdentities(newIdentities: Map[Identity, Option[Identity]]): Unit = {}
 }

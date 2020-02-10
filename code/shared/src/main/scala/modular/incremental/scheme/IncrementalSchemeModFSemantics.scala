@@ -1,5 +1,6 @@
 package scalaam.modular.incremental.scheme
 
+import scalaam.core._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
 import scalaam.modular.scheme.SchemeModFSemantics
@@ -43,5 +44,16 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
         case e: SchemeLambdaExp => update(newComponent((e, parent), nam, ctx), cmpPtr)
         case _ => throw new Exception("A module must contain a lambda expression.")
       }
+  }
+
+  def componentExpression(cmpPtr: Component): SchemeExp = deref(cmpPtr) match {
+    case Main => program
+    case Call((exp, _), _, _) => exp
+  }
+
+  def updateLocalAddress(addr: LocalAddr, newIdentities: Map[Identity, Option[Identity]]): Option[LocalAddr] = addr match {
+    case VarAddr(id) => newIdentities(id.idn).map(idn => VarAddr(id.copy(idn = idn)))
+    case PtrAddr(e, c) => ??? // TODO: update expressions
+    case addr => Some(addr)
   }
 }
