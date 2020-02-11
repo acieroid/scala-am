@@ -5,7 +5,7 @@ import scalaam.core._
 object PrimTarget {
 
   case class Args(args: Array[(AExp, Identity.Position)]) {
-    override def toString: String = "(" ++ args.map(_.toString).mkString(", ") ++ ")"
+    override def toString: String = "(" ++ args.map(_._1.toString).mkString(", ") ++ ")"
   }
 
   sealed trait Exp {
@@ -25,13 +25,13 @@ object PrimTarget {
     def print(i: Int): String = (rec, sto) match {
       case (true, false)  => indent(i) ++ prim.toString ++ "(List" ++ args.toString ++")"
       case (false, false) => indent(i) ++ prim.toString ++ args.toString
-      case (_, true)   => s"${indent(i)}$prim.call($pos, originPos, (List $args), alloc)"
-      //case (false, true)  => s"${indent(i)}$prim.call($pos, originPos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala).
+      case (_, true)   => s"${indent(i)}$prim.call(fpos, $pos, (List $args), alloc)"
+      //case (false, true)  => s"${indent(i)}$prim.call(fpos, $pos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala).
     }
   }
   case class OpCall(op: PrimOp, args: Args, pos: Identity.Position) extends Exp {
     def print(i: Int): String =
-      s"${indent(i)}$op.call($pos, originPos, $args, alloc)"
+      s"${indent(i)}$op.call($args, alloc)"
   }
   case class Lat(l: LExp) extends Exp {
     def print(i: Int): String = indent(i) ++ l.toString }
