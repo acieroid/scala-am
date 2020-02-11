@@ -25,4 +25,5 @@ object PrimitiveOperations {
   val    ops: List[PrimOp] = List(NumEq, NumPlus, And, Or, Null, Cons, Car, Cdr, Vector, VectRef, VectSet)
   val opNams: List[String] = ops.map(_.name)
   val storeOps: List[PrimOp] = List(Null, Cons, Car, Cdr, Vector, VectRef, VectSet)
+  val stoNams: List[String] = storeOps.map(_.name)
 }

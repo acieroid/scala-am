@@ -421,8 +421,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
     // Simpler than FixpointPrimitiveUsingStore BUT allows callWithArgs to return a modified store...
     abstract class SimpleFixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
-      type Args = (List[V], Identity.Position) // Args now contains the position of the call!
-      type Argv =  List[V]
+      type Args = List[V]
 
       // Executes a single call with given arguments.
       //def callWithArgs(prim: Identity.Position, args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[(V, Store[A,V]),Error] // MUTABLE STORE (REPLACED)
@@ -434,16 +433,14 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
                alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
         // determine the initial args & call from the primitive input
         val initArgs = arity match {
-          case Some(a) if argsWithExps.length == a =>
-            (argsWithExps.map(_._2), fpos)
-          case None =>
-            return MayFail.failure(PrimitiveArityError(name,arity.getOrElse(-1),argsWithExps.length))
+          case Some(a) if argsWithExps.length == a => argsWithExps.map(_._2)
+          case None => return MayFail.failure(PrimitiveArityError(name, arity.getOrElse(-1), argsWithExps.length))
         }
         // for every call, keep track of the arguments
         // keep track of results for "visited" arguments
         var cache = Map[Args,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
         // keep track of which calls depend on which other calls, independently of the position of the calls!
-        var deps = Map[Argv,Set[Args]]().withDefaultValue(Set())
+        var deps = Map[Args,Set[Args]]().withDefaultValue(Set())
         // standard worklist algorithm
         var worklist = Set(initArgs)
         //var curStore = store // MUTABLE STORE (UNNECESSARY)
@@ -453,7 +450,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           worklist = worklist - nextArgs
           // call with the next arguments
           val res = callWithArgs(fpos, nextArgs, store, args => {
-            deps += (args._1 -> (deps(args._1) + nextArgs))
+            deps += (args -> (deps(args) + nextArgs))
             if (cache.get(args).isEmpty) worklist = worklist + args
             cache(args)
           })
@@ -463,7 +460,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           //val updatedValue = mfMon.append(oldValue, res >>= {case (vl, store) => curStore = store ; vl}) // MUTABLE STORE (REPLACED)
           if (updatedValue != oldValue) {
             cache += (nextArgs -> updatedValue)
-            worklist ++= deps(nextArgs._1)
+            worklist ++= deps(nextArgs)
           }
         }
         cache(initArgs).map((_, store))

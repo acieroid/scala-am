@@ -6,6 +6,7 @@ object PrimTarget {
 
   case class Args(args: Array[(AExp, Identity.Position)]) {
     override def toString: String = "(" ++ args.map(_._1.toString).mkString(", ") ++ ")"
+    def splicedString: String = args.map(_._1.toString).mkString(", ")
   }
 
   sealed trait Exp {
@@ -23,15 +24,14 @@ object PrimTarget {
   }
   case class PrimCall(prim: Exp, args: Args, rec: Boolean, sto: Boolean, pos: Identity.Position) extends Exp {
     def print(i: Int): String = (rec, sto) match {
-      case (true, false)  => indent(i) ++ prim.toString ++ "(List" ++ args.toString ++")"
+      case (true, false)  => indent(i) ++ prim.toString ++ "(List" ++ args.toString ++ ")"
       case (false, false) => indent(i) ++ prim.toString ++ args.toString
-      case (_, true)   => s"${indent(i)}$prim.call(fpos, $pos, (List $args), alloc)"
+      case (_, true)   => s"${indent(i)}$prim.call(fpos, $pos, List$args, alloc)"
       //case (false, true)  => s"${indent(i)}$prim.call(fpos, $pos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala).
     }
   }
   case class OpCall(op: PrimOp, args: Args, pos: Identity.Position) extends Exp {
-    def print(i: Int): String =
-      s"${indent(i)}$op.call($args, alloc)"
+    def print(i: Int): String = if (PrimitiveOperations.stoNams.contains(op.name)) s"${indent(i)}$op.call(fpos, $pos, ${args.splicedString}, alloc)" else s"${indent(i)}$op.call$args"
   }
   case class Lat(l: LExp) extends Exp {
     def print(i: Int): String = indent(i) ++ l.toString }

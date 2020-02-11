@@ -7,10 +7,10 @@ import scalaam.language.scheme._
 import scalaam.language.sexp._
 
 object Test extends App {
-  val program = "(define (length l) (let ((n (null? l))) (if n 0 (let ((c (cdr l))) (let ((len (length c))) (+ 1 len))))))"
+  val program1 = "(define (length l) (let ((n (null? l))) (if n 0 (let ((c (cdr l))) (let ((len (length c))) (+ 1 len))))))"
   val program2 = "(define (length l) (if (null? l) 0 (+ 1 (length (cdr l)))))"
   val program3 = "(define (gcd a b)(let ((null (= b 0))) (if null a (let ((mod (modulo a b))) (gcd b mod)))))"
-  val text = SchemeParser.parse(program3)
+  val text = SchemeParser.parse(program1)
   println(PrimCompiler.compile(text))
 }
 
@@ -59,7 +59,7 @@ object PrimCompiler {
             rec = true
             PrimSource.PrimCall(prim, argv, true, fc.idn.pos)
           case AE(PrimSource.Var(Id(name))) if PrimitiveOperations.opNams.contains(name) =>
-            if (PrimitiveOperations.storeOps.contains(name)) sto = true // TODO is this list sufficient?
+            if (PrimitiveOperations.stoNams.contains(name)) sto = true // TODO is this list sufficient?
             PrimSource.OpCall(PrimitiveOperations.ops.find(_.name == name).get, argv, fc.idn.pos)
           case prim => PrimSource.PrimCall(prim, argv, false, fc.idn.pos)
         }
@@ -155,11 +155,12 @@ ${tar._1.print(4)}
 }"""
     def recursiveWithStore: String =
 s"""object ${name.capitalize} extends SimpleFixpointPrimitiveUsingStore("$name", Some(${args.length})) {
-  private def appl(fpos: Identity.Position, args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = {
-    val (${args.mkString(" :: ")} :: Nil, cpos) = args
+  private def appl(fpos: Identity.Position, args: Args, $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val ${args.mkString(" :: ")} :: Nil = args
 ${tar._1.print(4)}
   }
-  def callWithArgs(fpos: Identity.Position, args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = if (args.length == ${args.length}) appl(fpos, args, $name) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
+  def callWithArgs(fpos: Identity.Position, args: Args, $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == ${args.length}) appl(fpos, args, $name, alloc) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
 }"""
     (rec, sto) match {
       case (true, false)  => recursive
