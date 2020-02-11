@@ -155,12 +155,12 @@ ${tar._1.print(4)}
 }"""
     def recursiveWithStore: String =
 s"""object ${name.capitalize} extends SimpleFixpointPrimitiveUsingStore("$name", Some(${args.length})) {
-  private def appl(fpos: Identity.Position, args: Args, $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
     val ${args.mkString(" :: ")} :: Nil = args
 ${tar._1.print(4)}
   }
-  def callWithArgs(fpos: Identity.Position, args: Args, $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
-    if (args.length == ${args.length}) appl(fpos, args, $name, alloc) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == ${args.length}) appl(fpos, args, store, $name, alloc) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
 }"""
     (rec, sto) match {
       case (true, false)  => recursive
