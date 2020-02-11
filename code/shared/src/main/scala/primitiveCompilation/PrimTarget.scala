@@ -25,8 +25,8 @@ object PrimTarget {
     def print(i: Int): String = (rec, sto) match {
       case (true, false)  => indent(i) ++ prim.toString ++ "(List" ++ args.toString ++")"
       case (false, false) => indent(i) ++ prim.toString ++ args.toString
-      case (true, true)   => s"${indent(i)}$prim.call($pos, originPos, (List $args), alloc)"
-      case (false, true)  => s"${indent(i)}$prim.call($pos, originPos, $args, alloc)"
+      case (_, true)   => s"${indent(i)}$prim.call($pos, originPos, (List $args), alloc)"
+      //case (false, true)  => s"${indent(i)}$prim.call($pos, originPos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala).
     }
   }
   case class OpCall(op: PrimOp, args: Args, pos: Identity.Position) extends Exp {
@@ -59,5 +59,4 @@ object PrimTarget {
   case object Top extends LExp { override def toString: String = "top" } // TODO: This is not needed.
   case class Inj(e: AExp) extends LExp { override def toString: String = e.toString }
   case class Join(l1: LExp, l2: LExp) extends LExp { override def toString: String = s"join($l1, $l2)"}
-
 }

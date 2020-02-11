@@ -153,11 +153,19 @@ ${tar._1.print(4)}
   }
   def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args, $name) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
 }"""
+    def recursiveWithStore: String =
+s"""object ${name.capitalize} extends SimpleFixpointPrimitiveUsingStore("$name", Some(${args.length})) {
+  private def appl(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = {
+    val ${args.mkString(" :: ")} :: Nil = args
+${tar._1.print(4)}
+  }
+  def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args, $name) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
+}"""
     (rec, sto) match {
       case (true, false)  => recursive
       case (false, false) => nonRecursive
-      case (true, true)   => ???
-      case (false, true)  => ???
+      case (_, true)   => recursiveWithStore
+      //case (false, true)  => recursiveWithStore // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimTarget.scala).
     }
   }
 
