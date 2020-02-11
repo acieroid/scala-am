@@ -11,7 +11,12 @@ trait SchemePrimitive[V, A <: Address] extends Primitive {
   def call(fpos: Identity.Position,
            args: List[(Identity.Position, V)],
            store: Store[A, V],
-           alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error]
+           alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] = call(fpos, fpos, args, store, alloc)
+  def call(fpos: Identity.Position,
+           cpos: Identity.Position,
+           args: List[(Identity.Position, V)],
+           store: Store[A, V],
+           alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] = call(fpos, args, store, alloc)
 }
 
 class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
@@ -248,7 +253,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       def call(arg: (Identity.Position, V)): MayFail[V, Error]                  = call(arg._2)
       def call1pos(fpos: Identity.Position, arg: (Identity.Position, V)): MayFail[V, Error] = call(arg)
       def call(): MayFail[V, Error]                                     = call(List())
-      def call(fpos: Identity.Position,
+      override def call(fpos: Identity.Position,
                args: List[(Identity.Position, V)],
                store: Store[A, V],
                alloc: SchemeAllocator[A]
@@ -281,7 +286,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       ): MayFail[(V, Store[A, V]), Error] =
         call(arg._2, store)
       def call(store: Store[A, V]): MayFail[(V, Store[A, V]), Error] = call(List(), store)
-      def call(fpos: Identity.Position,
+      override def call(fpos: Identity.Position,
                args: List[(Identity.Position, V)],
                store: Store[A, V],
                alloc: SchemeAllocator[A]
@@ -314,7 +319,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       // - a function to execute a single 'call' with given arguments
       def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
-      def call(fpos: Identity.Position,
+      override def call(fpos: Identity.Position,
                argsWithExps: List[(Identity.Position, V)],
                store: Store[A,V],
                alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
@@ -374,7 +379,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       // Executes a single call with given arguments.
       def callWithArgs(args: Args, cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
-      def call(fpos: Identity.Position,
+      override def call(fpos: Identity.Position,
                argsWithExps: List[(Identity.Position, V)],
                store: Store[A,V],
                alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
@@ -423,7 +428,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       //def callWithArgs(prim: Identity.Position, args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[(V, Store[A,V]),Error] // MUTABLE STORE (REPLACED)
       def callWithArgs(prim: Identity.Position, args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
-      def call(fpos: Identity.Position,
+      override def call(fpos: Identity.Position,
                argsWithExps: List[(Identity.Position, V)],
                store: Store[A,V],
                alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
@@ -995,9 +1000,9 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
     object Cons extends SchemePrimitive[V,A] {
       val name = "cons"
-      def call(fpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
+      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val consa = alloc.pointer((fpos, fpos))
+          val consa = alloc.pointer((fpos, cpos))
           (pointer(consa), store.extend(consa, cons(car, cdr)))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
@@ -1468,12 +1473,12 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
     object MakeVector extends SchemePrimitive[V,A] {
       val name = "make-vector"
-      def call(fpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
+      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
         def createVec(size: V, init: V): MayFail[(V, Store[A, V]), Error] = {
           isInteger(size) >>= (
               isint =>
                 if (isTrue(isint)) {
-                  val veca = alloc.pointer((fpos, fpos))
+                  val veca = alloc.pointer((fpos, cpos))
                   vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
                 } else {
                   MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
@@ -1490,8 +1495,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
     object Vector extends SchemePrimitive[V,A] {
       val name = "vector"
-      def call(fpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
-        val veca = alloc.pointer((fpos, fpos))
+      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
+        val veca = alloc.pointer((fpos, cpos))
         vector(number(args.size), bottom) >>= (
             emptyvec =>
               args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))(
