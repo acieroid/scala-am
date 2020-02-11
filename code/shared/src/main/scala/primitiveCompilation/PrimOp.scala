@@ -7,8 +7,8 @@ trait PrimOp {
   override def toString = name.toString
 }
 
-case object NumEq   extends PrimOp { val arity = 2; val name = "="; override def toString: String = "numEq" }
-case object NumPlus extends PrimOp { val arity = 2; val name = "+"; override def toString: String = "numPlus" }
+case object NumEq   extends PrimOp { val arity = -1; val name = "="; override def toString: String = "NumEq" }
+case object NumPlus extends PrimOp { val arity = -1; val name = "+"; override def toString: String = "Plus" }
 
 case object And     extends PrimOp { val arity = 2; val name = "and"; override def toString: String = "And"}
 case object Or      extends PrimOp { val arity = 2; val name = "or"; override def toString: String = "Or"}
@@ -24,7 +24,7 @@ case object VectSet extends PrimOp { val arity = 3; val name = "vector-set!"; ov
 object PrimitiveOperations {
   val    ops: List[PrimOp] = List(NumEq, NumPlus, And, Or, Null, Cons, Car, Cdr, Vector, VectRef, VectSet)
   val opNams: List[String] = ops.map(_.name)
-  val storeOps: List[PrimOp] = List(Null, Cons, Car, Cdr, Vector, VectRef, VectSet)
+  val storeOps: List[PrimOp] = List(Cons, Car, Cdr, Vector, VectRef, VectSet)
   val stoNams: List[String] = storeOps.map(_.name)
   val allocOps: List[PrimOp] = List(Cons, Vector)
   val alcNams: List[String] = allocOps.map(_.name)

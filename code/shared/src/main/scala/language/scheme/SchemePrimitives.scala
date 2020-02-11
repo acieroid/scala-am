@@ -425,7 +425,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
       // Executes a single call with given arguments.
       //def callWithArgs(prim: Identity.Position, args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[(V, Store[A,V]),Error] // MUTABLE STORE (REPLACED)
-      def callWithArgs(prim: Identity.Position, args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
+      def callWithArgs(prim: Identity.Position, args: Args, store: Store[A,V], cache: Args => MayFail[V,Error], alloc: SchemeAllocator[A]): MayFail[V,Error]
 
       override def call(fpos: Identity.Position,
                argsWithExps: List[(Identity.Position, V)],
@@ -453,7 +453,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
             deps += (args -> (deps(args) + nextArgs))
             if (cache.get(args).isEmpty) worklist = worklist + args
             cache(args)
-          })
+          }, alloc)
           // update the cache, worklist and store
           val oldValue = cache(nextArgs)
           val updatedValue = mfMon.append(oldValue, res)

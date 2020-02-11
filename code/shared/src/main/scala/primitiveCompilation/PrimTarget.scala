@@ -26,7 +26,7 @@ object PrimTarget {
     def print(i: Int): String = (rec, sto) match {
       case (true, false)  => indent(i) ++ prim.toString ++ "(List" ++ args.toString ++ ")"
       case (false, false) => indent(i) ++ prim.toString ++ args.toString
-      case (_, true)      => s"${indent(i)}$prim.call(fpos, $pos, List$args, alloc)"
+      case (_, true)      => s"${indent(i)}$prim(List$args)" // s"${indent(i)}$prim.call(fpos, $pos, List$args, alloc)"
       //case (false, true)  => s"${indent(i)}$prim.call(fpos, $pos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala).
     }
   }
@@ -34,7 +34,8 @@ object PrimTarget {
     def print(i: Int): String = (PrimitiveOperations.alcNams.contains(op.name), PrimitiveOperations.stoNams.contains(op.name)) match {
       case (true, true) => s"${indent(i)}$op.call(fpos, $pos, List$args, store, alloc)"
       case (true, false) => throw new Exception("A primitive operation without access to the store cannot perform allocations. Illegal state.")
-      case (false, true) => s"${indent(i)}$op.call(${args.splicedString}, store)" // TODO: can we assume only one argument here?
+      case (false, true) => s"${indent(i)}$op.call(${args.splicedString}, store).map(_._1)" // TODO: can we assume only one argument here? // Map needed because store must not be propagated further.
+      case (false, false) if op.arity == -1 => s"${indent(i)}$op.call(List$args)"
       case (false, false) => s"${indent(i)}$op.call$args"
     }
   }

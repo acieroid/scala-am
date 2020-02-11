@@ -10,8 +10,9 @@ object Test extends App {
   val program1 = "(define (length l) (let ((n (null? l))) (if n 0 (let ((c (cdr l))) (let ((len (length c))) (+ 1 len))))))"
   val program2 = "(define (length l) (if (null? l) 0 (+ 1 (length (cdr l)))))"
   val program3 = "(define (gcd a b)(let ((null (= b 0))) (if null a (let ((mod (modulo a b))) (gcd b mod)))))"
-  val text = SchemeParser.parse(program1)
-  println(PrimCompiler.compile(text))
+  println(PrimCompiler.compile(SchemeParser.parse(program1)))
+  println(PrimCompiler.compile(SchemeParser.parse(program3)))
+
 }
 
 object PrimCompiler {
@@ -143,7 +144,7 @@ s"""object ${name.capitalize} extends NoStoreOperation("$name", Some(${args.leng
     val ${args.mkString(" :: ")} :: Nil = args
 ${tar._1.print(4)}
   }
-  override def call(args: List[V]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
+  override def call(args: List[V]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args) else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     def recursive: String =
 s"""object ${name.capitalize} extends SimpleFixpointPrimitive("$name", Some(${args.length})) {
@@ -151,7 +152,7 @@ s"""object ${name.capitalize} extends SimpleFixpointPrimitive("$name", Some(${ar
     val ${args.mkString(" :: ")} :: Nil = args
 ${tar._1.print(4)}
   }
-  def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args, $name) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
+  def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args, $name) else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     def recursiveWithStore: String =
 s"""object ${name.capitalize} extends SimpleFixpointPrimitiveUsingStore("$name", Some(${args.length})) {
@@ -160,7 +161,7 @@ s"""object ${name.capitalize} extends SimpleFixpointPrimitiveUsingStore("$name",
 ${tar._1.print(4)}
   }
   def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
-    if (args.length == ${args.length}) appl(fpos, args, store, $name, alloc) else MayFail.failure(PrimitiveArityError($name, ${args.length}, args.length))
+    if (args.length == ${args.length}) appl(fpos, args, store, $name, alloc) else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     (rec, sto) match {
       case (true, false)  => recursive
