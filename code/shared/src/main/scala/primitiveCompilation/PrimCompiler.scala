@@ -9,7 +9,7 @@ import scalaam.language.sexp._
 object Test extends App {
   val program1 = "(define (length l) (let ((n (null? l))) (if n 0 (let ((c (cdr l))) (let ((len (length c))) (+ 1 len))))))"
   val program2 = "(define (length l) (if (null? l) 0 (+ 1 (length (cdr l)))))"
-  val program3 = "(define (gcd a b)(let ((null (= b 0))) (if null a (let ((mod (modulo a b))) (gcd b mod)))))"
+  val program3 = "(define (gcd a b)(let ((nul (= b 0))) (if nul a (let ((mod (modulo a b))) (gcd b mod)))))"
   println(PrimCompiler.compile(SchemeParser.parse(program1)))
   println(PrimCompiler.compile(SchemeParser.parse(program3)))
 
