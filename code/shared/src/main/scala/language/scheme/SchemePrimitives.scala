@@ -423,8 +423,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       type Args = List[V]
 
       // Executes a single call with given arguments.
-      // XXX: Maybe the store is not needed, because it is a mutable store. We may have a performance hit because of that.
-      def callWithArgs(args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[(V, Store[A,V]),Error]
+      //def callWithArgs(args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[(V, Store[A,V]),Error] // MUTABLE STORE (REPLACED)
+      def callWithArgs(args: Args, store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
       def call(fexp: Identity.Position,
                argsWithExps: List[(Identity.Position, V)],
@@ -444,7 +444,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         var deps = Map[Args,Set[Args]]().withDefaultValue(Set())
         // standard worklist algorithm
         var worklist = Set(initArgs)
-        var curStore = store
+        //var curStore = store // MUTABLE STORE (UNNECESSARY)
         while (worklist.nonEmpty) {
           // take the next arguments from the worklist
           val nextArgs = worklist.head
@@ -457,13 +457,15 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           })
           // update the cache, worklist and store
           val oldValue = cache(nextArgs)
-          val updatedValue = mfMon.append(oldValue, res >>= {case (vl, store) => curStore = store ; vl})
+          val updatedValue = mfMon.append(oldValue, res)
+          //val updatedValue = mfMon.append(oldValue, res >>= {case (vl, store) => curStore = store ; vl}) // MUTABLE STORE (REPLACED)
           if (updatedValue != oldValue) {
             cache += (nextArgs -> updatedValue)
             worklist ++= deps(nextArgs)
           }
         }
-        cache(initArgs).map((_, curStore))
+        cache(initArgs).map((_, store))
+        //cache(initArgs).map((_, curStore)) // MUTABLE STORE (REPLACED)
       }
     }
 
