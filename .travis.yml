@@ -18,3 +18,7 @@ jobs:
     - stage: test
       name: "ModF Soundness Tests"
       script: travis_wait 30 sbt "scalaam/testOnly scalaam.test.soundness.*"
+
+branches:
+  only:
+    - master
