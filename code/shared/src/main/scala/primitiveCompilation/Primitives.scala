@@ -189,7 +189,7 @@ object Primitives {
 
   val names: Set[String] = primitives.keySet
 
-  def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(SchemeParser.parse(src))).mkString("\n\n")
+  def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
 
   // Chooses which functions to append to the beginning of a file by over-approximation. Avoids having to attach the entire prelude.
   def addPrelude(exp: SchemeExp): SchemeExp = {
