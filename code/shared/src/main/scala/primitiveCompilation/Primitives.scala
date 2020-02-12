@@ -97,14 +97,13 @@ object Primitives {
             (if (= index 0)
               (car l)
               (list-ref (cdr l) (- index 1))))""",
-    "list-tail" -> """(define list-tail
-                     |  (lambda (x k)
+    "list-tail" -> """(define (list-tail x k)
                      |    (if (zero? k)
                      |        x
-                     |        (list-tail (cdr x) (- k 1)))))""".stripMargin, // Source: R5RS specification
+                     |        (list-tail (cdr x) (- k 1))))""".stripMargin, // Based on definition in R5RS specification.
     "list?" -> "(define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l)))",
     // "log" is a primop
-    "max" -> "(define (max a b) (if (< a b) b a)", // variadic
+    "max" -> "(define (max a b) (if (< a b) b a))", // variadic
     "member" -> """(define (member e l)
           (if (null? l)
             #f
@@ -117,7 +116,7 @@ object Primitives {
             (if (eq? (car l) e)
               l
               (memq e (cdr l)))))""",
-    "min" -> "(define (min a b) (if (< a b) a b)", // variadic
+    "min" -> "(define (min a b) (if (< a b) a b))", // variadic
     // "modulo" is a primop
     "negative?" -> "(define (negative? x) (< x 0))",
     "newline" -> "(define (newline) #f)", // undefined
