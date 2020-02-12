@@ -202,7 +202,7 @@ object Primitives {
       hd match {
           case Identifier(name, _) if names.contains(name) =>
             val exp = SchemeParser.parse(primitives(name))
-            prelude = prelude + ANFCompiler.toANF(exp)
+            prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
           case e => work = e.subexpressions ::: work
       }
