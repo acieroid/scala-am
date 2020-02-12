@@ -30,7 +30,12 @@ object Primitives {
          (if (equal? (caar l) k)
            (car l)
            (assq k (cdr l)))))""",
-    // TODO: assv, like assq but tests key numbers with =
+    "assv" -> """(define (assq k l)
+        (if (null? l)
+          #f
+         (if (eqv? (caar l) k)
+           (car l)
+           (assq k (cdr l)))))""",
     // "atan" is a primop
     // "boolean?" is a primop
     // "car" is a primop
@@ -157,20 +162,27 @@ object Primitives {
 
   // Chooses which functions to append to the beginning of a file by over-approximation. Avoids having to attach the entire prelude.
   def addPrelude(exp: SchemeExp): SchemeExp = {
-    var identifiers: Set[String] = Set()
+    var prelude: Set[SchemeExp] = Set()
     var work: List[Expression] = List(exp)
 
     while (work.nonEmpty) {
       val hd :: tl = work
       work = tl
       hd match {
-          case Identifier(name, _) if names.contains(name) => identifiers = identifiers + name
+          case Identifier(name, _) if names.contains(name) =>
+            val exp = SchemeParser.parse(primitives(name))
+            prelude = prelude + exp
+            work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
           case e => work = e.subexpressions ::: work
       }
     }
-    SchemeBegin(identifiers.iterator.map(name => SchemeParser.parse(primitives(name))).toList ::: List(exp), Identity.none)
+    SchemeBegin(prelude.toList ::: List(exp), Identity.none)
   }
 
   // Parses a file and automatically adds the required prelude (over-approximated).
   def parseWithPrelude(path: String): SchemeExp = addPrelude(SchemeParser.parse(FileUtil.loadFile(path)))
+}
+
+object CompileTest extends App {
+  print(Primitives.scalaSource)
 }
