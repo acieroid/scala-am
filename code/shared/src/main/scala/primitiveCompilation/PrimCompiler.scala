@@ -142,24 +142,21 @@ object PrimCompiler {
     def nonRecursive: String =
 s"""object ${name.capitalize} extends NoStoreOperation("$name", Some(${args.length})) {
   private def appl(args: List[V]): MayFail[V, Error] = {
-    val ${args.mkString(" :: ")} :: Nil = args
-${tar._1.print(4)}
+${if (args.nonEmpty) s"    val ${args.mkString(" :: ")} :: Nil = args\n${tar._1.print(4)}" else tar._1.print(4)}
   }
   override def call(args: List[V]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args) else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     def recursive: String =
 s"""object ${name.capitalize} extends SimpleFixpointPrimitive("$name", Some(${args.length})) {
   private def appl(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = {
-    val ${args.mkString(" :: ")} :: Nil = args
-${tar._1.print(4)}
+${if (args.nonEmpty) s"    val ${args.mkString(" :: ")} :: Nil = args\n${tar._1.print(4)}" else tar._1.print(4)}
   }
   def callWithArgs(args: Args, $name: Args => MayFail[V, Error]): MayFail[V, Error] = if (args.length == ${args.length}) appl(args, $name) else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     def recursiveWithStore: String =
 s"""object ${name.capitalize} extends SimpleFixpointPrimitiveUsingStore("$name", Some(${args.length})) {
   private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
-    val ${args.mkString(" :: ")} :: Nil = args
-${tar._1.print(4)}
+${if (args.nonEmpty) s"    val ${args.mkString(" :: ")} :: Nil = args\n${tar._1.print(4)}" else tar._1.print(4)}
   }
   def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], $name: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
     if (args.length == ${args.length}) appl(fpos, args, store, $name, alloc) else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
