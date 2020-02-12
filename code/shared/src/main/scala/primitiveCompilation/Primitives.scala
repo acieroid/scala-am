@@ -43,7 +43,7 @@ object Primitives {
     // "ceiling" is a primop
     // "char->integer" is a primop
     // "char?" is a primop
-    // "cons" is a primop? TODO maybe not exactly
+    // "cons" is a primop? TODO maybe not exactly (could define in terms of vectors of size 2)
     // "cos" is a primop
     "display" -> "(define (display x) x)", // undefined behavior in R5RS
     // "eq?" is a primop
@@ -54,13 +54,40 @@ object Primitives {
             (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))))""",
     "even?" -> "(define (even? x) (= 0 (modulo x 2)))",
     // "exact->inexact" is a primop
-    // TODO: expt
+    // TODO: expt // TODO isn't this a primot (easier to handle real exponents).
     // TODO: exp
     // "floor" is a primop
     "gcd" -> "(define (gcd a b) (if (= b 0) a (gcd b (modulo a b))))",
     // "inexact->exact" is a primop
     // "integer?" is a primop
-    // TODO: lcm
+    "lcm" -> "(define (lcm m n) (/ (abs (* m n)) (gcd m n)))",
+    /*
+    (define (lcm m n)
+      (define (generate cur prim)
+        (let ((flag #f))
+          (for-each (lambda (p) (set! flag (or flag (= 0 (modulo cur p))))) prim)
+          (if (not flag) ; Found a prime.
+              (cons cur (delay (generate (+ cur 1) (cons cur prim))))
+              (generate (+ cur 1) prim))))
+      (define primes (generate 2 '()))
+      (define (next-prime primes)
+        (force (cdr primes)))
+      (define (factor n)
+        (define (f n div p)
+          (if (= n 1)
+              div
+              (if (= 0 (modulo n (car p)))
+                  (f (/ n (car p)) (cons (car p) div) p)
+                  (f n div (next-prime p)))))
+        (f n '() primes))
+      (let loop ((f1 (factor m))
+                 (f2 (factor n))
+                 (cur 1))
+        (cond ((or (null? f1)(null? f2)) cur)
+              ((= (car f1)(car f2))(loop (cdr f1)(cdr f2)(* cur (car f1))))
+              ((> (car f1)(car f2))(loop (cdr f1) f2 (* cur (car f1))))
+              (else (loop f1 (cdr f2) (* cur (car f2)))))))
+     */
     "length" -> """(define (length l)
           (if (null? l)
               0
@@ -70,7 +97,11 @@ object Primitives {
             (if (= index 0)
               (car l)
               (list-ref (cdr l) (- index 1))))""",
-    // TODO: list-tail
+    "list-tail" -> """(define list-tail
+                     |  (lambda (x k)
+                     |    (if (zero? k)
+                     |        x
+                     |        (list-tail (cdr x) (- k 1)))))""".stripMargin, // Source: R5RS specification
     "list?" -> "(define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l)))",
     // "log" is a primop
     "max" -> "(define (max a b) (if (< a b) b a)", // variadic
