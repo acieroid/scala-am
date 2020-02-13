@@ -14,6 +14,7 @@ trait LatOp {
 case object Boolp   extends LatOp { val arity = 1; val name = "boolean?"; override def toString: String = "Booleanp" }
 case object Charp   extends LatOp { val arity = 1; val name = "char?"; override def toString: String = "Charp" }
 case object Intp    extends LatOp { val arity = 1; val name = "integer?"; override def toString: String = "Integerp" }
+case object Pairp   extends LatOp { val arity = 1; val name = "pair?"; override def toString: String = "Pairp" }
 case object Realp   extends LatOp { val arity = 1; val name = "real?"; override def toString: String = "Realp" }
 case object Stringp extends LatOp { val arity = 1; val name = "string?"; override def toString: String = "Stringp" }
 
@@ -29,9 +30,13 @@ case object Cosinus extends LatOp { val arity = 1; val name = "cos" }
 case object Div     extends LatOp { val arity = -1; val name = "/"; override def toString: String = "Div" }
 case object Even    extends LatOp { val arity = 1; val name = "even?"; override def toString: String = "Evenp" }
 case object Floor   extends LatOp { val arity = 1; val name = "floor" }
-case object Gcd     extends LatOp { val arity = 1; val name = "gcd" }
-case object Lcm     extends LatOp { val arity = 1; val name = "lcm" }
-case object Min     extends LatOp { val arity = -1; val name = "-"; override def toString: String = "Minus" }
+case object Gcd     extends LatOp { val arity = 2; val name = "gcd" }
+case object Lcm     extends LatOp { val arity = 2; val name = "lcm" }
+case object Log     extends LatOp { val arity = 1; val name = "log" }
+case object Max     extends LatOp { val arity = 2; val name = "max" }
+case object Min     extends LatOp { val arity = 2; val name = "min" }
+case object Minus   extends LatOp { val arity = -1; val name = "-"; override def toString: String = "Minus" }
+case object Modulo  extends LatOp { val arity = 2; val name = "modulo" }
 case object Mult    extends LatOp { val arity = -1; val name = "*"; override def toString: String = "Times" }
 case object Odd     extends LatOp { val arity = 1; val name = "odd?"; override def toString: String = "Oddp" }
 case object Plus    extends LatOp { val arity = -1; val name = "+"; override def toString: String = "Plus" }
@@ -41,16 +46,18 @@ case object Tangent extends LatOp { val arity = 1; val name = "tan" }
 case object And     extends LatOp { val arity = 2; val name = "and" }
 case object Or      extends LatOp { val arity = 2; val name = "or" }
 
-case object StrApp  extends LatOp { val arity = 1; val name = "string-append"; override def toString: String = "StringAppend" }
-case object StrEq   extends LatOp { val arity = 1; val name = "string=?"; override def toString: String = "StringEq" }
+case object StrApp  extends LatOp { val arity = 2; val name = "string-append"; override def toString: String = "StringAppend" }
+case object StrEq   extends LatOp { val arity = 2; val name = "string=?"; override def toString: String = "StringEq" }
 case object StrLen  extends LatOp { val arity = 1; val name = "string-length"; override def toString: String = "StringLength" }
-case object StrLt   extends LatOp { val arity = 1; val name = "string<?"; override def toString: String = "StringLt" }
-case object StrRef  extends LatOp { val arity = 1; val name = "string-ref"; override def toString: String = "StringRef" }
+case object StrLt   extends LatOp { val arity = 2; val name = "string<?"; override def toString: String = "StringLt" }
+case object StrRef  extends LatOp { val arity = 2; val name = "string-ref"; override def toString: String = "StringRef" }
 
 case object Append  extends LatOp { val arity = 1; val name = "append" }
 case object Cons    extends LatOp { val arity = 2; val name = "cons" }
 case object Lst     extends LatOp { val arity = -1; val name = "list" }
 case object Null    extends LatOp { val arity = 1; val name = "null?"; override def toString: String = "Nullp" }
+case object LstLen  extends LatOp { val arity = 1; val name = "length" }
+case object LstTail extends LatOp { val arity = 1; val name = "list-tail"; override def toString: String = "LstTail" }
 
 case object Caaaar  extends LatOp { val arity = 1; val name = "caaaar" }
 case object Caaadr  extends LatOp { val arity = 1; val name = "caaadr" }
@@ -83,34 +90,45 @@ case object Cdddr   extends LatOp { val arity = 1; val name = "cdddr" }
 case object Cddr    extends LatOp { val arity = 1; val name = "cddr" }
 case object Cdr     extends LatOp { val arity = 1; val name = "cdr" }
 
-case object Assoc   extends LatOp { val arity = 1; val name = "assoc" }
-case object Assq    extends LatOp { val arity = 1; val name = "assq" }
-case object Assv    extends LatOp { val arity = 1; val name = "assv" }
+case object Assoc   extends LatOp { val arity = 2; val name = "assoc" }
+case object Assq    extends LatOp { val arity = 2; val name = "assq" }
+case object Assv    extends LatOp { val arity = 2; val name = "assv" }
+
+case object Member  extends LatOp { val arity = 2; val name = "member" }
+case object Memq    extends LatOp { val arity = 2; val name = "memq" }
+case object Memv    extends LatOp { val arity = 2; val name = "memv" }
 
 case object Vector  extends LatOp { val arity = -1; val name = "vector" }
 case object VectRef extends LatOp { val arity = 2; val name = "vector-ref"; override def toString: String = "VectorRef" }
 case object VectSet extends LatOp { val arity = 3; val name = "vector-set!"; override def toString: String = "VectorSet" }
 
 case object Eq      extends LatOp { val arity = 2; val name = "eq?" }
-case object Equal   extends LatOp { val arity = 1; val name = "equal?" }
-case object Eqv     extends LatOp { val arity = 1; val name = "eqv?" }
+case object Equal   extends LatOp { val arity = 2; val name = "equal?" }
+case object Eqv     extends LatOp { val arity = 2; val name = "eqv?"; override def toString: String = "Eqv" }
 
 object LatticeOperations {
   val ops: List[LatOp] =
-    List(Intp, Realp,
+    List(Intp, Realp, Pairp,
          NumEq, NumLt, NumGt,
-         Plus, Mult, Min, Div, Cosinus, Sinus, Tangent, Acos, Asin, Atan, Gcd, Lcm, Floor, Ceiling,
+         Plus, Mult, Minus, Div, Cosinus, Sinus, Tangent, Acos, Asin, Atan, Gcd, Lcm, Floor, Ceiling, Log, Max, Min, Modulo,
          Boolp, And, Or,
          Charp,
          Stringp, StrLen, StrApp, StrRef, StrEq, StrLt,
-         Null, Lst, Cons, Car, Cdr, Append,
+         Null, Lst, Cons, Car, Cdr, Append, LstLen, LstTail,
          Caaaar, Caaadr, Caaar, Caadar, Caaddr, Caar, Cadaar, Cadadr, Caddar, Cadr, Car, Caadr, Cadar, Cadddr, Caddr,
          Cdaaar, Cdaadr, Cdaar, Cdadar, Cdaddr, Cdar, Cddaar, Cddadr, Cdddar, Cddr, Cdr, Cdadr, Cddar, Cddddr, Cdddr,
          Assoc, Assq, Assv,
+         Member, Memq, Memv,
          Vector, VectRef, VectSet,
          Eq, Eqv, Equal)
   val opNams: List[String] = ops.map(_.name)
-  val storeOps: List[LatOp] = List(Cons, Car, Cdr, Vector, VectRef, VectSet)
+  val storeOps: List[LatOp] = List(
+    Pairp, Lst, Cons, Car, Cdr, Append, LstLen, LstTail,
+    Caaaar, Caaadr, Caaar, Caadar, Caaddr, Caar, Cadaar, Cadadr, Caddar, Cadr, Car, Caadr, Cadar, Cadddr, Caddr,
+    Cdaaar, Cdaadr, Cdaar, Cdadar, Cdaddr, Cdar, Cddaar, Cddadr, Cdddar, Cddr, Cdr, Cdadr, Cddar, Cddddr, Cdddr,
+    Assoc, Assq, Assv,
+    Member, Memq, Memv,
+    Vector, VectRef, VectSet, Equal)
   val stoNams: List[String] = storeOps.map(_.name)
   val allocOps: List[LatOp] = List(Cons, Vector)
   val alcNams: List[String] = allocOps.map(_.name)

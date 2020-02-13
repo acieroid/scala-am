@@ -1,5 +1,7 @@
 package scalaam.primitiveCompilation
 
+import java.util.regex.Matcher
+
 import scalaam.primitiveCompilation.PrimSource._
 import scalaam.primitiveCompilation.PrimTarget._
 import scalaam.primitiveCompilation.ANFCompiler._
@@ -137,7 +139,7 @@ object PrimCompiler {
   // THIRD COMPILATION PHASE //
   /////////////////////////////
 
-  def sanitize(name: String): String = name.replaceAll("[^a-zA-Z0-9]+","_")
+  def sanitize(name: String): String = name.replaceAll("[^a-zA-Z0-9]+", "€")
   def sanitize(name: String, text: String): String = text.replaceAll(name, sanitize(name))
 
   // TODO: name cleaning (e.g. '-' in list-ref,...) but also have to adapt body then (in case of recursion).
