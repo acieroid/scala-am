@@ -30,9 +30,10 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def alphaCmp(cmp: Component): Component = cmp match {
    case Main => Main
-   case Call(clo,nam,ctx) =>
+   case Call(clo@(lam,par),nam,ctx) =>
+     val updatedPar = alpha(par)
      val updatedCtx = ComponentContext(ctx.args -- excludedArgs(clo))
-     Call(clo,nam,updatedCtx)
+     Call((lam,updatedPar),nam,updatedCtx)
   }
 
   // this gets called whenever new components are added to the analysis
