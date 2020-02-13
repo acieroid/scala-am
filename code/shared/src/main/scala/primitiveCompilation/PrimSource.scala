@@ -13,7 +13,7 @@ object PrimSource {
   case class Let(v: Var, exp: Exp, body: Exp)    extends Exp
   //case class RecCall()                           extends Exp
   case class PrimCall(prim: Exp, args: Args, rec: Boolean, pos: Identity.Position) extends Exp
-  case class OpCall(op: PrimOp, args: Args, pos: Identity.Position)      extends Exp
+  case class OpCall(op: LatOp, args: Args, pos: Identity.Position)      extends Exp
 
   sealed trait AExp
 

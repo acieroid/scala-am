@@ -60,9 +60,9 @@ object PrimCompiler {
           case prim@AE(PrimSource.Var(Id(name))) if prm == name =>
             rec = true
             PrimSource.PrimCall(prim, argv, true, fc.idn.pos)
-          case AE(PrimSource.Var(Id(name))) if PrimitiveOperations.opNams.contains(name) =>
-            if (PrimitiveOperations.stoNams.contains(name)) sto = true // TODO is this list sufficient?
-            PrimSource.OpCall(PrimitiveOperations.ops.find(_.name == name).get, argv, fc.idn.pos)
+          case AE(PrimSource.Var(Id(name))) if LatticeOperations.opNams.contains(name) =>
+            if (LatticeOperations.stoNams.contains(name)) sto = true // TODO is this list sufficient?
+            PrimSource.OpCall(LatticeOperations.ops.find(_.name == name).get, argv, fc.idn.pos)
           case prim => PrimSource.PrimCall(prim, argv, false, fc.idn.pos)
         }
       case SchemeIf(cond, cons, alt, _) => bodyToSource(cond) match {
@@ -127,7 +127,7 @@ object PrimCompiler {
       case PrimSource.PrimCall(prim, args, rec, pos) =>
         PrimTarget.PrimCall(toTarget(prim), Args(args.map({ case (ae, pos) => (AExpToTarget(ae), pos) })), rec, sto, pos)
       case PrimSource.OpCall(op, args, pos) =>
-        PrimTarget.OpCall(op, Args(args.map({ case (ae, pos) => (AExpToTarget(ae), pos) })), pos)
+        PrimTarget.LatticeOp(op, Args(args.map({ case (ae, pos) => (AExpToTarget(ae), pos) })), pos)
     }
 
     (toTarget(src._1), src._2)
