@@ -8,14 +8,21 @@ import scalaam.primitiveCompilation.ANFCompiler._
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.language.sexp._
+import scalaam.modular._
+import scalaam.modular.scheme._
 
 object Test extends App {
-  val program1 = "(define (length l) (let ((n (null? l))) (if n 0 (let ((c (cdr l))) (let ((len (length c))) (+ 1 len))))))"
-  val program2 = "(define (length l) (if (null? l) 0 (+ 1 (length (cdr l)))))"
-  val program3 = "(define (gcd a b)(let ((nul (= b 0))) (if nul a (let ((mod (modulo a b))) (gcd b mod)))))"
-  println(PrimCompiler.compile(toANF(SchemeParser.parse(program1))))
-  println(PrimCompiler.compile(toANF(SchemeParser.parse(program2))))
-
+//  val program1 = "(define (length l) (let ((n (null? l))) (if n 0 (let ((c (cdr l))) (let ((len (length c))) (+ 1 len))))))"
+//  val program2 = "(define (length l) (if (null? l) 0 (+ 1 (length (cdr l)))))"
+//  val program3 = "(define (gcd a b)(let ((nul (= b 0))) (if nul a (let ((mod (modulo a b))) (gcd b mod)))))"
+//  println(PrimCompiler.compile(toANF(SchemeParser.parse(program1))))
+//  println(PrimCompiler.compile(toANF(SchemeParser.parse(program2))))
+  val program = Primitives.parseWithoutPrelude("test/gabriel/takl.scm")
+  val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
+  val t0 = System.nanoTime()
+  analysis.analyze()
+  val t1 = System.nanoTime()
+  println(s"Time: ${(t1 - t0) / 1000000}ms")
 }
 
 object PrimCompiler {

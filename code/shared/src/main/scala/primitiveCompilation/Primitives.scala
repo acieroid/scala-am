@@ -195,25 +195,31 @@ object Primitives {
     var prelude: Set[SchemeExp] = Set()
     var work: List[Expression] = List(exp)
     var visited: List[String] = List()
+    var calls = 0
 
     while (work.nonEmpty) {
       val hd :: tl = work
       work = tl
       hd match {
-        case Identifier(name, _) if names.contains(name) && !visited.contains(name) =>
-          println(s"Found primitive: $name")
+        case Identifier(name, _) if names.contains(name) =>
+          calls = calls+1
+          if (!visited.contains(name)) {
+            println(s"Found primitive: $name")
             val exp = SchemeParser.parse(primitives(name))
             prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
             visited = name :: visited
+          }
           case e => work = e.subexpressions ::: work
       }
     }
+    println(s"Distinct primitive calls: $calls")
     SchemeBegin(prelude.toList ::: List(exp), Identity.none)
   }
 
   // Parses a file and automatically adds the required prelude (over-approximated).
   def parseWithPrelude(path: String): SchemeExp = addPrelude(SchemeParser.parse(FileUtil.loadFile(path)))
+  def parseWithoutPrelude(path: String): SchemeExp = SchemeParser.parse(FileUtil.loadFile(path))
 }
 
 object CompileTest extends App {
