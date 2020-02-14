@@ -194,15 +194,18 @@ object Primitives {
   def addPrelude(exp: SchemeExp): SchemeExp = {
     var prelude: Set[SchemeExp] = Set()
     var work: List[Expression] = List(exp)
+    var visited: List[String] = List()
 
     while (work.nonEmpty) {
       val hd :: tl = work
       work = tl
       hd match {
-          case Identifier(name, _) if names.contains(name) =>
+        case Identifier(name, _) if names.contains(name) && !visited.contains(name) =>
+          println(s"Found primitive: $name")
             val exp = SchemeParser.parse(primitives(name))
             prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
+            visited = name :: visited
           case e => work = e.subexpressions ::: work
       }
     }
