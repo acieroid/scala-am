@@ -59,23 +59,22 @@
                  (+ (vector-ref *piececount* (vector-ref *class* i)) 1))))
 
 (define (trial j)
-  (let ((k 0))
-    (call-with-current-continuation
-     (lambda (return)
-       (do ((i 0 (+ i 1)))
-           ((> i typemax) (set! *kount* (+ *kount* 1)) #f)
-           (cond
-            ((not
-              (zero?
-               (vector-ref *piececount* (vector-ref *class* i))))
-             (cond
-              ((fit i j)
-               (set! k (place i j))
-               (cond
-                ((or (trial k) (zero? k))
-                 (set! *kount* (+ *kount* 1))
-                 (return #t))
-                (else (puzzle-remove i j))))))))))))
+  (let ((k 0) (return #f))
+    (lambda (return)
+      (do ((i 0 (+ i 1)))
+          ((or return (> i typemax)) (set! *kount* (+ *kount* 1)) return)
+        (cond
+         ((not
+           (zero?
+            (vector-ref *piececount* (vector-ref *class* i))))
+          (cond
+           ((fit i j)
+            (set! k (place i j))
+            (cond
+             ((or (trial k) (zero? k))
+              (set! *kount* (+ *kount* 1))
+              (set! return #t))
+             (else (puzzle-remove i j)))))))))))
 
 (define (definePiece iclass ii jj kk)
   (let ((index 0))
