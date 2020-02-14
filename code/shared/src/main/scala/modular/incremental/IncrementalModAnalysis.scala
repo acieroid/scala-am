@@ -5,10 +5,11 @@ import scalaam.modular._
 import scalaam.util.Annotations.mutable
 import scalaam.util.Timeout
 
-abstract class IncrementalModAnalysis[Expr <: Expression](var progr: Expr) extends ModAnalysis(progr)
-                                                                              with MutableIndirectComponents[Expr] {
+abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extends ModAnalysis(prog)
+                                                                            with MutableIndirectComponents[Expr] {
 
-  /*
+  override def program = prog
+  /**
       allComponents : Set[Component]
       cMap : Component -> ComponentData
       cMapR : ComponentData -> Component

@@ -119,8 +119,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
                                         with AdaptiveSchemeModFSemantics
                                         with BigStepSemantics
-                                        with AdaptiveConstantPropagationDomain
-                                        with SimpleAdaptiveArgumentSensitivity {
+                                        with AdaptiveConstantPropagationDomain {
     val limit = 5
     override def alphaValue(v: Value) = super.alphaValue(v)
   }

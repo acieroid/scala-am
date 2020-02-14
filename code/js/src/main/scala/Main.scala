@@ -41,9 +41,8 @@ object Main {
     val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
                                                     with BigStepSemantics
-                                                    with AdaptiveConstantPropagationDomain
-                                                    with SimpleAdaptiveArgumentSensitivity {
-      val limit = 5
+                                                    with AdaptiveConstantPropagationDomain {
+      val limit = 3
       override def alphaValue(v: Value) = super.alphaValue(v)
       override def step() = {
         val component = work.head

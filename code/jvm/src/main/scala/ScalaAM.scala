@@ -15,13 +15,12 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = FileUtil.loadFile("test/mceval.scm")
+    val txt = FileUtil.loadFile("test/primtest.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg)
                                           with AdaptiveSchemeModFSemantics
                                           with BigStepSemantics
-                                          with AdaptiveConstantPropagationDomain
-                                          with SimpleAdaptiveArgumentSensitivity {
+                                          with AdaptiveConstantPropagationDomain {
       val limit = 5
       override def alphaValue(v: Value) = super.alphaValue(v)
     }

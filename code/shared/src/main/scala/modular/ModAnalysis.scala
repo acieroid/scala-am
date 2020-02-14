@@ -4,7 +4,7 @@ import scalaam.core._
 import scalaam.util._
 import scalaam.util.Annotations._
 
-abstract class ModAnalysis[Expr <: Expression](var prog: Expr) {
+abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
   // parameterized by a 'intra-component' representation
   type Component
