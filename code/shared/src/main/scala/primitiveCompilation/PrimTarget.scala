@@ -30,8 +30,8 @@ object PrimTarget {
       //case (false, true)  => s"${indent(i)}$prim.call(fpos, $pos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala).
     }
   }
-  case class OpCall(op: PrimOp, args: Args, pos: Identity.Position) extends Exp {
-    def print(i: Int): String = (PrimitiveOperations.alcNams.contains(op.name), PrimitiveOperations.stoNams.contains(op.name)) match {
+  case class LatticeOp(op: LatOp, args: Args, pos: Identity.Position) extends Exp {
+    def print(i: Int): String = (LatticeOperations.alcNams.contains(op.name), LatticeOperations.stoNams.contains(op.name)) match {
       case (true, true) => s"${indent(i)}$op.call(fpos, $pos, List$args, store, alloc)"
       case (true, false) => throw new Exception("A primitive operation without access to the store cannot perform allocations. Illegal state.")
       case (false, true) => s"${indent(i)}$op.call(${args.splicedString}, store).map(_._1)" // TODO: can we assume only one argument here? // Map needed because store must not be propagated further.
@@ -41,14 +41,7 @@ object PrimTarget {
   }
   case class Lat(l: LExp) extends Exp {
     def print(i: Int): String = indent(i) ++ l.toString }
-  /*
-  case class IfTrue(cond: LExp, cons: Exp) extends Exp {
-    def print(i: Int): String = s"${indent(i)}{ if (isTrue($cond)) {\n${cons.print(jump(jump(i)))}\n${indent(jump(i))}} else {\n${indent(jump(jump(i)))}MayFail.success($Bot)\n${indent(jump(i))}}\n${indent(i)}}"
-  }
-  case class IfFalse(cond: LExp, cons: Exp) extends Exp {
-    def print(i: Int): String = s"${indent(i)}{ if (isFalse($cond)) {\n${cons.print(jump(jump(i)))}\n${indent(jump(i))}} else {\n${indent(jump(jump(i)))}MayFail.success($Bot)\n${indent(jump(i))}}\n${indent(i)}}"
-  }
-  */
+
   case class Cond(cond: LExp, cons: Exp, alt: Exp) extends Exp {
     def print(i: Int): String = s"${indent(i)}ifThenElse($cond)\n${indent(i)}{\n${cons.print(jump(i))}\n${indent(i)}}\n${indent(i)}{\n${alt.print(jump(i))}\n${indent(i)}}"
   }
