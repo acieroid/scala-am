@@ -1978,7 +1978,17 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       override def call2(x: V, y: V) = eqq(x, y)
     }
     object Not extends NoStoreOperation("not", Some(1)) {
-      override def call(x: V) = not(x)
+      private def appl(args: List[V]): MayFail[V, Error] = {
+        val x :: Nil = args
+        ifThenElse(x)
+        {
+          bool(false)
+        }
+        {
+          bool(true)
+        }
+      }
+      override def call(args: List[V]): MayFail[V, Error] = if (args.length == 1) appl(args) else MayFail.failure(PrimitiveArityError("not", 1, args.length))
     }
     object NumberToString extends NoStoreOperation("number->string", Some(1)) {
       override def call(x: V) = numberToString(x)
@@ -2007,21 +2017,21 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
     object StringLength extends NoStoreOperation("string-length", Some(1)) {
       override def call(x: V) = stringLength(x)
     }
+
     object Newline extends NoStoreOperation("newline", Some(0)) {
-      override def call() = { /* disabled println(""); */ MayFailSuccess(bool(false)) }
-    }
-    object Display extends NoStoreOperation("display", Some(1)) {
-      override def call(x: V) = {
-        /* // Disabled
-        val str = x.toString
-        print(if (str.startsWith("\"")) {
-          str.substring(1, str.size - 1)
-        } else {
-          str
-        }) */
-        x /* Undefined behavior in R5RS, but we return the printed value */
-      }
-    }
+  private def appl(args: List[V]): MayFail[V, Error] = {
+    bool(false)
+  }
+  override def call(args: List[V]): MayFail[V, Error] = if (args.length == 0) appl(args) else MayFail.failure(PrimitiveArityError("newline", 0, args.length))
+}
+object Display extends NoStoreOperation("display", Some(1)) {
+  private def appl(args: List[V]): MayFail[V, Error] = {
+    val x :: Nil = args
+    x
+  }
+  override def call(args: List[V]): MayFail[V, Error] = if (args.length == 1) appl(args) else MayFail.failure(PrimitiveArityError("display", 1, args.length))
+}
+
     object Error extends NoStoreOperation("error", Some(1)) {
       override def call1pos(fpos: Identity.Position, x: (Identity.Position, V)) =
         MayFail.failure(UserError(x._2.toString))
@@ -2075,14 +2085,55 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
 
     object Car    extends CarCdrOperation("car")
     object Cdr    extends CarCdrOperation("cdr")
-    object Caar   extends CarCdrOperation("caar")
-    object Cadr   extends CarCdrOperation("cadr")
+    object Caar extends SimpleFixpointPrimitiveUsingStore("caar", Some(1)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], caar: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val x :: Nil = args
+    Car.call(x, store).map(_._1) >>= { _0 =>
+      Car.call(_0, store).map(_._1)
+    }
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], caar: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 1) appl(fpos, args, store, caar, alloc) else MayFail.failure(PrimitiveArityError("caar", 1, args.length))
+    }
+    object Cadr extends SimpleFixpointPrimitiveUsingStore("cadr", Some(1)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], cadr: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val x :: Nil = args
+    Cdr.call(x, store).map(_._1) >>= { _0 =>
+      Car.call(_0, store).map(_._1)
+    }
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], cadr: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 1) appl(fpos, args, store, cadr, alloc) else MayFail.failure(PrimitiveArityError("cadr", 1, args.length))
+}
+
     object Cdar   extends CarCdrOperation("cdar")
-    object Cddr   extends CarCdrOperation("cddr")
+object Cddr extends SimpleFixpointPrimitiveUsingStore("cddr", Some(1)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], cddr: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val x :: Nil = args
+    Cdr.call(x, store).map(_._1) >>= { _0 =>
+      Cdr.call(_0, store).map(_._1)
+    }
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], cddr: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 1) appl(fpos, args, store, cddr, alloc) else MayFail.failure(PrimitiveArityError("cddr", 1, args.length))
+}
+
     object Caaar  extends CarCdrOperation("caaar")
     object Caadr  extends CarCdrOperation("caadr")
     object Cadar  extends CarCdrOperation("cadar")
-    object Caddr  extends CarCdrOperation("caddr")
+    object Caddr extends SimpleFixpointPrimitiveUsingStore("caddr", Some(1)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], caddr: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val x :: Nil = args
+    Cdr.call(x, store).map(_._1) >>= { _0 =>
+      Cdr.call(_0, store).map(_._1) >>= { _1 =>
+        Car.call(_1, store).map(_._1)
+      }
+    }
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], caddr: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 1) appl(fpos, args, store, caddr, alloc) else MayFail.failure(PrimitiveArityError("caddr", 1, args.length))
+}
+
     object Cdaar  extends CarCdrOperation("cdaar")
     object Cdadr  extends CarCdrOperation("cdadr")
     object Cddar  extends CarCdrOperation("cddar")
@@ -2147,148 +2198,122 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
                     (loop 0)))))))
       */
     // TODO: this is without vectors
-    object Equal extends StoreOperation("equal?", Some(2)) {
-      override def call(a: V, b: V, store: Store[A, V]) = {
-        def equalp(a: V, b: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
-          if (visited.contains((a, b)) || a == bottom || b == bottom) {
-            done(bottom)
-          } else {
-            val visited2 = visited + ((a, b))
-            ifThenElseTR(eqq(a, b)) {
-              /* If a and b are eq?, then they are equal? */
-              done(bool(true))
-            } {
-              ifThenElseTR((and _)(isNull(a), isNull(b))) {
-                /* If both a and b are null, then they are equal? */
-                done(bool(true))
-              } {
-                ifThenElseTR((and _)(isCons(a), isCons(b))) {
-                  /* If both cons, check car and cdr */
-                  liftTailRec(
-                    car(a).flatMap(
-                      cara =>
-                        car(b).flatMap(
-                          carb =>
-                            cdr(a).flatMap(
-                              cdra =>
-                                cdr(b).flatMap(
-                                  cdrb =>
-                                    tailcall(equalp(cara, carb, visited2)).flatMap(
-                                      eqcar =>
-                                        tailcall(equalp(cdra, cdrb, visited2)).map(
-                                          eqcdr =>
-                                            for {
-                                              x <- eqcar
-                                              y <- eqcdr
-                                            } yield and(x, y)
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                  )
-                } {
-                  ifThenElseTR((and _)(isPointer(a), isPointer(b))) {
-                    /* both pointers, then look up their values */
-                    dereferencePointerTR(a, store) { consa =>
-                      dereferencePointerTR(b, store) { consb =>
-                        tailcall(equalp(consa, consb, visited2))
+    object Equal extends SimpleFixpointPrimitiveUsingStore("equal?", Some(2)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], equal: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val a :: b :: Nil = args
+    Eq.call(List(a, b)) >>= { _0 =>
+      ifThenElse(_0)
+      {
+        bool(true)
+      }
+      {
+        Nullp.call(a) >>= { _1 =>
+          ifThenElse(_1)
+          {
+            Nullp.call(b)
+          }
+          {
+            bool(false)
+          } >>= { _2 =>
+            ifThenElse(_2)
+            {
+              bool(true)
+            }
+            {
+              Pairp.call(a, store).map(_._1) >>= { _3 =>
+                ifThenElse(_3)
+                {
+                  Pairp.call(b, store).map(_._1) >>= { _4 =>
+                    ifThenElse(_4)
+                    {
+                      Car.call(a, store).map(_._1) >>= { _5 =>
+                        Car.call(b, store).map(_._1) >>= { _6 =>
+                          equal(List(_5, _6)) >>= { _7 =>
+                            ifThenElse(_7)
+                            {
+                              Cdr.call(a, store).map(_._1) >>= { _8 =>
+                                Cdr.call(b, store).map(_._1) >>= { _9 =>
+                                  equal(List(_8, _9))
+                                }
+                              }
+                            }
+                            {
+                              bool(false)
+                            }
+                          }
+                        }
                       }
                     }
-                  } {
-                    /* otherwise, there is no equality possible */
-                    done(bool(false))
+                    {
+                      bool(false)
+                    }
                   }
+                }
+                {
+                  bool(false)
                 }
               }
             }
           }
         }
-        equalp(a, b, Set()).result.map(v => (v, store))
       }
     }
-
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], equal: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 2) appl(fpos, args, store, equal, alloc) else MayFail.failure(PrimitiveArityError("equal?", 2, args.length))
+}
     /** (define (length l)
           (if (null? l)
               0
               (+ 1 (length (cdr l)))))
-    */
-    object Length extends FixpointPrimitiveUsingStore("length",Some(1)) {
-      /** the argument to length is just the current pair */
-      type Args = V
-      def initialArgs(fexp: Identity.Position, args: List[(Identity.Position, V)]) = args match {
-        case (_, arg) :: Nil  => Some(arg)
-        case _                => None
+      */
+    object Length extends SimpleFixpointPrimitiveUsingStore("length", Some(1)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], length: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val l :: Nil = args
+    Nullp.call(l) >>= { _0 =>
+      ifThenElse(_0)
+      {
+        number(0)
       }
-      /** calls are just that argument */
-      type Call = Args
-      def callFor(args: V) = args
-      /** since Args == Calls, the argument remains the same */
-      def updateArgs(oldArgs: V, newArgs: V) = { assert(newArgs == oldArgs) ; oldArgs }
-      /** The actual implementation of the primitive */
-      override def callWithArgs(l: V)(alloc: SchemeAllocator[A], store: Store[A,V], length: V => MayFail[V,Error]): MayFail[V,Error] =
-        ifV(isNull(l)) {
-          // if we have l = '(), length(l) = 0
-          number(0)
-        } otherwise ifV(isPointer(l)) {
-          // if we have l = cons(a,d), length(l) = length(d) + 1
-          dereferencePointer(l, store) { consv =>
-            for {
-              next      <- cdr(consv)
-              len_next  <- length(next)
-              result    <- plus(len_next, number(1))
-            } yield result
+      {
+        Cdr.call(l, store).map(_._1) >>= { _1 =>
+          length(List(_1)) >>= { _2 =>
+            Plus.call(List(number(1), _2))
           }
-        } otherwise {
-          // if we have have something else (i.e., not a list), length throws a type error!
-          MayFail.failure(PrimitiveNotApplicable("length", List(l)))
         }
+      }
     }
-    /** (define (append l1 l2)
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], length: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 1) appl(fpos, args, store, length, alloc) else MayFail.failure(PrimitiveArityError("length", 1, args.length))
+}    /** (define (append l1 l2)
           (if (null? l1)
               l2
               (cons (car l1)
                     (append (cdr l1) l2))))
-    */
-    object Append extends FixpointPrimitiveUsingStore("append", Some(2)) {
-      /** the arguments to append are the two given input arguments + the 'append expression' and 'the current index' into the list (used for allocation) */
-      type Args = (V,V,Identity.Position,Int)
-      def initialArgs(fexp: Identity.Position, args: List[(Identity.Position, V)]) = args match {
-        case (_, l1) :: (_, l2) :: Nil  => Some((l1, l2, fexp, 0))
-        case _                          => None
+       */
+    object Append extends SimpleFixpointPrimitiveUsingStore("append", Some(2)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], append: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val l1 :: l2 :: Nil = args
+    Nullp.call(l1) >>= { _0 =>
+      ifThenElse(_0)
+      {
+        l2
       }
-      /** calls only take into account the current pair (= first argument of append) */
-      type Call = V
-      def callFor(args: Args) = args._1
-      /** arguments: ignore changes to the index to ensure termination (and other args are guaranteed to be the same anyway)*/
-      def updateArgs(oldArgs: Args, newArgs: Args) = oldArgs
-      /** The actual implementation of append */
-      override def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], append: Args => MayFail[V,Error]): MayFail[V,Error] = args match {
-        case (l1, l2, fexp, idx) =>
-          ifV(isNull(l1)) {
-            // if we have l1 = '(), append(l1,l2) = l2
-            l2
-          } otherwise ifV(isPointer(l1)) {
-            // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
-            val addr = alloc.pointer((fexp, fexp), idx)
-            dereferencePointer(l1, store) { consv =>
-              for {
-                carv      <- car(consv)
-                cdrv      <- cdr(consv)
-                app_next  <- append((cdrv, l2, fexp, idx + 1))
-                result    <- cons(carv, app_next)
-              } yield {
-                store.extend(addr, result)
-                pointer(addr)
-              }
+      {
+        Car.call(l1, store).map(_._1) >>= { _1 =>
+          Cdr.call(l1, store).map(_._1) >>= { _2 =>
+            append(List(_2, l2)) >>= { _3 =>
+              Cons.call(fpos, ((4,16)), List((fpos, _1), (fpos, _3)), store, alloc).map(_._1)
             }
-          } otherwise {
-            // if we have have something else (i.e., not a list), append throws a type error!
-            MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
           }
+        }
       }
     }
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], append: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 2) appl(fpos, args, store, append, alloc) else MayFail.failure(PrimitiveArityError("append", 2, args.length))
+}
 
     /** (define list (lambda args
           (if (null? args)
@@ -2436,11 +2461,34 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       }
     }
 
-    object Member
-        extends MemberLike(
-          "member",
-          (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1)
-        )
+    object Member extends SimpleFixpointPrimitiveUsingStore("member", Some(2)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], member: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val e :: l :: Nil = args
+    Nullp.call(l) >>= { _0 =>
+      ifThenElse(_0)
+      {
+        bool(false)
+      }
+      {
+        Car.call(l, store).map(_._1) >>= { _1 =>
+          Equal.call(fpos, List((fpos, _1), (fpos, e)), store, alloc).map(_._1) >>= { _2 =>
+            ifThenElse(_2)
+            {
+              l
+            }
+            {
+              Cdr.call(l, store).map(_._1) >>= { _3 =>
+                member(List(e, _3))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], member: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 2) appl(fpos, args, store, member, alloc) else MayFail.failure(PrimitiveArityError("member", 2, args.length))
+}
     object Memq extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => Eq.call2(x, y))
 
     abstract class AssocLike(
@@ -2495,9 +2543,36 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
     object Assoc
         extends AssocLike(
           "assoc",
-          (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1)
-        )
-    object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call2(x, y))
+          (x: V, y: V, store: Store[A, V]) => ??? // Equal.call(x, y, store).map(_._1)
+    )
+    object Assq extends SimpleFixpointPrimitiveUsingStore("assq", Some(2)) {
+  private def appl(fpos: Identity.Position, args: Args, store: Store[A,V], assq: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] = {
+    val k :: l :: Nil = args
+    Nullp.call(l) >>= { _0 =>
+      ifThenElse(_0)
+      {
+        bool(false)
+      }
+      {
+        Caar.call(fpos, List((fpos, l)), store, alloc).map(_._1) >>= { _1 =>
+          Eq.call(List(_1, k)) >>= { _2 =>
+            ifThenElse(_2)
+            {
+              Car.call(l, store).map(_._1)
+            }
+            {
+              Cdr.call(l, store).map(_._1) >>= { _3 =>
+                assq(List(k, _3))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  def callWithArgs(fpos: Identity.Position, args: Args, store: Store[A,V], assq: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+    if (args.length == 2) appl(fpos, args, store, assq, alloc) else MayFail.failure(PrimitiveArityError("assq", 2, args.length))
+}
 
     object MakeVector extends SchemePrimitive[V,A] {
       val name = "make-vector"
@@ -2610,3 +2685,5 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
     }
   }
 }
+
+

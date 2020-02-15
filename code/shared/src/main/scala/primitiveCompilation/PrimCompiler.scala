@@ -12,17 +12,37 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 
 object Test extends App {
-//  val program1 = "(define (length l) (let ((n (null? l))) (if n 0 (let ((c (cdr l))) (let ((len (length c))) (+ 1 len))))))"
-//  val program2 = "(define (length l) (if (null? l) 0 (+ 1 (length (cdr l)))))"
-//  val program3 = "(define (gcd a b)(let ((nul (= b 0))) (if nul a (let ((mod (modulo a b))) (gcd b mod)))))"
-//  println(PrimCompiler.compile(toANF(SchemeParser.parse(program1))))
-//  println(PrimCompiler.compile(toANF(SchemeParser.parse(program2))))
-  val program = Primitives.parseWithoutPrelude("test/gabriel/takl.scm")
-  val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
-  val t0 = System.nanoTime()
-  analysis.analyze()
-  val t1 = System.nanoTime()
-  println(s"Time: ${(t1 - t0) / 1000000}ms")
+  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (cadr x) (car (cdr x)))"""))))
+//  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (cddr x) (cdr (cdr x)))"""))))
+//  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (caddr x) (car (cdr (cdr x))))"""))))
+//  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (cadr x) (car (cdr x)))"""))))
+//  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (assq k l)
+//        (if (null? l)
+//          #f
+//         (if (equal? (caar l) k)
+//           (car l)
+//           (assq k (cdr l)))))"""))))
+//  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (newline) #f)"""))))
+//  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (display x) x)"""))))
+//println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (append l1 l2)
+//          (if (null? l1)
+//              l2
+//              (cons (car l1)
+//                    (append (cdr l1) l2))))"""))))
+
+  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (member e l)
+          (if (null? l)
+            #f
+            (if (equal? (car l) e)
+              l
+              (member e (cdr l)))))"""))))
+
+   val program = Primitives.parseWithPrelude("test/gabriel/boyer.scm")
+   val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
+   val t0 = System.nanoTime()
+//   analysis.analyze()
+   val t1 = System.nanoTime()
+   println(s"Time: ${(t1 - t0) / 1000000}ms")
 }
 
 object PrimCompiler {
@@ -89,7 +109,9 @@ object PrimCompiler {
       case SchemeVar(id) => AE(PrimSource.Var(Id(id.name)))
       case SchemeValue(v, _) => valueToSource(v)
       case id@Identifier(_, _) => throw ShouldNotEncounterException(id)
-      case e => throw IllegalExpressionException(e)
+      case e =>
+        println(s"Illegal exp: $e")
+        throw IllegalExpressionException(e)
     }
 
     exp match {

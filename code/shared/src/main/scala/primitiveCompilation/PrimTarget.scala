@@ -27,9 +27,10 @@ object PrimTarget {
       case (true, false)  => indent(i) ++ prim.toString ++ "(List" ++ args.toString ++ ")"
       case (false, false) => indent(i) ++ prim.toString ++ args.toString
       case (_, true)      => s"${indent(i)}$prim(List$args)" // s"${indent(i)}$prim.call(fpos, $pos, List$args, alloc)"
-      //case (false, true)  => s"${indent(i)}$prim.call(fpos, $pos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala).
+      //case (false, true)  => s"${indent(i)}$prim.call(fpos, $pos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala). // TODO: yes there are primitives of this kind, e.g. caar
     }
   }
+  // TODO: introduce a naming scheme + have a single call formatting, EXCEPT if it is a recursive call
   case class LatticeOp(op: LatOp, args: Args, pos: Identity.Position) extends Exp {
     def print(i: Int): String = (LatticeOperations.alcNams.contains(op.name), LatticeOperations.stoNams.contains(op.name)) match {
       case (true, true) => s"${indent(i)}$op.call(fpos, $pos, List$args, store, alloc)"

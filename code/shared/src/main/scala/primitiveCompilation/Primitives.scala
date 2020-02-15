@@ -27,7 +27,7 @@ object Primitives {
     "assq" -> """(define (assq k l)
         (if (null? l)
           #f
-         (if (equal? (caar l) k)
+         (if (eq? (caar l) k)
            (car l)
            (assq k (cdr l)))))""",
     "assv" -> """(define (assq k l)
