@@ -5,7 +5,9 @@ import scalaam.core._
 object PrimTarget {
 
   case class Args(args: Array[(AExp, Identity.Position)]) {
-    override def toString: String = "(" ++ args.map(_._1.toString).mkString(", ") ++ ")"
+    override def toString: String =
+      // TODO: this is a precision-improving optimization, it should be fine only using a._2.toString, but could be less precise
+      "(" ++ args.map(a => s"(${if (a._1.toString.charAt(0) == '_') { a._2.toString } else { s"${a._1}_pos" }}, ${a._1})").mkString(", ") ++ ")"
     def splicedString: String = args.map(_._1.toString).mkString(", ")
   }
 
@@ -16,22 +18,24 @@ object PrimTarget {
     override def toString: String = print(0)
   }
 
+  def scalaNameOf(prim: String): String = prim.replaceAll("[^a-zA-Z0-9]+", "_")
+
   case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp {
-    def print(i: Int): String = s"${e1.print(i)} >>= { $v =>\n${e2.print(jump(i))}\n${indent(i)}}"
+    def print(i: Int): String = s"${e1.print(i)} >>= { case ($v: V, store: Store[A, V]) =>\n${e2.print(jump(i))}\n${indent(i)}}"
   }
   case class Fail() extends Exp {
     def print(i: Int): String = indent(i) ++ "MayFail.Failure"
   }
   case class PrimCall(prim: Exp, args: Args, rec: Boolean, sto: Boolean, pos: Identity.Position) extends Exp {
-    def print(i: Int): String = (rec, sto) match {
-      case (true, false)  => indent(i) ++ prim.toString ++ "(List" ++ args.toString ++ ")"
-      case (false, false) => indent(i) ++ prim.toString ++ args.toString
-      case (_, true)      => s"${indent(i)}$prim(List$args)" // s"${indent(i)}$prim.call(fpos, $pos, List$args, alloc)"
-      //case (false, true)  => s"${indent(i)}$prim.call(fpos, $pos, $args, alloc)" // TODO: are there primitives of this kind? (Note: If enabled, also enable this in PrimCompiler.scala). // TODO: yes there are primitives of this kind, e.g. caar
-    }
+    def print(i: Int): String =
+      if (rec) {
+        indent(i) ++ "recursiveCall(List" ++ args.toString ++ ")"
+      } else {
+        s"${indent(i)}${prim.toString.capitalize}.call(fpos, $pos, List$args, store, alloc).map(_._1)"
+      }
   }
-  // TODO: introduce a naming scheme + have a single call formatting, EXCEPT if it is a recursive call
-  case class LatticeOp(op: LatOp, args: Args, pos: Identity.Position) extends Exp {
+
+/*case class LatticeOp(op: LatOp, args: Args, pos: Identity.Position) extends Exp {
     def print(i: Int): String = (LatticeOperations.alcNams.contains(op.name), LatticeOperations.stoNams.contains(op.name)) match {
       case (true, true) => s"${indent(i)}$op.call(fpos, $pos, List$args, store, alloc)"
       case (true, false) => throw new Exception("A primitive operation without access to the store cannot perform allocations. Illegal state.")
@@ -39,9 +43,10 @@ object PrimTarget {
       case (false, false) if op.arity == -1 => s"${indent(i)}$op.call(List$args)"
       case (false, false) => s"${indent(i)}$op.call$args"
     }
-  }
+  }*/
   case class Lat(l: LExp) extends Exp {
     def print(i: Int): String = indent(i) ++ l.toString }
+
 
   case class Cond(cond: LExp, cons: Exp, alt: Exp) extends Exp {
     def print(i: Int): String = s"${indent(i)}ifThenElse($cond)\n${indent(i)}{\n${cons.print(jump(i))}\n${indent(i)}}\n${indent(i)}{\n${alt.print(jump(i))}\n${indent(i)}}"
@@ -49,7 +54,7 @@ object PrimTarget {
 
   sealed trait AExp
 
-  case class Var(v: Id = Id.genId()) extends AExp { override def toString: String = v.toString }
+  case class Var(v: Id = Id.genId()) extends AExp { override def toString: String = scalaNameOf(v.toString) }
   case class Num(n: Int) extends AExp { override def toString: String = s"number($n)" }
   case class Boo(b: Boolean) extends AExp { override def toString: String = s"bool($b)" }
 
