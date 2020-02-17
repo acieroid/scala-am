@@ -1920,7 +1920,107 @@ object Display extends NoStoreOperation("display", Some(1)) {
     object Car    extends CarCdrOperation("car")
     object Cdr    extends CarCdrOperation("cdr")
     object Caar extends CarCdrOperation("caar")
-    object Cadr extends CarCdrOperation("cadr")
+    //    object Cadr extends CarCdrOperation("cadr")
+object Cadr extends StoreOperation("cadr", Some(1)) {
+  override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
+    if (args.length == 1) {
+      {     val (x_pos, x) :: Nil = args
+     Cdr.call(fpos, (-1,-24), List((x_pos, x)), store, alloc).map(_._1) >>= { _0  =>
+      Car.call(fpos, (-1,-19), List(((-1,-24), _0)), store, alloc).map(_._1)
+    } }.map(x => (x, store))
+    } else MayFail.failure(PrimitiveArityError("cadr", 1, args.length))
+}
+object Equal_ extends SimpleFixpointPrimitiveUsingStore("equal?", Some(2)) {
+  def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A,V], recursiveCall: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
+    if (args.length == 2) {
+      {     val (a_pos, a) :: (b_pos, b) :: Nil = args
+     Eq.call(fpos, (-2,-16), List((a_pos, a), (b_pos, b)), store, alloc).map(_._1) >>= { _0  =>
+      ifThenElse(_0)
+      {
+        bool(true)
+      }
+      {
+        Nullp.call(fpos, (-3,-19), List((a_pos, a)), store, alloc).map(_._1) >>= { _1  =>
+          ifThenElse(_1)
+          {
+            Nullp.call(fpos, (-3,-29), List((b_pos, b)), store, alloc).map(_._1)
+          }
+          {
+            bool(false)
+          } >>= { _2  =>
+            ifThenElse(_2)
+            {
+              bool(true)
+            }
+            {
+              Pairp.call(fpos, (-4,-19), List((a_pos, a)), store, alloc).map(_._1) >>= { _3  =>
+                ifThenElse(_3)
+                {
+                  Pairp.call(fpos, (-4,-29), List((b_pos, b)), store, alloc).map(_._1) >>= { _4  =>
+                    ifThenElse(_4)
+                    {
+                      Car.call(fpos, (-4,-47), List((a_pos, a)), store, alloc).map(_._1) >>= { _5  =>
+                        Car.call(fpos, (-4,-55), List((b_pos, b)), store, alloc).map(_._1) >>= { _6  =>
+                          recursiveCall(List(((-4,-47), _5), ((-4,-55), _6))) >>= { _7  =>
+                            ifThenElse(_7)
+                            {
+                              Cdr.call(fpos, (-4,-72), List((a_pos, a)), store, alloc).map(_._1) >>= { _8  =>
+                                Cdr.call(fpos, (-4,-80), List((b_pos, b)), store, alloc).map(_._1) >>= { _9  =>
+                                  recursiveCall(List(((-4,-72), _8), ((-4,-80), _9)))
+                                }
+                              }
+                            }
+                            {
+                              bool(false)
+                            }
+                          }
+                        }
+                      }
+                    }
+                    {
+                      bool(false)
+                    }
+                  }
+                }
+                {
+                  bool(false)
+                }
+              }
+            }
+          }
+        }
+      }
+    } }.map(x => (x, store))
+    } else MayFail.failure(PrimitiveArityError("equal?", 2, args.length))
+}
+object Member extends SimpleFixpointPrimitiveUsingStore("member", Some(2)) {
+  def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A,V], recursiveCall: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
+    if (args.length == 2) {
+      {     val (e_pos, e) :: (l_pos, l) :: Nil = args
+     Nullp.call(fpos, (-2,-16), List((l_pos, l)), store, alloc).map(_._1) >>= { _0  =>
+      ifThenElse(_0)
+      {
+        bool(false)
+      }
+      {
+        Car.call(fpos, (-4,-26), List((l_pos, l)), store, alloc).map(_._1) >>= { _1  =>
+          Equal_.call(fpos, (-4,-18), List(((-4,-26), _1), (e_pos, e)), store, alloc).map(_._1) >>= { _2  =>
+            ifThenElse(_2)
+            {
+              l
+            }
+            {
+              Cdr.call(fpos, (-6,-26), List((l_pos, l)), store, alloc).map(_._1) >>= { _3  =>
+                recursiveCall(List((e_pos, e), ((-6,-26), _3)))
+              }
+            }
+          }
+        }
+      }
+    } }.map(x => (x, store))
+    } else MayFail.failure(PrimitiveArityError("member", 2, args.length))
+}
+
     object Cddr extends CarCdrOperation("cddr")
     object Cdar   extends CarCdrOperation("cdar")
     object Caaar  extends CarCdrOperation("caaar")

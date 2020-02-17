@@ -186,7 +186,7 @@ object PrimCompiler {
 s"""object ${PrimTarget.scalaNameOf(name).capitalize} extends StoreOperation("$name", Some(${args.length})) {
   override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
     if (args.length == ${args.length}) {
-      ({ $bodyStr }, store)
+      { $bodyStr }.map(x => (x, store))
     } else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     def recursive: String =
@@ -198,9 +198,9 @@ s"""object ${PrimTarget.scalaNameOf(name).capitalize} extends SimpleFixpointPrim
 }"""
     def recursiveWithStore: String =
 s"""object ${PrimTarget.scalaNameOf(name).capitalize} extends SimpleFixpointPrimitiveUsingStore("$name", Some(${args.length})) {
-  def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A,V], recursiveCall: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[V, Error] =
+  def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A,V], recursiveCall: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
     if (args.length == ${args.length}) {
-      $bodyStr
+      { $bodyStr }.map(x => (x, store))
     } else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     (rec, sto) match {

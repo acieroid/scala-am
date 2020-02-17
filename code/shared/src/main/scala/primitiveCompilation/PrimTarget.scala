@@ -21,7 +21,7 @@ object PrimTarget {
   def scalaNameOf(prim: String): String = prim.replaceAll("[^a-zA-Z0-9]+", "_")
 
   case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp {
-    def print(i: Int): String = s"${e1.print(i)} >>= { case ($v: V, store: Store[A, V]) =>\n${e2.print(jump(i))}\n${indent(i)}}"
+    def print(i: Int): String = s"${e1.print(i)} >>= { $v  =>\n${e2.print(jump(i))}\n${indent(i)}}"
   }
   case class Fail() extends Exp {
     def print(i: Int): String = indent(i) ++ "MayFail.Failure"
