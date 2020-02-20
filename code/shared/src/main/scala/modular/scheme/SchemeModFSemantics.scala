@@ -14,6 +14,19 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                             with ReturnValue[SchemeExp]
                             with ContextSensitiveComponents[SchemeExp] {
 
+  def debug(): Unit = {
+    println("Dependencies")
+    println("--------------------")
+    for { (dep, comp) <- deps } {
+      println(s"$dep -> $comp")
+    }
+    println("Store")
+    println("--------------------")
+    for { (addr, v) <- store } {
+      println(s"$addr -> $v")
+    }
+  }
+
   //XXXXXXXXXXXXXXXXXXXX//
   // LEXICAL ADDRESSING //
   //XXXXXXXXXXXXXXXXXXXX//
@@ -27,9 +40,18 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
   // Local addresses are simply made out of lexical information.
   trait LocalAddr extends Address { def idn(): Identity }
-  case class VarAddr(id: Identifier)           extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
-  case class PtrAddr[C](pos2: (Identity.Position, Identity.Position), c: C) extends LocalAddr { def printable = false; def idn(): Identity = Identity.none /* TODO */ }
-  case class PrmAddr(nam: String)              extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
+    case class VarAddr(id: Identifier)           extends LocalAddr {
+      def printable = true;  def idn(): Identity =  id.idn
+      override def toString = id.toString
+    }
+    case class PtrAddr[C](pos2: (Identity.Position, Identity.Position), c: C) extends LocalAddr {
+      def printable = false; def idn(): Identity = Identity.none /* TODO */
+      override def toString = s"@$pos2/$c"
+    }
+    case class PrmAddr(nam: String)              extends LocalAddr {
+      def printable = true;  def idn(): Identity = Identity.none
+      override def toString = s"#$nam"
+    }
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //

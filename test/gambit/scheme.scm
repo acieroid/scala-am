@@ -16,7 +16,7 @@
   name)
 
 (define (scheme-error msg . args)
-  (fatal-error msg args))
+  (error msg))
 
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

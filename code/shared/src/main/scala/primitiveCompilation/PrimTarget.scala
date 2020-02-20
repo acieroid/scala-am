@@ -7,7 +7,8 @@ object PrimTarget {
   case class Args(args: Array[(AExp, Identity.Position)]) {
     override def toString: String =
       // TODO: this is a precision-improving optimization, it should be fine only using a._2.toString, but could be less precise
-      "(" ++ args.map(a => s"(${if (a._1.toString.charAt(0) == '_') { a._2.toString } else { s"${a._1}_pos" }}, ${a._1})").mkString(", ") ++ ")"
+      "(" ++ args.map(a => s"(${if (a._1.toString.charAt(1) == '_') { a._2.toString } else { s"${a._1.nameOfPos}" }}, ${a._1})").mkString(", ") ++ ")"
+    // "(" ++ args.map(a => s"(${a._2.toString }, ${a._1})").mkString(", ") ++ ")"
     def splicedString: String = args.map(_._1.toString).mkString(", ")
   }
 
@@ -18,7 +19,7 @@ object PrimTarget {
     override def toString: String = print(0)
   }
 
-  def scalaNameOf(prim: String): String = prim.replace('?', 'p').replaceAll("[^a-zA-Z0-9]+", "_") // TODO: <= and >= will have the same name...
+  def scalaNameOf(prim: String): String = s"`$prim`"
 
   case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp {
     def print(i: Int): String = s"${e1.print(i)} >>= { $v  =>\n${e2.print(jump(i))}\n${indent(i)}}"
@@ -52,9 +53,14 @@ object PrimTarget {
     def print(i: Int): String = s"${indent(i)}ifThenElse($cond)\n${indent(i)}{\n${cons.print(jump(i))}\n${indent(i)}}\n${indent(i)}{\n${alt.print(jump(i))}\n${indent(i)}}"
   }
 
-  sealed trait AExp
+  sealed trait AExp {
+    def nameOfPos: String = "(0, 0)"
+  }
 
-  case class Var(v: Id = Id.genId()) extends AExp { override def toString: String = scalaNameOf(v.toString) }
+  case class Var(v: Id = Id.genId()) extends AExp {
+    override def toString: String = scalaNameOf(v.toString)
+    override def nameOfPos: String = scalaNameOf(v.toString ++ "_pos")
+  }
   case class Num(n: Int) extends AExp { override def toString: String = s"number($n)" }
   case class Boo(b: Boolean) extends AExp { override def toString: String = s"bool($b)" }
 

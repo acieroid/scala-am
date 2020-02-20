@@ -153,7 +153,7 @@ object Primitives {
     // "<" is a primop
     "<=" -> "(define (<= x y) (or (< x y) (= x y)))",
     // "=" is a primop
-    // ">" is a primop
+    ">" -> "(define (> x y) (not (<= x y)))",
     ">=" -> "(define (>= x y) (or (> x y) (= x y)))",
 
     "caar" -> "(define (caar x) (car (car x)))",
@@ -184,6 +184,11 @@ object Primitives {
     "cddadr" -> "(define (cddadr x) (cdr (cdr (car (cdr x)))))",
     "cdddar" -> "(define (cdddar x) (cdr (cdr (cdr (car x)))))",
     "cddddr" -> "(define (cddddr x) (cdr (cdr (cdr (cdr x)))))",
+    "reverse" -> """(define (reverse l)
+   (if (null? l)
+       ()
+       (append (reverse (cdr l))
+               (list (car l)))))"""
     )
 
   val names: Set[String] = primitives.keySet
@@ -204,7 +209,7 @@ object Primitives {
         case Identifier(name, _) if names.contains(name) =>
           calls = calls+1
           if (!visited.contains(name)) {
-            println(s"Found primitive: $name")
+            // println(s"Found primitive: $name")
             val exp = SchemeParser.parse(primitives(name))
             prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
@@ -213,7 +218,7 @@ object Primitives {
           case e => work = e.subexpressions ::: work
       }
     }
-    println(s"Distinct primitive calls: $calls")
+    // println(s"Distinct primitive calls: $calls")
     SchemeBegin(prelude.toList ::: List(exp), Identity.none)
   }
 

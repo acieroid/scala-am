@@ -11,6 +11,286 @@ import scalaam.language.sexp._
 import scalaam.modular._
 import scalaam.modular.scheme._
 
+object GeneratePrimitives extends App {
+  import java.io._
+  val file = new File("CompiledPrimitives.scala")
+  val bw = new BufferedWriter(new FileWriter(file))
+  for {
+    name <- List("<=", ">=", ">",
+      "zero?", "positive?", "negative?", "odd?", "even?",
+      "max", "min", "abs", "gcd", "lcm",
+      "not",
+      "newline", "display",
+      "caar", "cadr", "cddr", "cdar", "caaar", "caadr", "cadar", "caddr", "cdaar", "cdadr", "cddar", "cdddr", "caaaar", "caaadr", "caadar", "caaddr", "cadaar", "cadadr", "caddar", "cadddr", "cdaaar", "cdaadr", "cdadar", "cdaddr", "cddaar", "cddadr", "cdddar", "cddddr",
+      "equal?", "list?", "list-ref", "member", "memq", "assoc", "assq", "list-tail", "length", "append", "reverse")
+  } {
+    bw.write(PrimCompiler.compile(toANF(SchemeParser.parse(Primitives.primitives(name)))))
+    bw.write("\n\n")
+  }
+  bw.close
+}
+
+object Benchmark extends App {
+  def run(file: String) = {
+    println(s"Running on $file")
+    val program = Primitives.parseWithoutPrelude(file)
+    println(s"Successfully parsed")
+    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
+    val t0 = System.nanoTime()
+    analysis.analyze()
+    val t1 = System.nanoTime()
+    analysis.debug()
+//    println(s"Store: ${analysis.store}")
+  }
+/*  run("test/mceval.scm")
+  run("test/scp1/9.12.scm") */
+  run("test/gabriel/browse.scm")
+/*  run("test/scp1/8.15.scm") */
+//  run("test/gambit/mazefun.scm")
+/*  run("test/gabriel/diviter.scm")
+  run("test/gabriel/divrec.scm")
+  run("test/gambit/matrix.scm")
+  run("test/scp1/9.18.scm")
+  run("test/scp1/5.14.3.scm")
+  run("test/scp1/7.16.scm")
+  run("test/scp1/9.16.scm")
+  run("test/gambit/destruc.scm")
+  run("test/gabriel/destruc.scm")
+  run("test/gabriel/dderiv.scm")
+  run("test/scp1/7.11.scm")
+  run("test/scp1/7.13.scm")
+  run("test/scp1/5.22.scm")
+  run("test/scp1/7.14.scm")
+  run("test/WeiChenRompf2019/kcfa-worst-case-256.scm")
+  run("test/scp1/7.4.scm")
+  run("test/scp1/7.17.scm")
+  run("test/scp1/9.14.scm")
+  run("test/scp1/7.9.scm")
+//  run("test/sigscheme/mem.scm")
+  run("test/scp1/7.15.scm")
+  run("test/sat.scm")
+  run("test/gabriel/deriv.scm")
+  run("test/sigscheme/takr.scm")
+  run("test/scp1/7.12.scm")
+  run("test/regex.scm")
+  run("test/grid.scm")
+  run("test/gabriel/puzzle.scm")
+  run("test/scp1/5.20.4.scm")
+  run("test/scp1/5.19.scm")
+  run("test/scp1/9.15.scm")
+ */
+
+/*
+//  run("test/gabriel/browse.scm")
+//  run("test/gabriel/cpstak.scm")
+//  run("test/gabriel/dderiv.scm")
+//  run("test/gabriel/deriv.scm")
+//  run("test/gabriel/destruc.scm")
+//  run("test/gabriel/diviter.scm")
+//  run("test/gabriel/divrec.scm")
+//  run("test/gabriel/puzzle.scm")
+//  run("test/gabriel/takl.scm")
+  run("test/sat.scm")
+  run("test/bound-precision.scm")
+  run("test/collatz.scm")
+  run("test/fib.scm")
+  run("test/my-list.scm")
+  run("test/sq.scm")
+  run("test/scp1/2.1.scm")
+  run("test/scp1/9.14.scm")
+  run("test/scp1/7.11.scm")
+  run("test/scp1/7.4.scm")
+  run("test/scp1/8.6.scm")
+  run("test/scp1/7.13.scm")
+//  run("test/scp1/8.5.scm") // relies on apply (unsupported)
+  run("test/scp1/8.12.scm")
+  run("test/scp1/7.5.scm")
+  run("test/scp1/3.8.scm")
+  run("test/scp1/5.22.scm")
+//  run("test/scp1/7.18.scm") // TODO: reverse, map
+  run("test/scp1/5.20.4.scm")
+  run("test/scp1/9.16.scm")
+  run("test/scp1/9.3.scm")
+  run("test/scp1/3.1.scm")
+  run("test/scp1/8.15.scm")
+  run("test/scp1/7.12.scm")
+  run("test/scp1/9.9.scm")
+  run("test/scp1/7.17.scm")
+  run("test/scp1/5.7.scm")
+  run("test/scp1/9.13.scm")
+  run("test/scp1/3.6.scm")
+//  run("test/scp1/9.8.scm") // right-rotate
+  run("test/scp1/5.19.scm")
+  run("test/scp1/8.14.scm")
+  run("test/scp1/8.10.scm")
+  run("test/scp1/3.2.1.scm")
+  run("test/scp1/9.15.scm")
+  run("test/scp1/7.6.scm")
+  run("test/scp1/3.2.scm")
+  run("test/scp1/9.5.scm")
+  run("test/scp1/9.12.scm")
+  run("test/scp1/7.9.scm")
+  run("test/scp1/9.17.scm")
+  run("test/scp1/9.2.scm")
+  run("test/scp1/5.6.scm")
+  run("test/scp1/7.2.scm")
+  run("test/scp1/3.9.scm")
+  run("test/scp1/7.14.scm")
+  run("test/scp1/5.14.3.scm")
+  run("test/scp1/8.1.3.scm")
+  run("test/scp1/9.7.scm")
+  run("test/scp1/7.15.scm")
+//  run("test/scp1/8.16.scm") // TODO: for-each
+  run("test/scp1/8.13.scm")
+//  run("test/scp1/8.11.scm") // TODO: map
+  run("test/scp1/7.3.scm")
+  run("test/scp1/3.4.scm")
+  run("test/scp1/9.6.scm")
+  run("test/scp1/3.3.scm")
+//  run("test/scp1/4.8.scm") // sqrt
+  run("test/scp1/8.1.1.scm")
+  run("test/scp1/7.16.scm")
+  run("test/scp1/9.18.scm")
+  run("test/scp1/4.1.scm")
+  run("test/scp1/5.21.scm")
+  run("test/scp1/2.4.scm")
+  run("test/letrec-begin.scm")
+  run("test/church-6.scm")
+  run("test/work.scm")
+  run("test/blur.scm")
+//  run("test/quasiquoting.scm") // unsupported
+  run("test/rosetta/easter.scm")
+  run("test/rosetta/quadratic.scm")
+  run("test/mut-rec.scm")
+  run("test/regex.scm")
+  run("test/sym.scm")
+  run("test/widen.scm")
+  run("test/mceval.scm")
+  run("test/WeiChenRompf2019/solovay-strassen.scm")
+  run("test/WeiChenRompf2019/kcfa-worst-case-256.scm")
+  run("test/WeiChenRompf2019/omega.scm")
+  run("test/WeiChenRompf2019/kcfa-worst-case-16.scm")
+  run("test/WeiChenRompf2019/kcfa-worst-case-64.scm")
+  run("test/WeiChenRompf2019/kcfa3.scm")
+//  run("test/WeiChenRompf2019/regex-derivative.scm") // cannot parse
+  run("test/WeiChenRompf2019/kcfa-worst-case-32.scm")
+//  run("test/WeiChenRompf2019/meta-circ.scm") // TODO: eqv?
+  run("test/WeiChenRompf2019/the-little-schemer/ch2.scm")
+  run("test/WeiChenRompf2019/the-little-schemer/ch10.scm")
+  run("test/WeiChenRompf2019/the-little-schemer/ch1.scm")
+  run("test/WeiChenRompf2019/the-little-schemer/ch3.scm")
+//  run("test/WeiChenRompf2019/the-little-schemer/ch7.scm") // atom?
+//  run("test/WeiChenRompf2019/the-little-schemer/ch9.scm") // will-stop?
+  run("test/WeiChenRompf2019/the-little-schemer/ch4.scm")
+//  run("test/WeiChenRompf2019/the-little-schemer/ch5.scm") // rember*
+//  run("test/WeiChenRompf2019/the-little-schemer/ch8.scm") // does not parse
+//  run("test/WeiChenRompf2019/the-little-schemer/ch6.scm") // does not parse
+  run("test/WeiChenRompf2019/fermat.scm")
+  run("test/WeiChenRompf2019/rsa.scm")
+//  run("test/WeiChenRompf2019/toplas98/lattice-processed.scm") // does not parse
+//  run("test/WeiChenRompf2019/toplas98/splay.scm") // does not parse
+//  run("test/WeiChenRompf2019/toplas98/lattice.scm") // does not parse
+//  run("test/WeiChenRompf2019/toplas98/handle.scm") // does not parse
+//  run("test/WeiChenRompf2019/scheme2java.scm") // char-alphabetic?
+  run("test/grid.scm")
+  run("test/church-2-num.scm")
+//  run("test/SICP-compiler.scm") // TODO: map
+  run("test/infinite-3.scm")
+  run("test/nested-defines.scm")
+  run("test/fact.scm")
+  run("test/loop2.scm")
+  run("test/kcfa3.scm")
+  //  run("test/sigscheme/mem.scm") // TODO: slow with compiled
+  run("test/sigscheme/takr.scm")
+  run("test/sigscheme/rec.scm")
+  run("test/sigscheme/arithint.scm")
+  run("test/sigscheme/let-loop.scm")
+  run("test/sigscheme/loop.scm")
+  run("test/sigscheme/case.scm")
+  run("test/gabriel/diviter.scm")
+  run("test/gabriel/deriv.scm")
+  run("test/gabriel/triangl.scm")
+//  run("test/gabriel/boyer.scm") // TODO: slow
+  run("test/gabriel/puzzle.scm")
+  run("test/gabriel/takl.scm")
+  run("test/gabriel/cpstak.scm")
+  run("test/gabriel/divrec.scm")
+  run("test/gabriel/dderiv.scm")
+  run("test/gabriel/destruc.scm")
+  run("test/gabriel/browse.scm")
+  run("test/inc.scm")
+  run("test/foo.scm")
+  run("test/rotate.scm")
+  run("test/quasiquoting-simple.scm")
+  run("test/kcfa2.scm")
+  run("test/kernighanvanwyk/ack.scm")
+  run("test/primtest.scm")
+  run("test/infinite-2.scm")
+  run("test/church.scm")
+//  run("test/gambit/sboyer.scm") // TODO: map
+//  run("test/gambit/compiler.scm") // does not parse
+  run("test/gambit/diviter.scm")
+  run("test/gambit/tak.scm")
+//  run("test/gambit/trav1.scm") // todo 
+//  run("test/gambit/wc.scm") // does not parse
+//  run("test/gambit/earley.scm") // list->vector
+//  run("test/gambit/slatex.scm") // does not parse
+  run("test/gambit/deriv.scm")
+//  run("test/gambit/peval.scm") // TODO: slow
+//  run("test/gambit/triangl.scm") // list->vector
+//  run("test/gambit/nboyer.scm") // TODO: map
+//  run("test/gambit/tail.scm") // read-char
+  run("test/gambit/mazefun.scm")
+//  run("test/gambit/scheme.scm") // does not parse
+//  run("test/gambit/string.scm") // substring
+  run("test/gambit/matrix.scm") 
+//  run("test/gambit/ctak.scm") // call/cc
+  run("test/gambit/primes.scm")
+//  run("test/gambit/lattice.scm") // apply
+  run("test/gambit/sum.scm")
+//  run("test/gambit/puzzle.scm") // call/cc
+  run("test/gambit/sumloop.scm")
+  run("test/gambit/paraffins.scm")
+//  run("test/gambit/fibc.scm") // call/cc
+  run("test/gambit/nqueens.scm")
+//  run("test/gambit/graphs.scm") // TODO: really slow
+  run("test/gambit/destruc.scm")
+  run("test/gambit/perm9.scm")
+  run("test/gambit/array1.scm")
+//  run("test/gambit/cat.scm") // read-char
+//  run("test/gambit/browse.scm") // TODO: slow
+//  run("test/scm2c.scm") // TODO: eqv
+  run("test/mj09.scm")
+  run("test/infinite-1.scm")
+//  run("test/Streams.scm") // force
+  run("test/ad/stack.scm")
+  run("test/ad/queue.scm")
+  run("test/ad/linear.scm")
+//  run("test/ad/bfirst.scm") // create-graph
+  run("test/ad/btree.scm")
+//  run("test/ad/qsort.scm") // TODO: slow with compiled
+  run("test/ad/mesort.scm")
+  run("test/ad/RBtreeADT.scm")
+  run("test/ad/bubsort.scm")
+  run("test/ad/list.scm")
+  run("test/ad/inssort.scm")
+  run("test/ad/dict.scm")
+//  run("test/ad/selsort.scm") // does not parse
+  run("test/ad/abstrct.scm")
+  run("test/ad/qstand.scm")
+  run("test/ad/prioq.scm")
+  run("test/ad/stspaceCODE.scm") // TODO: reverse
+  run("test/ad/bst.scm")
+//  run("test/ad/heap.scm") // does not parse
+  run("test/ad/quick.scm")
+  run("test/eta.scm")
+  run("test/gcipd.scm")
+  run("test/rsa.scm")
+//  run("test/scm2java.scm") // list->string
+  run("test/test.scm")
+  run("test/count.scm")
+*/
+}
 object Test extends App {
   println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (cadr x) (car (cdr x)))"""))))
 //  println(PrimCompiler.compile(toANF(SchemeParser.parse("""(define (cddr x) (cdr (cdr x)))"""))))
@@ -42,12 +322,6 @@ object Test extends App {
               l
               (member e (cdr l)))))"""))))
 
-   val program = Primitives.parseWithPrelude("test/gabriel/boyer.scm")
-   val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
-   val t0 = System.nanoTime()
-//   analysis.analyze()
-   val t1 = System.nanoTime()
-   println(s"Time: ${(t1 - t0) / 1000000}ms")
 }
 
 object PrimCompiler {
@@ -177,27 +451,29 @@ object PrimCompiler {
   def toScala(tar: (TE, PI)): String = {
     val PrimInfo(name, args, rec, sto) = tar._2
     def bodyStr: String = if (args.nonEmpty) {
-      s"    val ${args.map(a => s"(${a}_pos, $a)").mkString(" :: ")} :: Nil = args\n ${tar._1.print(4)}"
+      args.zipWithIndex.map({ case (a, i) =>
+        s"val `${a}_pos` = args($i)._1\nval `$a` = args($i)._2"
+      }).mkString("\n") ++ "\n" ++ tar._1.print(4)
     } else {
       tar._1.print(4)
     }
 
     def nonRecursive: String =
-s"""object ${PrimTarget.scalaNameOf(name).capitalize} extends StoreOperation("$name", Some(${args.length})) {
+s"""object ${PrimTarget.scalaNameOf(name)} extends StoreOperation("$name", Some(${args.length})) {
   override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
     if (args.length == ${args.length}) {
       { $bodyStr }.map(x => (x, store))
     } else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     def recursive: String =
-s"""object ${PrimTarget.scalaNameOf(name).capitalize} extends SimpleFixpointPrimitive("$name", Some(${args.length})) {
+s"""object ${PrimTarget.scalaNameOf(name)} extends SimpleFixpointPrimitive("$name", Some(${args.length})) {
   def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A, V], alloc: SchemeAllocator[A], $name: Args => MayFail[V, Error]): MayFail[V, Error] =
     if (args.length == ${args.length}) {
       $bodyStr
     } else MayFail.failure(PrimitiveArityError("$name", ${args.length}, args.length))
 }"""
     def recursiveWithStore: String =
-s"""object ${PrimTarget.scalaNameOf(name).capitalize} extends SimpleFixpointPrimitiveUsingStore("$name", Some(${args.length})) {
+s"""object ${PrimTarget.scalaNameOf(name)} extends SimpleFixpointPrimitiveUsingStore("$name", Some(${args.length})) {
   def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A,V], recursiveCall: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
     if (args.length == ${args.length}) {
       { $bodyStr }.map(x => (x, store))

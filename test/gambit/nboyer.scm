@@ -478,7 +478,7 @@
                 (cons
                  (translate-term term)
                  (get (car (cadr term)) (quote lemmas)))))
-          (else (fatal-error "ADD-LEMMA did not like term:  " term))))
+          (else (error "ADD-LEMMA did not like term "))))
 
 
   (define (translate-term term)

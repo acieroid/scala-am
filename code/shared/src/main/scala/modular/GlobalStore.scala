@@ -18,6 +18,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   // addresses in the global analysis are (local) addresses of the intra-analysis + the component
   trait Addr extends Address
   case class ComponentAddr(cmp: Component, addr: LocalAddr) extends Addr {
+    override def toString(): String = s"$cmp:$addr"
     def printable: Boolean = addr.printable
   }
 
@@ -34,7 +35,9 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   }
 
   // Dependency that is triggered when an abstract value at address 'addr' is updated
-  case class ReadWriteDependency(addr: Addr) extends Dependency
+  case class ReadWriteDependency(addr: Addr) extends Dependency {
+    override def toString(): String = s"$addr"
+  }
 
   trait GlobalStoreIntra extends super.IntraAnalysis {
 
