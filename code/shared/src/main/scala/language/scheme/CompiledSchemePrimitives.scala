@@ -1,6 +1,10 @@
-class CompiledSchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
+package scalaam.language.scheme
 
-  import SchemeLattice.scala
+import scalaam.core._
+
+import scala.util.control.TailCalls._
+
+class CompiledSchemePrimitives[V, A <: Address](implicit schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
 
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
@@ -214,41 +218,7 @@ class CompiledSchemePrimitives[V, A <: Address](implicit val schemeLattice: Sche
 
   object PrimitiveDefs extends PrimitiveBase {
 
-    def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
-      x match {
-        case MayFailSuccess(v)   => tailcall(v)
-        case MayFailError(err)   => done(MayFailError(err))
-        case MayFailBoth(v, err) => tailcall(v).map(_.addErrors(err))
-      }
-
-    /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
-    def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]): MayFail[V, Error] =
-      getPointerAddresses(x).foldLeft(MayFail.success[V, Error](bottom))(
-        (acc: MayFail[V, Error], a: A) =>
-          for {
-            v    <- store.lookupMF(a)
-            res  <- f(v)
-            accv <- acc
-          } yield join(accv, res)
-      )
-    def dereferencePointerGetAddressReturnStore(x: V, store: Store[A, V])(
-        f: (A, V, Store[A, V]) => MayFail[(V, Store[A, V]), Error]
-    ): MayFail[(V, Store[A, V]), Error] =
-      getPointerAddresses(x).foldLeft(MayFail.success[(V, Store[A, V]), Error]((bottom, store)))(
-        (acc: MayFail[(V, Store[A, V]), Error], a: A) =>
-          acc >>= ({
-            case (accv, updatedStore) =>
-              /* We use the old store because the new added information can only negatively influence precision (as it didn't hold at the point of the function call */
-              store.lookupMF(a) >>= (
-                  v =>
-                    /* But we pass the updated store around as it should reflect all updates */
-                    f(a, v, updatedStore) >>= ({
-                      case (res, newStore) =>
-                        MayFail.success((join(accv, res), newStore))
-                    })
-                )
-          })
-      )
+    import SchemeLattice._
 
     /* TODO[medium] improve these implicit classes to be able to write primitives more clearly */
     implicit class V1Ops(f: V => MayFail[V, Error]) {
@@ -261,33 +231,6 @@ class CompiledSchemePrimitives[V, A <: Address](implicit val schemeLattice: Sche
           v2  <- arg2
           res <- f(v1, v2)
         } yield res
-    }
-    /*
-    def app(f: V => MayFail[V, Error])(arg: MayFail[V, Error]): MayFail[V, Error] =
-      arg >>= f
-    def app2(f: (V, V) => MayFail[V, Error])(arg1: MayFail[V, Error], arg2: MayFail[V, Error]): MayFail[V, Error] =
-      for {
-        v1 <- arg1
-        v2 <- arg2
-        res <- f(v1, v2)
-      } yield res */
-
-    def ifThenElse(
-        cond: MayFail[V, Error]
-    )(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
-      cond >>= { condv =>
-        val t = if (isTrue(condv)) {
-          thenBranch
-        } else {
-          MayFail.success[V, Error](latMon.zero)
-        }
-        val f = if (isFalse(condv)) {
-          elseBranch
-        } else {
-          MayFail.success[V, Error](latMon.zero)
-        }
-        mfMon.append(t, f)
-      }
     }
 
     private trait Clause {

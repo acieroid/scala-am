@@ -1,4 +1,11 @@
-class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
+package scalaam.language.scheme
+
+import scalaam.core._
+import scalaam.language.scheme.SchemeAllocator
+
+import scala.util.control.TailCalls._
+
+class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemeLatticePrimitives[V,A](schemeLattice) {
 
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
@@ -18,9 +25,7 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       Memq, /* [v]  memq: List Searching */
       Min, /* [vv] min: Arithmetic */
       Negativep, /* [vv] negative?: Comparison */
-      Newline, /* [v]  newline: Writing */
       Not, /* [vv] not: Booleans */
-      NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
       Oddp, /* [vv] odd?: Integer Operations */
       Positivep, /* [vv] positive?: Comparison */
       Zerop, /* [vv] zero?: Comparison */
@@ -54,7 +59,7 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       Cddadr,
       Cdddar,
       Cddddr,
-    ) ++ SchemeLatticePrimitives.allPrimitives
+    ) ++ super.allPrimitives
   }
 
   object PrimitiveDefs extends PrimitiveBase {
