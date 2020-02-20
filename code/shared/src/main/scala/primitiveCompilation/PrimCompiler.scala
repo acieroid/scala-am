@@ -452,7 +452,7 @@ object PrimCompiler {
     val PrimInfo(name, args, rec, sto) = tar._2
     def bodyStr: String = if (args.nonEmpty) {
       args.zipWithIndex.map({ case (a, i) =>
-        s"val `${a}_pos` = args($i)._1\nval `$a` = args($i)._2"
+        s"    val `${a}_pos` = args($i)._1\n    val `$a` = args($i)._2"
       }).mkString("\n") ++ "\n" ++ tar._1.print(4)
     } else {
       tar._1.print(4)

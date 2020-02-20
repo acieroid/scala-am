@@ -1,0 +1,6 @@
+test/WeiChenRompf2019/the-little-schemer/ch1.scm
+* concrete
+  - started:  14:22:07
+- finished: 14:22:07
+-> Inferred 2 positions to check values.
+

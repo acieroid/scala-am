@@ -1,0 +1,128 @@
+test/WeiChenRompf2019/church_simple.sch
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 17 positions to check values.
+
+test/WeiChenRompf2019/fermat.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 18 positions to check values.
+
+test/WeiChenRompf2019/kcfa-worst-case-16.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 49 positions to check values.
+
+test/WeiChenRompf2019/kcfa-worst-case-32.scm
+* concrete
+  - started:  13:46:21
+Concrete machine timed out!
+test/WeiChenRompf2019/kcfa-worst-case-64.scm
+* concrete
+  - started:  13:46:21
+Concrete machine timed out!
+test/WeiChenRompf2019/kcfa-worst-case-256.scm
+* concrete
+  - started:  13:46:21
+Concrete machine timed out!
+test/WeiChenRompf2019/kcfa3.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 13 positions to check values.
+
+test/WeiChenRompf2019/mbrotZ.sch
+***
+test/WeiChenRompf2019/meta-circ.scm
+***
+test/WeiChenRompf2019/omega.scm
+* concrete
+  - started:  13:46:21
+***
+test/WeiChenRompf2019/regex-derivative.scm
+***
+test/WeiChenRompf2019/rsa.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 42 positions to check values.
+
+test/WeiChenRompf2019/scheme2java.scm
+***
+test/WeiChenRompf2019/solovay-strassen.scm
+* concrete
+  - started:  13:46:21
+***
+test/WeiChenRompf2019/the-little-schemer/ch1.scm
+* concrete
+  - started:  13:46:21
+***
+test/WeiChenRompf2019/the-little-schemer/ch2.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 4 positions to check values.
+
+test/WeiChenRompf2019/the-little-schemer/ch3.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 38 positions to check values.
+
+test/WeiChenRompf2019/the-little-schemer/ch4.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 31 positions to check values.
+
+test/WeiChenRompf2019/the-little-schemer/ch5.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 0 positions to check values.
+
+test/WeiChenRompf2019/the-little-schemer/ch6.scm
+***
+test/WeiChenRompf2019/the-little-schemer/ch7.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 0 positions to check values.
+
+test/WeiChenRompf2019/the-little-schemer/ch8.scm
+***
+test/WeiChenRompf2019/the-little-schemer/ch9.scm
+***
+test/WeiChenRompf2019/the-little-schemer/ch10.scm
+* concrete
+  - started:  13:46:21
+- finished: 13:46:21
+-> Inferred 0 positions to check values.
+
+test/WeiChenRompf2019/toplas98/boyer.sch
+***
+test/WeiChenRompf2019/toplas98/dynamic.sch
+***
+test/WeiChenRompf2019/toplas98/graphs.sch
+***
+test/WeiChenRompf2019/toplas98/handle.scm
+***
+test/WeiChenRompf2019/toplas98/lattice-processed.scm
+***
+test/WeiChenRompf2019/toplas98/lattice.scm
+***
+test/WeiChenRompf2019/toplas98/maze.sch
+***
+test/WeiChenRompf2019/toplas98/nbody-processed.sch
+***
+test/WeiChenRompf2019/toplas98/nbody.sch
+***
+test/WeiChenRompf2019/toplas98/nucleic.sch
+***
+test/WeiChenRompf2019/toplas98/nucleic2.sch
+***
+test/WeiChenRompf2019/toplas98/splay.scm
+***

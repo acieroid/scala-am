@@ -24,9 +24,11 @@ object PrimTarget {
   case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp {
     def print(i: Int): String = s"${e1.print(i)} >>= { $v  =>\n${e2.print(jump(i))}\n${indent(i)}}"
   }
+  /*
   case class Fail() extends Exp {
     def print(i: Int): String = indent(i) ++ "MayFail.Failure"
   }
+  */
   case class PrimCall(prim: Exp, args: Args, rec: Boolean, sto: Boolean, pos: Identity.Position) extends Exp {
     def print(i: Int): String =
       if (rec) {
