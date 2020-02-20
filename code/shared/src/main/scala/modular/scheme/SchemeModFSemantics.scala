@@ -23,7 +23,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     println("Store")
     println("--------------------")
     for { (addr, v) <- store } {
-      println(s"$addr -> $v")
+      if (addr.isInstanceOf[ComponentAddr] && !addr.asInstanceOf[ComponentAddr].addr.isInstanceOf[PrmAddr])
+        println(s"$addr -> $v")
     }
   }
 
