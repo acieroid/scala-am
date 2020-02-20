@@ -18,7 +18,12 @@ object PrimTarget {
     override def toString: String = print(0)
   }
 
-  def scalaNameOf(prim: String): String = prim.replace('?', 'p').replaceAll("[^a-zA-Z0-9]+", "_") // TODO: <= and >= will have the same name...
+  def scalaNameOf(prim: String): String =
+    prim.replace('?', 'p')
+      .replace("<","Lt")
+      .replace(">","Gt")
+      .replace("=", "Eq")
+      .replaceAll("[^a-zA-Z0-9]+", "_")
 
   case class Bind(v: Var, e1: Exp, e2: Exp) extends Exp {
     def print(i: Int): String = s"${e1.print(i)} >>= { $v  =>\n${e2.print(jump(i))}\n${indent(i)}}"
