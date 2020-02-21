@@ -15,7 +15,7 @@ import scalaam.language.scheme.SchemeInterpreter._
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
-  type Analysis = ModAnalysis[SchemeExp] with StandardSchemeModFSemantics
+  type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
@@ -119,9 +119,10 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
                                         with AdaptiveSchemeModFSemantics
                                         with BigStepSemantics
-                                        with AdaptiveConstantPropagationDomain {
+                                        with ConstantPropagationDomain {
     val limit = 5
-    override def alphaValue(v: Value) = super.alphaValue(v)
+    override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
+    override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
   }
 }
 

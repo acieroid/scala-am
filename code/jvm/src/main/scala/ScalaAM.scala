@@ -15,14 +15,14 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = FileUtil.loadFile("test/primtest.scm")
+    val txt = FileUtil.loadFile("test/test.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new AdaptiveModAnalysis(prg)
-                                          with AdaptiveSchemeModFSemantics
-                                          with BigStepSemantics
-                                          with AdaptiveConstantPropagationDomain {
-      val limit = 5
-      override def alphaValue(v: Value) = super.alphaValue(v)
+    val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
+                                                with BigStepSemantics
+                                                with ConstantPropagationDomain {
+      val limit = 2
+      override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
+      override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
     analysis.analyze()
     debugResults(analysis)
@@ -33,7 +33,7 @@ object Main {
   def debugResults(machine: SchemeModFAnalysis): Unit = {
     machine.store.foreach {
       case (machine.ReturnAddr(cmp),result) =>
-        println(s"$cmp => $result")
+        println(s"[$cmp] ${machine.view(cmp)} => $result")
       case _ =>
     }
   }

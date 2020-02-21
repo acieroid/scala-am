@@ -192,6 +192,8 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     }
   }
 
+  def componentKey(cmp: analysis.Component): Any = cmp
+
   // updates the visualisation: draws all nodes/edges, sets correct CSS classes, etc.
   def refreshVisualisation(): Unit = {
     // update the nodes
@@ -203,8 +205,9 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     newGroup.append("text")
             .attr("dx",__CIRCLE_RADIUS__)
             .attr("dy",__CIRCLE_RADIUS__)
-            .text((node: Node) => displayText(node.component))
     nodes = newGroup.merge(nodesUpdate)
+    nodes.select("text")
+         .text((node: Node) => displayText(node.component))
     nodesUpdate.exit().remove()
     nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
          .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
@@ -229,7 +232,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   //
 
   def keyHandler: PartialFunction[String,Unit] = {
-    case "n" => stepAnalysis()
+    case "n" | "N" => stepAnalysis()
   }
 
   def onClick() = stepAnalysis()

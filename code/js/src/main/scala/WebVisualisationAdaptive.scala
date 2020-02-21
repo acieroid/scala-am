@@ -1,6 +1,7 @@
 package scalaam.web
 
-import scalaam.modular.adaptive.AdaptiveModAnalysis
+import scalaam.core._
+import scalaam.modular.adaptive._
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -14,12 +15,27 @@ object WebVisualisationAdaptive {
                                   .range(__NODE_COLORS__)
 }
 
-class WebVisualisationAdaptive(override val analysis: AdaptiveModAnalysis[_]) extends WebVisualisation(analysis) {
+trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
+  var webvis: WebVisualisationAdaptive = null
+  override def updateAnalysisData(update: Component => Component) = {
+    super.updateAnalysisData(update)
+    webvis.adapted = true
+  }
+}
+
+class WebVisualisationAdaptive(override val analysis: WebAdaptiveAnalysis[_]) extends WebVisualisation(analysis) {
+
+  // give the analysis a pointer to the visualisation
+  analysis.webvis = this
+
+  var adapted = false
+
+  override def displayText(cmp: analysis.Component) = analysis.deref(cmp).toString()
 
   override def refreshDataAfterStep(cmp: analysis.Component,
                                     dps: Set[analysis.Component]) =
-    if (analysis.adapted) {
-      analysis.adapted = false
+    if (this.adapted) {
+      this.adapted = false
       super.refreshData()
     } else {
       super.refreshDataAfterStep(cmp,dps)

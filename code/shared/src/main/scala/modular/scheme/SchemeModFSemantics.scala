@@ -114,7 +114,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
-      if (scp == 0) { cmp } else resolveParent(cmp.asInstanceOf[CallComponent].parent, scp - 1)
+      if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       if(args.forall(_._2 != lattice.bottom)) {
         val fromClosures = applyClosures(fval,args)

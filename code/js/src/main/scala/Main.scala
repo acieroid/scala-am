@@ -41,9 +41,11 @@ object Main {
     val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
                                                     with BigStepSemantics
-                                                    with AdaptiveConstantPropagationDomain {
-      val limit = 3
-      override def alphaValue(v: Value) = super.alphaValue(v)
+                                                    with ConstantPropagationDomain
+                                                    with WebAdaptiveAnalysis[SchemeExp] {
+      val limit = 2
+      override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
+      override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step() = {
         val component = work.head
         val prevResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
