@@ -21,34 +21,35 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   def adaptComponent(cmp: ComponentData): ComponentData
   // .. and that when this happens, one needs to call `updateAnalysis`
   def updateAnalysis(): Unit = {
-    this.cMap = this.cMap.mapValues(adaptComponent).toMap   // adapt the components
-    val current = this.cMap.keys.map(addr => (addr,addr)).toMap
-    val updated = updateComponentMapping(current)          // update the indirection maps and calculate the "new component pointer" for every "old component pointer"
-    updateAnalysisData(cmp => ComponentPointer(updated(cmp.addr)))  // update all components pointers in the analysis
+    // update the indirection maps and calculate the "new component pointer" for every "old component pointer"
+    val current = this.cMap.map({ case (addr, _) => (addr,addr) }).toMap
+    val updated = updateComponentMapping(this.cMapR, adaptComponent, current)
+    // update all components pointers in the analysis
+    updateAnalysisData(cmp => ComponentPointer(updated(cmp.addr)))
   }
 
   @scala.annotation.tailrec
-  private def updateComponentMapping(current: Map[Address,Address]): Map[Address,Address] = {
-    var remapping = Map[Address,Address]()
-    this.cMapR = this.cMap.foldLeft(Map[ComponentData,Address]()) {
-      case (acc, (oldAddr, cmp)) => acc.get(cmp) match {
-        case None =>
-          acc + (cmp -> oldAddr)
-        case Some(newAddr) =>
-          remapping += (oldAddr -> newAddr)
-          acc
+  private def updateComponentMapping(current: Map[ComponentData,Address],
+                                     update: ComponentData => ComponentData,
+                                     moved: Map[Address,Address]): Map[Address,Address] = {
+    var mapping = Map[Address,Address]()
+    var updated = Map[ComponentData,Address]()
+    current.foreach { case (oldCmp, oldAddr) =>
+      val newCmp = update(oldCmp)
+      updated.get(newCmp) match {
+        case None           => updated += (newCmp -> oldAddr)
+        case Some(newAddr)  => mapping += (oldAddr -> newAddr)
       }
     }
-    if (remapping.isEmpty) {
-      //assert(this.cMapR == this.cMap.map(_.swap))
-      //assert(this.cMap == this.cMapR.map(_.swap))
-      current
+    if (mapping.isEmpty) {
+      this.cMapR = updated
+      this.cMap = updated.map(_.swap)
+      moved
     } else {
-      val updateAddress = (addr: Address) => remapping.getOrElse(addr, addr)
-      val updateComponent = (ptr: ComponentPointer) => ComponentPointer(updateAddress(ptr.addr))
-      this.cMap = this.cMapR.map { case (cmp,addr) => (addr,updateCmp(updateComponent)(cmp)) }
-      val updated = current.view.mapValues(updateAddress).toMap
-      updateComponentMapping(updated)
+      val updateAddress = (addr: Address) => mapping.getOrElse(addr, addr)
+      val updatePointer = (ptr: ComponentPointer) => ComponentPointer(updateAddress(ptr.addr))
+      val updatedMoved = moved.view.mapValues(updateAddress).toMap
+      updateComponentMapping(updated, updateCmp(updatePointer), updatedMoved)
     }
   }
 
