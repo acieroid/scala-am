@@ -29,7 +29,6 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
 
   @scala.annotation.tailrec
   private def updateComponentMapping(current: Map[Address,Address]): Map[Address,Address] = {
-    var fixpointReached = true
     var remapping = Map[Address,Address]()
     this.cMapR = this.cMap.foldLeft(Map[ComponentData,Address]()) {
       case (acc, (oldAddr, cmp)) => acc.get(cmp) match {
@@ -37,11 +36,10 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
           acc + (cmp -> oldAddr)
         case Some(newAddr) =>
           remapping += (oldAddr -> newAddr)
-          fixpointReached = false
           acc
       }
     }
-    if (fixpointReached) {
+    if (remapping.isEmpty) {
       //assert(this.cMapR == this.cMap.map(_.swap))
       //assert(this.cMap == this.cMapR.map(_.swap))
       current
