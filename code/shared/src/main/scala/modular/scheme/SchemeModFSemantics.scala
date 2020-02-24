@@ -72,8 +72,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     lazy val (lambda, parent) = clo
     lazy val body: SchemeExp = SchemeBody(lambda.body)
     override def toString: String = nam match {
-      case None => s"λ@${lambda.idn} [${ctx.toString}]"
-      case Some(name) => s"$name [${ctx.toString}]"
+      case None => s"λ@${lambda.idn} ($parent) [${ctx.toString}]"
+      case Some(name) => s"$name ($parent) [${ctx.toString}]"
     }
   }
 

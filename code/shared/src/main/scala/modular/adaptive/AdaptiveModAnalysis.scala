@@ -31,13 +31,10 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   private def updateComponentMapping(current: Map[Address,Address]): Map[Address,Address] = {
     var fixpointReached = true
     var remapping = Map[Address,Address]()
-    this.count = 0
     this.cMapR = this.cMap.foldLeft(Map[ComponentData,Address]()) {
       case (acc, (oldAddr, cmp)) => acc.get(cmp) match {
         case None =>
-          val newAddr = alloc()
-          remapping += (oldAddr -> newAddr)
-          acc + (cmp -> newAddr)
+          acc + (cmp -> oldAddr)
         case Some(newAddr) =>
           remapping += (oldAddr -> newAddr)
           fixpointReached = false
@@ -45,9 +42,11 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
       }
     }
     if (fixpointReached) {
+      //assert(this.cMapR == this.cMap.map(_.swap))
+      //assert(this.cMap == this.cMapR.map(_.swap))
       current
     } else {
-      val updateAddress = (addr: Address) => remapping(addr)
+      val updateAddress = (addr: Address) => remapping.getOrElse(addr, addr)
       val updateComponent = (ptr: ComponentPointer) => ComponentPointer(updateAddress(ptr.addr))
       this.cMap = this.cMapR.map { case (cmp,addr) => (addr,updateCmp(updateComponent)(cmp)) }
       val updated = current.view.mapValues(updateAddress).toMap

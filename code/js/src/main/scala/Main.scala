@@ -48,10 +48,10 @@ object Main {
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step() = {
         val component = work.head
+        val name = deref(component)
         val prevResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
         super.step()
         val newResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
-        println(s"$component => $newResult (previously: $prevResult)")
       }
     }
     val visualisation = new WebVisualisationAdaptive(analysis)
