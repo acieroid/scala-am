@@ -38,13 +38,14 @@ object Benchmark extends App {
     val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
     val t0 = System.nanoTime()
     analysis.analyze()
-    val t1 = System.nanoTime()
+    //val t1 = System.nanoTime()
     analysis.debug()
 //    println(s"Store: ${analysis.store}")
   }
+  run("test/DEBUG.scm")
 /*  run("test/mceval.scm")
   run("test/scp1/9.12.scm") */
-  run("test/gabriel/browse.scm")
+//  run("test/gabriel/browse.scm")
 /*  run("test/scp1/8.15.scm") */
 //  run("test/gambit/mazefun.scm")
 /*  run("test/gabriel/diviter.scm")
