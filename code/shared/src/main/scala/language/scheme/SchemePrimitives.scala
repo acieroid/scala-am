@@ -1037,41 +1037,36 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
   }
 }
 
-/*
-class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
-
-  case class PrimitiveArityError(name: String, expected: Int, got: Int)                extends Error
-  case class PrimitiveVariadicArityError(name: String, expectedAtLeast: Int, got: Int) extends Error
-  case class PrimitiveNotApplicable(name: String, args: List[V])                       extends Error
-  case class UserError(message: String)                                                extends Error
+class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends MinimalSchemePrimitives[V, A] {
 
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
-  def allPrimitives: List[SchemePrimitive[V,A]] = {
+  override def allPrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
+    import ManualPrimitiveDefs._
     List(
-      Times, /* [vv] *: Arithmetic */
-      Plus, /* [vv] +: Arithmetic */
-      Minus, /* [vv] -: Arithmetic */
-      Div, /* [vx] /: Arithmetic (no support for fractions) */
-      Abs, /* [vv] abs: Arithmetic */
-      ACos, /* [vv] acos: Scientific */
+      `modulo`,
+      `*`, /* [vv] *: Arithmetic */
+      `+`, /* [vv] +: Arithmetic */
+      `-`, /* [vv] -: Arithmetic */
+      `/`, /* [vx] /: Arithmetic (no support for fractions) */
+      `acos`, /* [vv] acos: Scientific */
       /* [x]  angle: Complex */
-      Append, /* [x]  append: Append/Reverse */
+      `append`, /* [x]  append: Append/Reverse */ // MANUAL
       /* [x]  apply: Fly Evaluation */
-      ASin, /* [vv] asin: Scientific */
-      Assoc, /* [vv] assoc: Retrieving Alist Entries */
-      Assq, /* [vv] assq: Retrieving Alist Entries */
+      `asin`, /* [vv] asin: Scientific */
+      `assoc`, /* [vv] assoc: Retrieving Alist Entries */
+      `assq`, /* [vv] assq: Retrieving Alist Entries */
       /* [x]  assv: Retrieving Alist Entries */
-      ATan, /* [vv] atan: Scientific */
-      Booleanp, /* [vv] boolean?: Booleans */
+      `atan`, /* [vv] atan: Scientific */
+      `boolean?`, /* [vv] boolean?: Booleans */
       /* [x]  call-with-current-continuation: Continuations */
       /* [x]  call-with-input-file: File Ports */
       /* [x]  call-with-output-file: File Ports */
       /* [x]  call-with-values: Multiple Values */
-      Car, /* [vv] car: Pairs */
-      Cdr, /* [vv] cdr: Pairs */
-      Ceiling, /* [vv] ceiling: Arithmetic */
-      CharacterToInteger, /* [x]  char->integer: Characters */
+      `car`, /* [vv] car: Pairs */
+      `cdr`, /* [vv] cdr: Pairs */
+      `ceiling`, /* [vv] ceiling: Arithmetic */
+      `char->integer`, /* [x]  char->integer: Characters */
       /* [x]  char-alphabetic?: Characters */
       /* [x]  char-ci<=?: Characters */
       /* [x]  char-ci<?: Characters */
@@ -1090,128 +1085,127 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       /* [x]  char=?: Characters */
       /* [x]  char>=?: Characters */
       /* [x]  char>?: Characters */
-      Charp, /* [vv] char?: Characters */
+      `char?`, /* [vv] char?: Characters */
       /* [x]  close-input-port: Closing */
       /* [x]  close-output-port: Closing */
       /* [x]  complex?: Complex Numbers */
-      Cons, /* [vv] cons: Pairs */
-      Cos, /* [vv] cos: Scientific */
+      `cons`, /* [vv] cons: Pairs */
+      `cos`, /* [vv] cos: Scientific */
       /* [x]  current-input-port: Default Ports */
       /* [x]  current-output-port: Default Ports */
-      Display, /* [v]  display: Writing */
+      `display`, /* [v]  display: Writing */
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
-      Eq, /* [vv] eq?: Equality */
-      Equal, /* [vx] equal?: Equality */
+      `eq?`, /* [vv] eq?: Equality */
       /* [x]  eqv?: Equality */
       /* [x]  eval: Fly Evaluation */
-      Evenp, /* [vv] even?: Integer Operations */
-      ExactToInexact, /* [vv] exact->inexact: Exactness */
+      `even?`, /* [vv] even?: Integer Operations */
+      `exact->inexact`, /* [vv] exact->inexact: Exactness */
       /* [x]  exact?: Exactness */
       /* [x]  exp: Scientific */
-      Expt, /* [vv] expt: Scientific */
-      Floor, /* [vv] floor: Arithmetic */
+      `expt`, /* [vv] expt: Scientific */
+      `floor`, /* [vv] floor: Arithmetic */
       /* [x]  for-each: List Mapping */
       /* [x]  force: Delayed Evaluation */
-      Gcd, /* [vx] gcd: Integer Operations */
+      `gcd`, /* [vx] gcd: Integer Operations */
       /* [x]  imag-part: Complex */
-      InexactToExact, /* [vv] inexact->exact: Exactness */
+      `inexact->exact`, /* [vv] inexact->exact: Exactness */
       /* [x]  inexact?: Exactness */
       /* [x]  input-port?: Ports */
       /* [x]  integer->char: Characters */
-      Integerp, /* [vv] integer?: Integers */
+      `integer?`, /* [vv] integer?: Integers */
       /* [x]  interaction-environment: Fly Evaluation */
       /* [x]  lcm: Integer Operations */
-      Length, /* [vv] length: List Selection */
-      ListPrim, /* [vv] list: List Constructors */
+      `length`, /* [vv] length: List Selection */
+      `list`, /* [vv] list: List Constructors */
       /* [x]  list->string: String Constructors */
       /* [x]  list->vector: Vector Creation */
-      ListRef, /* [vv] list-ref: List Selection */
+      `list-ref`,  /* [vv] list-ref: List Selection */
       /* [x]  list-tail: List Selection */
-      Listp, /* [vv] list?: List Predicates */
+      `list?`, /* [vv] list?: List Predicates */
       /* [x]  load: Loading */
-      Log, /* [vv] log: Scientific */
+      `log`, /* [vv] log: Scientific */
       /* [x]  magnitude: Complex */
       /* [x]  make-polar: Complex */
       /* [x]  make-rectangular: Complex */
       /* [x]  make-string: String Constructors */
       /* [x]  map: List Mapping */
-      Max, /* [vv] max: Arithmetic */
-      Member, /* [vv] member: List Searching */
-      Memq, /* [v]  memq: List Searching */
+      `max`, /* [vv] max: Arithmetic */
+      `member`, /* [vv] member: List Searching */
+      `memq`, /* [v]  memq: List Searching */
       /* [x]  memv: List Searching */
-      Min, /* [vv] min: Arithmetic */
-      Modulo, /* [vv] modulo: Integer Operations */
-      Negativep, /* [vv] negative?: Comparison */
-      Newline, /* [v]  newline: Writing */
-      Not, /* [vv] not: Booleans */
-      Nullp, /* [vv] null?: List Predicates */
-      NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
-      Numberp, /* [vv] number?: Numerical Tower */
-      Oddp, /* [vv] odd?: Integer Operations */
+      `min`, /* [vv] min: Arithmetic */
+      `modulo`, /* [vv] modulo: Integer Operations */
+      `negative?`, /* [vv] negative?: Comparison */
+      `newline`, /* [v]  newline: Writing */
+      `not`, /* [vv] not: Booleans */
+      `null?`, /* [vv] null?: List Predicates */
+      `number->string`, /* [vx] number->string: Conversion: does not support two arguments */
+      `number?`, /* [vv] number?: Numerical Tower */
+      `odd?`, /* [vv] odd?: Integer Operations */
       /* [x]  open-input-file: File Ports */
       /* [x]  open-output-file: File Ports */
       /* [x]  output-port?: Ports */
-      Pairp, /* [vv] pair?: Pairs */
+      `pair?`, /* [vv] pair?: Pairs */
       /* [x]  peek-char?: Reading */
-      Positivep, /* [vv] positive?: Comparison */
+      `positive?`, /* [vv] positive?: Comparison */
       /* [x]  procedure?: Procedure Properties */
-      Quotient, /* [vv] quotient: Integer Operations */
+      `quotient`, /* [vv] quotient: Integer Operations */
       /* [x]  rational?: Reals and Rationals */
       /* [x]  read: Scheme Read */
       /* [x]  read-char?: Reading */
       /* [x]  real-part: Complex */
-      Realp, /* [vv] real?: Reals and Rationals */
-      Remainder, /* [vv] remainder: Integer Operations */
+      `real?`, /* [vv] real?: Reals and Rationals */
+      `remainder`, /* [vv] remainder: Integer Operations */
       /* [x]  reverse: Append/Reverse */
-      Round, /* [vv] round: Arithmetic */
-      SetCar, /* [vv] set-car!: Pairs */
-      SetCdr, /* [vv] set-cdr!: Pairs */
-      Sin, /* [vv] sin: Scientific */
-      Sqrt, /* [vv] sqrt: Scientific */
+      `round`, /* [vv] round: Arithmetic */
+      `set-car!`, /* [vv] set-car!: Pairs */
+      `set-cdr!`, /* [vv] set-cdr!: Pairs */
+      `sin`, /* [vv] sin: Scientific */
+      `sqrt`, /* [vv] sqrt: Scientific */
       /* [x]  string: String Constructors */
       /* [x]  string->list: List/String Conversion */
       /* [x]  string->number: Conversion */
-      StringToSymbol, /* [vv] string->symbol: Symbol Primitives */
-      StringAppend, /* [vx] string-append: Appending Strings: only two arguments supported */
+      `string->symbol`, /* [vv] string->symbol: Symbol Primitives */
+      `string-append`, /* [vx] string-append: Appending Strings: only two arguments supported */
       /* [x]  string-ci<: String Comparison */
       /* [x]  string-ci=?: String Comparison */
       /* [x]  string-ci>=?: String Comparison */
       /* [x]  string-ci>?: String Comparison */
       /* [x]  string-copy: String Selection */
       /* [x]  string-fill!: String Modification */
-      StringLength, /* [vv] string-length: String Selection */
-      StringRef, /* [x]  string-ref: String Selection */
+      `string-length`, /* [vv] string-length: String Selection */
+      `string-ref`, /* [x]  string-ref: String Selection */
       /* [x]  string-set!: String Modification */
       /* [x]  string<=?: String Comparison */
-      StringLt, /* [vv]  string<?: String Comparison */
+      `string<?`, /* [vv]  string<?: String Comparison */
       /* [x]  string=?: String Comparison */
       /* [x]  string>=?: String Comparison */
       /* [x]  string>?: String Comparison */
-      Stringp, /* [vv]  string?: String Predicates */
+      `string?`, /* [vv]  string?: String Predicates */
       /* [x]  substring: String Selection */
-      SymbolToString, /* [vv] symbol->string: Symbol Primitives */
-      Symbolp, /* [vv] symbol?: Symbol Primitives */
-      Tan, /* [vv] tan: Scientific */
+      `symbol->string`, /* [vv] symbol->string: Symbol Primitives */
+      `symbol?`, /* [vv] symbol?: Symbol Primitives */
+      `tan`, /* [vv] tan: Scientific */
       /* [x]  truncate: Arithmetic */
       /* [x]  values: Multiple Values */
-      MakeVector, /* [vv] make-vector: Vector Creation */
-      Vector, /* [vv] vector: Vector Creation */
+      `make-vector`, /* [vv] make-vector: Vector Creation */
+      `vector`, /* [vv] vector: Vector Creation */
       /* [x]  vector->list: Vector Creation */
       /* [x]  vector-fill!: Vector Accessors */
-      VectorLength, /* [vv] vector-length: Vector Accessors */
-      VectorRef, /* [vv] vector-ref: Vector Accessors */
-      VectorSet, /* [vv] vector-set!: Vector Accessors */
-      Vectorp, /* [vv] vector?: Vector Creation */
+      `vector-length`, /* [vv] vector-length: Vector Accessors */
+      `vector-ref`, /* [vv] vector-ref: Vector Accessors */
+      `vector-set!`, /* [vv] vector-set!: Vector Accessors */
+      `vector?`, /* [vv] vector?: Vector Creation */
       /* [x]  with-input-from-file: File Ports */
       /* [x]  with-output-to-file: File Ports */
       /* [x]  write-char: Writing */
-      Zerop, /* [vv] zero?: Comparison */
-      LessThan, /* [vv]  < */
-      LessOrEqual, /* [vv]  <= */
-      NumEq, /* [vv]  = */
-      GreaterThan, /* [vv]  > */
-      GreaterOrEqual, /* [vv]  >= */
+      `zero?`, /* [vv] zero?: Comparison */
+      `<`, /* [vv]  < */
+      `<=`, /* [vv]  <= */
+      `=`, /* [vv]  = */
+      `>`, /* [vv]  > */
+      `>=`, /* [vv]  >= */
       /* [x]  numerator */
       /* [x]  denominator */
       /* [x]  rationalize-string */
@@ -1219,73 +1213,45 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       /* [x]  null-environment */
       /* [x]  write transcript-on */
       /* [x]  transcript-off */
-      Caar,
-      Cadr, /* [v]  caar etc. */
-      Cdar,
-      Cddr,
-      Caaar,
-      Caadr,
-      Cadar,
-      Caddr,
-      Cdaar,
-      Cdadr,
-      Cddar,
-      Cdddr,
-      Caaaar,
-      Caaadr,
-      Caadar,
-      Caaddr,
-      Cadaar,
-      Cadadr,
-      Caddar,
-      Cadddr,
-      Cdaaar,
-      Cdaadr,
-      Cdadar,
-      Cdaddr,
-      Cddaar,
-      Cddadr,
-      Cdddar,
-      Cddddr,
+      `caar`,
+      `cadr`, /* [v]  caar etc. */
+      `cdar`,
+      `cddr`,
+      `caaar`,
+      `caadr`,
+      `cadar`,
+      `caddr`,
+      `cdaar`,
+      `cdadr`,
+      `cddar`,
+      `cdddr`,
+      `caaaar`,
+      `caaadr`,
+      `caadar`,
+      `caaddr`,
+      `cadaar`,
+      `cadadr`,
+      `caddar`,
+      `cadddr`,
+      `cdaaar`,
+      `cdaadr`,
+      `cdadar`,
+      `cdaddr`,
+      `cddaar`,
+      `cddadr`,
+      `cdddar`,
+      `cddddr`,
       /* Other primitives that are not R5RS */
-      Random,
-      Error
+      `random`,
+      `error`
     )
   }
 
-  object PrimitiveDefs {
+  object ManualPrimitiveDefs {
 
     lazy val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
     lazy val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
 
-    /** Helper for defining operations that do not modify the store */
-    abstract class NoStoreOperation(val name: String, val nargs: Option[Int] = None)
-        extends SchemePrimitive[V,A] {
-      def call(args: List[V]): MayFail[V, Error] =
-        MayFail.failure(PrimitiveArityError(name, nargs.getOrElse(-1), args.length))
-      def call2(arg1: V, arg2: V): MayFail[V, Error] = call(List(arg1, arg2))
-      def call2(arg1: (Identity.Position, V), arg2: (Identity.Position, V)): MayFail[V, Error] =
-        call2(arg1._2, arg2._2)
-      def call2pos(fpos: Identity.Position, arg1: (Identity.Position, V), arg2: (Identity.Position, V)): MayFail[V, Error] =
-        call2(arg1, arg2)
-      def call(arg: V): MayFail[V, Error]                               = call(List(arg))
-      def call(arg: (Identity.Position, V)): MayFail[V, Error]                  = call(arg._2)
-      def call1pos(fpos: Identity.Position, arg: (Identity.Position, V)): MayFail[V, Error] = call(arg)
-      def call(): MayFail[V, Error]                                     = call(List())
-      override def call(fpos: Identity.Position,
-               args: List[(Identity.Position, V)],
-               store: Store[A, V],
-               alloc: SchemeAllocator[A]
-      ): MayFail[(V, Store[A, V]), Error] =
-        (args match {
-          case Nil           => call()
-          case x :: Nil      => call1pos(fpos, x)
-          case x :: y :: Nil => call2pos(fpos, x, y)
-          case _             => call(args.map({ case (_, v) => v }))
-        }).map(v => (v, store))
-    }
-
-    import schemeLattice._
     import scala.util.control.TailCalls._
 
     abstract class FixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
@@ -1455,6 +1421,8 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       }
     }
 
+    import schemeLattice.{getPointerAddresses, bottom, isTrue, isFalse, or, number, bool, join, and, car, cdr, pointer}
+
     def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
       x match {
         case MayFailSuccess(v)   => tailcall(v)
@@ -1588,19 +1556,19 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
     def isReal         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsReal) _
     def isBoolean      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
     def isVector       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsVector) _
-    def ceiling        = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Ceiling) _
-    def floor          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Floor) _
-    def round          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Round) _
-    def log            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Log) _
-    def not            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Not) _
-    def random         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Random) _
-    def sin            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sin) _
-    def asin           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ASin) _
-    def cos            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Cos) _
-    def acos           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ACos) _
-    def tan            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Tan) _
-    def atan           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ATan) _
-    def sqrt           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sqrt) _
+//    def ceiling        = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Ceiling) _
+//    def floor          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Floor) _
+//    def round          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Round) _
+//    def log            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Log) _
+    def lat_not            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Not) _
+//    def random         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Random) _
+//    def sin            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sin) _
+//    def asin           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ASin) _
+//    def cos            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Cos) _
+//    def acos           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ACos) _
+//    def tan            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Tan) _
+//    def atan           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ATan) _
+//    def sqrt           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sqrt) _
     def vectorLength   = schemeLattice.unaryOp(SchemeOps.UnaryOperator.VectorLength) _
     def stringLength   = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringLength) _
     def numberToString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.NumberToString) _
@@ -1614,9 +1582,9 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
     def minus        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Minus) _
     def times        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Times) _
     def div          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Div) _
-    def quotient     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Quotient) _
-    def modulo       = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Modulo) _
-    def remainder    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Remainder) _
+//    def quotient     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Quotient) _
+    def lat_modulo       = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Modulo) _
+//    def remainder    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Remainder) _
     def lt           = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Lt) _
     def numEq        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.NumEq) _
     def eqq          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Eq) _
@@ -1624,228 +1592,61 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
     def stringRef    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringRef) _
     def stringLt     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringLt) _
 
-    object Plus extends NoStoreOperation("+") {
-      override def call(args: List[V]) = args match {
-        case Nil       => number(0)
-        case x :: rest => call(rest) >>= (plus(x, _))
-      }
+    object `<=` extends NoStore2Operation("<=") {
+      override def call(x: V, y: V) = (or _)(lt(x, y), numEq(x, y))
     }
-    object Minus extends NoStoreOperation("-") {
-      override def call(args: List[V]) = args match {
-        case Nil       => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
-        case x :: Nil  => minus(number(0), x)
-        case x :: rest => Plus.call(rest) >>= (minus(x, _))
-      }
+    object `>` extends NoStore2Operation(">") {
+      override def call(x: V, y: V) = lat_not(`<=`.call(x, y))
     }
-    object Times extends NoStoreOperation("*") {
-      override def call(args: List[V]) = args match {
-        case Nil       => number(1)
-        case x :: rest => call(rest) >>= (times(x, _))
-      }
-    }
-    object Div extends NoStoreOperation("/") {
-      override def call(args: List[V]) = args match {
-        case Nil => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
-        case x :: rest =>
-          for {
-            multrest      <- Times.call(rest)
-            r             <- div(x, multrest)
-            fl            <- floor(r)
-            isexact       <- eqq(r, fl)
-            xisint        <- isInteger(x)
-            multrestisint <- isInteger(multrest)
-            convert       <- and(isexact, and(xisint, multrestisint))
-            exr           <- inexactToExact(r)
-            res           <- ifThenElse(convert) { exr } { r }
-          } yield {
-            res
-          }
-      }
-    }
-    object Quotient extends NoStoreOperation("quotient", Some(2)) {
-      override def call2(x: V, y: V) = quotient(x, y)
-    }
-
-    object Expt extends NoStoreOperation("expt") {
-      def expt(x: V, y: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
-        if (visited.contains(y) || x == bottom || y == bottom) {
-          done(bottom)
-        } else {
-          ifThenElseTR(numEq(y, number(0))) {
-            done(number(1))
-          } {
-            liftTailRec(
-              minus(y, number(1)).flatMap(
-                y1 =>
-                  tailcall(expt(x, y1, visited + y))
-                    .flatMap(exptrest => done(exptrest.flatMap(y => times(x, y))))
-              )
-            )
-          }
-        }
-      }
-      override def call2(x: V, y: V) = expt(x, y, Set()).result
-    }
-
-    object LessThan extends NoStoreOperation("<", Some(2)) {
-      override def call2(x: V, y: V) =
-        lt(x, y) /* TODO[easy]: < should accept any number of arguments (same for <= etc.) */
-    }
-    object LessOrEqual extends NoStoreOperation("<=", Some(2)) {
-      override def call2(x: V, y: V) = (or _)(lt(x, y), numEq(x, y)) /*for {
-        ltres <- lt(x, y)
-        eqres <- numEq(x, y)
-      } yield or(ltres, eqres) */
-    }
-    object NumEq extends NoStoreOperation("=", Some(2)) {
-      def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
-        case Nil => bool(true)
-        case x :: rest =>
-          ifThenElse(numEq(first, x)) {
-            eq(first, rest)
-          } {
-            bool(false)
-          }
-      }
-      override def call(args: List[V]) = args match {
-        case Nil       => bool(true)
-        case x :: rest => eq(x, rest)
-      }
-    }
-    object GreaterThan extends NoStoreOperation(">", Some(2)) {
-      override def call2(x: V, y: V) = not(LessOrEqual.call2(x, y))
-    }
-    object GreaterOrEqual extends NoStoreOperation(">=", Some(2)) {
-      override def call2(x: V, y: V) = not(LessThan.call2(x, y))
-    }
-    object Modulo extends NoStoreOperation("modulo", Some(2)) {
-      override def call2(x: V, y: V) = modulo(x, y)
-    }
-    object Remainder extends NoStoreOperation("remainder", Some(2)) {
-      override def call2(x: V, y: V) = remainder(x, y)
-    }
-    object Random extends NoStoreOperation("random", Some(1)) {
-      override def call(x: V) = random(x)
-    }
-    object Ceiling extends NoStoreOperation("ceiling", Some(1)) {
-      override def call(x: V) = ceiling(x)
-    }
-    object Floor extends NoStoreOperation("floor", Some(1)) {
-      override def call(x: V) = floor(x)
-    }
-    object Round extends NoStoreOperation("round", Some(1)) {
-      override def call(x: V) = round(x)
-    }
-    object Log extends NoStoreOperation("log", Some(1)) {
-      override def call(x: V) = log(x)
-    }
-    object Sin extends NoStoreOperation("sin", Some(1)) {
-      override def call(x: V) = sin(x)
-    }
-    object ASin extends NoStoreOperation("asin", Some(1)) {
-      override def call(x: V) = asin(x)
-    }
-    object Cos extends NoStoreOperation("cos", Some(1)) {
-      override def call(x: V) = cos(x)
-    }
-    object ACos extends NoStoreOperation("acos", Some(1)) {
-      override def call(x: V) = acos(x)
-    }
-    object Tan extends NoStoreOperation("tan", Some(1)) {
-      override def call(x: V) = tan(x)
-    }
-    object ATan extends NoStoreOperation("atan", Some(1)) {
-      override def call(x: V) = atan(x)
-    }
-    object Sqrt extends NoStoreOperation("sqrt", Some(1)) {
-      override def call(x: V) =
-        ifThenElse(LessOrEqual.call2(number(0), x)) {
-          /* n >= 0 */
-          for {
-            r          <- sqrt(x)
-            fl         <- floor(r)
-            argisexact <- isInteger(x)
-            resisexact <- eqq(r, fl)
-            convert    <- and(argisexact, resisexact)
-            exr        <- inexactToExact(r)
-            res        <- ifThenElse(convert) { exr } { r }
-          } yield {
-            res
-          }
-        } {
-          /* n < 0 */
-          MayFail.failure(PrimitiveNotApplicable("sqrt", List(x)))
-        }
-    }
-    object ExactToInexact extends NoStoreOperation("exact->inexact", Some(1)) {
-      override def call(x: V) = exactToInexact(x)
-    }
-    object InexactToExact extends NoStoreOperation("inexact->exact", Some(1)) {
-      override def call(x: V) = inexactToExact(x)
-    }
-    object CharacterToInteger extends NoStoreOperation("char->integer", Some(1)) {
-      override def call(x: V) = characterToInt(x)
+    object `>=` extends NoStore2Operation(">=") {
+      override def call(x: V, y: V) = lat_not(PrimitiveDefs.`<`.call(x, y))
     }
 
     /** (define (zero? x) (= x 0)) */
-    object Zerop extends NoStoreOperation("zero?", Some(1)) {
+    object `zero?` extends NoStore1Operation("zero?") {
       override def call(x: V) = numEq(number(0), x)
     }
 
-    /** (define (positive? x) (< x 0)) */
-    object Positivep extends NoStoreOperation("positive?", Some(1)) {
+    /** (define (positive? x) (< 0 x)) */
+    object `positive?` extends NoStore1Operation("positive?") {
       override def call(x: V) = lt(number(0), x)
     }
 
-    /** (define (positive? x) (< 0 x)) */
-    object Negativep extends NoStoreOperation("negative?", Some(1)) {
+    /** (define (negative? x) (< x 0)) */
+    object `negative?` extends NoStore1Operation("negative?") {
       override def call(x: V) = lt(x, number(0))
     }
 
     /** (define (odd? x) (= 1 (modulo x 2))) */
-    object Oddp extends NoStoreOperation("odd?", Some(1)) {
-      override def call(x: V) = modulo(x, number(2)) >>= (numEq(number(1), _))
+    object `odd?` extends NoStore1Operation("odd?") {
+      override def call(x: V) = lat_modulo(x, number(2)) >>= (numEq(number(1), _))
     }
 
     /** (define (even? x) (= 0 (modulo x 2))) */
-    object Evenp extends NoStoreOperation("even?", Some(1)) {
-      override def call(x: V) = modulo(x, number(2)) >>= (numEq(number(0), _))
+    object `even?` extends NoStore1Operation("even?") {
+      override def call(x: V) = lat_modulo(x, number(2)) >>= (numEq(number(0), _))
     }
-    object Max extends NoStoreOperation("max") {
-      /* TODO: In Scheme, max casts numbers to inexact as soon as one of them is inexact, but we don't support that */
-      private def call(args: List[V], max: V): MayFail[V, Error] = args match {
-        case Nil => max
-        case x :: rest =>
-          ifThenElse(lt(max, x)) {
-            call(rest, x)
-          } {
-            call(rest, max)
-          }
-      }
-      override def call(args: List[V]) = args match {
-        case Nil       => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
-        case x :: rest => call(rest, x)
-      }
+
+    object `max` extends NoStore2Operation("max") {
+      override def call(x: V, y: V) =
+        ifThenElse(lt(x, y)) {
+          y
+        } {
+          x
+        }
     }
-    object Min extends NoStoreOperation("min") {
-      /* TODO: same remark as max */
-      private def call(args: List[V], min: V): MayFail[V, Error] = args match {
-        case Nil => min
-        case x :: rest =>
-          ifThenElse(lt(x, min)) {
-            call(rest, x)
-          } {
-            call(rest, min)
-          }
-      }
-      override def call(args: List[V]) = args match {
-        case Nil       => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
-        case x :: rest => call(rest, x)
-      }
+
+    object `min` extends NoStore2Operation("min") {
+      override def call(x: V, y: V) =
+        ifThenElse(lt(x, y)) {
+          x
+        } {
+          y
+        }
     }
 
     /** (define (abs x) (if (< x 0) (- 0 x) x)) */
-    object Abs extends NoStoreOperation("abs", Some(1)) {
+    object `abs` extends NoStore1Operation("abs") {
       override def call(x: V) =
         ifThenElse(lt(x, number(0))) {
           minus(number(0), x)
@@ -1855,238 +1656,63 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
     }
 
     /** (define (gcd a b) (if (= b 0) a (gcd b (modulo a b)))) */
-    /*
-    object Gcd extends NoStoreOperation("gcd", Some(2)) {
-      private def gcd(a: V, b: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
-        if (visited.contains((a, b)) || a == bottom || b == bottom) {
-          done(bottom)
-        } else {
-          ifThenElseTR(numEq(b, number(0))) {
-            done(a)
-          } {
-            liftTailRec(modulo(a, b) >>= (amodb => tailcall(gcd(b, amodb, visited + ((a, b))))))
-          }
-        }
-      }
-      override def call(x: V, y: V) = gcd(x, y, Set()).result
-    }
-    */
-    object Gcd extends SimpleFixpointPrimitive("gcd", Some(2)) {
+    object `gcd` extends SimpleFixpointPrimitive("gcd", Some(2)) {
       def callWithArgs(args: Args, gcd: Args => MayFail[V, Error]): MayFail[V, Error] = {
         val a :: b :: Nil = args
         ifThenElse(numEq(b, number(0))) { a } {
-          modulo(a, b) >>= (amodb => gcd(List(b, amodb)))
+          lat_modulo(a, b) >>= (amodb => gcd(List(b, amodb)))
         }
       }
     }
 
-    object Nullp extends NoStoreOperation("null?", Some(1)) {
-      override def call(x: V) = isNull(x)
+    object `not` extends NoStore1Operation("not") {
+      override def call(x: V) = lat_not(x)
     }
-    object Pairp extends StoreOperation("pair?", Some(1)) {
-      /* TODO[easy]: this should be a store operation that dereferences the pointer to check if it is indeed a cons */
-      override def call(x: V, store: Store[A, V]) =
-        (ifThenElse(isPointer(x)) {
-          dereferencePointer(x, store) { v =>
-            isCons(v)
-          }
-        } {
-          bool(false)
-        }).map(v => (v, store))
-    }
-    object Charp extends NoStoreOperation("char?", Some(1)) {
-      override def call(x: V) = isChar(x)
-    }
-    object Symbolp extends NoStoreOperation("symbol?", Some(1)) {
-      override def call(x: V) = isSymbol(x)
-    }
-    object Stringp extends NoStoreOperation("string?", Some(1)) {
-      override def call(x: V) = isString(x)
-    }
-    object Integerp extends NoStoreOperation("integer?", Some(1)) {
-      override def call(x: V) = isInteger(x)
-    }
-    object Realp extends NoStoreOperation("real?", Some(1)) {
-      override def call(x: V) =
-        for {
-          isint  <- isInteger(x)
-          isreal <- isReal(x)
-        } yield or(isint, isreal)
-    }
-    object Numberp extends NoStoreOperation("number?", Some(1)) {
-      override def call(x: V) =
-        Realp.call(x) /* No support for complex number, so number? is equivalent as real? */
-    }
-    object Booleanp extends NoStoreOperation("boolean?", Some(1)) {
-      override def call(x: V) = isBoolean(x)
-    }
-    object Vectorp extends StoreOperation("vector?", Some(1)) {
-      override def call(x: V, store: Store[A, V]) =
-        for {
-          ispointer <- isPointer(x)
-          isvector <- dereferencePointer(x, store) { v =>
-            isVector(v)
-          }
-        } yield (and(ispointer, isvector), store)
-    }
-    object Eq extends NoStoreOperation("eq?", Some(2)) {
-      override def call2(x: V, y: V) = eqq(x, y)
-    }
-    object Not extends NoStoreOperation("not", Some(1)) {
-      override def call(x: V) = not(x)
-    }
-    object NumberToString extends NoStoreOperation("number->string", Some(1)) {
-      override def call(x: V) = numberToString(x)
-    }
-    object SymbolToString extends NoStoreOperation("symbol->string", Some(1)) {
-      override def call(x: V) = symbolToString(x)
-    }
-    object StringToSymbol extends NoStoreOperation("string->symbol", Some(1)) {
-      override def call(x: V) = stringToSymbol(x)
-    }
-    object StringAppend extends NoStoreOperation("string-append") {
-      override def call(args: List[V]) = args match {
-        case Nil       => string("")
-        case x :: rest => call(rest) >>= (stringAppend(x, _))
-      }
-    }
-    object StringRef extends NoStoreOperation("string-ref") {
-      override def call(args: List[V]) = args match {
-        case s :: n :: Nil => stringRef(s, n)
-        case l             => MayFail.failure(PrimitiveArityError(name, 2, l.size))
-      }
-    }
-    object StringLt extends NoStoreOperation("string<?", Some(2)) {
-      override def call2(x: V, y: V) = stringLt(x, y)
-    }
-    object StringLength extends NoStoreOperation("string-length", Some(1)) {
-      override def call(x: V) = stringLength(x)
-    }
-    object Newline extends NoStoreOperation("newline", Some(0)) {
-      override def call() = { /* disabled println(""); */ MayFailSuccess(bool(false)) }
-    }
-    object Display extends NoStoreOperation("display", Some(1)) {
-      override def call(x: V) = {
-        /* // Disabled
-        val str = x.toString
-        print(if (str.startsWith("\"")) {
-          str.substring(1, str.size - 1)
+    object `newline` extends SchemePrimitive[V, A] {
+      val name = "newline"
+      override def call(fpos: Identity.Position,
+        args: List[(Identity.Position, V)],
+        store: Store[A, V],
+        alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
+        if (args.isEmpty) {
+          MayFail.success((bool(false), store))
         } else {
-          str
-        }) */
+          MayFail.failure(PrimitiveArityError(name, 0, args.length))
+        }
+    }
+    object `display` extends NoStore1Operation("display") {
+      override def call(x: V) = {
         x /* Undefined behavior in R5RS, but we return the printed value */
       }
     }
-    object Error extends NoStoreOperation("error", Some(1)) {
-      override def call1pos(fpos: Identity.Position, x: (Identity.Position, V)) =
-        MayFail.failure(UserError(x._2.toString))
-    }
-
-    object Cons extends SchemePrimitive[V,A] {
-      val name = "cons"
-      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
-        case (_, car) :: (_, cdr) :: Nil =>
-          val consa = alloc.pointer((fpos, cpos))
-          (pointer(consa), store.extend(consa, cons(car, cdr)))
-        case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
-      }
-    }
-
-    class CarCdrOperation(override val name: String) extends StoreOperation(name, Some(1)) {
-      trait Spec
-      case object Car extends Spec
-      case object Cdr extends Spec
-      val spec: List[Spec] = name
-        .drop(1)
-        .take(name.length - 2)
-        .toList
-        .reverseIterator
-        .map(
-          c =>
-            if (c == 'a') {
-              Car
-            } else if (c == 'd') {
-              Cdr
-            } else {
-              throw new Exception(s"Incorrect car/cdr operation: $name")
-            }
-        ).toList
-      override def call(v: V, store: Store[A, V]) =
-        for {
-          v <- spec.foldLeft(MayFail.success[V, Error](v))(
-            (acc, op) =>
-              for {
-                v <- acc
-                res <- dereferencePointer(v, store) { consv =>
-                  op match {
-                    case Car => car(consv)
-                    case Cdr => cdr(consv)
-                  }
-                }
-              } yield res
-          )
-        } yield (v, store)
-    }
-
-    object Car    extends CarCdrOperation("car")
-    object Cdr    extends CarCdrOperation("cdr")
-    object Caar   extends CarCdrOperation("caar")
-    object Cadr   extends CarCdrOperation("cadr")
-    object Cdar   extends CarCdrOperation("cdar")
-    object Cddr   extends CarCdrOperation("cddr")
-    object Caaar  extends CarCdrOperation("caaar")
-    object Caadr  extends CarCdrOperation("caadr")
-    object Cadar  extends CarCdrOperation("cadar")
-    object Caddr  extends CarCdrOperation("caddr")
-    object Cdaar  extends CarCdrOperation("cdaar")
-    object Cdadr  extends CarCdrOperation("cdadr")
-    object Cddar  extends CarCdrOperation("cddar")
-    object Cdddr  extends CarCdrOperation("cdddr")
-    object Caaaar extends CarCdrOperation("caaaar")
-    object Caaadr extends CarCdrOperation("caaadr")
-    object Caadar extends CarCdrOperation("caadar")
-    object Caaddr extends CarCdrOperation("caaddr")
-    object Cadaar extends CarCdrOperation("cadaar")
-    object Cadadr extends CarCdrOperation("cadadr")
-    object Caddar extends CarCdrOperation("caddar")
-    object Cadddr extends CarCdrOperation("cadddr")
-    object Cdaaar extends CarCdrOperation("cdaaar")
-    object Cdaadr extends CarCdrOperation("cdaadr")
-    object Cdadar extends CarCdrOperation("cdadar")
-    object Cdaddr extends CarCdrOperation("cdaddr")
-    object Cddaar extends CarCdrOperation("cddaar")
-    object Cddadr extends CarCdrOperation("cddadr")
-    object Cdddar extends CarCdrOperation("cdddar")
-    object Cddddr extends CarCdrOperation("cddddr")
-
-    object SetCar extends StoreOperation("set-car!", Some(2)) {
-      override def call(cell: V, value: V, store: Store[A, V]) =
-        getPointerAddresses(cell)
-          .foldLeft(MayFail.success[Store[A, V], Error](store))(
-            (acc, a) =>
-              for {
-                consv <- store.lookupMF(a) /* look up in old store */
-                st    <- acc /* updated store */
-                v1 = value /* update car */
-                v2 <- cdr(consv) /* preserves cdr */
-              } yield st.update(a, cons(v1, v2))
-          )
-          .map(store => (bool(false) /* undefined */, store))
-    }
-    object SetCdr extends StoreOperation("set-cdr!", Some(2)) {
-      override def call(cell: V, value: V, store: Store[A, V]) =
-        getPointerAddresses(cell)
-          .foldLeft(MayFail.success[Store[A, V], Error](store))(
-            (acc, a) =>
-              for {
-                consv <- store.lookupMF(a) /* look up in old store */
-                st    <- acc /* updated store */
-                v1    <- car(consv) /* preserves car */
-                v2 = value /* update cdr */
-              } yield st.update(a, cons(v1, v2))
-          )
-          .map(store => (bool(false) /* undefined */, store))
-    }
+    object `caar`   extends PrimitiveDefs.CarCdrOperation("caar")
+    object `cadr`   extends PrimitiveDefs.CarCdrOperation("cadr")
+    object `cdar`   extends PrimitiveDefs.CarCdrOperation("cdar")
+    object `cddr`   extends PrimitiveDefs.CarCdrOperation("cddr")
+    object `caaar`  extends PrimitiveDefs.CarCdrOperation("caaar")
+    object `caadr`  extends PrimitiveDefs.CarCdrOperation("caadr")
+    object `cadar`  extends PrimitiveDefs.CarCdrOperation("cadar")
+    object `caddr`  extends PrimitiveDefs.CarCdrOperation("caddr")
+    object `cdaar`  extends PrimitiveDefs.CarCdrOperation("cdaar")
+    object `cdadr`  extends PrimitiveDefs.CarCdrOperation("cdadr")
+    object `cddar`  extends PrimitiveDefs.CarCdrOperation("cddar")
+    object `cdddr`  extends PrimitiveDefs.CarCdrOperation("cdddr")
+    object `caaaar` extends PrimitiveDefs.CarCdrOperation("caaaar")
+    object `caaadr` extends PrimitiveDefs.CarCdrOperation("caaadr")
+    object `caadar` extends PrimitiveDefs.CarCdrOperation("caadar")
+    object `caaddr` extends PrimitiveDefs.CarCdrOperation("caaddr")
+    object `cadaar` extends PrimitiveDefs.CarCdrOperation("cadaar")
+    object `cadadr` extends PrimitiveDefs.CarCdrOperation("cadadr")
+    object `caddar` extends PrimitiveDefs.CarCdrOperation("caddar")
+    object `cadddr` extends PrimitiveDefs.CarCdrOperation("cadddr")
+    object `cdaaar` extends PrimitiveDefs.CarCdrOperation("cdaaar")
+    object `cdaadr` extends PrimitiveDefs.CarCdrOperation("cdaadr")
+    object `cdadar` extends PrimitiveDefs.CarCdrOperation("cdadar")
+    object `cdaddr` extends PrimitiveDefs.CarCdrOperation("cdaddr")
+    object `cddaar` extends PrimitiveDefs.CarCdrOperation("cddaar")
+    object `cddadr` extends PrimitiveDefs.CarCdrOperation("cddadr")
+    object `cdddar` extends PrimitiveDefs.CarCdrOperation("cdddar")
+    object `cddddr` extends PrimitiveDefs.CarCdrOperation("cddddr")
 
     /** (define (equal? a b)
           (or (eq? a b)
@@ -2102,7 +1728,7 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
                     (loop 0)))))))
       */
     // TODO: this is without vectors
-    object Equal extends StoreOperation("equal?", Some(2)) {
+    object `equal?` extends Store2Operation("equal?") {
       override def call(a: V, b: V, store: Store[A, V]) = {
         def equalp(a: V, b: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
           if (visited.contains((a, b)) || a == bottom || b == bottom) {
@@ -2169,7 +1795,7 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
               0
               (+ 1 (length (cdr l)))))
     */
-    object Length extends FixpointPrimitiveUsingStore("length",Some(1)) {
+    object `length` extends FixpointPrimitiveUsingStore("length", Some(1)) {
       /** the argument to length is just the current pair */
       type Args = V
       def initialArgs(fexp: Identity.Position, args: List[(Identity.Position, V)]) = args match {
@@ -2206,7 +1832,7 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
               (cons (car l1)
                     (append (cdr l1) l2))))
     */
-    object Append extends FixpointPrimitiveUsingStore("append", Some(2)) {
+    object `append` extends FixpointPrimitiveUsingStore("append", Some(2)) {
       /** the arguments to append are the two given input arguments + the 'append expression' and 'the current index' into the list (used for allocation) */
       type Args = (V,V,Identity.Position,Int)
       def initialArgs(fexp: Identity.Position, args: List[(Identity.Position, V)]) = args match {
@@ -2229,10 +1855,10 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
             val addr = alloc.pointer((fexp, fexp), idx)
             dereferencePointer(l1, store) { consv =>
               for {
-                carv      <- car(consv)
-                cdrv      <- cdr(consv)
+                carv      <- schemeLattice.car(consv)
+                cdrv      <- schemeLattice.cdr(consv)
                 app_next  <- append((cdrv, l2, fexp, idx + 1))
-                result    <- cons(carv, app_next)
+                result    <- schemeLattice.cons(carv, app_next)
               } yield {
                 store.extend(addr, result)
                 pointer(addr)
@@ -2245,29 +1871,8 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       }
     }
 
-    /** (define list (lambda args
-          (if (null? args)
-            '()
-            (if (pair? args)
-              (cons (car args) (apply list (cdr args)))
-              args))))
-      */
-    object ListPrim extends StoreOperation("list", None) {
-      override def call(fpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) =
-        args match {
-          case Nil => (nil, store)
-          case (exp, v) :: rest =>
-            for {
-              (restv, store2) <- call(fpos, rest, store, alloc)
-              consv  = cons(v, restv)
-              consa  = alloc.pointer((exp, fpos))
-              store3 = store2.extend(consa, consv)
-            } yield (pointer(consa), store3)
-        }
-    }
-
     /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
-    object Listp extends StoreOperation("list?", Some(1)) {
+    object `list?` extends Store1Operation("list?") {
       override def call(l: V, store: Store[A, V]) = {
         def listp(l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
           if (visited.contains(l) || l == bottom) {
@@ -2307,7 +1912,7 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
               (car l)
               (list-ref (cdr l) (- index 1)))
             (error "list-ref applied to a non-list"))) */
-    object ListRef extends StoreOperation("list-ref", Some(2)) {
+    object `list-ref` extends Store2Operation("list-ref") {
       override def call(l: V, index: V, store: Store[A, V]) = {
         def listRef(l: V, index: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
           if (visited.contains((l, index)) || l == bottom || index == bottom) {
@@ -2354,7 +1959,7 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
     abstract class MemberLike(
         override val name: String,
         eqFn: (V, V, Store[A, V]) => MayFail[V, Error]
-    ) extends StoreOperation(name, Some(2)) {
+    ) extends Store2Operation(name) {
       override def call(e: V, l: V, store: Store[A, V]) = {
         def mem(e: V, l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
           if (visited.contains(l) || e == bottom || l == bottom) {
@@ -2391,17 +1996,17 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
       }
     }
 
-    object Member
+    object `member`
         extends MemberLike(
           "member",
-          (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1)
+          (x: V, y: V, store: Store[A, V]) => `equal?`.call(x, y, store).map(_._1)
         )
-    object Memq extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => Eq.call2(x, y))
+    object `memq` extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => PrimitiveDefs.`eq?`.call(x, y))
 
     abstract class AssocLike(
         override val name: String,
         eqFn: (V, V, Store[A, V]) => MayFail[V, Error]
-    ) extends StoreOperation(name, Some(2)) {
+    ) extends Store2Operation(name) {
       override def call(e: V, l: V, store: Store[A, V]) = {
         def assoc(e: V, l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
           if (visited.contains(l) || e == bottom || l == bottom) {
@@ -2447,125 +2052,16 @@ class ManualSchemePrimitives[V, A <: Address](implicit val schemeLattice: Scheme
         assoc(e, l, Set.empty).result.map(v => (v, store))
       }
     }
-    object Assoc
+    object `assoc`
         extends AssocLike(
           "assoc",
-          (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1)
+          (x: V, y: V, store: Store[A, V]) => `equal?`.call(x, y, store).map(_._1)
         )
-    object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call2(x, y))
-
-    object MakeVector extends SchemePrimitive[V,A] {
-      val name = "make-vector"
-      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
-        def createVec(size: V, init: V): MayFail[(V, Store[A, V]), Error] = {
-          isInteger(size) >>= (
-              isint =>
-                if (isTrue(isint)) {
-                  val veca = alloc.pointer((fpos, cpos))
-                  vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
-                } else {
-                  MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
-                }
-            )
-        }
-        args match {
-          case (_, size) :: Nil              => createVec(size, /* XXX: unspecified */ bool(false))
-          case (_, size) :: (_, init) :: Nil => createVec(size, init)
-          case l                             => MayFail.failure(PrimitiveVariadicArityError(name, 1, l.size))
-        }
-      }
-    }
-
-    object Vector extends SchemePrimitive[V,A] {
-      val name = "vector"
-      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
-        val veca = alloc.pointer((fpos, cpos))
-        vector(number(args.size), bottom) >>= (
-            emptyvec =>
-              args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))(
-                (acc, arg) =>
-                  acc >>= (
-                      vec =>
-                        arg match {
-                          case ((_, value), index) =>
-                            vectorSet(vec, number(index), value)
-                        }
-                    )
-              )
-          ) >>= (vec => (pointer(veca), store.extend(veca, vec)))
-      }
-    }
-
-    object VectorLength extends StoreOperation("vector-length", Some(1)) {
-      def length(v: V, store: Store[A, V]): MayFail[V, Error] = {
-        dereferencePointer(v, store) { vec =>
-          ifThenElse(isVector(vec)) {
-            vectorLength(vec)
-          } {
-            MayFail.failure(PrimitiveNotApplicable(name, List(v)))
-          }
-        }
-      }
-      override def call(v: V, store: Store[A, V]) = {
-        length(v, store).map(v => (v, store))
-      }
-    }
-
-    object VectorRef extends StoreOperation("vector-ref", Some(2)) {
-      def vectorRef(v: V, index: V, store: Store[A, V]): MayFail[V, Error] = {
-        dereferencePointer(v, store) { vec =>
-          ifThenElse(isVector(vec)) {
-            schemeLattice.vectorRef(vec, index)
-          } {
-            MayFail.failure(PrimitiveNotApplicable(name, List(v, index)))
-          }
-        }
-      }
-      override def call(v: V, index: V, store: Store[A, V]) =
-        vectorRef(v, index, store).map(v => (v, store))
-    }
-
-    object VectorSet extends StoreOperation("vector-set!", Some(3)) {
-      def vectorSet(
-          v: V,
-          index: V,
-          newval: V,
-          store: Store[A, V]
-      ): MayFail[(V, Store[A, V]), Error] = {
-        dereferencePointerGetAddressReturnStore(v, store) {
-          case (veca, vec, store) =>
-            isVector(vec) >>= (test => {
-              val t: MayFail[(V, Option[(A, V)]), Error] =
-                if (isTrue(test)) {
-                  schemeLattice.vectorSet(vec, index, newval) >>= (
-                      newvec =>
-                        MayFail.success(( /* unspecified */ bool(false), Some((veca, newvec))))
-                    )
-                } else {
-                  MayFail.success((bottom, None))
-                }
-              val f: MayFail[V, Error] =
-                if (isFalse(test)) {
-                  MayFail.failure(PrimitiveNotApplicable(name, List(v, index, newval)))
-                } else {
-                  MayFail.success(bottom)
-                }
-              t >>= ({
-                case (tv, None) => f.join(MayFail.success(tv), join).map(v => (v, store))
-                case (tv, Some((a, va))) =>
-                  f.join(MayFail.success(tv), join).map(v => (v, store.update(a, va)))
-              })
-            })
-        }
-      }
-      override def call(args: List[V], store: Store[A, V]) = args match {
-        case v :: index :: newval :: Nil => vectorSet(v, index, newval, store)
-        case _                           => MayFail.failure(PrimitiveArityError(name, 3, args.size))
-      }
-    }
+    object `assq` extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => PrimitiveDefs.`eq?`.call(x, y))
   }
 }
 
+  /*
 
 class CompiledSchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
 
