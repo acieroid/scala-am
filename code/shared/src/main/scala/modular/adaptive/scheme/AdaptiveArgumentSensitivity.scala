@@ -37,11 +37,11 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // the actual method that gets called for every new component
   override protected def adaptOnNewComponent(cmp: Component, call: Call): Boolean = {
     val excludedPars = adaptArguments(cmp,call)
-    if(excludedArgs.nonEmpty) {
+    if(excludedPars.nonEmpty) {
       excludeArgs(call.clo, excludedPars)
-      return true
+      true
     } else {
-      return false
+      false
     }
   }
   // we need to update the excludedArgs data structure when the analysis adapts

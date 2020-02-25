@@ -44,14 +44,15 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   protected def adaptOnNewComponent(cmp: Component, call: Call): Boolean
   // to "adapt" the analysis, every new component is passed on to `adaptOnNewComponent`, which may trigger adaptation
   override protected def adaptAnalysis() = {
-    // in a SchemeModFAnalysis, all new components need to be calls
-    val newComponents = this.newComponents.map(cmp => (cmp, deref(cmp).asInstanceOf[Call]))
     // for each new component, allow the analysis to be adapted
-    var adapted = newComponents.map({ case (cmp,call) => adaptOnNewComponent(cmp,call) })  // adapt if necessary
-                               .exists(bln => bln)                                         // check if any of the new components triggered adaptation
+    var adapted = false
+    this.newComponents.foreach(cmp => {
+      val call = deref(cmp).asInstanceOf[Call]
+      if(adaptOnNewComponent(cmp,call)) {
+        adapted = true
+      }
+    })
     // if it was adapted => update the analysis!
-    if(adapted) {
-      updateAnalysis()
-    }
+    if(adapted) { updateAnalysis() }
   }
 }
