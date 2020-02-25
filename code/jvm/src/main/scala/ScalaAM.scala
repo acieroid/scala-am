@@ -18,7 +18,7 @@ object Main {
     val txt = FileUtil.loadFile("test/test.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivity
+                                                with SimpleAdaptiveArgumentSensitivity
                                                 with BigStepSemantics
                                                 with ConstantPropagationDomain {
       val limit = 2
