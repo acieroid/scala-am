@@ -3,8 +3,8 @@ package scalaam.test.soundness
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
-import scalaam.modular.adaptive.AdaptiveModAnalysis
-import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
+import scalaam.modular.adaptive._
+import scalaam.modular.adaptive.scheme._
 import scalaam.test._
 import scalaam.core._
 import scalaam.util._
@@ -117,6 +117,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def name = "simple adaptive argument sensitivity (limit = 5)"
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
+                                        with SimpleAdaptiveArgumentSensitivity
                                         with AdaptiveSchemeModFSemantics
                                         with BigStepSemantics
                                         with ConstantPropagationDomain {
