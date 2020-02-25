@@ -38,9 +38,8 @@ object Benchmark extends App {
     val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
     val t0 = System.nanoTime()
     analysis.analyze()
-    //val t1 = System.nanoTime()
-    analysis.debug()
-//    println(s"Store: ${analysis.store}")
+    val t1 = System.nanoTime()
+//    analysis.debug()
   }
   run("test/DEBUG.scm")
 /*  run("test/mceval.scm")
@@ -460,7 +459,8 @@ object PrimCompiler {
     }
 
     def nonRecursive: String =
-s"""object ${PrimTarget.scalaNameOf(name)} extends StoreOperation("$name", Some(${args.length})) {
+s"""object ${PrimTarget.scalaNameOf(name)} extends SchemePrimitive[V, A] {
+  val name = "$name"
   override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
     if (args.length == ${args.length}) {
       { $bodyStr }.map(x => (x, store))
