@@ -1,7 +1,7 @@
 package scalaam.web
 
-import scalaam.modular.adaptive.AdaptiveModAnalysis
-import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
+import scalaam.modular.adaptive._
+import scalaam.modular.adaptive.scheme._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 
@@ -40,6 +40,7 @@ object Main {
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
+                                                    with AdaptiveArgumentSensitivity
                                                     with BigStepSemantics
                                                     with ConstantPropagationDomain
                                                     with WebAdaptiveAnalysis[SchemeExp] {

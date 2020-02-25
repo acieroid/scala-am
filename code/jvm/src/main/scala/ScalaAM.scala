@@ -2,10 +2,10 @@ package scalaam.cli
 
 import scalaam.diff.ModuleInferencer
 import scalaam.incremental._
-import scalaam.modular.adaptive.AdaptiveModAnalysis
-import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
-import scalaam.modular.incremental.IncrementalModAnalysis
-import scalaam.modular.incremental.scheme.IncrementalSchemeModFSemantics
+import scalaam.modular.adaptive._
+import scalaam.modular.adaptive.scheme._
+import scalaam.modular.incremental._
+import scalaam.modular.incremental.scheme._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -18,6 +18,7 @@ object Main {
     val txt = FileUtil.loadFile("test/test.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
+                                                with AdaptiveArgumentSensitivity
                                                 with BigStepSemantics
                                                 with ConstantPropagationDomain {
       val limit = 2
@@ -30,11 +31,17 @@ object Main {
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
 
-  def debugResults(machine: SchemeModFAnalysis): Unit = {
+  def debugResults(machine: AdaptiveSchemeModFSemantics): Unit = {
+    println("RESULTS")
     machine.store.foreach {
       case (machine.ReturnAddr(cmp),result) =>
         println(s"[$cmp] ${machine.view(cmp)} => $result")
       case _ =>
+    }
+    println("DEPENDENCIES")
+    machine.dependencies.foreach {
+      case (cmp,cmps) =>
+        println(s"${machine.deref(cmp)} ==> ${cmps.map(machine.deref(_))}")
     }
   }
 }

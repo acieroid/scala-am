@@ -13,35 +13,14 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with SchemeModFSemantics
                                     with AbstractDomain {
 
-  // component data are SchemeComponents
+  // Definition of components
   trait ComponentData extends SchemeComponent
-  // Definition of the initial component
   case object Main extends ComponentData with MainComponent
-  // Definition of call components
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends ComponentData with CallComponent
-  // initial component
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
-  // new components
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
 
-  // A context is a partial mapping from the closure's formal parameters to argument values
-  case class ComponentContext(args: Map[Identifier, Value]) {
-   override def toString = args.toList
-                               .map({ case (i,v) => s"$i -> $v" })
-                               .mkString(" ; ")
-  }
-
-  // It's a partial mapping, because some parameters are not included for a given closure
-  // (this way, we can fine-tune argument-sensitivity to avoid scalability issues with certain parameters)
-  private var excludedArgs = Map[lattice.Closure, Set[Identifier]]().withDefaultValue(Set.empty)
-  private def excludeArg(clo: lattice.Closure, par: Identifier) =
-   excludedArgs += (clo -> (excludedArgs(clo) + par))
-  private def excludeArgs(clo: lattice.Closure, prs: Set[Identifier]) =
-   prs.foreach(par => excludeArg(clo,par))
-  // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext =
-   ComponentContext(clo._1.args.zip(args).toMap -- excludedArgs(clo))
-  // Updating closures, components and values is easy
+  // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
     case (lambda, parent) => (lambda, update(parent))
   }
@@ -49,8 +28,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     case Main => Main
     case Call(clo,nam,ctx) => Call(updateClosure(update)(clo),nam,updateCtx(update)(ctx))
   }
-  def updateCtx(update: Component => Component)(ctx: ComponentContext) =
-    ComponentContext(updateMap(updateValue(update))(ctx.args))
+  def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext
   def updateValue(update: Component => Component)(value: Value): Value = value match {
     case valueLattice.Element(v)    => valueLattice.Element(updateV(update)(v))
     case valueLattice.Elements(vs)  => valueLattice.Elements(vs.map(updateV(update)))
@@ -62,7 +40,27 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     case valueLattice.Vec(siz,els,ini)  => valueLattice.Vec(siz,els.view.mapValues(updateValue(update)).toMap,updateValue(update)(ini))
     case _                              => value
   }
+}
 
+trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
+  // A context is a partial mapping from the closure's formal parameters to argument values
+  case class ComponentContext(args: Map[Identifier, Value]) {
+   override def toString = args.toList
+                               .map({ case (i,v) => s"$i -> $v" })
+                               .mkString(" ; ")
+  }
+  def updateCtx(update: Component => Component)(ctx: ComponentContext) =
+   ComponentContext(updateMap(updateValue(update))(ctx.args))
+  // It's a partial mapping, because some parameters are not included for a given closure
+  // (this way, we can fine-tune argument-sensitivity to avoid scalability issues with certain parameters)
+  private var excludedArgs = Map[lattice.Closure, Set[Identifier]]().withDefaultValue(Set.empty)
+  private def excludeArg(clo: lattice.Closure, par: Identifier) =
+   excludedArgs += (clo -> (excludedArgs(clo) + par))
+  private def excludeArgs(clo: lattice.Closure, prs: Set[Identifier]) =
+   prs.foreach(par => excludeArg(clo,par))
+  // The context for a given closure only consists of argument values for non-excluded parameters for that closure
+  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext =
+   ComponentContext(clo._1.args.zip(args).toMap -- excludedArgs(clo))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
     case Main => Main
@@ -70,7 +68,6 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
       val adaptedCtx = ComponentContext(ctx.args -- excludedArgs(clo))
       Call(clo,nam,adaptedCtx)
   }
-
   // this gets called whenever new components are added to the analysis
   // it calls `adaptArguments` for every new component, and "adapts" the analysis if necessary
   override protected def adaptAnalysis() = {

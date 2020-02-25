@@ -23,15 +23,17 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   def updateAnalysis(): Unit = {
     // update the indirection maps and calculate the "new component pointer" for every "old component pointer"
     val current = this.cMap.map({ case (addr, _) => (addr,addr) }).toMap
-    val updated = updateComponentMapping(this.cMapR, adaptComponent, current)
+    val (updated, moved) = updateComponentMapping(this.cMapR, adaptComponent, current)
+    this.cMap = updated.map(_.swap)
+    this.cMapR = updated
     // update all components pointers in the analysis
-    updateAnalysisData(cmp => ComponentPointer(updated(cmp.addr)))
+    updateAnalysisData(cmp => ComponentPointer(moved(cmp.addr)))
   }
 
   @scala.annotation.tailrec
   private def updateComponentMapping(current: Map[ComponentData,Address],
                                      update: ComponentData => ComponentData,
-                                     moved: Map[Address,Address]): Map[Address,Address] = {
+                                     moved: Map[Address,Address]): (Map[ComponentData,Address], Map[Address,Address]) = {
     var mapping = Map[Address,Address]()
     var updated = Map[ComponentData,Address]()
     current.foreach { case (oldCmp, oldAddr) =>
@@ -42,14 +44,11 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
       }
     }
     if (mapping.isEmpty) {
-      this.cMapR = updated
-      this.cMap = updated.map(_.swap)
-      moved
+      (updated, moved)
     } else {
       val updateAddress = (addr: Address) => mapping.getOrElse(addr, addr)
       val updatePointer = (ptr: ComponentPointer) => ComponentPointer(updateAddress(ptr.addr))
-      val updatedMoved = moved.view.mapValues(updateAddress).toMap
-      updateComponentMapping(updated, updateCmp(updatePointer), updatedMoved)
+      updateComponentMapping(updated, updateCmp(updatePointer), moved.view.mapValues(updateAddress).toMap)
     }
   }
 
