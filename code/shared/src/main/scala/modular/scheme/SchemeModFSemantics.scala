@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import scalaam.core.Identity.Position
 import scalaam.core._
 import scalaam.modular._
 import scalaam.language.scheme._
@@ -113,8 +114,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   /** Creates a new component, given a closure, context and an optional name. */
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
 
-  /** Creates a new context given a closure and a list of argument values. */
-  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext
+  /** Creates a new context given a closure, a list of argument values and the position of the call site. */
+  def allocCtx(clo: lattice.Closure, args: List[Value], call: Position): ComponentContext
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -138,22 +139,22 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(cmp.asInstanceOf[CallComponent].parent, scp - 1)
-    protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+    protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)], cll: Position): Value =
       if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args)
+        val fromClosures = applyClosures(fval,args, cll)
         val fromPrimitives = applyPrimitives(fexp,fval,args)
         lattice.join(fromClosures,fromPrimitives)
       } else {
         lattice.bottom
       }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)]): Value = {
+    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position): Value = {
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
-          val context = allocCtx(clo,argVals)
+          val context = allocCtx(clo,argVals, cll)
           val component = newComponent(clo,nam,context)
           bindArgs(component, prs, argVals)
           call(component)
@@ -161,7 +162,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
-          val context = allocCtx(clo, fixedArgVals :+ varArgVal)
+          val context = allocCtx(clo, fixedArgVals :+ varArgVal, cll)
           val component = newComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
