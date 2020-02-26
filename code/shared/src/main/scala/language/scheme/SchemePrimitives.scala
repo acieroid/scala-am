@@ -1094,6 +1094,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       `display`, /* [v]  display: Writing */
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
+      `equal?`,
       `eq?`, /* [vv] eq?: Equality */
       /* [x]  eqv?: Equality */
       /* [x]  eval: Fly Evaluation */
