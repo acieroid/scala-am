@@ -18,8 +18,7 @@ object Main {
     val txt = FileUtil.loadFile("test/test.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with SimpleAdaptiveArgumentSensitivity
-                                                with BigStepSemantics
+                                                with AdaptiveArgumentSensitivityPolicy1
                                                 with ConstantPropagationDomain {
       val limit = 2
       override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)

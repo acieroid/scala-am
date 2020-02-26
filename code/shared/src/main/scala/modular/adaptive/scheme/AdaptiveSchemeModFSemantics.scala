@@ -9,6 +9,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveGlobalStore[SchemeExp]
                                     with AdaptiveReturnValue[SchemeExp]
                                     with SchemeModFSemantics
+                                    with BigStepSemantics
                                     with AbstractDomain {
 
   // Definition of components

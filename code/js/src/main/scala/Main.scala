@@ -40,8 +40,7 @@ object Main {
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
-                                                    with SimpleAdaptiveArgumentSensitivity
-                                                    with BigStepSemantics
+                                                    with AdaptiveArgumentSensitivityPolicy1
                                                     with ConstantPropagationDomain
                                                     with WebAdaptiveAnalysis[SchemeExp] {
       val limit = 2
@@ -53,6 +52,7 @@ object Main {
         val prevResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
         super.step()
         val newResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
+        println(s"$name => $newResult (previously: $prevResult)")
       }
     }
     val visualisation = new WebVisualisationAdaptive(analysis)

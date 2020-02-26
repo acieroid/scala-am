@@ -37,12 +37,8 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // the actual method that gets called for every new component
   override protected def adaptOnNewComponent(cmp: Component, call: Call): Boolean = {
     val excludedPars = adaptArguments(cmp,call)
-    if(excludedPars.nonEmpty) {
-      excludeArgs(call.clo, excludedPars)
-      true
-    } else {
-      false
-    }
+    excludeArgs(call.clo, excludedPars)
+    excludedPars.nonEmpty
   }
   // we need to update the excludedArgs data structure when the analysis adapts
   override def updateAnalysisData(update: Component => Component) = {
@@ -51,8 +47,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   }
 }
 
-trait SimpleAdaptiveArgumentSensitivity extends AdaptiveArgumentSensitivity {
-
+trait AdaptiveArgumentSensitivityPolicy1 extends AdaptiveArgumentSensitivity {
   // parameterized by a simple limit
   // every closure can only have at most "limit" components
   val limit: Int
@@ -76,4 +71,12 @@ trait SimpleAdaptiveArgumentSensitivity extends AdaptiveArgumentSensitivity {
     super.updateAnalysisData(update)
     closureCmps = updateMap(updateClosure(update),updateSet(update))(closureCmps)
   }
+}
+
+trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
+  // parameterized by a simple limit
+  // every trace can only have at most "limit" components of the same closure
+  val limit: Int
+
+  val calledBy = Map[Component,Map[lattice.Closure, Set[Component]]]()
 }

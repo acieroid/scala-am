@@ -1,8 +1,5 @@
 package scalaam.modular.scheme
 
-import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
-import scalaam.core._
-
 /* Simplest (and most imprecise): no context-sensitivity */
 trait NoSensitivity extends SchemeModFSemantics {
   case class ComponentContext() {

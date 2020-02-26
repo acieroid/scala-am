@@ -117,9 +117,8 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def name = "simple adaptive argument sensitivity (limit = 5)"
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
-                                        with SimpleAdaptiveArgumentSensitivity
+                                        with AdaptiveArgumentSensitivityPolicy1
                                         with AdaptiveSchemeModFSemantics
-                                        with BigStepSemantics
                                         with ConstantPropagationDomain {
     val limit = 5
     override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
