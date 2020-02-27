@@ -1,4 +1,4 @@
-package language.scheme.primitives
+package scalaam.language.scheme.primitives
 
 import scalaam.core._
 import scalaam.language.scheme.{SchemeLattice, SchemeOps}
