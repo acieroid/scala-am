@@ -1,7 +1,5 @@
 package scalaam.primitiveCompilation
 
-import java.util.regex.Matcher
-
 import scalaam.primitiveCompilation.PrimSource._
 import scalaam.primitiveCompilation.PrimTarget._
 import scalaam.primitiveCompilation.ANFCompiler._

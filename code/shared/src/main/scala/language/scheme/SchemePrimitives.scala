@@ -29,6 +29,58 @@ abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: Sch
   def allPrimitives: List[SchemePrimitive[V, A]]
 }
 
+trait PrimitiveBuildingBlocks[V, A <: Address] {
+
+  val lat: SchemeLattice[V, A, SchemePrimitive[V,A], _]
+
+  /* Simpler names for lattice operations */
+  def isNull         = lat.unaryOp(SchemeOps.UnaryOperator.IsNull) _
+  def isCons         = lat.unaryOp(SchemeOps.UnaryOperator.IsCons) _
+  def isPointer      = lat.unaryOp(SchemeOps.UnaryOperator.IsPointer) _
+  def isChar         = lat.unaryOp(SchemeOps.UnaryOperator.IsChar) _
+  def isSymbol       = lat.unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
+  def isString       = lat.unaryOp(SchemeOps.UnaryOperator.IsString) _
+  def isInteger      = lat.unaryOp(SchemeOps.UnaryOperator.IsInteger) _
+  def isReal         = lat.unaryOp(SchemeOps.UnaryOperator.IsReal) _
+  def isBoolean      = lat.unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
+  def isVector       = lat.unaryOp(SchemeOps.UnaryOperator.IsVector) _
+  def lat_ceiling        = lat.unaryOp(SchemeOps.UnaryOperator.Ceiling) _
+  def lat_floor          = lat.unaryOp(SchemeOps.UnaryOperator.Floor) _
+  def lat_round          = lat.unaryOp(SchemeOps.UnaryOperator.Round) _
+  def lat_log            = lat.unaryOp(SchemeOps.UnaryOperator.Log) _
+  def lat_not            = lat.unaryOp(SchemeOps.UnaryOperator.Not) _
+  def lat_random         = lat.unaryOp(SchemeOps.UnaryOperator.Random) _
+  def lat_sin            = lat.unaryOp(SchemeOps.UnaryOperator.Sin) _
+  def lat_asin           = lat.unaryOp(SchemeOps.UnaryOperator.ASin) _
+  def lat_cos            = lat.unaryOp(SchemeOps.UnaryOperator.Cos) _
+  def lat_acos           = lat.unaryOp(SchemeOps.UnaryOperator.ACos) _
+  def lat_tan            = lat.unaryOp(SchemeOps.UnaryOperator.Tan) _
+  def lat_atan           = lat.unaryOp(SchemeOps.UnaryOperator.ATan) _
+  def lat_sqrt           = lat.unaryOp(SchemeOps.UnaryOperator.Sqrt) _
+  def vectorLength   = lat.unaryOp(SchemeOps.UnaryOperator.VectorLength) _
+  def stringLength   = lat.unaryOp(SchemeOps.UnaryOperator.StringLength) _
+  def numberToString = lat.unaryOp(SchemeOps.UnaryOperator.NumberToString) _
+  def symbolToString = lat.unaryOp(SchemeOps.UnaryOperator.SymbolToString) _
+  def stringToSymbol = lat.unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
+  def inexactToExact = lat.unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
+  def exactToInexact = lat.unaryOp(SchemeOps.UnaryOperator.ExactToInexact) _
+  def characterToInt = lat.unaryOp(SchemeOps.UnaryOperator.CharacterToInteger) _
+
+  def plus         = lat.binaryOp(SchemeOps.BinaryOperator.Plus) _
+  def minus        = lat.binaryOp(SchemeOps.BinaryOperator.Minus) _
+  def times        = lat.binaryOp(SchemeOps.BinaryOperator.Times) _
+  def div          = lat.binaryOp(SchemeOps.BinaryOperator.Div) _
+  def lat_quotient     = lat.binaryOp(SchemeOps.BinaryOperator.Quotient) _
+  def lat_modulo       = lat.binaryOp(SchemeOps.BinaryOperator.Modulo) _
+  def lat_remainder    = lat.binaryOp(SchemeOps.BinaryOperator.Remainder) _
+  def lt           = lat.binaryOp(SchemeOps.BinaryOperator.Lt) _
+  def numEq        = lat.binaryOp(SchemeOps.BinaryOperator.NumEq) _
+  def eqq          = lat.binaryOp(SchemeOps.BinaryOperator.Eq) _
+  def stringAppend = lat.binaryOp(SchemeOps.BinaryOperator.StringAppend) _
+  def stringRef    = lat.binaryOp(SchemeOps.BinaryOperator.StringRef) _
+  def stringLt     = lat.binaryOp(SchemeOps.BinaryOperator.StringLt) _
+}
+
 class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
@@ -246,12 +298,14 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
     }
   }
 
-  object PrimitiveDefs {
+  object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
+
+    val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
 
     lazy val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
     lazy val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
 
-    import schemeLattice._
+    import lat._
     import scala.util.control.TailCalls._
 
     abstract class FixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
@@ -540,53 +594,6 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
 
     implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
-    /* Simpler names for lattice operations */
-    def isNull         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsNull) _
-    def isCons         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsCons) _
-    def isPointer      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsPointer) _
-    def isChar         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsChar) _
-    def isSymbol       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
-    def isString       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsString) _
-    def isInteger      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsInteger) _
-    def isReal         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsReal) _
-    def isBoolean      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
-    def isVector       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsVector) _
-    def lat_ceiling        = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Ceiling) _
-    def lat_floor          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Floor) _
-    def lat_round          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Round) _
-    def lat_log            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Log) _
-    def lat_not            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Not) _
-    def lat_random         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Random) _
-    def lat_sin            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sin) _
-    def lat_asin           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ASin) _
-    def lat_cos            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Cos) _
-    def lat_acos           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ACos) _
-    def lat_tan            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Tan) _
-    def lat_atan           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ATan) _
-    def lat_sqrt           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sqrt) _
-    def vectorLength   = schemeLattice.unaryOp(SchemeOps.UnaryOperator.VectorLength) _
-    def stringLength   = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringLength) _
-    def numberToString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.NumberToString) _
-    def symbolToString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.SymbolToString) _
-    def stringToSymbol = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
-    def inexactToExact = schemeLattice.unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
-    def exactToInexact = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ExactToInexact) _
-    def characterToInt = schemeLattice.unaryOp(SchemeOps.UnaryOperator.CharacterToInteger) _
-
-    def plus         = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Plus) _
-    def minus        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Minus) _
-    def times        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Times) _
-    def div          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Div) _
-    def lat_quotient     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Quotient) _
-    def lat_modulo       = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Modulo) _
-    def lat_remainder    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Remainder) _
-    def lt           = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Lt) _
-    def numEq        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.NumEq) _
-    def eqq          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Eq) _
-    def stringAppend = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringAppend) _
-    def stringRef    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringRef) _
-    def stringLt     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringLt) _
-
     //// MANUAL PRIMITIVES /////
 
     object `+` extends NoStoreLOperation("+") {
@@ -809,7 +816,7 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
       override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
           val consa = alloc.pointer((fpos, cpos))
-          (pointer(consa), store.extend(consa, schemeLattice.cons(car, cdr)))
+          (pointer(consa), store.extend(consa, lat.cons(car, cdr)))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
     }
@@ -841,8 +848,8 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
                 v <- acc
                 res <- dereferencePointer(v, store) { consv =>
                   op match {
-                    case Car => schemeLattice.car(consv)
-                    case Cdr => schemeLattice.cdr(consv)
+                    case Car => lat.car(consv)
+                    case Cdr => lat.cdr(consv)
                   }
                 }
               } yield res
@@ -862,8 +869,8 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
                 consv <- store.lookupMF(a) /* look up in old store */
                 st    <- acc /* updated store */
                 v1 = value /* update car */
-                v2 <- schemeLattice.cdr(consv) /* preserves cdr */
-              } yield st.update(a, schemeLattice.cons(v1, v2))
+                v2 <- lat.cdr(consv) /* preserves cdr */
+              } yield st.update(a, lat.cons(v1, v2))
           )
           .map(store => (bool(false) /* undefined */, store))
     }
@@ -875,9 +882,9 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
               for {
                 consv <- store.lookupMF(a) /* look up in old store */
                 st    <- acc /* updated store */
-                v1    <- schemeLattice.car(consv) /* preserves car */
+                v1    <- lat.car(consv) /* preserves car */
                 v2 = value /* update cdr */
-              } yield st.update(a, schemeLattice.cons(v1, v2))
+              } yield st.update(a, lat.cons(v1, v2))
           )
           .map(store => (bool(false) /* undefined */, store))
     }
@@ -891,7 +898,7 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
               isint =>
                 if (isTrue(isint)) {
                   val veca = alloc.pointer((fpos, cpos))
-                  schemeLattice.vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
+                  lat.vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
                 } else {
                   MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
                 }
@@ -909,7 +916,7 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
       val name = "vector"
       override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
         val veca = alloc.pointer((fpos, cpos))
-        schemeLattice.vector(number(args.size), bottom) >>= (
+        lat.vector(number(args.size), bottom) >>= (
             emptyvec =>
               args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))(
                 (acc, arg) =>
@@ -944,7 +951,7 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
       def vectorRef(v: V, index: V, store: Store[A, V]): MayFail[V, Error] = {
         dereferencePointer(v, store) { vec =>
           ifThenElse(isVector(vec)) {
-            schemeLattice.vectorRef(vec, index)
+            lat.vectorRef(vec, index)
           } {
             MayFail.failure(PrimitiveNotApplicable(name, List(v, index)))
           }
@@ -967,7 +974,7 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
             isVector(vec) >>= (test => {
               val t: MayFail[(V, Option[(A, V)]), Error] =
                 if (isTrue(test)) {
-                  schemeLattice.vectorSet(vec, index, newval) >>= (
+                  lat.vectorSet(vec, index, newval) >>= (
                       newvec =>
                         MayFail.success(( /* unspecified */ bool(false), Some((veca, newvec))))
                     )
@@ -1006,7 +1013,7 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
         case (exp, v) :: rest =>
           for {
             (restv, store2) <- call(fpos, rest, store, alloc)
-            consv  = schemeLattice.cons(v, restv)
+            consv  = lat.cons(v, restv)
             consa  = alloc.pointer((exp, fpos))
             store3 = store2.extend(consa, consv)
           } yield (pointer(consa), store3)
@@ -1246,7 +1253,9 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
     )
   }
 
-  object ManualPrimitiveDefs {
+  object ManualPrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
+
+    val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
 
     lazy val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
     lazy val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
@@ -1420,7 +1429,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       }
     }
 
-    import schemeLattice.{getPointerAddresses, bottom, isTrue, isFalse, or, number, bool, join, and, car, cdr, pointer}
+    import lat.{getPointerAddresses, bottom, isTrue, isFalse, or, number, bool, join, and, car, cdr, pointer}
 
     def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
       x match {
@@ -1543,53 +1552,6 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
     }
 
     implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
-
-    /* Simpler names for lattice operations */
-    def isNull         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsNull) _
-    def isCons         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsCons) _
-    def isPointer      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsPointer) _
-    def isChar         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsChar) _
-    def isSymbol       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
-    def isString       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsString) _
-    def isInteger      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsInteger) _
-    def isReal         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsReal) _
-    def isBoolean      = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
-    def isVector       = schemeLattice.unaryOp(SchemeOps.UnaryOperator.IsVector) _
-//    def ceiling        = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Ceiling) _
-//    def floor          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Floor) _
-//    def round          = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Round) _
-//    def log            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Log) _
-    def lat_not            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Not) _
-//    def random         = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Random) _
-//    def sin            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sin) _
-//    def asin           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ASin) _
-//    def cos            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Cos) _
-//    def acos           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ACos) _
-//    def tan            = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Tan) _
-//    def atan           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ATan) _
-//    def sqrt           = schemeLattice.unaryOp(SchemeOps.UnaryOperator.Sqrt) _
-    def vectorLength   = schemeLattice.unaryOp(SchemeOps.UnaryOperator.VectorLength) _
-    def stringLength   = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringLength) _
-    def numberToString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.NumberToString) _
-    def symbolToString = schemeLattice.unaryOp(SchemeOps.UnaryOperator.SymbolToString) _
-    def stringToSymbol = schemeLattice.unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
-    def inexactToExact = schemeLattice.unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
-    def exactToInexact = schemeLattice.unaryOp(SchemeOps.UnaryOperator.ExactToInexact) _
-    def characterToInt = schemeLattice.unaryOp(SchemeOps.UnaryOperator.CharacterToInteger) _
-
-    def plus         = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Plus) _
-    def minus        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Minus) _
-    def times        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Times) _
-    def div          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Div) _
-//    def quotient     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Quotient) _
-    def lat_modulo       = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Modulo) _
-//    def remainder    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Remainder) _
-    def lt           = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Lt) _
-    def numEq        = schemeLattice.binaryOp(SchemeOps.BinaryOperator.NumEq) _
-    def eqq          = schemeLattice.binaryOp(SchemeOps.BinaryOperator.Eq) _
-    def stringAppend = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringAppend) _
-    def stringRef    = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringRef) _
-    def stringLt     = schemeLattice.binaryOp(SchemeOps.BinaryOperator.StringLt) _
 
     object `<=` extends NoStore2Operation("<=") {
       override def call(x: V, y: V) = (or _)(lt(x, y), numEq(x, y))
@@ -1854,10 +1816,10 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
             val addr = alloc.pointer((fexp, fexp), idx)
             dereferencePointer(l1, store) { consv =>
               for {
-                carv      <- schemeLattice.car(consv)
-                cdrv      <- schemeLattice.cdr(consv)
+                carv      <- lat.car(consv)
+                cdrv      <- lat.cdr(consv)
                 app_next  <- append((cdrv, l2, fexp, idx + 1))
-                result    <- schemeLattice.cons(carv, app_next)
+                result    <- lat.cons(carv, app_next)
               } yield {
                 store.extend(addr, result)
                 pointer(addr)
@@ -2131,7 +2093,7 @@ class CompiledSchemePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  for-each: List Mapping */
       /* [x]  force: Delayed Evaluation */
       `gcd`, /* [vx] gcd: Integer Operations */
-      `lcm`, 
+      `lcm`,
       /* [x]  imag-part: Complex */
       `inexact->exact`, /* [vv] inexact->exact: Exactness */
       /* [x]  inexact?: Exactness */
@@ -2273,7 +2235,7 @@ class CompiledSchemePrimitives[V, A <: Address](override implicit val schemeLatt
 
   object CompiledPrimitiveDefs {
     import PrimitiveDefs._
-    import schemeLattice.{bool, number}
+    import lat.{bool, number}
 
     // COMPILED PRIMITIVES
     object `<=` extends SchemePrimitive[V, A] {
