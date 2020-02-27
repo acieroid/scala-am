@@ -3,6 +3,8 @@ package scalaam.language.scheme
 import scalaam.core._
 import scalaam.util.Monoid
 
+import scala.util.control.TailCalls.{TailRec, done, tailcall}
+
 trait SchemeAllocator[A] {
   def pointer[C](pos2: (Identity.Position, Identity.Position), c: C): A
   def pointer(pos2: (Identity.Position, Identity.Position)): A = pointer(pos2,())
@@ -32,7 +34,12 @@ abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: Sch
 trait PrimitiveBuildingBlocks[V, A <: Address] {
 
   val lat: SchemeLattice[V, A, SchemePrimitive[V,A], _]
-  val mfMon: Monoid[MayFail[V, Error]]
+  lazy val latMon: Monoid[V] = scalaam.util.MonoidInstances.latticeMonoid[V](lat)
+  lazy val mfMon: Monoid[MayFail[V, Error]] = scalaam.util.MonoidInstances.mayFail[V](latMon)
+
+  import lat._
+
+  implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
   /* Simpler names for lattice operations */
   def isNull         = lat.unaryOp(SchemeOps.UnaryOperator.IsNull) _
@@ -197,6 +204,69 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
       }
       cache(initArgs).map((_, store))
     }
+  }
+
+  def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
+    x match {
+      case MayFailSuccess(v)   => tailcall(v)
+      case MayFailError(err)   => done(MayFailError(err))
+      case MayFailBoth(v, err) => tailcall(v).map(_.addErrors(err))
+    }
+
+  private trait Clause {
+    def otherwise(act: => MayFail[V,Error]): MayFail[V,Error]
+    def otherwise(cls: Clause): Clause = otherwise_(cls, this)
+    def otherwise_(cls: Clause, parent: Clause) = new Clause {
+      def otherwise(alt: => MayFail[V,Error]) = parent.otherwise(cls.otherwise(alt))
+    }
+  }
+
+  /*
+  def app(f: V => MayFail[V, Error])(arg: MayFail[V, Error]): MayFail[V, Error] =
+    arg >>= f
+  def app2(f: (V, V) => MayFail[V, Error])(arg1: MayFail[V, Error], arg2: MayFail[V, Error]): MayFail[V, Error] =
+    for {
+      v1 <- arg1
+      v2 <- arg2
+      res <- f(v1, v2)
+    } yield res */
+
+  def ifThenElse(
+                  cond: MayFail[V, Error]
+                )(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
+    cond >>= { condv =>
+      val t = if (isTrue(condv)) {
+        thenBranch
+      } else {
+        MayFail.success[V, Error](latMon.zero)
+      }
+      val f = if (isFalse(condv)) {
+        elseBranch
+      } else {
+        MayFail.success[V, Error](latMon.zero)
+      }
+      mfMon.append(t, f)
+    }
+  }
+
+  def ifThenElseTR(cond: MayFail[V, Error])(
+    thenBranch: => TailRec[MayFail[V, Error]]
+  )(elseBranch: => TailRec[MayFail[V, Error]]): TailRec[MayFail[V, Error]] = {
+    val latMon = scalaam.util.MonoidInstances.latticeMonoid[V](lat)
+    val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
+    liftTailRec(cond >>= { condv =>
+      val t = if (isTrue(condv)) {
+        thenBranch
+      } else {
+        done(MayFail.success[V, Error](latMon.zero))
+      }
+      val f = if (isFalse(condv)) {
+        elseBranch
+      } else {
+        done(MayFail.success[V, Error](latMon.zero))
+      }
+      t.flatMap(tval => f.map(fval => mfMon.append(tval, fval)))
+    })
   }
 }
 
@@ -421,18 +491,8 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
 
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
 
-    lazy val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
-    lazy val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
-
-    import lat._
+    import schemeLattice._
     import scala.util.control.TailCalls._
-
-    def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
-      x match {
-        case MayFailSuccess(v)   => tailcall(v)
-        case MayFailError(err)   => done(MayFailError(err))
-        case MayFailBoth(v, err) => tailcall(v).map(_.addErrors(err))
-      }
 
     /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
     def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]): MayFail[V, Error] =
@@ -497,24 +557,6 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
         res <- f(v1, v2)
       } yield res */
 
-    def ifThenElse(
-        cond: MayFail[V, Error]
-    )(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
-      cond >>= { condv =>
-        val t = if (isTrue(condv)) {
-          thenBranch
-        } else {
-          MayFail.success[V, Error](latMon.zero)
-        }
-        val f = if (isFalse(condv)) {
-          elseBranch
-        } else {
-          MayFail.success[V, Error](latMon.zero)
-        }
-        mfMon.append(t, f)
-      }
-    }
-
     private trait Clause {
       def otherwise(act: => MayFail[V,Error]): MayFail[V,Error]
       def otherwise(cls: Clause): Clause = otherwise_(cls, this)
@@ -522,28 +564,6 @@ class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLatti
         def otherwise(alt: => MayFail[V,Error]) = parent.otherwise(cls.otherwise(alt))
       }
     }
-
-    def ifThenElseTR(cond: MayFail[V, Error])(
-        thenBranch: => TailRec[MayFail[V, Error]]
-    )(elseBranch: => TailRec[MayFail[V, Error]]): TailRec[MayFail[V, Error]] = {
-      val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
-      val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
-      liftTailRec(cond >>= { condv =>
-        val t = if (isTrue(condv)) {
-          thenBranch
-        } else {
-          done(MayFail.success[V, Error](latMon.zero))
-        }
-        val f = if (isFalse(condv)) {
-          elseBranch
-        } else {
-          done(MayFail.success[V, Error](latMon.zero))
-        }
-        t.flatMap(tval => f.map(fval => mfMon.append(tval, fval)))
-      })
-    }
-
-    implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
     //// MANUAL PRIMITIVES /////
 
@@ -1208,9 +1228,6 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
 
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
 
-    lazy val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
-    lazy val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
-
     import scala.util.control.TailCalls._
 
     // Simpler than FixpointPrimitiveUsingStore BUT allows callWithArgs to return a modified store...
@@ -1262,14 +1279,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       }
     }
 
-    import lat.{getPointerAddresses, bottom, isTrue, isFalse, or, number, bool, join, and, car, cdr, pointer}
-
-    def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
-      x match {
-        case MayFailSuccess(v)   => tailcall(v)
-        case MayFailError(err)   => done(MayFailError(err))
-        case MayFailBoth(v, err) => tailcall(v).map(_.addErrors(err))
-      }
+    import schemeLattice._
 
     /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
     def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]): MayFail[V, Error] =
@@ -1324,33 +1334,6 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
           res <- f(v1, v2)
         } yield res
     }
-    /*
-    def app(f: V => MayFail[V, Error])(arg: MayFail[V, Error]): MayFail[V, Error] =
-      arg >>= f
-    def app2(f: (V, V) => MayFail[V, Error])(arg1: MayFail[V, Error], arg2: MayFail[V, Error]): MayFail[V, Error] =
-      for {
-        v1 <- arg1
-        v2 <- arg2
-        res <- f(v1, v2)
-      } yield res */
-
-    def ifThenElse(
-        cond: MayFail[V, Error]
-    )(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
-      cond >>= { condv =>
-        val t = if (isTrue(condv)) {
-          thenBranch
-        } else {
-          MayFail.success[V, Error](latMon.zero)
-        }
-        val f = if (isFalse(condv)) {
-          elseBranch
-        } else {
-          MayFail.success[V, Error](latMon.zero)
-        }
-        mfMon.append(t, f)
-      }
-    }
 
     private trait Clause {
       def otherwise(act: => MayFail[V,Error]): MayFail[V,Error]
@@ -1363,28 +1346,6 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
     private def ifV(prd: => MayFail[V,Error])(csq: => MayFail[V,Error]) = new Clause {
       def otherwise(alt: => MayFail[V,Error]) = ifThenElse(prd) { csq } { alt }
     }
-
-    def ifThenElseTR(cond: MayFail[V, Error])(
-        thenBranch: => TailRec[MayFail[V, Error]]
-    )(elseBranch: => TailRec[MayFail[V, Error]]): TailRec[MayFail[V, Error]] = {
-      val latMon = scalaam.util.MonoidInstances.latticeMonoid[V]
-      val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
-      liftTailRec(cond >>= { condv =>
-        val t = if (isTrue(condv)) {
-          thenBranch
-        } else {
-          done(MayFail.success[V, Error](latMon.zero))
-        }
-        val f = if (isFalse(condv)) {
-          elseBranch
-        } else {
-          done(MayFail.success[V, Error](latMon.zero))
-        }
-        t.flatMap(tval => f.map(fval => mfMon.append(tval, fval)))
-      })
-    }
-
-    implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
     object `<=` extends NoStore2Operation("<=") {
       override def call(x: V, y: V) = (or _)(lt(x, y), numEq(x, y))
@@ -2068,7 +2029,7 @@ class CompiledSchemePrimitives[V, A <: Address](override implicit val schemeLatt
 
   object CompiledPrimitiveDefs {
     import PrimitiveDefs._
-    import lat.{bool, number}
+    import schemeLattice.{bool, number}
 
     // Simpler than FixpointPrimitiveUsingStore BUT allows callWithArgs to return a modified store...
     abstract class SimpleFixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
