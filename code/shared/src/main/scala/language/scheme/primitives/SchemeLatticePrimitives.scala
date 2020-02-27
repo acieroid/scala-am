@@ -1,7 +1,7 @@
-package scalaam.language.scheme
+package language.scheme.primitives
 
-import language.scheme.primitives.{PrimitiveArityError, PrimitiveBuildingBlocks, PrimitiveNotApplicable, PrimitiveVariadicArityError, SchemeAllocator, SchemePrimitive, SchemePrimitives, UserError}
 import scalaam.core.{Address, Error, Identity, MayFail, Store}
+import scalaam.language.scheme.SchemeLattice
 
 class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
@@ -225,6 +225,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
 
     import schemeLattice._
+
     import scala.util.control.TailCalls._
 
     //// MANUAL PRIMITIVES /////

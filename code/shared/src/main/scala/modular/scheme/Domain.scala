@@ -1,8 +1,8 @@
 package scalaam.modular.scheme
 
-import language.scheme.primitives.ModularSchemeLattice
 import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
 import scalaam.lattice._
+import scalaam.language.scheme._
 
 trait AbstractDomain extends SchemeModFSemantics {
   // parameterized by different abstract domains for each type

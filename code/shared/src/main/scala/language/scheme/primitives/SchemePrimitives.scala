@@ -1,7 +1,7 @@
 package language.scheme.primitives
 
 import scalaam.core._
-import scalaam.language.scheme.{SchemeLattice, SchemeLatticePrimitives, SchemeOps}
+import scalaam.language.scheme.{SchemeLattice, SchemeOps}
 import scalaam.util.Monoid
 
 import scala.util.control.TailCalls.{TailRec, done, tailcall}
