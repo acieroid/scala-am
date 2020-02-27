@@ -62,7 +62,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
   type Prim = SchemePrimitive[Value, Addr]
   implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
-  lazy val primitives  = new ManualSchemePrimitives[Value, Addr]
+  val primitives: SchemePrimitives[Value, Addr]
 
   // Set up initial environment and install the primitives in the global store.
   primitives.allPrimitives.foreach { p =>

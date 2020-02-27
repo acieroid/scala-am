@@ -14,7 +14,7 @@ object Main {
 
   def main(args: Array[String]): Unit = test()
 
-  def test(): Unit = {
+  def test(): Unit = { /*
     val txt = FileUtil.loadFile("test/primtest.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg)
@@ -25,7 +25,7 @@ object Main {
       override def alphaValue(v: Value) = super.alphaValue(v)
     }
     analysis.analyze()
-    debugResults(analysis)
+    debugResults(analysis) */
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
@@ -50,7 +50,9 @@ object Incrementor extends App {
     analyzer = new IncrementalModAnalysis(text) with SmallStepSemantics
                                                     with ConstantPropagationDomain
                                                     with NoSensitivity
-                                                    with IncrementalSchemeModFSemantics
+        with IncrementalSchemeModFSemantics {
+      val primitives = new ManualSchemePrimitives[Value, Addr]
+    }
     analyzer.analyze()//Timeout.start(Duration(2, "MINUTES")))
     println(s"Number of components: ${analyzer.allComponents.size}")
   }

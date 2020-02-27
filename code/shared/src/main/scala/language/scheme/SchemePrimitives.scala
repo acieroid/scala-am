@@ -29,7 +29,7 @@ abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: Sch
   def allPrimitives: List[SchemePrimitive[V, A]]
 }
 
-class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives {
+class MinimalSchemePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
@@ -1094,6 +1094,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       `display`, /* [v]  display: Writing */
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
+      `equal?`,
       `eq?`, /* [vv] eq?: Equality */
       /* [x]  eqv?: Equality */
       /* [x]  eval: Fly Evaluation */
