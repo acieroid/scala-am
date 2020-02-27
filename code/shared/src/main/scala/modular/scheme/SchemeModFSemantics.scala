@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import language.scheme.primitives.{ManualSchemePrimitives, SchemeAllocator, SchemePrimitive, SchemePrimitives}
 import scalaam.core.Identity.Position
 import scalaam.core._
 import scalaam.modular._

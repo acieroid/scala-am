@@ -1,5 +1,6 @@
 package scalaam.language.scheme
 
+import language.scheme.primitives.{PrimitiveArityError, PrimitiveBuildingBlocks, PrimitiveNotApplicable, PrimitiveVariadicArityError, SchemeAllocator, SchemePrimitive, SchemePrimitives, UserError}
 import scalaam.core.{Address, Error, Identity, MayFail, Store}
 
 class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {

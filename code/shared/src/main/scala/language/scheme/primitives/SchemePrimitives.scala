@@ -1,7 +1,7 @@
-package scalaam.language.scheme
+package language.scheme.primitives
 
-import scalaam.language.scheme.SchemeLatticePrimitives
 import scalaam.core._
+import scalaam.language.scheme.{SchemeLattice, SchemeLatticePrimitives, SchemeOps}
 import scalaam.util.Monoid
 
 import scala.util.control.TailCalls.{TailRec, done, tailcall}
@@ -309,8 +309,8 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
 
 class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemeLatticePrimitives[V, A] {
   override def allPrimitives: List[SchemePrimitive[V,A]] = {
-    import PrimitiveDefs._
     import ManualPrimitiveDefs._
+    import PrimitiveDefs._
     List(
       `modulo`,
       `*`, /* [vv] *: Arithmetic */
@@ -1056,8 +1056,8 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
 
 class CompiledSchemePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemeLatticePrimitives[V, A] {
   override def allPrimitives: List[SchemePrimitive[V,A]] = {
-    import PrimitiveDefs._
     import CompiledPrimitiveDefs._
+    import PrimitiveDefs._
     List(
       `*`, /* [vv] *: Arithmetic */
       `+`, /* [vv] +: Arithmetic */

@@ -1,11 +1,12 @@
-package scalaam.language.scheme
+package language.scheme.primitives
 
 import scalaam.core._
+import scalaam.language.scheme.SchemeOps.BinaryOperator.{Div, Eq, Lt, Minus, Modulo, NumEq, Plus, Quotient, Remainder, StringAppend, StringLt, StringRef, Times}
+import scalaam.language.scheme.SchemeOps.UnaryOperator.{ACos, ASin, ATan, Ceiling, CharacterToInteger, Cos, ExactToInexact, Floor, InexactToExact, IsBoolean, IsChar, IsCons, IsInteger, IsNull, IsPointer, IsReal, IsString, IsSymbol, IsVector, Log, Not, NumberToString, Random, Round, Sin, Sqrt, StringLength, StringToSymbol, SymbolToString, Tan, VectorLength}
+import scalaam.language.scheme.SchemeOps.{BinaryOperator, UnaryOperator}
+import scalaam.language.scheme.{SchemeLambdaExp, SchemeLattice}
 import scalaam.lattice._
 import scalaam.util._
-import SchemeOps._
-import UnaryOperator._
-import BinaryOperator._
 
 import scala.annotation.tailrec
 
@@ -538,7 +539,7 @@ class ModularSchemeLattice[
       vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
   }
 
-  import MonoidInstances.{boolOrMonoid, boolAndMonoid, setMonoid}
+  import MonoidInstances.{boolAndMonoid, boolOrMonoid, setMonoid}
   implicit val lMonoid: Monoid[L] = new Monoid[L] {
     @tailrec
     def append(x: L, y: => L): L = x match {
