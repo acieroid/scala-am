@@ -1,5 +1,6 @@
 package scalaam.modular.adaptive.scheme
 
+import scalaam.core.Identity.Position
 import scalaam.core._
 import scalaam.modular.adaptive.{AdaptiveGlobalStore, AdaptiveModAnalysis, AdaptiveReturnValue}
 import scalaam.language.scheme.SchemeExp
@@ -25,6 +26,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   private def excludeArgs(clo: lattice.Closure, prs: Set[Identifier]) =
    prs.foreach(par => excludeArg(clo,par))
   // The context for a given closure only consists of argument values for non-excluded parameters for that closure
+  def allocCtx(clo: lattice.Closure, args: List[Value], call: Position): ComponentContext = allocCtx(clo, args)
   def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext =
    ComponentContext(clo._1.args.zip(args).toMap -- excludedArgs(clo))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded

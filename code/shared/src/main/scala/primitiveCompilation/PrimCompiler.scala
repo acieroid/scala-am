@@ -31,9 +31,7 @@ object GeneratePrimitives extends App {
 object Benchmark extends App {
   def run(file: String) = {
     val program = Primitives.parseWithoutPrelude(file)
-    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
-      val primitives = new ManualSchemePrimitives[Value, Addr]
-    }
+    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics
     val t0 = System.nanoTime()
     analysis.analyze()
     val t1 = System.nanoTime()
