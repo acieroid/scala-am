@@ -6,6 +6,7 @@ import scalaam.util._
 import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
+import language.scheme.primitives.SchemePrimitive
 
 import scala.annotation.tailrec
 

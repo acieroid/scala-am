@@ -27,7 +27,7 @@ object FileInputElement {
 }
 
 object Main {
-
+/*
   val input = FileInputElement(loadFile)
 
   def main(args: Array[String]): Unit = setupUI()
@@ -59,4 +59,6 @@ object Main {
     val height = js.Dynamic.global.document.documentElement.clientHeight.asInstanceOf[Int]
     visualisation.init(body, width, height)
   }
+
+ */
 }

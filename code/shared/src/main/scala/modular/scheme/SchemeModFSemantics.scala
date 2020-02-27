@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import language.scheme.primitives.{ManualSchemePrimitives, SchemeAllocator, SchemePrimitive, SchemePrimitives}
 import scalaam.core.Identity.Position
 import scalaam.core._
 import scalaam.modular._
@@ -69,7 +70,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
   type Prim = SchemePrimitive[Value, Addr]
   implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
-  val primitives: SchemePrimitives[Value, Addr]
+  val primitives: SchemePrimitives[Value, Addr] = new ManualSchemePrimitives[Value, Addr]() // Use manual primitives by default for now. TODO
 
   
   //XXXXXXXXXXXXXXXXXXXXXXXXX//

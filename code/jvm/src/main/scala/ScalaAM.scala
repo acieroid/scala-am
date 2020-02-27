@@ -50,9 +50,7 @@ object Incrementor extends App {
     analyzer = new IncrementalModAnalysis(text) with SmallStepSemantics
                                                     with ConstantPropagationDomain
                                                     with NoSensitivity
-        with IncrementalSchemeModFSemantics {
-      val primitives = new ManualSchemePrimitives[Value, Addr]
-    }
+                                                    with IncrementalSchemeModFSemantics
     analyzer.analyze()//Timeout.start(Duration(2, "MINUTES")))
     println(s"Number of components: ${analyzer.allComponents.size}")
   }
