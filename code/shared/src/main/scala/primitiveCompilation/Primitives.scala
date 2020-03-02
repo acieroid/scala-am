@@ -1,7 +1,7 @@
 package scalaam.primitiveCompilation
 
 import scalaam.core.{Expression, Identifier, Identity}
-import scalaam.language.scheme.{SchemeBegin, SchemeExp, SchemeParser, SchemeVar}
+import scalaam.language.scheme.{SchemeBegin, SchemeExp, SchemeParser}
 import util.FileUtil
 
 object Primitives {

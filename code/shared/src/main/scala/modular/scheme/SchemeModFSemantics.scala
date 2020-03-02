@@ -7,6 +7,7 @@ import scalaam.language.scheme.SchemeInterpreter.Value
 import scalaam.modular._
 import scalaam.language.scheme._
 import scalaam.language.sexp
+import scalaam.primitiveCompilation.Primitives
 import scalaam.util._
 
 /**
@@ -160,12 +161,16 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
+          InterceptCall.maybePre(nam.getOrElse("_"), args.map(_._2))
           val argVals = args.map(_._2)
           val context = allocCtx(clo,argVals, cll)
           val component = newComponent(clo,nam,context)
           bindArgs(component, prs, argVals)
-          call(component)
+          val res = call(component)
+          InterceptCall.maybePost(nam.getOrElse("_"), res)
+          res
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
+          InterceptCall.maybePre(nam.getOrElse("_"), args.map(_._2))
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
@@ -173,7 +178,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val component = newComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
-          call(component)
+          val res = call(component)
+          InterceptCall.maybePost(nam.getOrElse("_"), res)
+          res
         case _ => lattice.bottom
       }))
     }
@@ -248,8 +255,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   }
 
   object InterceptCall {
-    def pre(name: String, args: List[Value]): Unit = print(s"${name}(${args.mkString(",")}) => ")
+    def pre(name: String, args: List[Value]): Unit = print(s"$name(${args.mkString(",")}) => ")
     def post(name: String, result: Value): Unit = println(result)
+    def criterium(name: String) = Primitives.names.contains(name)
+    def maybePre(name: String, args: List[Value]): Unit = if (criterium(name)) pre(name, args)
+    def maybePost(name: String, result: Value): Unit = if (criterium(name)) post(name, result)
   }
 }
 
