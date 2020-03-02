@@ -16,7 +16,9 @@ import scalaam.util._
 trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                             with GlobalStore[SchemeExp]
                             with ReturnValue[SchemeExp]
-                            with ContextSensitiveComponents[SchemeExp] {
+                            with ContextSensitiveComponents[SchemeExp]
+                            with InterceptCall {
+  type VL = Value
 
   def debug(): Unit = {
     println("Dependencies")
@@ -77,7 +79,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
   val primitives: SchemePrimitives[Value, Addr]
 
-  
+
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
   // COMPONENTS AND CONTEXTS //
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -161,16 +163,16 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
-          InterceptCall.maybePre(nam.getOrElse("_"), args.map(_._2))
+          maybePre(nam.getOrElse("_"), args.map(_._2))
           val argVals = args.map(_._2)
           val context = allocCtx(clo,argVals, cll)
           val component = newComponent(clo,nam,context)
           bindArgs(component, prs, argVals)
           val res = call(component)
-          InterceptCall.maybePost(nam.getOrElse("_"), res)
+          maybePost(nam.getOrElse("_"), res)
           res
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
-          InterceptCall.maybePre(nam.getOrElse("_"), args.map(_._2))
+          maybePre(nam.getOrElse("_"), args.map(_._2))
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
@@ -179,7 +181,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
           val res = call(component)
-          InterceptCall.maybePost(nam.getOrElse("_"), res)
+          maybePost(nam.getOrElse("_"), res)
           res
         case _ => lattice.bottom
       }))
@@ -209,13 +211,13 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc, {
-        InterceptCall.pre(prm.name, args.map(_._2))
+        pre(prm.name, args.map(_._2))
         val rs = prm.call(fexp.idn.pos, args.map({ case (exp, arg) => (exp.idn.pos, arg) }), StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom
         }
-        InterceptCall.post(prm.name, rs)
+        post(prm.name, rs)
         rs}
       ))
     // primitives glue code
@@ -253,14 +255,52 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       Monoid[M].append(csqVal,altVal)
     }
   }
+}
 
-  object InterceptCall {
-    def pre(name: String, args: List[Value]): Unit = print(s"$name(${args.mkString(",")}) => ")
-    def post(name: String, result: Value): Unit = println(result)
-    def criterium(name: String) = Primitives.names.contains(name)
-    def maybePre(name: String, args: List[Value]): Unit = if (criterium(name)) pre(name, args)
-    def maybePost(name: String, result: Value): Unit = if (criterium(name)) post(name, result)
+trait InterceptCall {
+
+  type VL
+
+  var timeStack: List[Long] = List()
+  var times: Map[String, List[Long]] = Map().withDefaultValue(List())
+  var callStack: List[(String, List[VL])] = List()
+  var calls: Set[(String, List[VL], VL)] = Set()
+
+  def initPrimitiveBenchmarks(): Unit = {
+    timeStack = List()
+    times = Map().withDefaultValue(List())
+    callStack = List()
+    calls = Set()
   }
+
+  def readOutPrimitiveBenchmarks(): Unit = {
+    assert(timeStack.isEmpty)
+    assert(callStack.isEmpty)
+    val prims = times.keySet.toList.sorted
+    val avgTimes = times.view.mapValues(values => values.sum / values.length)
+    println("*** Average call time ***")
+    prims.foreach(p => println(s"$p: ${avgTimes(p)}"))
+    println("*** Calls ***")
+    val clls = calls.groupBy(_._1)
+    prims.foreach(p => clls(p).toList.foreach(vl => println(s"$p: ${vl._2} => ${vl._3}")))
+  }
+
+  def pre(name: String, args: List[VL]): Unit = {
+    callStack = (name, args) :: callStack
+    timeStack = System.nanoTime() :: timeStack
+  }
+  def post(name: String, result: VL): Unit = {
+    val t1 = System.nanoTime()
+    val t0 = timeStack.head
+    timeStack = timeStack.tail
+    times = times + (name -> ((t1 - t0) :: times(name)))
+    val (`name`, args) = callStack.head
+    callStack = callStack.tail
+    calls = calls + ((name, args, result))
+  }
+  def criterium(name: String): Boolean = Primitives.names.contains(name)
+  def maybePre(name: String, args: List[VL]): Unit = if (criterium(name)) pre(name, args)
+  def maybePost(name: String, result: VL): Unit = if (criterium(name)) post(name, result)
 }
 
 trait StandardSchemeModFSemantics extends SchemeModFSemantics {

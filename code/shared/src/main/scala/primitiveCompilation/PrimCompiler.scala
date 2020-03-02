@@ -35,9 +35,11 @@ object Benchmark extends App {
       import scalaam.language.scheme.primitives._
       val primitives = new ManualSchemePrimitives[Value, Addr]
     }
+    analysis.initPrimitiveBenchmarks()
     val t0 = System.nanoTime()
     analysis.analyze()
     val t1 = System.nanoTime()
+    analysis.readOutPrimitiveBenchmarks()
     println(s"[$file] ${(t1 - t0) / 1000000}ms")
 //    analysis.debug()
   }
