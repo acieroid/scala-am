@@ -74,7 +74,7 @@ class ModularSchemeLattice[
   }
 
   case class Pointer(a: A) extends Value {
-    override def toString: String = s"#pointer($a)"
+    override def toString: String = s"Poi($a)"
   }
 
   case class Vec(size: I, elements: Map[I, L], init: L) extends Value {

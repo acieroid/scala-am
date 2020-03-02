@@ -12,6 +12,7 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
+import scalaam.language.scheme.primitives.ManualSchemePrimitives
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
@@ -102,7 +103,9 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
                                       with BigStepSemantics
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
-                                      with NoSensitivity
+                                      with NoSensitivity {
+    val primitives = new ManualSchemePrimitives[Value, Addr]()
+  }
 }
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
@@ -111,7 +114,9 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                       with SmallStepSemantics
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
-                                      with NoSensitivity
+                                      with NoSensitivity {
+    val primitives = new ManualSchemePrimitives[Value, Addr]()
+  }
 }
 
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
@@ -122,6 +127,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
                                         with AdaptiveConstantPropagationDomain {
     val limit = 5
     override def alphaValue(v: Value) = super.alphaValue(v)
+    val primitives = new ManualSchemePrimitives[Value, Addr]()
   }
 }
 

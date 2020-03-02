@@ -3,6 +3,7 @@ package scalaam.modular.scheme
 import scalaam.language.scheme.primitives.{SchemeAllocator, SchemePrimitive, SchemePrimitives}
 import scalaam.core.Identity.Position
 import scalaam.core._
+import scalaam.language.scheme.SchemeInterpreter.Value
 import scalaam.modular._
 import scalaam.language.scheme._
 import scalaam.language.sexp
@@ -56,7 +57,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     case class PtrAddr[C](pos2: (Identity.Position, Identity.Position), c: C) extends LocalAddr {
       def printable = false; def idn(): Identity = Identity.none /* TODO */
-      override def toString = s"@$pos2/$c"
+      override def toString = {
+        val (fn, cll) = pos2
+        s"<<fn$fn cll$cll ctx$c>>"
+      }
     }
     case class PrmAddr(nam: String)              extends LocalAddr {
       def printable = true;  def idn(): Identity = Identity.none
@@ -197,12 +201,16 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
-      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
-        prm.call(fexp.idn.pos, args.map({ case (exp, arg) => (exp.idn.pos, arg) }), StoreAdapter, allocator) match {
+      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc, {
+        InterceptCall.pre(prm.name, args.map(_._2))
+        val rs = prm.call(fexp.idn.pos, args.map({ case (exp, arg) => (exp.idn.pos, arg) }), StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom
-        }))
+        }
+        InterceptCall.post(prm.name, rs)
+        rs}
+      ))
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
     case object StoreAdapter extends Store[Addr,Value] {
@@ -238,6 +246,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       Monoid[M].append(csqVal,altVal)
     }
   }
+
+  object InterceptCall {
+    def pre(name: String, args: List[Value]): Unit = print(s"${name}(${args.mkString(",")}) => ")
+    def post(name: String, result: Value): Unit = println(result)
+  }
 }
 
 trait StandardSchemeModFSemantics extends SchemeModFSemantics {
@@ -254,4 +267,3 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
   lazy val initialComponent: SchemeComponent = Main
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
 }
-
