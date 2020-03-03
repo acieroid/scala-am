@@ -277,11 +277,17 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
   }
 }
 
+object InterceptCall {
+  // By placing this in an object, we can perform timing measurements across analyses.
+  var times: Map[String, List[ Long]] = Map().withDefaultValue(List())
+}
+
 trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
 
   type Component
 
-  var times    :  Map[ String, List[ Long] ]         =  Map().withDefaultValue(List())
+  import InterceptCall.times
+
   var calls    :  Map[(String, List[Value]) , Value] =  Map()
   var timeStack:               List[ Long]           = List()
   var callStack: List[(String, List[Value])]         = List()

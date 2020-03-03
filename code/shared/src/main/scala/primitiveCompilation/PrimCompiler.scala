@@ -29,13 +29,14 @@ object GeneratePrimitives extends App {
 }
 
 object Benchmark extends App {
+
   val warmup = 2
   val actual = 5
+
   def run(file: String) = {
     println(s"[$file] ")
     val program = Primitives.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
-
     // Warmup.
     print("* Warmup - ")
     for (i <- 0 until warmup) {
@@ -47,8 +48,8 @@ object Benchmark extends App {
       analysis.analyze()
     }
 
-    // Get results for each call (counts as extra warmup).
-    println("\n* Calls")
+    // Get results for each call (but timing results are kept for next iteration).
+    println("\n* Calls + Time 0")
     val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
       val primitives = new ManualSchemePrimitives[Value, Addr]
@@ -59,7 +60,7 @@ object Benchmark extends App {
 
     // Time measurements.
     print("* Time - ")
-    for (i <- 0 until actual) {
+    for (i <- 1 until actual) {
       print(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
