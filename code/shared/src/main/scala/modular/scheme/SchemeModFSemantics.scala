@@ -3,7 +3,6 @@ package scalaam.modular.scheme
 import scalaam.language.scheme.primitives.{SchemeAllocator, SchemePrimitive, SchemePrimitives}
 import scalaam.core.Identity.Position
 import scalaam.core._
-import scalaam.language.scheme.SchemeInterpreter.Value
 import scalaam.modular._
 import scalaam.language.scheme._
 import scalaam.language.sexp
@@ -284,7 +283,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   var timeStack: List[Long] = List()
   var times: Map[String, List[Long]] = Map().withDefaultValue(List())
   var callStack: List[(String, List[VL])] = List()
-  var calls: Set[(String, List[VL], VL)] = Set()
+  var calls: Map[(String, List[VL]), VL] = Map()
 
   var formalParameters: Map[Component, List[Addr]] = Map()
 
@@ -299,7 +298,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     timeStack = List()
     times = Map().withDefaultValue(List())
     callStack = List()
-    calls = Set()
+    calls = Map()
     formalParameters = Map()
   }
 
@@ -311,8 +310,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     println("*** Average call time ***")
     prims.foreach(p => println(s"$p: ${avgTimes(p)}"))
     println("*** Calls ***")
-    val clls = calls.groupBy(_._1)
-    prims.foreach(p => clls(p).toList.foreach(vl => println(s"$p: ${vl._2} => ${vl._3}")))
+    println(calls.keySet.map(key => s"${key._1}: ${key._2} => ${calls(key)}").toList.sorted.mkString("\n"))
   }
 
   def maybePre(name: String, cmp: Component): Unit = {
@@ -331,7 +329,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     times = times + (name -> ((t1 - t0) :: times(name)))
     val (`name`, args) = callStack.head
     callStack = callStack.tail
-    calls = calls + ((name, args, result))
+    calls = calls + ((name, args) -> result)
   }
   def criterium(name: String): Boolean = Primitives.names.contains(name)
   def maybePre(name: String, args: List[VL]): Unit = if (criterium(name)) pre(name, args)
