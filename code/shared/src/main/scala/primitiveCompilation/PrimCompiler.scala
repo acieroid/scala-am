@@ -29,22 +29,49 @@ object GeneratePrimitives extends App {
 }
 
 object Benchmark extends App {
+  val warmup = 2
+  val actual = 5
   def run(file: String) = {
+    println(s"[$file] ")
     val program = Primitives.parseWithoutPrelude(file)
+    val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
+
+    // Warmup.
+    print("* Warmup - ")
+    for (i <- 0 until warmup) {
+      print(i + " ")
+      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
+        import scalaam.language.scheme.primitives._
+        val primitives = new ManualSchemePrimitives[Value, Addr]
+      }
+      analysis.analyze()
+    }
+
+    // Get results for each call (counts as extra warmup).
+    println("\n* Calls")
     val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
       val primitives = new ManualSchemePrimitives[Value, Addr]
     }
     analysis.initPrimitiveBenchmarks()
-    val t0 = System.nanoTime()
     analysis.analyze()
-    val t1 = System.nanoTime()
-    analysis.toFile(file.replaceAll("/", "_").replaceAll(".scm", ".txt"))
-    println(s"[$file] ${(t1 - t0) / 1000000}ms")
-//    analysis.debug()
+    analysis.callToFile(suffix)
+
+    // Time measurements.
+    print("* Time - ")
+    for (i <- 0 until actual) {
+      print(i + " ")
+      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
+        import scalaam.language.scheme.primitives._
+        val primitives = new ManualSchemePrimitives[Value, Addr]
+      }
+      analysis.analyze()
+    }
+
+    analysis.timeToFile(suffix)
   }
   def gabriel() = {
-    SchemeBenchmarks.gabriel.foreach(run)
+    run(SchemeBenchmarks.gabriel.toList.head)
   }
 
   gabriel()

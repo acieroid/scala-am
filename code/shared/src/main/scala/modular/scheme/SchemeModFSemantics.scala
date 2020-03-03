@@ -315,13 +315,23 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   }
 
   def toFile(suffix: String): Unit = {
+    timeToFile(suffix)
+    callToFile(suffix)
+  }
+
+  def timeToFile(suffix: String): Unit = {
     val timeFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/time/$suffix")))
-    val callFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
     val prims = times.keySet.toList.sorted
     val avgTimes = times.view.mapValues(values => values.sum / values.length)
     prims.foreach(p => timeFile.write(s"$p: ${times(p).length} calls, average time: ${avgTimes(p)}\n"))
-    callFile.write(calls.keySet.map(key => s"${key._1}: ${key._2} => ${calls(key)}").toList.sorted.mkString("\n"))
+    timeFile.flush()
     timeFile.close()
+  }
+
+  def callToFile(suffix: String): Unit = {
+    val callFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
+    callFile.write(calls.keySet.map(key => s"${key._1}: ${key._2} => ${calls(key)}").toList.sorted.mkString("\n"))
+    callFile.flush()
     callFile.close()
   }
 
