@@ -47,6 +47,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
 
     // the main analyze method
     def analyze(): Unit = {
+      componentName(cmp).foreach(n => maybePre(n, cmp)) // TODO: get these arguments!
       // determine the initial state
       val initialState = EvalState(component.body, Nil)
       // standard worklist algorithm
@@ -66,6 +67,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
           case _ => ()
         }
       }
+      componentName(cmp).foreach(n => maybePost(n, result))
       writeResult(result)
     }
     // stepping a state

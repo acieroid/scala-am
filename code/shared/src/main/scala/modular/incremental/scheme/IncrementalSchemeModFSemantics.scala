@@ -3,6 +3,7 @@ package scalaam.modular.incremental.scheme
 import scalaam.core._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
+import scalaam.modular.IndirectComponents
 import scalaam.modular.scheme.SchemeModFSemantics
 
 /** Semantics for an incremental Scheme MODF analysis. */
@@ -20,6 +21,10 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
 
   lazy val initialComponent: Component = { initPrimitiveBenchmarks() ; ref(Main) } // Need init to initialize reference bookkeeping information.
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
+  def componentName(cmp: IndirectComponents.ComponentPointer): Option[String] = deref(cmp) match {
+    case Main => None
+    case Call(_, nam, _) => nam
+  }
 
   // When a new program is set, we need to use the lexically addressed version!
   override def setProgram(newProgram: SchemeExp): Unit = prog = {

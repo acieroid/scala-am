@@ -17,8 +17,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                             with GlobalStore[SchemeExp]
                             with ReturnValue[SchemeExp]
                             with ContextSensitiveComponents[SchemeExp]
-                            with InterceptCall {
-  type VL = Value
+                            with InterceptCall[SchemeExp] {
 
   def debug(): Unit = {
     println("Dependencies")
@@ -69,6 +68,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       def printable = true;  def idn(): Identity = Identity.none
       override def toString = s"#$nam"
     }
+
+  def varAddr(pm: Identifier): LocalAddr = VarAddr(pm)
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
@@ -124,6 +125,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   /** Creates a new component, given a closure, context and an optional name. */
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
 
+  /** Gets the name of a component. */
+  def componentName(cmp: Component): Option[String]
+
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(clo: lattice.Closure, args: List[Value], call: Position): ComponentContext
 
@@ -163,16 +167,13 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
-          maybePre(nam.getOrElse("_"), args.map(_._2))
           val argVals = args.map(_._2)
           val context = allocCtx(clo,argVals, cll)
           val component = newComponent(clo,nam,context)
+          storeParameters(component, prs)
           bindArgs(component, prs, argVals)
-          val res = call(component)
-          maybePost(nam.getOrElse("_"), res)
-          res
+          call(component)
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
-          maybePre(nam.getOrElse("_"), args.map(_._2))
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
@@ -180,9 +181,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val component = newComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
-          val res = call(component)
-          maybePost(nam.getOrElse("_"), res)
-          res
+          storeParameters(component, vararg :: prs)
+          call(component)
         case _ => lattice.bottom
       }))
     }
@@ -257,20 +257,50 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   }
 }
 
-trait InterceptCall {
+trait StandardSchemeModFSemantics extends SchemeModFSemantics {
+  // Components are just normal SchemeComponents, without any extra fancy features.
+  // Hence, to view a component as a SchemeComponent, the component itself can be used.
+  type Component = SchemeComponent
+  implicit def view(cmp: Component): SchemeComponent = cmp
 
-  type VL
+  // Definition of the initial component.
+  case object Main extends MainComponent
+  // Definition of call components.
+  case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends CallComponent
+
+  lazy val initialComponent: SchemeComponent = Main
+  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
+  override def componentName(cmp: SchemeComponent): Option[String] = cmp match {
+    case Main => None
+    case Call(_, nam, _) => nam
+  }
+}
+
+trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
+
+  type VL = Value
+  type Component
 
   var timeStack: List[Long] = List()
   var times: Map[String, List[Long]] = Map().withDefaultValue(List())
   var callStack: List[(String, List[VL])] = List()
   var calls: Set[(String, List[VL], VL)] = Set()
 
+  var formalParameters: Map[Component, List[Addr]] = Map()
+
+  def storeParameters(cmp: Component, pms: List[Identifier]): Unit = {
+    formalParameters = formalParameters + (cmp -> pms.map(createAddr(cmp, _)))
+  }
+
+  def varAddr(pm: Identifier): LocalAddr
+  def createAddr(cmp: Component, pm: Identifier): Addr = ComponentAddr(cmp, varAddr(pm))
+
   def initPrimitiveBenchmarks(): Unit = {
     timeStack = List()
     times = Map().withDefaultValue(List())
     callStack = List()
     calls = Set()
+    formalParameters = Map()
   }
 
   def readOutPrimitiveBenchmarks(): Unit = {
@@ -283,6 +313,11 @@ trait InterceptCall {
     println("*** Calls ***")
     val clls = calls.groupBy(_._1)
     prims.foreach(p => clls(p).toList.foreach(vl => println(s"$p: ${vl._2} => ${vl._3}")))
+  }
+
+  def maybePre(name: String, cmp: Component): Unit = {
+    if (criterium(name))
+      maybePre(name, formalParameters(cmp).map(store.getOrElse(_, lattice.bottom)))
   }
 
   def pre(name: String, args: List[VL]): Unit = {
@@ -301,19 +336,4 @@ trait InterceptCall {
   def criterium(name: String): Boolean = Primitives.names.contains(name)
   def maybePre(name: String, args: List[VL]): Unit = if (criterium(name)) pre(name, args)
   def maybePost(name: String, result: VL): Unit = if (criterium(name)) post(name, result)
-}
-
-trait StandardSchemeModFSemantics extends SchemeModFSemantics {
-  // Components are just normal SchemeComponents, without any extra fancy features.
-  // Hence, to view a component as a SchemeComponent, the component itself can be used.
-  type Component = SchemeComponent
-  implicit def view(cmp: Component): SchemeComponent = cmp
-
-  // Definition of the initial component.
-  case object Main extends MainComponent
-  // Definition of call components.
-  case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends CallComponent
-
-  lazy val initialComponent: SchemeComponent = Main
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
 }
