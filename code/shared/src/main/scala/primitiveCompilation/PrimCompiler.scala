@@ -39,7 +39,7 @@ object Benchmark extends App {
     val t0 = System.nanoTime()
     analysis.analyze()
     val t1 = System.nanoTime()
-    analysis.readOutPrimitiveBenchmarks()
+    analysis.toFile(file.replaceAll("/", "_").replaceAll(".scm", ".txt"))
     println(s"[$file] ${(t1 - t0) / 1000000}ms")
 //    analysis.debug()
   }
@@ -47,11 +47,7 @@ object Benchmark extends App {
     SchemeBenchmarks.gabriel.foreach(run)
   }
 
-  val str = SchemeBenchmarks.gabriel.toList(1)
-  println(str)
-  run(str)
-
- // gabriel()
+  gabriel()
 
   def all() = {
     run("test/mceval.scm")

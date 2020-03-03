@@ -1,5 +1,7 @@
 package scalaam.modular.scheme
 
+import java.io.{BufferedWriter, File, FileWriter}
+
 import scalaam.language.scheme.primitives.{SchemeAllocator, SchemePrimitive, SchemePrimitives}
 import scalaam.core.Identity.Position
 import scalaam.core._
@@ -277,13 +279,12 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
 
 trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
 
-  type VL = Value
   type Component
 
-  var timeStack: List[Long] = List()
-  var times: Map[String, List[Long]] = Map().withDefaultValue(List())
-  var callStack: List[(String, List[VL])] = List()
-  var calls: Map[(String, List[VL]), VL] = Map()
+  var times    :  Map[ String, List[ Long] ]         =  Map().withDefaultValue(List())
+  var calls    :  Map[(String, List[Value]) , Value] =  Map()
+  var timeStack:               List[ Long]           = List()
+  var callStack: List[(String, List[Value])]         = List()
 
   var formalParameters: Map[Component, List[Addr]] = Map()
 
@@ -313,16 +314,27 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     println(calls.keySet.map(key => s"${key._1}: ${key._2} => ${calls(key)}").toList.sorted.mkString("\n"))
   }
 
+  def toFile(suffix: String): Unit = {
+    val timeFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/time/$suffix")))
+    val callFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
+    val prims = times.keySet.toList.sorted
+    val avgTimes = times.view.mapValues(values => values.sum / values.length)
+    prims.foreach(p => timeFile.write(s"$p: ${times(p).length} calls, average time: ${avgTimes(p)}\n"))
+    callFile.write(calls.keySet.map(key => s"${key._1}: ${key._2} => ${calls(key)}").toList.sorted.mkString("\n"))
+    timeFile.close()
+    callFile.close()
+  }
+
   def maybePre(name: String, cmp: Component): Unit = {
     if (criterium(name))
       maybePre(name, formalParameters(cmp).map(store.getOrElse(_, lattice.bottom)))
   }
 
-  def pre(name: String, args: List[VL]): Unit = {
+  def pre(name: String, args: List[Value]): Unit = {
     callStack = (name, args) :: callStack
     timeStack = System.nanoTime() :: timeStack
   }
-  def post(name: String, result: VL): Unit = {
+  def post(name: String, result: Value): Unit = {
     val t1 = System.nanoTime()
     val t0 = timeStack.head
     timeStack = timeStack.tail
@@ -332,6 +344,6 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     calls = calls + ((name, args) -> result)
   }
   def criterium(name: String): Boolean = Primitives.names.contains(name)
-  def maybePre(name: String, args: List[VL]): Unit = if (criterium(name)) pre(name, args)
-  def maybePost(name: String, result: VL): Unit = if (criterium(name)) post(name, result)
+  def maybePre(name: String, args: List[Value]): Unit = if (criterium(name)) pre(name, args)
+  def maybePost(name: String, result: Value): Unit = if (criterium(name)) post(name, result)
 }
