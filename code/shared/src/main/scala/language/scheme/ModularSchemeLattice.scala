@@ -534,7 +534,7 @@ class ModularSchemeLattice[
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X = f(v)
   }
   case class Elements(vs: Set[Value]) extends L {
-    override def toString: String = "{" + vs.mkString(",") + "}"
+    override def toString: String = "{" + vs.map(_.toString).toList.sorted.mkString(",") + "}"
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X =
       vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
   }
