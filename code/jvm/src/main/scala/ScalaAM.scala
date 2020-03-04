@@ -18,31 +18,25 @@ object Main {
     val txt = FileUtil.loadFile("test/test.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivityPolicy1
+                                                with AdaptiveArgumentSensitivityPolicy2
                                                 with ConstantPropagationDomain {
       val limit = 2
       override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
     analysis.analyze()
+    analysis.calledBy.foreach { case (cmp, calledBy) => println(s"${analysis.view(cmp)} -> ${calledBy.map(analysis.view)}") }
     debugResults(analysis)
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
 
-  def debugResults(machine: AdaptiveSchemeModFSemantics): Unit = {
-    println("RESULTS")
+  def debugResults(machine: AdaptiveSchemeModFSemantics): Unit =
     machine.store.foreach {
       case (machine.ReturnAddr(cmp),result) =>
         println(s"[$cmp] ${machine.view(cmp)} => $result")
       case _ =>
     }
-    println("DEPENDENCIES")
-    machine.dependencies.foreach {
-      case (cmp,cmps) =>
-        println(s"${machine.deref(cmp)} ==> ${cmps.map(machine.deref(_))}")
-    }
-  }
 }
 
 object Incrementor extends App {

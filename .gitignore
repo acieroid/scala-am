@@ -5,6 +5,7 @@
 *target/
 /project/project
 /project/.bloop
+/project/metals.sbt
 /.bloop
 .ensime_cache
 *.dot
@@ -17,3 +18,4 @@
 *.svg
 /.idea
 *.diff
+/.vscode
