@@ -24,3 +24,13 @@ trait CallSiteSensitivity extends SchemeModFSemantics {
   }
   def allocCtx(clo: lattice.Closure, args: List[Value], call: Position): ComponentContext = ComponentContext(clo._1.idn.pos, call)
 }
+
+trait FullArgumentCallSiteSensitivity extends SchemeModFSemantics {
+  case class ComponentContext(fn: Position, call: Position, args: List[Value]) {
+    override def toString: String = {
+      val argsstr = args.mkString(",")
+      s"$call->$fn $argsstr"
+    }
+  }
+  def allocCtx(clo: lattice.Closure, args: List[Value], call: Position): ComponentContext = ComponentContext(clo._1.idn.pos, call, args)
+}

@@ -35,13 +35,13 @@ object Benchmark extends App {
 
   def run(file: String) = {
     println(s"[$file] ")
-    val program = Primitives.parseWithPrelude(file)
+    val program = Primitives.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
     // Warmup.
     print("* Warmup - ")
     for (i <- 0 until warmup) {
       print(i + " ")
-      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
+      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with FullArgumentCallSiteSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
         val primitives = new CompiledSchemePrimitives[Value, Addr]
       }
@@ -50,7 +50,7 @@ object Benchmark extends App {
 
     // Get results for each call (but timing results are kept for next iteration).
     println("\n* Calls + Time 0")
-    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with FullArgumentSensitivity with StandardSchemeModFSemantics {
+    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with FullArgumentCallSiteSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
       val primitives = new CompiledSchemePrimitives[Value, Addr]
       def dump(suffix: String): Unit = {
@@ -73,7 +73,7 @@ object Benchmark extends App {
     print("* Time - ")
     for (i <- 1 until actual) {
       print(i + " ")
-      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
+      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with FullArgumentCallSiteSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
         val primitives = new CompiledSchemePrimitives[Value, Addr]
       }
@@ -86,8 +86,8 @@ object Benchmark extends App {
     run(SchemeBenchmarks.gabriel.toList.head)
   }
 
-  // gabriel()
-  run("test/foo.scm")
+   gabriel()
+//  run("test/foo.scm")
 
   def all() = {
     run("test/mceval.scm")
