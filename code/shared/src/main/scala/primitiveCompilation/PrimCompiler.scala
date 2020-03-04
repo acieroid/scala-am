@@ -1,5 +1,5 @@
 package scalaam.primitiveCompilation
-
+import java.io.{BufferedWriter, File, FileWriter}
 import scalaam.primitiveCompilation.PrimSource._
 import scalaam.primitiveCompilation.PrimTarget._
 import scalaam.primitiveCompilation.ANFCompiler._
@@ -35,7 +35,7 @@ object Benchmark extends App {
 
   def run(file: String) = {
     println(s"[$file] ")
-    val program = Primitives.parseWithoutPrelude(file)
+    val program = Primitives.parseWithPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
     // Warmup.
     print("* Warmup - ")
@@ -43,20 +43,31 @@ object Benchmark extends App {
       print(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
-        val primitives = new ManualSchemePrimitives[Value, Addr]
+        val primitives = new CompiledSchemePrimitives[Value, Addr]
       }
       analysis.analyze()
     }
 
     // Get results for each call (but timing results are kept for next iteration).
     println("\n* Calls + Time 0")
-    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
+    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with FullArgumentSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
-      val primitives = new ManualSchemePrimitives[Value, Addr]
+      val primitives = new CompiledSchemePrimitives[Value, Addr]
+      def dump(suffix: String): Unit = {
+        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
+        file.write(allComponents.filter(cmp => componentName(cmp) match {
+          case Some(name) => !Primitives.primitives.keySet.contains(name) // ignore primitives
+          case _ => true
+        })
+        .map(cmp => s"$cmp: ${store(ReturnAddr(cmp))}").toList.sorted.mkString("\n"))
+        file.flush()
+        file.close()
+      }
     }
     analysis.initPrimitiveBenchmarks()
     analysis.analyze()
-    analysis.callToFile(suffix)
+    // analysis.callToFile(suffix)
+    analysis.dump(suffix)
 
     // Time measurements.
     print("* Time - ")
@@ -64,7 +75,7 @@ object Benchmark extends App {
       print(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CallSiteSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
-        val primitives = new ManualSchemePrimitives[Value, Addr]
+        val primitives = new CompiledSchemePrimitives[Value, Addr]
       }
       analysis.analyze()
     }
@@ -75,7 +86,8 @@ object Benchmark extends App {
     run(SchemeBenchmarks.gabriel.toList.head)
   }
 
-  gabriel()
+  // gabriel()
+  run("test/foo.scm")
 
   def all() = {
     run("test/mceval.scm")
