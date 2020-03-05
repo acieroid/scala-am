@@ -4,6 +4,7 @@ import scalaam.diff.ModuleInferencer
 import scalaam.incremental._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
+import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.incremental._
 import scalaam.modular.incremental.scheme._
 import scalaam.modular._
@@ -18,14 +19,14 @@ object Main {
     val txt = FileUtil.loadFile("test/test.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivityPolicy2
+                                                with AdaptiveArgumentSensitivityPolicy1
+                                                with NaiveAdaptiveArgumentSelection
                                                 with ConstantPropagationDomain {
       val limit = 2
       override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
     analysis.analyze()
-    analysis.calledBy.foreach { case (cmp, calledBy) => println(s"${analysis.view(cmp)} -> ${calledBy.map(analysis.view)}") }
     debugResults(analysis)
   }
 
