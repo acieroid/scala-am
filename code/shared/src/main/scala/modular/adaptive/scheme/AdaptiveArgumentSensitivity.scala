@@ -11,10 +11,12 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
                                .map({ case (i,v) => s"$i -> $v" })
                                .mkString(" ; ")
   }
+  def updateArgumentMapping(update: Component => Component)(args: ArgumentMapping) = 
+    updateMap(updateValue(update))(args)
   def updateCtx(update: Component => Component)(ctx: ComponentContext) =
-   ComponentContext(updateMap(updateValue(update))(ctx.args))
+   ComponentContext(updateArgumentMapping(update)(ctx.args))
   // It's a partial mapping, because some parameters are not included for a given closure
-  // (this way, we can fine-tune argument-sensitivity to avoid scalability issues with certain parameters/arguments)
+  // (this way, we can fine-tune argument-sensitivity to avoid scalability issues with certain parameters or even specific argument values)
   def filterArgs(clo: lattice.Closure, args: ArgumentMapping): ArgumentMapping
   // The context for a given closure only consists of argument values for non-excluded parameters for that closure
   def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext =
@@ -33,12 +35,10 @@ trait AdaptiveArgumentSensitivityPolicy1 extends AdaptiveArgumentSensitivity {
   // every closure can only have at most "limit" components
   val limit: Int
   // keep track of which parameters need to be excluded for which closures
-  private var excludedArgs = Map[lattice.Closure, Set[Identifier]]().withDefaultValue(Set.empty)
-  private def excludeArg(clo: lattice.Closure, par: Identifier) =
-   excludedArgs += (clo -> (excludedArgs(clo) + par))
+  private var excludedArgs = Map[lattice.Closure, Set[Identifier]]()
   private def excludeArgs(clo: lattice.Closure, prs: Set[Identifier]) =
-   prs.foreach(par => excludeArg(clo,par))
-  def filterArgs(clo: lattice.Closure, args: ArgumentMapping) = args -- excludedArgs(clo)
+   excludedArgs += (clo -> (excludedArgs(clo) ++ prs))
+  def filterArgs(clo: lattice.Closure, args: ArgumentMapping) = args -- excludedArgs.getOrElse(clo,Set())
   // track the number of components per closure
   private var closureCmps = Map[lattice.Closure, Set[Component]]()
   def adaptOnNewComponent(cmp: Component, call: Call): Boolean = {
@@ -69,7 +69,7 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
   val limit: Int
   // for every component, keep track of all other components that can reach it ...
   var calledBy = Map[Component, Set[Component]]()
-  // ... what follows is boilerplate code to correctly do the bookkeeping in the `calledBy` map
+  // ... what follows is boring boilerplate code to correctly do the bookkeeping in the `calledBy` map
   def registerCall(source: Component, target: Component) = {
     lazy val targetCalledBy = calledBy.getOrElse(target, Set())
     lazy val sourceCalledBy = calledBy.getOrElse(source, Set())
@@ -96,12 +96,34 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
       }
       propagate(updatedWorklist)
     }
-  // the policy for adapting arguments
-  def adaptOnNewComponent(cmp: Component, call: Call) = ???
-  def filterArgs(clo: lattice.Closure, args: ArgumentMapping) = ???
+  // we keep track of which arguments need to be dropped from which components
+  var excludedArgs = Map[(lattice.Closure, ArgumentMapping), Set[Identifier]]()
+  private def excludeArgs(clo: lattice.Closure, args: ArgumentMapping, prs: Set[Identifier]) =
+    excludedArgs += ((clo,args) -> (excludedArgs((clo,args)) ++ prs))
+  def filterArgs(clo: lattice.Closure, args: ArgumentMapping) = args -- excludedArgs.getOrElse((clo,args),Set())
+  // do a simple loop check when you have too many components in a single stracktrace
+  def dropArgs(cmps: Set[Call], limit: Int): Set[Identifier]
+  def adaptOnNewComponent(cmp: Component, call: Call): Boolean = {
+    val Call(clo, _, _) = call
+    val calls = calledBy(cmp).flatMap(c => view(c) match {
+      case cll: Call if cll.clo == clo => Some(cll)
+      case _ => None
+    })
+    if (calls.size > limit) {
+      val excludedPars = dropArgs(calls, limit)
+      calls.foreach { cll => 
+        excludeArgs(clo, cll.ctx.args, excludedPars)
+      }
+      return true 
+    }
+    return false
+  }
   // we need to update the `calledBy` data structure whenever the analysis is adapted
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
+    excludedArgs = updateMap(updatePair(updateClosure(update), 
+                                  updateArgumentMapping(update)), 
+                       (s: Set[Identifier]) => s)(excludedArgs)
     calledBy = updateMap(update, updateSet(update))(calledBy)
   }
   // we instrument the intra-analysis to:
@@ -114,6 +136,4 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
       super.call(cmp)
     }
   }
-
-
 }

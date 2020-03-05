@@ -72,6 +72,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
       val keyAbs = updateK(key)
       acc + (keyAbs -> Monoid[V].append(acc(keyAbs),updateV(vlu)))
     }
+  def updatePair[A,B](updateA: A => A, updateB: B => B)(p: (A,B)): (A,B) = (updateA(p._1),updateB(p._2))
 
 
 
