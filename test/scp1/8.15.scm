@@ -1,7 +1,3 @@
-(define (append l m)
-  (if (null? l)
-      m
-      (cons (car l) (append (cdr l) m))))
 (define foldr
   (lambda (f base lst)
     (define foldr-aux

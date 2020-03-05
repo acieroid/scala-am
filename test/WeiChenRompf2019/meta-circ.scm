@@ -1,14 +1,5 @@
 ;; Utilities.
 
-(define (cadr p) (car (cdr p)))
-(define (cddr p) (cdr (cdr p)))
-(define (cdddr p) (cdr (cdr (cdr p))))
-(define (caadr p) (car (car (cdr p))))
-(define (cdadr p) (cdr (car (cdr p))))
-(define (caddr p) (car (cdr (cdr p))))
-(define (cadar p) (car (cdr (car p))))
-(define (cadddr p) (car (cdr (cdr (cdr p)))))
-
 (define (map f lst) 
   (if (pair? lst)
       (cons (f (car lst))
@@ -23,19 +14,6 @@
               (map f (cdr lst)))
         '())
     (void)))
-  
-
-(define (append lst1 lst2)
-  (if (not (pair? lst1))
-      lst2
-      (cons (car lst1) 
-            (append (cdr lst1) lst2))))
-
-(define (reverse lst)
-  (if (not (pair? lst))
-      lst
-      (append (reverse (cdr lst)) (cons (car lst) '()))))
-      
 
 (define (string->list s)
   (define (f i)
@@ -54,24 +32,6 @@
     ((= len 2) (f (car l) (cadr l)))
     ((= len 3) (f (car l) (cadr l) (caddr l)))
     ((= len 4) (f (car l) (cadr l) (caddr l) (cadddr l))))))
-
-
-(define (assv x f)
-  (if (pair? f)
-      (if (eqv? (car (car f)) x)
-          (car f)
-          (assv x (cdr f)))
-      #f))
-
-
-(define (assq x f)
-  (if (pair? f)
-      (if (eq? (car (car f)) x)
-          (car f)
-          (assv x (cdr f)))
-      #f))
-
-
 
 ; gensym-count : integer
 (define gensym-count 0)

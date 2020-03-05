@@ -188,8 +188,30 @@ object Primitives {
    (if (null? l)
        ()
        (append (reverse (cdr l))
-               (list (car l)))))"""
-    )
+               (list (car l)))))""",
+//      "map" ->  """(define (map f l)
+//  (if (null? l)
+//      l
+//      (if (pair? l)
+//          (cons (f (car l)) (map f (cdr l)))
+//          (error "Cannot map over a non-list"))))""",
+//    "for-each" -> """(define (for-each f l)
+//  (if (null? l)
+//      #t
+//      (if (pair? l)
+//          (begin (f (car l)) (for-each f (cdr l)))
+//          (error "Cannot for-each over a non-list"))))""",
+//    "foldr" -> """(define (foldr f base lst) (foldr-aux f base lst))""",
+//    "foldr-aux" -> """(define (foldr-aux f base lst)
+//        (if (null? lst)
+//            base
+//            (f (car lst) (foldr-aux f base (cdr lst)))))""",
+//    "foldl" -> """(define (foldl f base lst) (foldl-aux f base lst))""",
+//    "foldl-aux" -> """(define (foldl-aux f base lst)
+//        (if (null? lst)
+//            base
+//            (foldl-aux f (f base (car lst)) (cdr lst))))"""
+  )
 
   val names: Set[String] = primitives.keySet
 
@@ -467,7 +489,13 @@ object SchemeBenchmarks {
     "cddddr",
     /* Other primitives that are not R5RS */
     "random",
-    "error"
+    "error",
+//    "map",
+//    "for-each",
+//    "foldl",
+//    "foldl-aux",
+//    "foldr",
+//    "foldr-aux"
   )
 
   val ad: Set[String] = Set(
@@ -495,7 +523,7 @@ object SchemeBenchmarks {
   )
 
   val gabriel: Set[String] = Set(
-    "test/gabriel/boyer.scm",
+//    "test/gabriel/boyer.scm",
     "test/gabriel/browse.scm",
     "test/gabriel/cpstak.scm",
     "test/gabriel/dderiv.scm",
@@ -503,9 +531,9 @@ object SchemeBenchmarks {
     "test/gabriel/destruc.scm",
     "test/gabriel/diviter.scm",
     "test/gabriel/divrec.scm",
-    "test/gabriel/puzzle.scm",
+//    "test/gabriel/puzzle.scm",
     "test/gabriel/takl.scm",
-    "test/gabriel/triangl.scm",
+//    "test/gabriel/triangl.scm",
   )
 
   val gambit: Set[String] = Set(

@@ -30,29 +30,31 @@ object GeneratePrimitives extends App {
 
 object Benchmark extends App {
 
-  val warmup = 2
-  val actual = 5
+  val warmup = 0
+  val actual = 1
 
   def run(file: String) = {
     println(s"[$file] ")
-    val program = Primitives.parseWithoutPrelude(file)
+    val program = Primitives.parseWithPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
     // Warmup.
     print("* Warmup - ")
     for (i <- 0 until warmup) {
       print(i + " ")
-      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with FullArgumentCallSiteSensitivity with StandardSchemeModFSemantics {
+      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
         val primitives = new CompiledSchemePrimitives[Value, Addr]
       }
       analysis.analyze()
     }
 
+    var time = 0L
+
     // Get results for each call (but timing results are kept for next iteration).
     println("\n* Calls + Time 0")
-    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with FullArgumentCallSiteSensitivity with StandardSchemeModFSemantics {
+    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
-      val primitives = new CompiledSchemePrimitives[Value, Addr]
+      val primitives = new SchemeLatticePrimitives[Value, Addr]
       def dump(suffix: String): Unit = {
         val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
         file.write(allComponents.filter(cmp => componentName(cmp) match {
@@ -64,8 +66,12 @@ object Benchmark extends App {
         file.close()
       }
     }
+
     analysis.initPrimitiveBenchmarks()
+    val t0 = System.nanoTime()
     analysis.analyze()
+    val t1 = System.nanoTime()
+    time += (t1 - t0)
     // analysis.callToFile(suffix)
     analysis.dump(suffix)
 
@@ -73,21 +79,22 @@ object Benchmark extends App {
     print("* Time - ")
     for (i <- 1 until actual) {
       print(i + " ")
-      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with FullArgumentCallSiteSensitivity with StandardSchemeModFSemantics {
+      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
         val primitives = new CompiledSchemePrimitives[Value, Addr]
       }
+      val t0 = System.nanoTime()
       analysis.analyze()
+      val t1 = System.nanoTime()
+      time += (t1 - t0)
     }
+    println(s"Time: ${(time / 1000000) / actual}ms")
 
     analysis.timeToFile(suffix)
   }
   def gabriel() = {
-    run(SchemeBenchmarks.gabriel.toList.head)
+    SchemeBenchmarks.gabriel.foreach(run _)
   }
-
-   gabriel()
-//  run("test/foo.scm")
 
   def all() = {
     run("test/mceval.scm")
@@ -99,22 +106,22 @@ object Benchmark extends App {
     run("test/gabriel/divrec.scm")
     run("test/gambit/matrix.scm")
     run("test/scp1/9.18.scm")
-    run("test/scp1/5.14.3.scm")
-    run("test/scp1/7.16.scm")
+//    run("test/scp1/5.14.3.scm")
+//    run("test/scp1/7.16.scm")
     run("test/scp1/9.16.scm")
     run("test/gambit/destruc.scm")
     run("test/gabriel/destruc.scm")
     run("test/gabriel/dderiv.scm")
-    run("test/scp1/7.11.scm")
+//    run("test/scp1/7.11.scm")
     run("test/scp1/7.13.scm")
     run("test/scp1/5.22.scm")
-    run("test/scp1/7.14.scm")
+//    run("test/scp1/7.14.scm")
     run("test/WeiChenRompf2019/kcfa-worst-case-256.scm")
     run("test/scp1/7.4.scm")
     run("test/scp1/7.17.scm")
     run("test/scp1/9.14.scm")
     run("test/scp1/7.9.scm")
-    run("test/sigscheme/mem.scm")
+//    run("test/sigscheme/mem.scm")
     run("test/scp1/7.15.scm")
     run("test/sat.scm")
     run("test/gabriel/deriv.scm")
@@ -127,6 +134,7 @@ object Benchmark extends App {
     run("test/scp1/5.19.scm")
     run("test/scp1/9.15.scm")
   }
+  run("test/gabriel/browse.scm")
 }
 
 object PrimCompiler {

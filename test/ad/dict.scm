@@ -1,9 +1,3 @@
-(define (reverse lst)
-  (define (go lst tail)
-    (if (null? lst) tail
-        (go (cdr lst) (cons (car lst) tail))))
-  (go lst '()))
-
 (define (create-dictionary)
   (let ((content '()))
     (define (empty?)

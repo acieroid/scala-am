@@ -4,10 +4,6 @@
       (if (pair? l)
           (cons (f (car l)) (map f (cdr l)))
           (error "Cannot map over a non-list"))))
-(define (append l m)
-  (if (null? l)
-      m
-      (cons (car l) (append (cdr l) m))))
 ;;; MAZEFUN -- Constructs a maze in a purely functional way,
 ;;; written by Marc Feeley.
 

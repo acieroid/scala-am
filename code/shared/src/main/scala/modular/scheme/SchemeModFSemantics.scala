@@ -44,7 +44,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
     // Set up initial environment and install the primitives in the global store.
     primitives.allPrimitives.foreach { p =>
-      val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
+      val addr = ComponentAddr(PrmAddr(p.name))
       store += (addr -> lattice.primitive(p))
     }
 
@@ -130,7 +130,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   def componentName(cmp: Component): Option[String]
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
-  def allocCtx(clo: lattice.Closure, args: List[Value], call: Position): ComponentContext
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position): ComponentContext
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -144,12 +144,12 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     protected def defineVariable( id: Identifier, vlu: Value): Unit = writeAddr(    VarAddr( id), vlu)
     // resolve a lexical address to the corresponding address in the store
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
-      case  LocalRef(identifier) => ComponentAddr(component,VarAddr(identifier))
-      case GlobalRef(identifier) => ComponentAddr(initialComponent,VarAddr(identifier))
-      case   PrimRef(      name) => ComponentAddr(initialComponent,PrmAddr(name))
+      case  LocalRef(identifier) => ComponentAddr(VarAddr(identifier))
+      case GlobalRef(identifier) => ComponentAddr(VarAddr(identifier))
+      case   PrimRef(      name) => ComponentAddr(PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
         val cmp = resolveParent(component,scp)
-        ComponentAddr(cmp,VarAddr(identifier))
+        ComponentAddr(VarAddr(identifier))
     }
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
@@ -169,7 +169,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
-          val context = allocCtx(clo,argVals, cll)
+          val context = allocCtx(nam, clo,argVals, cll)
           val component = newComponent(clo,nam,context)
           storeParameters(component, prs)
           bindArgs(component, prs, argVals)
@@ -178,7 +178,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
-          val context = allocCtx(clo, fixedArgVals :+ varArgVal, cll)
+          val context = allocCtx(nam, clo, fixedArgVals :+ varArgVal, cll)
           val component = newComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
@@ -213,6 +213,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc, {
         pre(prm.name, args.map(_._2))
+//        println(s"apply ${prm.name} with ${args.map(_._2)}")
         val rs = prm.call(fexp.idn.pos, args.map({ case (exp, arg) => (exp.idn.pos, arg) }), StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
@@ -299,7 +300,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   }
 
   def varAddr(pm: Identifier): LocalAddr
-  def createAddr(cmp: Component, pm: Identifier): Addr = ComponentAddr(cmp, varAddr(pm))
+  def createAddr(cmp: Component, pm: Identifier): Addr = ComponentAddr(varAddr(pm))
 
   def initPrimitiveBenchmarks(): Unit = {
     timeStack = List()
