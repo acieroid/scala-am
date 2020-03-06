@@ -144,7 +144,13 @@ object ConstantPropagation {
         case _                          => RealLattice[F].bottom
       }
       def quotient(n1: I, n2: I): I  = binop(_ / _, n1, n2)
-      def modulo(n1: I, n2: I): I    = binop(MathOps.modulo _, n1, n2)
+      def modulo(n1: I, n2: I): I    = (n1, n2) match {
+        case (Top, Top) => Top
+        case (Top, Constant(_)) => Top
+        case (Constant(_), Top) => Top
+        case (Constant(x), Constant(y)) if y != 0 => Constant(MathOps.modulo(x, y))
+        case _ => Bottom
+      }
       def remainder(n1: I, n2: I): I = binop(MathOps.remainder _, n1, n2)
       def lt[B2: BoolLattice](n1: I, n2: I): B2 = (n1, n2) match {
         case (Top, Top)                 => BoolLattice[B2].top
