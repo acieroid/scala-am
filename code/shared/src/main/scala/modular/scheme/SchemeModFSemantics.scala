@@ -116,13 +116,19 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
     protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
-      if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args)
-        val fromPrimitives = applyPrimitives(fexp,fval,args)
+      splitArgs(args) { argsSplitted => 
+        val fromClosures = applyClosures(fval,argsSplitted)
+        val fromPrimitives = applyPrimitives(fexp,fval,argsSplitted)
         lattice.join(fromClosures,fromPrimitives)
-      } else {
-        lattice.bottom
       }
+    private def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
+      case Nil                      => fn(Nil)
+      // TODO[minor]: use foldMap instead of foldLeft
+      case (argExp,argVal) :: rest  => 
+        lattice.split(argVal).foldLeft(lattice.bottom) { (acc,argSplitted) => lattice.join(acc,
+          splitArgs(rest)(restSplitted => fn((argExp,argSplitted) :: restSplitted))
+        )}
+    }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyClosures(fun: Value, args: List[(SchemeExp,Value)]): Value = {
       val arity = args.length

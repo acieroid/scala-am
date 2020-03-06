@@ -1,5 +1,5 @@
-(define (fact n)
-  (if (= n 0)
-      1
-      (* n (fact (- n 1)))))
-(fact 5)
+(define (f x) x)
+
+(define x 1)
+(set! x "hello")
+(f x)
