@@ -40,7 +40,7 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity
   // we keep track of which arguments need to be dropped from which components
   var excludedArgs = Map[(lattice.Closure, ArgumentMapping), Set[Identifier]]()
   private def excludeArgs(clo: lattice.Closure, args: ArgumentMapping, prs: Set[Identifier]) =
-    excludedArgs += ((clo,args) -> (excludedArgs((clo,args)) ++ prs))
+    excludedArgs += ((clo,args) -> (excludedArgs.getOrElse((clo,args),Set()) ++ prs))
   def filterArgs(clo: lattice.Closure, args: ArgumentMapping) = args -- excludedArgs.getOrElse((clo,args),Set())
   // do a simple loop check when you have too many components in a single stracktrace
   def adaptOnNewComponent(cmp: Component, call: Call): Boolean = {
