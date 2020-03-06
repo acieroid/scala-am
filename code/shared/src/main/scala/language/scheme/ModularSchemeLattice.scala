@@ -525,6 +525,7 @@ class ModularSchemeLattice[
     }
 
     def split(v: Value): Set[Value] = v match {
+      case Bot        => Set.empty
       case Bool(b)    => Lattice[B].split(b).map(Bool)
       case Int(i)     => Lattice[I].split(i).map(Int)
       case Char(c)    => Lattice[C].split(c).map(Char)
