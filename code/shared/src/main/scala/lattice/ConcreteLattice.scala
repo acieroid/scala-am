@@ -49,6 +49,10 @@ object Concrete {
     def eql[B2: BoolLattice](x: L[A], y: L[A]): B2 = y.guardBot {
       x.foldMap(a => y.foldMap(b => BoolLattice[B2].inject(a == b)))
     }
+    def split(x: L[A]): Set[L[A]] = x match {
+      case Top        => Set(Top)
+      case Values(vs) => vs.map(v => Values(Set(v)))
+    }
   }
 
   type S   = L[String]

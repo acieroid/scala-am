@@ -69,6 +69,7 @@ object ConstantPropagation {
       case (Bottom, _)                => BoolLattice[B2].bottom
       case (_, Bottom)                => BoolLattice[B2].bottom
     }
+    def split(v: L[A]): Set[L[A]] = Set(v)
   }
 
   type S   = L[String]

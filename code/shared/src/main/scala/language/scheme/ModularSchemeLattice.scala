@@ -523,6 +523,16 @@ class ModularSchemeLattice[
       case Int(size) => MayFail.success(Vec(size, Map[I, L](), init))
       case _         => MayFail.failure(TypeError("expected int size when constructing vector", size))
     }
+
+    def split(v: Value): Set[Value] = v match {
+      case Bool(b)    => Lattice[B].split(b).map(Bool)
+      case Int(i)     => Lattice[I].split(i).map(Int)
+      case Char(c)    => Lattice[C].split(c).map(Char)
+      case Str(s)     => Lattice[S].split(s).map(Str)
+      case Real(r)    => Lattice[R].split(r).map(Real)
+      case Symbol(s)  => Lattice[Sym].split(s).map(Symbol)
+      case _          => Set(v)
+    }
   }
 
   sealed trait L extends SmartHash {
@@ -633,6 +643,11 @@ class ModularSchemeLattice[
     def nil: L = Element(Value.nil)
 
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
+
+    def split(abs: L): Set[L] = abs match {
+      case Element(v) => Value.split(v).map(v => Element(v))
+      case Elements(vs) => vs.flatMap(v => Value.split(v).map(va => Element(va)))
+    }
   }
 
   object L {
