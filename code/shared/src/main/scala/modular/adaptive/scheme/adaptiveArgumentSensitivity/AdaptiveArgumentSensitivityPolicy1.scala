@@ -11,7 +11,7 @@ trait AdaptiveArgumentSensitivityPolicy1 extends AdaptiveArgumentSensitivity
   // keep track of which parameters need to be excluded for which closures
   private var excludedArgs = Map[lattice.Closure, Set[Identifier]]()
   private def excludeArgs(clo: lattice.Closure, prs: Set[Identifier]) =
-   excludedArgs += (clo -> (excludedArgs(clo) ++ prs))
+   excludedArgs += (clo -> (excludedArgs.getOrElse(clo,Set()) ++ prs))
   def filterArgs(clo: lattice.Closure, args: ArgumentMapping) = args -- excludedArgs.getOrElse(clo,Set())
   // track the number of components per closure
   private var closureCmps = Map[lattice.Closure, Set[Component]]()
