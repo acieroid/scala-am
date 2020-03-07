@@ -106,7 +106,8 @@ class ModularSchemeLattice[
       case (_: Int, _: Int)    => true
       case (_: Real, _: Real)  => true
       case (_: Char, _: Char)  => true
-      case (_: Vec, _: Vec)    => true
+      /* TODO: join cons, vectors */
+      //case (_: Vec, _: Vec)    => true
       case _                   => false
     }
 
