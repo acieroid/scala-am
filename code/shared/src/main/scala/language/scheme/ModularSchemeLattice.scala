@@ -106,8 +106,9 @@ class ModularSchemeLattice[
       case (_: Int, _: Int)    => true
       case (_: Real, _: Real)  => true
       case (_: Char, _: Char)  => true
-      /* TODO: join cons, vectors */
-      //case (_: Vec, _: Vec)    => true
+      case (_: Cons, _: Cons)  => true
+      /* TODO: join vectors */
+      //case (_: Vec, _: Vec)   => true
       case _                   => false
     }
 
@@ -124,7 +125,9 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => Right(Int(IntLattice[I].join(i1, i2)))
           case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
-          /* TODO: join cons, vectors */
+          case (Cons(a1,d1), Cons(a2,d2)) => Right(Cons(Lattice[L].join(a1,a2),
+                                                        Lattice[L].join(d1,d2)))
+          /* TODO: join vectors */
           case _ => Left((x, y))
         }
       }
