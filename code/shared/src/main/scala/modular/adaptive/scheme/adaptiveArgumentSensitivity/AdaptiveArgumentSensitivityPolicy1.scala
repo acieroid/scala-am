@@ -23,7 +23,7 @@ trait AdaptiveArgumentSensitivityPolicy1 extends AdaptiveArgumentSensitivity
     closureCmps += (clo -> newCmps)
     // if there are too many components => do something about it!
     if (limit < newCmps.size) {
-      val callArgs = newCmps.map(c => view(cmp).asInstanceOf[Call].ctx.args)
+      val callArgs = newCmps.map(view(_).asInstanceOf[Call].ctx.args)
       val excludedArgs = dropArgs(clo, callArgs, limit)
       excludeArgs(clo, excludedArgs) // naive policy: drop all of the argument-sensitivity
       return true
