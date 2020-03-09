@@ -48,7 +48,7 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity
     val calls = calledBy(cmp).flatMap(c => view(c) match {
       case cll: Call if cll.clo == clo => Some(cll)
       case _ => None
-    })
+    }) + call
     if (calls.size > limit) {
       val callArgs = calls.map(c => c.ctx.args)
       val excludedPars = dropArgs(clo, callArgs, limit)
