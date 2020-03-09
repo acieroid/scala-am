@@ -79,7 +79,7 @@ object Benchmark extends App {
     analysis.analyze()
     val t1 = System.nanoTime()
     time += (t1 - t0)
-    analysis.callToFile(s + "_" + suffix)
+    //analysis.callToFile(s + "_" + suffix)
     //analysis.dump(suffix)
 
     // Time measurements.
@@ -96,8 +96,9 @@ object Benchmark extends App {
       time += (t1 - t0)
     }
     println(s"\n   Average time: ${(time / 1000000) / actual}ms")
+    println(s"   Primitive time: ${(InterceptCall.primTime / 1000000) / actual}ms")
 
-    analysis.timeToFile(s + "_" + suffix)
+    //analysis.timeToFile(s + "_" + suffix)
   }
 
   def gabriel(): Unit = {
@@ -146,7 +147,7 @@ object Benchmark extends App {
     allbench.foreach(run(_, s))
   }
 
-  run("test/gabriel/browse.scm", Compile)
+  run("test/gabriel/browse.scm")
 }
 
 object PrimCompiler {

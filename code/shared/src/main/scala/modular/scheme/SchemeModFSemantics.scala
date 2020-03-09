@@ -281,18 +281,19 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
 object InterceptCall {
   // By placing this in an object, we can perform timing measurements across analyses.
   var times: Map[String, List[ Long]] = Map().withDefaultValue(List())
+  var primTime: Long = 0
+
 }
 
 trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
 
   type Component
 
-  import InterceptCall.times
+  import InterceptCall._
 
   var calls    :  Map[(String, List[Value]) , Value] =  Map()
   var timeStack:               List[ Long]           = List()
   var callStack: List[(String, List[Value])]         = List()
-  var timeBuf  :               List[ Long]           = List(0) // Keeps the time spent in inner primitives for every call.
 
   var formalParameters: Map[Component, List[Addr]] = Map()
 
@@ -306,10 +307,10 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   def initPrimitiveBenchmarks(): Unit = {
     timeStack = List()
     times = Map().withDefaultValue(List())
-    timeBuf = List(0) // Dummy value for the non-existent call around the outer primitive call.
     callStack = List()
     calls = Map()
     formalParameters = Map()
+    primTime = 0
   }
 
   def readOutPrimitiveBenchmarks(): Unit = {
@@ -355,16 +356,13 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   def pre(name: String, args: List[Value]): Unit = {
     callStack = (name, args) :: callStack
     timeStack = System.nanoTime() :: timeStack
-    timeBuf = 0 :: timeBuf
   }
   def post(name: String, result: Value): Unit = {
     val t1 = System.nanoTime()
     val t0 = timeStack.head
-    val t  = t1 - t0 - timeBuf.head
-    // Add to the timebuffer of the surrounding call the runtime of this call and all calls within this call.
-    timeBuf = (t1 - t0 + timeBuf.tail.head) :: timeBuf.tail.tail
     timeStack = timeStack.tail
-    times = times + (name -> (t :: times(name))) // ((t1 - t0) :: times(name)))
+    if (timeStack.isEmpty) primTime = primTime + (t1 - t0)
+    times = times + (name -> ((t1 - t0) :: times(name))) // ((t1 - t0) :: times(name)))
     val (`name`, args) = callStack.head
     callStack = callStack.tail
     calls = calls + ((name, args) -> result)
