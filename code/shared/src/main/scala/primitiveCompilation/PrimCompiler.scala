@@ -1,10 +1,13 @@
 package scalaam.primitiveCompilation
 import java.io.{BufferedWriter, File, FileWriter}
+
 import scalaam.primitiveCompilation.PrimSource._
 import scalaam.primitiveCompilation.PrimTarget._
 import scalaam.primitiveCompilation.ANFCompiler._
 import scalaam.core._
+import scalaam.language.scheme.SchemeInterpreter.Addr
 import scalaam.language.scheme._
+import scalaam.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrimitives}
 import scalaam.language.sexp._
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -30,12 +33,16 @@ object GeneratePrimitives extends App {
 
 object Benchmark extends App {
 
+  trait Strategy
+  case object Prelude extends Strategy
+  case object Compile extends Strategy
+
   val warmup = 2
   val actual = 10
 
-  def run(file: String) = {
+  def run(file: String, s: Strategy = Prelude): Unit = {
     println(s"[$file] ")
-    val program = Primitives.parseWithoutPrelude(file)
+    val program = if (s == Prelude) Primitives.parseWithPrelude(file) else Primitives.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
     // Warmup.
     print("* Warmup - ")
@@ -43,7 +50,7 @@ object Benchmark extends App {
       print(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
-        val primitives = new CompiledSchemePrimitives[Value, Addr]
+        val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
       }
       analysis.analyze()
     }
@@ -54,9 +61,9 @@ object Benchmark extends App {
     println("\n* Calls + Time 0")
     val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
-      val primitives = new CompiledSchemePrimitives[Value, Addr]
+      val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
       def dump(suffix: String): Unit = {
-        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
+        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${s}_nonprims_$suffix")))
         file.write(allComponents.filter(cmp => componentName(cmp) match {
           case Some(name) => !Primitives.primitives.keySet.contains(name) // ignore primitives
           case _ => true
@@ -72,8 +79,8 @@ object Benchmark extends App {
     analysis.analyze()
     val t1 = System.nanoTime()
     time += (t1 - t0)
-    // analysis.callToFile(suffix)
-    analysis.dump(suffix)
+    analysis.callToFile(s + "_" + suffix)
+    //analysis.dump(suffix)
 
     // Time measurements.
     print("* Time - ")
@@ -81,60 +88,65 @@ object Benchmark extends App {
       print(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
-        val primitives = new CompiledSchemePrimitives[Value, Addr]
+        val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
       }
       val t0 = System.nanoTime()
       analysis.analyze()
       val t1 = System.nanoTime()
       time += (t1 - t0)
     }
-    println(s"Time: ${(time / 1000000) / actual}ms")
+    println(s"\n   Average time: ${(time / 1000000) / actual}ms")
 
-    analysis.timeToFile(suffix)
-  }
-  def gabriel() = {
-    SchemeBenchmarks.gabriel.foreach(run _)
+    analysis.timeToFile(s + "_" + suffix)
   }
 
-  def all() = {
-    run("test/mceval.scm")
-    run("test/scp1/9.12.scm")
-    run("test/gabriel/browse.scm")
-    run("test/scp1/8.15.scm")
-    run("test/gambit/mazefun.scm")
-    run("test/gabriel/diviter.scm")
-    run("test/gabriel/divrec.scm")
-    run("test/gambit/matrix.scm")
-    run("test/scp1/9.18.scm")
-//    run("test/scp1/5.14.3.scm")
-//    run("test/scp1/7.16.scm")
-    run("test/scp1/9.16.scm")
-    run("test/gambit/destruc.scm")
-    run("test/gabriel/destruc.scm")
-    run("test/gabriel/dderiv.scm")
-//    run("test/scp1/7.11.scm")
-    run("test/scp1/7.13.scm")
-    run("test/scp1/5.22.scm")
-//    run("test/scp1/7.14.scm")
-    run("test/WeiChenRompf2019/kcfa-worst-case-256.scm")
-    run("test/scp1/7.4.scm")
-    run("test/scp1/7.17.scm")
-    run("test/scp1/9.14.scm")
-    run("test/scp1/7.9.scm")
-//    run("test/sigscheme/mem.scm")
-    run("test/scp1/7.15.scm")
-    run("test/sat.scm")
-    run("test/gabriel/deriv.scm")
-    run("test/sigscheme/takr.scm")
-    run("test/scp1/7.12.scm")
-    run("test/regex.scm")
-    run("test/grid.scm")
-    run("test/gabriel/puzzle.scm")
-    run("test/scp1/5.20.4.scm")
-    run("test/scp1/5.19.scm")
-    run("test/scp1/9.15.scm")
+  def gabriel(): Unit = {
+    SchemeBenchmarks.gabriel.foreach(b => run(b))
   }
-  run("test/gabriel/browse.scm")
+
+  val allbench: List[String] = List(
+    "test/mceval.scm",
+    "test/scp1/9.12.scm",
+    "test/gabriel/browse.scm",
+    "test/scp1/8.15.scm",
+    "test/gambit/mazefun.scm",
+    "test/gabriel/diviter.scm",
+    "test/gabriel/divrec.scm",
+    "test/gambit/matrix.scm",
+    "test/scp1/9.18.scm",
+    //    "test/scp1/5.14.3.scm",
+    //    "test/scp1/7.16.scm",
+    "test/scp1/9.16.scm",
+    "test/gambit/destruc.scm",
+    "test/gabriel/destruc.scm",
+    "test/gabriel/dderiv.scm",
+    //    "test/scp1/7.11.scm",
+    "test/scp1/7.13.scm",
+    "test/scp1/5.22.scm",
+    //    "test/scp1/7.14.scm",
+    "test/WeiChenRompf2019/kcfa-worst-case-256.scm",
+    "test/scp1/7.4.scm",
+    "test/scp1/7.17.scm",
+    "test/scp1/9.14.scm",
+    "test/scp1/7.9.scm",
+    //    "test/sigscheme/mem.scm",
+    "test/scp1/7.15.scm",
+    "test/sat.scm",
+    "test/gabriel/deriv.scm",
+    "test/sigscheme/takr.scm",
+    "test/scp1/7.12.scm",
+    "test/regex.scm",
+    "test/grid.scm",
+    "test/gabriel/puzzle.scm",
+    "test/scp1/5.20.4.scm",
+    "test/scp1/5.19.scm",
+    "test/scp1/9.15.scm")
+
+  def all(s: Strategy = Prelude): Unit = {
+    allbench.foreach(run(_, s))
+  }
+
+  run("test/gabriel/browse.scm", Compile)
 }
 
 object PrimCompiler {

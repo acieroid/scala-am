@@ -292,6 +292,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   var calls    :  Map[(String, List[Value]) , Value] =  Map()
   var timeStack:               List[ Long]           = List()
   var callStack: List[(String, List[Value])]         = List()
+  var timeBuf  :               List[ Long]           = List(0) // Keeps the time spent in inner primitives for every call.
 
   var formalParameters: Map[Component, List[Addr]] = Map()
 
@@ -305,6 +306,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   def initPrimitiveBenchmarks(): Unit = {
     timeStack = List()
     times = Map().withDefaultValue(List())
+    timeBuf = List(0) // Dummy value for the non-existent call around the outer primitive call.
     callStack = List()
     calls = Map()
     formalParameters = Map()
@@ -328,9 +330,12 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
 
   def timeToFile(suffix: String): Unit = {
     val timeFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/time/$suffix")))
-    val prims = times.keySet.toList.sorted
-    val avgTimes = times.view.mapValues(values => values.sum / values.length)
-    prims.foreach(p => timeFile.write(s"$p: ${times(p).length} calls, average time: ${avgTimes(p)}\n"))
+    times.keySet.toList.sorted.foreach({ prim =>
+      val t = times(prim)
+      val time = t.sum
+      val calls = t.length
+      timeFile.write(s"$prim: ${calls} calls, average time: ${time/calls}\n")
+    })
     timeFile.flush()
     timeFile.close()
   }
@@ -350,12 +355,16 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   def pre(name: String, args: List[Value]): Unit = {
     callStack = (name, args) :: callStack
     timeStack = System.nanoTime() :: timeStack
+    timeBuf = 0 :: timeBuf
   }
   def post(name: String, result: Value): Unit = {
     val t1 = System.nanoTime()
     val t0 = timeStack.head
+    val t  = t1 - t0 - timeBuf.head
+    // Add to the timebuffer of the surrounding call the runtime of this call and all calls within this call.
+    timeBuf = (t1 - t0 + timeBuf.tail.head) :: timeBuf.tail.tail
     timeStack = timeStack.tail
-    times = times + (name -> ((t1 - t0) :: times(name)))
+    times = times + (name -> (t :: times(name))) // ((t1 - t0) :: times(name)))
     val (`name`, args) = callStack.head
     callStack = callStack.tail
     calls = calls + ((name, args) -> result)
