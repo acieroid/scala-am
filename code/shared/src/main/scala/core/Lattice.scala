@@ -2,6 +2,11 @@ package scalaam.core
 
 import scalaam.util.Show
 
+/** Cardinality indicates how many elements are represented by an abstract value */
+trait Cardinality
+case object CardinalityInf extends Cardinality
+case class CardinalityNumber(n: Int) extends Cardinality
+
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */
 object LatticeTopUndefined extends ScalaAMException
 
@@ -28,6 +33,9 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
   /** "Splitting" an lattice element v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
   def split(abs: L): Set[L]
 
+  /** Cardinality indicates how many elements are represented by an abstract value */
+  def cardinality(abs: L): Cardinality
+
   /** For PartialOrdering[L]: a lattice has a partial order, defined by subsumes... */
   final def lteq(x: L, y: L): Boolean = subsumes(y, x)
 
@@ -51,5 +59,6 @@ object Lattice {
     def subsumes(x: Set[A], y: => Set[A])                         = y.subsetOf(x)
     def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A]) = ???
     def split(x: Set[A])                                          = x.map(Set(_))
+    def cardinality(x: Set[A])                                    = CardinalityNumber(x.size)
   }
 }

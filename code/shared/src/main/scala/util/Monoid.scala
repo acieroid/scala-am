@@ -18,6 +18,7 @@ object MonoidImplicits {
   }
   implicit def setMonoid[X]: Monoid[Set[X]] = MonoidInstances.setMonoid
   implicit def latticeMonoid[L : Lattice]: Monoid[L] = MonoidInstances.latticeMonoid
+  implicit def cardinalityMonoid: Monoid[Cardinality] = MonoidInstances.cardinalityMonoid
 }
 
 object MonoidInstances {
@@ -46,6 +47,14 @@ object MonoidInstances {
     def append(x: Set[M], y: => Set[M]): Set[M] = x ++ y
     def zero: Set[M]                            = Set[M]()
   }
+  def cardinalityMonoid: Monoid[Cardinality] = new Monoid[Cardinality] {
+    def append(x: Cardinality, y: => Cardinality): Cardinality = (x,y) match {
+      case (CardinalityNumber(n),CardinalityNumber(m)) => CardinalityNumber(n+m)
+      case _ => CardinalityInf
+    }
+    def zero: Cardinality = CardinalityNumber(0)
+  }
+
   val boolOrMonoid: Monoid[Boolean] = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x || y
     def zero: Boolean                              = false

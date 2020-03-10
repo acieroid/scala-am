@@ -1,6 +1,6 @@
 package scalaam.lattice
 
-import scalaam.core.{Lattice}
+import scalaam.core._
 import scalaam.util.Show
 
 object Concrete {
@@ -52,6 +52,10 @@ object Concrete {
     def split(x: L[A]): Set[L[A]] = x match {
       case Top        => Set(Top)
       case Values(vs) => vs.map(v => Values(Set(v)))
+    }
+    def cardinality(x: L[A]): Cardinality = x match {
+      case Top        => CardinalityInf
+      case Values(vs) => CardinalityNumber(vs.size)
     }
   }
 

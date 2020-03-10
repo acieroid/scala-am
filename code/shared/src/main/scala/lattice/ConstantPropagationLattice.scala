@@ -1,6 +1,6 @@
 package scalaam.lattice
 
-import scalaam.core.Lattice
+import scalaam.core._
 
 object ConstantPropagation {
   sealed trait L[+A]
@@ -72,6 +72,11 @@ object ConstantPropagation {
     def split(v: L[A]): Set[L[A]] = v match {
       case Bottom => Set.empty
       case _      => Set(v)
+    }
+    def cardinality(v: L[A]): Cardinality = v match {
+      case Bottom       => CardinalityNumber(0)
+      case Constant(_)  => CardinalityNumber(1)
+      case Top          => CardinalityInf
     }
   }
 

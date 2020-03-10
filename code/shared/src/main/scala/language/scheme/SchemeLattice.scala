@@ -98,6 +98,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** "Splitting" an abstract value v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
   def split(abs: L): Set[L]
 
+  /** Cardinality indicates how many elements are represented by an abstract value */
+  def cardinality(abs: L): Cardinality
+
   /* TODO: move this to the tests
   trait SchemeLatticeLaw extends MonoidLaw {
     import scalaz.std.boolean.conditional
@@ -163,6 +166,8 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   }
  */
 }
+
+
 
 object SchemeLattice {
   def apply[L, A <: Address, P <: Primitive, Env](

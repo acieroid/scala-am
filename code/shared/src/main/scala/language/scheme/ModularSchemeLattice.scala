@@ -6,6 +6,7 @@ import scalaam.util._
 import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
+import scalaam.util.MonoidImplicits._
 
 import scala.annotation.tailrec
 
@@ -538,6 +539,17 @@ class ModularSchemeLattice[
       case Symbol(s)  => Lattice[Sym].split(s).map(Symbol)
       case _          => Set(v)
     }
+
+    def cardinality(v: Value): Cardinality = v match {
+      case Bot        => CardinalityNumber(0)
+      case Bool(b)    => Lattice[B].cardinality(b)
+      case Int(i)     => Lattice[I].cardinality(i)
+      case Char(c)    => Lattice[C].cardinality(c)
+      case Str(s)     => Lattice[S].cardinality(s)
+      case Real(r)    => Lattice[R].cardinality(r)
+      case Symbol(s)  => Lattice[Sym].cardinality(s)
+      case _          => CardinalityNumber(1) 
+    }
   }
 
   sealed trait L extends SmartHash {
@@ -651,7 +663,12 @@ class ModularSchemeLattice[
 
     def split(abs: L): Set[L] = abs match {
       case Element(v) => Value.split(v).map(v => Element(v))
-      case Elements(vs) => vs.flatMap(v => Value.split(v).map(va => Element(va)))
+      case Elements(vs) => vs.foldMap(v => Value.split(v).map(va => Element(va)))
+    }
+
+    def cardinality(abs: L): Cardinality = abs match {
+      case Element(v) => Value.cardinality(v)
+      case Elements(vs) => vs.foldMap(v => Value.cardinality(v))
     }
   }
 

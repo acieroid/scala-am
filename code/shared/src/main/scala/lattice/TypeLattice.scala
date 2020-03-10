@@ -1,6 +1,6 @@
 package scalaam.lattice
 
-import scalaam.core.Lattice
+import scalaam.core._
 
 object Type {
   sealed trait T
@@ -37,6 +37,10 @@ object Type {
     def split(v: T) = v match {
       case Bottom => Set.empty
       case Top    => Set(Top)
+    }
+    def cardinality(v: T) = v match {
+      case Bottom => CardinalityNumber(0)
+      case Top    => CardinalityInf
     }
   }
 
