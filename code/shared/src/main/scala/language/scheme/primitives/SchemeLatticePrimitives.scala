@@ -449,7 +449,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       val name = "cons"
       override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val consa = alloc.pointer((fpos, cpos))
+          val consa = alloc.pointer((fpos, fpos))
           (pointer(consa), store.extend(consa, lat.cons(car, cdr)))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
@@ -531,7 +531,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           isInteger(size) >>= (
               isint =>
                 if (isTrue(isint)) {
-                  val veca = alloc.pointer((fpos, cpos))
+                  val veca = alloc.pointer((fpos, fpos))
                   lat.vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
                 } else {
                   MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
@@ -549,7 +549,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     object `vector` extends SchemePrimitive[V,A] {
       val name = "vector"
       override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
-        val veca = alloc.pointer((fpos, cpos))
+        val veca = alloc.pointer((fpos, fpos))
         lat.vector(number(args.size), bottom) >>= (
             emptyvec =>
               args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))(
@@ -648,7 +648,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           for {
             (restv, store2) <- call(fpos, rest, store, alloc)
             consv  = lat.cons(v, restv)
-            consa  = alloc.pointer((exp, fpos))
+            consa  = alloc.pointer((fpos, fpos))
             store3 = store2.extend(consa, consv)
           } yield (pointer(consa), store3)
       }
