@@ -54,7 +54,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
   // Local addresses are simply made out of lexical information.
   trait LocalAddr extends Address { def idn(): Identity }
-    case class VarAddr(id: Identifier)           extends LocalAddr {
+    case class VarAddr(cmp: Component, id: Identifier)           extends LocalAddr {
       def printable = true;  def idn(): Identity =  id.idn
       override def toString = id.toString
     }
@@ -70,7 +70,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       override def toString = s"#$nam"
     }
 
-  def varAddr(pm: Identifier): LocalAddr = VarAddr(pm)
+  def varAddr(cmp: Component, pm: Identifier): LocalAddr = VarAddr(cmp, pm)
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
@@ -141,15 +141,15 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // variable lookup: use the global store
     protected def lookupVariable(lex: LexicalRef): Value = readAddr(resolveAddr(lex))
     protected def    setVariable(lex: LexicalRef, vlu: Value): Unit = writeAddr(resolveAddr(lex), vlu)
-    protected def defineVariable( id: Identifier, vlu: Value): Unit = writeAddr(    VarAddr( id), vlu)
+    protected def defineVariable(cmp: Component, id: Identifier, vlu: Value): Unit = writeAddr(    VarAddr(cmp, id), vlu)
     // resolve a lexical address to the corresponding address in the store
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
-      case  LocalRef(identifier) => ComponentAddr(VarAddr(identifier))
-      case GlobalRef(identifier) => ComponentAddr(VarAddr(identifier))
+      case  LocalRef(identifier) => ComponentAddr(VarAddr(component, identifier))
+      case GlobalRef(identifier) => ComponentAddr(VarAddr(initialComponent, identifier))
       case   PrimRef(      name) => ComponentAddr(PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
         val cmp = resolveParent(component,scp)
-        ComponentAddr(VarAddr(identifier))
+        ComponentAddr(VarAddr(cmp, identifier))
     }
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
@@ -202,7 +202,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     //   applyFun(appendExp, appendPrim, List(l1,l2))
     // }
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
-      writeAddr(VarAddr(par),arg,component)
+      writeAddr(VarAddr(component, par),arg,component)
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
@@ -299,8 +299,8 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     formalParameters = formalParameters + (cmp -> pms.map(createAddr(cmp, _)))
   }
 
-  def varAddr(pm: Identifier): LocalAddr
-  def createAddr(cmp: Component, pm: Identifier): Addr = ComponentAddr(varAddr(pm))
+  def varAddr(cmp: Component, pm: Identifier): LocalAddr
+  def createAddr(cmp: Component, pm: Identifier): Addr = ComponentAddr(varAddr(cmp, pm))
 
   def initPrimitiveBenchmarks(): Unit = {
     timeStack = List()
