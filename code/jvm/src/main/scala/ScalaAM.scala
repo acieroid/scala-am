@@ -1,9 +1,9 @@
 package scalaam.cli
 
+
 import scalaam.diff.ModuleInferencer
 import scalaam.incremental._
-import scalaam.modular.adaptive.AdaptiveModAnalysis
-import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
+import scalaam.io.FileReader
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.modular.incremental.scheme.IncrementalSchemeModFSemantics
 import scalaam.modular._
@@ -44,7 +44,7 @@ object Incrementor extends App {
   type Analysis = IncrementalModAnalysis[SchemeExp] with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with IncrementalSchemeModFSemantics
   var analyzer: Analysis = _
 
-  def analyze(file: String): Unit = analyze(SchemeParser.parse(FileUtil.loadFile(file)))
+  def analyze(file: String): Unit = analyze(SchemeParser.parse(FileReader.loadFile(file)))
 
   private def analyze(text: SchemeExp): Unit = {
     analyzer = new IncrementalModAnalysis(text) with SmallStepSemantics
@@ -59,21 +59,11 @@ object Incrementor extends App {
 
   def reanalyse(text: SchemeExp): Unit = analyzer.updateAnalysis(text)
 
-  val a = ModuleInferencer.inferModules(SchemeParser.parse(FileUtil.loadFile("./test/ad/inssort.scm")))
-  val b = ModuleInferencer.inferModules(SchemeParser.parse(FileUtil.loadFile("./test/ad/inssort2.scm")))
+  val a = ModuleInferencer.inferModules(SchemeParser.parse(FileReader.loadFile("./test/ad/inssort.scm")))
+  val b = ModuleInferencer.inferModules(SchemeParser.parse(FileReader.loadFile("./test/ad/inssort2.scm")))
   println(a)
   println(b)
   val mapping = GumtreeModuleDiff.computeMapping(a, b)
   mapping.map(println)
 
-}
-
-object FileUtil {
-
-  def loadFile(file: String): String = {
-    val fHandle = scala.io.Source.fromFile(file)
-    val content = fHandle.getLines.mkString("\n")
-    fHandle.close()
-    content
-  }
 }
