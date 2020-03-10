@@ -5,9 +5,9 @@ import scalaam.primitiveCompilation.PrimSource._
 import scalaam.primitiveCompilation.PrimTarget._
 import scalaam.primitiveCompilation.ANFCompiler._
 import scalaam.core._
-import scalaam.language.scheme.SchemeInterpreter.Addr
+import scalaam.io.Writer
+import scalaam.io.Writer._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrimitives}
 import scalaam.language.sexp._
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -40,14 +40,16 @@ object Benchmark extends App {
   val warmup = 2
   val actual = 10
 
+  setDefaultWriter(Writer.open("benchOutput/results.txt"))
+
   def run(file: String, s: Strategy = Prelude): Unit = {
-    println(s"[$file] ")
+    writeln(s"[$file] ")
     val program = if (s == Prelude) Primitives.parseWithPrelude(file) else Primitives.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
     // Warmup.
-    print("* Warmup - ")
+    write("* Warmup - ")
     for (i <- 0 until warmup) {
-      print(i + " ")
+      write(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
         val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
@@ -58,7 +60,7 @@ object Benchmark extends App {
     var time = 0L
 
     // Get results for each call (but timing results are kept for next iteration).
-    println("\n* Calls + Time 0")
+    writeln("\n* Calls + Time 0")
     val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
       val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
@@ -83,9 +85,9 @@ object Benchmark extends App {
     //analysis.dump(suffix)
 
     // Time measurements.
-    print("* Time - ")
+    write("* Time - ")
     for (i <- 1 until actual) {
-      print(i + " ")
+      write(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
         val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
@@ -95,8 +97,8 @@ object Benchmark extends App {
       val t1 = System.nanoTime()
       time += (t1 - t0)
     }
-    println(s"\n   Average time: ${(time / 1000000) / actual}ms")
-    println(s"   Primitive time: ${(InterceptCall.primTime / 1000000) / actual}ms")
+    writeln(s"\n   Average time: ${(time / 1000000) / actual}ms")
+    writeln(s"   Primitive time: ${(InterceptCall.primTime / 1000000) / actual}ms")
 
     //analysis.timeToFile(s + "_" + suffix)
   }
@@ -147,7 +149,12 @@ object Benchmark extends App {
     allbench.foreach(run(_, s))
   }
 
-  run("test/gabriel/browse.scm")
+  writeln("***** Prelude *****")
+  all()
+  writeln("***** Compile *****")
+  all(Compile)
+
+  closeDefaultWriter()
 }
 
 object PrimCompiler {

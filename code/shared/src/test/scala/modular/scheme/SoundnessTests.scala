@@ -1,3 +1,4 @@
+/*
 package scalaam.test.soundness
 
 import scala.concurrent.duration._
@@ -144,3 +145,4 @@ class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
 class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                                 with SimpleAdaptiveSchemeModF
                                                 with SimpleBenchmarks
+*/

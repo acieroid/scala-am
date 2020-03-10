@@ -3,7 +3,7 @@ package scalaam.cli
 
 import scalaam.diff.ModuleInferencer
 import scalaam.incremental._
-import scalaam.io.FileReader
+import scalaam.io.Reader
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.modular.incremental.scheme.IncrementalSchemeModFSemantics
 import scalaam.modular._
@@ -44,7 +44,7 @@ object Incrementor extends App {
   type Analysis = IncrementalModAnalysis[SchemeExp] with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with IncrementalSchemeModFSemantics
   var analyzer: Analysis = _
 
-  def analyze(file: String): Unit = analyze(SchemeParser.parse(FileReader.loadFile(file)))
+  def analyze(file: String): Unit = analyze(SchemeParser.parse(Reader.loadFile(file)))
 
   private def analyze(text: SchemeExp): Unit = {
     analyzer = new IncrementalModAnalysis(text) with SmallStepSemantics
@@ -59,8 +59,8 @@ object Incrementor extends App {
 
   def reanalyse(text: SchemeExp): Unit = analyzer.updateAnalysis(text)
 
-  val a = ModuleInferencer.inferModules(SchemeParser.parse(FileReader.loadFile("./test/ad/inssort.scm")))
-  val b = ModuleInferencer.inferModules(SchemeParser.parse(FileReader.loadFile("./test/ad/inssort2.scm")))
+  val a = ModuleInferencer.inferModules(SchemeParser.parse(Reader.loadFile("./test/ad/inssort.scm")))
+  val b = ModuleInferencer.inferModules(SchemeParser.parse(Reader.loadFile("./test/ad/inssort2.scm")))
   println(a)
   println(b)
   val mapping = GumtreeModuleDiff.computeMapping(a, b)

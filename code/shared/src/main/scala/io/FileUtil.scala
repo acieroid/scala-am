@@ -6,7 +6,7 @@ import java.util.Calendar
 
 import au.com.bytecode.opencsv.CSVWriter
 
-object FileReader {
+object Reader {
 
   def loadFile(file: String): String = {
     val fHandle = scala.io.Source.fromFile(file)
@@ -17,15 +17,21 @@ object FileReader {
 
 }
 
-object FileWriter {
+/**
+ * Utility to write to plain text files. Can also be modifief to write to csv files using
+ * a CSVWriter, CSVWriter.NO_QUOTE_CHARACTER and the writeNext method.
+ */
+object Writer {
 
-  type Writer = CSVWriter
+  type Writer = BufferedWriter
 
   val  calendar: Calendar         = Calendar.getInstance()
   val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH'h'mm")
 
+  var defaultWriter: Writer = _
+
   def open(path: String): Writer = {
-    new CSVWriter(new BufferedWriter(new FileWriter(path)))
+    new BufferedWriter(new FileWriter(path))
   }
 
   def openTimeStamped(dir: String, file: String): Writer =
@@ -33,19 +39,34 @@ object FileWriter {
 
   def close(writer: Writer): Unit = writer.close()
 
+  def setDefaultWriter(writer: Writer): Unit = defaultWriter = writer
+  def closeDefaultWriter(): Unit = defaultWriter.close()
+
   // Avoid output being buffered.
-  def write(data: String, writer: Writer): String = {
+  def write(writer: Writer, data: String): String = {
     print(data)
     Console.out.flush()
-    writer.writeNext(data.trim)
+    writer.write(data)
     writer.flush()
     data
   }
-  def writeErr(data: String, writer: CSVWriter): String = {
+
+  def writeln(writer: Writer, data: String): String = write(writer, data + "\n")
+
+  def write(data: String = "\n"): String = write(defaultWriter, data)
+  def writeln(data: String = "\n"): String = writeln(defaultWriter, data)
+
+  def writeErr(writer: Writer, data: String): String = {
     System.err.print(data)
     System.err.flush()
-    writer.writeNext(data.trim)
+    writer.write(data)
     writer.flush()
     data
   }
+
+  def writeErrln(writer: Writer, data: String): String = writeErr(writer, data + "\n")
+
+  def writeErr(data: String = "\n"): String = writeErr(defaultWriter, data)
+  def writeErrln(data: String = "\n"): String = writeErrln(defaultWriter, data)
+
 }
