@@ -6,16 +6,10 @@
             base
             (f (car lst) (foldr-aux (cdr lst))))))
     (foldr-aux lst)))
-(define (list-ref l n)
-  (if (= n 0)
-      (car l)
-      (if (null? l)
-          (error "list-ref: empty list")
-          (list-ref (cdr l) (- n 1)))))
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
-(define error (lambda (e) (set! result (cons (list 'error e) result))))
+(define display2 (lambda (i) (set! result (cons i result))))
+(define newline2 (lambda () (set! result (cons 'newline result))))
+(define error2 (lambda (e) (set! result (cons (list 'error e) result))))
 
 
 (define (maak-buffer)
@@ -77,24 +71,24 @@
     (define (newDay)
       (define (loop start end)
         (cond ((= start end) (newline))
-              (else (display "Tussen ") (display start)
-                    (display " en ") (display (+ start 1))
-                    (display " uur : ")
-                    (display ((buffer 'value) start))
-                    (display " auto's")
-                    (newline)
+              (else (display2 "Tussen ") (display2 start)
+                    (display2 " en ") (display2 (+ start 1))
+                    (display2 " uur : ")
+                    (display2 ((buffer 'value) start))
+                    (display2 " auto's")
+                    (newline2)
                     (loop (+ start 1) end))))
       (if (= (buffer 'size) 24)
           (begin (loop 0 24)
                  (buffer 'flush)
                  (voorbijgereden 'reset))
-          (error "no 24 hours have passed")))
+          (error2 "no 24 hours have passed")))
 
     (define (dispatch msg)
       (cond ((eq? msg 'newCar) (newCar))
             ((eq? msg 'newHour) (newHour))
             ((eq? msg 'newDay) (newDay))
-            (else (error "wrong message"))))
+            (else (error2 "wrong message"))))
     dispatch))
 
 (define verkeersteller (maak-verkeersteller))
@@ -381,4 +375,4 @@
                  " en "
                  0
                  "Tussen "
-                 (error "no 24 hours have passed")))
+                 (error2 "no 24 hours have passed")))

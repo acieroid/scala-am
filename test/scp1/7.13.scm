@@ -5,8 +5,8 @@
           (begin (f (car l)) (for-each f (cdr l)))
           (error "Cannot for-each over a non-list"))))
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define display2 (lambda (i) (set! result (cons i result))))
+(define newline2 (lambda () (set! result (cons 'newline result))))
 
 (define VUBOrganigram
   '(VUB (academisch (rectoraat)
@@ -29,8 +29,8 @@
 
 (define (print-lijn aantalblanco tekst)
   (display-n aantalblanco " ")
-  (display tekst)
-  (newline))
+  (display2 tekst)
+  (newline2))
 
 (define (label organigram)  (car organigram))
 (define (takken organigram) (cdr organigram))
