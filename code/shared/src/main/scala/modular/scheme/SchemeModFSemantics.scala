@@ -281,13 +281,15 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
 object InterceptCall {
   // By placing this in an object, we can perform timing measurements across analyses.
   var times: Map[String, List[ Long]] = Map().withDefaultValue(List())
+  var primTime: Long = 0
+
 }
 
 trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
 
   type Component
 
-  import InterceptCall.times
+  import InterceptCall._
 
   var calls    :  Map[(String, List[Value]) , Value] =  Map()
   var timeStack:               List[ Long]           = List()
@@ -308,6 +310,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     callStack = List()
     calls = Map()
     formalParameters = Map()
+    primTime = 0
   }
 
   def readOutPrimitiveBenchmarks(): Unit = {
@@ -328,9 +331,12 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
 
   def timeToFile(suffix: String): Unit = {
     val timeFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/time/$suffix")))
-    val prims = times.keySet.toList.sorted
-    val avgTimes = times.view.mapValues(values => values.sum / values.length)
-    prims.foreach(p => timeFile.write(s"$p: ${times(p).length} calls, average time: ${avgTimes(p)}\n"))
+    times.keySet.toList.sorted.foreach({ prim =>
+      val t = times(prim)
+      val time = t.sum
+      val calls = t.length
+      timeFile.write(s"$prim: ${calls} calls, average time: ${time/calls}\n")
+    })
     timeFile.flush()
     timeFile.close()
   }
@@ -355,7 +361,8 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     val t1 = System.nanoTime()
     val t0 = timeStack.head
     timeStack = timeStack.tail
-    times = times + (name -> ((t1 - t0) :: times(name)))
+    if (timeStack.isEmpty) primTime = primTime + (t1 - t0)
+    times = times + (name -> ((t1 - t0) :: times(name))) // ((t1 - t0) :: times(name)))
     val (`name`, args) = callStack.head
     callStack = callStack.tail
     calls = calls + ((name, args) -> result)

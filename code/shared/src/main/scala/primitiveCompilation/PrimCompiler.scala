@@ -1,9 +1,12 @@
 package scalaam.primitiveCompilation
 import java.io.{BufferedWriter, File, FileWriter}
+
 import scalaam.primitiveCompilation.PrimSource._
 import scalaam.primitiveCompilation.PrimTarget._
 import scalaam.primitiveCompilation.ANFCompiler._
 import scalaam.core._
+import scalaam.io.Writer
+import scalaam.io.Writer._
 import scalaam.language.scheme._
 import scalaam.language.sexp._
 import scalaam.modular._
@@ -30,20 +33,26 @@ object GeneratePrimitives extends App {
 
 object Benchmark extends App {
 
-  val warmup = 0
-  val actual = 1
+  trait Strategy
+  case object Prelude extends Strategy
+  case object Compile extends Strategy
 
-  def run(file: String) = {
-    println(s"[$file] ")
-    val program = Primitives.parseWithPrelude(file)
+  val warmup = 2
+  val actual = 10
+
+  setDefaultWriter(Writer.open("benchOutput/results.txt"))
+
+  def run(file: String, s: Strategy = Prelude): Unit = {
+    writeln(s"[$file] ")
+    val program = if (s == Prelude) Primitives.parseWithPrelude(file) else Primitives.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
     // Warmup.
-    print("* Warmup - ")
+    write("* Warmup - ")
     for (i <- 0 until warmup) {
-      print(i + " ")
+      write(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
-        val primitives = new SchemeLatticePrimitives[Value, Addr]
+        val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
       }
       analysis.analyze()
     }
@@ -51,12 +60,12 @@ object Benchmark extends App {
     var time = 0L
 
     // Get results for each call (but timing results are kept for next iteration).
-    println("\n* Calls + Time 0")
+    writeln("\n* Calls + Time 0")
     val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
-      val primitives = new SchemeLatticePrimitives[Value, Addr]
+      val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
       def dump(suffix: String): Unit = {
-        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
+        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${s}_nonprims_$suffix")))
         file.write(allComponents.filter(cmp => componentName(cmp) match {
           case Some(name) => !Primitives.primitives.keySet.contains(name) // ignore primitives
           case _ => true
@@ -72,96 +81,80 @@ object Benchmark extends App {
     analysis.analyze()
     val t1 = System.nanoTime()
     time += (t1 - t0)
-    // analysis.callToFile(suffix)
-    analysis.dump(suffix)
+    //analysis.callToFile(s + "_" + suffix)
+    //analysis.dump(suffix)
 
     // Time measurements.
-    print("* Time - ")
+    write("* Time - ")
     for (i <- 1 until actual) {
-      print(i + " ")
+      write(i + " ")
       val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
         import scalaam.language.scheme.primitives._
-        val primitives = new SchemeLatticePrimitives[Value, Addr]
+        val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
       }
       val t0 = System.nanoTime()
       analysis.analyze()
       val t1 = System.nanoTime()
       time += (t1 - t0)
     }
-    println(s"Time: ${(time / 1000000) / actual}ms")
+    writeln(s"\n   Average time: ${(time / 1000000) / actual}ms")
+    writeln(s"   Primitive time: ${(InterceptCall.primTime / 1000000) / actual}ms")
 
-    analysis.timeToFile(suffix)
+    //analysis.timeToFile(s + "_" + suffix)
   }
 
-  def testCompiled(file: String): Unit = {
-    val program = Primitives.parseWithoutPrelude(file)
-    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
-      import scalaam.language.scheme.primitives._
-      val primitives = new CompiledSchemePrimitives[Value, Addr]
-      def dump(suffix: String): Unit = {
-        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
-        file.write(allComponents.filter(cmp => componentName(cmp) match {
-          case Some(name) => !Primitives.primitives.keySet.contains(name) // ignore primitives
-          case _ => true
-        })
-        .map(cmp => s"$cmp: ${store(ReturnAddr(cmp))}").toList.sorted.mkString("\n"))
-        file.flush()
-        file.close()
-      }
-    }
-    analysis.analyze()
-    analysis.dump("foo.txt")
+  def gabriel(): Unit = {
+    SchemeBenchmarks.gabriel.foreach(b => run(b))
   }
 
-  def gabriel() = {
-    SchemeBenchmarks.gabriel.foreach(run _)
+  val allbench: List[String] = List(
+    "test/mceval.scm",
+    "test/scp1/9.12.scm",
+    "test/gabriel/browse.scm",
+    "test/scp1/8.15.scm",
+    "test/gambit/mazefun.scm",
+    "test/gabriel/diviter.scm",
+    "test/gabriel/divrec.scm",
+    "test/gambit/matrix.scm",
+    "test/scp1/9.18.scm",
+    //    "test/scp1/5.14.3.scm",
+    //    "test/scp1/7.16.scm",
+    "test/scp1/9.16.scm",
+    "test/gambit/destruc.scm",
+    "test/gabriel/destruc.scm",
+    "test/gabriel/dderiv.scm",
+    //    "test/scp1/7.11.scm",
+    "test/scp1/7.13.scm",
+    "test/scp1/5.22.scm",
+    //    "test/scp1/7.14.scm",
+    "test/WeiChenRompf2019/kcfa-worst-case-256.scm",
+    "test/scp1/7.4.scm",
+    "test/scp1/7.17.scm",
+    "test/scp1/9.14.scm",
+    "test/scp1/7.9.scm",
+    //    "test/sigscheme/mem.scm",
+    "test/scp1/7.15.scm",
+    "test/sat.scm",
+    "test/gabriel/deriv.scm",
+    "test/sigscheme/takr.scm",
+    "test/scp1/7.12.scm",
+    "test/regex.scm",
+    "test/grid.scm",
+    "test/gabriel/puzzle.scm",
+    "test/scp1/5.20.4.scm",
+    "test/scp1/5.19.scm",
+    "test/scp1/9.15.scm")
+
+  def all(s: Strategy = Prelude): Unit = {
+    allbench.foreach(run(_, s))
   }
 
-  def all() = {
-    // results for 2 warmups + 10 runs (average)
-    run("test/mceval.scm") // prelude: 90332ms, compiled: 88056ms
-    run("test/scp1/9.12.scm") // prelude: 22638ms, compiled: 13732ms
-    run("test/gabriel/browse.scm") // prelude: 4996ms, compiled: 233893.ms
-    run("test/scp1/8.15.scm") // prelude: 71685ms, compiled: 65ms
-    run("test/gambit/mazefun.scm") // prelude: 46947ms, compiled: 407ms
-    run("test/gabriel/diviter.scm") // prelude: 4359ms, compiled: 12ms
-    run("test/gabriel/divrec.scm") // prelude: 4840ms, compiled: 7ms
-    run("test/gambit/matrix.scm") // prelude 14206ms, compiled: 7215ms
-    run("test/scp1/9.18.scm") // prelude: 968ms, compiled: 776ms,
-    run("test/scp1/5.14.3.scm") // prelude: 3623ms, compiled: 274ms
-    run("test/scp1/7.16.scm") // prelude: 2543ms, compiled: 1381ms
-    run("test/scp1/9.16.scm") // prelude: 392ms, compiled: 220ms
-    run("test/gambit/destruc.scm") // prelude: 573ms, compiled: 34ms
-    run("test/gabriel/destruc.scm") // prelude: 1027ms, compiled: 43ms
-    run("test/gabriel/dderiv.scm") // prelude: 652ms, compiled: 164ms
-    run("test/scp1/7.11.scm") // prelude: 74ms, compiled: 17ms
-    run("test/scp1/7.13.scm") // prelude: 24ms, compiled: 118ms
-    run("test/scp1/5.22.scm") // prelude: 44ms, compiled: 9ms
-    run("test/scp1/7.14.scm") // prelude: 360ms, compiled: 50ms
-    run("test/WeiChenRompf2019/kcfa-worst-case-256.scm") // prelude: 48ms, compiled: 49ms
-    run("test/scp1/7.4.scm") // prelude: 169ms, compiled: 24ms
-    run("test/scp1/7.17.scm") // prelude: 135ms, compiled: 88ms
-    run("test/scp1/9.14.scm") // prelude: 8ms, compiled: 4ms
-    run("test/scp1/7.9.scm") // prelude: 216ms, compiled: 182ms
-//    run("test/sigscheme/mem.scm")
-    run("test/scp1/7.15.scm") // prelude: 102ms, compiled: 38ms
-    run("test/sat.scm") // prelude: 1ms, compiled: 0ms
-    run("test/gabriel/deriv.scm") // prelude: 185ms, compiled: 56ms
-    run("test/sigscheme/takr.scm") // prelude: 25ms, compiled: 19ms
-    run("test/scp1/7.12.scm") // prelude: 46ms, compiled: 38ms
-    run("test/regex.scm") // prelude: 11ms, compiled: 22ms
-    run("test/grid.scm") // prelude: 8ms, compiled: 3ms
-    run("test/gabriel/puzzle.scm") // prelude: 14ms, compiled: 10ms
-    run("test/scp1/5.20.4.scm") // prelude: 6ms compiled: 5ms
-    run("test/scp1/5.19.scm") // prelude: 5ms, compiled: 6ms
-    run("test/scp1/9.15.scm") // prelude: 22ms, compiled: 9ms
-  }
-//  run("test/gambit/matrix.scm")
-//  run("test/gambit/mazefun.scm")
-//  run("test/scp1/7.11.scm")
-//  run("test/scp1/7.14.scm")
-  run("test/foo.scm")
-  testCompiled("test/foo.scm")
+  writeln("***** Prelude *****")
+  all()
+  writeln("***** Compile *****")
+  all(Compile)
+
+  closeDefaultWriter()
 }
 
 object PrimCompiler {
