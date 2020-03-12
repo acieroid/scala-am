@@ -17,7 +17,8 @@ object MonoidImplicits {
         coll.foldLeft(Monoid[M].zero)((acc,elm) => Monoid[M].append(acc,f(elm)))
   }
   implicit def setMonoid[X]: Monoid[Set[X]] = MonoidInstances.setMonoid
-  implicit def latticeMonoid[L : Lattice]: Monoid[L] = MonoidInstances.latticeMonoid
+  implicit def latticeMonoid[L : Lattice]: Monoid[L] = MonoidInstances.latticeMonoid  
+  implicit def mayFail[M : Monoid]: Monoid[MayFail[M,Error]] = MonoidInstances.mayFail
   implicit def cardinalityMonoid: Monoid[Cardinality] = MonoidInstances.cardinalityMonoid
 }
 

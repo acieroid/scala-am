@@ -157,10 +157,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val pair = lattice.cons(car,cdr)
-      val addr = allocAddr(PtrAddr(pairExp,()))
-      writeAddr(addr,pair)
-      lattice.pointer(addr)
+      val carAddr = allocAddr(PtrAddr(pairExp, "car"))
+      val cdrAddr = allocAddr(PtrAddr(pairExp, "cdr"))
+      writeAddr(carAddr,car)
+      writeAddr(cdrAddr,cdr)
+      lattice.cons(carAddr,cdrAddr)
     }
     protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
       val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)

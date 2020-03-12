@@ -21,7 +21,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   def name: String
   def analysis(b: SchemeExp): Analysis
   // the timeout for the analysis of a single benchmark program (default: 2min.)
-  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(20, SECONDS))
   // the actual testing code
   private def evalConcrete(originalProgram: SchemeExp, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
     val program = SchemeUndefiner.undefine(List(originalProgram))
@@ -53,7 +53,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       case Value.Bool(b)        => lat.subsumes(abs, lat.bool(b))
       case Value.Character(c)   => lat.subsumes(abs, lat.char(c))
       case Value.Nil            => lat.subsumes(abs, lat.nil)
-      case Value.Cons(_, _)     => lat.getPointerAddresses(abs).nonEmpty
+      case Value.Cons(_, _)     => lat.getConsCells(abs).nonEmpty
       case Value.Vector(_)      => lat.getPointerAddresses(abs).nonEmpty
       case v                    => throw new Exception(s"Unknown concrete value type: $v.")
     }

@@ -35,7 +35,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   private def updateV(update: Component => Component)(value: valueLattice.Value): valueLattice.Value = value match {
     case valueLattice.Pointer(addr)     => valueLattice.Pointer(updateAddr(update)(addr))
     case valueLattice.Clo(lam,cmp,nam)  => valueLattice.Clo(lam,update(cmp),nam)
-    case valueLattice.Cons(car,cdr)     => valueLattice.Cons(updateValue(update)(car),updateValue(update)(cdr))
+    case valueLattice.Cons(car,cdr)     => valueLattice.Cons(updateAddr(update)(car),updateAddr(update)(cdr))
     case valueLattice.Vec(siz,els,ini)  => valueLattice.Vec(siz,els.view.mapValues(updateValue(update)).toMap,updateValue(update)(ini))
     case _                              => value
   }

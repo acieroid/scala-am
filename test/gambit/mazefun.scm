@@ -8,6 +8,13 @@
   (if (null? l)
       m
       (cons (car l) (append (cdr l) m))))
+(define (member el lst)
+  (if (null? lst)
+      #f
+      (if (equal? (car lst) el)
+          #t
+          (member el (cdr lst)))))
+
 ;;; MAZEFUN -- Constructs a maze in a purely functional way,
 ;;; written by Marc Feeley.
 

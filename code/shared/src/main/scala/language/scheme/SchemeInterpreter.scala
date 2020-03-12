@@ -1015,7 +1015,6 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     object Cdddar extends Cxr("cdddar", List(Cdr, Cddar))
     object Cddddr extends Cxr("cddddr", List(Cdr, Cdddr))
 
-
     object Cons extends Prim {
       val name = "cons"
       def call(args: List[Value]): Value = args match {

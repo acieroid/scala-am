@@ -35,8 +35,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       Append, /* [x]  append: Append/Reverse */
       /* [x]  apply: Fly Evaluation */
       ASin, /* [vv] asin: Scientific */
-      Assoc, /* [vv] assoc: Retrieving Alist Entries */
-      Assq, /* [vv] assq: Retrieving Alist Entries */
+      //Assoc, /* [vv] assoc: Retrieving Alist Entries */
+      //Assq, /* [vv] assq: Retrieving Alist Entries */
       /* [x]  assv: Retrieving Alist Entries */
       ATan, /* [vv] atan: Scientific */
       Booleanp, /* [vv] boolean?: Booleans */
@@ -78,7 +78,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
       Eq, /* [vv] eq?: Equality */
-      Equal, /* [vx] equal?: Equality */
+      //Equal, /* [vx] equal?: Equality */
       /* [x]  eqv?: Equality */
       /* [x]  eval: Fly Evaluation */
       Evenp, /* [vv] even?: Integer Operations */
@@ -102,9 +102,9 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       ListPrim, /* [vv] list: List Constructors */
       /* [x]  list->string: String Constructors */
       /* [x]  list->vector: Vector Creation */
-      ListRef, /* [vv] list-ref: List Selection */
+      //ListRef, /* [vv] list-ref: List Selection */
       /* [x]  list-tail: List Selection */
-      Listp, /* [vv] list?: List Predicates */
+      //Listp, /* [vv] list?: List Predicates */
       /* [x]  load: Loading */
       Log, /* [vv] log: Scientific */
       /* [x]  magnitude: Complex */
@@ -113,8 +113,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       /* [x]  make-string: String Constructors */
       /* [x]  map: List Mapping */
       Max, /* [vv] max: Arithmetic */
-      Member, /* [vv] member: List Searching */
-      Memq, /* [v]  memq: List Searching */
+      //Member, /* [vv] member: List Searching */
+      //Memq, /* [v]  memq: List Searching */
       /* [x]  memv: List Searching */
       Min, /* [vv] min: Arithmetic */
       Modulo, /* [vv] modulo: Integer Operations */
@@ -473,6 +473,15 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         case MayFailBoth(v, err) => tailcall(v).map(_.addErrors(err))
       }
 
+    def dereferenceAddrs(addrs: Set[A], store: Store[A,V]): MayFail[V,Error] =
+      addrs.foldLeft(MayFail.success[V,Error](bottom))(
+        (acc: MayFail[V,Error], addr: A) =>
+          for {
+            v <- store.lookupMF(addr)
+            accv <- acc 
+          } yield join(accv,v)
+      )
+    
     /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
     def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]): MayFail[V, Error] =
       getPointerAddresses(x).foldLeft(MayFail.success[V, Error](bottom))(
@@ -894,16 +903,9 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     object Nullp extends NoStoreOperation("null?", Some(1)) {
       override def call(x: V) = isNull(x)
     }
-    object Pairp extends StoreOperation("pair?", Some(1)) {
+    object Pairp extends NoStoreOperation("pair?", Some(1)) {
       /* TODO[easy]: this should be a store operation that dereferences the pointer to check if it is indeed a cons */
-      override def call(x: V, store: Store[A, V]) =
-        (ifThenElse(isPointer(x)) {
-          dereferencePointer(x, store) { v =>
-            isCons(v)
-          }
-        } {
-          bool(false)
-        }).map(v => (v, store))
+      override def call(x: V) = isCons(x)
     }
     object Charp extends NoStoreOperation("char?", Some(1)) {
       override def call(x: V) = isChar(x)
@@ -996,9 +998,11 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     object Cons extends SchemePrimitive[V,A] {
       val name = "cons"
       def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
-        case (_, car) :: (_, cdr) :: Nil =>
-          val consa = alloc.pointer(fexp)
-          (pointer(consa), store.extend(consa, cons(car, cdr)))
+        case (carExp, car) :: (cdrExp, cdr) :: Nil =>
+          val carAddr = alloc.pointer(carExp)
+          val cdrAddr = alloc.pointer(cdrExp)
+          val consVal = cons(carAddr,cdrAddr)
+          (consVal, store.extend(carAddr, car).extend(cdrAddr, cdr))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
     }
@@ -1027,13 +1031,12 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           v <- spec.foldLeft(MayFail.success[V, Error](v))(
             (acc, op) =>
               for {
-                v <- acc
-                res <- dereferencePointer(v, store) { consv =>
-                  op match {
-                    case Car => car(consv)
-                    case Cdr => cdr(consv)
-                  }
+                consv <- acc
+                addrs = op match {
+                  case Car => car(consv)
+                  case Cdr => cdr(consv)
                 }
+                res <- dereferenceAddrs(addrs, store)
               } yield res
           )
         } yield (v, store)
@@ -1072,30 +1075,14 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
 
     object SetCar extends StoreOperation("set-car!", Some(2)) {
       override def call(cell: V, value: V, store: Store[A, V]) =
-        getPointerAddresses(cell)
-          .foldLeft(MayFail.success[Store[A, V], Error](store))(
-            (acc, a) =>
-              for {
-                consv <- store.lookupMF(a) /* look up in old store */
-                st    <- acc /* updated store */
-                v1 = value /* update car */
-                v2 <- cdr(consv) /* preserves cdr */
-              } yield st.update(a, cons(v1, v2))
-          )
+        car(cell)
+          .foldLeft(store)((acc,addr) => acc.update(addr, value))
           .map(store => (bool(false) /* undefined */, store))
     }
     object SetCdr extends StoreOperation("set-cdr!", Some(2)) {
       override def call(cell: V, value: V, store: Store[A, V]) =
-        getPointerAddresses(cell)
-          .foldLeft(MayFail.success[Store[A, V], Error](store))(
-            (acc, a) =>
-              for {
-                consv <- store.lookupMF(a) /* look up in old store */
-                st    <- acc /* updated store */
-                v1    <- car(consv) /* preserves car */
-                v2 = value /* update cdr */
-              } yield st.update(a, cons(v1, v2))
-          )
+        cdr(cell)
+          .foldLeft(store)((acc,addr) => acc.update(addr, value))
           .map(store => (bool(false) /* undefined */, store))
     }
 
@@ -1112,68 +1099,6 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
                                        (loop (+ i 1)))))))
                     (loop 0)))))))
       */
-    // TODO: this is without vectors
-    object Equal extends StoreOperation("equal?", Some(2)) {
-      override def call(a: V, b: V, store: Store[A, V]) = {
-        def equalp(a: V, b: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
-          if (visited.contains((a, b)) || a == bottom || b == bottom) {
-            done(bottom)
-          } else {
-            val visited2 = visited + ((a, b))
-            ifThenElseTR(eqq(a, b)) {
-              /* If a and b are eq?, then they are equal? */
-              done(bool(true))
-            } {
-              ifThenElseTR((and _)(isNull(a), isNull(b))) {
-                /* If both a and b are null, then they are equal? */
-                done(bool(true))
-              } {
-                ifThenElseTR((and _)(isCons(a), isCons(b))) {
-                  /* If both cons, check car and cdr */
-                  liftTailRec(
-                    car(a).flatMap(
-                      cara =>
-                        car(b).flatMap(
-                          carb =>
-                            cdr(a).flatMap(
-                              cdra =>
-                                cdr(b).flatMap(
-                                  cdrb =>
-                                    tailcall(equalp(cara, carb, visited2)).flatMap(
-                                      eqcar =>
-                                        tailcall(equalp(cdra, cdrb, visited2)).map(
-                                          eqcdr =>
-                                            for {
-                                              x <- eqcar
-                                              y <- eqcdr
-                                            } yield and(x, y)
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                  )
-                } {
-                  ifThenElseTR((and _)(isPointer(a), isPointer(b))) {
-                    /* both pointers, then look up their values */
-                    dereferencePointerTR(a, store) { consa =>
-                      dereferencePointerTR(b, store) { consb =>
-                        tailcall(equalp(consa, consb, visited2))
-                      }
-                    }
-                  } {
-                    /* otherwise, there is no equality possible */
-                    done(bool(false))
-                  }
-                }
-              }
-            }
-          }
-        }
-        equalp(a, b, Set()).result.map(v => (v, store))
-      }
-    }
 
     /** (define (length l)
           (if (null? l)
@@ -1197,15 +1122,13 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
         ifV(isNull(l)) {
           // if we have l = '(), length(l) = 0
           number(0)
-        } otherwise ifV(isPointer(l)) {
+        } otherwise ifV(isCons(l)) {
           // if we have l = cons(a,d), length(l) = length(d) + 1
-          dereferencePointer(l, store) { consv =>
-            for {
-              next      <- cdr(consv)
-              len_next  <- length(next)
-              result    <- plus(len_next, number(1))
-            } yield result
-          }
+          val next = dereferenceAddrs(cdr(l), store)
+          for {
+            len_next  <- length(next)
+            result    <- plus(len_next, number(1))
+          } yield result
         } otherwise {
           // if we have have something else (i.e., not a list), length throws a type error!
           MayFail.failure(PrimitiveNotApplicable("length", List(l)))
@@ -1236,19 +1159,18 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           ifV(isNull(l1)) {
             // if we have l1 = '(), append(l1,l2) = l2
             l2
-          } otherwise ifV(isPointer(l1)) {
+          } otherwise ifV(isCons(l1)) {
             // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
-            val addr = alloc.pointer(fexp, idx)
-            dereferencePointer(l1, store) { consv =>
-              for {
-                carv      <- car(consv)
-                cdrv      <- cdr(consv)
-                app_next  <- append((cdrv, l2, fexp, idx + 1))
-                result    <- cons(carv, app_next)
-              } yield {
-                store.extend(addr, result)
-                pointer(addr)
-              }
+            for {
+              carv <- dereferenceAddrs(car(l1), store)
+              cdrv <- dereferenceAddrs(cdr(l1), store)
+              app_next <- append((cdrv, l2, fexp, idx + 1))
+            } yield {
+              val carAddr = alloc.pointer(fexp, ("append-car", idx))
+              val cdrAddr = alloc.pointer(fexp, ("append-cdr", idx))
+              store.extend(carAddr, carv)
+              store.extend(cdrAddr, app_next)
+              cons(carAddr,cdrAddr)
             }
           } otherwise {
             // if we have have something else (i.e., not a list), append throws a type error!
@@ -1257,13 +1179,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       }
     }
 
-    /** (define list (lambda args
-          (if (null? args)
-            '()
-            (if (pair? args)
-              (cons (car args) (apply list (cdr args)))
-              args))))
-      */
+    /** (define list (lambda args args))*/
     object ListPrim extends StoreOperation("list", None) {
       override def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) =
         args match {
@@ -1271,91 +1187,23 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
           case (exp, v) :: rest =>
             for {
               (restv, store2) <- call(fexp, rest, store, alloc)
-              consv  = cons(v, restv)
-              consa  = alloc.pointer(exp)
-              store3 = store2.extend(consa, consv)
-            } yield (pointer(consa), store3)
+            } yield {
+              val carAddr = alloc.pointer(exp, "car")
+              val cdrAddr = alloc.pointer(exp, "cdr")
+              val updatedStore = store.extend(carAddr, v)
+                                      .extend(cdrAddr, restv)
+              (cons(carAddr,cdrAddr), updatedStore)
+            }
         }
     }
 
     /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
-    object Listp extends StoreOperation("list?", Some(1)) {
-      override def call(l: V, store: Store[A, V]) = {
-        def listp(l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
-          if (visited.contains(l) || l == bottom) {
-            /* R5RS: "all lists have finite length", and the cases where this is reached
-             * include circular lists. If an abstract list reaches this point, it
-             * may be also finite but will reach a true branch somewhere else, and
-             * both booleans will get joined */
-            done(bool(false))
-          } else {
-            ifThenElseTR(isNull(l)) {
-              done(bool(true))
-            } {
-              ifThenElseTR(isCons(l)) {
-                /* This is a cons, check that the cdr itself is a list */
-                liftTailRec(cdr(l) >>= (cdrl => tailcall(listp(cdrl, visited + l))))
-              } {
-                ifThenElseTR(isPointer(l)) {
-                  /* This is a pointer, dereference it and check if it is itself a list */
-                  dereferencePointerTR(l, store) { consv =>
-                    tailcall(listp(consv, visited + l))
-                  }
-                } {
-                  /* Otherwise, not a list */
-                  done(bool(false))
-                }
-              }
-            }
-          }
-        }
-        listp(l, Set()).result.map(v => (v, store))
-      }
-    }
-
     /** (define (list-ref l index)
           (if (pair? l)
             (if (= index 0)
               (car l)
               (list-ref (cdr l) (- index 1)))
             (error "list-ref applied to a non-list"))) */
-    object ListRef extends StoreOperation("list-ref", Some(2)) {
-      override def call(l: V, index: V, store: Store[A, V]) = {
-        def listRef(l: V, index: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
-          if (visited.contains((l, index)) || l == bottom || index == bottom) {
-            done(bottom)
-          } else {
-            ifThenElseTR(isPointer(l)) {
-              // dereferences the pointer and list-ref that
-              dereferencePointerTR(l, store) { consv =>
-                tailcall(listRef(consv, index, visited + ((l, index))))
-              }
-            } {
-              ifThenElseTR(isCons(l)) {
-                ifThenElseTR(numEq(index, number(0))) {
-                  // index is 0, return car
-                  done(car(l))
-                } {
-                  // index is >0, decrease it and continue looking into the cdr
-                  liftTailRec(
-                    cdr(l) >>= (
-                        cdrl =>
-                          minus(index, number(1)) >>= (
-                              index2 => tailcall(listRef(cdrl, index2, visited + ((l, index))))
-                          )
-                      )
-                  )
-                }
-              } {
-                // not a list
-                done(MayFail.failure(PrimitiveNotApplicable("list-ref", List(l, index))))
-              }
-            }
-          }
-        }
-        listRef(l, index, Set.empty).result.map(v => (v, store))
-      }
-    }
 
     /** (define (member e l) ; member, memq and memv are similar, the difference lies in the comparison function used
           (if (null? l)
@@ -1363,108 +1211,6 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
             (if (equal? (car l) e)
               l
               (member e (cdr l))))) */
-    abstract class MemberLike(
-        override val name: String,
-        eqFn: (V, V, Store[A, V]) => MayFail[V, Error]
-    ) extends StoreOperation(name, Some(2)) {
-      override def call(e: V, l: V, store: Store[A, V]) = {
-        def mem(e: V, l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
-          if (visited.contains(l) || e == bottom || l == bottom) {
-            done(bottom)
-          } else {
-            ifThenElseTR(isNull(l)) {
-              /* list is empty, return false */
-              done(bool(false))
-            } {
-              ifThenElseTR(isPointer(l)) {
-                dereferencePointerTR(l, store) { lv =>
-                  liftTailRec(
-                    car(lv) >>= (
-                        carl =>
-                          ifThenElseTR(eqFn(e, carl, store)) {
-                            /* (car l) and e are equal, return l */
-                            done(l)
-                          } {
-                            liftTailRec(cdr(lv) >>= (cdrl => tailcall(mem(e, cdrl, visited + l))))
-                          }
-                      )
-                  )
-                }
-              } {
-                /* not a list. Note: it may be a cons, but cons shouldn't come from the outside
-                 * as they are wrapped in pointers, so it shouldn't happen that
-                 * l is a cons at this point */
-                done(MayFail.failure(PrimitiveNotApplicable(name, List(e, l))))
-              }
-            }
-          }
-        }
-        mem(e, l, Set.empty).result.map(v => (v, store))
-      }
-    }
-
-    object Member
-        extends MemberLike(
-          "member",
-          (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1)
-        )
-    object Memq extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
-
-    abstract class AssocLike(
-        override val name: String,
-        eqFn: (V, V, Store[A, V]) => MayFail[V, Error]
-    ) extends StoreOperation(name, Some(2)) {
-      override def call(e: V, l: V, store: Store[A, V]) = {
-        def assoc(e: V, l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
-          if (visited.contains(l) || e == bottom || l == bottom) {
-            done(bottom)
-          } else {
-            ifThenElseTR(isNull(l)) {
-              done(bool(false))
-            } {
-              ifThenElseTR(isPointer(l)) {
-                dereferencePointerTR(l, store) { lv =>
-                  liftTailRec(
-                    car(lv) >>= (
-                        carl =>
-                          ifThenElseTR(isPointer(carl)) {
-                            dereferencePointerTR(carl, store) { carlv =>
-                              liftTailRec(
-                                car(carlv) >>= (
-                                    caarl =>
-                                      ifThenElseTR(eqFn(e, caarl, store)) {
-                                        done(carl)
-                                      } {
-                                        liftTailRec(
-                                          cdr(lv) >>= (
-                                              cdrl => tailcall(assoc(e, cdrl, visited + l))
-                                          )
-                                        )
-                                      }
-                                  )
-                              )
-                            }
-                          } {
-                            done(MayFail.failure(PrimitiveNotApplicable(name, List(e, l))))
-                          }
-                      )
-                  )
-                }
-              } {
-                done(MayFail.failure(PrimitiveNotApplicable(name, List(e, l))))
-              }
-            }
-          }
-        }
-        assoc(e, l, Set.empty).result.map(v => (v, store))
-      }
-    }
-    object Assoc
-        extends AssocLike(
-          "assoc",
-          (x: V, y: V, store: Store[A, V]) => Equal.call(x, y, store).map(_._1)
-        )
-    object Assq extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => Eq.call(x, y))
 
     object MakeVector extends SchemePrimitive[V,A] {
       val name = "make-vector"

@@ -30,6 +30,8 @@ class ModularSchemeLattice[
 
   type P = SchemePrimitive[L,A]
 
+  implicit def mfAddrMonoid[X]: Monoid[MayFail[Set[X],Error]] = MonoidImplicits.mayFail[Set[X]](MonoidImplicits.setMonoid[X])
+
   /** We first implement all possible operations on single values, that can be
     * only joined when compatible. This therefore is not a lattice but will be
     * used to build the set lattice */
@@ -65,8 +67,7 @@ class ModularSchemeLattice[
     }
     override def toString: String = s"#<closure $printName>"
   }
-
-  case class Cons(car: L, cdr: L) extends Value {
+  case class Cons(car: A, cdr: A) extends Value {
     override def toString: String = s"($car . $cdr)"
   }
   case object Nil extends Value {
@@ -107,7 +108,6 @@ class ModularSchemeLattice[
       case (_: Int, _: Int)    => true
       case (_: Real, _: Real)  => true
       case (_: Char, _: Char)  => true
-      case (_: Cons, _: Cons)  => true
       /* TODO: join vectors */
       //case (_: Vec, _: Vec)   => true
       case _                   => false
@@ -126,8 +126,6 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => Right(Int(IntLattice[I].join(i1, i2)))
           case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
-          case (Cons(a1,d1), Cons(a2,d2)) => Right(Cons(Lattice[L].join(a1,a2),
-                                                        Lattice[L].join(d1,d2)))
           /* TODO: join vectors */
           case _ => Left((x, y))
         }
@@ -459,7 +457,7 @@ class ModularSchemeLattice[
     def closure(x: schemeLattice.Closure, name: Option[String]): Value  = Clo(x._1,x._2,name)
     def symbol(x: String): Value                  = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value                                = Nil
-    def cons(car: L, cdr: L): Value               = Cons(car, cdr)
+    def cons(car: A, cdr: A): Value               = Cons(car, cdr)
     def pointer(a: A): Value                      = Pointer(a)
 
     def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
@@ -474,17 +472,10 @@ class ModularSchemeLattice[
       case Pointer(a) => Set(a)
       case _          => Set()
     }
-
-    def car(x: Value): MayFail[L, Error] = x match {
-      case Cons(car, _) => MayFail.success(car)
-      case _            => MayFail.failure(TypeError("expecting cons to access car", x))
+    def getConsCells(x: Value): Set[(A,A)] = x match {
+      case Cons(a,d)  => Set((a,d))
+      case _          => Set()
     }
-
-    def cdr(x: Value): MayFail[L, Error] = x match {
-      case Cons(_, cdr) => MayFail.success(cdr)
-      case _            => MayFail.failure(TypeError("expecting cons to access cdr", x))
-    }
-
     // This implementation is not suited for use in a concrete machine!
     def vectorRef(vector: Value, index: Value): MayFail[L, Error] = (vector, index) match {
       case (Vec(size, content, init), Int(index)) =>
@@ -628,8 +619,6 @@ class ModularSchemeLattice[
           /* For every element in y, there exists an element of x that subsumes it */
           x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid)
       )(boolAndMonoid)
-    def car(x: L): MayFail[L, Error] = x.foldMapL(Value.car(_))
-    def cdr(x: L): MayFail[L, Error] = x.foldMapL(Value.cdr(_))
     def top: L    = throw LatticeTopUndefined
 
     def vectorRef(vector: L, index: L): MayFail[L, Error] =
@@ -638,6 +627,7 @@ class ModularSchemeLattice[
       vector.foldMapL(vec => index.foldMapL(i => Value.vectorSet(vec, i, newval)))
 
     def getClosures(x: L): Set[(Closure,Option[String])] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
+    def getConsCells(x: L): Set[(A,A)] = x.foldMapL(x => Value.getConsCells(x))(setMonoid)
     def getPrimitives(x: L): Set[P] =
       x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
@@ -653,7 +643,7 @@ class ModularSchemeLattice[
     def closure(x: Closure,
                 name: Option[String]): L      = Element(Value.closure(x,name))
     def symbol(x: String): L                  = Element(Value.symbol(x))
-    def cons(car: L, cdr: L): L               = Element(Value.cons(car, cdr))
+    def cons(car: A, cdr: A): L               = Element(Value.cons(car, cdr))
     def pointer(a: A): L                      = Element(Value.pointer(a))
     def vector(size: L, init: L): MayFail[L, Error] =
       size.foldMapL(sz => Value.vector(sz, init).map(v => Element(v)))

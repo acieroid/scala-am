@@ -16,15 +16,18 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = FileUtil.loadFile("test/test.scm")
+    val txt = "(define lst '(1 2 3)) (length `(a b c ,@lst))" //FileUtil.loadFile("test/primtest.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivityPolicy1
-                                                with NaiveAdaptiveArgumentSelection
+                                                with AdaptiveArgumentSensitivityPolicy2
+                                                with EagerAdaptiveArgumentSelection
                                                 with ConstantPropagationDomain {
-      val limit = 2
+      val limit = 3
       override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
+      override def step(): Unit = {
+        super.step()
+      }
     }
     analysis.analyze()
     debugResults(analysis)
