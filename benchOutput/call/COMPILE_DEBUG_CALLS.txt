@@ -1,0 +1,137 @@
+call: collegas(hoofd-inkoop,Poi(<<fn(2,7) cll(-1,0) ctx()>>))
+retn: collegas(hoofd-inkoop,Poi(<<fn(2,7) cll(-1,0) ctx()>>)) => ⊥
+call: collegas((),Poi(<<fn(2,7) cll(-1,0) ctx()>>))
+call: car(Poi(<<fn(2,7) cll(-1,0) ctx()>>))
+retn: car(Poi(<<fn(2,7) cll(-1,0) ctx()>>)) => directeur
+call: eq?(hoofd-inkoop,directeur)
+retn: eq?(hoofd-inkoop,directeur) => #f
+call: car(Poi(<<fn(2,7) cll(-1,0) ctx()>>))
+retn: car(Poi(<<fn(2,7) cll(-1,0) ctx()>>)) => directeur
+call: cons(directeur,())
+retn: cons(directeur,()) => Poi(<<fn(23,21) cll(23,21) ctx()>>)
+call: cdr(Poi(<<fn(2,7) cll(-1,0) ctx()>>))
+retn: cdr(Poi(<<fn(2,7) cll(-1,0) ctx()>>)) => Poi(<<fn(3,11) cll(-1,0) ctx()>>)
+retn: collegas((),Poi(<<fn(2,7) cll(-1,0) ctx()>>)) => ⊥
+call: collegas(hoofd-inkoop,Poi(<<fn(2,7) cll(-1,0) ctx()>>))
+retn: collegas(hoofd-inkoop,Poi(<<fn(2,7) cll(-1,0) ctx()>>)) => ⊥
+call: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>))
+call: null?(Poi(<<fn(3,11) cll(-1,0) ctx()>>))
+retn: null?(Poi(<<fn(3,11) cll(-1,0) ctx()>>)) => #f
+call: cdr(Poi(<<fn(3,11) cll(-1,0) ctx()>>))
+retn: cdr(Poi(<<fn(3,11) cll(-1,0) ctx()>>)) => {(),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}
+retn: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>)) => ⊥
+call: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),{(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+call: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#t,#f}
+call: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}
+retn: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),{(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => #f
+call: collegas({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+call: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}
+call: eq?(hoofd-inkoop,{Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop})
+retn: eq?(hoofd-inkoop,{Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}) => {#f,#t}
+call: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}
+call: cons({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop},{(),Poi(<<fn(23,21) cll(23,21) ctx()>>)})
+retn: cons({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop},{(),Poi(<<fn(23,21) cll(23,21) ctx()>>)}) => Poi(<<fn(23,21) cll(23,21) ctx()>>)
+call: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+retn: collegas({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => #f
+call: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),{(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+call: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#t,#f}
+call: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}
+retn: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),{(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => #f
+call: werknemers-in({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+call: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#f,#t}
+call: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}
+call: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+retn: werknemers-in({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => ()
+call: collegas(hoofd-inkoop,Poi(<<fn(2,7) cll(-1,0) ctx()>>))
+retn: collegas(hoofd-inkoop,Poi(<<fn(2,7) cll(-1,0) ctx()>>)) => #f
+call: werknemers-in({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+call: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#f,#t}
+call: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}
+call: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+
+===
+
+call: append({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop},())
+retn: append({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop},()) => Poi(<<fn(16,8) cll(16,8) ctx()>>)
+retn: werknemers-in({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(16,8) cll(16,8) ctx()>>)}
+call: collegas({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+call: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}
+call: eq?(hoofd-inkoop,{Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop})
+retn: eq?(hoofd-inkoop,{Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}) => {#f,#t}
+call: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: append({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{(),Poi(<<fn(16,8) cll(16,8) ctx()>>)})
+retn: append({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{(),Poi(<<fn(16,8) cll(16,8) ctx()>>)}) => {(),Poi(<<fn(16,8) cll(16,8) ctx()>>),Poi(<<fn(21,8) cll(21,8) ctx()>>)}
+call: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}
+call: cons({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop},{(),Poi(<<fn(23,21) cll(23,21) ctx()>>)})
+retn: cons({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop},{(),Poi(<<fn(23,21) cll(23,21) ctx()>>)}) => Poi(<<fn(23,21) cll(23,21) ctx()>>)
+call: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+retn: collegas({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {#f,(),Poi(<<fn(16,8) cll(16,8) ctx()>>),Poi(<<fn(21,8) cll(21,8) ctx()>>)}
+call: werknemers-in({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+call: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#f,#t}
+call: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}
+call: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: append({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop},{(),Poi(<<fn(16,8) cll(16,8) ctx()>>)})
+retn: append({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop},{(),Poi(<<fn(16,8) cll(16,8) ctx()>>)}) => Poi(<<fn(16,8) cll(16,8) ctx()>>)
+retn: werknemers-in({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(16,8) cll(16,8) ctx()>>)}
+call: collegas(hoofd-inkoop,Poi(<<fn(2,7) cll(-1,0) ctx()>>))
+retn: collegas(hoofd-inkoop,Poi(<<fn(2,7) cll(-1,0) ctx()>>)) => {#f,(),Poi(<<fn(16,8) cll(16,8) ctx()>>),Poi(<<fn(21,8) cll(21,8) ctx()>>)}
+call: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),{(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+call: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#t,#f}
+call: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}
+retn: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),{(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#f,(),Poi(<<fn(16,8) cll(16,8) ctx()>>),Poi(<<fn(21,8) cll(21,8) ctx()>>)}
+call: collegas({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+call: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}
+call: eq?(hoofd-inkoop,{Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop})
+retn: eq?(hoofd-inkoop,{Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}) => {#f,#t}
+call: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: append({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{(),Poi(<<fn(16,8) cll(16,8) ctx()>>)})
+retn: append({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{(),Poi(<<fn(16,8) cll(16,8) ctx()>>)}) => {(),Poi(<<fn(16,8) cll(16,8) ctx()>>),Poi(<<fn(21,8) cll(21,8) ctx()>>)}
+call: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: car({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop}
+call: cons({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop},{(),Poi(<<fn(23,21) cll(23,21) ctx()>>)})
+retn: cons({Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),directeur,hoofd-fakturen,hoofd-inkoop},{(),Poi(<<fn(23,21) cll(23,21) ctx()>>)}) => Poi(<<fn(23,21) cll(23,21) ctx()>>)
+call: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop})
+retn: cdr({Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+retn: collegas({(),Poi(<<fn(23,21) cll(23,21) ctx()>>)},{Poi(<<fn(2,7) cll(-1,0) ctx()>>),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}) => {#f,(),Poi(<<fn(16,8) cll(16,8) ctx()>>),Poi(<<fn(21,8) cll(21,8) ctx()>>)}
+call: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),{(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+call: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: null?({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#t,#f}
+call: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: cdr({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {(),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}
+call: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)})
+retn: car({(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>),hoofd-fakturen,hoofd-inkoop}
+retn: collegas-in(Poi(<<fn(23,21) cll(23,21) ctx()>>),{(),Poi(<<fn(3,11) cll(-1,0) ctx()>>),Poi(<<fn(4,11) cll(-1,0) ctx()>>)}) => {#f,(),Poi(<<fn(16,8) cll(16,8) ctx()>>),Poi(<<fn(21,8) cll(21,8) ctx()>>)}

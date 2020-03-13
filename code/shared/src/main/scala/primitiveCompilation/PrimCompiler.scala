@@ -174,23 +174,36 @@ object Benchmark extends App {
 
   import sys.process._
 
-  def precision(): Unit = {
+  def precision(bench: List[String] = allbench): Unit = {
     //writeln("***** Prelude *****")
     //precAll()
     //writeln("***** Compile *****")
     //precAll(Compile)
 
     // Generate diffs.
-    allbench.foreach({b =>
-      run(b, Prelude, false)
+    bench.foreach({b =>
+  //    run(b, Prelude, false)
       run(b, Compile, false)
-      val preluded = s"benchOutput/call/Prelude_nonprims_$b"
-      val compiled = s"benchOutput/call/Compile_nonprims_$b"
-      s"diff $compiled $preluded > benchOutput/$b".!
+      /*
+      val suffix = b.replaceAll("/", "_").replaceAll(".scm", ".txt")
+      val preluded = s"benchOutput/call/Prelude_nonprims_$suffix"
+      val compiled = s"benchOutput/call/Compile_nonprims_$suffix"
+      try {
+        val w = Writer.open(s"benchOutput/diff_$suffix")
+        val rs = s"diff $compiled $preluded".!!<
+        Writer.write(w, rs)
+        w.close()
+      }
+      catch {
+        case e: Throwable =>
+          System.err.println(s"diff $compiled $preluded")
+          e.printStackTrace()
+      }
+      */
     })
   }
 
-  precision()
+  precision(List("test/DEBUG.scm"))
 
   closeDefaultWriter()
 }

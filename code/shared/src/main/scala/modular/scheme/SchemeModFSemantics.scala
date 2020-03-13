@@ -356,6 +356,7 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   def pre(name: String, args: List[Value]): Unit = {
     callStack = (name, args) :: callStack
     timeStack = System.nanoTime() :: timeStack
+    System.err.println(s"call: $name(${args.mkString(",")})")
   }
   def post(name: String, result: Value): Unit = {
     val t1 = System.nanoTime()
@@ -366,8 +367,9 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
     val (`name`, args) = callStack.head
     callStack = callStack.tail
     calls = calls + ((name, args) -> result)
+    System.err.println(s"retn: $name(${args.mkString(",")}) => $result")
   }
-  def criterium(name: String): Boolean = Primitives.names.contains(name)
+  def criterium(name: String): Boolean = true //Primitives.names.contains(name)
   def maybePre(name: String, args: List[Value]): Unit = if (criterium(name)) pre(name, args)
   def maybePost(name: String, result: Value): Unit = if (criterium(name)) post(name, result)
 }
