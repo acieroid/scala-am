@@ -40,21 +40,27 @@ object Benchmark extends App {
   val warmup = 2
   val actual = 10
 
-  setDefaultWriter(Writer.open("benchOutput/results.txt"))
+  setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
 
-  def run(file: String, s: Strategy = Prelude): Unit = {
+  def run(file: String, s: Strategy = Prelude, timing: Boolean = true): Unit = {
     writeln(s"[$file] ")
     val program = if (s == Prelude) Primitives.parseWithPrelude(file) else Primitives.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
-    // Warmup.
-    write("* Warmup - ")
-    for (i <- 0 until warmup) {
-      write(i + " ")
-      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
-        import scalaam.language.scheme.primitives._
-        val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
+
+    if (timing) {
+      // Warmup.
+      write("* Warmup - ")
+      for (i <- 0 until warmup) {
+        write(i + " ")
+        val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
+
+          import scalaam.language.scheme.primitives._
+
+          val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
+        }
+        analysis.analyze()
       }
-      analysis.analyze()
+
     }
 
     var time = 0L
@@ -64,6 +70,7 @@ object Benchmark extends App {
     val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
       val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
+
       def dump(suffix: String): Unit = {
         val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${s}_nonprims_$suffix")))
         file.write(allComponents.filter(cmp => componentName(cmp) match {
@@ -82,23 +89,28 @@ object Benchmark extends App {
     val t1 = System.nanoTime()
     time += (t1 - t0)
     //analysis.callToFile(s + "_" + suffix)
-    analysis.dump(suffix)
 
-    // Time measurements.
-    write("* Time - ")
-    for (i <- 1 until actual) {
-      write(i + " ")
-      val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
-        import scalaam.language.scheme.primitives._
-        val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
+    if (!timing) analysis.dump(suffix)
+
+    if (timing) {
+      // Time measurements.
+      write("* Time - ")
+      for (i <- 1 until actual) {
+        write(i + " ")
+        val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
+
+          import scalaam.language.scheme.primitives._
+
+          val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
+        }
+        val t0 = System.nanoTime()
+        analysis.analyze()
+        val t1 = System.nanoTime()
+        time += (t1 - t0)
       }
-      val t0 = System.nanoTime()
-      analysis.analyze()
-      val t1 = System.nanoTime()
-      time += (t1 - t0)
+      writeln(s"\n   Average time: ${(time / 1000000) / actual}ms")
+      writeln(s"   Primitive time: ${(InterceptCall.primTime / 1000000) / actual}ms")
     }
-    writeln(s"\n   Average time: ${(time / 1000000) / actual}ms")
-    writeln(s"   Primitive time: ${(InterceptCall.primTime / 1000000) / actual}ms")
 
     //analysis.timeToFile(s + "_" + suffix)
   }
@@ -145,14 +157,53 @@ object Benchmark extends App {
     "test/scp1/5.19.scm",
     "test/scp1/9.15.scm")
 
-  def all(s: Strategy = Prelude): Unit = {
+  def timeAll(s: Strategy = Prelude): Unit = {
     allbench.foreach(run(_, s))
   }
 
-  writeln("***** Prelude *****")
-  all()
-  writeln("***** Compile *****")
-  all(Compile)
+  def precAll(s: Strategy = Prelude): Unit = {
+    allbench.foreach(run(_, s, false))
+  }
+
+  def time(): Unit = {
+    writeln("***** Prelude *****")
+    timeAll()
+    writeln("***** Compile *****")
+    timeAll(Compile)
+  }
+
+  import sys.process._
+
+  def precision(bench: List[String] = allbench): Unit = {
+    //writeln("***** Prelude *****")
+    //precAll()
+    //writeln("***** Compile *****")
+    //precAll(Compile)
+
+    // Generate diffs.
+    bench.foreach({b =>
+  //    run(b, Prelude, false)
+      run(b, Compile, false)
+      /*
+      val suffix = b.replaceAll("/", "_").replaceAll(".scm", ".txt")
+      val preluded = s"benchOutput/call/Prelude_nonprims_$suffix"
+      val compiled = s"benchOutput/call/Compile_nonprims_$suffix"
+      try {
+        val w = Writer.open(s"benchOutput/diff_$suffix")
+        val rs = s"diff $compiled $preluded".!!<
+        Writer.write(w, rs)
+        w.close()
+      }
+      catch {
+        case e: Throwable =>
+          System.err.println(s"diff $compiled $preluded")
+          e.printStackTrace()
+      }
+      */
+    })
+  }
+
+  precision(List("test/DEBUG.scm"))
 
   closeDefaultWriter()
 }
