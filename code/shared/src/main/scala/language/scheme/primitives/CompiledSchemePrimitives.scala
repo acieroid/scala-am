@@ -1264,7 +1264,7 @@ class CompiledSchemePrimitives[V, A <: Address](override implicit val schemeLatt
         } else MayFail.failure(PrimitiveArityError("assq", 2, args.length))
     }
 
-    /*
+    /* TODO need to implement `eqv?`.
     object `assv` extends SchemePrimitive[V, A] {
       val name = "assv"
       override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
