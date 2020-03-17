@@ -1,4 +1,2 @@
-collegas []: {#f,(),Poi(<<fn(4,16) cll(4,16) ctx()>>)}
-collegas-in []: {#f,(),Poi(<<fn(4,16) cll(4,16) ctx()>>)}
-main: {#f,(),Poi(<<fn(4,16) cll(4,16) ctx()>>)}
-werknemers-in []: {(),Poi(<<fn(4,16) cll(4,16) ctx()>>)}
+collegas []: Poi(<<fn(4,16) cll(4,16) ctx()>>)
+main: Poi(<<fn(4,16) cll(4,16) ctx()>>)

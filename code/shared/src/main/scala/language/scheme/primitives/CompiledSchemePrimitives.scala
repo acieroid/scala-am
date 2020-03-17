@@ -1234,33 +1234,69 @@ class CompiledSchemePrimitives[V, A <: Address](override implicit val schemeLatt
     }
 
     object `assq` extends SimpleFixpointPrimitiveUsingStore("assq", Some(2)) {
-      def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A, V], recursiveCall: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
+      def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A,V], recursiveCall: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
         if (args.length == 2) {
-          {
-            val `k_pos` = args(0)._1
+          { val `k_pos` = args(0)._1
             val `k` = args(0)._2
             val `l_pos` = args(1)._1
             val `l` = args(1)._2
-            `null?`.call(fpos, (-2, -14), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_0` =>
-              ifThenElse(`_0`) {
+            `null?`.call(fpos, (-2,-14), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_0`  =>
+              ifThenElse(`_0`)
+              {
                 bool(false)
-              } {
-                `caar`.call(fpos, (-4, -20), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_1` =>
-                  `eq?`.call(fpos, (-4, -15), List(((-4, -20), `_1`), (`k_pos`, `k`)), store, alloc).map(_._1) >>= { `_2` =>
-                    ifThenElse(`_2`) {
-                      `car`.call(fpos, (-5, -13), List((`l_pos`, `l`)), store, alloc).map(_._1)
-                    } {
-                      `cdr`.call(fpos, (-6, -21), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_3` =>
-                        recursiveCall(List((`k_pos`, `k`), ((-6, -21), `_3`)))
+              }
+              {
+                `caar`.call(fpos, (-4,-20), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_1`  =>
+                  `eq?`.call(fpos, (-4,-15), List(((-4,-20), `_1`), (`k_pos`, `k`)), store, alloc).map(_._1) >>= { `_2`  =>
+                    ifThenElse(`_2`)
+                    {
+                      `car`.call(fpos, (-5,-13), List((`l_pos`, `l`)), store, alloc).map(_._1)
+                    }
+                    {
+                      `cdr`.call(fpos, (-6,-21), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_3`  =>
+                        recursiveCall(List((`k_pos`, `k`), ((-6,-21), `_3`)))
                       }
                     }
                   }
                 }
               }
-            }
-          }.map(x => (x, store))
+            } }.map(x => (x, store))
         } else MayFail.failure(PrimitiveArityError("assq", 2, args.length))
     }
+
+    /* TODO need to implement `eqv?`.
+    object `assv` extends SchemePrimitive[V, A] {
+      val name = "assv"
+      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
+        if (args.length == 2) {
+          { val `k_pos` = args(0)._1
+            val `k` = args(0)._2
+            val `l_pos` = args(1)._1
+            val `l` = args(1)._2
+            `null?`.call(fpos, (-2,-14), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_0`  =>
+              ifThenElse(`_0`)
+              {
+                bool(false)
+              }
+              {
+                `caar`.call(fpos, (-4,-21), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_1`  =>
+                  `eqv?`.call(fpos, (-4,-15), List(((-4,-21), `_1`), (`k_pos`, `k`)), store, alloc).map(_._1) >>= { `_2`  =>
+                    ifThenElse(`_2`)
+                    {
+                      `car`.call(fpos, (-5,-13), List((`l_pos`, `l`)), store, alloc).map(_._1)
+                    }
+                    {
+                      `cdr`.call(fpos, (-6,-21), List((`l_pos`, `l`)), store, alloc).map(_._1) >>= { `_3`  =>
+                        `assq`.call(fpos, (-6,-13), List((`k_pos`, `k`), ((-6,-21), `_3`)), store, alloc).map(_._1)
+                      }
+                    }
+                  }
+                }
+              }
+            } }.map(x => (x, store))
+        } else MayFail.failure(PrimitiveArityError("assv", 2, args.length))
+    }
+    */
 
     object `list-tail` extends SimpleFixpointPrimitiveUsingStore("list-tail", Some(2)) {
       def callWithArgs(fpos: Identity.Position, cpos: Identity.Position, args: Args, store: Store[A, V], recursiveCall: Args => MayFail[V, Error], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =

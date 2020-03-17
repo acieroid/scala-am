@@ -2,6 +2,7 @@ package scalaam.language.scheme.primitives
 
 import scalaam.core.{Address, Error, Identity, MayFail, Store}
 import scalaam.language.scheme.SchemeLattice
+import scalaam.util.Annotations.unsound
 
 class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V, A], _]) extends SchemeLatticePrimitives[V, A] {
   override def allPrimitives: List[SchemePrimitive[V, A]] = {
@@ -459,6 +460,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
      * (loop 0)))))))
      */
     // TODO: this is without vectors
+    @unsound("Returns bottom in incorrect cases.")
     object `equal?` extends Store2Operation("equal?") {
       override def call(a: V, b: V, store: Store[A, V]) = {
         def equalp(a: V, b: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
@@ -659,6 +661,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
      * (list-ref (cdr l) (- index 1)))
      * (error "list-ref applied to a non-list"))) */
     object `list-ref` extends Store2Operation("list-ref") {
+      @unsound("Returns bottom in incorrect cases.")
       override def call(l: V, index: V, store: Store[A, V]) = {
         def listRef(l: V, index: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
           if (visited.contains((l, index)) || l == bottom || index == bottom) {
@@ -707,6 +710,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
                                override val name: String,
                                eqFn: (V, V, Store[A, V]) => MayFail[V, Error]
                              ) extends Store2Operation(name) {
+      @unsound("Returns bottom in incorrect cases.")
       override def call(e: V, l: V, store: Store[A, V]) = {
         def mem(e: V, l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
           if (visited.contains(l) || e == bottom || l == bottom) {
@@ -744,18 +748,21 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       }
     }
 
+    @unsound("Returns bottom in incorrect cases.")
     object `member`
       extends MemberLike(
         "member",
         (x: V, y: V, store: Store[A, V]) => `equal?`.call(x, y, store).map(_._1)
       )
 
+    @unsound("Returns bottom in incorrect cases.")
     object `memq` extends MemberLike("memq", (x: V, y: V, store: Store[A, V]) => PrimitiveDefs.`eq?`.call(x, y))
 
     abstract class AssocLike(
                               override val name: String,
                               eqFn: (V, V, Store[A, V]) => MayFail[V, Error]
                             ) extends Store2Operation(name) {
+      @unsound("Returns bottom in incorrect cases.")
       override def call(e: V, l: V, store: Store[A, V]) = {
         def assoc(e: V, l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
           if (visited.contains(l) || e == bottom || l == bottom) {
@@ -803,12 +810,14 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       }
     }
 
+    @unsound("Returns bottom in incorrect cases.")
     object `assoc`
       extends AssocLike(
         "assoc",
         (x: V, y: V, store: Store[A, V]) => `equal?`.call(x, y, store).map(_._1)
       )
 
+    @unsound("Returns bottom in incorrect cases.")
     object `assq` extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => PrimitiveDefs.`eq?`.call(x, y))
 
   }
