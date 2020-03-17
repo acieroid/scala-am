@@ -30,7 +30,7 @@ object Definitions {
          (if (eq? (caar l) k)
            (car l)
            (assq k (cdr l)))))""",
-    "assv" -> """(define (assq k l)
+    "assv" -> """(define (assv k l)
         (if (null? l)
           #f
          (if (eqv? (caar l) k)
