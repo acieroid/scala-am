@@ -8,7 +8,6 @@ import scalaam.core._
 import scalaam.modular._
 import scalaam.language.scheme._
 import scalaam.language.sexp
-import scalaam.primitiveCompilation.Primitives
 import scalaam.util._
 
 /**

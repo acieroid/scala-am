@@ -4,8 +4,6 @@ import java.io.{BufferedWriter, FileWriter}
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import au.com.bytecode.opencsv.CSVWriter
-
 object Reader {
 
   def loadFile(file: String): String = {

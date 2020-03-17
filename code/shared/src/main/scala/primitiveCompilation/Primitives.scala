@@ -5,7 +5,7 @@ import scalaam.language.scheme.{SchemeBegin, SchemeExp, SchemeParser}
 import util.FileUtil
 
 object Primitives {
-  val primitives = Map(
+  val preludeDefinitions = Map(
     // "*" is a primop
     // "+" is a primop
     // "-" is a primop
@@ -213,7 +213,7 @@ object Primitives {
 //            (foldl-aux f (f base (car lst)) (cdr lst))))"""
   )
 
-  val names: Set[String] = primitives.keySet
+  val names: Set[String] = preludeDefinitions.keySet
 
   //def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
 
@@ -232,7 +232,7 @@ object Primitives {
           calls = calls+1
           if (!visited.contains(name)) {
             // println(s"Found primitive: $name")
-            val exp = SchemeParser.parse(primitives(name))
+            val exp = SchemeParser.parse(preludeDefinitions(name))
             prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
             visited = name :: visited
@@ -255,7 +255,7 @@ object Primitives {
         val hd :: tl = work
         work = tl
         hd match {
-          case Identifier(name, _) if SchemeBenchmarks.prims.contains(name) =>
+          case Identifier(name, _) if SchemePrimitives.names.contains(name) =>
             if (!visited.contains(name)) {
               primitives = primitives + (name -> (primitives(name) + 1))
               work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
@@ -283,14 +283,8 @@ object Primitives {
   def parseWithoutPrelude(path: String): SchemeExp = SchemeParser.parse(FileUtil.loadFile(path))
 }
 
-object CompileTest extends App {
-  Primitives.computeUsage(SchemeBenchmarks.allBenchmarks.toList)
-}
-
-object SchemeBenchmarks {
-
-  val prims = List(
-    "modulo",
+object SchemePrimitives {
+  val names = Set(
     "*", /* [vv] *: Arithmetic */
     "+", /* [vv] +: Arithmetic */
     "-", /* [vv] -: Arithmetic */
@@ -497,6 +491,9 @@ object SchemeBenchmarks {
 //    "foldr",
 //    "foldr-aux"
   )
+}
+
+object SchemeBenchmarks {
 
   val ad: Set[String] = Set(
     "test/ad/abstrct.scm",

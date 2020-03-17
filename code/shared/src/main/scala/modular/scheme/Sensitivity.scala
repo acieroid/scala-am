@@ -1,6 +1,7 @@
 package scalaam.modular.scheme
 
 import scalaam.core.Identity.Position
+import scalaam.primitiveCompilation.SchemePrimitives
 
 /* Simplest (and most imprecise): no context-sensitivity */
 trait NoSensitivity extends SchemeModFSemantics {
@@ -47,23 +48,14 @@ trait PrimitiveSensitivity extends SchemeModFSemantics {
   case class NoContext() extends ComponentContext {
     override def toString = ""
   }
-  def prims = Set("<=", ">=", ">",
-      "zero?", "positive?", "negative?", "odd?", "even?",
-      "max", "min", "abs", "gcd", "lcm",
-      "not",
-      "newline", "display",
-      "caar", "cadr", "cddr", "cdar", "caaar", "caadr", "cadar", "caddr", "cdaar", "cdadr", "cddar", "cdddr", "caaaar", "caaadr", "caadar", "caaddr", "cadaar", "cadadr", "caddar", "cadddr", "cdaaar", "cdaadr", "cdadar", "cdaddr", "cddaar", "cddadr", "cdddar", "cddddr",
-    "equal?", "list?", "list-ref", "member", "memq", "assoc", "assq", "list-tail", "length", "append", "reverse",
-    // "map", "for-each", "foldr", "foldr-aux", "foldl", "foldl-aux"
-  )
+  
   def isPrimitive(nam: Option[String]): Boolean = nam match {
-    case Some(n) if prims.contains(n) => true
+    case Some(n) if SchemePrimitives.names.contains(n) => true
     case _ => false
   }
 
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position): ComponentContext = {
     if (isPrimitive(nam)) {
-//      println(s"Apply ${nam.get}")
       PrimitiveContext(clo._1.idn.pos, call, args)
     } else {
       NoContext()

@@ -25,7 +25,7 @@ object GeneratePrimitives extends App {
       "caar", "cadr", "cddr", "cdar", "caaar", "caadr", "cadar", "caddr", "cdaar", "cdadr", "cddar", "cdddr", "caaaar", "caaadr", "caadar", "caaddr", "cadaar", "cadadr", "caddar", "cadddr", "cdaaar", "cdaadr", "cdadar", "cdaddr", "cddaar", "cddadr", "cdddar", "cddddr",
       "equal?", "list?", "list-ref", "member", "memq", "assoc", "assq", "list-tail", "length", "append", "reverse")
   } {
-    bw.write(PrimCompiler.compile(toANF(SchemeParser.parse(Primitives.primitives(name)))))
+    bw.write(PrimCompiler.compile(toANF(SchemeParser.parse(Primitives.preludeDefinitions(name)))))
     bw.write("\n\n")
   }
   bw.close
@@ -74,10 +74,10 @@ object Benchmark extends App {
       def dump(suffix: String): Unit = {
         val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${s}_nonprims_$suffix")))
         file.write(allComponents.filter(cmp => componentName(cmp) match {
-          case Some(name) => !Primitives.primitives.keySet.contains(name) // ignore primitives
+          case Some(name) => !Primitives.preludeDefinitions.keySet.contains(name) // ignore primitives
           case _ => true
         })
-        .map(cmp => s"$cmp: ${store(ReturnAddr(cmp))}").toList.sorted.mkString("\n"))
+        .map(cmp => s"$cmp: ${try{store(ReturnAddr(cmp))}catch {case e: Throwable => "_?_"}}").toList.sorted.mkString("\n"))
         file.flush()
         file.close()
       }
@@ -172,34 +172,10 @@ object Benchmark extends App {
     timeAll(Compile)
   }
 
-  import sys.process._
-
   def precision(bench: List[String] = allbench): Unit = {
-    //writeln("***** Prelude *****")
-    //precAll()
-    //writeln("***** Compile *****")
-    //precAll(Compile)
-
-    // Generate diffs.
     bench.foreach({b =>
-  //    run(b, Prelude, false)
+      run(b, Prelude, false)
       run(b, Compile, false)
-      /*
-      val suffix = b.replaceAll("/", "_").replaceAll(".scm", ".txt")
-      val preluded = s"benchOutput/call/Prelude_nonprims_$suffix"
-      val compiled = s"benchOutput/call/Compile_nonprims_$suffix"
-      try {
-        val w = Writer.open(s"benchOutput/diff_$suffix")
-        val rs = s"diff $compiled $preluded".!!<
-        Writer.write(w, rs)
-        w.close()
-      }
-      catch {
-        case e: Throwable =>
-          System.err.println(s"diff $compiled $preluded")
-          e.printStackTrace()
-      }
-      */
     })
   }
 
