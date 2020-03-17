@@ -82,7 +82,7 @@ object Benchmark extends App {
     val t1 = System.nanoTime()
     time += (t1 - t0)
     //analysis.callToFile(s + "_" + suffix)
-    //analysis.dump(suffix)
+    analysis.dump(suffix)
 
     // Time measurements.
     write("* Time - ")
