@@ -127,7 +127,7 @@ object Benchmark extends App {
     "test/gambit/mazefun.scm",
     "test/gabriel/diviter.scm",
     "test/gabriel/divrec.scm",
-    "test/gambit/matrix.scm",
+    // "test/gambit/matrix.scm", // disabled because of vectors
     "test/scp1/9.18.scm",
     "test/scp1/5.14.3.scm",
     "test/scp1/7.16.scm",
