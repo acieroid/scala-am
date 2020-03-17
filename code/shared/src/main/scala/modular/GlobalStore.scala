@@ -62,7 +62,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
     protected def writeAddr(addr: Addr, value: Value): Unit =
         if (updateAddr(addr,value)) { // If the value in the store changed, trigger the dependency.
           triggerDependency(ReadWriteDependency(addr))
-          System.out.println(s"$addr -> $value")
+          // System.out.println(s"$addr -> $value")
         }
   }
 }

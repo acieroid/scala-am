@@ -129,16 +129,16 @@ object Benchmark extends App {
     "test/gabriel/divrec.scm",
     "test/gambit/matrix.scm",
     "test/scp1/9.18.scm",
-    //    "test/scp1/5.14.3.scm",
-    //    "test/scp1/7.16.scm",
+    "test/scp1/5.14.3.scm",
+    "test/scp1/7.16.scm",
     "test/scp1/9.16.scm",
     "test/gambit/destruc.scm",
     "test/gabriel/destruc.scm",
     "test/gabriel/dderiv.scm",
-    //    "test/scp1/7.11.scm",
+    "test/scp1/7.11.scm",
     "test/scp1/7.13.scm",
     "test/scp1/5.22.scm",
-    //    "test/scp1/7.14.scm",
+    "test/scp1/7.14.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-256.scm",
     "test/scp1/7.4.scm",
     "test/scp1/7.17.scm",
@@ -182,7 +182,7 @@ object Benchmark extends App {
 
     // Generate diffs.
     bench.foreach({b =>
-  //    run(b, Prelude, false)
+      run(b, Prelude, false)
       run(b, Compile, false)
       /*
       val suffix = b.replaceAll("/", "_").replaceAll(".scm", ".txt")
@@ -203,7 +203,7 @@ object Benchmark extends App {
     })
   }
 
-  precision(List("test/DEBUG.scm"))
+  precision(allbench)
 
   closeDefaultWriter()
 }

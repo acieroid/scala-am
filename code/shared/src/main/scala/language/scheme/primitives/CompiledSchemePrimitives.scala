@@ -1321,7 +1321,7 @@ class CompiledSchemePrimitives[V, A <: Address](override implicit val schemeLatt
                 `car`.call(fpos, (-4, -22), List((`l1_pos`, `l1`)), store, alloc).map(_._1) >>= { `_1` =>
                   `cdr`.call(fpos, (-5, -30), List((`l1_pos`, `l1`)), store, alloc).map(_._1) >>= { `_2` =>
                     recursiveCall(List(((-5, -30), `_2`), (`l2_pos`, `l2`))) >>= { `_3` =>
-                      `cons`.call(fpos, (-4, -16), List(((-4, -22), `_1`), ((-5, -22), `_3`)), store, alloc).map(_._1)
+                      `cons`.call((4, 16), (-4, -16), List(((-4, -22), `_1`), ((-5, -22), `_3`)), store, alloc).map(_._1)
                     }
                   }
                 }
