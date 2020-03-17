@@ -4,8 +4,8 @@ import scalaam.core.{Expression, Identifier, Identity}
 import scalaam.language.scheme.{SchemeBegin, SchemeExp, SchemeParser}
 import util.FileUtil
 
-object Primitives {
-  val preludeDefinitions = Map(
+object Definitions {
+  val primitiveDefinitions = Map(
     // "*" is a primop
     // "+" is a primop
     // "-" is a primop
@@ -213,7 +213,7 @@ object Primitives {
 //            (foldl-aux f (f base (car lst)) (cdr lst))))"""
   )
 
-  val names: Set[String] = preludeDefinitions.keySet
+  val names: Set[String] = primitiveDefinitions.keySet
 
   //def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
 
@@ -232,7 +232,7 @@ object Primitives {
           calls = calls+1
           if (!visited.contains(name)) {
             // println(s"Found primitive: $name")
-            val exp = SchemeParser.parse(preludeDefinitions(name))
+            val exp = SchemeParser.parse(primitiveDefinitions(name))
             prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
             visited = name :: visited
