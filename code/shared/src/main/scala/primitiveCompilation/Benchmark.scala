@@ -1,4 +1,4 @@
-package primitiveCompilation
+package scalaam.primitiveCompilation
 
 import java.io.{BufferedWriter, File, FileWriter}
 
@@ -14,8 +14,8 @@ object Benchmark extends App {
   case object Prelude extends Strategy
   case object Compile extends Strategy
 
-  val warmup = 2
-  val actual = 10
+  val warmup = 3
+  val actual = 15
 
   setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
 
@@ -156,7 +156,7 @@ object Benchmark extends App {
     })
   }
 
-  precision(List("test/DEBUG.scm"))
+  time()
 
   closeDefaultWriter()
 }
