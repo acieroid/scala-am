@@ -116,7 +116,7 @@ object Benchmark extends App {
     "test/scp1/7.13.scm",
     "test/scp1/5.22.scm",
     "test/scp1/7.14.scm",
-    "test/WeiChenRompf2019/kcfa-worst-case-256.scm",
+    //"test/WeiChenRompf2019/kcfa-worst-case-256.scm", // Doesn't use primitives but can give an insight on timing variations (e.g. 71ms vs 68ms).
     "test/scp1/7.4.scm",
     "test/scp1/7.17.scm",
     "test/scp1/9.14.scm",
