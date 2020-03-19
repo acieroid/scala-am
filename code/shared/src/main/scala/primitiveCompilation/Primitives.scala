@@ -284,6 +284,7 @@ object Definitions {
 }
 
 object SchemePrimitives {
+  // TODO: Verify completeness of the list!
   val names = Set(
     "*", /* [vv] *: Arithmetic */
     "+", /* [vv] +: Arithmetic */
@@ -337,6 +338,7 @@ object SchemePrimitives {
     /* [x]  dynamic-wind: Dynamic Wind */
     /* [x]  eof-object?: Reading */
     "eq?", /* [vv] eq?: Equality */
+    "equal?",
     /* [x]  eqv?: Equality */
     /* [x]  eval: Fly Evaluation */
     "even?", /* [vv] even?: Integer Operations */
