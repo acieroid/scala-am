@@ -20,6 +20,7 @@ object Benchmark extends App {
   setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
 
   def run(file: String, s: Strategy = Prelude, timing: Boolean = true): Unit = {
+    System.gc()
     writeln(s"[$file] ")
     val program = if (s == Prelude) Definitions.parseWithPrelude(file) else Definitions.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
@@ -61,6 +62,7 @@ object Benchmark extends App {
     }
 
     analysis.initPrimitiveBenchmarks()
+    System.gc()
     val t0 = System.nanoTime()
     analysis.analyze()
     val t1 = System.nanoTime()
@@ -80,6 +82,7 @@ object Benchmark extends App {
 
           val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
         }
+        System.gc()
         val t0 = System.nanoTime()
         analysis.analyze()
         val t1 = System.nanoTime()
@@ -135,18 +138,20 @@ object Benchmark extends App {
     "test/scp1/9.15.scm")
 
   def timeAll(s: Strategy = Prelude): Unit = {
-    allbench.foreach(run(_, s))
+    allbench.reverse.foreach(b => {
+      writeln("***** Prelude *****")
+      run(b, Prelude)
+      writeln("***** Compile *****")
+      run(b, Compile)
+    })
   }
 
   def precAll(s: Strategy = Prelude): Unit = {
-    allbench.foreach(run(_, s, false))
+    allbench.reverse.foreach(run(_, s, false))
   }
 
   def time(): Unit = {
-    writeln("***** Prelude *****")
     timeAll()
-    writeln("***** Compile *****")
-    timeAll(Compile)
   }
 
   def precision(bench: List[String] = allbench): Unit = {
