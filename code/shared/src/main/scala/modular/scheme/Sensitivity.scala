@@ -1,7 +1,7 @@
 package scalaam.modular.scheme
 
 import scalaam.core.Identity.Position
-import scalaam.primitiveCompilation.SchemePrimitives
+import scalaam.primitiveCompilation._
 
 /* Simplest (and most imprecise): no context-sensitivity */
 trait NoSensitivity extends SchemeModFSemantics {
@@ -50,7 +50,7 @@ trait PrimitiveSensitivity extends SchemeModFSemantics {
   }
   
   def isPrimitive(nam: Option[String]): Boolean = nam match {
-    case Some(n) if SchemePrimitives.names.contains(n) => true
+    case Some(n) if PrimitiveDefinitions.names.contains(n) => true
     case _ => false
   }
 

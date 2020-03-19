@@ -4,8 +4,8 @@ import scalaam.core.{Expression, Identifier, Identity}
 import scalaam.language.scheme.{SchemeBegin, SchemeExp, SchemeParser}
 import util.FileUtil
 
-object Definitions {
-  val primitiveDefinitions = Map(
+object PrimitiveDefinitions {
+  val definitions = Map(
     // "*" is a primop
     // "+" is a primop
     // "-" is a primop
@@ -213,7 +213,7 @@ object Definitions {
 //            (foldl-aux f (f base (car lst)) (cdr lst))))"""
   )
 
-  val names: Set[String] = primitiveDefinitions.keySet
+  val names: Set[String] = definitions.keySet
 
   //def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
 
@@ -232,7 +232,7 @@ object Definitions {
           calls = calls+1
           if (!visited.contains(name)) {
             // println(s"Found primitive: $name")
-            val exp = SchemeParser.parse(primitiveDefinitions(name))
+            val exp = SchemeParser.parse(definitions(name))
             prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
             visited = name :: visited
@@ -255,7 +255,7 @@ object Definitions {
         val hd :: tl = work
         work = tl
         hd match {
-          case Identifier(name, _) if SchemePrimitives.names.contains(name) =>
+          case Identifier(name, _) if PrimitiveDefinitions.names.contains(name) =>
             if (!visited.contains(name)) {
               primitives = primitives + (name -> (primitives(name) + 1))
               work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
@@ -281,218 +281,6 @@ object Definitions {
   // Parses a file and automatically adds the required prelude (over-approximated).
   def parseWithPrelude(path: String): SchemeExp = addPrelude(SchemeParser.parse(FileUtil.loadFile(path)))
   def parseWithoutPrelude(path: String): SchemeExp = SchemeParser.parse(FileUtil.loadFile(path))
-}
-
-object SchemePrimitives {
-  // TODO: Verify completeness of the list!
-  val names = Set(
-    "*", /* [vv] *: Arithmetic */
-    "+", /* [vv] +: Arithmetic */
-    "-", /* [vv] -: Arithmetic */
-    "/", /* [vx] /: Arithmetic (no support for fractions) */
-    "acos", /* [vv] acos: Scientific */
-    /* [x]  angle: Complex */
-    "append", /* [x]  append: Append/Reverse */ // MANUAL
-    /* [x]  apply: Fly Evaluation */
-    "asin", /* [vv] asin: Scientific */
-    "assoc", /* [vv] assoc: Retrieving Alist Entries */
-    "assq", /* [vv] assq: Retrieving Alist Entries */
-    /* [x]  assv: Retrieving Alist Entries */
-    "atan", /* [vv] atan: Scientific */
-    "boolean?", /* [vv] boolean?: Booleans */
-    /* [x]  call-with-current-continuation: Continuations */
-    /* [x]  call-with-input-file: File Ports */
-    /* [x]  call-with-output-file: File Ports */
-    /* [x]  call-with-values: Multiple Values */
-    "car", /* [vv] car: Pairs */
-    "cdr", /* [vv] cdr: Pairs */
-    "ceiling", /* [vv] ceiling: Arithmetic */
-    "char->integer", /* [x]  char->integer: Characters */
-    /* [x]  char-alphabetic?: Characters */
-    /* [x]  char-ci<=?: Characters */
-    /* [x]  char-ci<?: Characters */
-    /* [x]  char-ci=?: Characters */
-    /* [x]  char-ci>=?: Characters */
-    /* [x]  char-ci>?: Characters */
-    /* [x]  char-downcase: Characters */
-    /* [x]  char-lower-case?: Characters */
-    /* [x]  char-numeric?: Characters */
-    /* [x]  char-ready?: Reading */
-    /* [x]  char-upcase: Characters */
-    /* [x]  char-upper-case?: Characters */
-    /* [x]  char-whitespace?: Characters */
-    /* [x]  char<=?: Characters */
-    /* [x]  char<?: Characters */
-    /* [x]  char=?: Characters */
-    /* [x]  char>=?: Characters */
-    /* [x]  char>?: Characters */
-    "char?", /* [vv] char?: Characters */
-    /* [x]  close-input-port: Closing */
-    /* [x]  close-output-port: Closing */
-    /* [x]  complex?: Complex Numbers */
-    "cons", /* [vv] cons: Pairs */
-    "cos", /* [vv] cos: Scientific */
-    /* [x]  current-input-port: Default Ports */
-    /* [x]  current-output-port: Default Ports */
-    "display", /* [v]  display: Writing */
-    /* [x]  dynamic-wind: Dynamic Wind */
-    /* [x]  eof-object?: Reading */
-    "eq?", /* [vv] eq?: Equality */
-    "equal?",
-    /* [x]  eqv?: Equality */
-    /* [x]  eval: Fly Evaluation */
-    "even?", /* [vv] even?: Integer Operations */
-    "exact->inexact", /* [vv] exact->inexact: Exactness */
-    /* [x]  exact?: Exactness */
-    /* [x]  exp: Scientific */
-    "expt", /* [vv] expt: Scientific */
-    "floor", /* [vv] floor: Arithmetic */
-    /* [x]  for-each: List Mapping */
-    /* [x]  force: Delayed Evaluation */
-    "gcd", /* [vx] gcd: Integer Operations */
-    /* [x]  imag-part: Complex */
-    "inexact->exact", /* [vv] inexact->exact: Exactness */
-    /* [x]  inexact?: Exactness */
-    /* [x]  input-port?: Ports */
-    /* [x]  integer->char: Characters */
-    "integer?", /* [vv] integer?: Integers */
-    /* [x]  interaction-environment: Fly Evaluation */
-    /* [x]  lcm: Integer Operations */
-    "length", /* [vv] length: List Selection */
-    "list", /* [vv] list: List Constructors */
-    /* [x]  list->string: String Constructors */
-    /* [x]  list->vector: Vector Creation */
-    "list-ref",  /* [vv] list-ref: List Selection */
-    /* [x]  list-tail: List Selection */
-    "list?", /* [vv] list?: List Predicates */
-    /* [x]  load: Loading */
-    "log", /* [vv] log: Scientific */
-    /* [x]  magnitude: Complex */
-    /* [x]  make-polar: Complex */
-    /* [x]  make-rectangular: Complex */
-    /* [x]  make-string: String Constructors */
-    /* [x]  map: List Mapping */
-    "max", /* [vv] max: Arithmetic */
-    "member", /* [vv] member: List Searching */
-    "memq", /* [v]  memq: List Searching */
-    /* [x]  memv: List Searching */
-    "min", /* [vv] min: Arithmetic */
-    "modulo", /* [vv] modulo: Integer Operations */
-    "negative?", /* [vv] negative?: Comparison */
-    "newline", /* [v]  newline: Writing */
-    "not", /* [vv] not: Booleans */
-    "null?", /* [vv] null?: List Predicates */
-    "number->string", /* [vx] number->string: Conversion: does not support two arguments */
-    "number?", /* [vv] number?: Numerical Tower */
-    "odd?", /* [vv] odd?: Integer Operations */
-    /* [x]  open-input-file: File Ports */
-    /* [x]  open-output-file: File Ports */
-    /* [x]  output-port?: Ports */
-    "pair?", /* [vv] pair?: Pairs */
-    /* [x]  peek-char?: Reading */
-    "positive?", /* [vv] positive?: Comparison */
-    /* [x]  procedure?: Procedure Properties */
-    "quotient", /* [vv] quotient: Integer Operations */
-    /* [x]  rational?: Reals and Rationals */
-    /* [x]  read: Scheme Read */
-    /* [x]  read-char?: Reading */
-    /* [x]  real-part: Complex */
-    "real?", /* [vv] real?: Reals and Rationals */
-    "remainder", /* [vv] remainder: Integer Operations */
-    /* [x]  reverse: Append/Reverse */
-    "round", /* [vv] round: Arithmetic */
-    "set-car!", /* [vv] set-car!: Pairs */
-    "set-cdr!", /* [vv] set-cdr!: Pairs */
-    "sin", /* [vv] sin: Scientific */
-    "sqrt", /* [vv] sqrt: Scientific */
-    /* [x]  string: String Constructors */
-    /* [x]  string->list: List/String Conversion */
-    /* [x]  string->number: Conversion */
-    "string->symbol", /* [vv] string->symbol: Symbol Primitives */
-    "string-append", /* [vx] string-append: Appending Strings: only two arguments supported */
-    /* [x]  string-ci<: String Comparison */
-    /* [x]  string-ci=?: String Comparison */
-    /* [x]  string-ci>=?: String Comparison */
-    /* [x]  string-ci>?: String Comparison */
-    /* [x]  string-copy: String Selection */
-    /* [x]  string-fill!: String Modification */
-    "string-length", /* [vv] string-length: String Selection */
-    "string-ref", /* [x]  string-ref: String Selection */
-    /* [x]  string-set!: String Modification */
-    /* [x]  string<=?: String Comparison */
-    "string<?", /* [vv]  string<?: String Comparison */
-    /* [x]  string=?: String Comparison */
-    /* [x]  string>=?: String Comparison */
-    /* [x]  string>?: String Comparison */
-    "string?", /* [vv]  string?: String Predicates */
-    /* [x]  substring: String Selection */
-    "symbol->string", /* [vv] symbol->string: Symbol Primitives */
-    "symbol?", /* [vv] symbol?: Symbol Primitives */
-    "tan", /* [vv] tan: Scientific */
-    /* [x]  truncate: Arithmetic */
-    /* [x]  values: Multiple Values */
-    "make-vector", /* [vv] make-vector: Vector Creation */
-    "vector", /* [vv] vector: Vector Creation */
-    /* [x]  vector->list: Vector Creation */
-    /* [x]  vector-fill!: Vector Accessors */
-    "vector-length", /* [vv] vector-length: Vector Accessors */
-    "vector-ref", /* [vv] vector-ref: Vector Accessors */
-    "vector-set!", /* [vv] vector-set!: Vector Accessors */
-    "vector?", /* [vv] vector?: Vector Creation */
-    /* [x]  with-input-from-file: File Ports */
-    /* [x]  with-output-to-file: File Ports */
-    /* [x]  write-char: Writing */
-    "zero?", /* [vv] zero?: Comparison */
-    "<", /* [vv]  < */
-    "<=", /* [vv]  <= */
-    "=", /* [vv]  = */
-    ">", /* [vv]  > */
-    ">=", /* [vv]  >= */
-    /* [x]  numerator */
-    /* [x]  denominator */
-    /* [x]  rationalize-string */
-    /* [x]  scheme-report-environment */
-    /* [x]  null-environment */
-    /* [x]  write transcript-on */
-    /* [x]  transcript-off */
-    "caar",
-    "cadr", /* [v]  caar etc. */
-    "cdar",
-    "cddr",
-    "caaar",
-    "caadr",
-    "cadar",
-    "caddr",
-    "cdaar",
-    "cdadr",
-    "cddar",
-    "cdddr",
-    "caaaar",
-    "caaadr",
-    "caadar",
-    "caaddr",
-    "cadaar",
-    "cadadr",
-    "caddar",
-    "cadddr",
-    "cdaaar",
-    "cdaadr",
-    "cdadar",
-    "cdaddr",
-    "cddaar",
-    "cddadr",
-    "cdddar",
-    "cddddr",
-    /* Other primitives that are not R5RS */
-    "random",
-    "error",
-//    "map",
-//    "for-each",
-//    "foldl",
-//    "foldl-aux",
-//    "foldr",
-//    "foldr-aux"
-  )
 }
 
 object SchemeBenchmarks {
