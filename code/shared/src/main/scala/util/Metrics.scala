@@ -8,6 +8,14 @@ object Metrics {
   type Med = Long
   type StD = Long
 
+  case class M(min: Min, max: Max, mea: Mea, med: Med, std: StD) {
+    override def toString: String = {
+      s"* Values in [$min,$max]\n" ++
+      s"* Mean: $mea , Median: $med\n" ++
+      s"* Standard deviation: $std"
+    }
+  }
+
   def mean(l: List[Long]): Long = l.sum / l.length
 
   def median(l: List[Long]): Long = {
@@ -22,6 +30,6 @@ object Metrics {
     sums.sum/(l.length-1)
   }
 
-  def metrics(l: List[Long]): (Min, Max, Mea, Med, StD) = (l.min, l.max, mean(l), median(l), stddev(l))
+  def all(l: List[Long]): M = M(l.min, l.max, mean(l), median(l), stddev(l))
 
 }

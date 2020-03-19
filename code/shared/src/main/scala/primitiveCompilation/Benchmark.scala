@@ -89,12 +89,12 @@ object Benchmark extends App {
         times = (t1 - t0) :: times
       }
 
-      val (min, max, mea, med, std) = Metrics.metrics(times)
-      writeln(s"\n      Mean time: ${mea}ms")
-      writeln(s"      Min  time: ${min}ms")
-      writeln(s"      Max  time: ${max}ms")
-      writeln(s"      Med  time: ${med}ms")
-      writeln(s"         Stddev: ${std}ms")
+      val m = Metrics.all(times)
+      writeln(s"\n      Mean time: ${m.mea}ms")
+      writeln(s"      Min  time: ${m.min}ms")
+      writeln(s"      Max  time: ${m.max}ms")
+      writeln(s"      Med  time: ${m.med}ms")
+      writeln(s"         Stddev: ${m.std}ms")
       writeln(s"   Avg primtime: ${(InterceptCall.primTime / 1000000) / actual}ms")
     }
 
