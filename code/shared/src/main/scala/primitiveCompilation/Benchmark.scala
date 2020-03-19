@@ -6,7 +6,7 @@ import scalaam.io.Writer
 import scalaam.io.Writer.{closeDefaultWriter, setDefaultWriter, write, writeln}
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
-import scalaam.primitiveCompilation.{Definitions, SchemeBenchmarks}
+import util.Metrics
 
 object Benchmark extends App {
 
@@ -41,7 +41,7 @@ object Benchmark extends App {
 
     }
 
-    var time = 0L
+    var times: List[Long] = List()
 
     // Get results for each call (but timing results are kept for next iteration).
     writeln("\n* Calls + Time 0")
@@ -66,7 +66,7 @@ object Benchmark extends App {
     val t0 = System.nanoTime()
     analysis.analyze()
     val t1 = System.nanoTime()
-    time += (t1 - t0)
+    times = (t1 - t0) :: times
     //analysis.callToFile(s + "_" + suffix)
 
     if (!timing) analysis.dump(suffix)
@@ -86,10 +86,16 @@ object Benchmark extends App {
         val t0 = System.nanoTime()
         analysis.analyze()
         val t1 = System.nanoTime()
-        time += (t1 - t0)
+        times = (t1 - t0) :: times
       }
-      writeln(s"\n   Average time: ${(time / 1000000) / actual}ms")
-      writeln(s"   Primitive time: ${(InterceptCall.primTime / 1000000) / actual}ms")
+
+      val (min, max, mea, med, std) = Metrics.metrics(times)
+      writeln(s"\n      Mean time: ${mea}ms")
+      writeln(s"      Min  time: ${min}ms")
+      writeln(s"      Max  time: ${max}ms")
+      writeln(s"      Med  time: ${med}ms")
+      writeln(s"         Stddev: ${std}ms")
+      writeln(s"   Avg primtime: ${(InterceptCall.primTime / 1000000) / actual}ms")
     }
 
     //analysis.timeToFile(s + "_" + suffix)
