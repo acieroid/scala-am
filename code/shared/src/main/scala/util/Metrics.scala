@@ -27,7 +27,7 @@ object Metrics {
   def stddev(l: List[Long]): Long = {
     val  mea = mean(l)
     val sums = l.map(v => (v - mea) * (v - mea))
-    sums.sum/(l.length-1)
+    scala.math.sqrt(sums.sum/(l.length-1)).toLong
   }
 
   def all(l: List[Long]): M = M(l.min, l.max, mean(l), median(l), stddev(l))
