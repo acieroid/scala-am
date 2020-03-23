@@ -12,9 +12,9 @@ object GeneratePrimitives extends App {
   val file = new File("CompiledPrimitives.scala")
   val bw = new BufferedWriter(new FileWriter(file))
   for {
-    name <- Definitions.names
+    name <- PrimitiveDefinitions.names
   } {
-    bw.write(PrimCompiler.compile(toANF(SchemeParser.parse(Definitions.primitiveDefinitions(name)))))
+    bw.write(PrimCompiler.compile(toANF(SchemeParser.parse(PrimitiveDefinitions.definitions(name)))))
     bw.write("\n\n")
   }
   bw.close

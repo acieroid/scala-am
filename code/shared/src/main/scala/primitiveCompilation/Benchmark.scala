@@ -6,7 +6,7 @@ import scalaam.io.Writer
 import scalaam.io.Writer.{closeDefaultWriter, setDefaultWriter, write, writeln}
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
-import util.Metrics
+import scalaam.util.Metrics
 
 object Benchmark extends App {
 
@@ -22,7 +22,7 @@ object Benchmark extends App {
   def run(file: String, s: Strategy = Prelude, timing: Boolean = true): Unit = {
     System.gc()
     writeln(s"[$file] ")
-    val program = if (s == Prelude) Definitions.parseWithPrelude(file) else Definitions.parseWithoutPrelude(file)
+    val program = if (s == Prelude) PrimitiveDefinitions.parseWithPrelude(file) else PrimitiveDefinitions.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
 
     if (timing) {
@@ -52,7 +52,7 @@ object Benchmark extends App {
       def dump(suffix: String): Unit = {
         val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${s}_nonprims_$suffix")))
         file.write(allComponents.filter(cmp => componentName(cmp) match {
-          case Some(name) => !Definitions.primitiveDefinitions.keySet.contains(name) // ignore primitives
+          case Some(name) => !PrimitiveDefinitions.definitions.keySet.contains(name) // ignore primitives
           case _ => true
         })
         .map(cmp => s"$cmp: ${try{store(ReturnAddr(cmp))}catch {case e: Throwable => "_?_"}}").toList.sorted.mkString("\n"))

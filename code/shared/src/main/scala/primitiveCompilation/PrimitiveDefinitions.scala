@@ -4,8 +4,8 @@ import scalaam.core.{Expression, Identifier, Identity}
 import scalaam.language.scheme.{SchemeBegin, SchemeExp, SchemeParser}
 import util.FileUtil
 
-object Definitions {
-  val primitiveDefinitions = Map(
+object PrimitiveDefinitions {
+  val definitions = Map(
     // "*" is a primop
     // "+" is a primop
     // "-" is a primop
@@ -213,7 +213,7 @@ object Definitions {
 //            (foldl-aux f (f base (car lst)) (cdr lst))))"""
   )
 
-  val names: Set[String] = primitiveDefinitions.keySet
+  val names: Set[String] = definitions.keySet
 
   //def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
 
@@ -232,7 +232,7 @@ object Definitions {
           calls = calls+1
           if (!visited.contains(name)) {
             // println(s"Found primitive: $name")
-            val exp = SchemeParser.parse(primitiveDefinitions(name))
+            val exp = SchemeParser.parse(definitions(name))
             prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
             visited = name :: visited
@@ -255,7 +255,7 @@ object Definitions {
         val hd :: tl = work
         work = tl
         hd match {
-          case Identifier(name, _) if SchemePrimitives.names.contains(name) =>
+          case Identifier(name, _) if PrimitiveDefinitions.names.contains(name) =>
             if (!visited.contains(name)) {
               primitives = primitives + (name -> (primitives(name) + 1))
               work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
@@ -281,10 +281,6 @@ object Definitions {
   // Parses a file and automatically adds the required prelude (over-approximated).
   def parseWithPrelude(path: String): SchemeExp = addPrelude(SchemeParser.parse(FileUtil.loadFile(path)))
   def parseWithoutPrelude(path: String): SchemeExp = SchemeParser.parse(FileUtil.loadFile(path))
-}
-
-object SchemePrimitives {
-  val names = Definitions.primitiveDefinitions.keySet
 }
 
 object SchemeBenchmarks {

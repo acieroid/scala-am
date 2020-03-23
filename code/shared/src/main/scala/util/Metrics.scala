@@ -1,4 +1,4 @@
-package util
+package scalaam.util
 
 object Metrics {
 
