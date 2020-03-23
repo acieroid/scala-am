@@ -30,7 +30,7 @@ object Benchmark extends App {
       write("* Warmup - ")
       for (i <- 0 until warmup) {
         write(i + " ")
-        val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
+        val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_0_0 with StandardSchemeModFSemantics {
 
           import scalaam.language.scheme.primitives._
 
@@ -45,7 +45,7 @@ object Benchmark extends App {
 
     // Get results for each call (but timing results are kept for next iteration).
     writeln("\n* Calls + Time 0")
-    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
+    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_0_0 with StandardSchemeModFSemantics {
       import scalaam.language.scheme.primitives._
       val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
 
@@ -76,7 +76,7 @@ object Benchmark extends App {
       write("* Time - ")
       for (i <- 1 until actual) {
         write(i + " ")
-        val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with PrimitiveSensitivity with StandardSchemeModFSemantics {
+        val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_0_0 with StandardSchemeModFSemantics {
 
           import scalaam.language.scheme.primitives._
 
@@ -106,7 +106,7 @@ object Benchmark extends App {
   }
 
   val allbench: List[String] = List(
-    "test/mceval.scm",
+//    "test/mceval.scm",
     "test/scp1/9.12.scm",
     "test/gabriel/browse.scm",
     "test/scp1/8.15.scm",
@@ -141,7 +141,8 @@ object Benchmark extends App {
     "test/gabriel/puzzle.scm",
     "test/scp1/5.20.4.scm",
     "test/scp1/5.19.scm",
-    "test/scp1/9.15.scm")
+    "test/scp1/9.15.scm"
+  )
 
   def timeAll(s: Strategy = Prelude): Unit = {
     allbench.reverse.foreach(b => {

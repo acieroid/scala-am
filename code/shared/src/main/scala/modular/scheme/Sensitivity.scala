@@ -62,3 +62,104 @@ trait PrimitiveSensitivity extends SchemeModFSemantics {
     }
   }
 }
+
+object CompoundSensitivities {
+  /* TODO: extends SchemeModFSemantics */
+  trait Sensitivity[Value] {
+    trait Context
+    // TODO: Q. what is the target? The function that is called I think, but I'm not sure.
+    def alloc(target: Position, callSite: Position, args: List[Value]): Context
+  }
+
+  trait CompoundSensitivity extends SchemeModFSemantics {
+    val HighSensitivity: Sensitivity[Value]
+    val LowSensitivity: Sensitivity[Value]
+    trait ComponentContext
+    case class High(ctx: HighSensitivity.Context) extends ComponentContext
+    case class Low(ctx: LowSensitivity.Context) extends ComponentContext
+    def isPrimitive(nam: Option[String]): Boolean = nam match {
+      case Some(n) if SchemePrimitives.names.contains(n) => true
+      case _ => false
+    }
+
+    def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position): ComponentContext = {
+      if (isPrimitive(nam)) {
+        High(HighSensitivity.alloc(clo._1.idn.pos, call, args))
+      } else {
+        Low(LowSensitivity.alloc(clo._1.idn.pos, call, args))
+      }
+    }
+  }
+
+
+  class NoSensitivity[Value] extends Sensitivity[Value] {
+    object NoContext extends Context
+    def alloc(target: Position, callSite: Position, args: List[Value]): Context = NoContext
+  }
+
+  class CallSiteSensitivity[Value] extends Sensitivity[Value] {
+    case class CallSiteContext(callSite: Position) extends Context
+    def alloc(target: Position, callSite: Position, args: List[Value]): Context = CallSiteContext(callSite)
+  }
+
+  class FullArgumentSensitivity[Value] extends Sensitivity[Value] {
+    case class FullArgumentContext(args: List[Value]) extends Context
+    def alloc(target: Position, callSite: Position, args: List[Value]): Context = FullArgumentContext(args)
+  }
+
+  class FunctionSensitivity[Value] extends Sensitivity[Value] {
+    case class FunctionContext(fn: Position) extends Context
+    def alloc(target: Position, callSite: Position, args: List[Value]): Context = FunctionContext(target)
+  }
+
+  class ProductSensitivity[Value](val sensitivity1: Sensitivity[Value], val sensitivity2: Sensitivity[Value]) extends Sensitivity[Value] {
+    case class ProductContext(p1: sensitivity1.Context, p2: sensitivity2.Context) extends Context
+    def alloc(target: Position, callSite: Position, args: List[Value]): Context =
+      ProductContext(
+        sensitivity1.alloc(target, callSite, args),
+        sensitivity2.alloc(target, callSite, args))
+  }
+
+  trait S_0_0 extends CompoundSensitivity {
+    val HighSensitivity = new NoSensitivity[Value]
+    val LowSensitivity = new NoSensitivity[Value]
+  }
+
+  trait S_CS_0 extends CompoundSensitivity {
+    val HighSensitivity = new CallSiteSensitivity[Value]
+    val LowSensitivity = new NoSensitivity[Value]
+  }
+
+  /* TODO: To be sure: do we need FCS or CS */
+  trait S_FCS_0 extends CompoundSensitivity {
+    val HighSensitivity = new ProductSensitivity[Value](new CallSiteSensitivity[Value] {}, new FunctionSensitivity[Value] {})
+    val LowSensitivity = new NoSensitivity[Value]
+  }
+
+  trait S_CS_CS extends CompoundSensitivity {
+    val HighSensitivity = new CallSiteSensitivity[Value]
+    val LowSensitivity = new CallSiteSensitivity[Value]
+  }
+
+  trait S_FA_0 extends CompoundSensitivity {
+    val HighSensitivity = new FullArgumentSensitivity[Value]
+    val LowSensitivity = new NoSensitivity[Value]
+  }
+
+  trait S_FA_CS extends CompoundSensitivity {
+    val HighSensitivity = new FullArgumentSensitivity[Value]
+    val LowSensitivity = new CallSiteSensitivity[Value]
+  }
+
+  trait S_CSFA_0 extends CompoundSensitivity {
+    val HighSensitivity = new ProductSensitivity[Value](new CallSiteSensitivity[Value], new FullArgumentSensitivity[Value])
+    val LowSensitivity = new NoSensitivity[Value]
+  }
+
+  trait S_CSFA_CS extends CompoundSensitivity {
+    val HighSensitivity = new ProductSensitivity[Value](new CallSiteSensitivity[Value], new FullArgumentSensitivity[Value])
+    val LowSensitivity = new CallSiteSensitivity[Value]
+  }
+
+
+}
