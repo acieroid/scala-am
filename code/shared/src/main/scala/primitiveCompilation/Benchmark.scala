@@ -4,6 +4,7 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import scalaam.io.Writer
 import scalaam.io.Writer.{closeDefaultWriter, setDefaultWriter, write, writeln}
+import scalaam.language.scheme.SchemeExp
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
 import scalaam.util.Metrics
@@ -19,6 +20,22 @@ object Benchmark extends App {
 
   setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
 
+  class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_0_0 with StandardSchemeModFSemantics {
+    import scalaam.language.scheme.primitives._
+    val primitives = if (strategy == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
+
+      def dump(suffix: String): Unit = {
+        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${strategy}_nonprims_$suffix")))
+        file.write(allComponents.filter(cmp => componentName(cmp) match {
+          case Some(name) => !PrimitiveDefinitions.definitions.keySet.contains(name) // ignore primitives
+          case _ => true
+        })
+        .map(cmp => s"$cmp: ${try{store(ReturnAddr(cmp))}catch {case e: Throwable => "_?_"}}").toList.sorted.mkString("\n"))
+        file.flush()
+        file.close()
+      }
+    }
+
   def run(file: String, s: Strategy = Prelude, timing: Boolean = true): Unit = {
     System.gc()
     writeln(s"[$file] ")
@@ -30,12 +47,7 @@ object Benchmark extends App {
       write("* Warmup - ")
       for (i <- 0 until warmup) {
         write(i + " ")
-        val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_0_0 with StandardSchemeModFSemantics {
-
-          import scalaam.language.scheme.primitives._
-
-          val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
-        }
+        val analysis = new MainAnalysis(program, s)
         analysis.analyze()
       }
 
@@ -45,21 +57,7 @@ object Benchmark extends App {
 
     // Get results for each call (but timing results are kept for next iteration).
     writeln("\n* Calls + Time 0")
-    val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_0_0 with StandardSchemeModFSemantics {
-      import scalaam.language.scheme.primitives._
-      val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
-
-      def dump(suffix: String): Unit = {
-        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${s}_nonprims_$suffix")))
-        file.write(allComponents.filter(cmp => componentName(cmp) match {
-          case Some(name) => !PrimitiveDefinitions.definitions.keySet.contains(name) // ignore primitives
-          case _ => true
-        })
-        .map(cmp => s"$cmp: ${try{store(ReturnAddr(cmp))}catch {case e: Throwable => "_?_"}}").toList.sorted.mkString("\n"))
-        file.flush()
-        file.close()
-      }
-    }
+    val analysis = new MainAnalysis(program, s)
 
     analysis.initPrimitiveBenchmarks()
     System.gc()
@@ -76,12 +74,7 @@ object Benchmark extends App {
       write("* Time - ")
       for (i <- 1 until actual) {
         write(i + " ")
-        val analysis = new ModAnalysis(program) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_0_0 with StandardSchemeModFSemantics {
-
-          import scalaam.language.scheme.primitives._
-
-          val primitives = if (s == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
-        }
+        val analysis = new MainAnalysis(program, s)
         System.gc()
         val t0 = System.nanoTime()
         analysis.analyze()
