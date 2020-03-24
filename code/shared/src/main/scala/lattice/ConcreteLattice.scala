@@ -1,6 +1,6 @@
 package scalaam.lattice
 
-import scalaam.core.{Lattice}
+import scalaam.core._
 import scalaam.util.Show
 
 object Concrete {
@@ -38,7 +38,7 @@ object Concrete {
           case Values(content2) => Values(content1.union(content2))
         }
     }
-    def subsumes(x: L[A], y: => L[A]) = x match {
+    def subsumes(x: L[A], y: => L[A]): Boolean = x match {
       case Top => true
       case Values(content1) =>
         y match {
@@ -48,6 +48,10 @@ object Concrete {
     }
     def eql[B2: BoolLattice](x: L[A], y: L[A]): B2 = y.guardBot {
       x.foldMap(a => y.foldMap(b => BoolLattice[B2].inject(a == b)))
+    }
+    def cardinality(x: L[A]): Cardinality = x match {
+      case Top        => CardinalityInf
+      case Values(vs) => CardinalityNumber(vs.size)
     }
   }
 

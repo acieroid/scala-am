@@ -1,6 +1,6 @@
 package scalaam.lattice
 
-import scalaam.core.Lattice
+import scalaam.core._
 
 object Type {
   sealed trait T
@@ -14,7 +14,7 @@ object Type {
     }
     val bottom: T = Bottom
     val top: T    = Top
-    def join(x: T, y: => T) = x match {
+    def join(x: T, y: => T): T = x match {
       case Top    => Top
       case Bottom => y
     }
@@ -22,7 +22,7 @@ object Type {
       case Bottom => Bottom
       case Top    => y
     }
-    def subsumes(x: T, y: => T) = x match {
+    def subsumes(x: T, y: => T): Boolean = x match {
       case Top => true
       case Bottom =>
         y match {
@@ -33,6 +33,10 @@ object Type {
     def eql[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match {
       case (Top, Top) => BoolLattice[B2].top
       case _          => BoolLattice[B2].bottom
+    }
+    def cardinality(v: T) = v match {
+      case Bottom => CardinalityNumber(0)
+      case Top    => CardinalityInf
     }
   }
 

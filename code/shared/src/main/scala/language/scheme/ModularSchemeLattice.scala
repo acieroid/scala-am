@@ -7,6 +7,7 @@ import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
 import scalaam.language.scheme.primitives.SchemePrimitive
+import scalaam.util.MonoidImplicits._
 
 import scala.annotation.tailrec
 
@@ -524,6 +525,17 @@ class ModularSchemeLattice[
       case Int(size) => MayFail.success(Vec(size, Map[I, L](), init))
       case _         => MayFail.failure(TypeError("expected int size when constructing vector", size))
     }
+
+    def cardinality(v: Value): Cardinality = v match {
+      case Bot       => CardinalityNumber(0)
+      case Bool(b)   => Lattice[B].cardinality(b)
+      case Int(i)    => Lattice[I].cardinality(i)
+      case Char(c)   => Lattice[C].cardinality(c)
+      case Str(s)    => Lattice[S].cardinality(s)
+      case Real(r)   => Lattice[R].cardinality(r)
+      case Symbol(s) => Lattice[Sym].cardinality(s)
+      case _         => CardinalityNumber(1)
+    }
   }
 
   sealed trait L extends SmartHash {
@@ -634,6 +646,11 @@ class ModularSchemeLattice[
     def nil: L = Element(Value.nil)
 
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
+
+    def cardinality(abs: L): Cardinality = abs match {
+      case Element(v) => Value.cardinality(v)
+      case Elements(vs) => vs.foldMap(v => Value.cardinality(v))
+    }
   }
 
   object L {

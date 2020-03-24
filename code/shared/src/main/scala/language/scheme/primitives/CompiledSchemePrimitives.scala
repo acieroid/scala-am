@@ -2,6 +2,7 @@ package scalaam.language.scheme.primitives
 
 import scalaam.core.{Address, Error, Identity, MayFail, Store}
 import scalaam.language.scheme.SchemeLattice
+import scalaam.primitiveCompilation.PrimitiveDefinitions
 
 class CompiledSchemePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V, A], _]) extends SchemeLatticePrimitives[V, A] {
   override def allPrimitives: List[SchemePrimitive[V, A]] = {

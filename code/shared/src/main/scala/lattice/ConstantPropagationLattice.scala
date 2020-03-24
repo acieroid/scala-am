@@ -1,6 +1,6 @@
 package scalaam.lattice
 
-import scalaam.core.Lattice
+import scalaam.core._
 
 object ConstantPropagation {
   sealed trait L[+A]
@@ -16,7 +16,7 @@ object ConstantPropagation {
     }
     val bottom: L[A] = Bottom
     val top: L[A]    = Top
-    def join(x: L[A], y: => L[A]) = x match {
+    def join(x: L[A], y: => L[A]): L[A] = x match {
       case Top => Top
       case Constant(_) =>
         y match {
@@ -46,7 +46,7 @@ object ConstantPropagation {
         }
       case Top => y
     }
-    def subsumes(x: L[A], y: => L[A]) = x match {
+    def subsumes(x: L[A], y: => L[A]): Boolean = x match {
       case Top => true
       case Constant(_) =>
         y match {
@@ -68,6 +68,11 @@ object ConstantPropagation {
       case (Constant(x), Constant(y)) => BoolLattice[B2].inject(x == y)
       case (Bottom, _)                => BoolLattice[B2].bottom
       case (_, Bottom)                => BoolLattice[B2].bottom
+    }
+    def cardinality(v: L[A]): Cardinality = v match {
+      case Bottom       => CardinalityNumber(0)
+      case Constant(_)  => CardinalityNumber(1)
+      case Top          => CardinalityInf
     }
   }
 

@@ -95,6 +95,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** Changes an element of a vector */
   def vectorSet(vector: L, index: L, newval: L): MayFail[L, Error]
 
+  /** Cardinality indicates how many elements are represented by an abstract value */
+  def cardinality(abs: L): Cardinality
+
   /* TODO: move this to the tests
   trait SchemeLatticeLaw extends MonoidLaw {
     import scalaz.std.boolean.conditional
