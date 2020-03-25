@@ -51,7 +51,7 @@ object CompoundSensitivities {
     case class High(ctx: HighSensitivity.Context) extends ComponentContext
     case class Low(ctx: LowSensitivity.Context) extends ComponentContext
     def isPrimitive(nam: Option[String]): Boolean = nam match {
-      case Some(n) if PrimitiveDefinitions.names.contains(n) => true
+      case Some(n) if PrimitiveDefinitions.primitivePrecision.contains(n) => true
       case _ => false
     }
 

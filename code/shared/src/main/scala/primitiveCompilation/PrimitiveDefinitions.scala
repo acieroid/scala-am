@@ -214,6 +214,7 @@ object PrimitiveDefinitions {
   )
 
   val names: Set[String] = definitions.keySet
+  val primitivePrecision: Set[String] = names ++ Set("map", "for-each", "foldr", "foldr-aux", "foldl", "foldl-aux")
 
   //def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
 
