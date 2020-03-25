@@ -3,8 +3,8 @@ package scalaam.core
 import scalaam.util.Show
 
 /** Cardinality indicates how many elements are represented by an abstract value */
-trait Cardinality
-case object CardinalityInf            extends Cardinality
+trait Cardinality { val n: Int } // n allows sorting by cardinality without having to pattern match.
+case object CardinalityInf            extends Cardinality { val n: Int = -1 }
 case  class CardinalityNumber(n: Int) extends Cardinality
 
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */

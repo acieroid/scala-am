@@ -282,6 +282,11 @@ object InterceptCall {
   var times: Map[String, List[ Long]] = Map().withDefaultValue(List())
   var primTime: Long = 0
 
+  def init(): Unit = {
+    times = Map().withDefaultValue(List())
+    primTime = 0
+  }
+
 }
 
 trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {

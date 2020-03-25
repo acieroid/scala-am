@@ -1,10 +1,10 @@
 package scalaam.primitiveCompilation
 
-import java.io.{BufferedWriter, File, FileWriter}
+import java.io._
 
 import scalaam.io.Writer
-import scalaam.io.Writer.{closeDefaultWriter, setDefaultWriter, write, writeln}
-import scalaam.language.scheme.SchemeExp
+import scalaam.io.Writer._
+import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
 import scalaam.util.Metrics
@@ -20,7 +20,7 @@ object Benchmark extends App {
 
   setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
 
-  class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_0_0 with StandardSchemeModFSemantics {
+  class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_CSFA_0 with StandardSchemeModFSemantics {
     import scalaam.language.scheme.primitives._
     val primitives = if (strategy == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
 
@@ -42,37 +42,35 @@ object Benchmark extends App {
     val program = if (s == Prelude) PrimitiveDefinitions.parseWithPrelude(file) else PrimitiveDefinitions.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
 
+    if (!timing) {
+      val analysis = new MainAnalysis(program, s)
+      analysis.initPrimitiveBenchmarks()
+      System.gc() // Can be removed.
+      analysis.analyze()
+      val cardinalities: List[(Int, Int)] = analysis.store.values.map(analysis.lattice.cardinality).groupBy(_.n).view.mapValues(_.size).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
+      writeln("* Cardinalities:")
+      cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
+      val filtered = (if (cardinalities.head._1 == -1) cardinalities.tail else cardinalities).map(t => (t._1.toLong, t._2.toLong))
+      writeln(s"  -> Counted ${analysis.store.keySet.size} values.")
+      writeln(s"  -> Weighted avg. fin. members: ${Metrics.weightedAverage(filtered)}")
+    }
+
     if (timing) {
+      var times: List[Long] = List()
+
       // Warmup.
       write("* Warmup - ")
       for (i <- 0 until warmup) {
         write(i + " ")
-        val analysis = new MainAnalysis(program, s)
-        analysis.analyze()
+        // TODO: Add System.gc() here?
+        new MainAnalysis(program, s).analyze()
       }
 
-    }
+      InterceptCall.init() // Can also use analysis.initPrimitiveBenchmarks.
 
-    var times: List[Long] = List()
-
-    // Get results for each call (but timing results are kept for next iteration).
-    writeln("\n* Calls + Time 0")
-    val analysis = new MainAnalysis(program, s)
-
-    analysis.initPrimitiveBenchmarks()
-    System.gc()
-    val t0 = System.nanoTime()
-    analysis.analyze()
-    val t1 = System.nanoTime()
-    times = (t1 - t0) :: times
-    //analysis.callToFile(s + "_" + suffix)
-
-    if (!timing) analysis.dump(suffix)
-
-    if (timing) {
       // Time measurements.
       write("* Time - ")
-      for (i <- 1 until actual) {
+      for (i <- 1 to actual) {
         write(i + " ")
         val analysis = new MainAnalysis(program, s)
         System.gc()
@@ -90,8 +88,6 @@ object Benchmark extends App {
       writeln(s"         Stddev: ${m.std / 1000000}ms")
       writeln(s"   Avg primtime: ${(InterceptCall.primTime / 1000000) / actual}ms")
     }
-
-    //analysis.timeToFile(s + "_" + suffix)
   }
 
   def gabriel(): Unit = {
@@ -137,8 +133,8 @@ object Benchmark extends App {
     "test/scp1/9.15.scm"
   )
 
-  def timeAll(s: Strategy = Prelude): Unit = {
-    allbench.reverse.foreach(b => {
+  def time(bench: List[String] = allbench.reverse): Unit = {
+    bench.foreach(b => {
       writeln("***** Prelude *****")
       run(b, Prelude)
       writeln("***** Compile *****")
@@ -146,22 +142,17 @@ object Benchmark extends App {
     })
   }
 
-  def precAll(s: Strategy = Prelude): Unit = {
-    allbench.reverse.foreach(run(_, s, false))
-  }
-
-  def time(): Unit = {
-    timeAll()
-  }
-
-  def precision(bench: List[String] = allbench): Unit = {
+  def precision(bench: List[String] = allbench.reverse): Unit = {
     bench.foreach({b =>
+      writeln("***** Prelude *****")
       run(b, Prelude, false)
+      writeln("***** Compile *****")
       run(b, Compile, false)
     })
   }
 
-  time()
+  //time()
+  precision(allbench.reverse.take(3))
 
   closeDefaultWriter()
 }

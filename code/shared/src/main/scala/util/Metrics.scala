@@ -36,4 +36,11 @@ object Metrics {
 
   def all(l: List[Long]): M = M(l.min, l.max, mean(l), median(l), stddev(l))
 
+  // Expect a list of tuples (weight, value).
+  def weightedAverage(l: List[(Long, Long)]): Double = {
+    val num = l.map(t => t._1 * t._2).sum
+    val den = l.foldLeft(0.0)((acc, t) => acc + t._1)
+    num / den
+  }
+
 }
