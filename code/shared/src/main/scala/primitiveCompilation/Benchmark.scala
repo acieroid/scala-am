@@ -20,7 +20,7 @@ object Benchmark extends App {
 
   setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
 
-  class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_CSFA_0 with StandardSchemeModFSemantics {
+  class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_CS_CS with StandardSchemeModFSemantics {
     import scalaam.language.scheme.primitives._
     val primitives = if (strategy == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
 
@@ -46,12 +46,36 @@ object Benchmark extends App {
       val analysis = new MainAnalysis(program, s)
       analysis.initPrimitiveBenchmarks()
       System.gc() // Can be removed.
-      analysis.analyze()
-      val cardinalities: List[(Int, Int)] = analysis.store.values.map(analysis.lattice.cardinality).groupBy(_.n).view.mapValues(_.size).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
+        analysis.analyze()
+      def lower(addr: analysis.Addr): Option[String] = addr match {
+        case cmpAddr: analysis.ComponentAddr =>
+          cmpAddr.addr match {
+            case _: analysis.PrmAddr => None
+            case p: analysis.PtrAddr[_] => Some(p.toString)
+            case v: analysis.VarAddr => Some(v.id.fullString)
+          }
+        case retAddr: analysis.ReturnAddr =>
+          retAddr.cmp match {
+            case _: analysis.MainComponent => Some("cmp<main>")
+            case c: analysis.CallComponent => Some(s"cmp<${c.clo._1.idn.pos}>")
+          }
+        case _ => ???
+      }
+      val finalStore: Map[String, analysis.Value] = analysis.store.toList.foldLeft(Map[String, analysis.Value]())((acc, av) => av match {
+        case (addr, v) => lower(addr) match {
+          case Some(k) => if (acc.contains(k)) {
+            acc + (k -> analysis.lattice.join(acc(k), v))
+          } else {
+            acc + (k -> v)
+          }
+          case None => acc
+        }
+      })
+      val cardinalities: List[(Int, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(_.n).view.mapValues(_.size).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
       writeln("* Cardinalities:")
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
       val filtered = (if (cardinalities.head._1 == -1) cardinalities.tail else cardinalities).map(t => (t._1.toLong, t._2.toLong))
-      writeln(s"  -> Counted ${analysis.store.keySet.size} values.")
+      writeln(s"  -> Counted ${cardinalities.foldLeft(0)((acc, kv) => acc + kv._2)} values.")
       writeln(s"  -> Weighted avg. fin. members: ${Metrics.weightedAverage(filtered)}")
     }
 
@@ -146,13 +170,13 @@ object Benchmark extends App {
     bench.foreach({b =>
       writeln("***** Prelude *****")
       run(b, Prelude, false)
-      writeln("***** Compile *****")
-      run(b, Compile, false)
+//      writeln("***** Compile *****")
+//      run(b, Compile, false)
     })
   }
 
   //time()
-  precision(allbench.reverse.take(3))
+  precision(List("test/gabriel/deriv.scm"))
 
   closeDefaultWriter()
 }

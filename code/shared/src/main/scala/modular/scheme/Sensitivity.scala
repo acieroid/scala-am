@@ -37,34 +37,7 @@ trait FullArgumentCallSiteSensitivity extends SchemeModFSemantics {
     ComponentContext(clo._1.idn.pos, call, args)
 }
 
-trait PrimitiveSensitivity extends SchemeModFSemantics {
-  trait ComponentContext
-  case class PrimitiveContext(fn: Position, call: Position, args: List[Value]) extends ComponentContext {
-    override def toString: String = {
-      val argsstr = args.mkString(",")
-      s"$call->$fn $argsstr"
-    }
-  }
-  case class NoContext() extends ComponentContext {
-    override def toString = ""
-  }
-  
-  def isPrimitive(nam: Option[String]): Boolean = nam match {
-    case Some(n) if PrimitiveDefinitions.names.contains(n) => true
-    case _ => false
-  }
-
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position): ComponentContext = {
-    if (isPrimitive(nam)) {
-      PrimitiveContext(clo._1.idn.pos, call, args)
-    } else {
-      NoContext()
-    }
-  }
-}
-
 object CompoundSensitivities {
-  /* TODO: extends SchemeModFSemantics */
   trait Sensitivity[Value] {
     trait Context
     // TODO: Q. what is the target? The function that is called I think, but I'm not sure.
@@ -93,23 +66,24 @@ object CompoundSensitivities {
 
 
   class NoSensitivity[Value] extends Sensitivity[Value] {
-    object NoContext extends Context
+    object NoContext extends Context {
+      override def toString = "NoCtx"
+    }
     def alloc(target: Position, callSite: Position, args: List[Value]): Context = NoContext
   }
 
   class CallSiteSensitivity[Value] extends Sensitivity[Value] {
-    case class CallSiteContext(callSite: Position) extends Context
+    case class CallSiteContext(callSite: Position) extends Context {
+      override def toString = s"CSCtx($callSite)"
+    }
     def alloc(target: Position, callSite: Position, args: List[Value]): Context = CallSiteContext(callSite)
   }
 
   class FullArgumentSensitivity[Value] extends Sensitivity[Value] {
-    case class FullArgumentContext(args: List[Value]) extends Context
+    case class FullArgumentContext(args: List[Value]) extends Context {
+      override def toString = s"FACtx($args)"
+    }
     def alloc(target: Position, callSite: Position, args: List[Value]): Context = FullArgumentContext(args)
-  }
-
-  class FunctionSensitivity[Value] extends Sensitivity[Value] {
-    case class FunctionContext(fn: Position) extends Context
-    def alloc(target: Position, callSite: Position, args: List[Value]): Context = FunctionContext(target)
   }
 
   class ProductSensitivity[Value](val sensitivity1: Sensitivity[Value], val sensitivity2: Sensitivity[Value]) extends Sensitivity[Value] {
@@ -127,12 +101,6 @@ object CompoundSensitivities {
 
   trait S_CS_0 extends CompoundSensitivity {
     val HighSensitivity = new CallSiteSensitivity[Value]
-    val LowSensitivity = new NoSensitivity[Value]
-  }
-
-  /* TODO: To be sure: do we need FCS or CS */
-  trait S_FCS_0 extends CompoundSensitivity {
-    val HighSensitivity = new ProductSensitivity[Value](new CallSiteSensitivity[Value] {}, new FunctionSensitivity[Value] {})
     val LowSensitivity = new NoSensitivity[Value]
   }
 
