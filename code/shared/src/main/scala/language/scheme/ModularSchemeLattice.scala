@@ -536,6 +536,17 @@ class ModularSchemeLattice[
       case Str(s)    => Lattice[S].cardinality(s)
       case Real(r)   => Lattice[R].cardinality(r)
       case Symbol(s) => Lattice[Sym].cardinality(s)
+      case _         => CardinalityNumber(1)
+    }
+
+    def combinedCardinality(v: Value): Cardinality = v match {
+      case Bot       => CardinalityNumber(0)
+      case Bool(b)   => Lattice[B].cardinality(b)
+      case Int(i)    => Lattice[I].cardinality(i)
+      case Char(c)   => Lattice[C].cardinality(c)
+      case Str(s)    => Lattice[S].cardinality(s)
+      case Real(r)   => Lattice[R].cardinality(r)
+      case Symbol(s) => Lattice[Sym].cardinality(s)
       case Clo(_, _, _) => CardinalityNumber(0) // Have to filter these by lambda.
       case _         => CardinalityNumber(1)
     }
@@ -654,7 +665,7 @@ class ModularSchemeLattice[
       case Element(v) => Value.cardinality(v)
       case Elements(vs) =>
         val closures = vs.flatMap(v => Value.getClosures(v)).groupBy(_._1._1).size // Extract the different closures.
-        Cardinality.add(vs.foldMap(v => Value.cardinality(v)), CardinalityNumber(closures))
+        Cardinality.add(vs.foldMap(v => Value.combinedCardinality(v)), CardinalityNumber(closures))
     }
   }
 
