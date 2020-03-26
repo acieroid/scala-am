@@ -87,7 +87,7 @@ object Benchmark extends App {
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
       val filtered = (if (cardinalities.head._1 == -1) cardinalities.tail else cardinalities).map(t => (t._1.toLong, t._2.toLong))
       writeln(s"  -> Counted ${cardinalities.foldLeft(0)((acc, kv) => acc + kv._2)} values.")
-      writeln(s"  -> Weighted avg. fin. members: ${Metrics.weightedAverage(filtered)}")
+      writeln(s"  -> Weighted avg. fin. members: ${Metrics.weightedAverage(filtered.map(_.swap))}")
     }
 
     if (timing) {
@@ -183,7 +183,9 @@ object Benchmark extends App {
   }
 
   //time()
-  precision(List("test/gabriel/deriv.scm"))
+  precision(List("test/DEBUG.scm"))
+  precision(List("test/DEBUG.scm"))
+  precision(List("test/DEBUG.scm"))
 
   closeDefaultWriter()
 }
