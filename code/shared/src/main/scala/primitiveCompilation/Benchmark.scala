@@ -87,6 +87,11 @@ object Benchmark extends App {
           case None => acc
         }
       })
+      for ((k, v) <- finalStore.toList.sortBy(_._1)) {
+        if (analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(1) || analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(3)) {
+          println(s"$k: ${analysis.lattice.cardinality(v)} -> $v")
+        }
+      }
       val cardinalities: List[(Int, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(_.n).view.mapValues(_.size).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
       writeln("* Cardinalities:")
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
@@ -206,7 +211,9 @@ object Benchmark extends App {
   */
 
   //time()
-  precision(st = List(Prelude))
+  List("test/scp1/5.19.scm").foreach(b => {
+    precision(List(b), s = List(S_0_0, S_CS_CS, S_CSFA_CS), st = List(Prelude))
+  })
 
   closeDefaultWriter()
 }
