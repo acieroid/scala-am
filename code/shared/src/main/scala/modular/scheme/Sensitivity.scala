@@ -44,6 +44,11 @@ object CompoundSensitivities {
     def alloc(target: Position, callSite: Position, args: List[Value]): Context
   }
 
+  object S extends Enumeration {
+    type S = Value
+    val S_0_0, S_CS_0, S_CS_CS, S_FA_0, S_FA_CS, S_CSFA_0, S_CSFA_CS = Value
+  }
+
   trait CompoundSensitivity extends SchemeModFSemantics {
     val HighSensitivity: Sensitivity[Value]
     val LowSensitivity: Sensitivity[Value]

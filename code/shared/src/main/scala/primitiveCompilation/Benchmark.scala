@@ -6,6 +6,7 @@ import scalaam.io.Writer
 import scalaam.io.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
+import scalaam.modular.scheme.CompoundSensitivities.S._
 import scalaam.modular.scheme._
 import scalaam.util.Metrics
 
@@ -20,7 +21,7 @@ object Benchmark extends App {
 
   setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
 
-  class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with CompoundSensitivities.S_CS_CS with StandardSchemeModFSemantics {
+  abstract class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics {
     import scalaam.language.scheme.primitives._
     val primitives = if (strategy == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
 
@@ -34,16 +35,34 @@ object Benchmark extends App {
         file.flush()
         file.close()
       }
-    }
+  }
 
-  def run(file: String, s: Strategy = Prelude, timing: Boolean = true): Unit = {
+  class S_0_0(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_0_0
+  class S_CS_0(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_0
+  class S_CS_CS(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_CS
+  class S_FA_0(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_0
+  class S_FA_CS(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_CS
+  class S_CSFA_0(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_0
+  class S_CSFA_CS(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_CS
+
+  def newAnalysis(pgm: SchemeExp, strategy: Strategy, s: S): MainAnalysis = s match {
+    case S_0_0 => new S_0_0(pgm, strategy)
+    case S_CS_0 => new S_CS_0(pgm, strategy)
+    case S_CS_CS => new S_CS_CS(pgm, strategy)
+    case S_FA_0 => new S_FA_0(pgm, strategy)
+    case S_FA_CS => new S_FA_CS(pgm, strategy)
+    case S_CSFA_0 => new S_CSFA_0(pgm, strategy)
+    case S_CSFA_CS => new S_CSFA_CS(pgm, strategy)
+  }
+
+  def run(file: String, se: S, s: Strategy = Prelude, timing: Boolean = true): Unit = {
     System.gc()
     writeln(s"[$file] ")
     val program = if (s == Prelude) PrimitiveDefinitions.parseWithPrelude(file) else PrimitiveDefinitions.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
 
     if (!timing) {
-      val analysis = new MainAnalysis(program, s)
+      val analysis = newAnalysis(program, s, se)
       analysis.initPrimitiveBenchmarks()
       System.gc() // Can be removed.
         analysis.analyze()
@@ -87,7 +106,7 @@ object Benchmark extends App {
       for (i <- 0 until warmup) {
         write(i + " ")
         // TODO: Add System.gc() here?
-        new MainAnalysis(program, s).analyze()
+        newAnalysis(program, s, se).analyze()
       }
 
       InterceptCall.init() // Can also use analysis.initPrimitiveBenchmarks.
@@ -96,7 +115,7 @@ object Benchmark extends App {
       write("* Time - ")
       for (i <- 1 to actual) {
         write(i + " ")
-        val analysis = new MainAnalysis(program, s)
+        val analysis = newAnalysis(program, s, se)
         System.gc()
         val t0 = System.nanoTime()
         analysis.analyze()
@@ -112,10 +131,6 @@ object Benchmark extends App {
       writeln(s"         Stddev: ${m.std / 1000000}ms")
       writeln(s"   Avg primtime: ${(InterceptCall.primTime / 1000000) / actual}ms")
     }
-  }
-
-  def gabriel(): Unit = {
-    SchemeBenchmarks.gabriel.foreach(b => run(b))
   }
 
   val allbench: List[String] = List(
@@ -157,20 +172,20 @@ object Benchmark extends App {
     "test/scp1/9.15.scm"
   )
 
-  def time(bench: List[String] = allbench.reverse): Unit = {
+  def time(bench: List[String] = allbench.reverse, s: S = S_0_0): Unit = {
     bench.foreach(b => {
-      writeln("***** Prelude *****")
-      run(b, Prelude)
-      writeln("***** Compile *****")
-      run(b, Compile)
+      writeln(s"***** Prelude / $s *****")
+      run(b, s, Prelude)
+      writeln(s"***** Compile / $s *****")
+      run(b, s, Compile)
     })
   }
 
-  def precision(bench: List[String] = allbench.reverse): Unit = {
+  def precision(bench: List[String] = allbench.reverse, s: S = S_0_0): Unit = {
     bench.foreach({b =>
-      writeln("***** Prelude *****")
-      run(b, Prelude, false)
-//      writeln("***** Compile *****")
+      writeln(s"***** Prelude / $s *****")
+      run(b, s, Prelude, false)
+//      writeln(s"***** Compile / $s *****")
 //      run(b, Compile, false)
     })
   }
