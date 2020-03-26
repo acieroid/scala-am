@@ -4,8 +4,8 @@ import scalaam.util.Show
 
 /** Cardinality indicates how many elements are represented by an abstract value */
 trait Cardinality { val n: Int } // n allows sorting by cardinality without having to pattern match.
-case object CardinalityInf            extends Cardinality { val n: Int = -1 }
-case  class CardinalityNumber(n: Int) extends Cardinality
+case object CardinalityInf            extends Cardinality { val n: Int = -1 ; override def toString = "|+∞|"}
+case  class CardinalityNumber(n: Int) extends Cardinality { override def toString: String = s"|$n|" }
 
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */
 object LatticeTopUndefined extends ScalaAMException

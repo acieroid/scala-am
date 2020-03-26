@@ -1,6 +1,6 @@
 package scalaam.language.scheme.primitives
 
-import scalaam.core.{Address, Error, Identity, MayFail, Store}
+import scalaam.core._
 import scalaam.language.scheme.SchemeLattice
 import scalaam.primitiveCompilation.PrimitiveDefinitions
 
