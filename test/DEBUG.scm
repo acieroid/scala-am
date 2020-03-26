@@ -1,13 +1,10 @@
-(define (tree-copy x)
-  (if (not (pair? x))
-    x
-    (cons (tree-copy (car x))
-      (tree-copy (cdr x)))))
-(define (init n m ipats)
-  (let ((ipats (tree-copy ipats)))
-    (do ((n n (- n 1))
-          (i m (if (zero? i) m (- i 1)))
-          (a '()))
-      ((= n 0) a)
-      (set! a (cons 's a)))))
-(init 1 1 '(( a (b b)) (a (b a) b a)))
+(define (atom? x)
+  (not (pair? x)))
+
+(define (fringe l)
+  (cond ((null? l) '())
+    ((atom? l) (list l))
+    (else (append (fringe (car l))
+            (fringe (cdr l))))))
+
+(equal? (fringe '((1) ((((2)))) (3 (4 5) 6) ((7) 8 9))) '(1 2 3 4 5 6 7 8 9))

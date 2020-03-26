@@ -7,6 +7,14 @@ trait Cardinality { val n: Int } // n allows sorting by cardinality without havi
 case object CardinalityInf            extends Cardinality { val n: Int = -1 ; override def toString = "|+∞|"}
 case  class CardinalityNumber(n: Int) extends Cardinality { override def toString: String = s"|$n|" }
 
+object Cardinality {
+  def add(c1: Cardinality, c2: Cardinality): Cardinality = (c1, c2) match {
+    case (CardinalityInf, _) => CardinalityInf
+    case (_, CardinalityInf) => CardinalityInf
+    case (CardinalityNumber(m), CardinalityNumber(n)) => CardinalityNumber(m + n)
+  }
+}
+
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */
 object LatticeTopUndefined extends ScalaAMException
 

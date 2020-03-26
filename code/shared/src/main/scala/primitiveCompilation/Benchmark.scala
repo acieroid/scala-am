@@ -16,6 +16,8 @@ object Benchmark extends App {
   case object Prelude extends Strategy
   case object Compile extends Strategy
 
+  val strategies = List(Prelude, Compile)
+
   val warmup = 3
   val actual = 15
 
@@ -88,9 +90,6 @@ object Benchmark extends App {
       for ((k, v) <- finalStore.toList.sortBy(_._1)) {
         if (analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(1) || analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(3)) {
           println(s"$k: ${analysis.lattice.cardinality(v)} -> $v")
-          println(s"OR:")
-          val v2 = analysis.lattice.dropEnv(v, analysis.initialComponent)
-          println(s"$k: ${analysis.lattice.cardinality(v2)} -> ${v2}")
         }
       }
       val cardinalities: List[(Int, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(_.n).view.mapValues(_.size).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
@@ -178,24 +177,21 @@ object Benchmark extends App {
     "test/scp1/9.15.scm"
   )
 
-  def time(bench: List[String] = allbench.reverse, s: S = S_0_0): Unit = {
-    bench.foreach(b => {
-      writeln(s"***** Prelude / $s *****")
-      run(b, s, Prelude)
-      writeln(s"***** Compile / $s *****")
-      run(b, s, Compile)
-    })
+  def measure(time: Boolean, bench: List[String] = allbench.reverse, s: List[S] = CompoundSensitivities.sensitivities, st: List[Strategy] = strategies): Unit = {
+    bench.foreach{ b =>
+      s.foreach{ s =>
+        st.foreach { st =>
+          writeln(s"***** $st / $s *****")
+          run(b, s, st, time)
+        }
+      }
+    }
   }
 
-  def precision(bench: List[String] = allbench.reverse, s: S = S_0_0): Unit = {
-    bench.foreach({b =>
-      writeln(s"***** Prelude / $s *****")
-      run(b, s, Prelude, false)
-//      writeln(s"***** Compile / $s *****")
-//      run(b, Compile, false)
-    })
-  }
+  def time(bench: List[String] = allbench.reverse, s: List[S] = CompoundSensitivities.sensitivities, st: List[Strategy] = strategies): Unit = measure(true, bench, s ,st)
+  def precision(bench: List[String] = allbench.reverse, s: List[S] = CompoundSensitivities.sensitivities, st: List[Strategy] = strategies): Unit = measure(false, bench, s ,st)
 
+  /*
   def testConsistency(): Unit = {
     def testOne(file: String): Unit = {
       write(s"Checking consistency for $file: ")
@@ -212,12 +208,11 @@ object Benchmark extends App {
     }
     allbench.reverse.foreach(testOne)
   }
+  */
 
   //time()
   List("test/scp1/5.19.scm").foreach(b => {
-    precision(List(b), s = S_0_0)
-    precision(List(b), s = S_CS_CS)
-    precision(List(b), s = S_CSFA_CS)
+    precision(List(b), s = List(S_0_0, S_CS_CS, S_CSFA_CS), st = List(Prelude))
   })
 
   closeDefaultWriter()

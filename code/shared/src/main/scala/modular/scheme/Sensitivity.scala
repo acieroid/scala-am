@@ -49,6 +49,10 @@ object CompoundSensitivities {
     val S_0_0, S_CS_0, S_CS_CS, S_FA_0, S_FA_CS, S_CSFA_0, S_CSFA_CS = Value
   }
 
+  import S._
+
+  val sensitivities: List[S] = List(S_0_0, S_CS_0, S_CS_CS, S_FA_0, S_FA_CS, S_CSFA_0, S_CSFA_CS)
+
   trait CompoundSensitivity extends SchemeModFSemantics {
     val HighSensitivity: Sensitivity[Value]
     val LowSensitivity: Sensitivity[Value]
