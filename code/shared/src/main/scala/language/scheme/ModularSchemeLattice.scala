@@ -125,7 +125,8 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => Right(Int(IntLattice[I].join(i1, i2)))
           case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
-          /* TODO: join cons, vectors */
+          case (Cons(car1, cdr1), Cons(car2, cdr2)) => Right(Cons(L.lattice.join(car1, car2), L.lattice.join(cdr1, cdr2)))
+          /* TODO: join vectors */
           case _ => Left((x, y))
         }
       }
@@ -140,6 +141,7 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => IntLattice[I].subsumes(i1, i2)
           case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
           case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
+          case (Cons(car1, cdr1), Cons(car2, cdr2)) => L.lattice.subsumes(car1, car2) && L.lattice.subsumes(cdr1, cdr2)
           case _                    => false
         }
       }
