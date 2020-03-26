@@ -47,11 +47,14 @@ object Benchmark extends App {
     case S_CSFA_CS => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_CS
   }
 
-  def run(file: String, se: S, s: Strategy = Prelude, timing: Boolean = true): Unit = {
+  def run(file: String, se: S, s: Strategy = Prelude, timing: Boolean = true): (Long, Double) = {
     System.gc()
     writeln(s"[$file] ")
     val program = if (s == Prelude) PrimitiveDefinitions.parseWithPrelude(file) else PrimitiveDefinitions.parseWithoutPrelude(file)
     val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
+
+    var time: Long = 0
+    var card: Double = 0.0
 
     if (!timing) {
       val analysis = newAnalysis(program, s, se)
@@ -87,7 +90,8 @@ object Benchmark extends App {
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
       val filtered = (if (cardinalities.head._1 == -1) cardinalities.tail else cardinalities).map(t => (t._1.toLong, t._2.toLong))
       writeln(s"  -> Counted ${cardinalities.foldLeft(0)((acc, kv) => acc + kv._2)} values.")
-      writeln(s"  -> Weighted avg. fin. members: ${Metrics.weightedAverage(filtered.map(_.swap))}")
+      card = Metrics.weightedAverage(filtered.map(_.swap))
+      writeln(s"  -> Weighted avg. fin. members: $card")
     }
 
     if (timing) {
@@ -121,8 +125,10 @@ object Benchmark extends App {
       writeln(s"      Max  time: ${m.max / 1000000}ms")
       writeln(s"      Med  time: ${m.med / 1000000}ms")
       writeln(s"         Stddev: ${m.std / 1000000}ms")
-      writeln(s"   Avg primtime: ${(InterceptCall.primTime / 1000000) / actual}ms")
+      time = (InterceptCall.primTime / 1000000) / actual
+      writeln(s"   Avg primtime: $time ms")
     }
+    (time, card)
   }
 
   val allbench: List[String] = List(
@@ -182,10 +188,27 @@ object Benchmark extends App {
     })
   }
 
+  def testConsistency(): Unit = {
+    def testOne(file: String): Unit = {
+      write(s"Checking consistency for $file: ")
+      val card = run(file, S_0_0, Prelude, false)._2
+      for (_ <- 1 to 9) {
+        write("* ")
+        val c = run(file, S_0_0, Prelude, false)._2
+        if (c != card) {
+          writeln("Test failed.")
+          return
+        }
+      }
+      writeln("ok.")
+    }
+    allbench.reverse.foreach(testOne)
+  }
+
   //time()
-  precision(List("test/DEBUG.scm"))
-  precision(List("test/DEBUG.scm"))
-  precision(List("test/DEBUG.scm"))
+  precision(List("test/scp1/7.3.scm"))
+  precision(List("test/scp1/7.3.scm"))
+  precision(List("test/scp1/7.3.scm"))
 
   closeDefaultWriter()
 }
