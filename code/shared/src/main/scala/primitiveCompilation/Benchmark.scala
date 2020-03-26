@@ -16,6 +16,8 @@ object Benchmark extends App {
   case object Prelude extends Strategy
   case object Compile extends Strategy
 
+  val strategies = List(Prelude, Compile)
+
   val warmup = 3
   val actual = 15
 
@@ -170,24 +172,21 @@ object Benchmark extends App {
     "test/scp1/9.15.scm"
   )
 
-  def time(bench: List[String] = allbench.reverse, s: S = S_0_0): Unit = {
-    bench.foreach(b => {
-      writeln(s"***** Prelude / $s *****")
-      run(b, s, Prelude)
-      writeln(s"***** Compile / $s *****")
-      run(b, s, Compile)
-    })
+  def measure(time: Boolean, bench: List[String] = allbench.reverse, s: List[S] = CompoundSensitivities.sensitivities, st: List[Strategy] = strategies): Unit = {
+    bench.foreach{ b =>
+      s.foreach{ s =>
+        st.foreach { st =>
+          writeln(s"***** $st / $s *****")
+          run(b, s, st, time)
+        }
+      }
+    }
   }
 
-  def precision(bench: List[String] = allbench.reverse, s: S = S_0_0): Unit = {
-    bench.foreach({b =>
-      writeln(s"***** Prelude / $s *****")
-      run(b, s, Prelude, false)
-//      writeln(s"***** Compile / $s *****")
-//      run(b, Compile, false)
-    })
-  }
+  def time(bench: List[String] = allbench.reverse, s: List[S] = CompoundSensitivities.sensitivities, st: List[Strategy] = strategies): Unit = measure(true, bench, s ,st)
+  def precision(bench: List[String] = allbench.reverse, s: List[S] = CompoundSensitivities.sensitivities, st: List[Strategy] = strategies): Unit = measure(false, bench, s ,st)
 
+  /*
   def testConsistency(): Unit = {
     def testOne(file: String): Unit = {
       write(s"Checking consistency for $file: ")
@@ -204,11 +203,10 @@ object Benchmark extends App {
     }
     allbench.reverse.foreach(testOne)
   }
+  */
 
   //time()
-  precision(List("test/scp1/7.3.scm"))
-  precision(List("test/scp1/7.3.scm"))
-  precision(List("test/scp1/7.3.scm"))
+  precision(st = List(Prelude))
 
   closeDefaultWriter()
 }
