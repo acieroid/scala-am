@@ -37,22 +37,14 @@ object Benchmark extends App {
       }
   }
 
-  class S_0_0(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_0_0
-  class S_CS_0(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_0
-  class S_CS_CS(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_CS
-  class S_FA_0(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_0
-  class S_FA_CS(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_CS
-  class S_CSFA_0(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_0
-  class S_CSFA_CS(pgm: SchemeExp, strategy: Strategy) extends MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_CS
-
   def newAnalysis(pgm: SchemeExp, strategy: Strategy, s: S): MainAnalysis = s match {
-    case S_0_0 => new S_0_0(pgm, strategy)
-    case S_CS_0 => new S_CS_0(pgm, strategy)
-    case S_CS_CS => new S_CS_CS(pgm, strategy)
-    case S_FA_0 => new S_FA_0(pgm, strategy)
-    case S_FA_CS => new S_FA_CS(pgm, strategy)
-    case S_CSFA_0 => new S_CSFA_0(pgm, strategy)
-    case S_CSFA_CS => new S_CSFA_CS(pgm, strategy)
+    case S_0_0     => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_0_0
+    case S_CS_0    => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_0
+    case S_CS_CS   => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_CS
+    case S_FA_0    => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_0
+    case S_FA_CS   => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_CS
+    case S_CSFA_0  => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_0
+    case S_CSFA_CS => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_CS
   }
 
   def run(file: String, se: S, s: Strategy = Prelude, timing: Boolean = true): Unit = {
