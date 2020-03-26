@@ -664,8 +664,8 @@ class ModularSchemeLattice[
     def cardinality(abs: L): Cardinality = abs match {
       case Element(v) => Value.cardinality(v)
       case Elements(vs) =>
-        val closures = vs.flatMap(v => Value.getClosures(v)).groupBy(_._1._1).size // Extract the different closures.
-        Cardinality.add(vs.foldMap(v => Value.combinedCardinality(v)), CardinalityNumber(closures))
+        val nlambdas = vs.flatMap(v => Value.getClosures(v)).groupBy(_._1._1).size // Extract the different lambdas.
+        Cardinality.add(vs.foldMap(v => Value.combinedCardinality(v)), CardinalityNumber(nlambdas))
     }
   }
 
