@@ -92,10 +92,12 @@ object Benchmark extends App {
       val cardinalities: List[(Cardinality, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(c => (c.fin, c.inf)).map(e => (Cardinality(e._1._1, e._1._2), e._2.size)).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
       writeln("* Cardinalities:")
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
-      val fins = Metrics.weightedAverage(cardinalities.map(c => (c._2.toLong, c._1.fin)))
-      val infs = Metrics.weightedSum(cardinalities.map(c => (c._2.toLong, c._1.inf)))
+      val fins = Metrics.weightedAverage(cardinalities.map(c => (c._2.toLong, c._1.fin.toLong)))
+      val ffin = Metrics.weightedAverage(cardinalities.filter(_._1.inf == 0).map(c => (c._2.toLong, c._1.fin.toLong)))
+      val infs = Metrics.weightedSum(cardinalities.map(c => (c._2.toLong, c._1.inf.toLong)))
       writeln(s"  -> Counted ${cardinalities.foldLeft(0)((acc, kv) => acc + kv._2)} values.")
-      writeln(s"  ->   Finite   avg: $fins")
+      writeln(s"  -> Finite avg tot: $fins")
+      writeln(s"  -> Finite avg fil: $ffin")
       writeln(s"  -> Infinite count: $infs")
     }
 
@@ -209,8 +211,8 @@ object Benchmark extends App {
   */
 
   //time()
-  List("test/scp1/5.19.scm").foreach(b => {
-    precision(List(b), s = List(S_0_0, S_CS_CS, S_CSFA_CS), st = List(Prelude))
+  List("test/mceval.scm").foreach(b => {
+    precision(List(b), s = CompoundSensitivities.sensitivities, st = List(Prelude))
   })
   closeDefaultWriter()
 }
