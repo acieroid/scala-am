@@ -41,11 +41,15 @@ object Benchmark extends App {
   }
 
   def newAnalysis(pgm: SchemeExp, strategy: Strategy, s: S): MainAnalysis = s match {
+    case S_0_0_Old   => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_0_0_Old
     case S_0_0     => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_0_0
+    case S_CS_0_Old    => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_0_Old
     case S_CS_0    => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_0
     case S_CS_CS   => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CS_CS
+    case S_FA_0_Old    => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_0_Old
     case S_FA_0    => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_0
     case S_FA_CS   => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_FA_CS
+    case S_CSFA_0_Old  => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_0_Old
     case S_CSFA_0  => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_0
     case S_CSFA_CS => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_CS
   }
@@ -82,13 +86,9 @@ object Benchmark extends App {
         case Some(k)                    => acc + (k -> v)
         case None                       => acc
       }}
-      /*
-      for ((k, v) <- finalStore.toList.sortBy(_._1)) {
-        if (analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(1) || analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(3)) {
-          println(s"$k: ${analysis.lattice.cardinality(v)} -> $v")
-        }
-      }
-       */
+//      for ((k, v) <- finalStore.toList.sortBy(_._1)) {
+//        println(s"$k: ${analysis.lattice.cardinality(v)} -> $v")
+//      }
       val cardinalities: List[(Cardinality, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(c => (c.fin, c.inf)).map(e => (Cardinality(e._1._1, e._1._2), e._2.size)).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
       writeln("* Cardinalities:")
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
@@ -139,7 +139,7 @@ object Benchmark extends App {
   }
 
   val allbench: List[String] = List(
-//    "test/mceval.scm",
+    //"test/mceval.scm",
     "test/scp1/9.12.scm",
     "test/gabriel/browse.scm",
     "test/scp1/8.15.scm",
@@ -182,7 +182,10 @@ object Benchmark extends App {
       s.foreach{ s =>
         st.foreach { st =>
           writeln(s"***** $b / $st / $s *****")
+          val t0 = System.nanoTime
           run(b, s, st, time)
+          val t1 = System.nanoTime
+          println(s"[---------] Time: ${(t1 - t0) / 1000000}ms")
         }
       }
     }
@@ -211,8 +214,10 @@ object Benchmark extends App {
   */
 
   //time()
-  List("test/mceval.scm").foreach(b => {
-    precision(List(b), s = CompoundSensitivities.sensitivities, st = List(Prelude))
+  allbench
+    .take(7)
+    .foreach(b => {
+    precision(List(b), s = List(S_0_0_Old, S_0_0, S_CS_0_Old, S_CS_0, S_FA_0, S_CSFA_0, S_CSFA_0_Old), st = List(Prelude))
   })
   closeDefaultWriter()
 }

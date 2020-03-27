@@ -129,7 +129,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   def componentName(cmp: Component): Option[String]
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position): ComponentContext
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -153,22 +153,23 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(cmp.asInstanceOf[CallComponent].parent, scp - 1)
-    protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)], cll: Position): Value =
+    protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Option[ComponentContext]): Value =
       if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args, cll)
+        val fromClosures = applyClosures(fval,args, cll, cmp)
         val fromPrimitives = applyPrimitives(fexp,fval,args)
         lattice.join(fromClosures,fromPrimitives)
       } else {
         lattice.bottom
       }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position): Value = {
+    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Option[ComponentContext]): Value = {
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
-          val context = allocCtx(nam, clo,argVals, cll)
+          // println(s"Allocating context with cmp context: $cmp, call: $cll")
+          val context = allocCtx(nam, clo,argVals, cll, cmp)
           val component = newComponent(clo,nam,context)
           storeParameters(component, prs)
           bindArgs(component, prs, argVals)
@@ -177,7 +178,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
-          val context = allocCtx(nam, clo, fixedArgVals :+ varArgVal, cll)
+          val context = allocCtx(nam, clo, fixedArgVals :+ varArgVal, cll, cmp)
           val component = newComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
@@ -206,7 +207,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
     private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
-      def pointer[C](exp: (Identity.Position, Identity.Position), c: C): Addr = allocAddr(PtrAddr(exp,c))
+      def pointer[C](exp: (Identity.Position, Identity.Position), c: C): Addr = {
+       // println(s"Ptr allocated: (cmpctx is ${getPtrCtx(context(component))}}) (exp is $exp), (ctx is $c)")
+        allocAddr(PtrAddr(exp, getPtrCtx(context(component))))
+      }
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =

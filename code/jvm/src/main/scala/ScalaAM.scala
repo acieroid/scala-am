@@ -1,4 +1,4 @@
-package scalaam.cli
+/*package scalaam.cli
 
 
 import scalaam.diff.ModuleInferencer
@@ -66,4 +66,4 @@ object Incrementor extends App {
   val mapping = GumtreeModuleDiff.computeMapping(a, b)
   mapping.map(println)
 
-}
+}*/

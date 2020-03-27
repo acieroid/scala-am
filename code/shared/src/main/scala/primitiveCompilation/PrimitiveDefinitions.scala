@@ -214,7 +214,31 @@ object PrimitiveDefinitions {
   )
 
   val names: Set[String] = definitions.keySet
-  val primitivePrecision: Set[String] = names ++ Set("map", "for-each", "foldr", "foldr-aux", "foldl", "foldl-aux")
+  val primitivePrecision: Set[String] = names ++ Set(
+    "map", "for-each", "foldr", "foldr-aux", "foldl", "foldl-aux",
+    "foo", "bar", "baz",
+    // mceval.scm
+    "self-evaluating?", "variable?", "tagged-list?", "quoted?", "text-of-quotation", "assignment?",
+    "assignment-variable", "assignment-value", "definition?", "definition-variable", "make-lambda",
+    "definition-value", "lambda?", "lambda-parameters", "lambda-body", "if?", "if-predicate", "if-consequent",
+    "if-alternative", "make-if", "begin?", "begin-actions", "last-exp?", "first-exp", "rest-exps", "mk-begin",
+    "sequence->exp", "application?", "operator", "operands", "no-operands?", "rest-operands",
+    "cond?", "cond-clauses", "cond-predicate", "cond-else-clause?", "cond-actions", "cond->if",
+    "true?", "false?", "make-procedure", "compound-procedure?", "procedure-parameters", "procedure-body",
+    "procedure-environment", "enclosing-environment", "first-frame", "make-frame", "frame-variables", "frame-values",
+    "add-binding-to-frame!", "extend-environment", "primitive-procedure", "primitive-implementation",
+    "expand-clauses", "lookup-variable-value", "set-variable-value!", "define-variable!",
+    // scp1/9.12.scm
+    "find-last", "flatten!", "atom?", "flatten2!",
+    // gabriel/browse.scm
+    "lookup", "get", "put", "append-to-tail!", "tree-copy",
+    // gambit/mazefun.scm
+    "for", "concat", "list-read", "list-write", "list-remove-pos", "duplicates?", "make-matrix", "matrix-read", "matrix-write", "matrix-size", "matrix-map", "shuffle", "shuffle-aux", "make-maze", "cave-to-maze", "pierce", "pierce-randomly", "try-to-pierce", "change-cavity", "change-cavity-aux", "neighboring-cavities",
+    // gabriel/diviter.scm
+    "create-n", "iterate-div2",
+    // gabriel/divrec.scm
+    "recursive-div2"
+  )
 
   //def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
 

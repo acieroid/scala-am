@@ -9,4 +9,5 @@ trait ContextSensitiveComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   type ComponentContext
   def content(cmp: Component): ComponentContent
   def context(cmp: Component): Option[ComponentContext]
+  def getPtrCtx(cmp: Option[ComponentContext]): Any
 }

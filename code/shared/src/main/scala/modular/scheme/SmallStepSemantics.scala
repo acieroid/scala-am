@@ -78,7 +78,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
         val frm = cnt.head
         continue(frm, vlu, cnt.tail)
       case CallState(fexp, fval, args, cnt) =>
-        val result = applyFun(fexp, fval, args, fexp.idn.pos)
+        val result = applyFun(fexp, fval, args, fexp.idn.pos, context(component))
         Set(KontState(result, cnt))
     }
     // eval
