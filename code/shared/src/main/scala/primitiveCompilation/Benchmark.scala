@@ -92,10 +92,10 @@ object Benchmark extends App {
       val cardinalities: List[(Cardinality, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(c => (c.fin, c.inf)).map(e => (Cardinality(e._1._1, e._1._2), e._2.size)).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
       writeln("* Cardinalities:")
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
-      val fins = cardinalities.map(_._1.fin).sum
-      val infs = cardinalities.map(_._1.inf).sum
+      val fins = Metrics.weightedAverage(cardinalities.map(c => (c._2.toLong, c._1.fin)))
+      val infs = Metrics.weightedSum(cardinalities.map(c => (c._2.toLong, c._1.inf)))
       writeln(s"  -> Counted ${cardinalities.foldLeft(0)((acc, kv) => acc + kv._2)} values.")
-      writeln(s"  ->   Finite count: $fins")
+      writeln(s"  ->   Finite   avg: $fins")
       writeln(s"  -> Infinite count: $infs")
     }
 
