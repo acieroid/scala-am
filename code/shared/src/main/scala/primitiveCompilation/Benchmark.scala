@@ -8,7 +8,7 @@ import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme.CompoundSensitivities.S._
 import scalaam.modular.scheme._
-import scalaam.util.Metrics
+import scalaam.util._
 
 object Benchmark extends App {
 
@@ -54,8 +54,12 @@ object Benchmark extends App {
     val program = if (s == Prelude) PrimitiveDefinitions.parseWithPrelude(file) else PrimitiveDefinitions.parseWithoutPrelude(file)
     //val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
 
-    var time: Long = 0
-    var card: Double = 0.0
+    var time: Long = -1
+    var card: Double = -1.0
+
+    /*
+          PRECISION ANALYSIS
+    */
 
     if (!timing) {
       val analysis = newAnalysis(program, s, se)
@@ -76,16 +80,11 @@ object Benchmark extends App {
           }
         case _ => ???
       }
-      val finalStore: Map[String, analysis.Value] = analysis.store.toList.foldLeft(Map[String, analysis.Value]())((acc, av) => av match {
-        case (addr, v) => lower(addr) match {
-          case Some(k) => if (acc.contains(k)) {
-            acc + (k -> analysis.lattice.join(acc(k), v))
-          } else {
-            acc + (k -> v)
-          }
-          case None => acc
-        }
-      })
+      val finalStore: Map[String, analysis.Value] = analysis.store.toList.foldLeft(Map[String, analysis.Value]()){case (acc, (addr, v)) => lower(addr) match {
+        case Some(k) if acc.contains(k) => acc + (k -> analysis.lattice.join(acc(k), v))
+        case Some(k)                    => acc + (k -> v)
+        case None                       => acc
+      }}
       for ((k, v) <- finalStore.toList.sortBy(_._1)) {
         if (analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(1) || analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(3)) {
           println(s"$k: ${analysis.lattice.cardinality(v)} -> $v")
@@ -100,12 +99,16 @@ object Benchmark extends App {
       writeln(s"  -> Weighted avg. fin. members: $card")
     }
 
+    /*
+          TIME ANALYSIS
+    */
+
     if (timing) {
       var times: List[Long] = List()
 
       // Warmup.
-      write("* Warmup - ")
-      for (i <- 0 until warmup) {
+      write(s"* Warmup (${warmup}) - ")
+      for (i <- 1 to warmup) {
         write(i + " ")
         // TODO: Add System.gc() here?
         newAnalysis(program, s, se).analyze()
@@ -114,15 +117,13 @@ object Benchmark extends App {
       InterceptCall.init() // Can also use analysis.initPrimitiveBenchmarks.
 
       // Time measurements.
-      write("* Time - ")
+      write(s"\n* Time (${actual}) - ")
       for (i <- 1 to actual) {
         write(i + " ")
         val analysis = newAnalysis(program, s, se)
         System.gc()
-        val t0 = System.nanoTime()
-        analysis.analyze()
-        val t1 = System.nanoTime()
-        times = (t1 - t0) :: times
+        val t = Timer.timeOnly({analysis.analyze()})
+        times = t :: times
       }
 
       val m = Metrics.all(times)
@@ -132,7 +133,7 @@ object Benchmark extends App {
       writeln(s"      Med  time: ${m.med / 1000000}ms")
       writeln(s"         Stddev: ${m.std / 1000000}ms")
       time = (InterceptCall.primTime / 1000000) / actual
-      writeln(s"   Avg primtime: $time ms")
+      writeln(s"   Avg primtime: ${time}ms")
     }
     (time, card)
   }
