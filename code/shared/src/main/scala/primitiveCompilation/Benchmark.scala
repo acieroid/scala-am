@@ -51,9 +51,8 @@ object Benchmark extends App {
 
   def run(file: String, se: S, s: Strategy = Prelude, timing: Boolean = true): (Long, Double) = {
     System.gc()
-    writeln(s"[$file] ")
     val program = if (s == Prelude) PrimitiveDefinitions.parseWithPrelude(file) else PrimitiveDefinitions.parseWithoutPrelude(file)
-    val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
+    //val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
 
     var time: Long = 0
     var card: Double = 0.0
@@ -181,7 +180,7 @@ object Benchmark extends App {
     bench.foreach{ b =>
       s.foreach{ s =>
         st.foreach { st =>
-          writeln(s"***** $st / $s *****")
+          writeln(s"***** $b / $st / $s *****")
           run(b, s, st, time)
         }
       }

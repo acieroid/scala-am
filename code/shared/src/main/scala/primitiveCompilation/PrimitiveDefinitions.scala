@@ -1,8 +1,8 @@
 package scalaam.primitiveCompilation
 
 import scalaam.core.{Expression, Identifier, Identity}
+import scalaam.io.Reader
 import scalaam.language.scheme.{SchemeBegin, SchemeExp, SchemeParser}
-import util.FileUtil
 
 object PrimitiveDefinitions {
   val definitions = Map(
@@ -270,7 +270,7 @@ object PrimitiveDefinitions {
 
     benchmarks.foldLeft(Map[String, Int]().withDefaultValue(0)){case(curr, path) =>
       try {
-        primitiveUsage(SchemeParser.parse(FileUtil.loadFile(path)), curr)
+        primitiveUsage(SchemeParser.parse(Reader.loadFile(path)), curr)
       } catch {
         case _: Throwable =>
           System.err.println(s"Error when investigating $path.")
@@ -280,8 +280,8 @@ object PrimitiveDefinitions {
   }
 
   // Parses a file and automatically adds the required prelude (over-approximated).
-  def parseWithPrelude(path: String): SchemeExp = addPrelude(SchemeParser.parse(FileUtil.loadFile(path)))
-  def parseWithoutPrelude(path: String): SchemeExp = SchemeParser.parse(FileUtil.loadFile(path))
+  def parseWithPrelude(path: String): SchemeExp = addPrelude(SchemeParser.parse(Reader.loadFile(path)))
+  def parseWithoutPrelude(path: String): SchemeExp = SchemeParser.parse(Reader.loadFile(path))
 }
 
 object SchemeBenchmarks {
