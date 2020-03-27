@@ -2,17 +2,21 @@ package scalaam.core
 
 import scalaam.util.Show
 
-/** Cardinality indicates how many elements are represented by an abstract value */
-trait Cardinality { val n: Int } // n allows sorting by cardinality without having to pattern match.
-case object CardinalityInf            extends Cardinality { val n: Int = -1 ; override def toString = "|+∞|"}
-case  class CardinalityNumber(n: Int) extends Cardinality { override def toString: String = s"|$n|" }
+/** Cardinality indicates how many elements are represented by an abstract value. */
+case class Cardinality(fin: Int, inf: Int) extends Ordered[Cardinality] {
+  override def toString: String = s"|$fin,$inf|"
 
-object Cardinality {
-  def add(c1: Cardinality, c2: Cardinality): Cardinality = (c1, c2) match {
-    case (CardinalityInf, _) => CardinalityInf
-    case (_, CardinalityInf) => CardinalityInf
-    case (CardinalityNumber(m), CardinalityNumber(n)) => CardinalityNumber(m + n)
+  /** A cardinality is smaller than another one if it has
+   *   - less infinite values OR
+   *   - an equal amount of infinite values but less finite values.
+   */
+  override def compare(that: Cardinality): Int = {
+    if (inf < that.inf || inf == that.inf && fin < that.fin) -1
+    else if (inf == that.inf && fin == that.fin) 0
+    else 1
   }
+
+  def add(that: Cardinality): Cardinality = Cardinality(fin + that.fin, inf + that.inf)
 }
 
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */
@@ -63,6 +67,6 @@ object Lattice {
     def join(x: Set[A], y: => Set[A]): Set[A]                        = x.union(y)
     def subsumes(x: Set[A], y: => Set[A]): Boolean                   = y.subsetOf(x)
     def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A])  = ???
-    def cardinality(x: Set[A]): Cardinality                          = CardinalityNumber(x.size)
+    def cardinality(x: Set[A]): Cardinality                          = Cardinality(x.size, 0)
   }
 }

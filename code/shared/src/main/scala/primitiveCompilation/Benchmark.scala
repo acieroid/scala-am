@@ -2,6 +2,7 @@ package scalaam.primitiveCompilation
 
 import java.io._
 
+import scalaam.core.Cardinality
 import scalaam.io.Writer
 import scalaam.io.Writer._
 import scalaam.language.scheme._
@@ -49,13 +50,9 @@ object Benchmark extends App {
     case S_CSFA_CS => new MainAnalysis(pgm, strategy) with CompoundSensitivities.S_CSFA_CS
   }
 
-  def run(file: String, se: S, s: Strategy = Prelude, timing: Boolean = true): (Long, Double) = {
+  def run(file: String, se: S, s: Strategy = Prelude, timing: Boolean = true): Unit = {
     System.gc()
     val program = if (s == Prelude) PrimitiveDefinitions.parseWithPrelude(file) else PrimitiveDefinitions.parseWithoutPrelude(file)
-    //val suffix = file.replaceAll("/", "_").replaceAll(".scm", ".txt")
-
-    var time: Long = -1
-    var card: Double = -1.0
 
     /*
           PRECISION ANALYSIS
@@ -85,18 +82,21 @@ object Benchmark extends App {
         case Some(k)                    => acc + (k -> v)
         case None                       => acc
       }}
+      /*
       for ((k, v) <- finalStore.toList.sortBy(_._1)) {
         if (analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(1) || analysis.lattice.cardinality(v) == scalaam.core.CardinalityNumber(3)) {
           println(s"$k: ${analysis.lattice.cardinality(v)} -> $v")
         }
       }
-      val cardinalities: List[(Int, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(_.n).view.mapValues(_.size).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
+       */
+      val cardinalities: List[(Cardinality, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(c => (c.fin, c.inf)).map(e => (Cardinality(e._1._1, e._1._2), e._2.size)).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
       writeln("* Cardinalities:")
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
-      val filtered = (if (cardinalities.head._1 == -1) cardinalities.tail else cardinalities).map(t => (t._1.toLong, t._2.toLong))
+      val fins = cardinalities.map(_._1.fin).sum
+      val infs = cardinalities.map(_._1.inf).sum
       writeln(s"  -> Counted ${cardinalities.foldLeft(0)((acc, kv) => acc + kv._2)} values.")
-      card = Metrics.weightedAverage(filtered.map(_.swap))
-      writeln(s"  -> Weighted avg. fin. members: $card")
+      writeln(s"  ->   Finite count: $fins")
+      writeln(s"  -> Infinite count: $infs")
     }
 
     /*
@@ -132,10 +132,8 @@ object Benchmark extends App {
       writeln(s"      Max  time: ${m.max / 1000000}ms")
       writeln(s"      Med  time: ${m.med / 1000000}ms")
       writeln(s"         Stddev: ${m.std / 1000000}ms")
-      time = (InterceptCall.primTime / 1000000) / actual
-      writeln(s"   Avg primtime: ${time}ms")
+      writeln(s"   Avg primtime: ${(InterceptCall.primTime / 1000000) / actual}ms")
     }
-    (time, card)
   }
 
   val allbench: List[String] = List(
@@ -214,6 +212,5 @@ object Benchmark extends App {
   List("test/scp1/5.19.scm").foreach(b => {
     precision(List(b), s = List(S_0_0, S_CS_CS, S_CSFA_CS), st = List(Prelude))
   })
-
   closeDefaultWriter()
 }

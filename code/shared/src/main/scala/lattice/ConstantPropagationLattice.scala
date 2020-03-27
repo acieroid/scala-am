@@ -70,9 +70,9 @@ object ConstantPropagation {
       case (_, Bottom)                => BoolLattice[B2].bottom
     }
     def cardinality(v: L[A]): Cardinality = v match {
-      case Bottom       => CardinalityNumber(0)
-      case Constant(_)  => CardinalityNumber(1)
-      case Top          => CardinalityInf
+      case Bottom       => Cardinality(0, 0)
+      case Constant(_)  => Cardinality(1, 0)
+      case Top          => Cardinality(0, 1)
     }
   }
 

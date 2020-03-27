@@ -35,8 +35,8 @@ object Type {
       case _          => BoolLattice[B2].bottom
     }
     def cardinality(v: T) = v match {
-      case Bottom => CardinalityNumber(0)
-      case Top    => CardinalityInf
+      case Bottom => Cardinality(0, 0)
+      case Top    => Cardinality(0, 1)
     }
   }
 

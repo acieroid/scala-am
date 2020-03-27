@@ -50,8 +50,8 @@ object Concrete {
       x.foldMap(a => y.foldMap(b => BoolLattice[B2].inject(a == b)))
     }
     def cardinality(x: L[A]): Cardinality = x match {
-      case Top        => CardinalityInf
-      case Values(vs) => CardinalityNumber(vs.size)
+      case Top        => Cardinality(0, 1)
+      case Values(vs) => Cardinality(vs.size, 0)
     }
   }
 
