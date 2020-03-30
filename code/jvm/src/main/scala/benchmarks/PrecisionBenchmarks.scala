@@ -91,29 +91,53 @@ abstract class PrecisionBenchmarks[
         }
 
     // extract information (= abstract value) per program point (only if the analysis terminated)
-    private def extract(analysis: Analysis): Option[Map[Identity, analysis.Value]] =
-        if (analysis.finished()) {
-            val bindingsPerId = analysis.store.groupBy({_._1 match {
-                case analysis.ComponentAddr(_, addr)    => addr.idn()
-                case analysis.ReturnAddr(cmp)           => analysis.view(cmp).body.idn
-            }}).view.filterKeys(_ != Identity.none)
-            val valuesPerId = bindingsPerId.mapValues(_.values.foldLeft(analysis.lattice.bottom)((x,y) => analysis.lattice.join(x,y))).toMap
-            Some(valuesPerId)
-        } else {
-            None
+    type BaseStore = Map[BaseAddr, BaseValue]
+    private def extract(analysis: Analysis): BaseStore =
+       analysis.store.groupBy(p => convertAddr(analysis)(p._1))
+                     .mapValues(m => analysis.lattice.join(m.values))
+                     .mapValues(convertValue(analysis))
+                     .toMap
+
+    /** 
+     *  Compare two stores b1 and b2, assuming b1 is less precise than b2
+     *  Returns the set of addresses that have been refined.
+     */
+    def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] =
+        b1.foldLeft(Set.empty[BaseAddr]) { case (acc,(addr1,value1)) =>
+            val value2 = b2.getOrElse(addr1,baseLattice.bottom)
+            if (value1 != value2) {
+                assert(baseLattice.subsumes(value1,value2))
+                acc + addr1
+            } else {
+                acc
+            }
         }
 
-    // comparing the results
-    def comparePrecision(): Map[(Benchmark,Analysis),Option[PrecisionResult]] =
-        runBenchmarks().map { case (path,analysis) => 
-            val result = extract(analysis) match {
-                case Some(mapping) =>
-                    val singletons = mapping.count(bnd => analysis.lattice.cardinality(bnd._2) == CardinalityNumber(1))
-                    Some(PrecisionResult(singletons, mapping.size))
-                case None => None 
+    /**
+     * A more generic version of 'compareOrdered' to compare any two stores b1 and b2
+     *  returns a pair of:
+     *  - the set of addresses whose abstract values have been refined (= are now more precise)
+     *  - the set of addresses whose abstract values have lost precision
+     */
+    def compare(b1: BaseStore, b2: BaseStore): (Set[BaseAddr],Set[BaseAddr]) = {
+        val allKeys = b1.keySet ++ b2.keySet
+        allKeys.foldLeft((Set.empty[BaseAddr],Set.empty[BaseAddr])) { (acc,addr) => 
+            val value1 = b1.getOrElse(addr, baseLattice.bottom)
+            val value2 = b2.getOrElse(addr, baseLattice.bottom)
+            if (value1 == value2) {
+                acc 
+            } else if (baseLattice.subsumes(value1,value2)) {
+                (acc._1 + addr, acc._2)
+            } else if (baseLattice.subsumes(value2,value1)) {
+                (acc._1, acc._2 + addr)
+            } else { // neither value is more precise than the other
+                acc
             }
-            ((path,analysis),result)
-        }.toMap
+        }
+    }
+
+    /** Runs all the analyses, then compares precision of each analysis with the previous one */
+    def compareAll(): List[(Set[BaseAddr],Set[BaseAddr])] = ???
 }
 
 object Analyses {
@@ -169,12 +193,5 @@ object PrecisionComparison1 extends PrecisionBenchmarks[
 }
 
 object PrecisionComparisonMain {
-    def main(args: Array[String]) = PrecisionComparison1.comparePrecision().foreach {
-        case ((benchmark,analysis), result) =>
-            print(s"==> $benchmark using $analysis: ")
-            result match {
-                case Some(PrecisionComparison1.PrecisionResult(singletons,total)) => println(s"$singletons/$total")
-                case _ => println("TIMEOUT")
-            }
-    }
+    def main(args: Array[String]) = ???
 }
