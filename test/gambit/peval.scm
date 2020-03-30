@@ -17,22 +17,23 @@
 ; Utilities
 
 (define (every? pred? l)
-  (let loop ((l l))
-    (or (null? l) (and (pred? (car l)) (loop (cdr l))))))
+  (or (null? l) (and (pred? (car l)) (every? pred? (cdr l)))))
 
 (define (some? pred? l)
-  (let loop ((l l))
-    (if (null? l) #f (or (pred? (car l)) (loop (cdr l))))))
+  (if (null? l)
+      #f
+      (or (pred? (car l)) (some? pred? (cdr l)))))
 
 (define (map2 f l1 l2)
-  (let loop ((l1 l1) (l2 l2))
-    (if (pair? l1)
-      (cons (f (car l1) (car l2)) (loop (cdr l1) (cdr l2)))
-      '())))
+  (if (pair? l1)
+      (cons (f (car l1) (car l2))
+            (map2 f (cdr l1) (cdr l2)))))
 
 (define (get-last-pair l)
-  (let loop ((l l))
-    (let ((x (cdr l))) (if (pair? x) (loop x) l))))
+  (let ((x (cdr l)))
+    (if (pair? x)
+        (get-last-pair x)
+        l)))
 
 ;------------------------------------------------------------------------------
 ;
