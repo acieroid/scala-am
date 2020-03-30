@@ -218,10 +218,12 @@ object Benchmark extends App {
   */
 
   //time()
+  precision(List("test/mceval.scm"), s = List(S_0_0_Old, S_0_0), st = List(Prelude)) // some extra warmup
+  writeln("------TIME------")
   allbench
     .drop(1)
     .foreach(b => {
-      precision(List(b), s = List(
+      time(List(b), s = List(
         S_0_0_Old, S_0_0,
         S_CS_0_Old, S_CS_0,
         S_FA_0_Old, S_FA_0,
