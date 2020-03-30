@@ -141,7 +141,6 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => IntLattice[I].subsumes(i1, i2)
           case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
           case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
-          case (Cons(a1, d1), Cons(a2, d2)) => Lattice[L].subsumes(a1, a2) && Lattice[L].subsumes(d1, d2)
           case _                    => false
         }
       }
