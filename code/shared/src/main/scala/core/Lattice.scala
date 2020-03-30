@@ -24,6 +24,9 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
   /** Elements of the lattice can be joined together */
   def join(x: L, y: => L): L
 
+  /** Joining multiple elements */
+  def join(seq: Iterable[L]): L = seq.foldLeft(bottom)((acc,elm) => join(acc,elm))
+
   /** Subsumption between two elements can be checked */
   def subsumes(x: L, y: => L): Boolean
 
