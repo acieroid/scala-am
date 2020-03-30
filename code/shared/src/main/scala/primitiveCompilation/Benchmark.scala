@@ -22,7 +22,8 @@ object Benchmark extends App {
   val warmup = 3
   val actual = 15
 
-  setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
+  //setDefaultWriter(openTimeStamped("benchOutput/", "results.txt"))
+  setDefaultWriter(open("benchOutput/results.txt"))
 
   abstract class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics {
     import scalaam.language.scheme.primitives._
@@ -182,10 +183,7 @@ object Benchmark extends App {
       s.foreach{ s =>
         st.foreach { st =>
           writeln(s"***** $b / $st / $s *****")
-          val t0 = System.nanoTime
           run(b, s, st, time)
-          val t1 = System.nanoTime
-          println(s"[---------] Time: ${(t1 - t0) / 1000000}ms")
         }
       }
     }
