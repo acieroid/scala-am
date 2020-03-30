@@ -2,7 +2,12 @@
 ;; The result should be true (#t).
 ;; Adapted by translating all calls to the list primitive into calls to cons since list is not supported by SCALA-AM.
 ;; Adapted by working around an unknown number of arguments for append-instruction-sequences.
-
+(define (map f l)
+  (if (null? l)
+      l
+      (if (pair? l)
+          (cons (f (car l)) (map f (cdr l)))
+          (error "Cannot map over a non-list"))))
 (define true #t)
 (define false #f)
 
