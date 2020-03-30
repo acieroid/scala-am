@@ -540,15 +540,9 @@ class ModularSchemeLattice[
     }
 
     def combinedCardinality(v: Value): Cardinality = v match {
-      case Bot       => Cardinality(0, 0)
-      case Bool(b)   => Lattice[B].cardinality(b)
-      case Int(i)    => Lattice[I].cardinality(i)
-      case Char(c)   => Lattice[C].cardinality(c)
-      case Str(s)    => Lattice[S].cardinality(s)
-      case Real(r)   => Lattice[R].cardinality(r)
-      case Symbol(s) => Lattice[Sym].cardinality(s)
       case Clo(_, _, _) => Cardinality(0, 0) // Have to filter these by lambda.
-      case _         => Cardinality(1, 0)
+      case Pointer(_)   => Cardinality(0, 0) // Have to filter these by address.
+      case _            => cardinality(v)
     }
   }
 
@@ -665,7 +659,8 @@ class ModularSchemeLattice[
       case Element(v) => Value.cardinality(v)
       case Elements(vs) =>
         val nlambdas = vs.flatMap(v => Value.getClosures(v)).groupBy(_._1._1).size // Extract the different lambdas.
-        vs.foldMap(v => Value.combinedCardinality(v)).add(Cardinality(nlambdas, 0))
+        val naddr = vs.flatMap(v => Value.getPointerAddresses(v)).map(_.dropContext).size
+        vs.foldMap(v => Value.combinedCardinality(v)).add(Cardinality(nlambdas, 0)).add(Cardinality(naddr, 0))
     }
   }
 

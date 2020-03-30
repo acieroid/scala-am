@@ -22,7 +22,8 @@ object Benchmark extends App {
   val warmup = 3
   val actual = 15
 
-  setDefaultWriter(Writer.openTimeStamped("benchOutput/", "results.txt"))
+  //setDefaultWriter(openTimeStamped("benchOutput/", "results.txt"))
+  setDefaultWriter(open("benchOutput/results.txt"))
 
   abstract class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics {
     import scalaam.language.scheme.primitives._
@@ -71,7 +72,7 @@ object Benchmark extends App {
         case cmpAddr: analysis.ComponentAddr =>
           cmpAddr.addr match {
             case _: analysis.PrmAddr => None
-            case p: analysis.PtrAddr[_] => Some(p.toString)
+            case p: analysis.PtrAddr[_] => Some(p.dropContext.toString)
             case v: analysis.VarAddr => Some(v.id.fullString)
           }
         case retAddr: analysis.ReturnAddr =>
@@ -95,6 +96,7 @@ object Benchmark extends App {
       val fins = Metrics.weightedAverage(cardinalities.map(c => (c._2.toLong, c._1.fin.toLong)))
       val ffin = Metrics.weightedAverage(cardinalities.filter(_._1.inf == 0).map(c => (c._2.toLong, c._1.fin.toLong)))
       val infs = Metrics.weightedSum(cardinalities.map(c => (c._2.toLong, c._1.inf.toLong)))
+      writeln(s"  -> Counted ${finalStore.keySet.size} addresses.")
       writeln(s"  -> Counted ${cardinalities.foldLeft(0)((acc, kv) => acc + kv._2)} values.")
       writeln(s"  -> Finite avg tot: $fins")
       writeln(s"  -> Finite avg fil: $ffin")
@@ -139,7 +141,7 @@ object Benchmark extends App {
   }
 
   val allbench: List[String] = List(
-    //"test/mceval.scm",
+    "test/mceval.scm",
     "test/scp1/9.12.scm",
     "test/gabriel/browse.scm",
     "test/scp1/8.15.scm",
@@ -182,10 +184,7 @@ object Benchmark extends App {
       s.foreach{ s =>
         st.foreach { st =>
           writeln(s"***** $b / $st / $s *****")
-          val t0 = System.nanoTime
           run(b, s, st, time)
-          val t1 = System.nanoTime
-          println(s"[---------] Time: ${(t1 - t0) / 1000000}ms")
         }
       }
     }
@@ -215,7 +214,7 @@ object Benchmark extends App {
 
   //time()
   allbench
-    .take(7)
+    .take(1)
     .foreach(b => {
     precision(List(b), s = List(S_0_0_Old, S_0_0, S_CS_0_Old, S_CS_0, S_FA_0, S_CSFA_0, S_CSFA_0_Old), st = List(Prelude))
   })

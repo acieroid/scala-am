@@ -10,4 +10,6 @@ trait Address extends SmartHash {
     * Address that are not printable may for example include addresses of primitive functions.
     */
   def printable: Boolean
+
+  def dropContext: Address
 }

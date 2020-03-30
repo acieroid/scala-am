@@ -56,6 +56,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     case class VarAddr(cmp: Component, id: Identifier)           extends LocalAddr {
       def printable = true;  def idn(): Identity =  id.idn
       override def toString = id.toString
+      def dropContext = this
     }
     case class PtrAddr[C](pos2: (Identity.Position, Identity.Position), c: C) extends LocalAddr {
       def printable = false; def idn(): Identity = Identity.none /* TODO */
@@ -63,10 +64,14 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
         val (fn, cll) = pos2
         s"<<fn$fn cll$cll ctx$c>>"
       }
+      def dropContext = {
+        PtrAddr(pos2, ())
+      }
     }
     case class PrmAddr(nam: String)              extends LocalAddr {
       def printable = true;  def idn(): Identity = Identity.none
       override def toString = s"#$nam"
+      def dropContext = this
     }
 
   def varAddr(cmp: Component, pm: Identifier): LocalAddr = VarAddr(cmp, pm)
