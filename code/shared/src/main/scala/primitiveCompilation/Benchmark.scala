@@ -67,7 +67,9 @@ object Benchmark extends App {
       val analysis = newAnalysis(program, s, se)
       analysis.initPrimitiveBenchmarks()
       System.gc() // Can be removed.
-        analysis.analyze()
+      val t0 = System.nanoTime()
+      analysis.analyze()
+      val t1 = System.nanoTime()
       def lower(addr: analysis.Addr): Option[String] = addr match {
         case cmpAddr: analysis.ComponentAddr =>
           cmpAddr.addr match {
@@ -87,9 +89,9 @@ object Benchmark extends App {
         case Some(k)                    => acc + (k -> v)
         case None                       => acc
       }}
-//      for ((k, v) <- finalStore.toList.sortBy(_._1)) {
-//        println(s"$k: ${analysis.lattice.cardinality(v)} -> $v")
-//      }
+      // for ((k, v) <- finalStore.toList.sortBy(_._1)) {
+      // writeln(s"$k")
+      // }
       val cardinalities: List[(Cardinality, Int)] = finalStore.values.map(analysis.lattice.cardinality).groupBy(c => (c.fin, c.inf)).map(e => (Cardinality(e._1._1, e._1._2), e._2.size)).toList.sortBy(_._1) // TODO: this might not be the most efficient line of code.
       writeln("* Cardinalities:")
       cardinalities.foreach({case (c, n) => writeln(s"  * $c: $n")})
@@ -101,6 +103,7 @@ object Benchmark extends App {
       writeln(s"  -> Finite avg tot: $fins")
       writeln(s"  -> Finite avg fil: $ffin")
       writeln(s"  -> Infinite count: $infs")
+      writeln(s"  -> Time: ${(t1-t0) / 1000000}ms")
     }
 
     /*
@@ -141,6 +144,7 @@ object Benchmark extends App {
   }
 
   val allbench: List[String] = List(
+    "test/SICP-compiler.scm",
     "test/mceval.scm",
     "test/scp1/9.12.scm",
     "test/gabriel/browse.scm",
@@ -167,16 +171,17 @@ object Benchmark extends App {
     "test/scp1/7.9.scm",
     //    "test/sigscheme/mem.scm",
     "test/scp1/7.15.scm",
-    "test/sat.scm",
-    "test/gabriel/deriv.scm",
-    "test/sigscheme/takr.scm",
-    "test/scp1/7.12.scm",
-    "test/regex.scm",
-    "test/grid.scm",
-    "test/gabriel/puzzle.scm",
-    "test/scp1/5.20.4.scm",
-    "test/scp1/5.19.scm",
-    "test/scp1/9.15.scm"
+    // These are disabled because they are too simple
+//     "test/sat.scm",
+//     "test/gabriel/deriv.scm",
+//     "test/sigscheme/takr.scm",
+//     "test/scp1/7.12.scm",
+//     "test/regex.scm",
+//     "test/grid.scm",
+//     "test/gabriel/puzzle.scm",
+//     "test/scp1/5.20.4.scm",
+//     "test/scp1/5.19.scm",
+//     "test/scp1/9.15.scm"
   )
 
   def measure(time: Boolean, bench: List[String] = allbench.reverse, s: List[S] = CompoundSensitivities.sensitivities, st: List[Strategy] = strategies): Unit = {
@@ -214,9 +219,14 @@ object Benchmark extends App {
 
   //time()
   allbench
-    .take(1)
+    .drop(1)
     .foreach(b => {
-    precision(List(b), s = List(S_0_0_Old, S_0_0, S_CS_0_Old, S_CS_0, S_FA_0, S_CSFA_0, S_CSFA_0_Old), st = List(Prelude))
+      precision(List(b), s = List(
+        S_0_0_Old, S_0_0,
+        S_CS_0_Old, S_CS_0,
+        S_FA_0_Old, S_FA_0,
+        S_CSFA_0_Old, S_CSFA_0
+      ), st = List(Prelude))
   })
   closeDefaultWriter()
 }

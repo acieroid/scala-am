@@ -228,16 +228,43 @@ object PrimitiveDefinitions {
     "procedure-environment", "enclosing-environment", "first-frame", "make-frame", "frame-variables", "frame-values",
     "add-binding-to-frame!", "extend-environment", "primitive-procedure", "primitive-implementation",
     "expand-clauses", "lookup-variable-value", "set-variable-value!", "define-variable!",
+    // gambit/peval.scm
+    "every?", "some?", "map2", "get-last-pair", "alphabetize", "const-expr?", "const-value", "quot", "not-constant?", "remove-constant", "extract-constant", "beta-subst", "binding-frame", "bound-expr", "add-binding", "for-each!", "arg-pattern", "sum", "product", "reduce-global", "constant-fold-global",
     // scp1/9.12.scm
     "find-last", "flatten!", "atom?", "flatten2!",
     // gabriel/browse.scm
     "lookup", "get", "put", "append-to-tail!", "tree-copy",
+    // scp1/8.15.scm
+    "maak-buffer", "newValue", "returnSum", "flush", "value",
+    "maak-verkeersteller", "newCar", "newHour", "newDay", "loop",
     // gambit/mazefun.scm
     "for", "concat", "list-read", "list-write", "list-remove-pos", "duplicates?", "make-matrix", "matrix-read", "matrix-write", "matrix-size", "matrix-map", "shuffle", "shuffle-aux", "make-maze", "cave-to-maze", "pierce", "pierce-randomly", "try-to-pierce", "change-cavity", "change-cavity-aux", "neighboring-cavities",
     // gabriel/diviter.scm
     "create-n", "iterate-div2",
     // gabriel/divrec.scm
-    "recursive-div2"
+    "recursive-div2",
+    // scp1/9.18.scm
+    "first-el", "smaller?", "same?", "merge", "merge-in",
+    // scp1/5.14.3.scm
+    "super-merge-n", "geef-n+rest",
+    // scp1/7.16.scm"
+    "omzetcijfer", "heeft-omzetcijfer", "deel-categorien", "hoofdcategorie", "bereken", "omzet", "omzet-in", "collect-pairs", "collect-pairs-in", "verdeel-democratisch", "verdeel", "verdeel-in",
+    // scp1/9.16.scm"
+    "insert-aux!", "insert!",
+    // gambit/destruc.scm
+    "destructive",
+    // gabriel/dderiv.scm
+    "dderiv", "my+dderiv", "my-dderiv", "*dderiv", "/dderiv",
+    // scp1/7.11.scm
+    "baas", "sub-organigrammen", "hierarchisch?", "hierarchisch?-in", "collegas", "collegas-in", "werknemers-in", "werknemers",
+    // scp1/7.17.scm
+    "familiehoofd", "kinderen", "laatste-nakomeling?", "verdeel-democratisch", "verdeel", "verdeel-in", "budget", "budget-hulp", "budget-hulp-in",
+    // scp1/9.14.scm
+    "schuif-in!",
+    // scp1/7.9.scm
+    "blad?", "appel?", "type", "leafs", "all-apples", "conditional-append", "apple-types", "bewerk-boom", "leafs-dmv-bewerk", "all-apples-dmv-bewerk", "apple-types-dmv-bewerk",
+    // scp1/7.15
+    "maak-blad", "geef-type", "maak-knop", "geef-deelbomen", "maak-hybride-tak", "geef-knopen", "leeg?", "knoop?", "blad?", "tel", "combine-results", "tel-hulp", "tel-hulp-in", "member?", "normaal?", "check-normaal", "check-normaal-in", 
   )
 
   //def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
