@@ -179,7 +179,7 @@ object PrecisionComparison1 extends PrecisionBenchmarks[
     Concrete.B,
     ConstantPropagation.C,
     ConstantPropagation.S,
-    ConstantPropagation.Sym
+    Concrete.Sym
 ] {
     def benchmarks = List(
         "test/my-list.scm"

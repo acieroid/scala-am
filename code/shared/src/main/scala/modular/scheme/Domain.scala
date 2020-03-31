@@ -25,7 +25,7 @@ trait TypeDomain extends AbstractDomain {
   type I    = Type.I
   type R    = Type.R
   type C    = Type.C
-  type Sym  = Type.Sym
+  type Sym  = Concrete.Sym
   // make the scheme lattice
   lazy val valueLattice = new ModularSchemeLattice
 }
@@ -38,7 +38,7 @@ trait ConstantPropagationDomain extends AbstractDomain {
   type I    = ConstantPropagation.I
   type R    = ConstantPropagation.R
   type C    = ConstantPropagation.C
-  type Sym  = ConstantPropagation.Sym
+  type Sym  = Concrete.Sym
   // make the scheme lattice
   lazy val valueLattice = new ModularSchemeLattice
 }

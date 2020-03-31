@@ -108,6 +108,7 @@ class ModularSchemeLattice[
       case (_: Int, _: Int)    => true
       case (_: Real, _: Real)  => true
       case (_: Char, _: Char)  => true
+      case (_: Symbol, _: Symbol) => true
       /* TODO: join vectors */
       //case (_: Vec, _: Vec)   => true
       case _                   => false
@@ -126,6 +127,7 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => Right(Int(IntLattice[I].join(i1, i2)))
           case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
+          case (Symbol(s1), Symbol(s2)) => Right(Symbol(SymbolLattice[Sym].join(s1,s2)))
           /* TODO: join vectors */
           case _ => Left((x, y))
         }
@@ -141,6 +143,7 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => IntLattice[I].subsumes(i1, i2)
           case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
           case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
+          case (Symbol(s1), Symbol(s2)) => SymbolLattice[Sym].subsumes(s1,s2)
           case _                    => false
         }
       }
