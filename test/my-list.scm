@@ -8,4 +8,4 @@
     (my-cons 2
       (my-cons 3 '()))))
 
-(length my-list)
+my-list
