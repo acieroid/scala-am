@@ -21,7 +21,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   def name: String
   def analysis(b: SchemeExp): Analysis
   // the timeout for the analysis of a single benchmark program (default: 2min.)
-  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(20, SECONDS))
+  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
   // the actual testing code
   private def evalConcrete(originalProgram: SchemeExp, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
     val program = SchemeUndefiner.undefine(List(originalProgram))

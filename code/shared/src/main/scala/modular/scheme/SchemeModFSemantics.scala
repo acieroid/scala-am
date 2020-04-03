@@ -28,7 +28,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // Local addresses are simply made out of lexical information.
   trait LocalAddr extends Address { def idn(): Identity }
   case class VarAddr(id: Identifier)           extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
-  case class PtrAddr[C](exp: Expression, c: C) extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class PtrAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class CarAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class CdrAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
   case class PrmAddr(nam: String)              extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
   //XXXXXXXXXXXXXXXXX//
@@ -157,15 +159,15 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val carAddr = allocAddr(PtrAddr(pairExp, "car"))
-      val cdrAddr = allocAddr(PtrAddr(pairExp, "cdr"))
+      val carAddr = allocAddr(CarAddr(pairExp))
+      val cdrAddr = allocAddr(CdrAddr(pairExp))
       writeAddr(carAddr,car)
       writeAddr(cdrAddr,cdr)
       lattice.cons(carAddr,cdrAddr)
     }
     protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
-      val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
-      applyFun(appendExp, appendPrim, List(l1,l2))
+      //TODO [difficult]: implement append
+      throw new Exception("NYI -- append")
     }
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
       writeAddr(VarAddr(par),arg,component)
@@ -173,7 +175,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
     private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
-      def pointer[C](exp: SchemeExp, c: C): Addr = allocAddr(PtrAddr(exp,c))
+      def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
+      def carAddr(exp: SchemeExp): Addr = allocAddr(CarAddr(exp))
+      def cdrAddr(exp: SchemeExp): Addr = allocAddr(CdrAddr(exp))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =

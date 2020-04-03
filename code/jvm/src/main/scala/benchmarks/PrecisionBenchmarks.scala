@@ -29,21 +29,29 @@ abstract class PrecisionBenchmarks[
 
     trait BaseAddr extends Address { def printable = true }
     case class VarAddr(vrb: Identifier) extends BaseAddr {
-        override def toString = s"<var $vrb>"
+        override def toString = s"<variable $vrb>"
     }
     case class PrmAddr(nam: String) extends BaseAddr {
-        override def toString = s"<prim $nam>"
+        override def toString = s"<primitive $nam>"
+    }
+    case class CarAddr(exp: SchemeExp) extends BaseAddr {
+        override def toString = s"<car ${exp.idn}>"
+    }
+    case class CdrAddr(exp: SchemeExp) extends BaseAddr {
+        override def toString = s"<cdr ${exp.idn}>"
     }
     case class RetAddr(exp: SchemeExp) extends BaseAddr {
         override def toString = s"<return ${exp.idn}>"
     }
-    case class PtrAddr(exp: Expression, ctx: Any) extends BaseAddr {
-        override def toString = s"<pointer ${exp.idn} ($ctx)>"
+    case class PtrAddr(exp: Expression) extends BaseAddr {
+        override def toString = s"<pointer ${exp.idn}>"
     }
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
         case analysis.ComponentAddr(_, analysis.VarAddr(v)) => VarAddr(v)
         case analysis.ComponentAddr(_, analysis.PrmAddr(n)) => PrmAddr(n)
-        case analysis.ComponentAddr(_, analysis.PtrAddr(e,c)) => PtrAddr(e,c)
+        case analysis.ComponentAddr(_, analysis.PtrAddr(e)) => PtrAddr(e)
+        case analysis.ComponentAddr(_, analysis.CarAddr(e)) => CarAddr(e)
+        case analysis.ComponentAddr(_, analysis.CdrAddr(e)) => CdrAddr(e)
         case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body)
     }
 

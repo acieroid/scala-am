@@ -3,8 +3,9 @@ package scalaam.language.scheme
 import scalaam.core._
 
 trait SchemeAllocator[A] {
-  def pointer[C](exp: SchemeExp, c: C): A
-  def pointer(exp: SchemeExp): A = pointer(exp,())
+  def pointer(exp: SchemeExp): A
+  def carAddr(exp: SchemeExp): A
+  def cdrAddr(exp: SchemeExp): A
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {
@@ -32,7 +33,7 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
       Abs, /* [vv] abs: Arithmetic */
       ACos, /* [vv] acos: Scientific */
       /* [x]  angle: Complex */
-      Append, /* [x]  append: Append/Reverse */
+      // Append, /* [x]  append: Append/Reverse */
       /* [x]  apply: Fly Evaluation */
       ASin, /* [vv] asin: Scientific */
       //Assoc, /* [vv] assoc: Retrieving Alist Entries */
@@ -998,9 +999,9 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
     object Cons extends SchemePrimitive[V,A] {
       val name = "cons"
       def call(fexp: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
-        case (carExp, car) :: (cdrExp, cdr) :: Nil =>
-          val carAddr = alloc.pointer(carExp)
-          val cdrAddr = alloc.pointer(cdrExp)
+        case (_, car) :: (_, cdr) :: Nil =>
+          val carAddr = alloc.carAddr(fexp)
+          val cdrAddr = alloc.cdrAddr(fexp)
           val consVal = cons(carAddr,cdrAddr)
           (consVal, store.extend(carAddr, car).extend(cdrAddr, cdr))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
@@ -1141,43 +1142,6 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
               (cons (car l1)
                     (append (cdr l1) l2))))
     */
-    object Append extends FixpointPrimitiveUsingStore("append", Some(2)) {
-      /** the arguments to append are the two given input arguments + the 'append expression' and 'the current index' into the list (used for allocation) */
-      type Args = (V,V,SchemeExp,Int)
-      def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
-        case (_, l1) :: (_, l2) :: Nil  => Some((l1, l2, fexp, 0))
-        case _                          => None
-      }
-      /** calls only take into account the current pair (= first argument of append) */
-      type Call = V
-      def callFor(args: Args) = args._1
-      /** arguments: ignore changes to the index to ensure termination (and other args are guaranteed to be the same anyway)*/
-      def updateArgs(oldArgs: Args, newArgs: Args) = oldArgs
-      /** The actual implementation of append */
-      override def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], append: Args => MayFail[V,Error]): MayFail[V,Error] = args match {
-        case (l1, l2, fexp, idx) =>
-          ifV(isNull(l1)) {
-            // if we have l1 = '(), append(l1,l2) = l2
-            l2
-          } otherwise ifV(isCons(l1)) {
-            // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
-            for {
-              carv <- dereferenceAddrs(car(l1), store)
-              cdrv <- dereferenceAddrs(cdr(l1), store)
-              app_next <- append((cdrv, l2, fexp, idx + 1))
-            } yield {
-              val carAddr = alloc.pointer(fexp, ("append-car", idx))
-              val cdrAddr = alloc.pointer(fexp, ("append-cdr", idx))
-              store.extend(carAddr, carv)
-              store.extend(cdrAddr, app_next)
-              cons(carAddr,cdrAddr)
-            }
-          } otherwise {
-            // if we have have something else (i.e., not a list), append throws a type error!
-            MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
-          }
-      }
-    }
 
     /** (define list (lambda args args))*/
     object ListPrim extends StoreOperation("list", None) {
@@ -1188,8 +1152,8 @@ class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattic
             for {
               (restv, store2) <- call(fexp, rest, store, alloc)
             } yield {
-              val carAddr = alloc.pointer(exp, "car")
-              val cdrAddr = alloc.pointer(exp, "cdr")
+              val carAddr = alloc.carAddr(exp)
+              val cdrAddr = alloc.cdrAddr(exp)
               val updatedStore = store.extend(carAddr, v)
                                       .extend(cdrAddr, restv)
               (cons(carAddr,cdrAddr), updatedStore)
