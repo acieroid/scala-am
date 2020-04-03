@@ -18,7 +18,10 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     */
   def run(program: SchemeExp, timeout: Timeout.T): Value = {
     store = initialSto
-    eval(program, initialEnv, timeout)
+    val res = eval(program, initialEnv, timeout)
+    val resAddr = newAddr(AddrInfo.RetAddr(program))
+    extendStore(resAddr, res)
+    res
   }
 
   lazy val (initialEnv, initialSto) = {
@@ -60,7 +63,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
         Value.Clo(e, env)
       case call@SchemeFuncall(f, args, idn) =>
         eval(f, env, timeout) match {
-          case Value.Clo(SchemeLambda(argsNames, body, pos2), env2) =>
+          case Value.Clo(lambda@SchemeLambda(argsNames, body, pos2), env2) =>
             if (argsNames.length != args.length) {
               throw new Exception(s"Invalid function call at position ${idn}: ${args.length} arguments given, while exactly ${argsNames.length} are expected")
             }
@@ -69,8 +72,11 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
               extendStore(addr, check(arg._1.idn, eval(arg._2, env, timeout)))
               (env3 + (arg._1.name -> addr))
             })
-            eval(SchemeBegin(body, pos2), envExt, timeout)
-          case Value.Clo(SchemeVarArgLambda(argsNames, vararg, body, pos2), env2) =>
+            val res = eval(SchemeBegin(body, pos2), envExt, timeout)
+            val resAddr = newAddr(AddrInfo.RetAddr(lambda))
+            extendStore(resAddr, res)
+            res
+          case Value.Clo(lambda@SchemeVarArgLambda(argsNames, vararg, body, pos2), env2) =>
             val arity = argsNames.length
             if (args.length < arity) {
               throw new Exception(s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected")
@@ -84,7 +90,10 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
             val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
             extendStore(varArgAddr, makeList(varArgVals))
             val envExt2 = envExt + (vararg.name -> varArgAddr)
-            eval(SchemeBegin(body, pos2), envExt2, timeout)
+            val res = eval(SchemeBegin(body, pos2), envExt2, timeout)
+            val resAddr = newAddr(AddrInfo.RetAddr(lambda))
+            extendStore(resAddr, res)
+            res
           case Value.Primitive(p) =>
             p.call(call, args.map(arg => (arg, eval(arg, env, timeout))))
           case v =>
@@ -1148,8 +1157,8 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
 }
 
 object SchemeInterpreter {
-  trait Value
-  trait AddrInfo
+  sealed trait Value
+  sealed trait AddrInfo
   trait Prim {
     val name: String
     def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value
