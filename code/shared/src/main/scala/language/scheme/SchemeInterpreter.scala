@@ -59,8 +59,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
   def eval(e: SchemeExp, env: Env, timeout: Timeout.T): Value = {
     if (timeout.reached) throw new TimeoutException()
     e match {
-      case _ : SchemeLambda | _ : SchemeVarArgLambda =>
-        Value.Clo(e, env)
+      case lambda: SchemeLambdaExp => Value.Clo(lambda, env)
       case call@SchemeFuncall(f, args, idn) =>
         eval(f, env, timeout) match {
           case Value.Clo(lambda@SchemeLambda(argsNames, body, pos2), env2) =>
@@ -1181,7 +1180,7 @@ object SchemeInterpreter {
   object Value {
     case class Undefined(idn: Identity) extends Value /* arises from undefined behavior */
     case class Unbound(id: Identifier) extends Value /* only used for letrec */
-    case class Clo(lambda: SchemeExp, env: Env) extends Value
+    case class Clo(lambda: SchemeLambdaExp, env: Env) extends Value
     case class Primitive(p: Prim) extends Value
     case class Str(s: String) extends Value
     case class Symbol(sym: String) extends Value
