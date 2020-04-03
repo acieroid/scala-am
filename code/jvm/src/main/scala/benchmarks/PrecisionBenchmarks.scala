@@ -43,7 +43,7 @@ abstract class PrecisionBenchmarks[
     case class RetAddr(exp: SchemeExp) extends BaseAddr {
         override def toString = s"<return ${exp.idn}>"
     }
-    case class PtrAddr(exp: Expression) extends BaseAddr {
+    case class PtrAddr(exp: SchemeExp) extends BaseAddr {
         override def toString = s"<pointer ${exp.idn}>"
     }
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {

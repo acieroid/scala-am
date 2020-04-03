@@ -117,7 +117,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
-    protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
       splitArgs(args) { argsSplitted => 
         val fromClosures = applyClosures(fval,argsSplitted)
         val fromPrimitives = applyPrimitives(fexp,fval,argsSplitted)
@@ -180,7 +180,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       def cdrAddr(exp: SchemeExp): Addr = allocAddr(CdrAddr(exp))
     }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+    private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
         prm.call(fexp, args, StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
