@@ -32,7 +32,7 @@ object SchemeBenchmarks {
         //"test/primtest.scm",
         //"test/quasiquoting-simple.scm",
         //"test/quasiquoting.scm",
-        //"test/regex.scm", <- TODO!
+        "test/regex.scm", 
         "test/rotate.scm",
         "test/rsa.scm",
         "test/sat.scm",

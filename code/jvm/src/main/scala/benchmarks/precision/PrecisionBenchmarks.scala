@@ -26,10 +26,10 @@ abstract class PrecisionBenchmarks[
     sealed trait BaseAddr extends Address { def printable = true }
     case class VarAddr(vrb: Identifier) extends BaseAddr { override def toString = s"<variable $vrb>" }
     case class PrmAddr(nam: String)     extends BaseAddr { override def toString = s"<primitive $nam>" }
-    case class CarAddr(idn: Identity)  extends BaseAddr { override def toString = s"<car $idn>" }
-    case class CdrAddr(idn: Identity)  extends BaseAddr { override def toString = s"<cdr $idn>" }
-    case class RetAddr(idn: Identity)  extends BaseAddr { override def toString = s"<return $idn>" }
-    case class PtrAddr(idn: Identity)  extends BaseAddr { override def toString = s"<pointer $idn>" }
+    case class CarAddr(idn: Identity)   extends BaseAddr { override def toString = s"<car $idn>" }
+    case class CdrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<cdr $idn>" }
+    case class RetAddr(idn: Identity)   extends BaseAddr { override def toString = s"<return $idn>" }
+    case class PtrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<pointer $idn>" }
     
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
         case analysis.ComponentAddr(_, analysis.VarAddr(v)) => VarAddr(v)

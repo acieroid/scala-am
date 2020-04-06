@@ -54,6 +54,8 @@ abstract class AnalysisComparison[
         val concreteResult = runInterpreter(program, path, concreteTimeout(), 20)
         val refined = concreteResult.map(store => compareOrdered(baseResult,store).size)
         benchmarkResults += ("concrete" -> refined)
+        // save the results
+        this.results += (path -> benchmarkResults)
     }
 }
 
@@ -73,6 +75,18 @@ object AnalysisComparison1 extends AnalysisComparison[
         //Analyses.adaptiveAnalysisPolicy2(prg, 10)
     )
 
-    def main(args: Array[String]) =
+    def main(args: Array[String]) = {
         SchemeBenchmarks.standard.foreach(runBenchmark)
+        this.results.foreach { case (b, r) =>
+            val fullArg = r("full-argument-sensitivity") match {
+                case Some(n) => n.toString()
+                case None => "T"
+            }
+            val concrete = r("concrete") match {
+                case Some(n) => n.toString()
+                case None => "T"
+            }
+            println(s"$b -> $fullArg/$concrete")
+        }
+    }
 }

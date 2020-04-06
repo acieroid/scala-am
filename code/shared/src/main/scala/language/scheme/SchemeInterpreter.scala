@@ -72,7 +72,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
               (env3 + (arg._1.name -> addr))
             })
             val res = eval(SchemeBegin(body, pos2), envExt, timeout)
-            val resAddr = newAddr(AddrInfo.RetAddr(lambda))
+            val resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
             extendStore(resAddr, res)
             res
           case Value.Clo(lambda@SchemeVarArgLambda(argsNames, vararg, body, pos2), env2) =>
@@ -90,7 +90,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
             extendStore(varArgAddr, makeList(varArgVals))
             val envExt2 = envExt + (vararg.name -> varArgAddr)
             val res = eval(SchemeBegin(body, pos2), envExt2, timeout)
-            val resAddr = newAddr(AddrInfo.RetAddr(lambda))
+            val resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
             extendStore(resAddr, res)
             res
           case Value.Primitive(p) =>
