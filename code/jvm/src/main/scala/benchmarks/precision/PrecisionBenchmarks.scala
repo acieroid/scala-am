@@ -1,15 +1,12 @@
 package scalaam.cli.benchmarks.precision
 
 import scalaam.cli._
-import scalaam.cli.benchmarks._
 import scalaam.util._
 import scalaam.core._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
-import scala.concurrent.duration._
 import scalaam.lattice._
-
 
 abstract class PrecisionBenchmarks[
     Num: IntLattice,
@@ -29,18 +26,18 @@ abstract class PrecisionBenchmarks[
     sealed trait BaseAddr extends Address { def printable = true }
     case class VarAddr(vrb: Identifier) extends BaseAddr { override def toString = s"<variable $vrb>" }
     case class PrmAddr(nam: String)     extends BaseAddr { override def toString = s"<primitive $nam>" }
-    case class CarAddr(exp: SchemeExp)  extends BaseAddr { override def toString = s"<car ${exp.idn}>" }
-    case class CdrAddr(exp: SchemeExp)  extends BaseAddr { override def toString = s"<cdr ${exp.idn}>" }
-    case class RetAddr(exp: SchemeExp)  extends BaseAddr { override def toString = s"<return ${exp.idn}>" }
-    case class PtrAddr(exp: SchemeExp)  extends BaseAddr { override def toString = s"<pointer ${exp.idn}>" }
+    case class CarAddr(idn: Identity)  extends BaseAddr { override def toString = s"<car $idn>" }
+    case class CdrAddr(idn: Identity)  extends BaseAddr { override def toString = s"<cdr $idn>" }
+    case class RetAddr(idn: Identity)  extends BaseAddr { override def toString = s"<return $idn>" }
+    case class PtrAddr(idn: Identity)  extends BaseAddr { override def toString = s"<pointer $idn>" }
     
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
         case analysis.ComponentAddr(_, analysis.VarAddr(v)) => VarAddr(v)
         case analysis.ComponentAddr(_, analysis.PrmAddr(n)) => PrmAddr(n)
-        case analysis.ComponentAddr(_, analysis.PtrAddr(e)) => PtrAddr(e)
-        case analysis.ComponentAddr(_, analysis.CarAddr(e)) => CarAddr(e)
-        case analysis.ComponentAddr(_, analysis.CdrAddr(e)) => CdrAddr(e)
-        case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body)
+        case analysis.ComponentAddr(_, analysis.PtrAddr(e)) => PtrAddr(e.idn)
+        case analysis.ComponentAddr(_, analysis.CarAddr(e)) => CarAddr(e.idn)
+        case analysis.ComponentAddr(_, analysis.CdrAddr(e)) => CdrAddr(e.idn)
+        case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body.idn)
     }
 
     type BaseValue = baseDomain.L
@@ -49,6 +46,17 @@ abstract class PrecisionBenchmarks[
     case class StubPrimitive(name: String) extends SchemePrimitive[BaseValue, BaseAddr] {
         def call(fexp: SchemeExp, args: List[(SchemeExp, BaseValue)], store: Store[BaseAddr,BaseValue], alloc: SchemeAllocator[BaseAddr]) = 
             throw new Exception("Stub primitive: call not supported")
+    }
+    case class LambdaIdnEq(lambda: SchemeLambdaExp) extends SchemeLambdaExp {
+        def idn = lambda.idn
+        def args = lambda.args
+        def body = lambda.body
+        def varArgId = lambda.varArgId
+        override def hashCode() = lambda.idn.hashCode()
+        override def equals(that: Any) = that match {
+            case LambdaIdnEq(l) => l.idn == this.lambda.idn
+            case _ => false
+        }
     }
     private def convertV(analysis: Analysis)(value: analysis.valueLattice.Value): baseDomain.Value = value match {
         case analysis.valueLattice.Bot          => baseDomain.Bot
@@ -60,7 +68,7 @@ abstract class PrecisionBenchmarks[
         case analysis.valueLattice.Str(s)       => baseDomain.Str(s)
         case analysis.valueLattice.Symbol(s)    => baseDomain.Symbol(s)
         case analysis.valueLattice.Prim(p)      => baseDomain.Prim(StubPrimitive(p.name))
-        case analysis.valueLattice.Clo(l,_,_)   => baseDomain.Clo(l,(),None)
+        case analysis.valueLattice.Clo(l,_,_)   => baseDomain.Clo(LambdaIdnEq(l),(),None)
         case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertAddr(analysis)(a), convertAddr(analysis)(d))
         case analysis.valueLattice.Pointer(_)   => throw new Exception("Vectors not supported in precision benchmarks") //baseDomain.Pointer(convertAddr(analysis)(a))
         case analysis.valueLattice.Vec(_,_,_)   => throw new Exception("Vectors not supported in precision benchmarks") //baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap,convertValue(analysis)(i)) 
@@ -75,14 +83,14 @@ abstract class PrecisionBenchmarks[
     private def convertConcreteAddr(addr: SchemeInterpreter.Addr): BaseAddr = addr._2 match {
         case SchemeInterpreter.AddrInfo.VarAddr(v) => VarAddr(v)
         case SchemeInterpreter.AddrInfo.PrmAddr(p) => PrmAddr(p)
-        case SchemeInterpreter.AddrInfo.PtrAddr(p) => PtrAddr(p)
-        case SchemeInterpreter.AddrInfo.CarAddr(p) => CarAddr(p)
-        case SchemeInterpreter.AddrInfo.CdrAddr(p) => CdrAddr(p)
-        case SchemeInterpreter.AddrInfo.RetAddr(r) => RetAddr(r)
+        case SchemeInterpreter.AddrInfo.PtrAddr(p) => PtrAddr(p.idn)
+        case SchemeInterpreter.AddrInfo.CarAddr(p) => CarAddr(p.idn)
+        case SchemeInterpreter.AddrInfo.CdrAddr(p) => CdrAddr(p.idn)
+        case SchemeInterpreter.AddrInfo.RetAddr(r) => RetAddr(r.idn)
     }
     private def convertConcreteValue(value: SchemeInterpreter.Value): BaseValue = value match {
         case SchemeInterpreter.Value.Nil                => baseLattice.nil
-        case SchemeInterpreter.Value.Clo(lambda, _)     => baseLattice.closure((lambda,()),None)
+        case SchemeInterpreter.Value.Clo(l, _)          => baseLattice.closure((LambdaIdnEq(l),()),None)
         case SchemeInterpreter.Value.Primitive(p)       => baseLattice.primitive(StubPrimitive(p.name))
         case SchemeInterpreter.Value.Str(s)             => baseLattice.string(s)
         case SchemeInterpreter.Value.Symbol(s)          => baseLattice.symbol(s)
@@ -97,8 +105,13 @@ abstract class PrecisionBenchmarks[
  
     type BaseStore = Map[BaseAddr, BaseValue]
 
-    /** Joining stores */
-    private def join(b1: BaseStore, b2: BaseStore): BaseStore = 
+    /** 
+     * Joins two stores
+     * @param b1 a base store
+     * @param b2 a base store
+     * @return the joined base store
+     * */
+    protected def join(b1: BaseStore, b2: BaseStore): BaseStore = 
         b2.foldLeft(b1) {
             case (acc, (addr2,value2)) => 
                 val value1 = acc.getOrElse(addr2, baseLattice.bottom)
@@ -106,34 +119,21 @@ abstract class PrecisionBenchmarks[
                 acc + (addr2 -> joined)
         }
 
-    // the precision comparison is parameterized by:
-    // - the base analysis (= lowest precision) to compare to
-    // - the other analyses to compare to the base analysis
-    def baseAnalysis(prg: SchemeExp): Analysis
-    def analyses(prg: SchemeExp): List[Analysis]
-
-    // and can, optionally, be configured in its timeout (default: 2min.)
-    def timeoutDuration = Duration(2, MINUTES)
-
-    /**
-      *  Given an analysis (that terminated), extract a mapping from base addresses to base values
-      *  That is, convert the resulting store into one within the (context-insensitive) base domain
-      */ 
-    private def extract(analysis: Analysis): BaseStore =
-       analysis.store.groupBy(p => convertAddr(analysis)(p._1)).view
-                     .filterKeys(!_.isInstanceOf[PrmAddr])
-                     .mapValues(m => analysis.lattice.join(m.values))
-                     .mapValues(convertValue(analysis))
-                     .toMap 
-                
     /** 
-     *  Compare two stores b1 and b2, assuming b1 is less precise than b2
-     *  Returns the set of addresses that have been refined.
+     *  Compare two stores, assuming one is more precise than the other
+     *  @param b1 the less precise store
+     *  @param b2 the more precise store
+     *  @return the set of addresses that have been refined in b2 w.r.t. b1
      */
-    def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] =
+    protected def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] =
         b1.foldLeft(Set.empty[BaseAddr]) { case (acc,(addr1,value1)) =>
             val value2 = b2.getOrElse(addr1,baseLattice.bottom)
             if (value1 != value2) {
+                if(!baseLattice.subsumes(value1,value2)) {
+                    println(addr1)
+                    println(value1)
+                    println(value2)
+                }
                 assert(baseLattice.subsumes(value1,value2))
                 //println(s"[$addr1] value $value1 has been refined to $value2")
                 acc + addr1
@@ -143,12 +143,15 @@ abstract class PrecisionBenchmarks[
         }
 
     /**
-     * A more generic version of 'compareOrdered' to compare any two stores b1 and b2.
+     * A more generic version of 'compareOrdered' to compare any two stores b1 and b2
+     * (i.e., without any assumption on one being more/less precise than the other)
+     *  @param b1 a base store
+     *  @param b2 a base store
      *  @return a pair of:
      *  - the set of addresses whose abstract values have been refined (= are now more precise)
      *  - the set of addresses whose abstract values have lost precision
      */
-    def compare(b1: BaseStore, b2: BaseStore): (Set[BaseAddr],Set[BaseAddr]) = {
+    protected def compareAny(b1: BaseStore, b2: BaseStore): (Set[BaseAddr],Set[BaseAddr]) = {
         val allKeys = b1.keySet ++ b2.keySet
         allKeys.foldLeft((Set.empty[BaseAddr],Set.empty[BaseAddr])) { (acc,addr) => 
             val value1 = b1.getOrElse(addr, baseLattice.bottom)
@@ -166,108 +169,95 @@ abstract class PrecisionBenchmarks[
     }
 
     /**
-      * Run a benchmark
-      *
-      * @param path the benchmark to run
-      * @return a pair of:
-      * - the extracted store of the base analysis
-      * - for each other analysis, the extracted store of the analyses
-      */
-    def runBenchmark(path: Benchmark): (BaseStore, Map[Analysis,BaseStore]) = {
-        val txt = FileUtil.loadFile(path)
-        val prg = SchemeParser.parse(txt)
-        // run the base analysis first
-        val base = baseAnalysis(prg)
-        println(s"... analysing $path using base analysis $base ...")
-        base.analyze()
-        val baseResult = extract(base)
-        // run the other analyses on the benchmark
-        val results = analyses(prg).foldLeft(Map.empty[Analysis,BaseStore]) { (results,analysis) =>
-            println(s"... analysing $path using analysis $analysis ...") 
-            analysis.analyze()
-            val otherResult = extract(analysis)
-            results + (analysis -> otherResult) 
-        }
-        // return a pair of the result of the base analysis and the results of the other analyses
-        (baseResult, results)
-    }
+      *  Given an analysis (that terminated), extract its "base store": a mapping from base addresses to base values
+      *  That is, convert the resulting store into one within the (context-insensitive) base domain
+      *  @param analysis the analysis from which the results need to be extracted
+      *  @return a store in the base domain
+      */ 
+    protected def extract(analysis: Analysis): BaseStore =
+       analysis.store.groupBy(p => convertAddr(analysis)(p._1)).view
+                     .filterKeys(!_.isInstanceOf[PrmAddr])
+                     .mapValues(m => analysis.lattice.join(m.values))
+                     .mapValues(convertValue(analysis))
+                     .toMap 
 
-    /** 
-     * Runs all the analyses, then compares precision of each analysis with that of the base analysis
-     * @param path the path to the benchmark to compare the analyses on
-     * @return a pair of:
-     * - a mapping from analysis to the number of values that have been refined in the store
-     * - the total number of values in the store of the base analysis
-     */ 
-    def compareAll(path: Benchmark): (Map[Analysis,Int],Int) = {
-        val (baseResult, otherResults) = runBenchmark(path)
-        val improvements = otherResults.view.mapValues(compareOrdered(baseResult,_).size).toMap
-        val total = baseResult.count(p => baseLattice.cardinality(p._2) != CardinalityNumber(1))
-        (improvements,total)
-    }
-
-    def concreteTimeoutDuration = Duration(2, MINUTES)
-    private def extract(interpreter: SchemeInterpreter): BaseStore = 
+    /**
+      *  Given a concrete interpreter (that terminated), extract its "base store": a mapping from base addresses to base values
+      *  That is, convert the resulting store into one within the (context-insensitive) base domain
+      *  @param interpreter the concrete interpreter from which the results need to be extracted
+      *  @return a store in the base domain
+      */ 
+    protected def extract(interpreter: SchemeInterpreter): BaseStore = 
         interpreter.store.view
                          .mapValues(convertConcreteValue)
                          .groupBy(p => convertConcreteAddr(p._1)).view
                          .filterKeys(!_.isInstanceOf[PrmAddr])
                          .mapValues(m => baseLattice.join(m.map(_._2)))
                          .toMap
-                         
-    def runConcrete(path: Benchmark, times: Int): BaseStore = {
-        val txt = FileUtil.loadFile(path)
-        val prg = SchemeUndefiner.undefine(List(SchemeParser.parse(txt)))
-        var baseStore: BaseStore = Map.empty
-        print("Running concrete interpreter")
-        for(_ <- 1 to times) {
-            print(".")
-            val interpreter = new SchemeInterpreter((i, v) => (), false)
-            interpreter.run(prg, Timeout.start(concreteTimeoutDuration))
-            baseStore = join(baseStore, extract(interpreter))
-        } 
-        println()
-        return baseStore
-    }
-}
 
-object PrecisionComparison1 extends PrecisionBenchmarks[
-    ConstantPropagation.I,
-    ConstantPropagation.R,
-    Concrete.B,
-    ConstantPropagation.C,
-    ConstantPropagation.S,
-    Concrete.Sym
-] {
-    def baseAnalysis(prg: SchemeExp): Analysis = 
-        SchemeAnalyses.contextInsensitiveAnalysis(prg)
-    def analyses(prg: SchemeExp) = List(
-        SchemeAnalyses.contextSensitiveAnalysis(prg)
-        //Analyses.adaptiveAnalysisPolicy1(prg, 10)
-        //Analyses.adaptiveAnalysisPolicy2(prg, 10)
-    )
-
-    def main(args: Array[String]): Unit = checkConcrete("test/primtest.scm")
-
-    def checkConcrete(path: Benchmark) = {
-        val base = runConcrete(path, 5)
-        base.foreach(p => println(s"${p._1} -> ${p._2}"))
-    }
-
-    def check(path: Benchmark) = {
-        val (base, others) = runBenchmark(path)
-        println(s"==> base analysis")
-        base.foreach(p => println(s"${p._1} -> ${p._2}"))
-        others.foreach { case (analysis, other) =>
-            println(s"==> $analysis")
-            other.foreach(p => println(s"${p._1} -> ${p._2}"))
+    /**
+      * Run the analysis on a given program
+      *
+      * @param analysis the analysis to run
+      * @param path the name of / path to the benchmark program to run
+      * @param program the Scheme program to run the analysis on
+      * @param timeout (optional) the timeout
+      * @return an option value, being:
+      *     - the base store if the analysis terminated
+      *     - `None` otherwise
+      */
+    protected def runAnalysis(analysis: Analysis, path: Benchmark, program: SchemeExp, timeout: Timeout.T = Timeout.none): Option[BaseStore] = {
+        println(s"... analysing $path using $analysis ...")
+        analysis.analyze(timeout)
+        if (analysis.finished()) {
+            Some(extract(analysis))
+        } else {
+            None
         }
     }
 
-    def runMainBenchmarks() = 
-        SchemeBenchmarks.standard
-                        .map(b => (b, compareAll(b)))
-                        .foreach { case (benchmark, (results, total)) =>
-                            println(s"$benchmark: ${results.values.sum}/$total")
-                        }
+    /**
+      * Run the concrete interpreter on a given program
+      *
+      * @param program the Scheme program to run the interpreter on
+      * @param path the name of / path to the benchmark program to run
+      * @param timeout (optional) the timeout
+      * @param times how many times the interpreter needs to run, results are joined together
+      * @return an option value, being:
+      *     - the base (joined) store if the interpreter (always) terminated
+      *     - `None` otherwise
+      */
+    protected def runInterpreter(program: SchemeExp, path: Benchmark, timeout: Timeout.T = Timeout.none, times: Int = 1): Option[BaseStore] = {
+        print(s"Running concrete interpreter on $path ($times times)")
+        val undefined = SchemeParser.undefine(List(program))
+        var baseStore: BaseStore = Map.empty
+        try {
+            for(_ <- 1 to times) {
+                print(".")
+                val interpreter = new SchemeInterpreter((i, v) => (), false)
+                interpreter.run(undefined, timeout)
+                baseStore = join(baseStore,extract(interpreter))
+            } 
+            println()
+            Some(baseStore)
+        } catch {
+            case _: Exception | _: StackOverflowError => None
+        }
+    }
+
+    /**
+     * Specify what needs to be done for a given benchmark program
+     * @param path the path to the benchmark program
+     * @param program the Scheme expression of the entire program
+     */
+    protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit
+
+    /** Run a benchmark
+     *  @param benchmark the benchmark program to run
+     */
+    def runBenchmark(benchmark: Benchmark) = {
+        val txt = FileUtil.loadFile(benchmark)
+        val prg = SchemeParser.parse(txt)
+        forBenchmark(benchmark, prg)
+    }
 }
