@@ -1,14 +1,12 @@
-package scalaam.cli.benchmarks
+package scalaam.cli.benchmarks.precision
 
 import scalaam.cli._
+import scalaam.cli.benchmarks._
 import scalaam.util._
 import scalaam.core._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
-import scalaam.modular.adaptive._
-import scalaam.modular.adaptive.scheme._
-import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scala.concurrent.duration._
 import scalaam.lattice._
 
@@ -233,39 +231,6 @@ abstract class PrecisionBenchmarks[
     }
 }
 
-object Analyses {
-    def contextInsensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                                          with BigStepSemantics
-                                                                          with NoSensitivity
-                                                                          with ConstantPropagationDomain {
-        override def toString() = "no-sensitivity"
-    }
-    def contextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                                        with BigStepSemantics
-                                                                        with FullArgumentSensitivity
-                                                                        with ConstantPropagationDomain {
-        override def toString() = "full-argument-sensitivity"
-    }
-    def adaptiveAnalysisPolicy1(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
-                                                                                        with AdaptiveArgumentSensitivityPolicy1
-                                                                                        with EagerAdaptiveArgumentSelection
-                                                                                        with ConstantPropagationDomain {
-        override def toString() = "adaptive-argument-policy1"
-        val limit = k
-        override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
-        override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
-    }
-    def adaptiveAnalysisPolicy2(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
-                                                                                        with AdaptiveArgumentSensitivityPolicy2
-                                                                                        with EagerAdaptiveArgumentSelection
-                                                                                        with ConstantPropagationDomain {
-        override def toString() = "adaptive-argument-policy2"
-        val limit = k
-        override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
-        override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
-    }
-}
-
 object PrecisionComparison1 extends PrecisionBenchmarks[
     ConstantPropagation.I,
     ConstantPropagation.R,
@@ -275,54 +240,11 @@ object PrecisionComparison1 extends PrecisionBenchmarks[
     Concrete.Sym
 ] {
     def baseAnalysis(prg: SchemeExp): Analysis = 
-        Analyses.contextInsensitiveAnalysis(prg)
+        SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def analyses(prg: SchemeExp) = List(
-        Analyses.contextSensitiveAnalysis(prg)
+        SchemeAnalyses.contextSensitiveAnalysis(prg)
         //Analyses.adaptiveAnalysisPolicy1(prg, 10)
         //Analyses.adaptiveAnalysisPolicy2(prg, 10)
-    )
-
-    def benchmarks = List(
-        "test/blur.scm",
-        "test/bound-precision.scm",
-        "test/church-2-num.scm",
-        "test/church-6.scm",
-        "test/church.scm",
-        "test/collatz.scm",
-        "test/count.scm",
-        "test/eta.scm",
-        "test/fact.scm",
-        "test/fib.scm",
-        "test/gcipd.scm",
-        //"test/grid.scm",
-        "test/inc.scm",
-        "test/infinite-1.scm",
-        //"test/infinite-2.scm",
-        //"test/infinite-3.scm",
-        "test/kcfa2.scm",
-        "test/kcfa3.scm",
-        "test/kernighanvanwyk/ack.scm",
-        "test/letrec-begin.scm",
-        "test/loop2.scm",
-        //"test/mceval.scm",
-        "test/mj09.scm",
-        "test/mut-rec.scm",
-        "test/my-list.scm",
-        "test/nested-defines.scm",
-        //"test/primtest.scm",
-        //"test/quasiquoting-simple.scm",
-        //"test/quasiquoting.scm",
-        "test/regex.scm",
-        "test/rotate.scm",
-        "test/rsa.scm",
-        "test/sat.scm",
-        //"test/scm2c.scm",     // various unsupported primitives
-        //"test/scm2java.scm",  // various unsupported primitives
-        "test/sq.scm",
-        //"test/Streams.scm",   // define-macro
-        "test/sym.scm",
-        "test/widen.scm",
-        "test/work.scm"
     )
 
     def main(args: Array[String]): Unit = checkConcrete("test/primtest.scm")
@@ -343,8 +265,9 @@ object PrecisionComparison1 extends PrecisionBenchmarks[
     }
 
     def runMainBenchmarks() = 
-        benchmarks.map(b => (b, compareAll(b)))
-                  .foreach { case (benchmark, (results, total)) =>
-                    println(s"$benchmark: ${results.values.sum}/$total")
-                  }
+        SchemeBenchmarks.standard
+                        .map(b => (b, compareAll(b)))
+                        .foreach { case (benchmark, (results, total)) =>
+                            println(s"$benchmark: ${results.values.sum}/$total")
+                        }
 }
