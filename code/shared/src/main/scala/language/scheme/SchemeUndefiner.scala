@@ -18,9 +18,9 @@ object SchemeUndefiner {
   import scala.util.control.TailCalls._
 
   def undefine(exps: List[SchemeExp]): SchemeExp =
-    undefine(exps, List()).result
+    undefine(exps, List(), None).result
 
-  def undefine(exps: List[SchemeExp], defs: List[(Identifier, SchemeExp)]): TailRec[SchemeExp] =
+  def undefine(exps: List[SchemeExp], defs: List[(Identifier, SchemeExp)], idn: Option[Identity]): TailRec[SchemeExp] =
     exps match {
       case Nil => done(SchemeBegin(Nil, Identity.none))
       case SchemeDefineFunction(name, args, body, pos) :: rest =>
@@ -29,7 +29,8 @@ object SchemeUndefiner {
             bodyv =>
               undefine(
                 SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.idn), pos) :: rest,
-                defs
+                defs,
+                idn
               )
           )
         )
@@ -39,12 +40,13 @@ object SchemeUndefiner {
             bodyv =>
               undefine(
                 SchemeDefineVariable(name, SchemeVarArgLambda(args, vararg, bodyv, exps.head.idn), pos) :: rest,
-                defs
+                defs,
+                idn
               )
           )
         )
-      case SchemeDefineVariable(name, value, _) :: rest =>
-        tailcall(undefine1(value)).flatMap(v => tailcall(undefine(rest, (name, v) :: defs)))
+      case SchemeDefineVariable(name, value, pos) :: rest =>
+        tailcall(undefine1(value)).flatMap(v => tailcall(undefine(rest, (name, v) :: defs, idn.orElse(Some(pos)))))
       case _ :: _ =>
         if (defs.isEmpty) {
           tailcall(undefineBody(exps)).flatMap({
@@ -54,7 +56,7 @@ object SchemeUndefiner {
           })
         } else {
           tailcall(undefineBody(exps))
-            .flatMap(body => done(SchemeLetrec(defs.reverse, body, exps.head.idn)))
+            .flatMap(body => done(SchemeLetrec(defs.reverse, body, idn.get)))
         }
     }
 
@@ -64,13 +66,13 @@ object SchemeUndefiner {
       tailcall(f(x)).flatMap(y => tailcall(trampolineM(f, xs)).flatMap(ys => done(y :: ys)))
   }
 
-  def undefine1(exp: SchemeExp): TailRec[SchemeExp] = undefine(List(exp), List())
+  def undefine1(exp: SchemeExp): TailRec[SchemeExp] = undefine(List(exp), List(), None)
 
   def undefineBody(exps: List[SchemeExp]): TailRec[List[SchemeExp]] = exps match {
     case Nil                                   => done(Nil)
-    case SchemeDefineFunction(_, _, _, _) :: _          => tailcall(undefine(exps, List())).map(v => List(v))
-    case SchemeDefineVarArgFunction(_, _, _, _, _) :: _ => tailcall(undefine(exps, List())).map(v => List(v))
-    case SchemeDefineVariable(_, _, _) :: _             => tailcall(undefine(exps, List())).map(v => List(v))
+    case SchemeDefineFunction(_, _, _, _) :: _          => tailcall(undefine(exps, List(), None)).map(v => List(v))
+    case SchemeDefineVarArgFunction(_, _, _, _, _) :: _ => tailcall(undefine(exps, List(), None)).map(v => List(v))
+    case SchemeDefineVariable(_, _, _) :: _             => tailcall(undefine(exps, List(), None)).map(v => List(v))
     case exp :: rest => {
       val exp2 = exp match {
         case SchemeLambda(args, body, pos) =>
