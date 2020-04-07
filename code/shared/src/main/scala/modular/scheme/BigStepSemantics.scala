@@ -81,9 +81,11 @@ trait BigStepSemantics extends SchemeModFSemantics {
       case exp :: Nil => eval(exp)
       case exp :: rst => conditional(eval(exp),evalAndLoop(rst),lattice.bool(false))
     }
-    private def evalOr(exps: List[SchemeExp]): Value = exps.foldRight(lattice.bool(false)) { (exp,acc) =>
-      val vlu = eval(exp)
-      conditional(vlu,vlu,acc)
+    private def evalOr(exps: List[SchemeExp]): Value = exps match {
+      case Nil        => lattice.bool(false)
+      case exp :: rst => 
+        val vlu = eval(exp)
+        conditional(vlu,vlu,evalOr(rst)) 
     }
     private def evalCall(fun: SchemeExp, args: List[SchemeExp]): Value = {
       val funVal = eval(fun)
