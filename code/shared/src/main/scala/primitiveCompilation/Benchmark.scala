@@ -68,7 +68,7 @@ object Benchmark extends App {
 
     if (!timing) {
       val analysis = newAnalysis(program, s, se)
-      analysis.initPrimitiveBenchmarks()
+      // analysis.initPrimitiveBenchmarks()
       System.gc() // Can be removed.
       val t0 = System.nanoTime()
       analysis.analyze()
@@ -124,7 +124,7 @@ object Benchmark extends App {
         newAnalysis(program, s, se).analyze()
       }
 
-      InterceptCall.init() // Can also use analysis.initPrimitiveBenchmarks.
+      // InterceptCall.init() // Can also use analysis.initPrimitiveBenchmarks.
 
       // Time measurements.
       write(s"\n* Time (${actual}) - ")
@@ -142,7 +142,7 @@ object Benchmark extends App {
       writeln(s"      Max  time: ${m.max / 1000000}ms")
       writeln(s"      Med  time: ${m.med / 1000000}ms")
       writeln(s"         Stddev: ${m.std / 1000000}ms")
-      writeln(s"   Avg primtime: ${(InterceptCall.primTime / 1000000) / actual}ms")
+      // writeln(s"   Avg primtime: ${(InterceptCall.primTime / 1000000) / actual}ms")
     }
   }
 

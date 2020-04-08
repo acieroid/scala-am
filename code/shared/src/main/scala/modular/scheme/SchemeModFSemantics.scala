@@ -17,7 +17,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                             with GlobalStore[SchemeExp]
                             with ReturnValue[SchemeExp]
                             with ContextSensitiveComponents[SchemeExp]
-                            with InterceptCall[SchemeExp] {
+//                            with InterceptCall[SchemeExp]
+{
 
   def debug(): Unit = {
     println("Dependencies")
@@ -165,7 +166,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           // println(s"Allocating context with cmp context: $cmp, call: $cll")
           val context = allocCtx(nam, clo,argVals, cll, cmp)
           val component = newComponent(clo,nam,context)
-          storeParameters(component, prs)
+          // storeParameters(component, prs)
           bindArgs(component, prs, argVals)
           call(component)
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
@@ -176,7 +177,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val component = newComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
-          storeParameters(component, vararg :: prs)
+          // storeParameters(component, vararg :: prs)
           call(component)
         case _ => lattice.bottom
       }))
@@ -211,14 +212,14 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc, {
-        pre(prm.name, args.map(_._2))
+        // pre(prm.name, args.map(_._2))
 //        println(s"apply ${prm.name} with ${args.map(_._2)}")
         val rs = prm.call(fexp.idn, args.map({ case (exp, arg) => (exp.idn, arg) }), StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom
         }
-        post(prm.name, rs)
+        // post(prm.name, rs)
         rs}
       ))
     // primitives glue code
@@ -277,7 +278,8 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
   }
 }
 
-object InterceptCall {
+
+/*object InterceptCall {
   // By placing this in an object, we can perform timing measurements across analyses.
   var times: Map[String, List[ Long]] = Map().withDefaultValue(List())
   var primTime: Long = 0
@@ -377,3 +379,4 @@ trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
   def maybePre(name: String, args: List[Value]): Unit = if (criterium(name)) pre(name, args)
   def maybePost(name: String, result: Value): Unit = if (criterium(name)) post(name, result)
 }
+ */
