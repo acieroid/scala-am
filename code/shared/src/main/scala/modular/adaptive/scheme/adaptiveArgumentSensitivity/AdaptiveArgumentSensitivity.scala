@@ -29,3 +29,31 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
       Call(clo,nam,adaptedCtx)
   }
 }
+
+trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
+  case class ComponentContext(args: List[Value]) {
+    override def toString = s"[${args.mkString(",")}]"
+  }
+  def updateCtx(update: Component => Component)(ctx: ComponentContext) =
+    ComponentContext(ctx.args.map(updateValue(update)))
+  // to determine how arguments need to be adapted
+  private var adaptedArgs = Map[(lattice.Closure,Identifier),Set[Value]]()
+  protected def widenArg(clo: lattice.Closure, par: Identifier, arg: Value) = {
+    val currentAbs = adaptedArgs.getOrElse((clo,par),Set.empty)
+    val updatedAbs = currentAbs.filterNot(lattice.subsumes(arg,_)) + arg
+    adaptedArgs = adaptedArgs + ((clo,par) -> updatedAbs)
+  }
+  private def adaptArg(clo: lattice.Closure, par: Identifier, arg: Value) = 
+    adaptedArgs.getOrElse((clo,par),Set.empty)
+               .find(lattice.subsumes(_, arg))
+               .getOrElse(arg)
+  private def adaptArgs(clo: lattice.Closure, args: List[Value]) =
+    clo._1.args.zip(args).map { case (par,arg) => adaptArg(clo,par,arg) }
+  // The context for a given closure only consists of argument values for non-excluded parameters for that closure
+  def allocCtx(clo: lattice.Closure, args: List[Value]) = ComponentContext(adaptArgs(clo,args))
+  // To adapt an existing component, we drop the argument values for parameters that have to be excluded
+  def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
+    case Main               => Main
+    case Call(clo,nam,ctx)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
+  }
+}
