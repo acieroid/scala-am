@@ -186,8 +186,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val carAddr = allocAddr(CarAddr(pairExp.idn))
-      val cdrAddr = allocAddr(CdrAddr(pairExp.idn))
+      val carAddr = allocAddr(CarAddr(pairExp.idn, ()))
+      val cdrAddr = allocAddr(CdrAddr(pairExp.idn, ()))
       writeAddr(carAddr,car)
       writeAddr(cdrAddr,cdr)
       lattice.cons(carAddr,cdrAddr)
@@ -202,18 +202,18 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
     private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
-      def pointer[C](exp: SchemeExp): Addr = {
-        allocAddr(PtrAddr(exp.idn, getPtrCtx(context(component))))
+      def pointer(idn: Identity): Addr = {
+        allocAddr(PtrAddr(idn, getPtrCtx(context(component))))
       }
-      def carAddr(exp: SchemeExp): Addr = allocAddr(CarAddr(exp.idn, getPtrCtx(context(component))))
-      def cdrAddr(exp: SchemeExp): Addr = allocAddr(CdrAddr(exp.idn, getPtrCtx(context(component))))
+      def carAddr(idn: Identity): Addr = allocAddr(CarAddr(idn, getPtrCtx(context(component))))
+      def cdrAddr(idn: Identity): Addr = allocAddr(CdrAddr(idn, getPtrCtx(context(component))))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc, {
         pre(prm.name, args.map(_._2))
 //        println(s"apply ${prm.name} with ${args.map(_._2)}")
-        val rs = prm.call(fexp.idn.pos, args.map({ case (exp, arg) => (exp.idn.pos, arg) }), StoreAdapter, allocator) match {
+        val rs = prm.call(fexp.idn, args.map({ case (exp, arg) => (exp.idn, arg) }), StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom

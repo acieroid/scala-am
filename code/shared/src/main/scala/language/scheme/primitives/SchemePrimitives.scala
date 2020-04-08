@@ -7,22 +7,16 @@ import scalaam.util.Monoid
 import scala.util.control.TailCalls.{TailRec, done, tailcall}
 
 trait SchemeAllocator[A] {
-  def pointer[C](pos2: (Identity.Position, Identity.Position), c: C): A
-  def pointer(pos2: (Identity.Position, Identity.Position)): A = pointer(pos2,())
-  def carAddr(pos2: (Identity.Position, Identity.Position)): A
-  def cdrAddr(pos2: (Identity.Position, Identity.Position)): A
+  def pointer(exp: Identity): A
+  def carAddr(exp: Identity): A
+  def cdrAddr(exp: Identity): A
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {
-  def call(fpos: Identity.Position,
-           args: List[(Identity.Position, V)],
+  def call(fpos: Identity,
+           args: List[(Identity, V)],
            store: Store[A, V],
-           alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] = call(fpos, fpos, args, store, alloc)
-  def call(fpos: Identity.Position,
-           cpos: Identity.Position,
-           args: List[(Identity.Position, V)],
-           store: Store[A, V],
-    alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] = call(fpos, args, store, alloc)
+           alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error]
 }
 
 case class PrimitiveArityError(name: String, expected: Int, got: Int)                extends Error
@@ -101,7 +95,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
     // - a mapping from arguments to call components
     def callFor(args: Args): Call
     // - a function to compute the initial arguments from the primitive input
-    def initialArgs(fpos: Identity.Position, argsWithExps: List[(Identity.Position, V)]): Option[Args]
+    def initialArgs(fpos: Identity, argsWithExps: List[(Identity, V)]): Option[Args]
     // - a function for updating the arguments when upon a new call to a 'call'
     def updateArgs(oldArgs: Args, newArgs: Args): Args
     // - (optional) a function for updating the result of a function call
@@ -109,8 +103,8 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
     // - a function to execute a single 'call' with given arguments
     def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
-    override def call(fpos: Identity.Position,
-                      argsWithExps: List[(Identity.Position, V)],
+    override def call(fpos: Identity,
+                      argsWithExps: List[(Identity, V)],
                       store: Store[A,V],
                       alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
       // determine the initial args & call from the primitive input
@@ -169,8 +163,8 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
     // Executes a single call with given arguments.
     def callWithArgs(args: Args, cache: Args => MayFail[V,Error]): MayFail[V,Error]
 
-    override def call(fpos: Identity.Position,
-                      argsWithExps: List[(Identity.Position, V)],
+    override def call(fpos: Identity,
+                      argsWithExps: List[(Identity, V)],
                       store: Store[A,V],
                       alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
       // determine the initial args & call from the primitive input

@@ -168,8 +168,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
   abstract class NoStore1Operation(val name: String) extends SchemePrimitive[V, A] {
     def call(x: V): MayFail[V, Error]
-    override def call(fpos: Identity.Position,
-      args: List[(Identity.Position, V)],
+    override def call(fpos: Identity,
+      args: List[(Identity, V)],
       store: Store[A, V],
       alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: Nil => call(x._2).map(v => (v, store))
@@ -179,8 +179,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
   abstract class NoStore2Operation(val name: String) extends SchemePrimitive[V, A] {
     def call(x: V, y: V): MayFail[V, Error]
-    override def call(fpos: Identity.Position,
-      args: List[(Identity.Position, V)],
+    override def call(fpos: Identity,
+      args: List[(Identity, V)],
       store: Store[A, V],
       alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: y :: Nil => call(x._2, y._2).map(v => (v, store))
@@ -190,8 +190,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
   abstract class NoStoreLOperation(val name: String) extends SchemePrimitive[V, A] {
     def call(args: List[V]): MayFail[V, Error]
-    override def call(fpos: Identity.Position,
-      args: List[(Identity.Position, V)],
+    override def call(fpos: Identity,
+      args: List[(Identity, V)],
       store: Store[A, V],
       alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
       call(args.map(_._2)).map(v => (v, store))
@@ -200,8 +200,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
   abstract class Store1Operation(val name: String) extends SchemePrimitive[V, A] {
     def call(x: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error]
 
-    override def call(fpos: Identity.Position,
-      args: List[(Identity.Position, V)],
+    override def call(fpos: Identity,
+      args: List[(Identity, V)],
       store: Store[A, V],
       alloc: SchemeAllocator[A]
     ): MayFail[(V, Store[A, V]), Error] = args match {
@@ -213,8 +213,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
   abstract class Store2Operation(val name: String) extends SchemePrimitive[V, A] {
     def call(arg1: V, arg2: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error]
 
-    override def call(fpos: Identity.Position,
-      args: List[(Identity.Position, V)],
+    override def call(fpos: Identity,
+      args: List[(Identity, V)],
       store: Store[A, V],
       alloc: SchemeAllocator[A]
     ): MayFail[(V, Store[A, V]), Error] = args match {
@@ -459,10 +459,10 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
     object `cons` extends SchemePrimitive[V,A] {
       val name = "cons"
-      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
+      override def call(fpos: Identity, args: List[(Identity, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val carAddr = alloc.carAddr((fpos, fpos))
-          val cdrAddr = alloc.cdrAddr((fpos, fpos))
+          val carAddr = alloc.carAddr(fpos)
+          val cdrAddr = alloc.cdrAddr(fpos)
           val consVal = lat.cons(carAddr, cdrAddr)
           (consVal, store.extend(carAddr, car).extend(cdrAddr, cdr))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
@@ -523,12 +523,12 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
     object `make-vector` extends SchemePrimitive[V,A] {
       val name = "make-vector"
-      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
+      override def call(fpos: Identity, args: List[(Identity, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
         def createVec(size: V, init: V): MayFail[(V, Store[A, V]), Error] = {
           isInteger(size) >>= (
               isint =>
                 if (isTrue(isint)) {
-                  val veca = alloc.pointer((fpos, fpos))
+                  val veca = alloc.pointer(fpos)
                   lat.vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
                 } else {
                   MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
@@ -545,8 +545,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
     object `vector` extends SchemePrimitive[V,A] {
       val name = "vector"
-      override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
-        val veca = alloc.pointer((fpos, fpos))
+      override def call(fpos: Identity, args: List[(Identity, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = {
+        val veca = alloc.pointer(fpos)
         lat.vector(number(args.size), bottom) >>= (
             emptyvec =>
               args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))(
@@ -626,8 +626,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
             })
         }
       }
-      override def call(fpos: Identity.Position,
-           args: List[(Identity.Position, V)],
+      override def call(fpos: Identity,
+           args: List[(Identity, V)],
            store: Store[A, V],
            alloc: SchemeAllocator[A]) = args match {
         case v :: index :: newval :: Nil => vectorSet(v._2, index._2, newval._2, store)
@@ -636,8 +636,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     }
     object `list` extends SchemePrimitive[V, A] {
       def name = "list"
-      override def call(fpos: Identity.Position,
-        args: List[(Identity.Position, V)],
+      override def call(fpos: Identity,
+        args: List[(Identity, V)],
         store: Store[A, V],
         alloc: SchemeAllocator[A]) = args match {
         case Nil => (nil, store)
@@ -645,8 +645,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           for {
             (restv, store2) <- call(fpos, rest, store, alloc)
           } yield {
-            val carAddr = alloc.carAddr((fpos, fpos))
-            val cdrAddr = alloc.cdrAddr((fpos, fpos))
+            val carAddr = alloc.carAddr(fpos)
+            val cdrAddr = alloc.cdrAddr(fpos)
             val updatedStore = store.extend(carAddr, v)
               .extend(cdrAddr, restv)
             (lat.cons(carAddr, cdrAddr), updatedStore)

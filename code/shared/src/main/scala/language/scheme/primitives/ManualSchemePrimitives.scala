@@ -1,4 +1,4 @@
-package scalaam.language.scheme.primitives
+/*package scalaam.language.scheme.primitives
 
 import scalaam.core.{Address, Error, Identity, MayFail, Store}
 import scalaam.language.scheme.SchemeLattice
@@ -798,3 +798,4 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
   }
 
 }
+ */

@@ -27,7 +27,7 @@ object Benchmark extends App {
 
   abstract class MainAnalysis(val pgm: SchemeExp, val strategy: Strategy) extends ModAnalysis(pgm) with BigStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics {
     import scalaam.language.scheme.primitives._
-    val primitives = if (strategy == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
+    val primitives = if (strategy == Prelude) new SchemeLatticePrimitives[Value, Addr] else ??? /* new CompiledSchemePrimitives[Value, Addr] */
 
     def dump(suffix: String): Unit = {
       val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${strategy}_nonprims_$suffix")))
