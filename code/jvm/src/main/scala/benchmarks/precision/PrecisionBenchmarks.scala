@@ -32,11 +32,11 @@ abstract class PrecisionBenchmarks[
     case class PtrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<pointer $idn>" }
     
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
-        case analysis.ComponentAddr(analysis.VarAddr(v, _)) => VarAddr(v)
+        case analysis.ComponentAddr(analysis.VarAddr(_, v)) => VarAddr(v)
         case analysis.ComponentAddr(analysis.PrmAddr(n)) => PrmAddr(n)
-        case analysis.ComponentAddr(analysis.PtrAddr(e, _)) => PtrAddr(e.idn)
-        case analysis.ComponentAddr(analysis.CarAddr(e, _)) => CarAddr(e.idn)
-        case analysis.ComponentAddr(analysis.CdrAddr(em _)) => CdrAddr(e.idn)
+        case analysis.ComponentAddr(analysis.PtrAddr(e, _)) => PtrAddr(e)
+        case analysis.ComponentAddr(analysis.CarAddr(e, _)) => CarAddr(e)
+        case analysis.ComponentAddr(analysis.CdrAddr(e, _)) => CdrAddr(e)
         case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body.idn)
     }
 
