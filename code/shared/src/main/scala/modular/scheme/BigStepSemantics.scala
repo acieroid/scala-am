@@ -59,7 +59,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
     private def evalSet(lex: LexicalRef, exp: SchemeExp): Value = {
       val newValue = eval(exp)
       setVariable(lex,newValue)
-      newValue
+      lattice.bottom
     }
     private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value = conditional(eval(prd), eval(csq), eval(alt))
     private def evalLetExp(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = {

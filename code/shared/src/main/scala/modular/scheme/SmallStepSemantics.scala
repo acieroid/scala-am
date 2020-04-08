@@ -190,7 +190,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
         Set(KontState(vlu,cnt))
       case SetFrame(lex) =>
         setVariable(lex,vlu)
-        Set(KontState(vlu,cnt))
+        Set(KontState(lattice.bottom,cnt))
       case IfFrame(csq, alt) =>
         conditional(vlu,
                     Set(EvalState(csq,cnt)),
