@@ -2,6 +2,7 @@ package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 import scalaam.core._
 import scalaam.modular.adaptive.scheme._
+import scalaam.util.MonoidImplicits._
 
 trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // A context is a partial mapping from the closure's formal parameters to argument values
@@ -41,7 +42,7 @@ trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
   protected def widenArg(clo: lattice.Closure, par: Identifier, arg: Value) = {
     val currentAbs = adaptedArgs.getOrElse((clo,par),Set.empty)
     val updatedAbs = currentAbs.filterNot(lattice.subsumes(arg,_)) + arg
-    adaptedArgs = adaptedArgs + ((clo,par) -> updatedAbs)
+    this.adaptedArgs += ((clo,par) -> updatedAbs)
   }
   private def adaptArg(clo: lattice.Closure, par: Identifier, arg: Value) = 
     adaptedArgs.getOrElse((clo,par),Set.empty)
@@ -55,5 +56,11 @@ trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
     case Main               => Main
     case Call(clo,nam,ctx)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
+  }
+  // we need to update the adaptedArgs mapping when the analysis is adapted
+  override def updateAnalysisData(update: Component => Component) = {
+    def updateClosurePar(key: (lattice.Closure, Identifier)) = (updateClosure(update)(key._1), key._2)
+    def updateValueSet(values: Set[Value]) = updateSet(updateValue(update))(values)
+    this.adaptedArgs = updateMap(updateClosurePar,updateValueSet)(adaptedArgs)
   }
 }
