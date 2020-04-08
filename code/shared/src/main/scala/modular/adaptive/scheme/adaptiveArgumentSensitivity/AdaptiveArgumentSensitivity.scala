@@ -61,6 +61,7 @@ trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
   override def updateAnalysisData(update: Component => Component) = {
     def updateClosurePar(key: (lattice.Closure, Identifier)) = (updateClosure(update)(key._1), key._2)
     def updateValueSet(values: Set[Value]) = updateSet(updateValue(update))(values)
+    super.updateAnalysisData(update)
     this.adaptedArgs = updateMap(updateClosurePar,updateValueSet)(adaptedArgs)
   }
 }
