@@ -90,6 +90,7 @@ abstract class PrecisionBenchmarks[
     }
     private def convertConcreteValue(value: SchemeInterpreter.Value): BaseValue = value match {
         case SchemeInterpreter.Value.Nil                => baseLattice.nil
+        case SchemeInterpreter.Value.Undefined(_)       => baseLattice.bottom
         case SchemeInterpreter.Value.Clo(l, _)          => baseLattice.closure((LambdaIdnEq(l),()),None)
         case SchemeInterpreter.Value.Primitive(p)       => baseLattice.primitive(StubPrimitive(p.name))
         case SchemeInterpreter.Value.Str(s)             => baseLattice.string(s)
@@ -200,13 +201,12 @@ abstract class PrecisionBenchmarks[
       *
       * @param analysis the analysis to run
       * @param path the name of / path to the benchmark program to run
-      * @param program the Scheme program to run the analysis on
       * @param timeout (optional) the timeout
       * @return an option value, being:
       *     - the base store if the analysis terminated
       *     - `None` otherwise
       */
-    protected def runAnalysis(analysis: Analysis, path: Benchmark, program: SchemeExp, timeout: Timeout.T = Timeout.none): Option[BaseStore] = {
+    protected def runAnalysis(analysis: Analysis, path: Benchmark, timeout: Timeout.T = Timeout.none): Option[BaseStore] = {
         println(s"... analysing $path using $analysis ...")
         analysis.analyze(timeout)
         if (analysis.finished()) {
