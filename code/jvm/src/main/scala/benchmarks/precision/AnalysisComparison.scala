@@ -1,11 +1,11 @@
 package scalaam.cli.benchmarks.precision
 
+import scalaam.cli._
 import scalaam.cli.benchmarks._
 import scalaam.util._
 import scalaam.language.scheme._
 import scala.concurrent.duration._
 import scalaam.lattice._
-import scalaam.cli.benchmarks.SchemeBenchmarks
 
 abstract class AnalysisComparison[
     Num: IntLattice,
@@ -42,11 +42,11 @@ abstract class AnalysisComparison[
         var benchmarkResults = Map.empty[String,Option[Int]]
         // run the base analysis first
         val base = baseAnalysis(program)
-        val baseResult = runAnalysis(base, path, program).get // no timeout set for the base analysis!
+        val baseResult = runAnalysis(base, path).get // no timeout set for the base analysis!
         // run the other analyses on the benchmark
         val other = otherAnalyses(program)
         other.foreach { analysis =>
-            val otherResult = runAnalysis(analysis, path, program, analysisTimeout())
+            val otherResult = runAnalysis(analysis, path, analysisTimeout())
             val refined = otherResult.map(store => compareOrdered(baseResult,store).size)
             benchmarkResults += (analysis.toString() -> refined)
         }
