@@ -1,6 +1,7 @@
 package scalaam.cli
 
 import scalaam.diff.ModuleInferencer
+import scalaam.core.Identity._
 import scalaam.incremental._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
@@ -8,7 +9,7 @@ import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.incremental._
 import scalaam.modular.incremental.scheme._
 import scalaam.io.Reader
-import scalaam.language.scheme.primitives.ManualSchemePrimitives
+import scalaam.language.scheme.primitives.SchemeLatticePrimitives
 //import scalaam.modular.incremental.IncrementalModAnalysis
 //import scalaam.modular.incremental.scheme.IncrementalSchemeModFSemantics
 import scalaam.modular._
@@ -26,7 +27,12 @@ object Main {
                                                 with AdaptiveArgumentSensitivityPolicy2
                                                 with EagerAdaptiveArgumentSelection
                                                 with ConstantPropagationDomain {
-      val primitives = new ManualSchemePrimitives()
+      // TODO
+      def getPtrCtx(cmp: Option[ComponentContext]): Any = ()
+      def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext = ???
+      def componentName(cmp: Component): Option[String] = ???
+
+      val primitives = new SchemeLatticePrimitives()
       val limit = 3
       override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)

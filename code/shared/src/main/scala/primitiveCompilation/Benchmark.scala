@@ -40,8 +40,6 @@ object Benchmark extends App {
       file.close()
     }
 
-    override def varAddr(cmp: SchemeComponent, pm: Identifier): LocalAddr = ???
-
   }
 
   def newAnalysis(pgm: SchemeExp, strategy: Strategy, s: S): MainAnalysis = s match {
