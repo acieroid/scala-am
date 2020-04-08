@@ -75,7 +75,21 @@ object AnalysisComparison1 extends AnalysisComparison[
         //Analyses.adaptiveAnalysisPolicy2(prg, 10)
     )
 
-    def main(args: Array[String]) = {
+    def main(args: Array[String]) = check("test/primtest.scm")
+
+    def check(path: Benchmark) = {
+        val txt = FileUtil.loadFile(path)
+        val prg = SchemeParser.parse(txt)
+        val con = runInterpreter(prg, path).get
+        val abs = runAnalysis(SchemeAnalyses.contextSensitiveAnalysis(prg),path).get
+        val allKeys = con.keys ++ abs.keys
+        val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
+        interestingKeys.foreach { k =>
+            println(s"$k -> ${abs.getOrElse(k,"B")} ; ${con.getOrElse(k,"B")} ")
+        }
+    }
+
+    def runBenchmarks() = {
         SchemeBenchmarks.standard.foreach(runBenchmark)
         this.results.foreach { case (b, r) =>
             val fullArg = r("full-argument-sensitivity") match {
