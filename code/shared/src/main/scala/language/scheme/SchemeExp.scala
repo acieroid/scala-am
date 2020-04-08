@@ -57,8 +57,8 @@ case object VAR extends Label // Variable
   */
 trait SchemeLambdaExp extends SchemeExp {
   // a lambda takes arguments, and has a non-empty body
-  val args: List[Identifier]
-  val body: List[SchemeExp]
+  def args: List[Identifier]
+  def body: List[SchemeExp]
   require(body.nonEmpty)
   // does the lambda support a variable number of arguments
   def varArgId: Option[Identifier]
@@ -73,7 +73,7 @@ trait SchemeLambdaExp extends SchemeExp {
   def fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
   // height
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
-  val label: Label = LAM
+  def label: Label = LAM
   def subexpressions: List[Expression] = args ::: body
   override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
   override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length

@@ -8,6 +8,7 @@ import UnaryOperator._
 import BinaryOperator._
 import scalaam.language.scheme.primitives.SchemePrimitive
 import scalaam.util.MonoidImplicits._
+import scalaam.util.MonoidImplicits._
 
 import scala.annotation.tailrec
 
@@ -30,6 +31,8 @@ class ModularSchemeLattice[
 ] {
 
   type P = SchemePrimitive[L,A]
+
+  implicit def mfAddrMonoid[X]: Monoid[MayFail[Set[X],Error]] = MonoidImplicits.mayFail[Set[X]](MonoidImplicits.setMonoid[X])
 
   /** We first implement all possible operations on single values, that can be
     * only joined when compatible. This therefore is not a lattice but will be
@@ -66,8 +69,7 @@ class ModularSchemeLattice[
     }
     override def toString: String = s"#<closure $printName>"
   }
-
-  case class Cons(car: L, cdr: L) extends Value {
+  case class Cons(car: A, cdr: A) extends Value {
     override def toString: String = s"($car . $cdr)"
   }
   case object Nil extends Value {
@@ -108,6 +110,7 @@ class ModularSchemeLattice[
       case (_: Int, _: Int)    => true
       case (_: Real, _: Real)  => true
       case (_: Char, _: Char)  => true
+      case (_: Symbol, _: Symbol) => true
       case (_: Vec, _: Vec)    => true
       case _                   => false
     }
@@ -126,6 +129,7 @@ class ModularSchemeLattice[
           case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
           case (Cons(car1, cdr1), Cons(car2, cdr2)) => Right(Cons(L.lattice.join(car1, car2), L.lattice.join(cdr1, cdr2)))
+          case (Symbol(s1), Symbol(s2)) => Right(Symbol(SymbolLattice[Sym].join(s1,s2)))
           /* TODO: join vectors */
           case _ => Left((x, y))
         }
@@ -142,6 +146,7 @@ class ModularSchemeLattice[
           case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
           case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
           case (Cons(car1, cdr1), Cons(car2, cdr2)) => L.lattice.subsumes(car1, car2) && L.lattice.subsumes(cdr1, cdr2)
+          case (Symbol(s1), Symbol(s2)) => SymbolLattice[Sym].subsumes(s1,s2)
           case _                    => false
         }
       }
@@ -458,7 +463,7 @@ class ModularSchemeLattice[
     def closure(x: schemeLattice.Closure, name: Option[String]): Value  = Clo(x._1,x._2,name)
     def symbol(x: String): Value                  = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value                                = Nil
-    def cons(car: L, cdr: L): Value               = Cons(car, cdr)
+    def cons(car: A, cdr: A): Value               = Cons(car, cdr)
     def pointer(a: A): Value                      = Pointer(a)
 
     def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
@@ -473,17 +478,10 @@ class ModularSchemeLattice[
       case Pointer(a) => Set(a)
       case _          => Set()
     }
-
-    def car(x: Value): MayFail[L, Error] = x match {
-      case Cons(car, _) => MayFail.success(car)
-      case _            => MayFail.failure(TypeError("expecting cons to access car", x))
+    def getConsCells(x: Value): Set[(A,A)] = x match {
+      case Cons(a,d)  => Set((a,d))
+      case _          => Set()
     }
-
-    def cdr(x: Value): MayFail[L, Error] = x match {
-      case Cons(_, cdr) => MayFail.success(cdr)
-      case _            => MayFail.failure(TypeError("expecting cons to access cdr", x))
-    }
-
     // This implementation is not suited for use in a concrete machine!
     def vectorRef(vector: Value, index: Value): MayFail[L, Error] = (vector, index) match {
       case (Vec(size, content, init), Int(index)) =>
@@ -526,6 +524,17 @@ class ModularSchemeLattice[
     def vector(size: Value, init: L): MayFail[Value, Error] = size match {
       case Int(size) => MayFail.success(Vec(size, Map[I, L](), init))
       case _         => MayFail.failure(TypeError("expected int size when constructing vector", size))
+    }
+
+    def split(v: Value): Set[Value] = v match {
+      case Bot        => Set.empty
+      case Bool(b)    => Lattice[B].split(b).map(Bool)
+      case Int(i)     => Lattice[I].split(i).map(Int)
+      case Char(c)    => Lattice[C].split(c).map(Char)
+      case Str(s)     => Lattice[S].split(s).map(Str)
+      case Real(r)    => Lattice[R].split(r).map(Real)
+      case Symbol(s)  => Lattice[Sym].split(s).map(Symbol)
+      case _          => Set(v)
     }
 
     def cardinality(v: Value): Cardinality = v match {
@@ -622,8 +631,6 @@ class ModularSchemeLattice[
           /* For every element in y, there exists an element of x that subsumes it */
           x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid)
       )(boolAndMonoid)
-    def car(x: L): MayFail[L, Error] = x.foldMapL(Value.car(_))
-    def cdr(x: L): MayFail[L, Error] = x.foldMapL(Value.cdr(_))
     def top: L    = throw LatticeTopUndefined
 
     def vectorRef(vector: L, index: L): MayFail[L, Error] =
@@ -632,6 +639,7 @@ class ModularSchemeLattice[
       vector.foldMapL(vec => index.foldMapL(i => Value.vectorSet(vec, i, newval)))
 
     def getClosures(x: L): Set[(Closure,Option[String])] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
+    def getConsCells(x: L): Set[(A,A)] = x.foldMapL(x => Value.getConsCells(x))(setMonoid)
     def getPrimitives(x: L): Set[P] =
       x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
@@ -647,13 +655,18 @@ class ModularSchemeLattice[
     def closure(x: Closure,
                 name: Option[String]): L      = Element(Value.closure(x,name))
     def symbol(x: String): L                  = Element(Value.symbol(x))
-    def cons(car: L, cdr: L): L               = Element(Value.cons(car, cdr))
+    def cons(car: A, cdr: A): L               = Element(Value.cons(car, cdr))
     def pointer(a: A): L                      = Element(Value.pointer(a))
     def vector(size: L, init: L): MayFail[L, Error] =
       size.foldMapL(sz => Value.vector(sz, init).map(v => Element(v)))
     def nil: L = Element(Value.nil)
 
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
+
+    def split(abs: L): Set[L] = abs match {
+      case Element(v) => Value.split(v).map(v => Element(v))
+      case Elements(vs) => vs.foldMap(v => Value.split(v).map(va => Element(va)))
+    }
 
     def cardinality(abs: L): Cardinality = abs match {
       case Element(v) => Value.cardinality(v)

@@ -42,6 +42,11 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** Extract primitives contained in this value */
   def getPrimitives(x: L): Set[P]
 
+  /** Extract cons-cells contained in this value */
+  def getConsCells(x: L): Set[(A,A)]
+  def car(x: L) = getConsCells(x).map(_._1)
+  def cdr(x: L) = getConsCells(x).map(_._2)
+
   def getPointerAddresses(x: L): Set[A]
 
   /** Injection of an integer */
@@ -72,19 +77,13 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   def symbol(x: String): L
 
   /** Injection of a cons cell */
-  def cons(car: L, cdr: L): L
+  def cons(car: A, cdr: A): L
 
   /** Injection of the nil value */
   def nil: L
 
   /** Injection of a pointer (to a cons cell, vector, etc.) */
   def pointer(a: A): L
-
-  /** Takes the car of a cons cell */
-  def car(x: L): MayFail[L, Error]
-
-  /** Takes the cdr of a cons cell */
-  def cdr(x: L): MayFail[L, Error]
 
   /** Constructs a new vector */
   def vector(size: L, init: L): MayFail[L, Error]
@@ -94,6 +93,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
 
   /** Changes an element of a vector */
   def vectorSet(vector: L, index: L, newval: L): MayFail[L, Error]
+
+  /** "Splitting" an abstract value v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
+  def split(abs: L): Set[L]
 
   /** Cardinality indicates how many elements are represented by an abstract value */
   def cardinality(abs: L): Cardinality

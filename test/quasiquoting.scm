@@ -2,6 +2,23 @@
 ;; Expected result: #t
 ;; Based on the R5RS specification document and POOL (http://pointcarre.vub.ac.be/index.php?application=weblcms&go=course_viewer&course=2338).
 
+;; BEGIN PRELUDE
+
+(define (equal? a b)
+  (or (eq? a b)
+      (and (null? a) (null? b))
+      (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
+      (and (vector? a) (vector? b)
+      (let ((n (vector-length a)))
+        (and (= (vector-length b) n)
+             (letrec ((loop (lambda (i)
+                              (or (= i n)
+                                  (and (equal? (vector-ref a i) (vector-ref b i))
+                                  (loop (+ i 1)))))))
+                (loop 0)))))))
+
+;; END PRELUDE
+
 (define VAR
   (lambda (name value)
     `(define ,name ,value)))

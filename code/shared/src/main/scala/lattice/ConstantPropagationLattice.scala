@@ -69,6 +69,10 @@ object ConstantPropagation {
       case (Bottom, _)                => BoolLattice[B2].bottom
       case (_, Bottom)                => BoolLattice[B2].bottom
     }
+    def split(v: L[A]): Set[L[A]] = v match {
+      case Bottom => Set.empty
+      case _      => Set(v)
+    }
     def cardinality(v: L[A]): Cardinality = v match {
       case Bottom       => Cardinality(0, 0)
       case Constant(_)  => Cardinality(1, 0)

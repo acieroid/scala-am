@@ -36,11 +36,17 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
   /** Elements of the lattice can be joined together */
   def join(x: L, y: => L): L
 
+  /** Joining multiple elements */
+  def join(seq: Iterable[L]): L = seq.foldLeft(bottom)((acc,elm) => join(acc,elm))
+
   /** Subsumption between two elements can be checked */
   def subsumes(x: L, y: => L): Boolean
 
   /** Equality check, returning an abstract result */
   def eql[B: scalaam.lattice.BoolLattice](x: L, y: L): B
+
+  /** "Splitting" an lattice element v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
+  def split(abs: L): Set[L]
 
   /** Cardinality indicates how many elements are represented by an abstract value */
   def cardinality(abs: L): Cardinality
@@ -66,7 +72,8 @@ object Lattice {
     def bottom: Set[A]                                               = Set.empty
     def join(x: Set[A], y: => Set[A]): Set[A]                        = x.union(y)
     def subsumes(x: Set[A], y: => Set[A]): Boolean                   = y.subsetOf(x)
-    def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A])  = ???
+    def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A])    = ???
+    def split(x: Set[A])                                             = x.map(Set(_))
     def cardinality(x: Set[A]): Cardinality                          = Cardinality(x.size, 0)
   }
 }

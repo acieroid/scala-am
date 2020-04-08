@@ -15,7 +15,7 @@ trait Expression extends SmartHash {
   val height: Int = -1
 
   /** A label indicating the type of an expression. */
-  val label: Label
+  def label: Label
 
   /** Returns the list of subexpressions of the given expression. */
   def subexpressions: List[Expression] // Uses `def` instead of `val` to avoid continuous memory overheads.

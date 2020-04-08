@@ -14,7 +14,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
                          cnt: Kont) extends State
     case class KontState(vlu: Value,
                          cnt: Kont) extends State
-    case class CallState(fexp: SchemeExp,
+    case class CallState(fexp: SchemeFuncall,
                          fval: Value,
                          args: List[(SchemeExp,Value)],
                          cnt: Kont) extends State
@@ -29,12 +29,12 @@ trait SmallStepSemantics extends SchemeModFSemantics {
     case class LetFrame(id: Identifier,
                         bds: List[(Identifier, SchemeExp)],
                         bdy: List[SchemeExp])             extends Frame
-    case class ArgsFrame(fexp: SchemeExp,
+    case class ArgsFrame(fexp: SchemeFuncall,
                          fval: Value,
                          curExp: SchemeExp,
                          toEval: List[SchemeExp],
                          args: List[(SchemeExp,Value)])   extends Frame
-    case class FunFrame(fexp: SchemeExp,
+    case class FunFrame(fexp: SchemeFuncall,
                         args: List[SchemeExp])            extends Frame
     case class AndFrame(exps: List[SchemeExp])            extends Frame
     case class OrFrame(exps: List[SchemeExp])             extends Frame
@@ -123,10 +123,11 @@ trait SmallStepSemantics extends SchemeModFSemantics {
         val (prs,ags) = bindings.unzip
         val lambda = SchemeLambda(prs,body,pos)
         val closure = newClosure(lambda,Some(id.name))
+        val call = SchemeFuncall(lambda,ags,pos)
         defineVariable(cmp, id, closure)
-        evalArgs(lambda,closure,ags,Nil,cnt)
-      case SchemeFuncall(fexp,args,_) =>
-        val frm = FunFrame(fexp,args)
+        evalArgs(call,closure,ags,Nil,cnt)
+      case call@SchemeFuncall(fexp,args,_) =>
+        val frm = FunFrame(call,args)
         Set(EvalState(fexp, frm :: cnt))
       case SchemeAnd(Nil,_) =>
         Set(KontState(lattice.bool(true), cnt))
@@ -158,7 +159,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
         val frm = LetFrame(id,bindings.tail,body)
         Set(EvalState(vexp, frm :: cnt))
       }
-    private def evalArgs(fexp: SchemeExp, fval: Value, toEval: List[SchemeExp], ags: List[(SchemeExp,Value)], cnt: Kont): Set[State] =
+    private def evalArgs(fexp: SchemeFuncall, fval: Value, toEval: List[SchemeExp], ags: List[(SchemeExp,Value)], cnt: Kont): Set[State] =
       if (toEval.isEmpty) {
         Set(CallState(fexp,fval,ags.reverse,cnt))
       } else {
@@ -220,9 +221,8 @@ trait SmallStepSemantics extends SchemeModFSemantics {
         val frm = SplicedCdrFrm(vlu,spliced)
         Set(EvalState(spliced.cdr, frm :: cnt))
       case SplicedCdrFrm(spliceValue,pairExp) =>
-        ???
-        // val result = append(pairExp)((pairExp.splice, spliceValue), (pairExp.cdr,vlu))
-        // Set(KontState(result,cnt))
+        val result = append(pairExp)((pairExp.splice, spliceValue), (pairExp.cdr,vlu))
+        Set(KontState(result,cnt))
     }
   }
 }

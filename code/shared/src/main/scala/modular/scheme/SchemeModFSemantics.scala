@@ -53,28 +53,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
   // Local addresses are simply made out of lexical information.
   trait LocalAddr extends Address { def idn(): Identity }
-    case class VarAddr(cmp: Component, id: Identifier)           extends LocalAddr {
-      def printable = true;  def idn(): Identity =  id.idn
-      override def toString = id.toString
-      def dropContext = this
-    }
-    case class PtrAddr[C](pos2: (Identity.Position, Identity.Position), c: C) extends LocalAddr {
-      def printable = false; def idn(): Identity = Identity.none /* TODO */
-      override def toString = {
-        val (fn, cll) = pos2
-        s"<<fn$fn cll$cll ctx$c>>"
-      }
-      def dropContext = {
-        PtrAddr(pos2, ())
-      }
-    }
-    case class PrmAddr(nam: String)              extends LocalAddr {
-      def printable = true;  def idn(): Identity = Identity.none
-      override def toString = s"#$nam"
-      def dropContext = this
-    }
-
-  def varAddr(cmp: Component, pm: Identifier): LocalAddr = VarAddr(cmp, pm)
+  case class VarAddr(id: Identifier)           extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
+  case class PtrAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class CarAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class CdrAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class PrmAddr(nam: String)              extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
@@ -112,8 +95,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     lazy val (lambda, parent) = clo
     lazy val body: SchemeExp = SchemeBody(lambda.body)
     override def toString: String = nam match {
-      case None => s"λ@${lambda.idn} [${ctx.toString}]"
-      case Some(name) => s"$name [${ctx.toString}]"
+      case None => s"λ@${lambda.idn} ($parent) [${ctx.toString}]"
+      case Some(name) => s"$name ($parent) [${ctx.toString}]"
     }
   }
 
@@ -157,15 +140,21 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
-      if (scp == 0) { cmp } else resolveParent(cmp.asInstanceOf[CallComponent].parent, scp - 1)
-    protected def applyFun(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Option[ComponentContext]): Value =
-      if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args, cll, cmp)
-        val fromPrimitives = applyPrimitives(fexp,fval,args)
+      if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
+    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
+      splitArgs(args) { argsSplitted =>
+        val fromClosures = applyClosures(fval,argsSplitted, cll, cmp)
+        val fromPrimitives = applyPrimitives(fexp,fval,argsSplitted)
         lattice.join(fromClosures,fromPrimitives)
-      } else {
-        lattice.bottom
       }
+    private def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
+      case Nil                      => fn(Nil)
+      // TODO[minor]: use foldMap instead of foldLeft
+      case (argExp,argVal) :: rest  =>
+        lattice.split(argVal).foldLeft(lattice.bottom) { (acc,argSplitted) => lattice.join(acc,
+          splitArgs(rest)(restSplitted => fn((argExp,argSplitted) :: restSplitted))
+        )}
+    }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Option[ComponentContext]): Value = {
       val arity = args.length
@@ -197,10 +186,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val pair = lattice.cons(car,cdr)
-      val addr = allocAddr(PtrAddr((pairExp.idn.pos, (-1, 0)),()))
-      writeAddr(addr,pair)
-      lattice.pointer(addr)
+      val carAddr = allocAddr(CarAddr(pairExp))
+      val cdrAddr = allocAddr(CdrAddr(pairExp))
+      writeAddr(carAddr,car)
+      writeAddr(cdrAddr,cdr)
+      lattice.cons(carAddr,cdrAddr)
     }
     // protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
     //   val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
@@ -216,9 +206,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
        // println(s"Ptr allocated: (cmpctx is ${getPtrCtx(context(component))}}) (exp is $exp), (ctx is $c)")
         allocAddr(PtrAddr(exp, getPtrCtx(context(component))))
       }
+      def carAddr(exp: SchemeExp): Addr = allocAddr(CarAddr(exp))
+      def cdrAddr(exp: SchemeExp): Addr = allocAddr(CdrAddr(exp))
     }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyPrimitives(fexp: SchemeExp, fval: Value, args: List[(SchemeExp,Value)]): Value =
+    private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc, {
         pre(prm.name, args.map(_._2))
 //        println(s"apply ${prm.name} with ${args.map(_._2)}")

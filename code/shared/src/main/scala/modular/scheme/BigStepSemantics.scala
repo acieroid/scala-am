@@ -30,7 +30,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
       case SchemeLetStar(bindings, body, _)                       => evalLetExp(bindings, body)
       case SchemeLetrec(bindings, body, _)                        => evalLetExp(bindings, body)
       case SchemeNamedLet(name,bindings,body,pos)                 => evalNamedLet(name,bindings,body,pos)
-      case SchemeFuncall(fun, args, _)                            => evalCall(fun, args)
+      case call@SchemeFuncall(fun, args, _)                       => evalCall(call, fun, args)
       case SchemeAnd(exps, _)                                     => evalAnd(exps)
       case SchemeOr(exps, _)                                      => evalOr(exps)
       case pair: SchemePair                                       => evalPair(pair)
@@ -70,9 +70,10 @@ trait BigStepSemantics extends SchemeModFSemantics {
       val (prs,ags) = bindings.unzip
       val lambda = SchemeLambda(prs,body,idn)
       val closure = newClosure(lambda,Some(id.name))
+      val call = SchemeFuncall(lambda,ags,idn)
       defineVariable(cmp, id,closure)
       val argsVals = ags.map(argExp => (argExp, eval(argExp)))
-      applyFun(lambda,closure,argsVals,id.idn.pos, context(component))
+      applyFun(call,closure,argsVals,id.idn.pos, context(component))
     }
     // R5RS specification: if all exps are 'thruty', then the value is that of the last expression
     private def evalAnd(exps: List[SchemeExp]): Value =
@@ -83,14 +84,14 @@ trait BigStepSemantics extends SchemeModFSemantics {
     }
     private def evalOr(exps: List[SchemeExp]): Value = exps match {
       case Nil        => lattice.bool(false)
-      case exp :: rst => 
+      case exp :: rst =>
         val vlu = eval(exp)
-        conditional(vlu,vlu,evalOr(rst)) 
+        conditional(vlu,vlu,evalOr(rst))
     }
-    private def evalCall(fun: SchemeExp, args: List[SchemeExp]): Value = {
+    private def evalCall(exp: SchemeFuncall, fun: SchemeExp, args: List[SchemeExp]): Value = {
       val funVal = eval(fun)
       val argVals = args.map(eval)
-      applyFun(fun,funVal,args.zip(argVals),fun.idn.pos, context(component))
+      applyFun(exp,funVal,args.zip(argVals),fun.idn.pos, context(component))
     }
     private def evalPair(pairExp: SchemePair): Value = {
       val carv = eval(pairExp.car)
@@ -98,10 +99,9 @@ trait BigStepSemantics extends SchemeModFSemantics {
       allocateCons(pairExp)(carv,cdrv)
     }
     private def evalSplicedPair(pairExp: SchemeSplicedPair): Value = {
-      ???
-//      val splicev = eval(pairExp.splice)
-//      val cdrv = eval(pairExp.cdr)
-//      append(pairExp)((pairExp.splice, splicev), (pairExp.cdr, cdrv))
+      val splicev = eval(pairExp.splice)
+      val cdrv = eval(pairExp.cdr)
+      append(pairExp)((pairExp.splice, splicev), (pairExp.cdr, cdrv))
     }
   }
 }

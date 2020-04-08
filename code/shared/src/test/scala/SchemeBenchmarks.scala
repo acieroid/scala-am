@@ -265,7 +265,7 @@ object SchemeBenchmarks {
     "test/nested-defines.scm",
     "test/primtest.scm",
     "test/quasiquoting-simple.scm",
-    "test/quasiquoting.scm",
+    //"test/quasiquoting.scm",  // unquote-splicing
     "test/regex.scm",
     "test/rotate.scm",
     "test/rsa.scm",

@@ -18,6 +18,7 @@ object MonoidImplicits {
   }
   implicit def setMonoid[X]: Monoid[Set[X]] = MonoidInstances.setMonoid
   implicit def latticeMonoid[L : Lattice]: Monoid[L] = MonoidInstances.latticeMonoid
+  implicit def mayFail[M : Monoid]: Monoid[MayFail[M,Error]] = MonoidInstances.mayFail
   implicit def cardinalityMonoid: Monoid[Cardinality] = MonoidInstances.cardinalityMonoid
 }
 

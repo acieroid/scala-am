@@ -1,11 +1,11 @@
-/*
 package scalaam.test.soundness
 
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
 
-import scalaam.modular.adaptive.AdaptiveModAnalysis
-import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
+import scalaam.modular.adaptive._
+import scalaam.modular.adaptive.scheme._
+import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
 import scalaam.core._
 import scalaam.util._
@@ -17,7 +17,7 @@ import scalaam.language.scheme.primitives.ManualSchemePrimitives
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
-  type Analysis = ModAnalysis[SchemeExp] with StandardSchemeModFSemantics
+  type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
@@ -54,7 +54,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       case Value.Bool(b)        => lat.subsumes(abs, lat.bool(b))
       case Value.Character(c)   => lat.subsumes(abs, lat.char(c))
       case Value.Nil            => lat.subsumes(abs, lat.nil)
-      case Value.Cons(_, _)     => lat.getPointerAddresses(abs).nonEmpty
+      case Value.Cons(_, _)     => lat.getConsCells(abs).nonEmpty
       case Value.Vector(_)      => lat.getPointerAddresses(abs).nonEmpty
       case v                    => throw new Exception(s"Unknown concrete value type: $v.")
     }
@@ -68,7 +68,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
-        case a.ComponentAddr(addr) => addr.idn()
+        case a.ComponentAddr(_, addr) => addr.idn()
         case _                        => Identity.none
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
     concIdn.foreach { case (idn,values) =>
@@ -123,12 +123,15 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def name = "simple adaptive argument sensitivity (limit = 5)"
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
+                                        with AdaptiveArgumentSensitivityPolicy1
+                                        with NaiveAdaptiveArgumentSelection
                                         with AdaptiveSchemeModFSemantics
-                                        with BigStepSemantics
-                                        with AdaptiveConstantPropagationDomain {
+                                        with ConstantPropagationDomain {
     val limit = 5
     override def alphaValue(v: Value) = super.alphaValue(v)
     val primitives = new ManualSchemePrimitives[Value, Addr]()
+    override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
+    override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
   }
 }
 
@@ -145,4 +148,3 @@ class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
 class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                                 with SimpleAdaptiveSchemeModF
                                                 with SimpleBenchmarks
-*/

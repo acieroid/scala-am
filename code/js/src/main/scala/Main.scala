@@ -1,7 +1,8 @@
 package scalaam.web
 
-import scalaam.modular.adaptive.AdaptiveModAnalysis
-import scalaam.modular.adaptive.scheme.AdaptiveSchemeModFSemantics
+import scalaam.modular.adaptive._
+import scalaam.modular.adaptive.scheme._
+import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 
@@ -40,16 +41,20 @@ object Main {
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
-                                                    with BigStepSemantics
-                                                    with AdaptiveConstantPropagationDomain {
-      val limit = 3
-      override def alphaValue(v: Value) = super.alphaValue(v)
+                                                    with AdaptiveArgumentSensitivityPolicy1
+                                                    with NaiveAdaptiveArgumentSelection
+                                                    with ConstantPropagationDomain
+                                                    with WebAdaptiveAnalysis[SchemeExp] {
+      val limit = 2
+      override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
+      override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step() = {
         val component = work.head
+        val name = deref(component)
         val prevResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
         super.step()
         val newResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
-        println(s"$component => $newResult (previously: $prevResult)")
+        println(s"$name => $newResult (previously: $prevResult)")
       }
     }
     val visualisation = new WebVisualisationAdaptive(analysis)

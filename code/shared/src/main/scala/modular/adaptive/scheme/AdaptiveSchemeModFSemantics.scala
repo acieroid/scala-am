@@ -1,94 +1,62 @@
 package scalaam.modular.adaptive.scheme
 
-import scalaam.core.Identity.Position
-import scalaam.core._
-import scalaam.modular.adaptive.{AdaptiveGlobalStore, AdaptiveModAnalysis, AdaptiveReturnValue}
-import scalaam.language.scheme.SchemeExp
-import scalaam.modular.scheme.StandardSchemeModFSemantics
+import scalaam.modular.scheme._
+import scalaam.language.scheme._
+import scalaam.modular.adaptive._
 
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
-                                     with AdaptiveGlobalStore[SchemeExp]
-                                     with AdaptiveReturnValue[SchemeExp]
-                                     with StandardSchemeModFSemantics {
+                                    with AdaptiveGlobalStore[SchemeExp]
+                                    with AdaptiveReturnValue[SchemeExp]
+                                    with SchemeModFSemantics
+                                    with BigStepSemantics
+                                    with AbstractDomain {
 
-  // A context is a partial mapping from the closure's formal parameters to argument values
-  case class ComponentContext(args: Map[Identifier, Value]) {
-   override def toString = args.toList
-                               .map({ case (i,v) => s"$i -> $v" })
-                               .mkString(" ; ")
+  // Definition of components
+  trait ComponentData extends SchemeComponent
+  case object Main extends ComponentData with MainComponent
+  case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends ComponentData with CallComponent
+  lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
+  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
+
+  // Definition of update functions
+  def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
+    case (lambda, parent) => (lambda, update(parent))
   }
-  // It's a partial mapping, because some parameters are not included for a given closure
-  // (this way, we can fine-tune argument-sensitivity to avoid scalability issues with certain parameters)
-  private var excludedArgs = Map[lattice.Closure, Set[Identifier]]().withDefaultValue(Set.empty)
-  private def excludeArg(clo: lattice.Closure, par: Identifier) =
-   excludedArgs += (clo -> (excludedArgs(clo) + par))
-  private def excludeArgs(clo: lattice.Closure, prs: Set[Identifier]) =
-   prs.foreach(par => excludeArg(clo,par))
-  // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(clo: lattice.Closure, args: List[Value], call: Position): ComponentContext = allocCtx(clo, args)
-  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext =
-   ComponentContext(clo._1.args.zip(args).toMap -- excludedArgs(clo))
-  // To adapt an existing component, we drop the argument values for parameters that have to be excluded
-  def alphaCmp(cmp: Component): Component = cmp match {
-   case Main => Main
-   case Call(clo@(lam,par),nam,ctx) =>
-     val updatedPar = alpha(par)
-     val updatedCtx = ComponentContext(ctx.args -- excludedArgs(clo))
-     Call((lam,updatedPar),nam,updatedCtx)
+  def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData = cmp match {
+    case Main => Main
+    case Call(clo,nam,ctx) => Call(updateClosure(update)(clo),nam,updateCtx(update)(ctx))
+  }
+  def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext
+  def updateValue(update: Component => Component)(value: Value): Value = value match {
+    case valueLattice.Element(v)    => valueLattice.Element(updateV(update)(v))
+    case valueLattice.Elements(vs)  => vs.map(updateV(update)) match {
+      case vs if vs.size == 1 => valueLattice.Element(vs.head)
+      case vs => valueLattice.Elements(vs)
+    }
+  }
+  private def updateV(update: Component => Component)(value: valueLattice.Value): valueLattice.Value = value match {
+    case valueLattice.Pointer(addr)     => valueLattice.Pointer(updateAddr(update)(addr))
+    case valueLattice.Clo(lam,cmp,nam)  => valueLattice.Clo(lam,update(cmp),nam)
+    case valueLattice.Cons(car,cdr)     => valueLattice.Cons(updateAddr(update)(car),updateAddr(update)(cdr))
+    case valueLattice.Vec(siz,els,ini)  => valueLattice.Vec(siz,els.view.mapValues(updateValue(update)).toMap,updateValue(update)(ini))
+    case _                              => value
   }
 
-  // this gets called whenever new components are added to the analysis
-  // it calls `adaptArguments` for every new component, and "adapts" the analysis if necessary
+  // parameterized by a function that can adapt the analysis whenever a new component is 'discovered'
+  // should return true iff the new component triggered an adaptation of the analysis
+  protected def adaptOnNewComponent(cmp: Component, call: Call): Boolean
+  // to "adapt" the analysis, every new component is passed on to `adaptOnNewComponent`, which may trigger adaptation
   override protected def adaptAnalysis() = {
-    val updates = this.newComponents.foldLeft(List.empty[(lattice.Closure,Set[Identifier])]) {
-      (acc, cmp) => cmp match {
-        case Main => throw new Exception("This should not happen!")
-        case call: Call =>
-          val excludedPars = adaptArguments(call)
-          if (excludedPars.nonEmpty) { (call.clo, excludedPars) :: acc } else { acc }
+    // for each new component, allow the analysis to be adapted
+    var adapted = false
+    this.newComponents.foreach(cmp => {
+      val call = deref(cmp).asInstanceOf[Call]
+      if(adaptOnNewComponent(cmp,call)) {
+        adapted = true
       }
-    }
-    // update the argument-sensitivity policy (of course, only if there are updates) and signal that the definition of alpha has changed
-    if (updates.nonEmpty) {
-      updates.foreach { case (clo,prs) => excludeArgs(clo,prs) }
-      onAlphaChange()
-    }
+    })
+    // if it was adapted => update the analysis!
+    if(adapted) { updateAnalysis() }
   }
-
-  // parameterized by a simple limit
-  // every closure can only have at most "limit" components
-  val limit: Int
-  // track the number of components per closure
-  private var closureCmps = Map[lattice.Closure, Set[Component]]()
-  // track all arguments for every closure parameter
-  private var closureArgs = Map[lattice.Closure, Map[Identifier,Set[Value]]]().withDefaultValue(Map[Identifier,Set[Value]]().withDefaultValue(Set()))
-  // The main logic for adaptive argument sensitivity
-  // parameterized by a method `adaptArguments` to configure the concrete policy
-  // This method takes a new component that is added to the analysis ...
-  // ... and can decide which parameters of the corresponding closure need to be "excluded"
-  def adaptArguments(call: Call): Set[Identifier] = {
-    val Call(clo, _, ComponentContext(bds)) = call
-    // update the set of components per closure
-    val prvCmps = closureCmps.get(clo).getOrElse(Set())
-    val newCmps = prvCmps + call
-    closureCmps += (clo -> newCmps)
-    // update the argument mappings per closure
-    //val prvArgs = closureArgs(clo)
-    //val newArgs = bds.foldLeft(prvArgs) {
-    //  case (acc, (par, vlu)) => acc + (par -> (acc(par) + vlu))
-    //}
-    //closureArgs += (clo -> newArgs)
-    // if there are too many components => do something about it!
-    if (limit < newCmps.size) {
-      clo._1.args.toSet // naive policy: drop all of the argument-sensitivity
-    } else { // otherwise, not arguments need to be excluded
-      Set.empty
-    }
-  }
-  override def onAlphaChange() = {
-    super.onAlphaChange()
-    closureCmps = alphaMap(alphaSet(alpha))(closureCmps)
-  }
-
 }
