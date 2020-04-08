@@ -223,6 +223,15 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     }
   }
 
+  def dereferenceAddrs(addrs: Set[A], store: Store[A,V]): MayFail[V,Error] =
+    addrs.foldLeft(MayFail.success[V,Error](schemeLattice.bottom))(
+      (acc: MayFail[V,Error], addr: A) =>
+        for {
+          v <- store.lookupMF(addr)
+          accv <- acc
+        } yield schemeLattice.join(accv,v)
+    )
+
   object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
 
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
@@ -452,8 +461,10 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       val name = "cons"
       override def call(fpos: Identity.Position, cpos: Identity.Position, args: List[(Identity.Position, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val consa = alloc.pointer((fpos, fpos))
-          (pointer(consa), store.extend(consa, lat.cons(car, cdr)))
+          val carAddr = alloc.carAddr((fpos, fpos))
+          val cdrAddr = alloc.cdrAddr((fpos, fpos))
+          val consVal = lat.cons(carAddr, cdrAddr)
+          (consVal, store.extend(carAddr, car).extend(cdrAddr, cdr))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
     }
@@ -482,13 +493,12 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           v <- spec.foldLeft(MayFail.success[V, Error](v))(
             (acc, op) =>
               for {
-                v <- acc
-                res <- dereferencePointer(v, store) { consv =>
-                  op match {
-                    case Car => lat.car(consv)
-                    case Cdr => lat.cdr(consv)
-                  }
+                consv <- acc
+                addrs = op match {
+                  case Car => lat.car(consv)
+                  case Cdr => lat.cdr(consv)
                 }
+                res <- dereferenceAddrs(addrs, store)
               } yield res
           )
         } yield (v, store)
@@ -499,33 +509,17 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
     object `set-car!` extends Store2Operation("set-car!") {
       override def call(cell: V, value: V, store: Store[A, V]) =
-        getPointerAddresses(cell)
-          .foldLeft(MayFail.success[Store[A, V], Error](store))(
-            (acc, a) =>
-              for {
-                consv <- store.lookupMF(a) /* look up in old store */
-                st    <- acc /* updated store */
-                v1 = value /* update car */
-                v2 <- lat.cdr(consv) /* preserves cdr */
-              } yield st.update(a, lat.cons(v1, v2))
-          )
-          .map(store => (bool(false) /* undefined */, store))
-    }
-    object `set-cdr!` extends Store2Operation("set-cdr!") {
-      override def call(cell: V, value: V, store: Store[A, V]) =
-        getPointerAddresses(cell)
-          .foldLeft(MayFail.success[Store[A, V], Error](store))(
-            (acc, a) =>
-              for {
-                consv <- store.lookupMF(a) /* look up in old store */
-                st    <- acc /* updated store */
-                v1    <- lat.car(consv) /* preserves car */
-                v2 = value /* update cdr */
-              } yield st.update(a, lat.cons(v1, v2))
-          )
+        lat.car(cell)
+          .foldLeft(store)((acc,addr) => acc.update(addr, value))
           .map(store => (bool(false) /* undefined */, store))
     }
 
+    object `set-cdr!` extends Store2Operation("set-car!") {
+      override def call(cell: V, value: V, store: Store[A, V]) =
+        lat.cdr(cell)
+          .foldLeft(store)((acc,addr) => acc.update(addr, value))
+          .map(store => (bool(false) /* undefined */, store))
+    }
 
     object `make-vector` extends SchemePrimitive[V,A] {
       val name = "make-vector"
@@ -647,13 +641,16 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
         store: Store[A, V],
         alloc: SchemeAllocator[A]) = args match {
         case Nil => (nil, store)
-        case (exp, v) :: rest =>
+        case (_, v) :: rest =>
           for {
             (restv, store2) <- call(fpos, rest, store, alloc)
-            consv  = lat.cons(v, restv)
-            consa  = alloc.pointer((fpos, fpos))
-            store3 = store2.extend(consa, consv)
-          } yield (pointer(consa), store3)
+          } yield {
+            val carAddr = alloc.carAddr((fpos, fpos))
+            val cdrAddr = alloc.cdrAddr((fpos, fpos))
+            val updatedStore = store.extend(carAddr, v)
+              .extend(cdrAddr, restv)
+            (lat.cons(carAddr, cdrAddr), updatedStore)
+          }
       }
     }
 

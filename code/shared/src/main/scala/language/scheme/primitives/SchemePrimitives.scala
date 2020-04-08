@@ -1,7 +1,7 @@
 package scalaam.language.scheme.primitives
 
 import scalaam.core._
-import scalaam.language.scheme.{SchemeLattice, SchemeOps}
+import scalaam.language.scheme.{SchemeExp, SchemeLattice, SchemeOps}
 import scalaam.util.Monoid
 
 import scala.util.control.TailCalls.{TailRec, done, tailcall}
@@ -9,6 +9,8 @@ import scala.util.control.TailCalls.{TailRec, done, tailcall}
 trait SchemeAllocator[A] {
   def pointer[C](pos2: (Identity.Position, Identity.Position), c: C): A
   def pointer(pos2: (Identity.Position, Identity.Position)): A = pointer(pos2,())
+  def carAddr(pos2: (Identity.Position, Identity.Position)): A
+  def cdrAddr(pos2: (Identity.Position, Identity.Position)): A
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {

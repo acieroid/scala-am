@@ -2,7 +2,7 @@ package scalaam.primitiveCompilation
 
 import java.io._
 
-import scalaam.core.Cardinality
+import scalaam.core.{Cardinality, Identifier}
 import scalaam.io.Writer
 import scalaam.io.Writer._
 import scalaam.language.scheme._
@@ -29,16 +29,19 @@ object Benchmark extends App {
     import scalaam.language.scheme.primitives._
     val primitives = if (strategy == Prelude) new SchemeLatticePrimitives[Value, Addr] else new CompiledSchemePrimitives[Value, Addr]
 
-      def dump(suffix: String): Unit = {
-        val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${strategy}_nonprims_$suffix")))
-        file.write(allComponents.filter(cmp => componentName(cmp) match {
-          case Some(name) => !PrimitiveDefinitions.definitions.keySet.contains(name) // ignore primitives
-          case _ => true
-        })
-        .map(cmp => s"$cmp: ${try{store(ReturnAddr(cmp))}catch {case e: Throwable => "_?_"}}").toList.sorted.mkString("\n"))
-        file.flush()
-        file.close()
-      }
+    def dump(suffix: String): Unit = {
+      val file = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/${strategy}_nonprims_$suffix")))
+      file.write(allComponents.filter(cmp => componentName(cmp) match {
+        case Some(name) => !PrimitiveDefinitions.definitions.keySet.contains(name) // ignore primitives
+        case _ => true
+      })
+      .map(cmp => s"$cmp: ${try{store(ReturnAddr(cmp))}catch {case e: Throwable => "_?_"}}").toList.sorted.mkString("\n"))
+      file.flush()
+      file.close()
+    }
+
+    override def varAddr(cmp: SchemeComponent, pm: Identifier): LocalAddr = ???
+
   }
 
   def newAnalysis(pgm: SchemeExp, strategy: Strategy, s: S): MainAnalysis = s match {

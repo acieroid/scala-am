@@ -13,7 +13,7 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
-import scalaam.language.scheme.primitives.ManualSchemePrimitives
+import scalaam.language.scheme.primitives.{ManualSchemePrimitives, SchemePrimitives}
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
@@ -68,8 +68,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
-        case a.ComponentAddr(_, addr) => addr.idn()
-        case _                        => Identity.none
+        case a.ComponentAddr(addr) => addr.idn()
+        case _                     => Identity.none
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
     concIdn.foreach { case (idn,values) =>
       assert(checkSubsumption(a)(values, absID(idn)),
@@ -123,15 +123,16 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def name = "simple adaptive argument sensitivity (limit = 5)"
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
-                                        with AdaptiveArgumentSensitivityPolicy1
-                                        with NaiveAdaptiveArgumentSelection
-                                        with AdaptiveSchemeModFSemantics
-                                        with ConstantPropagationDomain {
+    with AdaptiveArgumentSensitivityPolicy1
+    with NaiveAdaptiveArgumentSelection
+    with AdaptiveSchemeModFSemantics
+    with ConstantPropagationDomain {
     val limit = 5
-    override def alphaValue(v: Value) = super.alphaValue(v)
-    val primitives = new ManualSchemePrimitives[Value, Addr]()
     override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
     override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
+
+    override val primitives: SchemePrimitives[valueLattice.L, Addr] = new ManualSchemePrimitives()
+    override def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
   }
 }
 

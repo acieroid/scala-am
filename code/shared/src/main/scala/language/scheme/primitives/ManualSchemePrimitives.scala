@@ -16,12 +16,12 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       `/`, /* [vx] /: Arithmetic (no support for fractions) */
       `acos`, /* [vv] acos: Scientific */
       /* [x]  angle: Complex */
-      `append`, /* [x]  append: Append/Reverse */
+      // TODO `append`, /* [x]  append: Append/Reverse */
       // MANUAL
       /* [x]  apply: Fly Evaluation */
       `asin`, /* [vv] asin: Scientific */
-      `assoc`, /* [vv] assoc: Retrieving Alist Entries */
-      `assq`, /* [vv] assq: Retrieving Alist Entries */
+      // TODO `assoc`, /* [vv] assoc: Retrieving Alist Entries */
+      // TODO `assq`, /* [vv] assq: Retrieving Alist Entries */
       /* [x]  assv: Retrieving Alist Entries */
       `atan`, /* [vv] atan: Scientific */
       `boolean?`, /* [vv] boolean?: Booleans */
@@ -62,7 +62,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       `display`, /* [v]  display: Writing */
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
-      `equal?`,
+      // TODO `equal?`,
       `eq?`, /* [vv] eq?: Equality */
       /* [x]  eqv?: Equality */
       /* [x]  eval: Fly Evaluation */
@@ -87,9 +87,9 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       `list`, /* [vv] list: List Constructors */
       /* [x]  list->string: String Constructors */
       /* [x]  list->vector: Vector Creation */
-      `list-ref`, /* [vv] list-ref: List Selection */
+      // TODO `list-ref`, /* [vv] list-ref: List Selection */
       /* [x]  list-tail: List Selection */
-      `list?`, /* [vv] list?: List Predicates */
+      // TODO `list?`, /* [vv] list?: List Predicates */
       /* [x]  load: Loading */
       `log`, /* [vv] log: Scientific */
       /* [x]  magnitude: Complex */
@@ -98,8 +98,8 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       /* [x]  make-string: String Constructors */
       /* [x]  map: List Mapping */
       `max`, /* [vv] max: Arithmetic */
-      `member`, /* [vv] member: List Searching */
-      `memq`, /* [v]  memq: List Searching */
+      // TODO `member`, /* [vv] member: List Searching */
+      // TODO `memq`, /* [v]  memq: List Searching */
       /* [x]  memv: List Searching */
       `min`, /* [vv] min: Arithmetic */
       `modulo`, /* [vv] modulo: Integer Operations */
@@ -390,60 +390,33 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
       }
     }
 
-    object `caar` extends PrimitiveDefs.CarCdrOperation("caar")
-
-    object `cadr` extends PrimitiveDefs.CarCdrOperation("cadr")
-
-    object `cdar` extends PrimitiveDefs.CarCdrOperation("cdar")
-
-    object `cddr` extends PrimitiveDefs.CarCdrOperation("cddr")
-
-    object `caaar` extends PrimitiveDefs.CarCdrOperation("caaar")
-
-    object `caadr` extends PrimitiveDefs.CarCdrOperation("caadr")
-
-    object `cadar` extends PrimitiveDefs.CarCdrOperation("cadar")
-
-    object `caddr` extends PrimitiveDefs.CarCdrOperation("caddr")
-
-    object `cdaar` extends PrimitiveDefs.CarCdrOperation("cdaar")
-
-    object `cdadr` extends PrimitiveDefs.CarCdrOperation("cdadr")
-
-    object `cddar` extends PrimitiveDefs.CarCdrOperation("cddar")
-
-    object `cdddr` extends PrimitiveDefs.CarCdrOperation("cdddr")
-
+    object `caar`   extends PrimitiveDefs.CarCdrOperation("caar")
+    object `cadr`   extends PrimitiveDefs.CarCdrOperation("cadr")
+    object `cdar`   extends PrimitiveDefs.CarCdrOperation("cdar")
+    object `cddr`   extends PrimitiveDefs.CarCdrOperation("cddr")
+    object `caaar`  extends PrimitiveDefs.CarCdrOperation("caaar")
+    object `caadr`  extends PrimitiveDefs.CarCdrOperation("caadr")
+    object `cadar`  extends PrimitiveDefs.CarCdrOperation("cadar")
+    object `caddr`  extends PrimitiveDefs.CarCdrOperation("caddr")
+    object `cdaar`  extends PrimitiveDefs.CarCdrOperation("cdaar")
+    object `cdadr`  extends PrimitiveDefs.CarCdrOperation("cdadr")
+    object `cddar`  extends PrimitiveDefs.CarCdrOperation("cddar")
+    object `cdddr`  extends PrimitiveDefs.CarCdrOperation("cdddr")
     object `caaaar` extends PrimitiveDefs.CarCdrOperation("caaaar")
-
     object `caaadr` extends PrimitiveDefs.CarCdrOperation("caaadr")
-
     object `caadar` extends PrimitiveDefs.CarCdrOperation("caadar")
-
     object `caaddr` extends PrimitiveDefs.CarCdrOperation("caaddr")
-
     object `cadaar` extends PrimitiveDefs.CarCdrOperation("cadaar")
-
     object `cadadr` extends PrimitiveDefs.CarCdrOperation("cadadr")
-
     object `caddar` extends PrimitiveDefs.CarCdrOperation("caddar")
-
     object `cadddr` extends PrimitiveDefs.CarCdrOperation("cadddr")
-
     object `cdaaar` extends PrimitiveDefs.CarCdrOperation("cdaaar")
-
     object `cdaadr` extends PrimitiveDefs.CarCdrOperation("cdaadr")
-
     object `cdadar` extends PrimitiveDefs.CarCdrOperation("cdadar")
-
     object `cdaddr` extends PrimitiveDefs.CarCdrOperation("cdaddr")
-
     object `cddaar` extends PrimitiveDefs.CarCdrOperation("cddaar")
-
     object `cddadr` extends PrimitiveDefs.CarCdrOperation("cddadr")
-
     object `cdddar` extends PrimitiveDefs.CarCdrOperation("cdddar")
-
     object `cddddr` extends PrimitiveDefs.CarCdrOperation("cddddr")
 
     /** (define (equal? a b)
@@ -460,7 +433,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
      * (loop 0)))))))
      */
     // TODO: this is without vectors
-    @unsound("Returns bottom in incorrect cases.")
+    /*@unsound("Returns bottom in incorrect cases.")
     object `equal?` extends Store2Operation("equal?") {
       override def call(a: V, b: V, store: Store[A, V]) = {
         def equalp(a: V, b: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
@@ -522,7 +495,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
 
         equalp(a, b, Set()).result.map(v => (v, store))
       }
-    }
+    }*/
 
     /** (define (length l)
      * (if (null? l)
@@ -555,13 +528,11 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
           number(0)
         } otherwise ifV(isPointer(l)) {
           // if we have l = cons(a,d), length(l) = length(d) + 1
-          dereferencePointer(l, store) { consv =>
-            for {
-              next <- cdr(consv)
-              len_next <- length(next)
-              result <- plus(len_next, number(1))
-            } yield result
-          }
+          val next = dereferenceAddrs(cdr(l), store)
+          for {
+            len_next  <- length(next)
+            result    <- plus(len_next, number(1))
+          } yield result
         } otherwise {
           // if we have have something else (i.e., not a list), length throws a type error!
           MayFail.failure(PrimitiveNotApplicable("length", List(l)))
@@ -574,6 +545,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
      * (cons (car l1)
      * (append (cdr l1) l2))))
      */
+    /*
     object `append` extends FixpointPrimitiveUsingStore("append", Some(2)) {
       /** the arguments to append are the two given input arguments + the 'append expression' and 'the current index' into the list (used for allocation) */
       type Args = (V, V, Identity.Position, Int)
@@ -617,9 +589,10 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
           }
       }
     }
+    */
 
     /** (define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l))) */
-    object `list?` extends Store1Operation("list?") {
+    /*object `list?` extends Store1Operation("list?") {
       override def call(l: V, store: Store[A, V]) = {
         def listp(l: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
           if (visited.contains(l) || l == bottom) {
@@ -652,7 +625,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
 
         listp(l, Set()).result.map(v => (v, store))
       }
-    }
+    }*/
 
     /** (define (list-ref l index)
      * (if (pair? l)
@@ -660,7 +633,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
      * (car l)
      * (list-ref (cdr l) (- index 1)))
      * (error "list-ref applied to a non-list"))) */
-    object `list-ref` extends Store2Operation("list-ref") {
+    /*object `list-ref` extends Store2Operation("list-ref") {
       @unsound("Returns bottom in incorrect cases.")
       override def call(l: V, index: V, store: Store[A, V]) = {
         def listRef(l: V, index: V, visited: Set[(V, V)]): TailRec[MayFail[V, Error]] = {
@@ -699,6 +672,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
         listRef(l, index, Set.empty).result.map(v => (v, store))
       }
     }
+     */
 
     /** (define (member e l) ; member, memq and memv are similar, the difference lies in the comparison function used
      * (if (null? l)
@@ -706,7 +680,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
      * (if (equal? (car l) e)
      * l
      * (member e (cdr l))))) */
-    abstract class MemberLike(
+    /*abstract class MemberLike(
                                override val name: String,
                                eqFn: (V, V, Store[A, V]) => MayFail[V, Error]
                              ) extends Store2Operation(name) {
@@ -746,9 +720,9 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
 
         mem(e, l, Set.empty).result.map(v => (v, store))
       }
-    }
+    }*/
 
-    @unsound("Returns bottom in incorrect cases.")
+    /*@unsound("Returns bottom in incorrect cases.")
     object `member`
       extends MemberLike(
         "member",
@@ -809,8 +783,9 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
         assoc(e, l, Set.empty).result.map(v => (v, store))
       }
     }
+     */
 
-    @unsound("Returns bottom in incorrect cases.")
+    /*@unsound("Returns bottom in incorrect cases.")
     object `assoc`
       extends AssocLike(
         "assoc",
@@ -819,7 +794,7 @@ class ManualSchemePrimitives[V, A <: Address](override implicit val schemeLattic
 
     @unsound("Returns bottom in incorrect cases.")
     object `assq` extends AssocLike("assq", (x: V, y: V, store: Store[A, V]) => PrimitiveDefs.`eq?`.call(x, y))
-
+    */
   }
 
 }

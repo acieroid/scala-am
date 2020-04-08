@@ -44,8 +44,8 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
 
   /** Extract cons-cells contained in this value */
   def getConsCells(x: L): Set[(A,A)]
-  def car(x: L) = getConsCells(x).map(_._1)
-  def cdr(x: L) = getConsCells(x).map(_._2)
+  def car(x: L): Set[A] = getConsCells(x).map(_._1)
+  def cdr(x: L): Set[A] = getConsCells(x).map(_._2)
 
   def getPointerAddresses(x: L): Set[A]
 
