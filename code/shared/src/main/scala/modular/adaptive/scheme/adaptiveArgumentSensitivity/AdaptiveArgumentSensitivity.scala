@@ -57,6 +57,27 @@ trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
     case Main               => Main
     case Call(clo,nam,ctx)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
   }
+  // joining arguments
+  def joinArgs(clo: lattice.Closure, args: Set[List[Value]], limit: Int) = {
+    val argPositions = clo._1.args.zipWithIndex.toMap
+    val valuesPerPos = args.toList.transpose.map(_.toSet)
+    val valuesPerArg = clo._1.args.zip(valuesPerPos).toMap
+    // sort identifiers: those with the most values come first!
+    var sortedArgs = valuesPerArg.toList.sortBy(_._2.size)
+    // start the iteration
+    var currentArgs = args
+    while(currentArgs.size > limit) {
+      // look at the next arg with the most values
+      val (nextArg, argVals) = sortedArgs.head
+      sortedArgs = sortedArgs.tail
+      // join all argument values for the parameter
+      val joinedArgVal = lattice.join(argVals)
+      widenArg(clo, nextArg, joinedArgVal)
+      // update all argument combination by "dropping" that argument
+      val argPosition = argPositions(nextArg)
+      currentArgs = args.map(as => as.patch(argPosition,Nil,1))
+    }
+  }
   // we need to update the adaptedArgs mapping when the analysis is adapted
   override def updateAnalysisData(update: Component => Component) = {
     def updateClosurePar(key: (lattice.Closure, Identifier)) = (updateClosure(update)(key._1), key._2)
