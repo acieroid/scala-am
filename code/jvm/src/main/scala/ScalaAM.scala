@@ -1,5 +1,7 @@
 package scalaam.cli
 
+import scalaam.util._
+import scala.concurrent.duration._
 import scalaam.diff.ModuleInferencer
 import scalaam.incremental._
 import scalaam.modular.adaptive._
@@ -16,20 +18,20 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = "(define lst '(1 2 3)) (length `(a b c ,@lst))" //FileUtil.loadFile("test/primtest.scm")
+    val txt = FileUtil.loadFile("test/my-test.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivityPolicy2
-                                                with EagerAdaptiveArgumentSelection
+                                                with AdaptiveArgumentSensitivityPolicyAlt1
                                                 with ConstantPropagationDomain {
-      val limit = 3
+      val limit = 4
       override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
+        println(s"analysing ${view(work.head)}")
         super.step()
       }
     }
-    analysis.analyze()
+    analysis.analyze(Timeout.start(Duration(5,SECONDS)))
     debugResults(analysis)
   }
 

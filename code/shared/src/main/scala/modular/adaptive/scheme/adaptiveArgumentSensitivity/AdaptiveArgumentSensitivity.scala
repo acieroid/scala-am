@@ -33,7 +33,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
 
 trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
   case class ComponentContext(args: List[Value]) {
-    override def toString = s"[${args.mkString(",")}]"
+    override def toString = args.mkString(",")
   }
   def updateCtx(update: Component => Component)(ctx: ComponentContext) =
     ComponentContext(ctx.args.map(updateValue(update)))
@@ -87,9 +87,14 @@ trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
     (updateClosure(update)(key._1), key._2)
   private val valueSetMonoid = new Monoid[Set[Value]] {
     def zero = Set.empty
-    def append(s1: Set[Value], s2: => Set[Value]) = {
-      val union = s1 ++ s2
-      union.filter(vlu => !union.exists(lattice.subsumes(_,vlu)))
-    }
+    def append(s1: Set[Value], s2: => Set[Value]) =
+      if(s1.isEmpty) { 
+        s2 
+      } else if (s2.isEmpty) {
+        s1
+      } else {
+        val union = s1 ++ s2
+        union.filter(abs => !union.exists(other => other != abs && lattice.subsumes(other,abs)))
+      }
   }
 }
