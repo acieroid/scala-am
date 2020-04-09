@@ -20,6 +20,8 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     deref(cmp).name
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
 
+  def getPtrCtx(cmp: Option[ComponentContext]): Any = ()
+
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
     case (lambda, parent) => (lambda, update(parent))

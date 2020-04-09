@@ -113,6 +113,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     case call: CallComponent => Some(call.ctx)
   }
 
+  /* Return some context for pointer allocation */
+  def getPtrCtx(cmp: Option[ComponentContext]): Any
+
   /** Creates a new component, given a closure, context and an optional name. */
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
 

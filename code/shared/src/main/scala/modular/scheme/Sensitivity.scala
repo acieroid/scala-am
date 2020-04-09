@@ -9,6 +9,7 @@ trait NoSensitivity extends SchemeModFSemantics {
     override def toString = ""
   }
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext = ComponentContext()
+  def getPtrCtx(cmp: Option[ComponentContext]): Any = ()
 }
 
 /* Full argument sensitivity for ModF */
@@ -17,6 +18,7 @@ trait FullArgumentSensitivity extends SchemeModFSemantics {
     override def toString: String = args.mkString(",")
   }
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext = ComponentContext(args)
+  def getPtrCtx(cmp: Option[ComponentContext]): Any = ()
 }
 
 trait CallSiteSensitivity extends SchemeModFSemantics {
@@ -24,6 +26,7 @@ trait CallSiteSensitivity extends SchemeModFSemantics {
     override def toString: String = s"$call->$fn"
   }
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext = ComponentContext(clo._1.idn.pos, call)
+  def getPtrCtx(cmp: Option[ComponentContext]): Any = ()
 }
 
 trait FullArgumentCallSiteSensitivity extends SchemeModFSemantics {
@@ -35,6 +38,7 @@ trait FullArgumentCallSiteSensitivity extends SchemeModFSemantics {
   }
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext =
     ComponentContext(clo._1.idn.pos, call, args)
+  def getPtrCtx(cmp: Option[ComponentContext]): Any = ()
 }
 
 object CompoundSensitivities {

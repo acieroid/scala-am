@@ -17,8 +17,6 @@ object SchemeAnalyses {
                                                                           with ConstantPropagationDomain {
         override def toString() = "no-sensitivity"
         val primitives = new SchemeLatticePrimitives[Value, Addr]
-        // TODO
-        def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
     }
     def contextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
                                                                         with BigStepSemantics
@@ -26,8 +24,6 @@ object SchemeAnalyses {
                                                                         with ConstantPropagationDomain {
         override def toString() = "full-argument-sensitivity"
         val primitives = new SchemeLatticePrimitives[Value, Addr]
-        // TODO
-        def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
     }
     def adaptiveAnalysisPolicy1(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveArgumentSensitivityPolicy1
@@ -38,8 +34,6 @@ object SchemeAnalyses {
         override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
         val primitives = new SchemeLatticePrimitives[Value, Addr]
-        // TODO
-        def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
     }
     def adaptiveAnalysisPolicy2(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveArgumentSensitivityPolicy2
@@ -50,7 +44,5 @@ object SchemeAnalyses {
         override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
         val primitives = new SchemeLatticePrimitives[Value, Addr]
-        // TODO
-        def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
     }
 }

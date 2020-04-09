@@ -27,9 +27,6 @@ object Main {
                                                 with AdaptiveArgumentSensitivityPolicy2
                                                 with EagerAdaptiveArgumentSelection
                                                 with ConstantPropagationDomain {
-      // TODO
-      def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
-
       val primitives = new SchemeLatticePrimitives()
       val limit = 3
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
