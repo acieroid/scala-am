@@ -28,13 +28,11 @@ object Main {
                                                 with EagerAdaptiveArgumentSelection
                                                 with ConstantPropagationDomain {
       // TODO
-      def getPtrCtx(cmp: Option[ComponentContext]): Any = ()
-      def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext = ???
-      def componentName(cmp: Component): Option[String] = ???
+      def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
 
       val primitives = new SchemeLatticePrimitives()
       val limit = 3
-      override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
+      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
         super.step()

@@ -1,4 +1,4 @@
-package scalaam.cli.benchmarks.precision
+/*package scalaam.cli.benchmarks.precision
 
 import scalaam.util._
 import scalaam.core._
@@ -261,3 +261,4 @@ abstract class PrecisionBenchmarks[
         forBenchmark(benchmark, prg)
     }
 }
+ */

@@ -1,6 +1,7 @@
 package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 import scalaam.core._
+import scalaam.core.Identity.Position
 import scalaam.modular.adaptive.scheme._
 
 trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
@@ -19,7 +20,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // (this way, we can fine-tune argument-sensitivity to avoid scalability issues with certain parameters or even specific argument values)
   def filterArgs(clo: lattice.Closure, args: ArgumentMapping): ArgumentMapping
   // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext =
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext =
    ComponentContext(filterArgs(clo, clo._1.args.zip(args).toMap))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {

@@ -82,10 +82,11 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // The MainComponent should be unique and can hence be an object. CallComponents can be created using the `newCallComponent` function.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
   implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent { def body: SchemeExp }
+  trait SchemeComponent { def body: SchemeExp; def name: Option[String] }
   trait MainComponent extends SchemeComponent {
     def body: SchemeExp = program
     override def toString: String = "main"
+    def name = None
   }
   trait CallComponent extends SchemeComponent {
     // Requires a closure and a context and may contain a name.
@@ -99,6 +100,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case None => s"λ@${lambda.idn} ($parent) [${ctx.toString}]"
       case Some(name) => s"$name ($parent) [${ctx.toString}]"
     }
+    def name = nam
   }
 
   type ComponentContent = Option[lattice.Closure]
@@ -113,9 +115,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
   /** Creates a new component, given a closure, context and an optional name. */
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
-
-  /** Gets the name of a component. */
-  def componentName(cmp: Component): Option[String]
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext
@@ -164,7 +163,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
           // println(s"Allocating context with cmp context: $cmp, call: $cll")
-          val context = allocCtx(nam, clo,argVals, cll, cmp)
+          val context = allocCtx(nam, clo, argVals, cll, cmp)
           val component = newComponent(clo,nam,context)
           // storeParameters(component, prs)
           bindArgs(component, prs, argVals)
@@ -272,7 +271,7 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
 
   lazy val initialComponent: SchemeComponent = Main
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
-  override def componentName(cmp: SchemeComponent): Option[String] = cmp match {
+  def componentName(cmp: SchemeComponent): Option[String] = cmp match {
     case Main => None
     case Call(_, nam, _) => nam
   }

@@ -9,6 +9,8 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // parameterized by a 'intra-component' representation
   type Component
   def initialComponent: Component
+  // Returns the name of a component, if it has a name
+  def componentName(cmp: Component): Option[String]
 
   // Retrieve a (possibly modified) version of the program
   def program: Expr = prog
