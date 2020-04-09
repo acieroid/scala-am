@@ -1,4 +1,4 @@
-/*package scalaam.cli.benchmarks.precision
+package scalaam.cli.benchmarks.precision
 
 import scalaam.cli._
 import scalaam.cli.benchmarks._
@@ -89,4 +89,4 @@ object AnalysisComparison1 extends AnalysisComparison[
             println(s"$b -> $fullArg/$concrete")
         }
     }
-}*/
+}
