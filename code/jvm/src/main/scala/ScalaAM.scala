@@ -27,7 +27,6 @@ object Main {
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
                                                 with AdaptiveArgumentSensitivityPolicy1
-                                                with EagerAdaptiveArgumentSelection
                                                 with ConstantPropagationDomain {
       val primitives = new SchemeLatticePrimitives()
       val limit = 3

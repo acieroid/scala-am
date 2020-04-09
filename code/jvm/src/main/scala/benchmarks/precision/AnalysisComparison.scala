@@ -2,8 +2,10 @@ package scalaam.cli.benchmarks.precision
 
 import scalaam.cli._
 import scalaam.cli.benchmarks._
+import scalaam.io.Reader
 import scalaam.util._
 import scalaam.language.scheme._
+
 import scala.concurrent.duration._
 import scalaam.lattice._
 
@@ -78,7 +80,7 @@ object AnalysisComparison1 extends AnalysisComparison[
     def main(args: Array[String]) = check("test/primtest.scm")
 
     def check(path: Benchmark) = {
-        val txt = FileUtil.loadFile(path)
+        val txt = Reader.loadFile(path)
         val prg = SchemeParser.parse(txt)
         val con = runInterpreter(prg, path).get
         val abs = runAnalysis(SchemeAnalyses.contextSensitiveAnalysis(prg),path).get

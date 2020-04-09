@@ -35,8 +35,7 @@ object SchemeAnalyses {
         val primitives = new SchemeLatticePrimitives[Value, Addr]
     }
     def adaptiveAnalysisPolicy2(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
-                                                                                        with AdaptiveArgumentSensitivityPolicy2
-                                                                                        with EagerAdaptiveArgumentSelection
+                                                                                        with AdaptiveArgumentSensitivityPolicy1
                                                                                         with ConstantPropagationDomain {
         override def toString() = "adaptive-argument-policy2"
         val limit = k
