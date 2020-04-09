@@ -8,12 +8,13 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
 import scalaam.core._
+import scalaam.core.Identity.Position
 import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
-import scalaam.language.scheme.primitives.{ManualSchemePrimitives, SchemePrimitives}
+import scalaam.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrimitives}
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
@@ -105,7 +106,7 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
                                       with NoSensitivity {
-    val primitives = new ManualSchemePrimitives[Value, Addr]()
+    val primitives = new SchemeLatticePrimitives[Value, Addr]()
   }
 }
 
@@ -116,7 +117,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
                                       with NoSensitivity {
-    val primitives = new ManualSchemePrimitives[Value, Addr]()
+    val primitives = new SchemeLatticePrimitives[Value, Addr]()
   }
 }
 
@@ -128,10 +129,10 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
     with AdaptiveSchemeModFSemantics
     with ConstantPropagationDomain {
     val limit = 5
-    override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
+    override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
     override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
 
-    override val primitives: SchemePrimitives[valueLattice.L, Addr] = new ManualSchemePrimitives()
+    override val primitives: SchemePrimitives[valueLattice.L, Addr] = new SchemeLatticePrimitives()
     override def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
   }
 }
