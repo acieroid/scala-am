@@ -1,22 +1,15 @@
 package scalaam.test
 
 import org.scalatest._
-
 import scalaam.language.scheme._
 import scalaam.core.{Expression, Identifier, Identity}
+import scalaam.io.Reader
 
 trait SchemeBenchmarkTests extends PropSpec {
   // a benchmark is just a file name
   type Benchmark = String
   // the benchmarks involved in the tests
   def benchmarks: Set[Benchmark] = Set.empty
-  // helper to load and parse a benchmark file
-  protected def loadFileText(file: String): String = {
-    val f   = scala.io.Source.fromFile(file)
-    val txt = f.getLines().mkString("\n")
-    f.close()
-    txt
-  }
 
   val primDefs = Map(
     // "*" is a primop
@@ -254,11 +247,11 @@ trait SchemeBenchmarkTests extends PropSpec {
     SchemeBegin(prelude.toList ::: List(exp), Identity.none)
   }
   protected def loadFile(file: String): SchemeExp =
-    addPrelude(SchemeParser.parse(loadFileText(file)))
+    addPrelude(SchemeParser.parse(Reader.loadFile(file)))
   // needs to be implemented to specify the testing behaviour per benchmark
   protected def onBenchmark(b: Benchmark): Unit
   // run the benchmarks
-  benchmarks.foreach(onBenchmark)
+    benchmarks.foreach(onBenchmark)
 }
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
