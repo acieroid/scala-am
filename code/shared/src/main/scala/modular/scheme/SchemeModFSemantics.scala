@@ -203,10 +203,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       writeAddr(cdrAddr,cdr)
       lattice.cons(carAddr,cdrAddr)
     }
-    // protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
-    //   val appendPrim = lattice.primitive(primitives.PrimitiveDefs.Append)
-    //   applyFun(appendExp, appendPrim, List(l1,l2))
-    // }
+    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
+      //TODO [difficult]: implement append
+      throw new Exception("NYI -- append")
+    }
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
       writeAddr(VarAddr(par),arg,component)
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
@@ -229,6 +229,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom
         }
+        // println(s"Called ${prm.name} with $args results in $rs")
         // post(prm.name, rs)
         rs}
       ))

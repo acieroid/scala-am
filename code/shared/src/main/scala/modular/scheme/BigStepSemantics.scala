@@ -101,7 +101,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
     private def evalSplicedPair(pairExp: SchemeSplicedPair): Value = {
       val splicev = eval(pairExp.splice)
       val cdrv = eval(pairExp.cdr)
-      ??? //append(pairExp)((pairExp.splice, splicev), (pairExp.cdr, cdrv))
+      append(pairExp)((pairExp.splice, splicev), (pairExp.cdr, cdrv))
     }
   }
 }
