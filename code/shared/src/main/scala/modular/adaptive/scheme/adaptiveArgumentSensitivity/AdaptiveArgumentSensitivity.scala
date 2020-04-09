@@ -1,8 +1,8 @@
 package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 import scalaam.core._
+import scalaam.util._
 import scalaam.modular.adaptive.scheme._
-import scalaam.util.MonoidImplicits._
 
 trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // A context is a partial mapping from the closure's formal parameters to argument values
@@ -80,9 +80,16 @@ trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
   }
   // we need to update the adaptedArgs mapping when the analysis is adapted
   override def updateAnalysisData(update: Component => Component) = {
-    def updateClosurePar(key: (lattice.Closure, Identifier)) = (updateClosure(update)(key._1), key._2)
-    def updateValueSet(values: Set[Value]) = updateSet(updateValue(update))(values)
     super.updateAnalysisData(update)
-    this.adaptedArgs = updateMap(updateClosurePar,updateValueSet)(adaptedArgs)
+    this.adaptedArgs = updateMap(updateClosurePar(update),updateSet(updateValue(update)))(adaptedArgs)(valueSetMonoid)
+  }
+  private def updateClosurePar(update: Component => Component)(key: (lattice.Closure, Identifier)) = 
+    (updateClosure(update)(key._1), key._2)
+  private val valueSetMonoid = new Monoid[Set[Value]] {
+    def zero = Set.empty
+    def append(s1: Set[Value], s2: => Set[Value]) = {
+      val union = s1 ++ s2
+      union.filter(vlu => !union.exists(lattice.subsumes(_,vlu)))
+    }
   }
 }
