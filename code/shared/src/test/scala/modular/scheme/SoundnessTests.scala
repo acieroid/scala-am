@@ -133,7 +133,6 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
     override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
 
     override val primitives: SchemePrimitives[valueLattice.L, Addr] = new SchemeLatticePrimitives()
-    override def getPtrCtx(cmp: Option[ComponentContext]): Any = ???
   }
 }
 
