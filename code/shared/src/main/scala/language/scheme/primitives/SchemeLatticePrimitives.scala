@@ -513,7 +513,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           .map(store => (bool(false) /* undefined */, store))
     }
 
-    object `set-cdr!` extends Store2Operation("set-car!") {
+    object `set-cdr!` extends Store2Operation("set-cdr!") {
       override def call(cell: V, value: V, store: Store[A, V]) =
         lat.cdr(cell)
           .foldLeft(store)((acc,addr) => acc.update(addr, value))
