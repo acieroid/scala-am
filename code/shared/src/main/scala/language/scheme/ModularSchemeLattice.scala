@@ -670,10 +670,7 @@ class ModularSchemeLattice[
 
     def cardinality(abs: L): Cardinality = abs match {
       case Element(v) => Value.cardinality(v)
-      case Elements(vs) =>
-        val nlambdas = vs.flatMap(v => Value.getClosures(v)).groupBy(_._1._1).size // Extract the different lambdas.
-        val naddr = vs.flatMap(v => Value.getPointerAddresses(v)).map(_.dropContext).size
-        vs.foldMap(v => Value.combinedCardinality(v)).add(Cardinality(nlambdas, 0)).add(Cardinality(naddr, 0))
+      case Elements(vs) => vs.foldMap(v => Value.cardinality(v))
     }
   }
 

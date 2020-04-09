@@ -1,4 +1,4 @@
-/*package scalaam.cli.benchmarks.precision
+package scalaam.cli.benchmarks.precision
 
 import scalaam.util._
 import scalaam.core._
@@ -6,6 +6,7 @@ import scalaam.io.Reader
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
+import scalaam.language.scheme.primitives._
 import scalaam.lattice._
 
 abstract class PrecisionBenchmarks[
@@ -44,7 +45,7 @@ abstract class PrecisionBenchmarks[
     val baseDomain = new ModularSchemeLattice[BaseAddr,Unit,Str,Bln,Num,Rea,Chr,Smb]
     val baseLattice = baseDomain.schemeLattice
     case class StubPrimitive(name: String) extends SchemePrimitive[BaseValue, BaseAddr] {
-        def call(fexp: SchemeExp, args: List[(SchemeExp, BaseValue)], store: Store[BaseAddr,BaseValue], alloc: SchemeAllocator[BaseAddr]) = 
+        def call(fpos: Identity, args: List[(Identity, BaseValue)], store: Store[BaseAddr,BaseValue], alloc: SchemeAllocator[BaseAddr]) =
             throw new Exception("Stub primitive: call not supported")
     }
     case class LambdaIdnEq(lambda: SchemeLambdaExp) extends SchemeLambdaExp {
@@ -261,4 +262,3 @@ abstract class PrecisionBenchmarks[
         forBenchmark(benchmark, prg)
     }
 }
- */
