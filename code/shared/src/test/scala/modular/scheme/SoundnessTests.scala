@@ -71,7 +71,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
         case a.ComponentAddr(addr) => addr.idn()
         case _                     => Identity.none
-      }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
+      }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
       assert(checkSubsumption(a)(values, absID(idn)),
             s"intermediate result at $idn is not sound: ${absID(idn)} does not subsume $values.")
@@ -91,7 +91,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       // if not, cancel the test for this benchmark
       assume(a.finished(), s"Analysis of $benchmark timed out.")
       // check if the final result of the analysis soundly approximates the final result of concrete evaluation
-      // of course, this can only be done if the
+      // of course, this can only be done if there was a result.
       if (cResult.isDefined) { compareResult(a, cResult.get) }
       // check if the intermediate results at various program points are soundly approximated by the analysis
       // this can be done, regardless of whether the concrete evaluation terminated successfully or not
