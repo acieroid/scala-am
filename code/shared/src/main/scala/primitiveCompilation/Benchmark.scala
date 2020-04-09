@@ -2,8 +2,7 @@ package scalaam.primitiveCompilation
 
 import java.io._
 
-import scalaam.core.{Cardinality, Identifier}
-import scalaam.io.Writer
+import scalaam.core._
 import scalaam.io.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
@@ -35,7 +34,7 @@ object Benchmark extends App {
         case Some(name) => !PrimitiveDefinitions.definitions.keySet.contains(name) // ignore primitives
         case _ => true
       })
-      .map(cmp => s"$cmp: ${try{store(ReturnAddr(cmp))}catch {case e: Throwable => "_?_"}}").toList.sorted.mkString("\n"))
+      .map(cmp => s"$cmp: ${try{store(ReturnAddr(cmp))}catch {case _: Throwable => "_?_"}}").toList.sorted.mkString("\n"))
       file.flush()
       file.close()
     }
@@ -117,7 +116,7 @@ object Benchmark extends App {
       // Warmup.
       write(s"* Warmup (${warmup}) - ")
       for (i <- 1 to warmup) {
-        write(i + " ")
+        write(s"$i ")
         // TODO: Add System.gc() here?
         newAnalysis(program, s, se).analyze()
       }
@@ -127,7 +126,7 @@ object Benchmark extends App {
       // Time measurements.
       write(s"\n* Time (${actual}) - ")
       for (i <- 1 to actual) {
-        write(i + " ")
+        write(s"$i ")
         val analysis = newAnalysis(program, s, se)
         System.gc()
         val t = Timer.timeOnly({analysis.analyze()})

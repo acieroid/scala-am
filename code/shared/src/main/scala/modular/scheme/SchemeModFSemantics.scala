@@ -1,7 +1,5 @@
 package scalaam.modular.scheme
 
-import java.io.{BufferedWriter, File, FileWriter}
-
 import scalaam.language.scheme.primitives.{SchemeAllocator, SchemePrimitive, SchemePrimitives}
 import scalaam.core.Identity.Position
 import scalaam.core._

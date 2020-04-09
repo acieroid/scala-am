@@ -144,7 +144,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
         exps.foldLeft(init)((_, e) => eval(e, env, timeout))
       case SchemeAnd(Nil, _) =>
         Value.Bool(true)
-      case SchemeAnd(e :: Nil, pos) =>
+      case SchemeAnd(e :: Nil, _) =>
         eval(e, env, timeout)
       case SchemeAnd(e :: exps, pos) =>
         eval(e, env, timeout) match {

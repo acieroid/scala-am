@@ -91,7 +91,7 @@ object CompoundSensitivities {
     }
 
     def getPtrCtx(cmp: Option[ComponentContext]): Any = cmp match {
-      case Some(High(ctx, userCall)) => userCall
+      case Some(High(_, userCall)) => userCall
       case _ => ()
     }
 
@@ -99,7 +99,7 @@ object CompoundSensitivities {
       if (isPrimitive(nam)) {
         High(HighSensitivity.alloc(clo._1.idn.pos, call, args),
           caller match {
-            case Some(High(ctx, userCall)) => userCall
+            case Some(High(_, userCall)) => userCall
             case _ => call
           }
         )

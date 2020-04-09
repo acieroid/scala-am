@@ -1,13 +1,6 @@
 package scalaam.web
 
-import scalaam.modular.adaptive._
-import scalaam.modular.adaptive.scheme._
-import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
-import scalaam.modular.scheme._
-import scalaam.language.scheme._
-
 // Scala.js-related imports
-import scala.scalajs.js
 import org.scalajs.dom
 import dom.{html,document}
 

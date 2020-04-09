@@ -72,7 +72,7 @@ object ANFCompiler {
         compileBody(body, idn, a => k(a))
       case SchemeDefineFunction(name, args, body, idn) =>
         compile(SchemeDefineVariable(name, SchemeLambda(args, body, idn), idn), tail, k)
-      case SchemeDefineVariable(name, value, idn) =>
+      case SchemeDefineVariable(_, _, _) =>
         throw new Exception("define not supported")
       case SchemeAnd(List(), idn) =>
         k(SchemeValue(ValueBoolean(true), idn))
