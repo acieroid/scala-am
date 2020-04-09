@@ -23,18 +23,8 @@ object SchemeAnalyses {
     }
     def adaptiveAnalysisPolicy1(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveArgumentSensitivityPolicy1
-                                                                                        with EagerAdaptiveArgumentSelection
                                                                                         with ConstantPropagationDomain {
         override def toString() = "adaptive-argument-policy1"
-        val limit = k
-        override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
-        override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
-    }
-    def adaptiveAnalysisPolicy2(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
-                                                                                        with AdaptiveArgumentSensitivityPolicy2
-                                                                                        with EagerAdaptiveArgumentSelection
-                                                                                        with ConstantPropagationDomain {
-        override def toString() = "adaptive-argument-policy2"
         val limit = k
         override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)

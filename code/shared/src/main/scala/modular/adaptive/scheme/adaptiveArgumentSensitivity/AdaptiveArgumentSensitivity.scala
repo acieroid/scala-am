@@ -5,33 +5,6 @@ import scalaam.util._
 import scalaam.modular.adaptive.scheme._
 
 trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
-  // A context is a partial mapping from the closure's formal parameters to argument values
-  type ArgumentMapping = Map[Identifier, Value]
-  case class ComponentContext(args: ArgumentMapping) {
-   override def toString = args.toList
-                               .map({ case (i,v) => s"$i -> $v" })
-                               .mkString(" ; ")
-  }
-  def updateArgumentMapping(update: Component => Component)(args: ArgumentMapping) = 
-    updateMap(updateValue(update))(args)
-  def updateCtx(update: Component => Component)(ctx: ComponentContext) =
-   ComponentContext(updateArgumentMapping(update)(ctx.args))
-  // It's a partial mapping, because some parameters are not included for a given closure
-  // (this way, we can fine-tune argument-sensitivity to avoid scalability issues with certain parameters or even specific argument values)
-  def filterArgs(clo: lattice.Closure, args: ArgumentMapping): ArgumentMapping
-  // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(clo: lattice.Closure, args: List[Value]): ComponentContext =
-   ComponentContext(filterArgs(clo, clo._1.args.zip(args).toMap))
-  // To adapt an existing component, we drop the argument values for parameters that have to be excluded
-  def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
-    case Main => Main
-    case Call(clo,nam,ctx) =>
-      val adaptedCtx = ComponentContext(filterArgs(clo,ctx.args))
-      Call(clo,nam,adaptedCtx)
-  }
-}
-
-trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
   case class ComponentContext(args: List[Value]) {
     override def toString = args.mkString(",")
   }
@@ -59,12 +32,12 @@ trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
   }
   // joining arguments
   def joinArgs(clo: lattice.Closure, args: Set[List[Value]], limit: Int) = {
-    val argPositions = clo._1.args.zipWithIndex.toMap
     val valuesPerPos = args.toList.transpose.map(_.toSet)
     val valuesPerArg = clo._1.args.zip(valuesPerPos).toMap
     // sort identifiers: those with the most values come first!
     var sortedArgs = valuesPerArg.toList.sortBy(_._2.size)
     // start the iteration
+    var currentPars = clo._1.args
     var currentArgs = args
     while(currentArgs.size > limit) {
       // look at the next arg with the most values
@@ -74,8 +47,9 @@ trait AdaptiveArgumentSensitivityAlt extends AdaptiveSchemeModFSemantics {
       val joinedArgVal = lattice.join(argVals)
       widenArg(clo, nextArg, joinedArgVal)
       // update all argument combination by "dropping" that argument
-      val argPosition = argPositions(nextArg)
-      currentArgs = args.map(as => as.patch(argPosition,Nil,1))
+      val argPosition = currentPars.indexOf(nextArg)
+      currentPars = currentPars.patch(argPosition,Nil,1)
+      currentArgs = currentArgs.map(as => as.patch(argPosition,Nil,1))
     }
   }
   // we need to update the adaptedArgs mapping when the analysis is adapted
