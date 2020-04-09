@@ -378,14 +378,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     }
     object `pair?` extends Store1Operation("pair?") {
       /* TODO[easy]: this should be a store operation that dereferences the pointer to check if it is indeed a cons */
-      override def call(x: V, store: Store[A, V]) =
-        (ifThenElse(isPointer(x)) {
-          dereferencePointer(x, store) { v =>
-            isCons(v)
-          }
-        } {
-          bool(false)
-        }).map(v => (v, store))
+      override def call(x: V, store: Store[A, V]) = isCons(x).map(v => (v, store))
     }
     object `char?` extends NoStore1Operation("char?") {
       override def call(x: V) = isChar(x)
