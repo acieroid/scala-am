@@ -85,21 +85,15 @@ object AnalysisComparison1 extends AnalysisComparison[
         val allKeys = con.keys ++ abs.keys
         val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
         interestingKeys.foreach { k =>
-            println(s"$k -> ${abs.getOrElse(k,"B")} ; ${con.getOrElse(k,"B")} ")
+            println(s"$k -> ${abs.getOrElse(k,"⊥")} ; ${con.getOrElse(k,"⊥")} ")
         }
     }
 
     def runBenchmarks() = {
         SchemeBenchmarks.standard.foreach(runBenchmark)
         this.results.foreach { case (b, r) =>
-            val fullArg = r("full-argument-sensitivity") match {
-                case Some(n) => n.toString()
-                case None => "T"
-            }
-            val concrete = r("concrete") match {
-                case Some(n) => n.toString()
-                case None => "T"
-            }
+            val fullArg = r.getOrElse("full-argument-sensitivity", "T")
+            val concrete = r.getOrElse("concrete", "T")
             println(s"$b -> $fullArg/$concrete")
         }
     }
