@@ -27,7 +27,6 @@ object SchemeAnalyses {
     }
     def adaptiveAnalysisPolicy1(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveArgumentSensitivityPolicy1
-                                                                                        with EagerAdaptiveArgumentSelection
                                                                                         with ConstantPropagationDomain {
         override def toString() = "adaptive-argument-policy1"
         val limit = k

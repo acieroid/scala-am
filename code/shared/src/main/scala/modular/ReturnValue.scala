@@ -12,6 +12,7 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
   case class ReturnAddr(cmp: Component) extends Addr {
     def printable = true
     def dropContext = this
+    override def toString = s"<ret $cmp>"
   }
 
   // intra-analysis can now also update and read the result of a component

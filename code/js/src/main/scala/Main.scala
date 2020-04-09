@@ -35,7 +35,6 @@ object Main {
     val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
                                                     with AdaptiveArgumentSensitivityPolicy1
-                                                    with NaiveAdaptiveArgumentSelection
                                                     with ConstantPropagationDomain
                                                     with WebAdaptiveAnalysis[SchemeExp] {
       val limit = 2
