@@ -19,6 +19,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   trait Addr extends Address
   case class ComponentAddr(cmp: Component, addr: LocalAddr) extends Addr {
     def printable: Boolean = addr.printable
+    override def toString: String = s"#<$addr $cmp>"
   }
 
   // the global store of the analysis

@@ -26,12 +26,21 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   }
 
   // Local addresses are simply made out of lexical information.
-  trait LocalAddr extends Address { def idn(): Identity }
-  case class VarAddr(id: Identifier)           extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
-  case class PtrAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
-  case class CarAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
-  case class CdrAddr(exp: SchemeExp)           extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
-  case class PrmAddr(nam: String)              extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
+  sealed trait LocalAddr extends Address { 
+    def idn(): Identity 
+    override def toString() = this match {
+      case VarAddr(id)  => s"var ($id)"
+      case PtrAddr(_)   => s"ptr (${idn()})"
+      case CarAddr(_)   => s"car (${idn()})"
+      case CdrAddr(_)   => s"cdr (${idn()})"
+      case PrmAddr(nam) => s"prm ($nam)"
+    }
+  }
+  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
+  case class PtrAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class CarAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class CdrAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity = exp.idn }
+  case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
