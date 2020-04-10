@@ -12,6 +12,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
     def analyze(): Unit = {
       // componentName(cmp).foreach(n => maybePre(n, cmp))
       val result = eval(component.body)
+      // println(s"Analysis of $cmp: $result")
       // componentName(cmp).foreach(n => maybePost(n, result))
       writeResult(result)
     }
