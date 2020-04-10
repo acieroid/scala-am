@@ -129,7 +129,10 @@ class ModularSchemeLattice[
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
           //case (Cons(car1, cdr1), Cons(car2, cdr2)) => Right(Cons(L.lattice.join(car1, car2), L.lattice.join(cdr1, cdr2)))
           case (Symbol(s1), Symbol(s2)) => Right(Symbol(SymbolLattice[Sym].join(s1,s2)))
-          /* TODO: join vectors */
+          case (Vec(size1, els1, init1), Vec(size2, els2, init2)) =>
+            Right(Vec(IntLattice[I].join(size1, size2),
+              els2.foldLeft(els1)({ case (acc, (k, v)) => acc + (k -> schemeLattice.join(v, acc.get(k).getOrElse(schemeLattice.bottom))) }),
+              schemeLattice.join(init1, init2)))
           case _ => Left((x, y))
         }
       }
@@ -598,10 +601,14 @@ class ModularSchemeLattice[
                     /* merge x2 into another element of the set */
                     acc.map(
                       x1 =>
+                      if (Value.compatible(x1, x2)) {
                         Value.join(x1, x2) match {
                           case Right(joined) => joined
-                          case Left(_)       => x1
+                          case Left(_)       => throw new Exception(s"compatible values can't be joined: $x1 and $x2")
                         }
+                      } else {
+                        x1
+                      }
                     )
                   } else {
                     /* just add x2 to the set */
