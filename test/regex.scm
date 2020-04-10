@@ -1,6 +1,3 @@
-;; BEGIN PRELUDE
-
-
 (define (debug-trace)
   'do-nothing)
 (define regex-NULL #f)

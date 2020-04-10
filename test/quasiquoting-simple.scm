@@ -9,7 +9,6 @@
 ;; (res6a `(a b ,(reverse '(c d e)) f g))
 ;; (res6b (quasiquote (a b (unquote (reverse '(c d e))) f g)))
 
-
 (define day-of-week 'Sunday)
 (define (make-greeting)
   `(Welcome to the FooBar system!  We hope you

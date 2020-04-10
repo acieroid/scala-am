@@ -14,7 +14,7 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
-import scalaam.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrimitives}
+import scalaam.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrelude, SchemePrimitives}
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
@@ -81,7 +81,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   def onBenchmark(benchmark: Benchmark): Unit =
     property(s"Analysis of $benchmark using $name is sound.") {
       // load the benchmark program
-      val program = loadFile(benchmark)
+      val program = SchemePrelude.loadFileWithPrelude(benchmark)
       // run the program using a concrete interpreter
       val (cResult, cPosResults) = evalConcrete(program,timeout(benchmark))
       // analyze the program using a ModF analysis
