@@ -24,7 +24,7 @@ object Main {
 
   def test(): Unit = {
     val txt = Reader.loadFile("test/my-test.scm")
-    val prg = SchemeParser.parse(txt)
+    val prg = SchemeParser.parseAddPrelude(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
                                                 with AdaptiveArgumentSensitivityPolicy1
                                                 with ConstantPropagationDomain {

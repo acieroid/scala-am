@@ -646,7 +646,6 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       }
     }
 
-    // PRIMITIVES THAT WE COULD PROBABLY COMPILE
     object `expt` extends NoStore2Operation("expt") {
       def expt(x: V, y: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
         if (visited.contains(y) || x == bottom || y == bottom) {
