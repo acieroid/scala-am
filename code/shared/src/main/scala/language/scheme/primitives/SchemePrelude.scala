@@ -117,22 +117,22 @@ object SchemePrelude {
     "cdddar" -> "(define (cdddar x) (cdr (cdr (cdr (car x)))))",
     "cddddr" -> "(define (cddddr x) (cdr (cdr (cdr (cdr x)))))",
     "reverse" -> """(define (reverse l)
-   (if (null? l)
-       ()
-       (append (reverse (cdr l))
-               (list (car l)))))""",
-    //      "map" ->  """(define (map f l)
-    //  (if (null? l)
-    //      l
-    //      (if (pair? l)
-    //          (cons (f (car l)) (map f (cdr l)))
-    //          (error "Cannot map over a non-list"))))""",
-    //    "for-each" -> """(define (for-each f l)
-    //  (if (null? l)
-    //      #t
-    //      (if (pair? l)
-    //          (begin (f (car l)) (for-each f (cdr l)))
-    //          (error "Cannot for-each over a non-list"))))""",
+      (if (null? l)
+          ()
+          (append (reverse (cdr l))
+                  (list (car l)))))""",
+    "map" ->  """(define (map f l)
+      (if (null? l)
+          l
+          (if (pair? l)
+              (cons (f (car l)) (map f (cdr l)))
+              (error "Cannot map over a non-list."))))""",
+    "for-each" -> """(define (for-each f l)
+      (if (null? l)
+          #t
+          (if (pair? l)
+              (begin (f (car l)) (for-each f (cdr l)))
+              (error "Cannot for-each over a non-list."))))""",
     //    "foldr" -> """(define (foldr f base lst) (foldr-aux f base lst))""",
     //    "foldr-aux" -> """(define (foldr-aux f base lst)
     //        (if (null? lst)
