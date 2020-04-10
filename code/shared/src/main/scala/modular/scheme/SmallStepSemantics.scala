@@ -100,12 +100,12 @@ trait SmallStepSemantics extends SchemeModFSemantics {
       case SchemeDefineFunction(id, prs, bdy, pos) =>
         val lambda = SchemeLambda(prs, bdy, pos)
         val result = newClosure(lambda,Some(id.name))
-        defineVariable(cmp, id, result)
+        defineVariable(id, result)
         Set(KontState(result, cnt))
       case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos) =>
         val lambda = SchemeVarArgLambda(prs, vararg, bdy, pos)
         val result = newClosure(lambda,Some(id.name))
-        defineVariable(cmp, id, result)
+        defineVariable(id, result)
         Set(KontState(result, cnt))
       case SchemeSetLex(_, lex, vexp, _) =>
         val frm = SetFrame(lex)
@@ -124,7 +124,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
         val lambda = SchemeLambda(prs,body,pos)
         val closure = newClosure(lambda,Some(id.name))
         val call = SchemeFuncall(lambda,ags,pos)
-        defineVariable(cmp, id, closure)
+        defineVariable(id, closure)
         evalArgs(call,closure,ags,Nil,cnt)
       case call@SchemeFuncall(fexp,args,_) =>
         val frm = FunFrame(call,args)
@@ -186,7 +186,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
       case SeqFrame(exps) =>
         evalSequence(exps, cnt)
       case DefVarFrame(id) =>
-        defineVariable(cmp, id,vlu)
+        defineVariable(id,vlu)
         Set(KontState(vlu,cnt))
       case SetFrame(lex) =>
         setVariable(lex,vlu)
@@ -196,7 +196,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
                     Set(EvalState(csq,cnt)),
                     Set(EvalState(alt,cnt)))
       case LetFrame(id,bindings,body) =>
-        defineVariable(cmp, id, vlu)
+        defineVariable(id, vlu)
         evalLet(bindings, body, cnt)
       case FunFrame(fexp, args) =>
         evalArgs(fexp,vlu,args,Nil,cnt)

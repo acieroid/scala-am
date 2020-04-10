@@ -2,7 +2,7 @@ package scalaam.cli.benchmarks.precision
 
 import scalaam.util._
 import scalaam.core._
-import scalaam.language.scheme.primitives.SchemePrelude
+import scalaam.io.Reader
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -33,11 +33,11 @@ abstract class PrecisionBenchmarks[
     case class PtrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<pointer $idn>" }
     
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
-        case analysis.ComponentAddr(analysis.VarAddr(_, v)) => VarAddr(v)
-        case analysis.ComponentAddr(analysis.PrmAddr(n)) => PrmAddr(n)
-        case analysis.ComponentAddr(analysis.PtrAddr(e, _)) => PtrAddr(e)
-        case analysis.ComponentAddr(analysis.CarAddr(e, _)) => CarAddr(e)
-        case analysis.ComponentAddr(analysis.CdrAddr(e, _)) => CdrAddr(e)
+        case analysis.ComponentAddr(_, analysis.VarAddr(v)) => VarAddr(v)
+        case analysis.ComponentAddr(_, analysis.PrmAddr(n)) => PrmAddr(n)
+        case analysis.ComponentAddr(_, analysis.PtrAddr(e, _)) => PtrAddr(e)
+        case analysis.ComponentAddr(_, analysis.CarAddr(e, _)) => CarAddr(e)
+        case analysis.ComponentAddr(_, analysis.CdrAddr(e, _)) => CdrAddr(e)
         case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body.idn)
     }
 
@@ -257,7 +257,8 @@ abstract class PrecisionBenchmarks[
      *  @param benchmark the benchmark program to run
      */
     def runBenchmark(benchmark: Benchmark) = {
-        val prg = SchemePrelude.loadFileWithPrelude(benchmark)
+        val txt = Reader.loadFile(benchmark)
+        val prg = SchemeParser.parseAddPrelude(txt)
         forBenchmark(benchmark, prg)
     }
 }

@@ -70,7 +70,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
-        case a.ComponentAddr(addr) => addr.idn()
+        case a.ComponentAddr(_, addr) => addr.idn()
         case _                     => Identity.none
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>

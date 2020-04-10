@@ -40,19 +40,19 @@ trait BigStepSemantics extends SchemeModFSemantics {
     }
     private def evalDefineVariable(id: Identifier, exp: SchemeExp): Value = {
       val value = eval(exp)
-      defineVariable(cmp, id,value)
+      defineVariable(id,value)
       value
     }
     private def evalDefineFunction(id: Identifier, prs: List[Identifier], body: List[SchemeExp], idn: Identity): Value = {
       val lambda = SchemeLambda(prs,body,idn)
       val value = newClosure(lambda,Some(id.name))
-      defineVariable(cmp, id,value)
+      defineVariable(id,value)
       value
     }
     private def evalDefineVarArgFunction(id: Identifier, prs: List[Identifier], vararg: Identifier, body: List[SchemeExp], idn: Identity): Value = {
       val lambda = SchemeVarArgLambda(prs,vararg,body,idn)
       val value = newClosure(lambda,Some(id.name))
-      defineVariable(cmp, id,value)
+      defineVariable(id,value)
       value
     }
     private def evalSequence(exps: List[SchemeExp]): Value =
@@ -64,7 +64,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
     }
     private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): Value = conditional(eval(prd), eval(csq), eval(alt))
     private def evalLetExp(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp]): Value = {
-      bindings.foreach { case (id,exp) => defineVariable(cmp, id, eval(exp)) }
+      bindings.foreach { case (id,exp) => defineVariable(id, eval(exp)) }
       evalSequence(body)
     }
     private def evalNamedLet(id: Identifier, bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], idn: Identity): Value = {
@@ -72,7 +72,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
       val lambda = SchemeLambda(prs,body,idn)
       val closure = newClosure(lambda,Some(id.name))
       val call = SchemeFuncall(lambda,ags,idn)
-      defineVariable(cmp, id,closure)
+      defineVariable(id,closure)
       val argsVals = ags.map(argExp => (argExp, eval(argExp)))
       applyFun(call,closure,argsVals,id.idn.pos, context(component))
     }

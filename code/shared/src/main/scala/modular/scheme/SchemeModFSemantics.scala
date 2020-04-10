@@ -17,21 +17,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                             with ContextSensitiveComponents[SchemeExp]
 //                            with InterceptCall[SchemeExp]
 {
-
-  def debug(): Unit = {
-    println("Dependencies")
-    println("--------------------")
-    for { (dep, comp) <- deps } {
-      println(s"$dep -> $comp")
-    }
-    println("Store")
-    println("--------------------")
-    for { (addr, v) <- store } {
-      if (addr.isInstanceOf[ComponentAddr] && !addr.asInstanceOf[ComponentAddr].addr.isInstanceOf[PrmAddr])
-        println(s"$addr -> $v")
-    }
-  }
-
   //XXXXXXXXXXXXXXXXXXXX//
   // LEXICAL ADDRESSING //
   //XXXXXXXXXXXXXXXXXXXX//
@@ -42,7 +27,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
     // Set up initial environment and install the primitives in the global store.
     primitives.allPrimitives.foreach { p =>
-      val addr = ComponentAddr(PrmAddr(p.name))
+      val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
       store += (addr -> lattice.primitive(p))
     }
 
@@ -55,14 +40,14 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     def idn(): Identity
     def dropContext: Address = this
     override def toString() = this match {
-      case VarAddr(_, id)  => s"var ($id)"
+      case VarAddr(id)  => s"var ($id)"
       case PtrAddr(idn, _)   => s"ptr ($idn)"
       case CarAddr(idn, _)   => s"car ($idn)"
       case CdrAddr(idn, _)   => s"cdr ($idn)"
       case PrmAddr(nam) => s"prm ($nam)"
     }
   }
-  case class VarAddr(cmp: Component, id: Identifier)  extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
+  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
   case class PtrAddr[C](idn: Identity, c: C)  extends LocalAddr { def printable = false }
   case class CarAddr[C](idn: Identity, c: C)  extends LocalAddr { def printable = false }
   case class CdrAddr[C](idn: Identity, c: C)  extends LocalAddr { def printable = false }
@@ -139,15 +124,15 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     // variable lookup: use the global store
     protected def lookupVariable(lex: LexicalRef): Value = readAddr(resolveAddr(lex))
     protected def    setVariable(lex: LexicalRef, vlu: Value): Unit = writeAddr(resolveAddr(lex), vlu)
-    protected def defineVariable(cmp: Component, id: Identifier, vlu: Value): Unit = writeAddr(    VarAddr(cmp, id), vlu)
+    protected def defineVariable( id: Identifier, vlu: Value): Unit = writeAddr(    VarAddr( id), vlu)
     // resolve a lexical address to the corresponding address in the store
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
-      case  LocalRef(identifier) => ComponentAddr(VarAddr(component, identifier))
-      case GlobalRef(identifier) => ComponentAddr(VarAddr(initialComponent, identifier))
-      case   PrimRef(      name) => ComponentAddr(PrmAddr(name))
+      case  LocalRef(identifier) => ComponentAddr(component, VarAddr(identifier))
+      case GlobalRef(identifier) => ComponentAddr(initialComponent, VarAddr(identifier))
+      case   PrimRef(      name) => ComponentAddr(initialComponent, PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
         val cmp = resolveParent(component,scp)
-        ComponentAddr(VarAddr(cmp, identifier))
+        ComponentAddr(cmp, VarAddr(identifier))
     }
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
@@ -210,7 +195,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       throw new Exception("NYI -- append")
     }
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
-      writeAddr(VarAddr(component, par),arg,component)
+      writeAddr(VarAddr(par),arg,component)
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
