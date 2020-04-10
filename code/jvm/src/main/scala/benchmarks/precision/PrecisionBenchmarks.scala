@@ -258,7 +258,7 @@ abstract class PrecisionBenchmarks[
      */
     def runBenchmark(benchmark: Benchmark) = {
         val txt = Reader.loadFile(benchmark)
-        val prg = SchemeParser.parse(txt)
+        val prg = SchemeParser.parseAddPrelude(txt)
         forBenchmark(benchmark, prg)
     }
 }

@@ -147,7 +147,7 @@ object SchemePrelude {
 
   val primNames: Set[String] = primDefs.keySet
 
-  private def addPrelude(exp: SchemeExp): SchemeExp = {
+  def addPrelude(exp: SchemeExp): SchemeExp = {
     var prelude: Set[SchemeExp] = Set()
     var work: List[Expression] = List(exp)
     var visited: List[String] = List()
@@ -172,7 +172,4 @@ object SchemePrelude {
     // println(s"Distinct primitive calls: $calls")
     SchemeBegin(prelude.toList ::: List(exp), Identity.none)
   }
-
-  def loadFileWithPrelude(file: String): SchemeExp =
-    addPrelude(SchemeParser.parse(Reader.loadFile(file)))
 }

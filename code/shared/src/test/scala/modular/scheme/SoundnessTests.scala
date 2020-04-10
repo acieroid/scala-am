@@ -9,12 +9,13 @@ import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
 import scalaam.core._
 import scalaam.core.Identity.Position
+import scalaam.io.Reader
 import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
-import scalaam.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrelude, SchemePrimitives}
+import scalaam.language.scheme.primitives._
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
@@ -81,7 +82,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   def onBenchmark(benchmark: Benchmark): Unit =
     property(s"Analysis of $benchmark using $name is sound.") {
       // load the benchmark program
-      val program = SchemePrelude.loadFileWithPrelude(benchmark)
+      val content = Reader.loadFile(benchmark)
+      val program = SchemeParser.parseAddPrelude(content)
       // run the program using a concrete interpreter
       val (cResult, cPosResults) = evalConcrete(program,timeout(benchmark))
       // analyze the program using a ModF analysis

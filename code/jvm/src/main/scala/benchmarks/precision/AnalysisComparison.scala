@@ -80,7 +80,7 @@ object AnalysisComparison1 extends AnalysisComparison[
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
-        val prg = SchemeParser.parse(txt)
+        val prg = SchemeParser.parseAddPrelude(txt)
         val con = runInterpreter(prg, path).get
         val abs = runAnalysis(SchemeAnalyses.contextSensitiveAnalysis(prg),path).get
         val allKeys = con.keys ++ abs.keys
