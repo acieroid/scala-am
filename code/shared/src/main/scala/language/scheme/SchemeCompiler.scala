@@ -1,7 +1,6 @@
 package scalaam.language.scheme
 
-import scalaam.core.{Identifier, Identity}
-import scalaam.language.scheme.primitives.SchemePrelude
+import scalaam.core._
 import scalaam.language.sexp._
 
 /**

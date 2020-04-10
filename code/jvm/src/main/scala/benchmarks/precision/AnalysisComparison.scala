@@ -1,6 +1,5 @@
 package scalaam.cli.benchmarks.precision
 
-import scalaam.cli._
 import scalaam.cli.benchmarks._
 import scalaam.io.Reader
 import scalaam.util._
