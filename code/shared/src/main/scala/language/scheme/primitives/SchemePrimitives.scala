@@ -85,6 +85,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   def stringRef    = lat.binaryOp(SchemeOps.BinaryOperator.StringRef) _
   def stringLt     = lat.binaryOp(SchemeOps.BinaryOperator.StringLt) _
 
+  /*
   abstract class FixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
 
     // parameterized by
@@ -201,8 +202,9 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
       }
       cache(initArgs).map((_, store))
     }
-  }
+  }*/
 
+  /*
   /* TODO[medium] improve these implicit classes to be able to write primitives more clearly */
   implicit class V1Ops(f: V => MayFail[V, Error]) {
     def apply(arg: MayFail[V, Error]): MayFail[V, Error] = arg >>= f
@@ -215,6 +217,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
         res <- f(v1, v2)
       } yield res
   }
+  */
 
   def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
     x match {
@@ -290,6 +293,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
         })
     )
 
+  /*
   def dereferencePointerTR(x: V, store: Store[A, V])(
     f: V => TailRec[MayFail[V, Error]]
   ): TailRec[MayFail[V, Error]] =
@@ -301,4 +305,5 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
               .flatMap(fv => done(fv.flatMap(res => accv.flatMap(accvv => join(accvv, res)))))
         )
     )
+    */
 }
