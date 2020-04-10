@@ -17,8 +17,6 @@
 
 (define (debug-trace)
   'do-nothing)
-(define (cadr p) (car (cdr p)))
-(define (caddr p) (car (cdr (cdr p))))
 (define regex-NULL #f)
 (define regex-BLANK #t)
 (define (regex-alt? re)
