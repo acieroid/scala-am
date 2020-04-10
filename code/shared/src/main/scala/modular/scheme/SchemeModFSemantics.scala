@@ -146,12 +146,12 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case GlobalRef(identifier) => ComponentAddr(VarAddr(identifier))
       case   PrimRef(      name) => ComponentAddr(PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
-        val cmp = resolveParent(component,scp)
+        //val cmp = resolveParent(component,scp)
         ComponentAddr(VarAddr(identifier))
     }
-    @scala.annotation.tailrec
-    private def resolveParent(cmp: Component, scp: Int): Component =
-      if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
+   // @scala.annotation.tailrec
+   // private def resolveParent(cmp: Component, scp: Int): Component =
+   //   if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
     protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Option[ComponentContext]): Value =
       splitArgs(args) { argsSplitted =>
         val fromClosures = applyClosures(fval,argsSplitted, cll, cmp)
