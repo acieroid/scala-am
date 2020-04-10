@@ -160,12 +160,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       } else {
         lattice.bottom
       }
-    // Disabled because that is too much of a performance hit (TODO: see for precision)
-//      splitArgs(args) { argsSplitted =>
-//        val fromClosures = applyClosures(fval,argsSplitted, cll, cmp)
-//        val fromPrimitives = applyPrimitives(fexp,fval,argsSplitted)
-//        lattice.join(fromClosures,fromPrimitives)
-//      }
     private def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
       case Nil                      => fn(Nil)
       // TODO[minor]: use foldMap instead of foldLeft

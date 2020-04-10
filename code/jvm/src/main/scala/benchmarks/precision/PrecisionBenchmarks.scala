@@ -2,7 +2,7 @@ package scalaam.cli.benchmarks.precision
 
 import scalaam.util._
 import scalaam.core._
-import scalaam.io.Reader
+import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -257,8 +257,7 @@ abstract class PrecisionBenchmarks[
      *  @param benchmark the benchmark program to run
      */
     def runBenchmark(benchmark: Benchmark) = {
-        val txt = Reader.loadFile(benchmark)
-        val prg = SchemeParser.parse(txt)
+        val prg = SchemePrelude.loadFileWithPrelude(benchmark)
         forBenchmark(benchmark, prg)
     }
 }

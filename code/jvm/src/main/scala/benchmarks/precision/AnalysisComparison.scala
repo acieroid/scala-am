@@ -1,7 +1,7 @@
 package scalaam.cli.benchmarks.precision
 
 import scalaam.cli.benchmarks._
-import scalaam.io.Reader
+import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.util._
 import scalaam.language.scheme._
 
@@ -13,7 +13,7 @@ abstract class AnalysisComparison[
     Rea: RealLattice,
     Bln: BoolLattice,
     Chr: CharLattice,
-    Str: StringLattice, 
+    Str: StringLattice,
     Smb: SymbolLattice
 ] extends PrecisionBenchmarks {
 
@@ -79,8 +79,7 @@ object AnalysisComparison1 extends AnalysisComparison[
     def main(args: Array[String]) = check("test/primtest.scm")
 
     def check(path: Benchmark) = {
-        val txt = Reader.loadFile(path)
-        val prg = SchemeParser.parse(txt)
+        val prg = SchemePrelude.loadFileWithPrelude(path)
         val con = runInterpreter(prg, path).get
         val abs = runAnalysis(SchemeAnalyses.contextSensitiveAnalysis(prg),path).get
         val allKeys = con.keys ++ abs.keys
