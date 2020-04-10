@@ -1,6 +1,6 @@
 package scalaam.language.scheme
 
-import scalaam.core.{Identity, Identifier}
+import scalaam.core._
 
 /**
   * Remove defines from a Scheme expression, replacing them by let bindings.

@@ -8,7 +8,6 @@ import UnaryOperator._
 import BinaryOperator._
 import scalaam.language.scheme.primitives.SchemePrimitive
 import scalaam.util.MonoidImplicits._
-import scalaam.util.MonoidImplicits._
 
 import scala.annotation.tailrec
 
