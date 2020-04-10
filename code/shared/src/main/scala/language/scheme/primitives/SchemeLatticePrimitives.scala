@@ -639,7 +639,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           } yield {
             val carAddr = alloc.carAddr(fpos)
             val cdrAddr = alloc.cdrAddr(fpos)
-            val updatedStore = store.extend(carAddr, v)
+            val updatedStore = store2.extend(carAddr, v) // Can use store here if store is mutated.
               .extend(cdrAddr, restv)
             (lat.cons(carAddr, cdrAddr), updatedStore)
           }
