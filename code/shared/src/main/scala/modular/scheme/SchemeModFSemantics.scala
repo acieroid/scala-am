@@ -153,11 +153,19 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
     protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Option[ComponentContext]): Value =
-      splitArgs(args) { argsSplitted =>
-        val fromClosures = applyClosures(fval,argsSplitted, cll, cmp)
-        val fromPrimitives = applyPrimitives(fexp,fval,argsSplitted)
+      if(args.forall(_._2 != lattice.bottom)) {
+        val fromClosures = applyClosures(fval,args, cll, cmp)
+        val fromPrimitives = applyPrimitives(fexp,fval,args)
         lattice.join(fromClosures,fromPrimitives)
+      } else {
+        lattice.bottom
       }
+    // Disabled because that is too much of a performance hit (TODO: see for precision)
+//      splitArgs(args) { argsSplitted =>
+//        val fromClosures = applyClosures(fval,argsSplitted, cll, cmp)
+//        val fromPrimitives = applyPrimitives(fexp,fval,argsSplitted)
+//        lattice.join(fromClosures,fromPrimitives)
+//      }
     private def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
       case Nil                      => fn(Nil)
       // TODO[minor]: use foldMap instead of foldLeft
@@ -214,10 +222,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
     private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
       def pointer(idn: Identity): Addr = {
-        allocAddr(PtrAddr(idn, ())) // getPtrCtx(context(component))))
+        allocAddr(PtrAddr(idn, getPtrCtx(context(component))))
       }
-      def carAddr(idn: Identity): Addr = allocAddr(CarAddr(idn, ())) // getPtrCtx(context(component))))
-      def cdrAddr(idn: Identity): Addr = allocAddr(CdrAddr(idn, ())) // getPtrCtx(context(component))))
+      def carAddr(idn: Identity): Addr = allocAddr(CarAddr(idn, getPtrCtx(context(component))))
+      def cdrAddr(idn: Identity): Addr = allocAddr(CdrAddr(idn, getPtrCtx(context(component))))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
