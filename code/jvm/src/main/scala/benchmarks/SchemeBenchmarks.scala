@@ -76,8 +76,8 @@ object SchemeBenchmarks {
     "test/sigscheme/takr.scm",
     "test/scp1/7.12.scm",
     "test/regex.scm",
-    "test/grid.scm",
-    "test/gabriel/puzzle.scm",
+    // "test/grid.scm", // vectors
+    // "test/gabriel/puzzle.scm", // vectors
     "test/scp1/5.20.4.scm",
     "test/scp1/5.19.scm",
     "test/scp1/9.15.scm"
