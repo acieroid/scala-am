@@ -40,17 +40,17 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     def idn(): Identity
     override def toString() = this match {
       case VarAddr(id)  => s"var ($id)"
-      case PtrAddr(idn, _)   => s"ptr ($idn)"
-      case CarAddr(idn, _)   => s"car ($idn)"
-      case CdrAddr(idn, _)   => s"cdr ($idn)"
+      case PtrAddr(idn)   => s"ptr ($idn)"
+      case CarAddr(idn)   => s"car ($idn)"
+      case CdrAddr(idn)   => s"cdr ($idn)"
       case PrmAddr(nam) => s"prm ($nam)"
     }
   }
   case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
-  case class PtrAddr[C](idn: Identity, c: C)  extends LocalAddr { def printable = false }
-  case class CarAddr[C](idn: Identity, c: C)  extends LocalAddr { def printable = false }
-  case class CdrAddr[C](idn: Identity, c: C)  extends LocalAddr { def printable = false }
-  case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
+  case class PtrAddr(idn: Identity)  extends LocalAddr { def printable = false }
+  case class CarAddr(idn: Identity)  extends LocalAddr { def printable = false }
+  case class CdrAddr(idn: Identity)  extends LocalAddr { def printable = false }
+  case class PrmAddr(nam: String)    extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
@@ -104,9 +104,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     case _ : MainComponent => None
     case call: CallComponent => Some(call.ctx)
   }
-
-  /* Return some context for pointer allocation */
-  def getPtrCtx(cmp: Option[ComponentContext]): Any
 
   /** Creates a new component, given a closure, context and an optional name. */
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
@@ -183,8 +180,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val carAddr = allocAddr(CarAddr(pairExp.idn, ()))
-      val cdrAddr = allocAddr(CdrAddr(pairExp.idn, ()))
+      val carAddr = allocAddr(CarAddr(pairExp.idn))
+      val cdrAddr = allocAddr(CdrAddr(pairExp.idn))
       writeAddr(carAddr,car)
       writeAddr(cdrAddr,cdr)
       lattice.cons(carAddr,cdrAddr)
@@ -200,10 +197,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
     private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
       def pointer(idn: Identity): Addr = {
-        allocAddr(PtrAddr(idn, getPtrCtx(context(component))))
+        allocAddr(PtrAddr(idn))
       }
-      def carAddr(idn: Identity): Addr = allocAddr(CarAddr(idn, getPtrCtx(context(component))))
-      def cdrAddr(idn: Identity): Addr = allocAddr(CdrAddr(idn, getPtrCtx(context(component))))
+      def carAddr(idn: Identity): Addr = allocAddr(CarAddr(idn))
+      def cdrAddr(idn: Identity): Addr = allocAddr(CdrAddr(idn))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =

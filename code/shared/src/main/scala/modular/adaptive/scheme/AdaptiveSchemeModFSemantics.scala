@@ -18,8 +18,6 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
 
-  def getPtrCtx(cmp: Option[ComponentContext]): Any = ()
-
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
     case (lambda, parent) => (lambda, update(parent))
