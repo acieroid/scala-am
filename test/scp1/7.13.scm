@@ -1,9 +1,3 @@
-(define (for-each f l)
-  (if (null? l)
-      #t
-      (if (pair? l)
-          (begin (f (car l)) (for-each f (cdr l)))
-          (error "Cannot for-each over a non-list"))))
 (define result '())
 (define display2 (lambda (i) (set! result (cons i result))))
 (define newline2 (lambda () (set! result (cons 'newline result))))
@@ -25,7 +19,7 @@
         (administratief (personeel) (financien))))
 
 (define (display-n n d)
-  (if (> n 0)(begin (display d)(display-n (- n 1) d))))
+  (if (> n 0)(begin (display2 d)(display-n (- n 1) d))))
 
 (define (print-lijn aantalblanco tekst)
   (display-n aantalblanco " ")
