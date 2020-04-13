@@ -35,9 +35,9 @@ abstract class PrecisionBenchmarks[
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
         case analysis.ComponentAddr(_, analysis.VarAddr(v)) => VarAddr(v)
         case analysis.ComponentAddr(_, analysis.PrmAddr(n)) => PrmAddr(n)
-        case analysis.ComponentAddr(_, analysis.PtrAddr(e, _)) => PtrAddr(e)
-        case analysis.ComponentAddr(_, analysis.CarAddr(e, _)) => CarAddr(e)
-        case analysis.ComponentAddr(_, analysis.CdrAddr(e, _)) => CdrAddr(e)
+        case analysis.ComponentAddr(_, analysis.PtrAddr(idn, _)) => PtrAddr(idn)
+        case analysis.ComponentAddr(_, analysis.CarAddr(idn, _)) => CarAddr(idn)
+        case analysis.ComponentAddr(_, analysis.CdrAddr(idn, _)) => CdrAddr(idn)
         case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body.idn)
     }
 

@@ -43,4 +43,28 @@ object SchemeAnalyses {
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
         val primitives = new SchemeLatticePrimitives[Value, Addr]
     }
+
+  object PrimitivesComparison {
+    def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                     with BigStepSemantics
+                                                     with CompoundSensitivities.S_0_0
+                                                     with ConstantPropagationDomain {
+        override def toString() = "0_0"
+        val primitives = new SchemeLatticePrimitives[Value, Addr]
+    }
+    def S_CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                      with BigStepSemantics
+                                                      with CompoundSensitivities.S_CS_0
+                                                      with ConstantPropagationDomain {
+        override def toString() = "CS_0"
+        val primitives = new SchemeLatticePrimitives[Value, Addr]
+    }
+    def S_CSFA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                        with BigStepSemantics
+                                                        with CompoundSensitivities.S_CSFA_0
+                                                        with ConstantPropagationDomain {
+        override def toString() = "CSFA_0"
+        val primitives = new SchemeLatticePrimitives[Value, Addr]
+    }
+  }
 }
