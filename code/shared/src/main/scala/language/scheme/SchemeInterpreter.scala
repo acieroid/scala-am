@@ -130,7 +130,15 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
           extendStore(envExt(binding._1.name), check(binding._1.idn, eval(binding._2, envExt, timeout)))
         })
         eval(SchemeBegin(body, pos), envExt, timeout)
-      case SchemeNamedLet(_, _, _, _) => ???
+      case SchemeNamedLet(name, bindings, body, pos) =>
+        val addr = newAddr(AddrInfo.VarAddr(name))
+        val env2 = env + (name.name -> addr)
+        val (prs,ags) = bindings.unzip
+        val lambda = SchemeLambda(prs, body, pos)
+        val clo =  Value.Clo(lambda, env2)
+        extendStore(addr, clo)
+        val argsVals = ags.map(argExp => (argExp, eval(argExp, env, timeout)))
+        eval(SchemeFuncall(lambda, ags, pos), env2, timeout)
       case SchemeSet(id, v, pos) =>
         /* TODO: primitives can be reassigned with set! without being redefined */
         val addr = env.get(id.name) match {
