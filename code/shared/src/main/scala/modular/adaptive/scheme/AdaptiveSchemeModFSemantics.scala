@@ -16,8 +16,6 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   case object Main extends ComponentData with MainComponent
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends ComponentData with CallComponent
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
-  def componentName(cmp: Component): Option[String] =
-    deref(cmp).name
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
 
   def getPtrCtx(cmp: Option[ComponentContext]): Any = ()

@@ -269,10 +269,6 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
 
   lazy val initialComponent: SchemeComponent = Main
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
-  def componentName(cmp: SchemeComponent): Option[String] = cmp match {
-    case Main => None
-    case Call(_, nam, _) => nam
-  }
 }
 
 

@@ -10,10 +10,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
   class IntraAnalysis(cmp: Component) extends super.IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
     // analysis entry point
     def analyze(): Unit = {
-      // componentName(cmp).foreach(n => maybePre(n, cmp))
       val result = eval(component.body)
-      // println(s"Analysis of $cmp: $result")
-      // componentName(cmp).foreach(n => maybePost(n, result))
       writeResult(result)
     }
     // simple big-step eval
