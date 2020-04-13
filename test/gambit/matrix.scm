@@ -1,10 +1,3 @@
-(define (map f l)
-  (if (null? l)
-      l
-      (if (pair? l)
-          (cons (f (car l)) (map f (cdr l)))
-          (error "Cannot map over a non-list"))))
-
 (define (map2 f l1 l2)
   (if (or (null? l1) (null? l2))
       '()

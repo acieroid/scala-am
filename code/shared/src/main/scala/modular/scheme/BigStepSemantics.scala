@@ -9,10 +9,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
   override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp)
   class IntraAnalysis(cmp: Component) extends super.IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
     // analysis entry point
-    def analyze(): Unit = {
-      val result = eval(component.body)
-      writeResult(result)
-    }
+    def analyze(): Unit = writeResult(eval(component.body))
     // simple big-step eval
     private def eval(exp: SchemeExp): Value = exp match {
       case SchemeValue(value, _)                                  => evalLiteralValue(value)

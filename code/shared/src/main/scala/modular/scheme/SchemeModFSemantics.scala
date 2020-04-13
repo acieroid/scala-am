@@ -15,7 +15,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
                             with GlobalStore[SchemeExp]
                             with ReturnValue[SchemeExp]
                             with ContextSensitiveComponents[SchemeExp]
-//                            with InterceptCall[SchemeExp]
 {
   //XXXXXXXXXXXXXXXXXXXX//
   // LEXICAL ADDRESSING //
@@ -74,11 +73,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // The MainComponent should be unique and can hence be an object. CallComponents can be created using the `newCallComponent` function.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
   implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent { def body: SchemeExp; def name: Option[String] }
+  trait SchemeComponent { def body: SchemeExp }
   trait MainComponent extends SchemeComponent {
     def body: SchemeExp = program
     override def toString: String = "main"
-    def name = None
   }
   trait CallComponent extends SchemeComponent {
     // Requires a closure and a context and may contain a name.
@@ -92,7 +90,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case None => s"λ@${lambda.idn} ($parent) [${ctx.toString}]"
       case Some(name) => s"$name ($parent) [${ctx.toString}]"
     }
-    def name = nam
   }
 
   type ComponentContent = Option[lattice.Closure]
@@ -156,10 +153,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
-          // println(s"Allocating context with cmp context: $cmp, call: $cll")
           val context = allocCtx(nam, clo, argVals, cll, cmp)
           val component = newComponent(clo,nam,context)
-          // storeParameters(component, prs)
           bindArgs(component, prs, argVals)
           call(component)
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
@@ -170,7 +165,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val component = newComponent(clo,nam,context)
           bindArgs(component,prs,fixedArgVals)
           bindArg(component,vararg,varArgVal)
-          // storeParameters(component, vararg :: prs)
           call(component)
         case _ => lattice.bottom
       }))
@@ -196,25 +190,18 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
     private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
-      def pointer(idn: Identity): Addr = {
-        allocAddr(PtrAddr(idn))
-      }
+      def pointer(idn: Identity): Addr = allocAddr(PtrAddr(idn))
       def carAddr(idn: Identity): Addr = allocAddr(CarAddr(idn))
       def cdrAddr(idn: Identity): Addr = allocAddr(CdrAddr(idn))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
-      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc, {
-        // pre(prm.name, args.map(_._2))
-//        println(s"apply ${prm.name} with ${args.map(_._2)}")
-        val rs = prm.call(fexp.idn, args.map({ case (exp, arg) => (exp.idn, arg) }), StoreAdapter, allocator) match {
+      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
+        prm.call(fexp.idn, args.map({ case (exp, arg) => (exp.idn, arg) }), StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom
         }
-        // println(s"Called ${prm.name} with $args results in $rs")
-        // post(prm.name, rs)
-        rs}
       ))
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
@@ -267,106 +254,3 @@ trait StandardSchemeModFSemantics extends SchemeModFSemantics {
   lazy val initialComponent: SchemeComponent = Main
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
 }
-
-
-/*object InterceptCall {
-  // By placing this in an object, we can perform timing measurements across analyses.
-  var times: Map[String, List[ Long]] = Map().withDefaultValue(List())
-  var primTime: Long = 0
-
-  def init(): Unit = {
-    times = Map().withDefaultValue(List())
-    primTime = 0
-  }
-
-}
-
-trait InterceptCall[Expr <: Expression] extends GlobalStore[Expr] {
-
-  type Component
-
-  import InterceptCall._
-
-  var calls    :  Map[(String, List[Value]) , Value] =  Map()
-  var timeStack:               List[ Long]           = List()
-  var callStack: List[(String, List[Value])]         = List()
-
-  var formalParameters: Map[Component, List[Addr]] = Map()
-
-  def storeParameters(cmp: Component, pms: List[Identifier]): Unit = {
-    formalParameters = formalParameters + (cmp -> pms.map(createAddr(cmp, _)))
-  }
-
-  def varAddr(cmp: Component, pm: Identifier): LocalAddr
-  def createAddr(cmp: Component, pm: Identifier): Addr = ComponentAddr(varAddr(cmp, pm))
-
-  def initPrimitiveBenchmarks(): Unit = {
-    timeStack = List()
-    times = Map().withDefaultValue(List())
-    callStack = List()
-    calls = Map()
-    formalParameters = Map()
-    primTime = 0
-  }
-
-  def readOutPrimitiveBenchmarks(): Unit = {
-    assert(timeStack.isEmpty)
-    assert(callStack.isEmpty)
-    val prims = times.keySet.toList.sorted
-    val avgTimes = times.view.mapValues(values => values.sum / values.length)
-    println("*** Average call time ***")
-    prims.foreach(p => println(s"$p: ${avgTimes(p)}"))
-    println("*** Calls ***")
-    println(calls.keySet.map(key => s"${key._1}: ${key._2} => ${calls(key)}").toList.sorted.mkString("\n"))
-  }
-
-  def toFile(suffix: String): Unit = {
-    timeToFile(suffix)
-    callToFile(suffix)
-  }
-
-  def timeToFile(suffix: String): Unit = {
-    val timeFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/time/$suffix")))
-    times.keySet.toList.sorted.foreach({ prim =>
-      val t = times(prim)
-      val time = t.sum
-      val calls = t.length
-      timeFile.write(s"$prim: ${calls} calls, average time: ${time/calls}\n")
-    })
-    timeFile.flush()
-    timeFile.close()
-  }
-
-  def callToFile(suffix: String): Unit = {
-    val callFile = new BufferedWriter(new FileWriter(new File(s"benchOutput/call/$suffix")))
-    callFile.write(calls.keySet.map(key => s"${key._1}: ${key._2} => ${calls(key)}").toList.sorted.mkString("\n"))
-    callFile.flush()
-    callFile.close()
-  }
-
-  def maybePre(name: String, cmp: Component): Unit = {
-    if (criterium(name))
-      maybePre(name, formalParameters(cmp).map(store.getOrElse(_, lattice.bottom)))
-  }
-
-  def pre(name: String, args: List[Value]): Unit = {
-    callStack = (name, args) :: callStack
-    timeStack = System.nanoTime() :: timeStack
-    //System.err.println(s"call: $name(${args.mkString(",")})")
-  }
-  def post(name: String, result: Value): Unit = {
-    val t1 = System.nanoTime()
-    val t0 = timeStack.head
-    timeStack = timeStack.tail
-    if (timeStack.isEmpty) primTime = primTime + (t1 - t0)
-    times = times + (name -> ((t1 - t0) :: times(name))) // ((t1 - t0) :: times(name)))
-    val (`name`, args) = callStack.head
-    callStack = callStack.tail
-    calls = calls + ((name, args) -> result)
-    //System.err.println(s"retn: $name(${args.mkString(",")}) => $result")
-  }
-  def criterium(name: String): Boolean = true //Primitives.names.contains(name)
-  def maybePre(name: String, args: List[Value]): Unit = if (criterium(name)) pre(name, args)
-  def maybePost(name: String, result: Value): Unit = if (criterium(name)) post(name, result)
-}
- */

@@ -76,7 +76,7 @@ class ModularSchemeLattice[
   }
 
   case class Pointer(a: A) extends Value {
-    override def toString: String = s"Poi($a)"
+    override def toString: String = s"#<pointer $a>"
   }
 
   case class Vec(size: I, elements: Map[I, L], init: L) extends Value {
@@ -127,7 +127,6 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => Right(Int(IntLattice[I].join(i1, i2)))
           case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
-          //case (Cons(car1, cdr1), Cons(car2, cdr2)) => Right(Cons(L.lattice.join(car1, car2), L.lattice.join(cdr1, cdr2)))
           case (Symbol(s1), Symbol(s2)) => Right(Symbol(SymbolLattice[Sym].join(s1,s2)))
           case (Vec(size1, els1, init1), Vec(size2, els2, init2)) =>
             Right(Vec(IntLattice[I].join(size1, size2),
@@ -147,7 +146,6 @@ class ModularSchemeLattice[
           case (Int(i1), Int(i2))   => IntLattice[I].subsumes(i1, i2)
           case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
           case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
-          //case (Cons(car1, cdr1), Cons(car2, cdr2)) => L.lattice.subsumes(car1, car2) && L.lattice.subsumes(cdr1, cdr2)
           case (Symbol(s1), Symbol(s2)) => SymbolLattice[Sym].subsumes(s1,s2)
           case _                    => false
         }

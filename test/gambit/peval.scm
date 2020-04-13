@@ -1,15 +1,3 @@
-(define (map f l)
-  (if (null? l)
-      l
-      (if (pair? l)
-          (cons (f (car l)) (map f (cdr l)))
-          (error "Cannot map over a non-list"))))
-(define (for-each f l)
-  (if (null? l)
-      #t
-      (if (pair? l)
-          (begin (f (car l)) (for-each f (cdr l)))
-          (error "Cannot for-each over a non-list"))))
 ;;; PEVAL -- A simple partial evaluator for Scheme, written by Marc Feeley.
 
 ;------------------------------------------------------------------------------
