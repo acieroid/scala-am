@@ -344,13 +344,12 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       override def call(x: V) = lat_atan(x)
     }
     object `sqrt` extends NoStore1Operation("sqrt") {
-      override def call(x: V) = ??? // TODO
-      /*
-        ifThenElse(`<=`.call2(number(0), x)) {
+      override def call(x: V) =
+        ifThenElse(`<`.call(number(1), x)) {
           /* n >= 0 */
           for {
-            r          <- sqrt(x)
-            fl         <- floor(r)
+            r          <- lat_sqrt(x)
+            fl         <- lat_floor(r)
             argisexact <- isInteger(x)
             resisexact <- eqq(r, fl)
             convert    <- and(argisexact, resisexact)
@@ -362,7 +361,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
         } {
           /* n < 0 */
           MayFail.failure(PrimitiveNotApplicable("sqrt", List(x)))
-        } */
+        }
     }
     object `exact->inexact` extends NoStore1Operation("exact->inexact") {
       override def call(x: V) = exactToInexact(x)
