@@ -19,6 +19,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       `asin`, /* [vv] asin: Scientific */
       /* [x]  assv: Retrieving Alist Entries */
       `atan`, /* [vv] atan: Scientific */
+      `append`,
       `boolean?`, /* [vv] boolean?: Booleans */
       /* [x]  call-with-current-continuation: Continuations */
       /* [x]  call-with-input-file: File Ports */
@@ -376,7 +377,6 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       override def call(x: V) = isNull(x)
     }
     object `pair?` extends Store1Operation("pair?") {
-      /* TODO[easy]: this should be a store operation that dereferences the pointer to check if it is indeed a cons */
       override def call(x: V, store: Store[A, V]) = isCons(x).map(v => (v, store))
     }
     object `char?` extends NoStore1Operation("char?") {
@@ -642,6 +642,117 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
               .extend(cdrAddr, restv)
             (lat.cons(carAddr, cdrAddr), updatedStore)
           }
+      }
+    }
+
+    abstract class FixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
+
+    // parameterized by
+    // - the arguments to the recursive call
+    type Args
+    // - the representation of 'call components' (tuning precision)
+    type Call
+    // - a mapping from arguments to call components
+    def callFor(args: Args): Call
+    // - a function to compute the initial arguments from the primitive input
+    def initialArgs(fpos: Identity, argsWithExps: List[(Identity, V)]): Option[Args]
+    // - a function for updating the arguments when upon a new call to a 'call'
+    def updateArgs(oldArgs: Args, newArgs: Args): Args
+    // - (optional) a function for updating the result of a function call
+    def updateResult(oldResult: MayFail[V,Error], newResult: MayFail[V,Error]): MayFail[V, Error] = mfMon.append(oldResult, newResult)
+    // - a function to execute a single 'call' with given arguments
+    def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
+
+    override def call(fpos: Identity,
+                      argsWithExps: List[(Identity, V)],
+                      store: Store[A,V],
+                      alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
+      // determine the initial args & call from the primitive input
+      val initArgs = initialArgs(fpos, argsWithExps) match {
+        case Some(args) =>
+          args
+        case None =>
+          return MayFail.failure(PrimitiveArityError(name,arity.getOrElse(-1),argsWithExps.length))
+      }
+      val initCall = callFor(initArgs)
+      // for every call, keep track of the arguments
+      var callArgs = Map[Call,Args]((initCall -> initArgs))
+      // keep track of results for "visited" arguments
+      var cache = Map[Call,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
+      // keep track of which calls depend on which other calls
+      var deps = Map[Call,Set[Call]]().withDefaultValue(Set())
+      // standard worklist algorithm
+      var worklist = Set(initCall)
+      while (worklist.nonEmpty) {
+        // take the next arguments from the worklist
+        val nextCall = worklist.head
+        worklist = worklist - nextCall
+        // call with the next arguments
+        val nextArgs = callArgs(nextCall)
+        val res = callWithArgs(nextArgs)(alloc, store, args => {
+          val call = callFor(args)
+          deps += (call -> (deps(call) + nextCall))
+          callArgs.get(call) match {
+            case None => // first time calling this 'call'
+              worklist = worklist + call
+              callArgs += (call -> args)
+            case Some(oldArgs) => // call was already called
+              val updatedArgs = updateArgs(oldArgs,args)
+              if (updatedArgs != oldArgs) {
+                worklist = worklist + call
+                callArgs += (call -> updatedArgs)
+              }
+          }
+          cache(call)
+        })
+        // update the cache and worklist
+        val oldValue = cache(nextCall)
+        val updatedValue = updateResult(oldValue, res)
+        if (updatedValue != oldValue) {
+          cache += (nextCall -> updatedValue)
+          worklist ++= deps(nextCall)
+        }
+      }
+      cache(initCall).map(v => (v,store))
+    }
+    }
+    object `append` extends FixpointPrimitiveUsingStore("append", Some(2)) {
+      /** the arguments to append are the two given input arguments + the 'append expression' */
+      type Args = (V,V,Identity)
+      def initialArgs(fexp: Identity, args: List[(Identity, V)]) = args match {
+        case (_, l1) :: (_, l2) :: Nil  => Some((l1, l2, fexp))
+        case _                          => None
+      }
+      /** calls only take into account the current pair (= first argument of append) */
+      type Call = V
+      def callFor(args: Args) = args._1
+      /** arguments: ignore changes to the index to ensure termination (and other args are guaranteed to be the same anyway)*/
+      def updateArgs(oldArgs: Args, newArgs: Args) = oldArgs
+      /** The actual implementation of append */
+      override def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], append: Args => MayFail[V,Error]): MayFail[V,Error] = args match {
+        case (l1, l2, fexp) =>
+          ifThenElse(isNull(l1)) {
+            // if we have l1 = '(), append(l1,l2) = l2
+            l2
+          } {
+            ifThenElse (isCons(l1)) {
+            // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
+            for {
+              carv <- car.call(l1, store).map(_._1)
+              cdrv <- cdr.call(l1, store).map(_._1)
+              app_next <- append((cdrv, l2, fexp))
+            } yield {
+              val carAddr = alloc.carAddr(fexp)
+              val cdrAddr = alloc.cdrAddr(fexp)
+              store.extend(carAddr, carv)
+              store.extend(cdrAddr, app_next)
+              lat.cons(carAddr,cdrAddr)
+            }
+          } {
+            // if we have have something else (i.e., not a list), append throws a type error!
+            MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
+          }
+        }
       }
     }
 
