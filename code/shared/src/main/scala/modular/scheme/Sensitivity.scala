@@ -1,7 +1,6 @@
 package scalaam.modular.scheme
 
 import scalaam.core.Identity.Position
-import scalaam.primitiveCompilation._
 
 /* Simplest (and most imprecise): no context-sensitivity */
 trait NoSensitivity extends SchemeModFSemantics {
@@ -42,6 +41,8 @@ trait FullArgumentCallSiteSensitivity extends SchemeModFSemantics {
 }
 
 object CompoundSensitivities {
+  import scalaam.language.scheme.primitives.SchemePrelude
+
   trait Sensitivity[Value] {
     trait Context
     def alloc(target: Position, callSite: Position, args: List[Value]): Context
@@ -63,7 +64,7 @@ object CompoundSensitivities {
     case class High(ctx: HighSensitivity.Context) extends ComponentContext
     case class Low(ctx: LowSensitivity.Context) extends ComponentContext
     def isPrimitive(nam: Option[String]): Boolean = nam match {
-      case Some(n) if PrimitiveDefinitions.names.contains(n) => true
+      case Some(n) if SchemePrelude.primNames.contains(n) => true
       case _ => false
     }
 
@@ -86,7 +87,7 @@ object CompoundSensitivities {
     case class High(ctx: HighSensitivity.Context, userCall: Position) extends ComponentContext
     case class Low(ctx: LowSensitivity.Context) extends ComponentContext
     def isPrimitive(nam: Option[String]): Boolean = nam match {
-      case Some(n) if PrimitiveDefinitions.primitivePrecision.contains(n) => true
+      case Some(n) if SchemePrelude.primPrecision.contains(n) => true
       case _ => false
     }
 

@@ -38,7 +38,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // Local addresses are simply made out of lexical information.
   sealed trait LocalAddr extends Address {
     def idn(): Identity
-    def dropContext: Address = this
     override def toString() = this match {
       case VarAddr(id)  => s"var ($id)"
       case PtrAddr(idn, _)   => s"ptr ($idn)"

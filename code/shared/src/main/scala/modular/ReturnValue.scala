@@ -11,7 +11,6 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
   // add a special address, where we can store the result of a component
   case class ReturnAddr(cmp: Component) extends Addr {
     def printable = true
-    def dropContext = this
     override def toString = s"<ret $cmp>"
   }
 
