@@ -12,11 +12,11 @@ object PrimitiveDefinitions {
     // "/" is a primop
     "abs" -> "(define (abs x) (if (< x 0) (- 0 x) x))",
     // "acos" is a primop
-    "append" -> """(define (append l1 l2)
-          (if (null? l1)
-              l2
-              (cons (car l1)
-                    (append (cdr l1) l2))))""",
+//    "append" -> """(define (append l1 l2)
+//          (if (null? l1)
+//              l2
+//              (cons (car l1)
+//                    (append (cdr l1) l2))))""",
     // "asin" is a primop
     "assoc" -> """(define (assoc k l)
         (if (null? l)
@@ -214,7 +214,7 @@ object PrimitiveDefinitions {
   )
 
   val names: Set[String] = definitions.keySet
-  val primitivePrecision: Set[String] = names ++ Set(
+  val primitivePrecision: Set[String] = names /* ++ Set(
     "map", "for-each", "foldr", "foldr-aux", "foldl", "foldl-aux",
     "foo", "bar", "baz",
     // mceval.scm
@@ -265,7 +265,7 @@ object PrimitiveDefinitions {
     "blad?", "appel?", "type", "leafs", "all-apples", "conditional-append", "apple-types", "bewerk-boom", "leafs-dmv-bewerk", "all-apples-dmv-bewerk", "apple-types-dmv-bewerk",
     // scp1/7.15
     "maak-blad", "geef-type", "maak-knop", "geef-deelbomen", "maak-hybride-tak", "geef-knopen", "leeg?", "knoop?", "blad?", "tel", "combine-results", "tel-hulp", "tel-hulp-in", "member?", "normaal?", "check-normaal", "check-normaal-in", 
-  )
+  ) */
 
   //def scalaSource: String = primitives.values.map(src => PrimCompiler.compile(ANFCompiler.toANF(SchemeParser.parse(src)))).mkString("\n\n")
 
