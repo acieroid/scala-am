@@ -633,12 +633,12 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
         store: Store[A, V],
         alloc: SchemeAllocator[A]) = args match {
         case Nil => (nil, store)
-        case (_, v) :: rest =>
+        case (argpos, v) :: rest =>
           for {
             (restv, store2) <- call(fpos, rest, store, alloc)
           } yield {
-            val carAddr = alloc.carAddr(fpos)
-            val cdrAddr = alloc.cdrAddr(fpos)
+            val carAddr = alloc.carAddr(argpos)
+            val cdrAddr = alloc.cdrAddr(argpos)
             val updatedStore = store2.extend(carAddr, v) // Can use store here if store is mutated.
               .extend(cdrAddr, restv)
             (lat.cons(carAddr, cdrAddr), updatedStore)
