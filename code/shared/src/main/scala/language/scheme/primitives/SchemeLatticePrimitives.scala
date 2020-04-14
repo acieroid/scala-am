@@ -1,7 +1,7 @@
 package scalaam.language.scheme.primitives
 
 import scalaam.core.{Address, Error, Identity, MayFail, Store}
-import scalaam.language.scheme.SchemeLattice
+import scalaam.language.scheme.{SchemeLattice, SchemeOps}
 
 class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
@@ -177,6 +177,10 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     }
   }
 
+  class NoStore1Op(val n: String, val c: (V) => MayFail[V, Error]) extends NoStore1Operation(n) {
+    def call(x: V): MayFail[V, Error] = c(x)
+  }
+
   abstract class NoStore2Operation(val name: String) extends SchemePrimitive[V, A] {
     def call(x: V, y: V): MayFail[V, Error]
     override def call(fpos: Identity,
@@ -188,6 +192,10 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     }
   }
 
+  class NoStore2Op(val n: String, val c: (V, V) => MayFail[V, Error]) extends NoStore2Operation(n) {
+    def call(x: V, y: V): MayFail[V, Error] = c(x, y)
+  }
+
   abstract class NoStoreLOperation(val name: String) extends SchemePrimitive[V, A] {
     def call(args: List[V]): MayFail[V, Error]
     override def call(fpos: Identity,
@@ -195,6 +203,14 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       store: Store[A, V],
       alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] =
       call(args.map(_._2)).map(v => (v, store))
+  }
+
+  class NoStoreLOp(val n: String, val c: List[V] => MayFail[V, Error]) extends NoStoreLOperation(n) {
+    def call(args: List[V]): MayFail[V, Error] = c(args)
+  }
+
+  class NoStoreLOpRec(val n: String, val c: (List[V], List[V] => MayFail[V, Error]) => MayFail[V, Error]) extends NoStoreLOperation(n) {
+    def call(args: List[V]): MayFail[V, Error] = c(args, call)
   }
 
   abstract class Store1Operation(val name: String) extends SchemePrimitive[V, A] {
@@ -210,6 +226,10 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     }
   }
 
+  class Store1Op(val n: String, c: (V, Store[A, V]) => MayFail[(V, Store[A, V]), Error]) extends Store1Operation(n) {
+    def call(x: V, store: Store[A, V]) = c(x, store)
+  }
+
   abstract class Store2Operation(val name: String) extends SchemePrimitive[V, A] {
     def call(arg1: V, arg2: V, store: Store[A, V]): MayFail[(V, Store[A, V]), Error]
 
@@ -221,6 +241,10 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       case x :: y :: Nil => call(x._2, y._2, store)
       case _             => MayFail.failure(PrimitiveArityError(name, 2, args.length))
     }
+  }
+
+  class Store2Op(val n: String, c: (V, V, Store[A, V]) => MayFail[(V, Store[A, V]), Error]) extends Store2Operation(n) {
+    def call(x: V, y: V, store: Store[A, V]) = c(x, y, store)
   }
 
   def dereferenceAddrs(addrs: Set[A], store: Store[A,V]): MayFail[V,Error] =
@@ -238,29 +262,21 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
     import schemeLattice._
 
-    import scala.util.control.TailCalls._
-
     //// MANUAL PRIMITIVES /////
 
-    object `+` extends NoStoreLOperation("+") {
-      override def call(args: List[V]) = args match {
-        case Nil       => number(0)
-        case x :: rest => call(rest) >>= (plus(x, _))
-      }
-    }
-    object `-` extends NoStoreLOperation("-") {
-      override def call(args: List[V]) = args match {
-        case Nil       => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
+    object `+` extends NoStoreLOpRec("+", {
+        case (Nil, _)          => number(0)
+        case (x :: rest, call) => call(rest) >>= (plus(x, _))
+    })
+    object `-` extends NoStoreLOp("-", {
+        case Nil       => MayFail.failure(PrimitiveVariadicArityError("-", 1, 0))
         case x :: Nil  => minus(number(0), x)
         case x :: rest => `+`.call(rest) >>= (minus(x, _))
-      }
-    }
-    object `*` extends NoStoreLOperation("*") {
-      override def call(args: List[V]) = args match {
-        case Nil       => number(1)
-        case x :: rest => call(rest) >>= (times(x, _))
-      }
-    }
+    })
+    object `*` extends NoStoreLOpRec("*", {
+        case (Nil, _)          => number(1)
+        case (x :: rest, call) => call(rest) >>= (times(x, _))
+    })
     object `/` extends NoStoreLOperation("/") {
       override def call(args: List[V]) = args match {
         case Nil => MayFail.failure(PrimitiveVariadicArityError(name, 1, 0))
@@ -280,17 +296,10 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           }
       }
     }
-    object `expt` extends NoStore2Operation("expt") {
-      override def call(x: V, y: V) = lat_expt(x, y)
-    }
-    object `quotient` extends NoStore2Operation("quotient") {
-      override def call(x: V, y: V) = lat_quotient(x, y)
-    }
 
-    object `<` extends NoStore2Operation("<") {
-      override def call(x: V, y: V) =
-        lt(x, y) /* TODO[easy]: < should accept any number of arguments (same for <= etc.) */
-    }
+    object `expt`     extends NoStore2Op("expt", binaryOp(SchemeOps.BinaryOperator.Expt))
+    object `quotient` extends NoStore2Op("quotient", binaryOp(SchemeOps.BinaryOperator.Quotient))
+    object `<`        extends NoStore2Op("<", binaryOp(SchemeOps.BinaryOperator.Lt)) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
 
     object `=` extends NoStoreLOperation("=") {
       def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
@@ -308,107 +317,58 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       }
     }
 
-    object `modulo` extends NoStore2Operation("modulo") {
-      override def call(x: V, y: V) = lat_modulo(x, y)
-    }
-    object `remainder` extends NoStore2Operation("remainder") {
-      override def call(x: V, y: V) = lat_remainder(x, y)
-    }
-    object `random` extends NoStore1Operation("random") {
-      override def call(x: V) = lat_random(x)
-    }
-    object `ceiling` extends NoStore1Operation("ceiling") {
-      override def call(x: V) = lat_ceiling(x)
-    }
-    object `floor` extends NoStore1Operation("floor") {
-      override def call(x: V) = lat_floor(x)
-    }
-    object `round` extends NoStore1Operation("round") {
-      override def call(x: V) = lat_round(x)
-    }
-    object `log` extends NoStore1Operation("log") {
-      override def call(x: V) = lat_log(x)
-    }
-    object `sin` extends NoStore1Operation("sin") {
-      override def call(x: V) = lat_sin(x)
-    }
-    object `asin` extends NoStore1Operation("asin") {
-      override def call(x: V) = lat_asin(x)
-    }
-    object `cos` extends NoStore1Operation("cos") {
-      override def call(x: V) = lat_cos(x)
-    }
-    object `acos` extends NoStore1Operation("acos") {
-      override def call(x: V) = lat_acos(x)
-    }
-    object `tan` extends NoStore1Operation("tan") {
-      override def call(x: V) = lat_tan(x)
-    }
-    object `atan` extends NoStore1Operation("atan") {
-      override def call(x: V) = lat_atan(x)
-    }
-    object `sqrt` extends NoStore1Operation("sqrt") {
-      override def call(x: V) =
-        ifThenElse(`<`.call(number(1), x)) {
-          /* n >= 0 */
-          for {
-            r          <- lat_sqrt(x)
-            fl         <- lat_floor(r)
-            argisexact <- isInteger(x)
-            resisexact <- eqq(r, fl)
-            convert    <- and(argisexact, resisexact)
-            exr        <- inexactToExact(r)
-            res        <- ifThenElse(convert) { exr } { r }
-          } yield {
-            res
+    object `modulo`    extends NoStore2Op("modulo",    binaryOp(SchemeOps.BinaryOperator.Modulo))
+    object `remainder` extends NoStore2Op("remainder", binaryOp(SchemeOps.BinaryOperator.Remainder))
+    object `random`    extends NoStore1Op("random",    unaryOp(SchemeOps.UnaryOperator.Random))
+    object `ceiling`   extends NoStore1Op("ceiling",   unaryOp(SchemeOps.UnaryOperator.Ceiling))
+    object `floor`     extends NoStore1Op("floor",     unaryOp(SchemeOps.UnaryOperator.Floor))
+    object `round`     extends NoStore1Op("round",     unaryOp(SchemeOps.UnaryOperator.Round))
+    object `log`       extends NoStore1Op("log",       unaryOp(SchemeOps.UnaryOperator.Log))
+    object `sin`       extends NoStore1Op("sin",       unaryOp(SchemeOps.UnaryOperator.Sin))
+    object `asin`      extends NoStore1Op("asin",      unaryOp(SchemeOps.UnaryOperator.ASin))
+    object `cos`       extends NoStore1Op("cos",       unaryOp(SchemeOps.UnaryOperator.Cos))
+    object `acos`      extends NoStore1Op("acos",      unaryOp(SchemeOps.UnaryOperator.ACos))
+    object `tan`       extends NoStore1Op("tan",       unaryOp(SchemeOps.UnaryOperator.Tan))
+    object `atan`      extends NoStore1Op("atan",      unaryOp(SchemeOps.UnaryOperator.ATan))
+    object `sqrt`      extends NoStore1Op("sqrt", { x =>
+          ifThenElse(`<`.call(number(1), x)) {
+            /* n >= 0 */
+            for {
+              r          <- lat_sqrt(x)
+              fl         <- lat_floor(r)
+              argisexact <- isInteger(x)
+              resisexact <- eqq(r, fl)
+              convert    <- and(argisexact, resisexact)
+              exr        <- inexactToExact(r)
+              res        <- ifThenElse(convert) { exr } { r }
+            } yield {
+              res
+            }
+          } {
+            /* n < 0 */
+            MayFail.failure(PrimitiveNotApplicable("sqrt", List(x)))
           }
-        } {
-          /* n < 0 */
-          MayFail.failure(PrimitiveNotApplicable("sqrt", List(x)))
-        }
-    }
-    object `exact->inexact` extends NoStore1Operation("exact->inexact") {
-      override def call(x: V) = exactToInexact(x)
-    }
-    object `inexact->exact` extends NoStore1Operation("inexact->exact") {
-      override def call(x: V) = inexactToExact(x)
-    }
-    object `char->integer` extends NoStore1Operation("char->integer") {
-      override def call(x: V) = characterToInt(x)
-    }
-    object `null?` extends NoStore1Operation("null?") {
-      override def call(x: V) = isNull(x)
-    }
-    object `pair?` extends Store1Operation("pair?") {
-      override def call(x: V, store: Store[A, V]) = isCons(x).map(v => (v, store))
-    }
-    object `char?` extends NoStore1Operation("char?") {
-      override def call(x: V) = isChar(x)
-    }
-    object `symbol?` extends NoStore1Operation("symbol?") {
-      override def call(x: V) = isSymbol(x)
-    }
-    object `string?` extends NoStore1Operation("string?") {
-      override def call(x: V) = isString(x)
-    }
-    object `integer?` extends NoStore1Operation("integer?") {
-      override def call(x: V) = isInteger(x)
-    }
-    object `real?` extends NoStore1Operation("real?") {
-      override def call(x: V) =
-        for {
-          isint  <- isInteger(x)
-          isreal <- isReal(x)
-        } yield or(isint, isreal)
-    }
-    object `number?` extends NoStore1Operation("number?") {
-      override def call(x: V) =
-        `real?`.call(x) /* No support for complex number, so number? is equivalent as real? */
-    }
-    object `boolean?` extends NoStore1Operation("boolean?") {
-      override def call(x: V) = isBoolean(x)
-    }
-    object `vector?` extends Store1Operation("vector?") {
+      })
+    object `exact->inexact` extends NoStore1Op("exact->inexact", unaryOp(SchemeOps.UnaryOperator.ExactToInexact))
+    object `inexact->exact` extends NoStore1Op("inexact->exact", unaryOp(SchemeOps.UnaryOperator.InexactToExact))
+    object `char->integer`  extends NoStore1Op("char->integer",  unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
+    object `null?`          extends NoStore1Op("null?",          unaryOp(SchemeOps.UnaryOperator.IsNull))
+
+    object `pair?`    extends Store1Op("pair?", { (x, store) => unaryOp(SchemeOps.UnaryOperator.IsCons)(x).map(v => (v, store)) })
+
+    object `char?`    extends NoStore1Op("char?",    unaryOp(SchemeOps.UnaryOperator.IsChar))
+    object `symbol?`  extends NoStore1Op("symbol?",  unaryOp(SchemeOps.UnaryOperator.IsSymbol))
+    object `string?`  extends NoStore1Op("string?",  unaryOp(SchemeOps.UnaryOperator.IsString))
+    object `integer?` extends NoStore1Op("integer?", unaryOp(SchemeOps.UnaryOperator.IsInteger))
+    object `real?`    extends NoStore1Op("real?", { x =>
+          for {
+            isint  <- isInteger(x)
+            isreal <- isReal(x)
+          } yield or(isint, isreal)
+      })
+    object `number?`  extends NoStore1Op("number?", `real?`.call(_)) /* No support for complex number, so number? is equivalent as real? */
+    object `boolean?` extends NoStore1Op("boolean?", unaryOp(SchemeOps.UnaryOperator.IsBoolean))
+    object `vector?`  extends Store1Operation("vector?") {
       override def call(x: V, store: Store[A, V]) =
         for {
           ispointer <- isPointer(x)
@@ -417,39 +377,22 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           }
         } yield (and(ispointer, isvector), store)
     }
-    object `eq?` extends NoStore2Operation("eq?") {
-      override def call(x: V, y: V) = eqq(x, y)
-    }
+    object `eq?` extends NoStore2Op("eq?", eqq)
 
-    object `number->string` extends NoStore1Operation("number->string") {
-      override def call(x: V) = numberToString(x)
-    }
-    object `symbol->string` extends NoStore1Operation("symbol->string") {
-      override def call(x: V) = symbolToString(x)
-    }
-    object `string->symbol` extends NoStore1Operation("string->symbol") {
-      override def call(x: V) = stringToSymbol(x)
-    }
-    object `string-append` extends NoStoreLOperation("string-append") {
+    object `number->string` extends NoStore1Op("number->string", unaryOp(SchemeOps.UnaryOperator.NumberToString))
+    object `symbol->string` extends NoStore1Op("symbol->string", unaryOp(SchemeOps.UnaryOperator.SymbolToString))
+    object `string->symbol` extends NoStore1Op("string->symbol", unaryOp(SchemeOps.UnaryOperator.StringToSymbol))
+    object `string-append`  extends NoStoreLOperation("string-append") {
       override def call(args: List[V]) = args match {
         case Nil       => string("")
         case x :: rest => call(rest) >>= (stringAppend(x, _))
       }
     }
-    object `string-ref` extends NoStore2Operation("string-ref") {
-      override def call(s: V, n: V) = stringRef(s, n)
-    }
-    object `string<?` extends NoStore2Operation("string<?") {
-      override def call(x: V, y: V) = stringLt(x, y)
-    }
-    object `string-length` extends NoStore1Operation("string-length") {
-      override def call(x: V) = stringLength(x)
-    }
+    object `string-ref`    extends NoStore2Op("string-ref",    binaryOp(SchemeOps.BinaryOperator.StringRef))
+    object `string<?`      extends NoStore2Op("string<?",      binaryOp(SchemeOps.BinaryOperator.StringLt))
+    object `string-length` extends NoStore1Op("string-length", unaryOp(SchemeOps.UnaryOperator.StringLength))
 
-    object `error` extends NoStore1Operation("error") {
-      override def call(x: V) =
-        MayFail.failure(UserError(x.toString))
-    }
+    object `error` extends NoStore1Op("error", { x => MayFail.failure(UserError(x.toString))})
 
     object `cons` extends SchemePrimitive[V,A] {
       val name = "cons"

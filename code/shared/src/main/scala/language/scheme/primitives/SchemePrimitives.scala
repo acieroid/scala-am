@@ -17,9 +17,9 @@ trait SchemePrimitive[V, A <: Address] extends Primitive {
            alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error]
 }
 
-case class PrimitiveArityError(name: String, expectd: Int, given: Int)               extends ArityError(name, expectd, given)
+case class PrimitiveArityError(name: String, expected: Int, got: Int)                extends Error
 case class PrimitiveVariadicArityError(name: String, expectedAtLeast: Int, got: Int) extends Error
-case class PrimitiveNotApplicable[V](name: String, args: List[V])                    extends OperatorNotApplicable(name, args)
+case class PrimitiveNotApplicable[V](name: String, args: List[V])                    extends Error
 case class UserError(message: String)                                                extends Error
 
 abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
@@ -36,11 +36,10 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
 
   implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
-  /* Simpler names for lattice operations */
+  /* Simpler names for frequently used lattice operations. */
   def isNull         = unaryOp(SchemeOps.UnaryOperator.IsNull) _
   def isCons         = unaryOp(SchemeOps.UnaryOperator.IsCons) _
   def isPointer      = unaryOp(SchemeOps.UnaryOperator.IsPointer) _
-  def isChar         = unaryOp(SchemeOps.UnaryOperator.IsChar) _
   def isSymbol       = unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
   def isString       = unaryOp(SchemeOps.UnaryOperator.IsString) _
   def isInteger      = unaryOp(SchemeOps.UnaryOperator.IsInteger) _
@@ -49,40 +48,19 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   def isVector       = unaryOp(SchemeOps.UnaryOperator.IsVector) _
   def lat_ceiling    = unaryOp(SchemeOps.UnaryOperator.Ceiling) _
   def lat_floor      = unaryOp(SchemeOps.UnaryOperator.Floor) _
-  def lat_round      = unaryOp(SchemeOps.UnaryOperator.Round) _
-  def lat_log        = unaryOp(SchemeOps.UnaryOperator.Log) _
-  def lat_not        = unaryOp(SchemeOps.UnaryOperator.Not) _
-  def lat_random     = unaryOp(SchemeOps.UnaryOperator.Random) _
-  def lat_sin        = unaryOp(SchemeOps.UnaryOperator.Sin) _
-  def lat_asin       = unaryOp(SchemeOps.UnaryOperator.ASin) _
-  def lat_cos        = unaryOp(SchemeOps.UnaryOperator.Cos) _
-  def lat_acos       = unaryOp(SchemeOps.UnaryOperator.ACos) _
-  def lat_tan        = unaryOp(SchemeOps.UnaryOperator.Tan) _
-  def lat_atan       = unaryOp(SchemeOps.UnaryOperator.ATan) _
   def lat_sqrt       = unaryOp(SchemeOps.UnaryOperator.Sqrt) _
   def vectorLength   = unaryOp(SchemeOps.UnaryOperator.VectorLength) _
-  def stringLength   = unaryOp(SchemeOps.UnaryOperator.StringLength) _
-  def numberToString = unaryOp(SchemeOps.UnaryOperator.NumberToString) _
-  def symbolToString = unaryOp(SchemeOps.UnaryOperator.SymbolToString) _
   def stringToSymbol = unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
   def inexactToExact = unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
-  def exactToInexact = unaryOp(SchemeOps.UnaryOperator.ExactToInexact) _
-  def characterToInt = unaryOp(SchemeOps.UnaryOperator.CharacterToInteger) _
 
   def plus          = binaryOp(SchemeOps.BinaryOperator.Plus) _
   def minus         = binaryOp(SchemeOps.BinaryOperator.Minus) _
   def times         = binaryOp(SchemeOps.BinaryOperator.Times) _
   def div           = binaryOp(SchemeOps.BinaryOperator.Div) _
-  def lat_expt      = binaryOp(SchemeOps.BinaryOperator.Expt) _
-  def lat_quotient  = binaryOp(SchemeOps.BinaryOperator.Quotient) _
-  def lat_modulo    = binaryOp(SchemeOps.BinaryOperator.Modulo) _
-  def lat_remainder = binaryOp(SchemeOps.BinaryOperator.Remainder) _
   def lt            = binaryOp(SchemeOps.BinaryOperator.Lt) _
   def numEq         = binaryOp(SchemeOps.BinaryOperator.NumEq) _
   def eqq           = binaryOp(SchemeOps.BinaryOperator.Eq) _
   def stringAppend  = binaryOp(SchemeOps.BinaryOperator.StringAppend) _
-  def stringRef     = binaryOp(SchemeOps.BinaryOperator.StringRef) _
-  def stringLt      = binaryOp(SchemeOps.BinaryOperator.StringLt) _
 
   def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
     cond >>= { condv =>
