@@ -14,7 +14,6 @@ import scalaam.io.Reader
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
-import scalaam.core.Identity._
 
 object Main {
 

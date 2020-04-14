@@ -7,7 +7,6 @@ import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.core.Position._
-import scalaam.core.Identity._
 
 object SchemeAnalyses {
 

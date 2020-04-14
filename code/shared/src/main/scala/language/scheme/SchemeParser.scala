@@ -1,6 +1,5 @@
 package scalaam.language.scheme
 
-import scalaam.core.Identity
 import scalaam.core.Position._
 import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.language.sexp._
