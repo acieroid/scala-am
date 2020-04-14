@@ -50,7 +50,7 @@ object Position {
   val noTag: PTag = None
   def newTag(tag: String): PTag = Some(tag)
 
-  case class Position(line: Int, col: Int, tag: PTag = noTag) {
+  case class Position(line: Int, col: Int, tag: PTag = noTag) extends SmartHash {
     override def toString: String = tag match {
       case None    => s"$line:$col"
       case Some(t) => s"$t:$line:$col"
