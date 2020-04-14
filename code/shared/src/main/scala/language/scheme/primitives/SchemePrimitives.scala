@@ -4,8 +4,6 @@ import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.util.Monoid
 
-import scala.util.control.TailCalls.{TailRec, done, tailcall}
-
 trait SchemeAllocator[A] {
   def pointer(exp: Identity): A
   def carAddr(exp: Identity): A
@@ -19,9 +17,9 @@ trait SchemePrimitive[V, A <: Address] extends Primitive {
            alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error]
 }
 
-case class PrimitiveArityError(name: String, expected: Int, got: Int)                extends Error
+case class PrimitiveArityError(name: String, expectd: Int, given: Int)               extends ArityError(name, expectd, given)
 case class PrimitiveVariadicArityError(name: String, expectedAtLeast: Int, got: Int) extends Error
-case class PrimitiveNotApplicable[V](name: String, args: List[V])                    extends Error
+case class PrimitiveNotApplicable[V](name: String, args: List[V])                    extends OperatorNotApplicable(name, args)
 case class UserError(message: String)                                                extends Error
 
 abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
@@ -39,67 +37,57 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
   /* Simpler names for lattice operations */
-  def isNull         = lat.unaryOp(SchemeOps.UnaryOperator.IsNull) _
-  def isCons         = lat.unaryOp(SchemeOps.UnaryOperator.IsCons) _
-  def isPointer      = lat.unaryOp(SchemeOps.UnaryOperator.IsPointer) _
-  def isChar         = lat.unaryOp(SchemeOps.UnaryOperator.IsChar) _
-  def isSymbol       = lat.unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
-  def isString       = lat.unaryOp(SchemeOps.UnaryOperator.IsString) _
-  def isInteger      = lat.unaryOp(SchemeOps.UnaryOperator.IsInteger) _
-  def isReal         = lat.unaryOp(SchemeOps.UnaryOperator.IsReal) _
-  def isBoolean      = lat.unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
-  def isVector       = lat.unaryOp(SchemeOps.UnaryOperator.IsVector) _
-  def lat_ceiling    = lat.unaryOp(SchemeOps.UnaryOperator.Ceiling) _
-  def lat_floor      = lat.unaryOp(SchemeOps.UnaryOperator.Floor) _
-  def lat_round      = lat.unaryOp(SchemeOps.UnaryOperator.Round) _
-  def lat_log        = lat.unaryOp(SchemeOps.UnaryOperator.Log) _
-  def lat_not        = lat.unaryOp(SchemeOps.UnaryOperator.Not) _
-  def lat_random     = lat.unaryOp(SchemeOps.UnaryOperator.Random) _
-  def lat_sin        = lat.unaryOp(SchemeOps.UnaryOperator.Sin) _
-  def lat_asin       = lat.unaryOp(SchemeOps.UnaryOperator.ASin) _
-  def lat_cos        = lat.unaryOp(SchemeOps.UnaryOperator.Cos) _
-  def lat_acos       = lat.unaryOp(SchemeOps.UnaryOperator.ACos) _
-  def lat_tan        = lat.unaryOp(SchemeOps.UnaryOperator.Tan) _
-  def lat_atan       = lat.unaryOp(SchemeOps.UnaryOperator.ATan) _
-  def lat_sqrt       = lat.unaryOp(SchemeOps.UnaryOperator.Sqrt) _
-  def vectorLength   = lat.unaryOp(SchemeOps.UnaryOperator.VectorLength) _
-  def stringLength   = lat.unaryOp(SchemeOps.UnaryOperator.StringLength) _
-  def numberToString = lat.unaryOp(SchemeOps.UnaryOperator.NumberToString) _
-  def symbolToString = lat.unaryOp(SchemeOps.UnaryOperator.SymbolToString) _
-  def stringToSymbol = lat.unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
-  def inexactToExact = lat.unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
-  def exactToInexact = lat.unaryOp(SchemeOps.UnaryOperator.ExactToInexact) _
-  def characterToInt = lat.unaryOp(SchemeOps.UnaryOperator.CharacterToInteger) _
+  def isNull         = unaryOp(SchemeOps.UnaryOperator.IsNull) _
+  def isCons         = unaryOp(SchemeOps.UnaryOperator.IsCons) _
+  def isPointer      = unaryOp(SchemeOps.UnaryOperator.IsPointer) _
+  def isChar         = unaryOp(SchemeOps.UnaryOperator.IsChar) _
+  def isSymbol       = unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
+  def isString       = unaryOp(SchemeOps.UnaryOperator.IsString) _
+  def isInteger      = unaryOp(SchemeOps.UnaryOperator.IsInteger) _
+  def isReal         = unaryOp(SchemeOps.UnaryOperator.IsReal) _
+  def isBoolean      = unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
+  def isVector       = unaryOp(SchemeOps.UnaryOperator.IsVector) _
+  def lat_ceiling    = unaryOp(SchemeOps.UnaryOperator.Ceiling) _
+  def lat_floor      = unaryOp(SchemeOps.UnaryOperator.Floor) _
+  def lat_round      = unaryOp(SchemeOps.UnaryOperator.Round) _
+  def lat_log        = unaryOp(SchemeOps.UnaryOperator.Log) _
+  def lat_not        = unaryOp(SchemeOps.UnaryOperator.Not) _
+  def lat_random     = unaryOp(SchemeOps.UnaryOperator.Random) _
+  def lat_sin        = unaryOp(SchemeOps.UnaryOperator.Sin) _
+  def lat_asin       = unaryOp(SchemeOps.UnaryOperator.ASin) _
+  def lat_cos        = unaryOp(SchemeOps.UnaryOperator.Cos) _
+  def lat_acos       = unaryOp(SchemeOps.UnaryOperator.ACos) _
+  def lat_tan        = unaryOp(SchemeOps.UnaryOperator.Tan) _
+  def lat_atan       = unaryOp(SchemeOps.UnaryOperator.ATan) _
+  def lat_sqrt       = unaryOp(SchemeOps.UnaryOperator.Sqrt) _
+  def vectorLength   = unaryOp(SchemeOps.UnaryOperator.VectorLength) _
+  def stringLength   = unaryOp(SchemeOps.UnaryOperator.StringLength) _
+  def numberToString = unaryOp(SchemeOps.UnaryOperator.NumberToString) _
+  def symbolToString = unaryOp(SchemeOps.UnaryOperator.SymbolToString) _
+  def stringToSymbol = unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
+  def inexactToExact = unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
+  def exactToInexact = unaryOp(SchemeOps.UnaryOperator.ExactToInexact) _
+  def characterToInt = unaryOp(SchemeOps.UnaryOperator.CharacterToInteger) _
 
-  def plus         = lat.binaryOp(SchemeOps.BinaryOperator.Plus) _
-  def minus        = lat.binaryOp(SchemeOps.BinaryOperator.Minus) _
-  def times        = lat.binaryOp(SchemeOps.BinaryOperator.Times) _
-  def div          = lat.binaryOp(SchemeOps.BinaryOperator.Div) _
-  def lat_expt     = lat.binaryOp(SchemeOps.BinaryOperator.Expt) _
-  def lat_quotient     = lat.binaryOp(SchemeOps.BinaryOperator.Quotient) _
-  def lat_modulo       = lat.binaryOp(SchemeOps.BinaryOperator.Modulo) _
-  def lat_remainder    = lat.binaryOp(SchemeOps.BinaryOperator.Remainder) _
-  def lt           = lat.binaryOp(SchemeOps.BinaryOperator.Lt) _
-  def numEq        = lat.binaryOp(SchemeOps.BinaryOperator.NumEq) _
-  def eqq          = lat.binaryOp(SchemeOps.BinaryOperator.Eq) _
-  def stringAppend = lat.binaryOp(SchemeOps.BinaryOperator.StringAppend) _
-  def stringRef    = lat.binaryOp(SchemeOps.BinaryOperator.StringRef) _
-  def stringLt     = lat.binaryOp(SchemeOps.BinaryOperator.StringLt) _
+  def plus          = binaryOp(SchemeOps.BinaryOperator.Plus) _
+  def minus         = binaryOp(SchemeOps.BinaryOperator.Minus) _
+  def times         = binaryOp(SchemeOps.BinaryOperator.Times) _
+  def div           = binaryOp(SchemeOps.BinaryOperator.Div) _
+  def lat_expt      = binaryOp(SchemeOps.BinaryOperator.Expt) _
+  def lat_quotient  = binaryOp(SchemeOps.BinaryOperator.Quotient) _
+  def lat_modulo    = binaryOp(SchemeOps.BinaryOperator.Modulo) _
+  def lat_remainder = binaryOp(SchemeOps.BinaryOperator.Remainder) _
+  def lt            = binaryOp(SchemeOps.BinaryOperator.Lt) _
+  def numEq         = binaryOp(SchemeOps.BinaryOperator.NumEq) _
+  def eqq           = binaryOp(SchemeOps.BinaryOperator.Eq) _
+  def stringAppend  = binaryOp(SchemeOps.BinaryOperator.StringAppend) _
+  def stringRef     = binaryOp(SchemeOps.BinaryOperator.StringRef) _
+  def stringLt      = binaryOp(SchemeOps.BinaryOperator.StringLt) _
 
-  def ifThenElse(
-                  cond: MayFail[V, Error]
-                )(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
+  def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
     cond >>= { condv =>
-      val t = if (isTrue(condv)) {
-        thenBranch
-      } else {
-        MayFail.success[V, Error](latMon.zero)
-      }
-      val f = if (isFalse(condv)) {
-        elseBranch
-      } else {
-        MayFail.success[V, Error](latMon.zero)
-      }
+      val t = if (isTrue (condv)) thenBranch else MayFail.success[V, Error](latMon.zero)
+      val f = if (isFalse(condv)) elseBranch else MayFail.success[V, Error](latMon.zero)
       mfMon.append(t, f)
     }
   }

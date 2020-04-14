@@ -468,7 +468,7 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       case object Car extends Spec
       case object Cdr extends Spec
       val spec: List[Spec] = name
-        .drop(1)
+        .drop(1) // Could use slice for drop + take.
         .take(name.length - 2)
         .toList
         .reverseIterator
