@@ -1,7 +1,6 @@
 package scalaam.language.scheme.primitives
 
 import scalaam.core._
-import scalaam.io.Reader
 import scalaam.language.scheme._
 
 object SchemePrelude {

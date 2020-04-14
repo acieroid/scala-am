@@ -137,7 +137,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
         val lambda = SchemeLambda(prs, body, pos)
         val clo =  Value.Clo(lambda, env2)
         extendStore(addr, clo)
-        val argsVals = ags.map(argExp => (argExp, eval(argExp, env, timeout)))
+        ags.foreach(argExp => (argExp, eval(argExp, env, timeout)))
         eval(SchemeFuncall(lambda, ags, pos), env2, timeout)
       case SchemeSet(id, v, pos) =>
         /* TODO: primitives can be reassigned with set! without being redefined */

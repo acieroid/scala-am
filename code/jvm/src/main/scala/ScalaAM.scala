@@ -3,7 +3,6 @@ package scalaam.cli
 import scalaam.util._
 import scala.concurrent.duration._
 import scalaam.diff.ModuleInferencer
-import scalaam.core.Identity._
 import scalaam.incremental._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
@@ -11,9 +10,6 @@ import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.incremental._
 import scalaam.modular.incremental.scheme._
 import scalaam.io.Reader
-import scalaam.language.scheme.primitives.SchemeLatticePrimitives
-//import scalaam.modular.incremental.IncrementalModAnalysis
-//import scalaam.modular.incremental.scheme.IncrementalSchemeModFSemantics
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -28,10 +24,7 @@ object Main {
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
                                                 with AdaptiveArgumentSensitivityPolicy1
                                                 with ConstantPropagationDomain {
-      val primitives = new SchemeLatticePrimitives()
       val limit = 3
-      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
-      override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
         println(s"analysing ${view(work.head)}")
         super.step()
@@ -51,7 +44,6 @@ object Main {
     }
 }
 
-/*
 object Incrementor extends App {
 
   type Analysis = IncrementalModAnalysis[SchemeExp] with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with IncrementalSchemeModFSemantics
@@ -64,8 +56,7 @@ object Incrementor extends App {
                                                     with ConstantPropagationDomain
                                                     with NoSensitivity
                                                     with IncrementalSchemeModFSemantics {
-        val primitives = ??? // TODO
-}
+    }
     analyzer.analyze()//Timeout.start(Duration(2, "MINUTES")))
     println(s"Number of components: ${analyzer.allComponents.size}")
   }
@@ -80,4 +71,3 @@ object Incrementor extends App {
   mapping.map(println)
 
 }
-*/
