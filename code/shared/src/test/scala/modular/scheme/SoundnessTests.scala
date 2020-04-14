@@ -108,7 +108,6 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
                                       with NoSensitivity {
-    val primitives = new SchemeLatticePrimitives[Value, Addr]()
   }
 }
 
@@ -119,7 +118,6 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
                                       with NoSensitivity {
-    val primitives = new SchemeLatticePrimitives[Value, Addr]()
   }
 }
 
@@ -132,8 +130,6 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
     val limit = 5
     override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
     override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
-
-    override val primitives: SchemePrimitives[valueLattice.L, Addr] = new SchemeLatticePrimitives()
   }
 }
 
