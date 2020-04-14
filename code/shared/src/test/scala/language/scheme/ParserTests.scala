@@ -1,5 +1,6 @@
 package scalaam.test.parser
 
+import scalaam.core._
 import scalaam.io.Reader
 import scalaam.test._
 import scalaam.language.scheme._
@@ -13,9 +14,10 @@ trait SchemeParserTests extends SchemeBenchmarkTests {
       assert(parsed.toString.nonEmpty)
       // Check that printing and parsing the result again gives the same result
       val printed = parsed.toString
-      val reparsed = SchemeParser.parse(printed)
+      val reparsed = SchemeParser.parse(printed, Position.newTag("Scala-AM"))
       assert(parsed.toString == reparsed.toString,
         "Printing and parsing again gives a result different from the original parse")
+      assert(reparsed.subexpressions.forall(e => e.idn.pos.tag.contains("Scala-AM") || e.idn == NoCodeIdentity && e.idn.pos.tag.isEmpty))
     }
 }
 
