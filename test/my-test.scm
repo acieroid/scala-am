@@ -1,9 +1,16 @@
-(define (f x)
-    (if (random-bool)
-        x
-        (f (cons 1 x))))
+(define (append x y)
+    (if (null? x)
+        y
+        (cons (car x)
+              (append (cdr x) y))))
 
-(define (random-bool)
-    (= (random 2) 1))
+(define (naughty-fun n)
+    (if (= n 1000)
+        '()
+        (append (list n) (naughty-fun (+ n 1)))))
 
-(f '())
+(define (good-fun) 
+    (append '(1 2 3) '(4 5)))
+
+(naughty-fun 0)
+(good-fun)
