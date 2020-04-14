@@ -16,7 +16,7 @@ object ConstantPropagation {
     }
     val bottom: L[A] = Bottom
     val top: L[A]    = Top
-    def join(x: L[A], y: => L[A]) = x match {
+    def join(x: L[A], y: => L[A]): L[A] = x match {
       case Top => Top
       case Constant(_) =>
         y match {
@@ -46,7 +46,7 @@ object ConstantPropagation {
         }
       case Top => y
     }
-    def subsumes(x: L[A], y: => L[A]) = x match {
+    def subsumes(x: L[A], y: => L[A]): Boolean = x match {
       case Top => true
       case Constant(_) =>
         y match {
@@ -74,9 +74,9 @@ object ConstantPropagation {
       case _      => Set(v)
     }
     def cardinality(v: L[A]): Cardinality = v match {
-      case Bottom       => CardinalityNumber(0)
-      case Constant(_)  => CardinalityNumber(1)
-      case Top          => CardinalityInf
+      case Bottom       => Cardinality(0, 0)
+      case Constant(_)  => Cardinality(1, 0)
+      case Top          => Cardinality(0, 1)
     }
   }
 
@@ -153,7 +153,13 @@ object ConstantPropagation {
         case _                          => RealLattice[F].bottom
       }
       def quotient(n1: I, n2: I): I  = binop(_ / _, n1, n2)
-      def modulo(n1: I, n2: I): I    = binop(MathOps.modulo _, n1, n2)
+      def modulo(n1: I, n2: I): I    = (n1, n2) match {
+        case (Top, Top) => Top
+        case (Top, Constant(_)) => Top
+        case (Constant(_), Top) => Top
+        case (Constant(x), Constant(y)) if y != 0 => Constant(MathOps.modulo(x, y))
+        case _ => Bottom
+      }
       def remainder(n1: I, n2: I): I = binop(MathOps.remainder _, n1, n2)
       def lt[B2: BoolLattice](n1: I, n2: I): B2 = (n1, n2) match {
         case (Top, Top)                 => BoolLattice[B2].top

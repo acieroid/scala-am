@@ -1,27 +1,35 @@
 ;;; TRIANGL -- Board game benchmark.
 
+  (define (vector->list v)
+    (let ((len (vector-length list)))
+      (letrec ((loop (lambda (idx)
+                       (if (= idx len)
+                           '()
+                           (cons (vector-ref v idx) (loop (+ idx 1)))))))
+        (loop 0))))
+
 (define *board*
-  (list->vector '(1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1)))
+  (vector 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1))
 
 (define *sequence*
-  (list->vector '(0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+  (vector 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
 
 (define *a*
-  (list->vector '(1 2 4 3 5 6 1 3 6 2 5 4 11 12
-                  13 7 8 4 4 7 11 8 12 13 6 10
-                  15 9 14 13 13 14 15 9 10
-                  6 6)))
+  (vector 1 2 4 3 5 6 1 3 6 2 5 4 11 12
+          13 7 8 4 4 7 11 8 12 13 6 10
+          15 9 14 13 13 14 15 9 10
+          6 6))
 
 (define *b*
-  (list->vector '(2 4 7 5 8 9 3 6 10 5 9 8
-                  12 13 14 8 9 5 2 4 7 5 8
-                  9 3 6 10 5 9 8 12 13 14
-                  8 9 5 5)))
+  (vector 2 4 7 5 8 9 3 6 10 5 9 8
+          12 13 14 8 9 5 2 4 7 5 8
+          9 3 6 10 5 9 8 12 13 14
+          8 9 5 5))
 
 (define *c*
-  (list->vector '(4 7 11 8 12 13 6 10 15 9 14 13
-                  13 14 15 9 10 6 1 2 4 3 5 6 1
-                  3 6 2 5 4 11 12 13 7 8 4 4)))
+  (vector 4 7 11 8 12 13 6 10 15 9 14 13
+          13 14 15 9 10 6 1 2 4 3 5 6 1
+          3 6 2 5 4 11 12 13 7 8 4 4))
 
 (define *answer* '())
 

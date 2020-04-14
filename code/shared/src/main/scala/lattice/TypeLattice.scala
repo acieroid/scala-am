@@ -14,7 +14,7 @@ object Type {
     }
     val bottom: T = Bottom
     val top: T    = Top
-    def join(x: T, y: => T) = x match {
+    def join(x: T, y: => T): T = x match {
       case Top    => Top
       case Bottom => y
     }
@@ -22,7 +22,7 @@ object Type {
       case Bottom => Bottom
       case Top    => y
     }
-    def subsumes(x: T, y: => T) = x match {
+    def subsumes(x: T, y: => T): Boolean = x match {
       case Top => true
       case Bottom =>
         y match {
@@ -39,8 +39,8 @@ object Type {
       case Top    => Set(Top)
     }
     def cardinality(v: T) = v match {
-      case Bottom => CardinalityNumber(0)
-      case Top    => CardinalityInf
+      case Bottom => Cardinality(0, 0)
+      case Top    => Cardinality(0, 1)
     }
   }
 

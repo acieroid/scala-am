@@ -1,0 +1,39 @@
+name: Scala-AM tests
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  # The compile job fetches the code and attempts to compile it
+  compile:
+    name: Compile Scala-AM
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: lokkju/github-action-sbt@v0.2.2
+      with:
+        commands: compile
+  # The test_lattice job executes the lattice tests
+  test_lattice:
+    name: Execute the lattice tests
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: lokkju/github-action-sbt@v0.2.2
+        with:
+          commands: scalaam/testOnly scalaam.test.lattice.*
+  # The test_parser job executes the parser tests
+  test_parser:
+    name: Execute the parser tests
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: lokkju/github-action-sbt@v0.2.2
+        with:
+          commands: scalaam/testOnly scalaam.test.parser.*
+    

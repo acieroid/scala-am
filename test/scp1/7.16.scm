@@ -6,16 +6,7 @@
             base
             (f (car lst) (foldr-aux (cdr lst))))))
     (foldr-aux lst)))
-(define (append l m)
-  (if (null? l)
-      m
-      (cons (car l) (append (cdr l) m))))
-(define (map f l)
-  (if (null? l)
-      l
-      (if (pair? l)
-          (cons (f (car l)) (map f (cdr l)))
-          (error "Cannot map over a non-list"))))
+
 (define (atom? x)
   (not (pair? x)))
 

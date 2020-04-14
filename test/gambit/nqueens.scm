@@ -1,8 +1,3 @@
-(define (append l x)
-  (if (null? l)
-      x
-      (cons (car l) (append (cdr l) x))))
-
 (define (one-to n)
   (letrec ((loop (lambda (i l)
                    (if (= i 0)

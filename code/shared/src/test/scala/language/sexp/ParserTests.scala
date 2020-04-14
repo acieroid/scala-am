@@ -1,13 +1,13 @@
 package scalaam.test.parser
 
+import scalaam.io.Reader
 import scalaam.test._
-
 import scalaam.language.sexp._
 
 trait SExpParserTests extends SchemeBenchmarkTests {
   def onBenchmark(benchmark: Benchmark) =
     property(s"SExpParser can correctly parse $benchmark") {
-      val content = loadFileText(benchmark)
+      val content = Reader.loadFile(benchmark)
       val parsed = SExpParser.parse(content)
       // Check that the parsing was succesful
       assert(parsed.mkString("").nonEmpty)

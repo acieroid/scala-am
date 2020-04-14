@@ -6,6 +6,7 @@ import scalaam.util._
 import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
+import scalaam.language.scheme.primitives.SchemePrimitive
 import scalaam.util.MonoidImplicits._
 
 import scala.annotation.tailrec
@@ -75,7 +76,7 @@ class ModularSchemeLattice[
   }
 
   case class Pointer(a: A) extends Value {
-    override def toString: String = s"#pointer($a)"
+    override def toString: String = s"#<pointer $a>"
   }
 
   case class Vec(size: I, elements: Map[I, L], init: L) extends Value {
@@ -109,8 +110,7 @@ class ModularSchemeLattice[
       case (_: Real, _: Real)  => true
       case (_: Char, _: Char)  => true
       case (_: Symbol, _: Symbol) => true
-      /* TODO: join vectors */
-      //case (_: Vec, _: Vec)   => true
+      case (_: Vec, _: Vec)    => true
       case _                   => false
     }
 
@@ -128,7 +128,10 @@ class ModularSchemeLattice[
           case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
           case (Symbol(s1), Symbol(s2)) => Right(Symbol(SymbolLattice[Sym].join(s1,s2)))
-          /* TODO: join vectors */
+          case (Vec(size1, els1, init1), Vec(size2, els2, init2)) =>
+            Right(Vec(IntLattice[I].join(size1, size2),
+              els2.foldLeft(els1)({ case (acc, (k, v)) => acc + (k -> schemeLattice.join(v, acc.get(k).getOrElse(schemeLattice.bottom))) }),
+              schemeLattice.join(init1, init2)))
           case _ => Left((x, y))
         }
       }
@@ -535,14 +538,20 @@ class ModularSchemeLattice[
     }
 
     def cardinality(v: Value): Cardinality = v match {
-      case Bot        => CardinalityNumber(0)
-      case Bool(b)    => Lattice[B].cardinality(b)
-      case Int(i)     => Lattice[I].cardinality(i)
-      case Char(c)    => Lattice[C].cardinality(c)
-      case Str(s)     => Lattice[S].cardinality(s)
-      case Real(r)    => Lattice[R].cardinality(r)
-      case Symbol(s)  => Lattice[Sym].cardinality(s)
-      case _          => CardinalityNumber(1) 
+      case Bot       => Cardinality(0, 0)
+      case Bool(b)   => Lattice[B].cardinality(b)
+      case Int(i)    => Lattice[I].cardinality(i)
+      case Char(c)   => Lattice[C].cardinality(c)
+      case Str(s)    => Lattice[S].cardinality(s)
+      case Real(r)   => Lattice[R].cardinality(r)
+      case Symbol(s) => Lattice[Sym].cardinality(s)
+      case _         => Cardinality(1, 0)
+    }
+
+    def combinedCardinality(v: Value): Cardinality = v match {
+      case Clo(_, _, _) => Cardinality(0, 0) // Have to filter these by lambda.
+      case Pointer(_)   => Cardinality(0, 0) // Have to filter these by address.
+      case _            => cardinality(v)
     }
   }
 
@@ -554,7 +563,7 @@ class ModularSchemeLattice[
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X = f(v)
   }
   case class Elements(vs: Set[Value]) extends L {
-    override def toString: String = "{" + vs.mkString(",") + "}"
+    override def toString: String = "{" + vs.map(_.toString).toList.sorted.mkString(",") + "}"
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X =
       vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
   }
@@ -590,10 +599,14 @@ class ModularSchemeLattice[
                     /* merge x2 into another element of the set */
                     acc.map(
                       x1 =>
+                      if (Value.compatible(x1, x2)) {
                         Value.join(x1, x2) match {
                           case Right(joined) => joined
-                          case Left(_)       => x1
+                          case Left(_)       => throw new Exception(s"compatible values can't be joined: $x1 and $x2")
                         }
+                      } else {
+                        x1
+                      }
                     )
                   } else {
                     /* just add x2 to the set */

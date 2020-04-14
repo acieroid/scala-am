@@ -7,7 +7,7 @@ import scalaam.util.MonoidImplicits._
 trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] {
   // update implementation for addresses and dependencies
   def updateAddr(update: Component => Component)(addr: Addr): Addr = addr match {
-    case ComponentAddr(cmp,localAddr) => ComponentAddr(update(cmp),localAddr)
+    case ComponentAddr(cmp, localAddr) => ComponentAddr(update(cmp), localAddr)
   }
   override def updateDep(update: Component => Component)(dep: Dependency): Dependency = dep match {
     case ReadWriteDependency(addr) => ReadWriteDependency(updateAddr(update)(addr))

@@ -1,20 +1,3 @@
-(define (map f l)
-  (if (null? l)
-      l
-      (if (pair? l)
-          (cons (f (car l)) (map f (cdr l)))
-          (error "Cannot map over a non-list"))))
-(define (append l m)
-  (if (null? l)
-      m
-      (cons (car l) (append (cdr l) m))))
-(define (member el lst)
-  (if (null? lst)
-      #f
-      (if (equal? (car lst) el)
-          #t
-          (member el (cdr lst)))))
-
 ;;; MAZEFUN -- Constructs a maze in a purely functional way,
 ;;; written by Marc Feeley.
 

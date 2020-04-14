@@ -1,8 +1,3 @@
-(define (append l m)
-  (if (null? l)
-      m
-      (cons (car l) (append (cdr l) m))))
-
 ;;; BROWSE -- Benchmark to create and browse through
 ;;; an AI-like data base of units.
 

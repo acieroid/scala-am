@@ -9,23 +9,6 @@
 ;; (res6a `(a b ,(reverse '(c d e)) f g))
 ;; (res6b (quasiquote (a b (unquote (reverse '(c d e))) f g)))
 
-;; BEGIN PRELUDE
-
-(define (equal? a b)
-  (or (eq? a b)
-      (and (null? a) (null? b))
-      (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
-      (and (vector? a) (vector? b)
-      (let ((n (vector-length a)))
-        (and (= (vector-length b) n)
-             (letrec ((loop (lambda (i)
-                              (or (= i n)
-                                  (and (equal? (vector-ref a i) (vector-ref b i))
-                                  (loop (+ i 1)))))))
-                (loop 0)))))))
-
-;; END PRELUDE
-
 (define day-of-week 'Sunday)
 (define (make-greeting)
   `(Welcome to the FooBar system!  We hope you

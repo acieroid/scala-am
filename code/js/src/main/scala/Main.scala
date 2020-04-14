@@ -1,10 +1,12 @@
 package scalaam.web
 
+
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
+
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -28,7 +30,6 @@ object FileInputElement {
 }
 
 object Main {
-
   val input = FileInputElement(loadFile)
 
   def main(args: Array[String]): Unit = setupUI()
@@ -39,14 +40,12 @@ object Main {
   }
 
   def loadFile(text: String): Unit = {
-    val program = SchemeParser.parse(text)
+    val program = SchemeParser.parseAddPrelude(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
                                                     with AdaptiveArgumentSensitivityPolicy1
                                                     with ConstantPropagationDomain
                                                     with WebAdaptiveAnalysis[SchemeExp] {
       val limit = 2
-      override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
-      override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step() = {
         val component = work.head
         val name = deref(component)

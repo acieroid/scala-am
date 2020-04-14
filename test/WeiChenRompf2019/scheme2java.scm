@@ -54,22 +54,11 @@
 
 ;; Utilities.
 
-(define (cadr p) (car (cdr p)))
-(define (caadr p) (car (car (cdr p))))
-(define (caddr p) (car (cdr (cdr p))))
-(define (cadddr p) (car (cdr (cdr (cdr p)))))
-
 (define (map f lst) 
   (if (pair? lst)
       (cons (f (car lst))
             (map f (cdr lst)))
       '()))
-
-(define (append lst1 lst2)
-  (if (not (pair? lst1))
-      lst2
-      (cons (car lst1) 
-            (append (cdr lst1) lst2))))
 
 (define (string->list s)
   (define (f i)

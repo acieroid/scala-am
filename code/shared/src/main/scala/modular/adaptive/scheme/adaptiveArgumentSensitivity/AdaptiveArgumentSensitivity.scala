@@ -1,6 +1,7 @@
 package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 import scalaam.core._
+import scalaam.core.Position._
 import scalaam.util._
 import scalaam.modular.adaptive.scheme._
 
@@ -17,14 +18,14 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     val updatedAbs = currentAbs.filterNot(lattice.subsumes(arg,_)) + arg
     this.adaptedArgs += ((clo,par) -> updatedAbs)
   }
-  private def adaptArg(clo: lattice.Closure, par: Identifier, arg: Value) = 
+  private def adaptArg(clo: lattice.Closure, par: Identifier, arg: Value) =
     adaptedArgs.getOrElse((clo,par),Set.empty)
                .find(lattice.subsumes(_, arg))
                .getOrElse(arg)
   private def adaptArgs(clo: lattice.Closure, args: List[Value]) =
     clo._1.args.zip(args).map { case (par,arg) => adaptArg(clo,par,arg) }
   // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(clo: lattice.Closure, args: List[Value]) = ComponentContext(adaptArgs(clo,args))
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = ComponentContext(adaptArgs(clo,args))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
     case Main               => Main
@@ -42,13 +43,13 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     super.updateAnalysisData(update)
     this.adaptedArgs = updateMap(updateClosurePar(update),updateSet(updateValue(update)))(adaptedArgs)(valueSetMonoid)
   }
-  private def updateClosurePar(update: Component => Component)(key: (lattice.Closure, Identifier)) = 
+  private def updateClosurePar(update: Component => Component)(key: (lattice.Closure, Identifier)) =
     (updateClosure(update)(key._1), key._2)
   private val valueSetMonoid = new Monoid[Set[Value]] {
     def zero = Set.empty
     def append(s1: Set[Value], s2: => Set[Value]) =
-      if(s1.isEmpty) { 
-        s2 
+      if(s1.isEmpty) {
+        s2
       } else if (s2.isEmpty) {
         s1
       } else {

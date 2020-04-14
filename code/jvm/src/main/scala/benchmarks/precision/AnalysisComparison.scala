@@ -1,9 +1,10 @@
 package scalaam.cli.benchmarks.precision
 
-import scalaam.cli._
 import scalaam.cli.benchmarks._
 import scalaam.util._
+import scalaam.io.Reader
 import scalaam.language.scheme._
+
 import scala.concurrent.duration._
 import scalaam.lattice._
 
@@ -12,7 +13,7 @@ abstract class AnalysisComparison[
     Rea: RealLattice,
     Bln: BoolLattice,
     Chr: CharLattice,
-    Str: StringLattice, 
+    Str: StringLattice,
     Smb: SymbolLattice
 ] extends PrecisionBenchmarks {
 
@@ -78,8 +79,8 @@ object AnalysisComparison1 extends AnalysisComparison[
     def main(args: Array[String]) = check("test/primtest.scm")
 
     def check(path: Benchmark) = {
-        val txt = FileUtil.loadFile(path)
-        val prg = SchemeParser.parse(txt)
+        val txt = Reader.loadFile(path)
+        val prg = SchemeParser.parseAddPrelude(txt)
         val con = runInterpreter(prg, path).get
         val abs = runAnalysis(SchemeAnalyses.contextSensitiveAnalysis(prg),path).get
         val allKeys = con.keys ++ abs.keys
@@ -95,6 +96,49 @@ object AnalysisComparison1 extends AnalysisComparison[
             val fullArg = r.getOrElse("full-argument-sensitivity", "T")
             val concrete = r.getOrElse("concrete", "T")
             println(s"$b -> $fullArg/$concrete")
+        }
+    }
+}
+
+
+object PrimitivesComparison extends AnalysisComparison[
+    ConstantPropagation.I,
+    ConstantPropagation.R,
+    Concrete.B,
+    ConstantPropagation.C,
+    ConstantPropagation.S,
+    Concrete.Sym
+] {
+    def baseAnalysis(prg: SchemeExp): Analysis =
+      SchemeAnalyses.contextInsensitiveAnalysis(prg)
+    def otherAnalyses(prg: SchemeExp) = List(
+        SchemeAnalyses.PrimitivesComparison.S_0_0(prg),
+        SchemeAnalyses.PrimitivesComparison.S_CS_0(prg),
+        SchemeAnalyses.PrimitivesComparison.S_CSFA_0(prg),
+    )
+
+    def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
+
+    def check(path: Benchmark) = {
+        val txt = Reader.loadFile(path)
+        val prg = SchemeParser.parseAddPrelude(txt)
+        val con = runInterpreter(prg, path).get
+        val abs = runAnalysis(baseAnalysis(prg),path).get
+        val allKeys = con.keys ++ abs.keys
+        val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
+        interestingKeys.foreach { k =>
+            println(s"$k -> ${abs.getOrElse(k,"⊥")} ; ${con.getOrElse(k,"⊥")} ")
+        }
+    }
+
+    def runBenchmarks() = {
+        SchemeBenchmarks.forPrimitives.foreach(runBenchmark)
+        this.results.foreach { case (b, r) =>
+            val refined_0_0 = r.getOrElse("0_0", "T")
+            val refined_CS_0 = r.getOrElse("CS_0", "T")
+            val refined_CSFA_0 = r.getOrElse("CSFA_0", "T")
+            val concrete = r.getOrElse("concrete", "T")
+            println(s"$b -> 0_0:$refined_0_0, CS_0:$refined_CS_0, CSFA_0: $refined_CSFA_0 / $concrete")
         }
     }
 }
