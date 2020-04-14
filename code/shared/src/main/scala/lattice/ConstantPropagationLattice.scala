@@ -152,6 +152,7 @@ object ConstantPropagation {
         case (Constant(x), Constant(y)) => RealLattice[F].inject(x / y.toDouble)
         case _                          => RealLattice[F].bottom
       }
+      def expt(n1: I, n2: I): I = binop((x, y) => Math.pow(x,y).toInt, n1, n2)
       def quotient(n1: I, n2: I): I  = binop(_ / _, n1, n2)
       def modulo(n1: I, n2: I): I    = (n1, n2) match {
         case (Top, Top) => Top
@@ -240,6 +241,7 @@ object ConstantPropagation {
       def minus(n1: R, n2: R): R = binop(_ - _, n1, n2)
       def times(n1: R, n2: R): R = binop(_ * _, n1, n2)
       def div(n1: R, n2: R): R   = binop(_ / _, n1, n2)
+      def expt(n1: R, n2: R): R = binop((x, y) => Math.pow(x,y), n1, n2)
       def lt[B2: BoolLattice](n1: R, n2: R): B2 = (n1, n2) match {
         case (Top, Top)                 => BoolLattice[B2].top
         case (Top, Constant(_))         => BoolLattice[B2].top

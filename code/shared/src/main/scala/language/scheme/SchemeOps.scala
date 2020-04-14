@@ -5,14 +5,12 @@ object SchemeOps {
   /** These are the unary operations that should be supported by Scheme lattices */
   object UnaryOperator extends Enumeration {
     val
-    /* Check the type of a value */
-    IsNull, IsBoolean, IsCons, IsPointer, IsChar, IsSymbol, IsString, IsInteger, IsReal, IsVector,
-        /* Negate a value */
-    Not, /* Unary arithmetic operations */
-    Ceiling, Floor, Round, Random, Sqrt, /* Transcendental functions */
-    Sin, ASin, Cos, ACos, Tan, ATan, Log, /* Length operations */
-    VectorLength, StringLength, /* Conversions */
-    NumberToString, SymbolToString, StringToSymbol,
+    IsNull, IsBoolean, IsCons, IsPointer, IsChar, IsSymbol, IsString, IsInteger, IsReal, IsVector, /* Check the type of a value */
+    Not, /* Negate a value */
+    Ceiling, Floor, Round, Random, Sqrt, /* Unary arithmetic operations */
+    Sin, ASin, Cos, ACos, Tan, ATan, Log, /* Transcendental functions */
+    VectorLength, StringLength, /* Length operations */
+    NumberToString, SymbolToString, StringToSymbol, /* Conversions */
     ExactToInexact, InexactToExact, CharacterToInteger = Value
   }
   type UnaryOperator = UnaryOperator.Value
@@ -20,13 +18,12 @@ object SchemeOps {
   /** Binary operations that should be supported by lattices */
   object BinaryOperator extends Enumeration {
     val
-    /* Arithmetic operations */
-    Plus, Minus, Times, Div, Quotient, Modulo, Remainder, /* Arithmetic comparison */
-    Lt, /* Equality checking */
+    Plus, Minus, Times, Div, Quotient, Modulo, Remainder, Expt, /* Arithmetic operations */
+    Lt, /* Arithmetic comparison */
+    /* Equality checking */
     NumEq, /* number equality */
     Eq, /* physical equality */
-    /* String operations */
-    StringAppend, StringRef, StringLt = Value
+    StringAppend, StringRef, StringLt /* String operations */ = Value
   }
   type BinaryOperator = BinaryOperator.Value
 }

@@ -22,6 +22,7 @@ trait RealLattice[R] extends Lattice[R] { self =>
   def minus(n1: R, n2: R): R
   def times(n1: R, n2: R): R
   def div(n1: R, n2: R): R
+  def expt(n1: R, n2: R): R
   def lt[B: BoolLattice](n1: R, n2: R): B
   def toString[S: StringLattice](n: R): S
 }
