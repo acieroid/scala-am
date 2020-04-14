@@ -25,8 +25,8 @@ object Main {
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
                                                 with AdaptiveArgumentSensitivityPolicy1
                                                 with ConstantPropagationDomain {
-      val limit = 10
-      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
+      val budget = 100
+      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
         println(allComponents.size)

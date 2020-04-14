@@ -105,7 +105,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]): ComponentContext
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -129,7 +129,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
-    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Option[ComponentContext]): Value =
+    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value =
       if(args.forall(_._2 != lattice.bottom)) {
         val fromClosures = applyClosures(fval,args, cll, cmp)
         val fromPrimitives = applyPrimitives(fexp,fval,args)
@@ -146,7 +146,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
         )}
     }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Option[ComponentContext]): Value = {
+    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value = {
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {

@@ -68,7 +68,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
       val call = SchemeFuncall(lambda,ags,idn)
       defineVariable(id,closure)
       val argsVals = ags.map(argExp => (argExp, eval(argExp)))
-      applyFun(call,closure,argsVals,id.idn.pos, context(component))
+      applyFun(call,closure,argsVals,id.idn.pos, component)
     }
     // R5RS specification: if all exps are 'thruty', then the value is that of the last expression
     private def evalAnd(exps: List[SchemeExp]): Value =
@@ -86,7 +86,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
     private def evalCall(exp: SchemeFuncall, fun: SchemeExp, args: List[SchemeExp]): Value = {
       val funVal = eval(fun)
       val argVals = args.map(eval)
-      applyFun(exp,funVal,args.zip(argVals),fun.idn.pos, context(component))
+      applyFun(exp,funVal,args.zip(argVals),fun.idn.pos, component)
     }
     private def evalPair(pairExp: SchemePair): Value = {
       val carv = eval(pairExp.car)
