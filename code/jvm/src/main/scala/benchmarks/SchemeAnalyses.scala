@@ -6,6 +6,7 @@ import scalaam.modular.scheme._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
+import scalaam.core.Identity._
 
 object SchemeAnalyses {
 
@@ -26,12 +27,16 @@ object SchemeAnalyses {
                                                                                         with ConstantPropagationDomain {
         override def toString() = "adaptive-argument-policy1"
         val limit = k
+        override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
+        override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
     def adaptiveAnalysisPolicy2(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveArgumentSensitivityPolicy1
                                                                                         with ConstantPropagationDomain {
         override def toString() = "adaptive-argument-policy2"
         val limit = k
+        override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
+        override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
 
   object PrimitivesComparison {
