@@ -18,30 +18,35 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = FileUtil.loadFile("test/my-test.scm")
+    val txt = FileUtil.loadFile("test/mceval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivityPolicy1
+                                                with AdaptiveArgumentSensitivityPolicy2
                                                 with ConstantPropagationDomain {
-      val limit = 4
+      val budget = 1000
       override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
-        println(s"analysing ${view(work.head)}")
+        println(allComponents.size)
         super.step()
       }
     }
-    analysis.analyze(Timeout.start(Duration(5,SECONDS)))
-    debugResults(analysis)
+    analysis.analyze()
+    println(analysis.allComponents.size)
+    //debugResults(analysis, false)
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
 
-  def debugResults(machine: AdaptiveSchemeModFSemantics): Unit =
+  def debugResults(machine: AdaptiveSchemeModFSemantics, printMore: Boolean = false): Unit =
     machine.store.foreach {
       case (machine.ReturnAddr(cmp),result) =>
         println(s"[$cmp] ${machine.view(cmp)} => $result")
-      case _ =>
+      case (machine.ComponentAddr(_, _: machine.PrmAddr),_) => 
+        () //don't print primitive addresses
+      case (addr,value) if printMore =>
+        println(s"$addr => $value")
+      case _ => ()
     }
 }
 
