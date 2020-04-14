@@ -1,6 +1,6 @@
 package scalaam.language.scheme
 
-import scalaam.core.{Identity, Identifier}
+import scalaam.core._
 import scalaam.language.sexp._
 
 /**
@@ -162,11 +162,8 @@ object SchemeCompiler {
         argsv <- tailcall(compileBody(args))
       } yield SchemeFuncall(fv, argsv, exp.idn)
     case SExpId(v) =>
-      if (reserved.contains(v.name)) {
-        throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $exp", exp.idn)
-      } else {
-        done(SchemeVar(v))
-      }
+      if (reserved.contains(v.name))  throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $exp", exp.idn)
+      done(SchemeVar(v))
     case SExpValue(value, _)   => done(SchemeValue(value, exp.idn))
   }
 
@@ -192,14 +189,11 @@ object SchemeCompiler {
 
   def compileBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp)]] = bindings match {
     case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
-      if (reserved.contains(v.name)) {
-        throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
-      } else {
-        for {
-          valuev <- tailcall(_compile(value))
-          restv  <- tailcall(compileBindings(rest))
-        } yield (v, valuev) :: restv
-      }
+      if (reserved.contains(v.name)) throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
+      for {
+        valuev <- tailcall(_compile(value))
+        restv  <- tailcall(compileBindings(rest))
+      } yield (v, valuev) :: restv
     case SExpValue(ValueNil, _) => done(Nil)
     case _                      => throw new SchemeCompilerException(s"Invalid Scheme bindings: $bindings", bindings.idn)
   }
@@ -207,34 +201,22 @@ object SchemeCompiler {
   def compileDoBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp, Option[SchemeExp])]] =
     bindings match {
       case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
-        if (reserved.contains(v.name)) {
-          throw new SchemeCompilerException(
-            s"Invalid Scheme identifier (reserved): $v",
-            bindings.idn
-          )
-        } else {
-          for {
-            valuev <- tailcall(_compile(value))
-            restv  <- tailcall(compileDoBindings(rest))
-          } yield (v, valuev, None) :: restv
-        }
+        if (reserved.contains(v.name)) throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
+        for {
+          valuev <- tailcall(_compile(value))
+          restv  <- tailcall(compileDoBindings(rest))
+        } yield (v, valuev, None) :: restv
       case SExpPair(
           SExpPair(SExpId(v), SExpPair(value, SExpPair(step, SExpValue(ValueNil, _), _), _), _),
           rest,
           _
           ) =>
-        if (reserved.contains(v.name)) {
-          throw new SchemeCompilerException(
-            s"Invalid Scheme identifier (reserved): $v",
-            bindings.idn
-          )
-        } else {
-          for {
-            valuev <- tailcall(_compile(value))
-            stepv  <- tailcall(_compile(step))
-            restv  <- tailcall(compileDoBindings(rest))
-          } yield (v, valuev, Some(stepv)) :: restv
-        }
+        if (reserved.contains(v.name)) throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
+        for {
+          valuev <- tailcall(_compile(value))
+          stepv  <- tailcall(_compile(step))
+          restv  <- tailcall(compileDoBindings(rest))
+        } yield (v, valuev, Some(stepv)) :: restv
       case SExpValue(ValueNil, _) => done(Nil)
       case _ =>
         throw new SchemeCompilerException(s"Invalid Scheme do-bindings: $bindings", bindings.idn)

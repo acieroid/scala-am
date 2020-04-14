@@ -1,19 +1,3 @@
-(define (append l m)
-  (if (null? l)
-      m
-      (cons (car l) (append (cdr l) m))))
-(define (map f l)
-  (if (null? l)
-      l
-      (if (pair? l)
-          (cons (f (car l)) (map f (cdr l)))
-          (error "Cannot map over a non-list"))))
-(define (for-each f l)
-  (if (null? l)
-      #t
-      (if (pair? l)
-          (begin (f (car l)) (for-each f (cdr l)))
-          (error "Cannot for-each over a non-list"))))
 ;;; PEVAL -- A simple partial evaluator for Scheme, written by Marc Feeley.
 
 ;------------------------------------------------------------------------------
@@ -21,22 +5,23 @@
 ; Utilities
 
 (define (every? pred? l)
-  (let loop ((l l))
-    (or (null? l) (and (pred? (car l)) (loop (cdr l))))))
+  (or (null? l) (and (pred? (car l)) (every? pred? (cdr l)))))
 
 (define (some? pred? l)
-  (let loop ((l l))
-    (if (null? l) #f (or (pred? (car l)) (loop (cdr l))))))
+  (if (null? l)
+      #f
+      (or (pred? (car l)) (some? pred? (cdr l)))))
 
 (define (map2 f l1 l2)
-  (let loop ((l1 l1) (l2 l2))
-    (if (pair? l1)
-      (cons (f (car l1) (car l2)) (loop (cdr l1) (cdr l2)))
-      '())))
+  (if (pair? l1)
+      (cons (f (car l1) (car l2))
+            (map2 f (cdr l1) (cdr l2)))))
 
 (define (get-last-pair l)
-  (let loop ((l l))
-    (let ((x (cdr l))) (if (pair? x) (loop x) l))))
+  (let ((x (cdr l)))
+    (if (pair? x)
+        (get-last-pair x)
+        l)))
 
 ;------------------------------------------------------------------------------
 ;
@@ -359,7 +344,7 @@
         ((eq? (caar env) 'lambda)
          (if (memq var (cadar env)) (car env) (binding-frame var (cdr env))))
         (else
-         (fatal-error "ill-formed environment"))))
+         (error "ill-formed environment"))))
 
 (define (bound-expr var frame)
   (cond ((or (eq? (car frame) 'let) (eq? (car frame) 'letrec))
@@ -367,7 +352,7 @@
         ((eq? (car frame) 'lambda)
          not-constant)
         (else
-         (fatal-error "ill-formed frame"))))
+         (error "ill-formed frame"))))
 
 (define (add-binding val frame name)
   (define (find-val val bindings)

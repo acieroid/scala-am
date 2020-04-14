@@ -14,6 +14,7 @@ object Timeout {
 
 object Timer {
 
+  @inline
   def time[A](block: => A): (Long, A) = {
     val t1:   Long = System.nanoTime()
     val ans:     A = block
@@ -21,4 +22,7 @@ object Timer {
     val time: Long = t2 - t1
     (time, ans)
   }
+
+  @inline
+  def timeOnly[A](block: => A): Long = time(block)._1
 }

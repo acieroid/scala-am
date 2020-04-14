@@ -1,9 +1,1 @@
-(define (f x)
-    (if (random-bool)
-        x
-        (f (cons 1 x))))
-
-(define (random-bool)
-    (= (random 2) 1))
-
-(f '())
+(length (append '(1 2 3) '(4 5 6)))

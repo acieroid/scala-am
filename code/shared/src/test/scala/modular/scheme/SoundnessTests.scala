@@ -8,6 +8,8 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
 import scalaam.core._
+import scalaam.core.Position._
+import scalaam.io.Reader
 import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -60,7 +62,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
-    val aRes = a.store(a.ReturnAddr(a.initialComponent))
+    val aRes = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom)
     assert(checkSubsumption(a)(Set(concRes), aRes),
       s"program result is not sound: $aRes does not subsume $concRes.")
   }
@@ -68,8 +70,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
         case a.ComponentAddr(_, addr) => addr.idn()
-        case _                        => Identity.none
-      }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap
+        case _                     => Identity.none
+      }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
       assert(checkSubsumption(a)(values, absID(idn)),
             s"intermediate result at $idn is not sound: ${absID(idn)} does not subsume $values.")
@@ -79,7 +81,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   def onBenchmark(benchmark: Benchmark): Unit =
     property(s"Analysis of $benchmark using $name is sound.") {
       // load the benchmark program
-      val program = loadFile(benchmark)
+      val content = Reader.loadFile(benchmark)
+      val program = SchemeParser.parseAddPrelude(content)
       // run the program using a concrete interpreter
       val (cResult, cPosResults) = evalConcrete(program,timeout(benchmark))
       // analyze the program using a ModF analysis
@@ -89,7 +92,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       // if not, cancel the test for this benchmark
       assume(a.finished(), s"Analysis of $benchmark timed out.")
       // check if the final result of the analysis soundly approximates the final result of concrete evaluation
-      // of course, this can only be done if the
+      // of course, this can only be done if there was a result.
       if (cResult.isDefined) { compareResult(a, cResult.get) }
       // check if the intermediate results at various program points are soundly approximated by the analysis
       // this can be done, regardless of whether the concrete evaluation terminated successfully or not
@@ -103,7 +106,8 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
                                       with BigStepSemantics
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
-                                      with NoSensitivity
+                                      with NoSensitivity {
+  }
 }
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
@@ -112,7 +116,8 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                       with SmallStepSemantics
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
-                                      with NoSensitivity
+                                      with NoSensitivity {
+  }
 }
 
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
@@ -122,7 +127,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
                                         with AdaptiveSchemeModFSemantics
                                         with ConstantPropagationDomain {
     val limit = 5
-    override def allocCtx(clo: lattice.Closure, args: List[Value]) = super.allocCtx(clo,args)
+    override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
     override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
   }
 }

@@ -2,10 +2,22 @@ package scalaam.core
 
 import scalaam.util.Show
 
-/** Cardinality indicates how many elements are represented by an abstract value */
-trait Cardinality
-case object CardinalityInf extends Cardinality
-case class CardinalityNumber(n: Int) extends Cardinality
+/** Cardinality indicates how many elements are represented by an abstract value. */
+case class Cardinality(fin: Int, inf: Int) extends Ordered[Cardinality] {
+  override def toString: String = s"|$fin,$inf|"
+
+  /** A cardinality is smaller than another one if it has
+   *   - less infinite values OR
+   *   - an equal amount of infinite values but less finite values.
+   */
+  override def compare(that: Cardinality): Int = {
+    if (inf < that.inf || inf == that.inf && fin < that.fin) -1
+    else if (inf == that.inf && fin == that.fin) 0
+    else 1
+  }
+
+  def add(that: Cardinality): Cardinality = Cardinality(fin + that.fin, inf + that.inf)
+}
 
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */
 object LatticeTopUndefined extends ScalaAMException
@@ -55,13 +67,13 @@ object Lattice {
   def apply[L: Lattice]: Lattice[L] = implicitly
 
   implicit def SetLattice[A: Show] = new Lattice[Set[A]] {
-    def show(x: Set[A])                                           = "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
-    def top                                                       = throw LatticeTopUndefined
-    def bottom                                                    = Set.empty
-    def join(x: Set[A], y: => Set[A])                             = x.union(y)
-    def subsumes(x: Set[A], y: => Set[A])                         = y.subsetOf(x)
-    def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A]) = ???
-    def split(x: Set[A])                                          = x.map(Set(_))
-    def cardinality(x: Set[A])                                    = CardinalityNumber(x.size)
+    def show(x: Set[A]): String                                      = "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
+    def top                                                          = throw LatticeTopUndefined
+    def bottom: Set[A]                                               = Set.empty
+    def join(x: Set[A], y: => Set[A]): Set[A]                        = x.union(y)
+    def subsumes(x: Set[A], y: => Set[A]): Boolean                   = y.subsetOf(x)
+    def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A])    = ???
+    def split(x: Set[A])                                             = x.map(Set(_))
+    def cardinality(x: Set[A]): Cardinality                          = Cardinality(x.size, 0)
   }
 }

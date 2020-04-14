@@ -1,16 +1,3 @@
-(define (reverse lst)
-  (define (go lst tail)
-    (if (null? lst) tail
-        (go (cdr lst) (cons (car lst) tail))))
-  (go lst '()))
-
-(define (map f l)
-  (if (null? l)
-      l
-      (if (pair? l)
-          (cons (f (car l)) (map f (cdr l)))
-          (error "Cannot map over a non-list"))))
-
 (define (map2 f l1 l2)
   (if (or (null? l1) (null? l2))
       '()

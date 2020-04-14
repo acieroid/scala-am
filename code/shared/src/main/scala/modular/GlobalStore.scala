@@ -18,8 +18,8 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   // addresses in the global analysis are (local) addresses of the intra-analysis + the component
   trait Addr extends Address
   case class ComponentAddr(cmp: Component, addr: LocalAddr) extends Addr {
+    override def toString(): String = s"#<$addr $cmp>"
     def printable: Boolean = addr.printable
-    override def toString: String = s"#<$addr $cmp>"
   }
 
   // the global store of the analysis
@@ -35,7 +35,9 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   }
 
   // Dependency that is triggered when an abstract value at address 'addr' is updated
-  case class ReadWriteDependency(addr: Addr) extends Dependency
+  case class ReadWriteDependency(addr: Addr) extends Dependency {
+    override def toString(): String = s"$addr"
+  }
 
   trait GlobalStoreIntra extends super.IntraAnalysis {
 
@@ -56,9 +58,11 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
 
     // writing addresses of the global store
     protected def writeAddr(addr: LocalAddr, value: Value, cmp: Component = component): Unit =
-        writeAddr(ComponentAddr(cmp,addr),value)
+        writeAddr(ComponentAddr(cmp, addr),value)
     protected def writeAddr(addr: Addr, value: Value): Unit =
-        if (updateAddr(addr,value)) // If the value in the store changed, trigger the dependency.
+        if (updateAddr(addr,value)) { // If the value in the store changed, trigger the dependency.
           triggerDependency(ReadWriteDependency(addr))
-    }
+          // System.out.println(s"$addr -> $value")
+        }
+  }
 }

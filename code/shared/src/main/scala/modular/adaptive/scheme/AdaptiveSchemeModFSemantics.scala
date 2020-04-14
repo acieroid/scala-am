@@ -11,7 +11,6 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with SchemeModFSemantics
                                     with BigStepSemantics
                                     with AbstractDomain {
-
   // Definition of components
   trait ComponentData extends SchemeComponent
   case object Main extends ComponentData with MainComponent
@@ -32,7 +31,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     case valueLattice.Element(v)    => valueLattice.Element(updateV(update)(v))
     case valueLattice.Elements(vs)  => vs.map(updateV(update)) match {
       case vs if vs.size == 1 => valueLattice.Element(vs.head)
-      case vs => valueLattice.Elements(vs) 
+      case vs => valueLattice.Elements(vs)
     }
   }
   private def updateV(update: Component => Component)(value: valueLattice.Value): valueLattice.Value = value match {

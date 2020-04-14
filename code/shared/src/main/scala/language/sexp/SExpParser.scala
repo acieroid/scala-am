@@ -1,6 +1,7 @@
 package scalaam.language.sexp
 
-import scalaam.core.{Identity, Identifier}
+import scalaam.core.Position._
+import scalaam.core._
 
 /**
   * Implementation of a simple s-expression parser, which supports some
@@ -210,16 +211,16 @@ object SExpParser extends TokenParsers {
   }
   def nil: Parser[Value] = leftParen ~ rightParen ^^^ ValueNil
 
-  def value: Parser[SExp] = Parser { in =>
+  def value(tag: PTag): Parser[SExp] = Parser { in =>
     (bool | real | integer | character | string | nil)(in) match {
-      case Success(t, in1) => Success(SExpValue(t, Identity(in.pos)), in1)
+      case Success(t, in1) => Success(SExpValue(t, Identity(in.pos, tag)), in1)
       case ns: NoSuccess   => ns
     }
   }
 
-  def identifier: Parser[SExp] = Parser { in =>
+  def identifier(tag: PTag): Parser[SExp] = Parser { in =>
     elem("identifier", _.isInstanceOf[TIdentifier])(in) match {
-      case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, Identity(in.pos))), in1)
+      case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, Identity(in.pos, tag))), in1)
       case Success(v, in1)              => Failure(s"Expected identifier, got $v", in1)
       case ns: NoSuccess                => ns
     }
@@ -233,32 +234,32 @@ object SExpParser extends TokenParsers {
   def unquote         = elem("unquote",           _.isInstanceOf[TUnquote])
   def unquoteSplicing = elem("unquote-splicing",  _.isInstanceOf[TUnquoteSplicing])
 
-  def list: Parser[SExp] = Parser { in =>
-    (leftParen ~> rep1(exp) ~ opt(dot ~> exp) <~ rightParen)(in) match {
+  def list(tag: PTag): Parser[SExp] = Parser { in =>
+    (leftParen ~> rep1(exp(tag)) ~ opt(dot ~> exp(tag)) <~ rightParen)(in) match {
       case Success(es ~ None, in1) =>
-        Success(SExpList(es, Identity(in.pos)), in1)
+        Success(SExpList(es, Identity(in.pos, tag)), in1)
       case Success(es ~ Some(tail), in1) =>
         Success(SExpList(es, tail), in1)
       case ns: NoSuccess => ns
     }
   }
 
-  def withQuote(p: Parser[_], make: (SExp, Identity) => SExp) = Parser { in =>
-    (p ~> exp)(in) match {
-      case Success(e, in1) => Success(make(e, Identity(in.pos)), in1)
+  def withQuote(tag: PTag)(p: Parser[_], make: (SExp, Identity) => SExp) = Parser { in =>
+    (p ~> exp(tag))(in) match {
+      case Success(e, in1) => Success(make(e, Identity(in.pos, tag)), in1)
       case ns: NoSuccess   => ns
     }
   }
 
-  def quoted            : Parser[SExp] = withQuote(quote,           SExpQuoted(_,_))
-  def quasiquoted       : Parser[SExp] = withQuote(quasiquote,      SExpQuasiquoted(_,_))
-  def unquoted          : Parser[SExp] = withQuote(unquote,         SExpUnquoted(_,_))
-  def unquotedSplicing  : Parser[SExp] = withQuote(unquoteSplicing, SExpUnquotedSplicing(_,_))
+  def quoted(tag: PTag)           : Parser[SExp] = withQuote(tag)(quote,           SExpQuoted(_,_))
+  def quasiquoted(tag: PTag)      : Parser[SExp] = withQuote(tag)(quasiquote,      SExpQuasiquoted(_,_))
+  def unquoted(tag: PTag)         : Parser[SExp] = withQuote(tag)(unquote,         SExpUnquoted(_,_))
+  def unquotedSplicing(tag: PTag) : Parser[SExp] = withQuote(tag)(unquoteSplicing, SExpUnquotedSplicing(_,_))
 
-  def exp: Parser[SExp]           = value | identifier | list | quoted | quasiquoted | unquoted | unquotedSplicing
-  def expList: Parser[List[SExp]] = rep1(exp)
+  def exp(tag: PTag)     : Parser[SExp]       = value(tag) | identifier(tag) | list(tag) | quoted(tag) | quasiquoted(tag) | unquoted(tag) | unquotedSplicing(tag)
+  def expList(tag: PTag) : Parser[List[SExp]] = rep1(exp(tag))
 
-  def parse(s: String): List[SExp] = expList(new lexical.Scanner(s)) match {
+  def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new lexical.Scanner(s)) match {
     case Success(res, next) if next.atEnd => res
     case Success(res, next) if !next.atEnd =>
       throw new Exception(

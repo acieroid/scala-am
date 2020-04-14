@@ -38,7 +38,7 @@ object Concrete {
           case Values(content2) => Values(content1.union(content2))
         }
     }
-    def subsumes(x: L[A], y: => L[A]) = x match {
+    def subsumes(x: L[A], y: => L[A]): Boolean = x match {
       case Top => true
       case Values(content1) =>
         y match {
@@ -54,8 +54,8 @@ object Concrete {
       case Values(vs) => vs.map(v => Values(Set(v)))
     }
     def cardinality(x: L[A]): Cardinality = x match {
-      case Top        => CardinalityInf
-      case Values(vs) => CardinalityNumber(vs.size)
+      case Top        => Cardinality(0, 1)
+      case Values(vs) => Cardinality(vs.size, 0)
     }
   }
 

@@ -1,8 +1,3 @@
-(define (append l m)
-  (if (null? l)
-      m
-      (cons (car l) (append (cdr l) m))))
-
 (define (super-merge-n lsts n)
 
   (define (geef-n+rest lst n)

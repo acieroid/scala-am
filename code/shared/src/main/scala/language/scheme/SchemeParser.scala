@@ -1,5 +1,7 @@
 package scalaam.language.scheme
 
+import scalaam.core.Position._
+import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.language.sexp._
 
 object SchemeParser {
@@ -20,7 +22,12 @@ object SchemeParser {
   def undefine(exps: List[SchemeExp]): SchemeExp = SchemeUndefiner.undefine(exps)
 
   /**
-    * Parse a string representing a Scheme program
-    */
-  def parse(s: String): SchemeExp = SchemeBody(SExpParser.parse(s).map(compile))
+   * Parse a string representing a Scheme program
+   */
+  def parse(s: String, tag: PTag = noTag): SchemeExp = SchemeBody(SExpParser.parse(s, tag).map(compile))
+
+  /**
+   * Parse a string representing a Scheme program and add the appropriate prelude.
+   */
+  def parseAddPrelude(s: String, tag: PTag = noTag): SchemeExp = SchemePrelude.addPrelude(SchemeBody(SExpParser.parse(s, tag).map(compile)))
 }

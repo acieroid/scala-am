@@ -1,8 +1,3 @@
-(define (append l m)
-  (if (null? l)
-      m
-      (cons (car l) (append (cdr l) m))))
-
 (define organigram
   '(directeur
     (hoofd-verkoop (verkoopsleider-vlaanderen)

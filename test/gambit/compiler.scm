@@ -13,7 +13,7 @@
 (define char-newline (integer->char 10))
 (define character-encoding char->integer)
 (define max-character-encoding 255)
-(define (fatal-err msg arg) (fatal-error msg arg))
+(define (fatal-err msg arg) (error msg arg))
 (define (scheme-global-var name) name)
 (define (scheme-global-var-ref var) (scheme-global-eval var fatal-err))
 (define (scheme-global-var-set! var val)
