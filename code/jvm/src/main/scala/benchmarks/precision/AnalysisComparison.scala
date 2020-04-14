@@ -80,7 +80,7 @@ object AnalysisComparison1 extends AnalysisComparison[
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
-        val prg = SchemeParser.parseAddPrelude(txt)
+        val prg = SchemeParser.parse(txt)
         val con = runInterpreter(prg, path).get
         val abs = runAnalysis(SchemeAnalyses.contextSensitiveAnalysis(prg),path).get
         val allKeys = con.keys ++ abs.keys
@@ -121,7 +121,7 @@ object PrimitivesComparisonRQ3NoSensitivity extends AnalysisComparison[
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
-        val prg = SchemeParser.parseAddPrelude(txt)
+        val prg = SchemeParser.parse(txt)
         val con = runInterpreter(prg, path).get
         val abs = runAnalysis(baseAnalysis(prg),path).get
         val allKeys = con.keys ++ abs.keys
@@ -165,7 +165,7 @@ object PrimitivesComparisonRQ3ContextSensitive extends AnalysisComparison[
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
-        val prg = SchemeParser.parseAddPrelude(txt)
+        val prg = SchemeParser.parse(txt)
         val con = runInterpreter(prg, path).get
         val abs = runAnalysis(baseAnalysis(prg),path).get
         val allKeys = con.keys ++ abs.keys

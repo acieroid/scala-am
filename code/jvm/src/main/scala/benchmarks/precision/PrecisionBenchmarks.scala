@@ -230,7 +230,8 @@ abstract class PrecisionBenchmarks[
       */
     protected def runInterpreter(program: SchemeExp, path: Benchmark, timeout: Timeout.T = Timeout.none, times: Int = 1): Option[BaseStore] = {
         print(s"Running concrete interpreter on $path ($times times)")
-        val undefined = SchemeParser.undefine(List(program))
+        val preluded = SchemePrelude.addPrelude(program)
+        val undefined = SchemeParser.undefine(List(preluded))
         var baseStore: BaseStore = Map.empty
         try {
             for(_ <- 1 to times) {
@@ -258,7 +259,7 @@ abstract class PrecisionBenchmarks[
      */
     def runBenchmark(benchmark: Benchmark) = {
         val txt = Reader.loadFile(benchmark)
-        val prg = SchemeParser.parseAddPrelude(txt)
+        val prg = SchemeParser.parse(txt)
         forBenchmark(benchmark, prg)
     }
 }

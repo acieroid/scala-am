@@ -145,6 +145,12 @@ object SchemePrelude {
     //            (foldl-aux f (f base (car lst)) (cdr lst))))"""
   )
 
+  val primDefsParsed = primDefs.map { 
+    case (nam,str) => 
+      val exp = SchemeParser.parse(str,Position.newTag(nam))
+      (nam,exp)
+  }
+
   val primNames: Set[String] = primDefs.keySet
   val primPrecision: Set[String] = primDefs.keySet ++ Set(
     "foldr", "foldr-aux", "foldl", "foldl-aux",
@@ -206,7 +212,7 @@ object SchemePrelude {
     while (work.nonEmpty) {
       work.head match {
         case Identifier(name, _) if primNames.contains(name) && !visited.contains(name) =>
-            val exp = SchemeParser.parse(primDefs(name), Position.newTag(name))
+            val exp = primDefsParsed(name)
             prelude = exp :: prelude
             work = exp :: work.tail // If a primitive depends on other primitives, make sure to also inline them.
             visited = visited + name

@@ -15,6 +15,7 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
+import scalaam.language.scheme.primitives.SchemePrelude
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
@@ -26,7 +27,8 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
   // the actual testing code
   private def evalConcrete(originalProgram: SchemeExp, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
-    val program = SchemeUndefiner.undefine(List(originalProgram))
+    val preluded = SchemePrelude.addPrelude(originalProgram)
+    val program = SchemeUndefiner.undefine(List(preluded))
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
     try {
@@ -82,7 +84,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     property(s"Analysis of $benchmark using $name is sound.") {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
-      val program = SchemeParser.parseAddPrelude(content)
+      val program = SchemeParser.parse(content)
       // run the program using a concrete interpreter
       val (cResult, cPosResults) = evalConcrete(program,timeout(benchmark))
       // analyze the program using a ModF analysis

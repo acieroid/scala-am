@@ -40,7 +40,7 @@ object Main {
   }
 
   def loadFile(text: String): Unit = {
-    val program = SchemeParser.parseAddPrelude(text)
+    val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
                                                     with AdaptiveArgumentSensitivityPolicy1
                                                     with ConstantPropagationDomain
