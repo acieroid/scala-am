@@ -21,7 +21,7 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
     if (allComponents.size > budget) {
       val (topClosure, cmps) = closureCmps.maxBy(_._2.size)
       val callArgs = cmps.map(view(_).asInstanceOf[Call].ctx.args)
-      joinArgs(topClosure, callArgs, scala.math.max(1, cmps.size - 1))
+      joinArg(topClosure, callArgs)
       updateAnalysis()
     } 
   }

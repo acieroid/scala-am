@@ -20,7 +20,7 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = FileUtil.loadFile("test/mceval.scm")
+    val txt = Reader.loadFile("test/fact.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
                                                 with AdaptiveArgumentSensitivityPolicy2
@@ -34,8 +34,7 @@ object Main {
       }
     }
     analysis.analyze()
-    println(analysis.allComponents.size)
-    //debugResults(analysis, false)
+    debugResults(analysis, false)
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics

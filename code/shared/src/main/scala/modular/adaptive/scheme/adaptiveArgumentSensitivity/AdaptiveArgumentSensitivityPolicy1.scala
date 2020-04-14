@@ -16,7 +16,7 @@ trait AdaptiveArgumentSensitivityPolicy1 extends AdaptiveArgumentSensitivity {
     // if there are too many components => do something about it!
     if (limit < updatedCmps.size) {
       val callArgs = updatedCmps.map(view(_).asInstanceOf[Call].ctx.args)
-      joinArgs(clo, callArgs, limit)
+      joinArg(clo, callArgs)
       return true
     } else { // otherwise, not arguments need to be excluded
       return false
