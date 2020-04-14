@@ -127,7 +127,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
                                         with AdaptiveSchemeModFSemantics
                                         with ConstantPropagationDomain {
     val limit = 5
-    override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
+    override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
     override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
   }
 }

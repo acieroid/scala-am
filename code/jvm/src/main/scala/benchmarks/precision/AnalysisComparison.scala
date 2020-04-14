@@ -101,7 +101,7 @@ object AnalysisComparison1 extends AnalysisComparison[
 }
 
 
-object PrimitivesComparison extends AnalysisComparison[
+object PrimitivesComparisonRQ3NoSensitivity extends AnalysisComparison[
     ConstantPropagation.I,
     ConstantPropagation.R,
     Concrete.B,
@@ -132,13 +132,59 @@ object PrimitivesComparison extends AnalysisComparison[
     }
 
     def runBenchmarks() = {
-        SchemeBenchmarks.forPrimitives.foreach(runBenchmark)
+        SchemeBenchmarks.forPrimitives.take(3).foreach(runBenchmark)
         this.results.foreach { case (b, r) =>
             val refined_0_0 = r.getOrElse("0_0", "T")
             val refined_CS_0 = r.getOrElse("CS_0", "T")
             val refined_CSFA_0 = r.getOrElse("CSFA_0", "T")
             val concrete = r.getOrElse("concrete", "T")
             println(s"$b -> 0_0:$refined_0_0, CS_0:$refined_CS_0, CSFA_0: $refined_CSFA_0 / $concrete")
+        }
+    }
+}
+
+object PrimitivesComparisonRQ3ContextSensitive extends AnalysisComparison[
+    ConstantPropagation.I,
+    ConstantPropagation.R,
+    Concrete.B,
+    ConstantPropagation.C,
+    ConstantPropagation.S,
+    Concrete.Sym
+] {
+    def baseAnalysis(prg: SchemeExp): Analysis =
+      SchemeAnalyses.callSiteContextSensitiveAnalysis(prg)
+    def otherAnalyses(prg: SchemeExp) = List(
+//      SchemeAnalyses.PrimitivesComparison.S_0_0(prg),
+//      SchemeAnalyses.PrimitivesComparison.S_CS_0(prg),
+      SchemeAnalyses.PrimitivesComparison.S_CS_CS(prg),
+//      SchemeAnalyses.PrimitivesComparison.S_CSFA_0(prg),
+      SchemeAnalyses.PrimitivesComparison.S_CSFA_CS(prg),
+    )
+
+    def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
+
+    def check(path: Benchmark) = {
+        val txt = Reader.loadFile(path)
+        val prg = SchemeParser.parseAddPrelude(txt)
+        val con = runInterpreter(prg, path).get
+        val abs = runAnalysis(baseAnalysis(prg),path).get
+        val allKeys = con.keys ++ abs.keys
+        val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
+        interestingKeys.foreach { k =>
+            println(s"$k -> ${abs.getOrElse(k,"⊥")} ; ${con.getOrElse(k,"⊥")} ")
+        }
+    }
+
+    def runBenchmarks() = {
+        SchemeBenchmarks.forPrimitives.take(3).foreach(runBenchmark)
+        this.results.foreach { case (b, r) =>
+            val refined_0_0 = r.getOrElse("0_0", "T")
+            val refined_CS_0 = r.getOrElse("CS_0", "T")
+            val refined_CS_CS = r.getOrElse("CS_CS", "T")
+            val refined_CSFA_0 = r.getOrElse("CSFA_0", "T")
+            val refined_CSFA_CS = r.getOrElse("CSFA_CS", "T")
+            val concrete = r.getOrElse("concrete", "T")
+            println(s"$b -> 0_0:$refined_0_0, CS_0:$refined_CS_0, CS_CS:$refined_CS_CS CSFA_0: $refined_CSFA_0, CSFA_CS: $refined_CSFA_CS / $concrete")
         }
     }
 }

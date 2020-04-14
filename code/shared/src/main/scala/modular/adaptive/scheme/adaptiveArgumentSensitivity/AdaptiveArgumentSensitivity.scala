@@ -25,7 +25,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   private def adaptArgs(clo: lattice.Closure, args: List[Value]) =
     clo._1.args.zip(args).map { case (par,arg) => adaptArg(clo,par,arg) }
   // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = ComponentContext(adaptArgs(clo,args))
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = ComponentContext(adaptArgs(clo,args))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
     case Main               => Main

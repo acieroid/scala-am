@@ -26,7 +26,7 @@ object Main {
                                                 with AdaptiveArgumentSensitivityPolicy2
                                                 with ConstantPropagationDomain {
       val budget = 100
-      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
+      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
         println(allComponents.size)
