@@ -19,8 +19,8 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                         maxErrors := 5,
                         /** Configuration for running the tests */
                         logBuffered in Test := false,
-                        libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test",
-                        libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.1" % "test",
+                        libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % "test",
+                        libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
                         /** Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
                         scalacOptions ++= Seq(
                           "-deprecation",                      // Emit warning and location for usages of deprecated APIs.
@@ -79,7 +79,7 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                         mainClass in Compile := Some("scalaam.web.Main"),
                         scalaJSUseMainModuleInitializer := true,
                         /** Dependencies */
-                        libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.7"
+                        libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.8"
                       )
 
 lazy val scalaamJVM = scalaam.jvm
