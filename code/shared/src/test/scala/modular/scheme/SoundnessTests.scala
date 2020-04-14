@@ -110,6 +110,16 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   }
 }
 
+trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
+  def name = "big-step semantics with call-site sensitivity for primitives"
+  def analysis(program: SchemeExp) = new ModAnalysis(program)
+      with BigStepSemantics
+      with StandardSchemeModFSemantics
+      with ConstantPropagationDomain
+      with CompoundSensitivities.S_CS_0 {
+  }
+}
+
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
@@ -137,6 +147,10 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
 class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                          with BigStepSchemeModF
                                          with SimpleBenchmarks
+class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends SchemeModFSoundnessTests
+                                                          with BigStepSchemeModF
+                                                          with SimpleBenchmarks
+
 // ... for small-step semantics
 class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                            with SmallStepSchemeModF
