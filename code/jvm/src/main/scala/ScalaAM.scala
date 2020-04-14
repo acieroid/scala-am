@@ -20,12 +20,12 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/fact.scm")
+    val txt = Reader.loadFile("test/mceval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivityPolicy2
+                                                with AdaptiveArgumentSensitivityPolicy1
                                                 with ConstantPropagationDomain {
-      val budget = 100
+      val limit = 10
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Option[ComponentContext]) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {

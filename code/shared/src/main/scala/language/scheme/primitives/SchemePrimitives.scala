@@ -4,8 +4,6 @@ import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.util.Monoid
 
-import scala.util.control.TailCalls.{TailRec, done, tailcall}
-
 trait SchemeAllocator[A] {
   def pointer(exp: Identity): A
   def carAddr(exp: Identity): A

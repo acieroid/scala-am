@@ -23,15 +23,14 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // Ensure that the program is translated to use lexical addresses first!
   override lazy val program = {
     val originalProgram = super.program
-
+    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
     // Set up initial environment and install the primitives in the global store.
     primitives.allPrimitives.foreach { p =>
       val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
       store += (addr -> lattice.primitive(p))
     }
-
     val initialBindings = primitives.allPrimitives.map(_.name).toSet
-    SchemeLexicalAddresser.translateProgram(originalProgram, initialBindings)
+    SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
   }
 
   // Local addresses are simply made out of lexical information.
