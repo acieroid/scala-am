@@ -3,7 +3,6 @@ package scalaam.modular.incremental.scheme
 import scalaam.core._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
-import scalaam.modular.IndirectComponents
 import scalaam.modular.scheme.SchemeModFSemantics
 
 /** Semantics for an incremental Scheme MODF analysis. */

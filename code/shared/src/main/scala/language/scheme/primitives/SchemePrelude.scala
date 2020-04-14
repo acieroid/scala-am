@@ -212,7 +212,7 @@ object SchemePrelude {
           calls = calls+1
           if (!visited.contains(name)) {
             // println(s"Found primitive: $name")
-            val exp = SchemeParser.parse(primDefs(name))
+            val exp = SchemeParser.parse(primDefs(name), Position.newTag(name))
             prelude = prelude + exp
             work = exp :: work // If a primitive depends on other primitives, make sure to also inline them.
             visited = name :: visited

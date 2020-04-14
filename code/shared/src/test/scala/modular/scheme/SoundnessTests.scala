@@ -8,14 +8,13 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
 import scalaam.core._
-import scalaam.core.Identity.Position
+import scalaam.core.Position._
 import scalaam.io.Reader
 import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
-import scalaam.language.scheme.primitives._
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics

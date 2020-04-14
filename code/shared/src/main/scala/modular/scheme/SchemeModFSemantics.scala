@@ -1,7 +1,7 @@
 package scalaam.modular.scheme
 
 import scalaam.language.scheme.primitives._
-import scalaam.core.Identity.Position
+import scalaam.core.Position._
 import scalaam.core._
 import scalaam.modular._
 import scalaam.language.scheme._
