@@ -1,7 +1,5 @@
 package scalaam.core
 
-import java.util.UUID
-
 import scalaam.core.Identity._
 import scalaam.util.SmartHash
 
@@ -17,21 +15,28 @@ case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 
 /** Neutral identity for to elements not in the code (constructed by the analysis). */
 object NoCodeIdentity extends Identity {
-  val idn: IDN = UUID.randomUUID()
+  val idn: IDN = Identity.newId()
   override def pos: Position = (-1, 0)
 }
 
 object Identity {
 
-  type IDN = UUID // Type name is IDN to avoid confusion with identifiers.
+  type IDN = Long // Type name is IDN to avoid confusion with identifiers.
   type Position = (Int, Int)
 
   /** Contains positional information for identifiers. ALL ACCESSES TO iMap HAVE TO BE SYNCHRONISED ON THE Identity OBJECT. */
   var iMap: Map[IDN, Position] = Map()
 
-  def apply(p: scala.util.parsing.input.Position): Identity = {
-    val idn: IDN = UUID.randomUUID()
-    Identity.synchronized { iMap = iMap + (idn -> ((p.line, p.column))) }
+  /** Contains the last unused identity. ALL ACCESSES TO ctr HAVE TO BE SYNCHRONISED ON THE Identity OBJECT. */
+  private var ctr: Long = 0
+  def newId(): IDN = Identity.synchronized {
+    ctr = ctr + 1
+    ctr - 1
+  }
+
+  def apply(p: scala.util.parsing.input.Position): Identity = Identity.synchronized {
+    val idn: IDN = newId()
+    iMap = iMap + (idn -> ((p.line, p.column)))
     SimpleIdentity(idn)
   }
 
