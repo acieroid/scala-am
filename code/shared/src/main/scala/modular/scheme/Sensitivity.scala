@@ -155,7 +155,24 @@ object CompoundSensitivities {
       })).take(k))
   }
 
+  // Acyclic k-CFA inspired by "JSAI: A Static Analysis Platform for JavaScript" (FSE'14)
+  class kAcyclicCallSiteSensitivity[V, Component](val k: Int) extends Sensitivity[V, Component] {
+    case class kContext(l: List[Position]) extends Context
+    def alloc(target: Position, args: List[V], callSite: Position, callerCtx: Option[Context]): Context =
+      kContext(callerCtx match {
+        case Some(kContext(l2)) => if (l2.contains(callSite)) {
+          l2.dropWhile(_ != callSite)
+        } else {
+          (callSite :: l2).take(k)
+        }
+        case _ => List(callSite)
+      })
+  }
+
+
   class kCallSitesSensitivity[V, Component](k: Int) extends kContextSensitivity(k, new CallSiteSensitivity[V, Component])
+  class kFullArgumentSensitivity[V, Component](k: Int) extends kContextSensitivity(k, new FullArgumentSensitivity[V, Component])
+  class kCSFASensitivity[V, Component](k: Int) extends kContextSensitivity(k, new ProductSensitivity[V, Component](new CallSiteSensitivity[V, Component], new FullArgumentSensitivity[V, Component]))
 
 
   trait S_0_0_Old extends CompoundSensitivityOld {
