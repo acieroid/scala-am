@@ -75,6 +75,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   def minus        = lat.binaryOp(SchemeOps.BinaryOperator.Minus) _
   def times        = lat.binaryOp(SchemeOps.BinaryOperator.Times) _
   def div          = lat.binaryOp(SchemeOps.BinaryOperator.Div) _
+  def lat_expt     = lat.binaryOp(SchemeOps.BinaryOperator.Expt) _
   def lat_quotient     = lat.binaryOp(SchemeOps.BinaryOperator.Quotient) _
   def lat_modulo       = lat.binaryOp(SchemeOps.BinaryOperator.Modulo) _
   def lat_remainder    = lat.binaryOp(SchemeOps.BinaryOperator.Remainder) _
@@ -84,147 +85,6 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   def stringAppend = lat.binaryOp(SchemeOps.BinaryOperator.StringAppend) _
   def stringRef    = lat.binaryOp(SchemeOps.BinaryOperator.StringRef) _
   def stringLt     = lat.binaryOp(SchemeOps.BinaryOperator.StringLt) _
-
-  /*
-  abstract class FixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
-
-    // parameterized by
-    // - the arguments to the recursive call
-    type Args
-    // - the representation of 'call components' (tuning precision)
-    type Call
-    // - a mapping from arguments to call components
-    def callFor(args: Args): Call
-    // - a function to compute the initial arguments from the primitive input
-    def initialArgs(fpos: Identity, argsWithExps: List[(Identity, V)]): Option[Args]
-    // - a function for updating the arguments when upon a new call to a 'call'
-    def updateArgs(oldArgs: Args, newArgs: Args): Args
-    // - (optional) a function for updating the result of a function call
-    def updateResult(oldResult: MayFail[V,Error], newResult: MayFail[V,Error]): MayFail[V, Error] = mfMon.append(oldResult, newResult)
-    // - a function to execute a single 'call' with given arguments
-    def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
-
-    override def call(fpos: Identity,
-                      argsWithExps: List[(Identity, V)],
-                      store: Store[A,V],
-                      alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
-      // determine the initial args & call from the primitive input
-      val initArgs = initialArgs(fpos, argsWithExps) match {
-        case Some(args) =>
-          args
-        case None =>
-          return MayFail.failure(PrimitiveArityError(name,arity.getOrElse(-1),argsWithExps.length))
-      }
-      val initCall = callFor(initArgs)
-      // for every call, keep track of the arguments
-      var callArgs = Map[Call,Args]((initCall -> initArgs))
-      // keep track of results for "visited" arguments
-      var cache = Map[Call,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
-      // keep track of which calls depend on which other calls
-      var deps = Map[Call,Set[Call]]().withDefaultValue(Set())
-      // standard worklist algorithm
-      var worklist = Set(initCall)
-      while (worklist.nonEmpty) {
-        // take the next arguments from the worklist
-        val nextCall = worklist.head
-        worklist = worklist - nextCall
-        // call with the next arguments
-        val nextArgs = callArgs(nextCall)
-        val res = callWithArgs(nextArgs)(alloc, store, args => {
-          val call = callFor(args)
-          deps += (call -> (deps(call) + nextCall))
-          callArgs.get(call) match {
-            case None => // first time calling this 'call'
-              worklist = worklist + call
-              callArgs += (call -> args)
-            case Some(oldArgs) => // call was already called
-              val updatedArgs = updateArgs(oldArgs,args)
-              if (updatedArgs != oldArgs) {
-                worklist = worklist + call
-                callArgs += (call -> updatedArgs)
-              }
-          }
-          cache(call)
-        })
-        // update the cache and worklist
-        val oldValue = cache(nextCall)
-        val updatedValue = updateResult(oldValue, res)
-        if (updatedValue != oldValue) {
-          cache += (nextCall -> updatedValue)
-          worklist ++= deps(nextCall)
-        }
-      }
-      cache(initCall).map(v => (v,store))
-    }
-  }
-
-  abstract class SimpleFixpointPrimitive(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
-    type Args = List[V]
-
-    // Executes a single call with given arguments.
-    def callWithArgs(args: Args, cache: Args => MayFail[V,Error]): MayFail[V,Error]
-
-    override def call(fpos: Identity,
-                      argsWithExps: List[(Identity, V)],
-                      store: Store[A,V],
-                      alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
-      // determine the initial args & call from the primitive input
-      val initArgs = arity match {
-        case Some(a) if argsWithExps.length == a =>
-          argsWithExps.map(_._2)
-        case None =>
-          return MayFail.failure(PrimitiveArityError(name,arity.getOrElse(-1),argsWithExps.length))
-      }
-      // for every call, keep track of the arguments
-      // keep track of results for "visited" arguments
-      var cache = Map[Args,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
-      // keep track of which calls depend on which other calls
-      var deps = Map[Args,Set[Args]]().withDefaultValue(Set())
-      // standard worklist algorithm
-      var worklist = Set(initArgs)
-      while (worklist.nonEmpty) {
-        // take the next arguments from the worklist
-        val nextArgs = worklist.head
-        worklist = worklist - nextArgs
-        // call with the next arguments
-        val res = callWithArgs(nextArgs, args => {
-          deps += (args -> (deps(args) + nextArgs))
-          if (cache.get(args).isEmpty) worklist = worklist + args
-          cache(args)
-        })
-        // update the cache and worklist
-        val oldValue = cache(nextArgs)
-        val updatedValue = mfMon.append(oldValue, res)
-        if (updatedValue != oldValue) {
-          cache += (nextArgs -> updatedValue)
-          worklist ++= deps(nextArgs)
-        }
-      }
-      cache(initArgs).map((_, store))
-    }
-  }*/
-
-  /*
-  /* TODO[medium] improve these implicit classes to be able to write primitives more clearly */
-  implicit class V1Ops(f: V => MayFail[V, Error]) {
-    def apply(arg: MayFail[V, Error]): MayFail[V, Error] = arg >>= f
-  }
-  implicit class V2Ops(f: (V, => V) => V) {
-    def apply(arg1: MayFail[V, Error], arg2: MayFail[V, Error]) =
-      for {
-        v1  <- arg1
-        v2  <- arg2
-        res <- f(v1, v2)
-      } yield res
-  }
-  */
-
-  def liftTailRec(x: MayFail[TailRec[MayFail[V, Error]], Error]): TailRec[MayFail[V, Error]] =
-    x match {
-      case MayFailSuccess(v)   => tailcall(v)
-      case MayFailError(err)   => done(MayFailError(err))
-      case MayFailBoth(v, err) => tailcall(v).map(_.addErrors(err))
-    }
 
   def ifThenElse(
                   cond: MayFail[V, Error]
@@ -242,26 +102,6 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
       }
       mfMon.append(t, f)
     }
-  }
-
-  def ifThenElseTR(cond: MayFail[V, Error])(
-    thenBranch: => TailRec[MayFail[V, Error]]
-  )(elseBranch: => TailRec[MayFail[V, Error]]): TailRec[MayFail[V, Error]] = {
-    val latMon = scalaam.util.MonoidInstances.latticeMonoid[V](lat)
-    val mfMon  = scalaam.util.MonoidInstances.mayFail[V](latMon)
-    liftTailRec(cond >>= { condv =>
-      val t = if (isTrue(condv)) {
-        thenBranch
-      } else {
-        done(MayFail.success[V, Error](latMon.zero))
-      }
-      val f = if (isFalse(condv)) {
-        elseBranch
-      } else {
-        done(MayFail.success[V, Error](latMon.zero))
-      }
-      t.flatMap(tval => f.map(fval => mfMon.append(tval, fval)))
-    })
   }
 
   /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
@@ -292,18 +132,4 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
               )
         })
     )
-
-  /*
-  def dereferencePointerTR(x: V, store: Store[A, V])(
-    f: V => TailRec[MayFail[V, Error]]
-  ): TailRec[MayFail[V, Error]] =
-    getPointerAddresses(x).foldLeft(done(MayFail.success[V, Error](bottom)))(
-      (acc: TailRec[MayFail[V, Error]], a: A) =>
-        acc.flatMap(
-          accv =>
-            liftTailRec(store.lookupMF(a).map(f))
-              .flatMap(fv => done(fv.flatMap(res => accv.flatMap(accvv => join(accvv, res)))))
-        )
-    )
-    */
 }

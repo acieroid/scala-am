@@ -367,11 +367,9 @@ class ModularSchemeLattice[
             }
           case Times =>
             (x, y) match {
-              case (Int(n1), Int(n2)) => MayFail.success(Int(IntLattice[I].times(n1, n2)))
-              case (Int(n1), Real(n2)) =>
-                MayFail.success(Real(RealLattice[R].times(IntLattice[I].toReal(n1), n2)))
-              case (Real(n1), Int(n2)) =>
-                MayFail.success(Real(RealLattice[R].times(n1, IntLattice[I].toReal(n2))))
+              case (Int(n1), Int(n2))   => MayFail.success(Int(IntLattice[I].times(n1, n2)))
+              case (Int(n1), Real(n2))  => MayFail.success(Real(RealLattice[R].times(IntLattice[I].toReal(n1), n2)))
+              case (Real(n1), Int(n2))  => MayFail.success(Real(RealLattice[R].times(n1, IntLattice[I].toReal(n2))))
               case (Real(n1), Real(n2)) => MayFail.success(Real(RealLattice[R].times(n1, n2)))
               case _                    => MayFail.failure(OperatorNotApplicable("*", List(x, y)))
             }
@@ -382,13 +380,19 @@ class ModularSchemeLattice[
             }
           case Div =>
             (x, y) match {
-              case (Int(n1), Int(n2)) => MayFail.success(Real(IntLattice[I].div[R](n1, n2)))
-              case (Int(n1), Real(n2)) =>
-                MayFail.success(Real(RealLattice[R].div(IntLattice[I].toReal(n1), n2)))
-              case (Real(n1), Int(n2)) =>
-                MayFail.success(Real(RealLattice[R].div(n1, IntLattice[I].toReal(n2))))
+              case (Int(n1), Int(n2))   => MayFail.success(Real(IntLattice[I].div[R](n1, n2)))
+              case (Int(n1), Real(n2))  => MayFail.success(Real(RealLattice[R].div(IntLattice[I].toReal(n1), n2)))
+              case (Real(n1), Int(n2))  => MayFail.success(Real(RealLattice[R].div(n1, IntLattice[I].toReal(n2))))
               case (Real(n1), Real(n2)) => MayFail.success(Real(RealLattice[R].div(n1, n2)))
               case _                    => MayFail.failure(OperatorNotApplicable("/", List(x, y)))
+            }
+          case Expt =>
+            (x, y) match {
+              case (Int(n1), Int(n2))   => MayFail.success(Int(IntLattice[I].expt(n1, n2)))
+              case (Int(n1), Real(n2))  => MayFail.success(Real(RealLattice[R].expt(IntLattice[I].toReal(n1), n2)))
+              case (Real(n1), Int(n2))  => MayFail.success(Real(RealLattice[R].expt(n1, IntLattice[I].toReal(n2))))
+              case (Real(n1), Real(n2)) => MayFail.success(Real(RealLattice[R].expt(n1, n2)))
+              case _                    => MayFail.failure(OperatorNotApplicable("expt", List(x, y)))
             }
           case Modulo =>
             (x, y) match {

@@ -280,6 +280,9 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           }
       }
     }
+    object `expt` extends NoStore2Operation("expt") {
+      override def call(x: V, y: V) = lat_expt(x, y)
+    }
     object `quotient` extends NoStore2Operation("quotient") {
       override def call(x: V, y: V) = lat_quotient(x, y)
     }
@@ -754,27 +757,6 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
           }
         }
       }
-    }
-
-    object `expt` extends NoStore2Operation("expt") {
-      def expt(x: V, y: V, visited: Set[V]): TailRec[MayFail[V, Error]] = {
-        if (visited.contains(y) || x == bottom || y == bottom) {
-          done(bottom)
-        } else {
-          ifThenElseTR(numEq(y, number(0))) {
-            done(number(1))
-          } {
-            liftTailRec(
-              minus(y, number(1)).flatMap(
-                y1 =>
-                  tailcall(expt(x, y1, visited + y))
-                    .flatMap(exptrest => done(exptrest.flatMap(y => times(x, y))))
-              )
-            )
-          }
-        }
-      }
-      override def call(x: V, y: V) = expt(x, y, Set()).result
     }
   }
 }

@@ -98,6 +98,7 @@ object Type {
         case (Top, Top) => RealLattice[R2].top
         case _          => RealLattice[R2].bottom
       }
+      def expt(n1: T, n2: T): T = meet(n1, n2)
       def quotient(n1: T, n2: T): T  = meet(n1, n2)
       def modulo(n1: T, n2: T): T    = meet(n1, n2)
       def remainder(n1: T, n2: T): T = meet(n1, n2)
@@ -132,6 +133,7 @@ object Type {
       def minus(n1: T, n2: T): T = meet(n1, n2)
       def times(n1: T, n2: T): T = meet(n1, n2)
       def div(n1: T, n2: T): T   = meet(n1, n2)
+      def expt(n1: T, n2: T): T  = meet(n1, n2)
       def lt[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match {
         case (Top, Top) => BoolLattice[B2].top
         case _          => BoolLattice[B2].bottom
