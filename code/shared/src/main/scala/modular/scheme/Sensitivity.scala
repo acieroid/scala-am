@@ -168,6 +168,11 @@ object CompoundSensitivities {
     val LowSensitivity = new NoSensitivity[Value, Component]
   }
 
+  trait S_2CS_0 extends CompoundSensitivity {
+    val HighSensitivity = new kCallSitesSensitivity[Value, Component](2)
+    val LowSensitivity = new NoSensitivity[Value, Component]
+  }
+
   trait S_CS_0_Old extends CompoundSensitivityOld {
     val HighSensitivity = new CallSiteSensitivity[Value, Component]
     val LowSensitivity = new NoSensitivity[Value, Component]
