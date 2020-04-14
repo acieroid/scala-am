@@ -41,7 +41,7 @@ object CompoundSensitivities {
 
   trait Sensitivity[Value, Component] {
     trait Context
-    def alloc(target: Position, args: List[Value], callSite: Position, caller: Component): Context
+    def alloc(target: Position, args: List[Value], callSite: Position, callerCtx: Option[Context]): Context
   }
 
   object S extends Enumeration {
@@ -66,9 +66,15 @@ object CompoundSensitivities {
 
     def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = {
       if (isPrimitive(nam)) {
-        High(HighSensitivity.alloc(clo._1.idn.pos, args, call, caller))
+        High(HighSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
+          case Some(High(ctx)) => Some(ctx)
+          case _ => None
+        }))
       } else {
-        Low(LowSensitivity.alloc(clo._1.idn.pos, args, call, caller))
+        Low(LowSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
+          case Some(Low(ctx)) => Some(ctx)
+          case _ => None
+        }))
       }
     }
   }
@@ -88,49 +94,69 @@ object CompoundSensitivities {
 
     def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = {
       if (isPrimitive(nam)) {
-        High(HighSensitivity.alloc(clo._1.idn.pos, args, call, caller),
+        High(HighSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
+          case Some(High(ctx, _)) => Some(ctx)
+          case _ => None
+        }),
           caller match {
             case Some(High(_, userCall)) => userCall
             case _ => call
           }
         )
       } else {
-        Low(LowSensitivity.alloc(clo._1.idn.pos, args, call, caller))
+        Low(LowSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
+          case Some(Low(ctx)) => Some(ctx)
+          case _ => None
+        }))
       }
     }
   }
-
-
-
 
   class NoSensitivity[V, Component] extends Sensitivity[V, Component] {
     object NoContext extends Context {
       override def toString = "NoCtx"
     }
-    def alloc(target: Position, args: List[V], callSite: Position, caller: Component): Context = NoContext
+    def alloc(target: Position, args: List[V], callSite: Position, callerCtx: Option[Context]): Context = NoContext
   }
 
   class CallSiteSensitivity[V, Component] extends Sensitivity[V, Component] {
     case class CallSiteContext(callSite: Position) extends Context {
       override def toString = s"CSCtx($callSite)"
     }
-    def alloc(target: Position, args: List[V], callSite: Position, caller: Component): Context = CallSiteContext(callSite)
+    def alloc(target: Position, args: List[V], callSite: Position, callerCtx: Option[Context]): Context = CallSiteContext(callSite)
   }
 
   class FullArgumentSensitivity[V, Component] extends Sensitivity[V, Component] {
     case class FullArgumentContext(args: List[V]) extends Context {
       override def toString = s"FACtx($args)"
     }
-    def alloc(target: Position, args: List[V], callSite: Position, caller: Component): Context = FullArgumentContext(args)
+    def alloc(target: Position, args: List[V], callSite: Position, callerCtx: Option[Context]): Context = FullArgumentContext(args)
   }
 
   class ProductSensitivity[V, Component](val sensitivity1: Sensitivity[V, Component], val sensitivity2: Sensitivity[V, Component]) extends Sensitivity[V, Component] {
     case class ProductContext(p1: sensitivity1.Context, p2: sensitivity2.Context) extends Context
-    def alloc(target: Position, args: List[V], callSite: Position, caller: Component): Context =
+    def alloc(target: Position, args: List[V], callSite: Position, callerCtx: Option[Context]): Context = {
+      val (p1, p2) = callerCtx match {
+        case Some(ProductContext(p1, p2)) => (Some(p1), Some(p2))
+        case _ => (None, None)
+      }
       ProductContext(
-        sensitivity1.alloc(target, args, callSite, caller),
-        sensitivity2.alloc(target, args, callSite, caller))
+        sensitivity1.alloc(target, args, callSite, p1),
+        sensitivity2.alloc(target, args, callSite, p2))
+    }
   }
+
+  class kContextSensitivity[V, Component](val k: Int, val sensitivity: Sensitivity[V, Component]) extends Sensitivity[V, Component] {
+    case class kContext(l: List[sensitivity.Context]) extends Context
+    def alloc(target: Position, args: List[V], callSite: Position, callerCtx: Option[Context]): Context =
+      kContext((sensitivity.alloc(target, args, callSite, None /* inner sensitivity should not be context sensitive */) :: (callerCtx match {
+        case Some(kContext(l2)) => l2
+        case _ => List()
+      })).take(k))
+  }
+
+  class kCallSitesSensitivity[V, Component](k: Int) extends kContextSensitivity(k, new CallSiteSensitivity[V, Component])
+
 
   trait S_0_0_Old extends CompoundSensitivityOld {
     val HighSensitivity = new NoSensitivity[Value, Component]
