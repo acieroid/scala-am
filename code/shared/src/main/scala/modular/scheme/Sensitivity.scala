@@ -1,6 +1,6 @@
 package scalaam.modular.scheme
 
-import scalaam.core.Identity.Position
+import scalaam.core.Position._
 
 /* Simplest (and most imprecise): no context-sensitivity */
 trait NoSensitivity extends SchemeModFSemantics {

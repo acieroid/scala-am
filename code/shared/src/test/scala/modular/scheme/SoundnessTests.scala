@@ -8,7 +8,7 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
 import scalaam.core._
-import scalaam.core.Identity.Position
+import scalaam.core.Position._
 import scalaam.io.Reader
 import scalaam.util._
 import scalaam.modular._

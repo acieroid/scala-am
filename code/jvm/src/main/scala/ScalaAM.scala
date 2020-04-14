@@ -3,7 +3,7 @@ package scalaam.cli
 import scalaam.util._
 import scala.concurrent.duration._
 import scalaam.diff.ModuleInferencer
-import scalaam.core.Identity._
+import scalaam.core.Position._
 import scalaam.incremental._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
