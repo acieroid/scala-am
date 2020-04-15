@@ -4,7 +4,7 @@ import org.scalatest.prop._
 import org.scalatest.propspec.AnyPropSpec
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
-import scalaam.modular.scheme.{BigStepSemantics, NoSensitivity, PowersetDomain, SchemeModFSemantics, SmallStepSemantics, StandardSchemeModFSemantics}
+import scalaam.modular.scheme.{BigStepSemantics, NoSensitivity, PowersetDomain, SchemeModFSemantics, SmallStepSemantics, StandardSchemeModFSemantics, TypeDomain}
 import scalaam.util.Timeout
 
 import scala.concurrent.duration.{Duration, SECONDS}
@@ -40,6 +40,20 @@ class ConcreteBigStepModFSoundnessTests extends PrimitiveTests {
 class ConcreteSmallStepModFSoundnessTests extends PrimitiveTests {
   def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepSemantics
     with PowersetDomain
+    with NoSensitivity
+    with StandardSchemeModFSemantics
+}
+
+class TypeBigStepModFSoundnessTests extends PrimitiveTests {
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepSemantics
+    with TypeDomain
+    with NoSensitivity
+    with StandardSchemeModFSemantics
+}
+
+class TypeSmallStepModFSoundnessTests extends PrimitiveTests {
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepSemantics
+    with TypeDomain
     with NoSensitivity
     with StandardSchemeModFSemantics
 }
