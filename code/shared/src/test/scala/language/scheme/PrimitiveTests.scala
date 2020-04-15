@@ -4,7 +4,7 @@ import org.scalatest.prop._
 import org.scalatest.propspec.AnyPropSpec
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
-import scalaam.modular.scheme.{BigStepSemantics, NoSensitivity, PowersetDomain, SchemeModFSemantics, SmallStepSemantics, StandardSchemeModFSemantics, TypeDomain}
+import scalaam.modular.scheme._
 import scalaam.util.Timeout
 
 import scala.concurrent.duration.{Duration, SECONDS}
