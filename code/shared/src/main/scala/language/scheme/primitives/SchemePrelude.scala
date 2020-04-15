@@ -219,6 +219,6 @@ object SchemePrelude {
         case e => work = e.subexpressions ::: work.tail // There will be no subexpressions if e is an Identifier for which the conditions do not hold.
       }
     }
-    SchemeBegin(prelude ::: List(exp), Identity.none)
+    SchemeBody(prelude ::: List(exp))
   }
 }
