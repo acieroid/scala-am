@@ -44,10 +44,20 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
 
   // callback function that can adapt the analysis whenever a new component is 'discovered'
   protected def onNewComponent(cmp: Component, call: Call): Unit = ()
+  // go over all new components after each step of the analysis, passing them to `onNewComponent`
+  // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
+  var toProcess = Set[Component]()
   override protected def adaptAnalysis() = {
-    this.newComponents.foreach(cmp => {
+    this.toProcess = this.newComponents
+    while(toProcess.nonEmpty) {
+      val cmp = toProcess.head
+      toProcess = toProcess.tail
       val call = view(cmp).asInstanceOf[Call]
       onNewComponent(cmp, call)
-    })
+    }
+  }
+  override def updateAnalysisData(update: Component => Component) = {
+    super.updateAnalysisData(update)
+    this.toProcess = updateSet(update)(toProcess)
   }
 }
