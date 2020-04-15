@@ -1,15 +1,14 @@
 package scalaam.test.language.scheme
 
-import org.scalatest.prop._
 import org.scalatest.propspec.AnyPropSpec
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
 import scalaam.util.Timeout
 
-import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.duration._
 
-trait PrimitiveTests extends AnyPropSpec with TableDrivenPropertyChecks {
+trait PrimitiveTests extends AnyPropSpec {
 
   import SchemePrimitiveBenchmarks._
 
