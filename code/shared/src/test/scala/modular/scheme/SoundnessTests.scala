@@ -118,7 +118,7 @@ trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
       with BigStepSemantics
       with StandardSchemeModFSemantics
       with ConstantPropagationDomain
-      with CompoundSensitivities.S_CS_0 {
+      with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0 {
   }
 }
 

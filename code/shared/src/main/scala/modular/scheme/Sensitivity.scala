@@ -44,74 +44,6 @@ object CompoundSensitivities {
     def alloc(target: Position, args: List[Value], callSite: Position, callerCtx: Option[Context]): Context
   }
 
-  object S extends Enumeration {
-    type S = Value
-    val S_0_0_Old, S_0_0, S_CS_0, S_CS_0_Old, S_CS_CS, S_FA_0_Old, S_FA_0, S_FA_CS, S_CSFA_0, S_CSFA_0_Old, S_CSFA_CS = Value
-  }
-
-  import S._
-
-  val sensitivities: List[S] = List(S_0_0_Old, S_0_0, S_CS_0_Old, S_CS_0, S_CS_CS, S_FA_0_Old, S_FA_0, S_FA_CS, S_CSFA_0_Old, S_CSFA_0, S_CSFA_CS)
-
-  trait CompoundSensitivityOld extends SchemeModFSemantics {
-    val HighSensitivity: Sensitivity[Value, Component]
-    val LowSensitivity: Sensitivity[Value, Component]
-    trait ComponentContext
-    case class High(ctx: HighSensitivity.Context) extends ComponentContext
-    case class Low(ctx: LowSensitivity.Context) extends ComponentContext
-    def isPrimitive(nam: Option[String]): Boolean = nam match {
-      case Some(n) if SchemePrelude.primNames.contains(n) => true
-      case _ => false
-    }
-
-    def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = {
-      if (isPrimitive(nam)) {
-        High(HighSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
-          case Some(High(ctx)) => Some(ctx)
-          case _ => None
-        }))
-      } else {
-        Low(LowSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
-          case Some(Low(ctx)) => Some(ctx)
-          case _ => None
-        }))
-      }
-    }
-  }
-
-  trait CompoundSensitivity extends SchemeModFSemantics {
-    val HighSensitivity: Sensitivity[Value, Component]
-    val LowSensitivity: Sensitivity[Value, Component]
-    val primPrecision: Set[String] = SchemePrelude.primPrecision
-
-    trait ComponentContext
-    case class High(ctx: HighSensitivity.Context, userCall: Position) extends ComponentContext
-    case class Low(ctx: LowSensitivity.Context) extends ComponentContext
-    def isPrimitive(nam: Option[String]): Boolean = nam match {
-      case Some(n) if primPrecision.contains(n) => true
-      case _ => false
-    }
-
-    def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = {
-      if (isPrimitive(nam)) {
-        High(HighSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
-          case Some(High(ctx, _)) => Some(ctx)
-          case _ => None
-        }),
-          caller match {
-            case Some(High(_, userCall)) => userCall
-            case _ => call
-          }
-        )
-      } else {
-        Low(LowSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
-          case Some(Low(ctx)) => Some(ctx)
-          case _ => None
-        }))
-      }
-    }
-  }
-
   class NoSensitivity[V, Component] extends Sensitivity[V, Component] {
     object NoContext extends Context {
       override def toString = "NoCtx"
@@ -175,67 +107,148 @@ object CompoundSensitivities {
   class kCSFASensitivity[V, Component](k: Int) extends kContextSensitivity(k, new ProductSensitivity[V, Component](new CallSiteSensitivity[V, Component], new FullArgumentSensitivity[V, Component]))
 
 
-  trait S_0_0_Old extends CompoundSensitivityOld {
-    val HighSensitivity = new NoSensitivity[Value, Component]
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
+  trait CompoundSensitivity extends SchemeModFSemantics {
+    val HighSensitivity: Sensitivity[Value, Component]
+    val LowSensitivity: Sensitivity[Value, Component]
+    val primPrecision: Set[String] = SchemePrelude.primNames
 
-  trait S_0_0 extends CompoundSensitivity {
-    val HighSensitivity = new NoSensitivity[Value, Component]
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
+    trait ComponentContext
 
-  trait S_2CS_0 extends CompoundSensitivity {
-    val HighSensitivity = new kCallSitesSensitivity[Value, Component](2)
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
-
-  trait S_CS_0_Old extends CompoundSensitivityOld {
-    val HighSensitivity = new CallSiteSensitivity[Value, Component]
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
-
-  trait S_CS_0 extends CompoundSensitivity {
-    val HighSensitivity = new CallSiteSensitivity[Value, Component]
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
-
-  trait S_CS_CS extends CompoundSensitivity {
-    val HighSensitivity = new CallSiteSensitivity[Value, Component]
-    val LowSensitivity = new CallSiteSensitivity[Value, Component]
-  }
-
-  trait S_FA_0_Old extends CompoundSensitivityOld {
-    val HighSensitivity = new FullArgumentSensitivity[Value, Component]
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
-
-  trait S_FA_0 extends CompoundSensitivity {
-    val HighSensitivity = new FullArgumentSensitivity[Value, Component]
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
-
-  trait S_FA_CS extends CompoundSensitivity {
-    val HighSensitivity = new FullArgumentSensitivity[Value, Component]
-    val LowSensitivity = new CallSiteSensitivity[Value, Component]
-  }
-
-  trait S_CSFA_0_Old extends CompoundSensitivityOld {
-    val HighSensitivity = new ProductSensitivity[Value, Component](new CallSiteSensitivity[Value, Component], new FullArgumentSensitivity[Value, Component])
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
-
-  trait S_CSFA_0 extends CompoundSensitivity {
-    val HighSensitivity = new ProductSensitivity[Value, Component](new CallSiteSensitivity[Value, Component], new FullArgumentSensitivity[Value, Component])
-    val LowSensitivity = new NoSensitivity[Value, Component]
-  }
-
-  trait S_CSFA_CS extends CompoundSensitivity {
-    val HighSensitivity = new ProductSensitivity[Value, Component](new CallSiteSensitivity[Value, Component], new FullArgumentSensitivity[Value, Component])
-    val LowSensitivity = new CallSiteSensitivity[Value, Component]
+    def isPrimitive(nam: Option[String]): Boolean = nam match {
+      case Some(n) if primPrecision.contains(n) => true
+      case _ => false
+    }
   }
 
 
+  trait SeparateLowHighSensitivity extends CompoundSensitivity {
+    case class High(ctx: HighSensitivity.Context) extends ComponentContext
+    case class Low(ctx: LowSensitivity.Context) extends ComponentContext
+
+    def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = {
+      if (isPrimitive(nam)) {
+        High(HighSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
+          case Some(High(ctx)) => Some(ctx)
+          case _ => None
+        }))
+      } else {
+        Low(LowSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
+          case Some(Low(ctx)) => Some(ctx)
+          case _ => None
+        }))
+      }
+    }
+  }
+
+  object SeparateLowHighSensitivity {
+    trait S_0_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new NoSensitivity[Value, Component]
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_CS_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new CallSiteSensitivity[Value, Component]
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_2CS_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new kCallSitesSensitivity[Value, Component](2)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_10CS_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new kCallSitesSensitivity[Value, Component](10)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_FA_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new FullArgumentSensitivity[Value, Component]
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_2FA_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new kFullArgumentSensitivity[Value, Component](2)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_10FA_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new kFullArgumentSensitivity[Value, Component](10)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_CSFA_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new ProductSensitivity[Value, Component](new CallSiteSensitivity[Value, Component], new FullArgumentSensitivity[Value, Component])
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_2AcyclicCS_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new kAcyclicCallSiteSensitivity[Value, Component](2)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_10AcyclicCS_0 extends SeparateLowHighSensitivity {
+      val HighSensitivity = new kAcyclicCallSiteSensitivity[Value, Component](10)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+  }
+
+  trait TrackLowToHighSensitivity extends CompoundSensitivity {
+    case class High(ctx: HighSensitivity.Context, userCall: Position) extends ComponentContext
+    case class Low(ctx: LowSensitivity.Context) extends ComponentContext
+
+    def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = {
+      if (isPrimitive(nam)) {
+        High(HighSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
+          case Some(High(ctx, _)) => Some(ctx)
+          case _ => None
+        }),
+          caller match {
+            case Some(High(_, userCall)) => userCall
+            case _ => call
+          }
+        )
+      } else {
+        Low(LowSensitivity.alloc(clo._1.idn.pos, args, call, context(caller) match {
+          case Some(Low(ctx)) => Some(ctx)
+          case _ => None
+        }))
+      }
+    }
+  }
+
+  object TrackLowToHighSensitivity {
+    trait S_0_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new NoSensitivity[Value, Component]
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_CS_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new CallSiteSensitivity[Value, Component]
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_2CS_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new kCallSitesSensitivity[Value, Component](2)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_10CS_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new kCallSitesSensitivity[Value, Component](10)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_FA_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new FullArgumentSensitivity[Value, Component]
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_2FA_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new kFullArgumentSensitivity[Value, Component](2)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_10FA_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new kFullArgumentSensitivity[Value, Component](10)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_CSFA_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new ProductSensitivity[Value, Component](new CallSiteSensitivity[Value, Component], new FullArgumentSensitivity[Value, Component])
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_2AcyclicCS_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new kAcyclicCallSiteSensitivity[Value, Component](2)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+    trait S_10AcyclicCS_0 extends TrackLowToHighSensitivity {
+      val HighSensitivity = new kAcyclicCallSiteSensitivity[Value, Component](10)
+      val LowSensitivity = new NoSensitivity[Value, Component]
+    }
+  }
 }
 
 

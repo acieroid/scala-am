@@ -44,44 +44,4 @@ object SchemeAnalyses {
         override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
-
-  object PrimitivesComparison {
-    import scalaam.language.scheme.primitives.SchemePrelude
-    def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                     with BigStepSemantics
-                                                     with CompoundSensitivities.S_0_0
-                                                     with ConstantPropagationDomain {
-      override def toString() = "0_0"
-      override val primPrecision = SchemePrelude.primNames
-    }
-    def S_CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                      with BigStepSemantics
-                                                      with CompoundSensitivities.S_CS_0
-                                                      with ConstantPropagationDomain {
-      override def toString() = "CS_0"
-      override val primPrecision = SchemePrelude.primNames
-    }
-    def S_CSFA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                        with BigStepSemantics
-                                                        with CompoundSensitivities.S_CSFA_0
-                                                        with ConstantPropagationDomain {
-      override def toString() = "CSFA_0"
-      override val primPrecision = SchemePrelude.primNames
-    }
-
-    def S_CS_CS(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                     with BigStepSemantics
-                                                     with CompoundSensitivities.S_CS_CS
-                                                     with ConstantPropagationDomain {
-      override def toString() = "CS_CS"
-      override val primPrecision = SchemePrelude.primNames
-    }
-    def S_CSFA_CS(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                      with BigStepSemantics
-                                                      with CompoundSensitivities.S_CSFA_CS
-                                                      with ConstantPropagationDomain {
-      override def toString() = "CSFA_CS"
-      override val primPrecision = SchemePrelude.primNames
-    }
-  }
 }
