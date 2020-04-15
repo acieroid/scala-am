@@ -262,7 +262,6 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
 
     import schemeLattice._
 
-    //// MANUAL PRIMITIVES /////
 
     object `+` extends NoStoreLOpRec("+", {
         case (Nil, _)          => number(0)
@@ -406,43 +405,8 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       }
     }
 
-    class CarCdrOperation(override val name: String) extends Store1Operation(name) {
-      trait Spec
-      case object Car extends Spec
-      case object Cdr extends Spec
-      val spec: List[Spec] = name
-        .drop(1) // Could use slice for drop + take.
-        .take(name.length - 2)
-        .toList
-        .reverseIterator
-        .map(
-          c =>
-            if (c == 'a') {
-              Car
-            } else if (c == 'd') {
-              Cdr
-            } else {
-              throw new Exception(s"Incorrect car/cdr operation: $name")
-            }
-        ).toList
-      override def call(v: V, store: Store[A, V]) =
-        for {
-          v <- spec.foldLeft(MayFail.success[V, Error](v))(
-            (acc, op) =>
-              for {
-                consv <- acc
-                addrs = op match {
-                  case Car => lat.car(consv)
-                  case Cdr => lat.cdr(consv)
-                }
-                res <- dereferenceAddrs(addrs, store)
-              } yield res
-          )
-        } yield (v, store)
-    }
-
-    object `car`    extends CarCdrOperation("car") // MANUAL
-    object `cdr`    extends  CarCdrOperation("cdr") // MANUAL
+    object `car` extends Store1Op("car", {(x, store) => dereferenceAddrs(lat.car(x), store).map((_, store))})
+    object `cdr` extends Store1Op("cdr", {(x, store) => dereferenceAddrs(lat.cdr(x), store).map((_, store))})
 
     object `set-car!` extends Store2Operation("set-car!") {
       override def call(cell: V, value: V, store: Store[A, V]) =
