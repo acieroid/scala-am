@@ -9,11 +9,9 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
   val budget: Int
   // track the number of components per closure
   private var closureCmps = Map[lattice.Closure, Set[Component]]()
-  def adaptOnNewComponent(cmp: Component, call: Call): Boolean = {
-    // update the set of components per closure
+  override def onNewComponent(cmp: Component, call: Call) = {
     val updatedCmps = closureCmps.get(call.clo).getOrElse(Set()) + cmp
     closureCmps += (call.clo -> updatedCmps)
-    return false
   }
   override def adaptAnalysis() = {
     super.adaptAnalysis()

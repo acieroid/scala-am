@@ -8,18 +8,15 @@ trait AdaptiveArgumentSensitivityPolicy1 extends AdaptiveArgumentSensitivity {
   val limit: Int
   // track the number of components per closure
   private var closureCmps = Map[lattice.Closure, Set[Component]]()
-  def adaptOnNewComponent(cmp: Component, call: Call): Boolean = {
-    val Call(clo, _, _) = call
+  override def onNewComponent(cmp: Component, call: Call)= {
     // update the set of components per closure
-    val updatedCmps = closureCmps.get(clo).getOrElse(Set()) + cmp
-    closureCmps += (clo -> updatedCmps)
+    val updatedCmps = closureCmps.get(call.clo).getOrElse(Set()) + cmp
+    closureCmps += (call.clo -> updatedCmps)
     // if there are too many components => do something about it!
     if (limit < updatedCmps.size) {
       val callArgs = updatedCmps.map(view(_).asInstanceOf[Call].ctx.args)
-      joinArg(clo, callArgs)
-      return true
-    } else { // otherwise, not arguments need to be excluded
-      return false
+      joinArg(call.clo, callArgs)
+      updateAnalysis()
     }
   }
   // we need to update the `closureCmps` data structure when the analysis is adapted

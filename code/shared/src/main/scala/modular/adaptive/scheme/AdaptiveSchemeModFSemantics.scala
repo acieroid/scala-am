@@ -42,20 +42,12 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     case _                              => value
   }
 
-  // parameterized by a function that can adapt the analysis whenever a new component is 'discovered'
-  // should return true iff the new component triggered an adaptation of the analysis
-  protected def adaptOnNewComponent(cmp: Component, call: Call): Boolean
-  // to "adapt" the analysis, every new component is passed on to `adaptOnNewComponent`, which may trigger adaptation
+  // callback function that can adapt the analysis whenever a new component is 'discovered'
+  protected def onNewComponent(cmp: Component, call: Call): Unit = ()
   override protected def adaptAnalysis() = {
-    // for each new component, allow the analysis to be adapted
-    var adapted = false
     this.newComponents.foreach(cmp => {
-      val call = deref(cmp).asInstanceOf[Call]
-      if(adaptOnNewComponent(cmp,call)) {
-        adapted = true
-      }
+      val call = view(cmp).asInstanceOf[Call]
+      onNewComponent(cmp, call)
     })
-    // if it was adapted => update the analysis!
-    if(adapted) { updateAnalysis() }
   }
 }
