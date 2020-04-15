@@ -1,7 +1,6 @@
 package scalaam.language.scheme
 
 import scalaam.core.Position._
-import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.language.sexp._
 
 object SchemeParser {
