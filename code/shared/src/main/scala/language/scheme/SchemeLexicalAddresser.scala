@@ -78,7 +78,7 @@ object SchemeLexicalAddresser {
   def extend(scope: Scope, id: Identifier): Scope =
     scope.copy(local = scope.local + (id.name -> id))
   def extend(scope: Scope, ids: Iterable[Identifier]): Scope =
-    ids.foldLeft(scope)(extend)
+    ids.foldRight(scope)((idn,scp) => extend(scp,idn))
 
   def translateProgram(prg: SchemeExp, global: Set[String]): SchemeExp =
     translate(prg, extend(Scope(emptyFrame,Nil,global), defs(prg)))
