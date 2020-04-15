@@ -304,24 +304,24 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
     object `tan`       extends NoStore1Operation("tan",       unaryOp(SchemeOps.UnaryOperator.Tan))
     object `atan`      extends NoStore1Operation("atan",      unaryOp(SchemeOps.UnaryOperator.ATan))
     object `sqrt`      extends NoStore1Operation("sqrt", { x =>
-          ifThenElse(`<`.call(number(1), x)) {
-            /* n >= 0 */
-            for {
-              r          <- lat_sqrt(x)
-              fl         <- lat_floor(r)
-              argisexact <- isInteger(x)
-              resisexact <- eqq(r, fl)
-              convert    <- and(argisexact, resisexact)
-              exr        <- inexactToExact(r)
-              res        <- ifThenElse(convert) { exr } { r }
-            } yield {
-              res
-            }
-          } {
-            /* n < 0 */
-            MayFail.failure(PrimitiveNotApplicable("sqrt", List(x)))
-          }
-      })
+      ifThenElse(`<`.call(x, number(0))) {
+        /* n < 0 */
+        MayFail.failure(PrimitiveNotApplicable("sqrt", List(x)))
+      } {
+        /* n >= 0 */
+        for {
+          r          <- lat_sqrt(x)
+          fl         <- lat_floor(r)
+          argisexact <- isInteger(x)
+          resisexact <- eqq(r, fl)
+          convert    <- and(argisexact, resisexact)
+          exr        <- inexactToExact(r)
+          res        <- ifThenElse(convert) { exr } { r }
+        } yield {
+          res
+        }
+      }
+    })
     object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOps.UnaryOperator.ExactToInexact))
     object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOps.UnaryOperator.InexactToExact))
     object `char->integer`  extends NoStore1Operation("char->integer",  unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
