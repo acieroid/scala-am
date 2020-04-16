@@ -86,7 +86,9 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
       /* [x]  make-rectangular: Complex */
       /* [x]  make-string: String Constructors */
       /* [x]  map: List Mapping */
+      `max`,
       /* [x]  memv: List Searching */
+      `min`,
       `null?`, /* [vv] null?: List Predicates */
       `number->string`, /* [vx] number->string: Conversion: does not support two arguments */
       `number?`, /* [vv] number?: Numerical Tower */
@@ -268,6 +270,17 @@ class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatti
         } yield {
           res
         }
+    })
+
+    object `max` extends NoStoreLOpRec("max", {
+      case (Nil, _)          => MayFail.failure(PrimitiveVariadicArityError("max", 1, 0))
+      case (x :: Nil, _)     => x
+      case (x :: rest, call) => call(rest) >>= { y => ifThenElse(`<`.call(x, y)) { y } { x } }
+    })
+    object `min` extends NoStoreLOpRec("min", {
+      case (Nil, _)          => MayFail.failure(PrimitiveVariadicArityError("min", 1, 0))
+      case (x :: Nil, _)     => x
+      case (x :: rest, call) => call(rest) >>= { y => ifThenElse(`<`.call(x, y)) { x } { y } }
     })
 
     object `expt`     extends NoStore2Operation("expt", binaryOp(SchemeOps.BinaryOperator.Expt))
