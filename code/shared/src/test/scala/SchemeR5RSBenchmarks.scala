@@ -195,7 +195,7 @@ object SchemeR5RSBenchmarks {
     ("(odd? 101)", _.bool(true)),
     ("(or #f #f #f)", _.bool(false)),
     ("(or (= 2 2) (< 2 1))", _.bool(true)),
-    ("(or (= 2 2) (> 2 1)", _.bool(true)),
+    ("(or (= 2 2) (> 2 1))", _.bool(true)),
     ("(pair? '())", _.bool(false)),
     ("(pair? '(a b c))", _.bool(true)),
     ("(pair? (cons 'a 'b))", _.bool(true)),
