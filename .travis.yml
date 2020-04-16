@@ -16,7 +16,7 @@ jobs:
       name: "Lattice Tests"
       script: sbt "scalaam/testOnly scalaam.test.lattice.*"
     - stage: test
-      name: "Primitive Correctness Tests"
+      name: "R5RS Correctness Tests"
       script: sbt "scalaam/testOnly scalaam.test.language.scheme.*"
     - stage: test
       name: "ModF Soundness Tests"
