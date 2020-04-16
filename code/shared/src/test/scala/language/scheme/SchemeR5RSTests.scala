@@ -23,6 +23,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
 
     a.analyze(Timeout.start(Duration(30 , SECONDS)))
     assume(a.finished(), s"Analysis of $program timed out.")
+    //assert(a.finished(), s"Analysis of $program should finish within the given time bound out.")
     val result = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom).asInstanceOf[V]
     assert(l.subsumes(result, answer(l)), s"Primitive computation test failed on program: $program with result $result.")
   }
