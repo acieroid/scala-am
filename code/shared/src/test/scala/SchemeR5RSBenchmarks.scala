@@ -1,17 +1,12 @@
 package scalaam.test.language.scheme
 
-import scalaam.language.scheme.{SchemeExp, SchemeLattice}
-import scalaam.modular.ModAnalysis
-import scalaam.modular.scheme.SchemeModFSemantics
+import scalaam.core._
+import scalaam.language.scheme.SchemeLattice
 
 object SchemeR5RSBenchmarks {
 
-  type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
-  type V = (ModAnalysis[SchemeExp] with SchemeModFSemantics)#Value
-  type A = (ModAnalysis[SchemeExp] with SchemeModFSemantics)#Addr
-  type P = (ModAnalysis[SchemeExp] with SchemeModFSemantics)#Prim
-  type Env = (ModAnalysis[SchemeExp] with SchemeModFSemantics)#Component
-  type L = SchemeLattice[V, A, P, Env]
+  type V
+  type L = SchemeLattice[V, _ <: Address, _ <: Primitive, _]
 
   val bench: List[(String, L => V)] = List(
     ("'()", _.nil),
