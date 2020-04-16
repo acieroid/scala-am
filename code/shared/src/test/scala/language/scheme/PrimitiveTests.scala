@@ -31,14 +31,14 @@ trait PrimitiveTests extends AnyPropSpec {
 
 class ConcreteBigStepModFSoundnessTests extends PrimitiveTests {
   def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepSemantics
-    with PowersetDomain
+    with ConstantPropagationDomain
     with NoSensitivity
     with StandardSchemeModFSemantics
 }
 
 class ConcreteSmallStepModFSoundnessTests extends PrimitiveTests {
   def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepSemantics
-    with PowersetDomain
+    with ConstantPropagationDomain
     with NoSensitivity
     with StandardSchemeModFSemantics
 }
