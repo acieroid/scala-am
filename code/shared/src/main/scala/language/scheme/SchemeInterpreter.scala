@@ -867,6 +867,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     object Realp extends SingleArgumentPrim("real?") {
       def fun = {
         case _: Value.Real => Value.Bool(true)
+        case _: Value.Integer => Value.Bool(true)
         case _ => Value.Bool(false)
       }
     }
