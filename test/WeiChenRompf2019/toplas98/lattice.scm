@@ -5,10 +5,6 @@
 ;	uncomparable
 ; return a new comparison routine that applies to sequences.
 
-(define (map f xs)
-  (if (null? xs) '()
-      (cons (f (car xs)) (map f (cdr xs)))))
-
 (define lexico
     (lambda (base)
 	(define lex-fixed
@@ -203,7 +199,7 @@
 				((high)
 				    'less)
 				(else
-				    (error 'make-lattice "base" rhs4))))
+				    (error "make-lattice"))))
 			((high)
 			    (case rhs4
 				((low)
@@ -211,7 +207,8 @@
 				((high)
 				    'equal)
 				(else
-				    (error 'make-lattice "base" rhs4))))
+				    (error "make-lattice"))))
 			(else
-			    (error 'make-lattice "base" lhs4)))))))
+			    (error "make-lattice")))))))
   (display (count-maps l3 l3)))
+
