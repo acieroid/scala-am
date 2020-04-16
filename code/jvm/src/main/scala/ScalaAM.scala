@@ -23,13 +23,13 @@ object Main {
     val txt = Reader.loadFile("test/mceval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivityPolicy1
+                                                with AdaptiveArgumentSensitivityPolicy3
                                                 with ConstantPropagationDomain {
-      val limit = 100
+      val limit = 10
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
-        println(allComponents.size)
+        //println(allComponents.size)
         super.step()
       }
     }
@@ -39,9 +39,9 @@ object Main {
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
 
-  def debugResults(machine: AdaptiveSchemeModFSemantics, printMore: Boolean = false): Unit =
+  def debugResults(machine: SchemeModFAnalysis, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (machine.ReturnAddr(cmp),result) =>
+      case (machine.ReturnAddr(cmp),result) if cmp == machine.initialComponent =>
         println(s"[$cmp] ${machine.view(cmp)} => $result")
       case (machine.ComponentAddr(_, _: machine.PrmAddr),_) => 
         () //don't print primitive addresses

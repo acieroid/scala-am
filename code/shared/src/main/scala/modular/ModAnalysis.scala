@@ -6,7 +6,7 @@ import scalaam.util.Annotations._
 
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
-  // (inefficient) hack to ensure determinism
+  // (inefficient) hack to make the hashcode deterministic
   lazy val hash = prog.hashCode()
   override def hashCode(): Int = hash
 

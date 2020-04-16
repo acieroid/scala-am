@@ -23,8 +23,8 @@ abstract class AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis
     def otherAnalyses(prg: SchemeExp): List[Analysis]
 
-    // and can, optionally, be configured in its timeouts (default: 2min.)
-    def analysisTimeout() = Timeout.start(Duration(2, MINUTES)) //timeout for (non-base) analyses
+    // and can, optionally, be configured in its timeouts (default: 5min.)
+    def analysisTimeout() = Timeout.start(Duration(5, MINUTES)) //timeout for (non-base) analyses
     def concreteTimeout() = Timeout.none                        //timeout for concrete interpreter
 
     // keep the results of the benchmarks
@@ -71,12 +71,12 @@ object AnalysisComparison1 extends AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def otherAnalyses(prg: SchemeExp) = List(
-        SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),
-        SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5)
-        //SchemeAnalyses.adaptiveAnalysisPolicy2(prg, 10)
+        //SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),
+        //SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5),
+        SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
     )
 
-    def main(args: Array[String]) = runBenchmarks(Set("test/rsa.scm"))
+    def main(args: Array[String]) = runBenchmarks(SchemeBenchmarks.standard)
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)

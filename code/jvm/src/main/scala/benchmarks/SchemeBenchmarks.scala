@@ -24,7 +24,7 @@ object SchemeBenchmarks {
         "test/kernighanvanwyk/ack.scm",
         "test/letrec-begin.scm",
         "test/loop2.scm",
-        //"test/mceval.scm",
+        "test/mceval.scm",
         "test/mj09.scm",
         "test/mut-rec.scm",
         "test/my-list.scm",
