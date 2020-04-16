@@ -520,16 +520,16 @@
   (define *symbol-records-alist* '())
 
   (define (make-symbol-record sym)
-    (vector sym '()))
+    (cons sym '()))
 
   (define (put-lemmas! symbol-record lemmas)
-    (vector-set! symbol-record 1 lemmas))
+    (set-cdr! symbol-record lemmas))
 
   (define (get-lemmas symbol-record)
-    (vector-ref symbol-record 1))
+    (cdr symbol-record))
 
   (define (get-name symbol-record)
-    (vector-ref symbol-record 0))
+    (car symbol-record))
 
   (define (symbol-record-equal? r1 r2)
     (eq? r1 r2))

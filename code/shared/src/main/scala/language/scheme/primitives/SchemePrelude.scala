@@ -58,7 +58,7 @@ object SchemePrelude {
                      |        x
                      |        (list-tail (cdr x) (- k 1))))""".stripMargin, // Based on definition in R5RS specification.
     "list?" -> "(define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l)))",
-    "max" -> "(define (max a b) (if (< a b) b a))", // variadic
+    //"max" -> "(define (max a b) (if (< a b) b a))", // Variadic => implemented manually.
     "member" -> """(define (member e l)
           (if (null? l)
             #f
@@ -71,7 +71,7 @@ object SchemePrelude {
             (if (eq? (car l) e)
               l
               (memq e (cdr l)))))""",
-    "min" -> "(define (min a b) (if (< a b) a b))", // variadic
+    //"min" -> "(define (min a b) (if (< a b) a b))", // Variadic => implemented manually.
     "negative?" -> "(define (negative? x) (< x 0))",
     "newline" -> "(define (newline) #f)", // undefined
     "not" -> "(define (not x) (if x #f #t))",
