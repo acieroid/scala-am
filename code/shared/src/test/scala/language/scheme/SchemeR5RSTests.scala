@@ -22,8 +22,8 @@ trait SchemeR5RSTests extends AnyPropSpec {
     val l = a.lattice.asInstanceOf[SchemeR5RSBenchmarks.L]
 
     a.analyze(Timeout.start(Duration(30 , SECONDS)))
-    assume(a.finished(), s"Analysis of $program timed out.")
-    //assert(a.finished(), s"Analysis of $program should finish within the given time bound out.")
+    // All R5RS tests should terminate, no matter the analysis, because they're so simple.
+    assert(a.finished(), s"Analysis of $program should finish within the given time bound out.")
     val result = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom).asInstanceOf[V]
     assert(l.subsumes(result, answer(l)), s"Primitive computation test failed on program: $program with result $result.")
   }
