@@ -222,7 +222,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       Abs, /* [vv] abs: Arithmetic */
       ACos, /* [vv] acos: Scientific */
       /* [x]  angle: Complex */
-      /* [x]  append: Append/Reverse */
+      Append, /* [x]  append: Append/Reverse */
       /* [x]  apply: Fly Evaluation */
       ASin, /* [vv] asin: Scientific */
       Assoc, /* [vv] assoc: Retrieving Alist Entries */
@@ -1101,6 +1101,25 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       }
       def fun = {
         case l => Value.Integer(length(l, 0))
+      }
+    }
+    object Append extends Prim {
+      val name = "append"
+      // TODO: Not sure this is the R5RS-compliant behavior in terms of allocation
+      def append(fexp: SchemeFuncall, l1: Value, l2: Value): Value = l1 match {
+        case Value.Cons(car, cdr) => store(cdr) match {
+          case Value.Nil =>
+            allocateCons(fexp, store(car), l2)
+          case v =>
+            allocateCons(fexp, store(car), append(fexp, v, l2))
+        }
+        case Value.Nil => l2
+        case _ => throw new Exception(s"append: wrong type of first argument: $l1")
+      }
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = args match {
+        case (_, l1) :: (_, l2) :: Nil =>
+          append(fexp, l1, l2)
+        case _ => throw new Exception(s"append: wrong number of arguments ${args.length}")
       }
     }
 
