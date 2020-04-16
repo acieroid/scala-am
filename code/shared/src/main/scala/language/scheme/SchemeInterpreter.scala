@@ -1223,4 +1223,20 @@ object SchemeInterpreter {
     // TODO: fix vector representation (use addresses)
     case class Vector(elems: Array[Value]) extends Value
   }
+
+
+  import scala.concurrent.duration._
+  import scalaam.language.scheme.primitives._
+  import scalaam.io._
+  val timeout = Duration(30, SECONDS)
+  def main(args: Array[String]): Unit =
+    if (args.size == 1) {
+      val text = Reader.loadFile(args(0))
+      val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text))))
+      val interpreter = new SchemeInterpreter((id, v) => (), true)
+      val res = interpreter.run(pgm, Timeout.start(timeout))
+      println(s"Result: $res")
+    } else {
+      println(s"Expected file to run as argument")
+    }
 }
