@@ -39,6 +39,7 @@ object SchemePrelude {
           (or (eq? a b)
             (and (null? a) (null? b))
             (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))))""",
+    "eqv?" -> "(define (eqv? x y) (eq? x y))",
     "even?" -> "(define (even? x) (= 0 (modulo x 2)))",
     // TODO: expt // TODO isn't this a primop (easier to handle real exponents).
     // TODO: exp
