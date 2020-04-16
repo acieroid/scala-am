@@ -31,6 +31,55 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case Main               => Main
     case Call(clo,nam,ctx)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
   }
+  private def extractComponentRefs(value: Value): Set[Component] = value match {
+    case valueLattice.Elements(vs)  => vs.flatMap(extractComponentRefs)
+    case valueLattice.Element(v)    => extractComponentRefs(v)
+  }
+  private def extractComponentRefs(v: valueLattice.Value): Set[Component] = v match {
+    case valueLattice.Pointer(addr)     => Set(extractComponentRefs(addr))
+    case valueLattice.Clo(_,cmp,_)      => Set(cmp)
+    case valueLattice.Cons(car,cdr)     => Set(extractComponentRefs(car),extractComponentRefs(cdr))
+    case valueLattice.Vec(_,els,ini)    => extractComponentRefs(ini) ++ els.flatMap(p => extractComponentRefs(p._2))
+    case _                              => Set.empty
+  }
+  private def extractComponentRefs(addr: Addr): Component = addr match {
+    case ComponentAddr(cmp, _)  => cmp
+    case ReturnAddr(cmp)        => cmp
+  }
+  private def getClosure(cmp: Component): Option[lattice.Closure] = view(cmp) match {
+    case Main       => None
+    case call: Call => Some(call.clo)
+  }
+  var toJoin = Set[Set[Component]]()
+  var joinedArgs = List[Value]()
+  def joinComponents(cmps: Set[Component]) = {
+    this.toJoin = Set(cmps)
+    while (toJoin.nonEmpty) {
+      val next = this.toJoin.head
+      this.toJoin = this.toJoin.tail
+      // look at the next closure + contexts
+      val calls = next.map(view(_).asInstanceOf[Call])
+      val (clo, args) = (calls.head.clo, calls.map(_.ctx.args))
+      println("Joining the following components:")
+      calls.foreach(call => println(s"- $call"))
+      // join all the argument values per parameter
+      val valuesPerPos = args.toList.transpose.map(_.toSet)
+      this.joinedArgs = clo._1.args.zip(valuesPerPos).map { case (par,args) =>
+        val joinedArg = lattice.join(args)
+        widenArg(clo, par, joinedArg)
+        joinedArg
+      }
+      println("into:")
+      println(s"=> ${calls.head.nam.getOrElse("anonymous")}(${joinedArgs.mkString(",")})")
+      updateAnalysis()
+      // from the joined args, determine the next components that need to be joined
+      val componentRefs = this.joinedArgs.flatMap(extractComponentRefs)
+      this.toJoin ++= componentRefs.groupBy(getClosure(_)).values.map(_.toSet)
+      this.toJoin = this.toJoin.filterNot(_.size == 1).toSet   
+    }
+    println()
+  }
+
   def joinArg(clo: lattice.Closure, args: Set[List[Value]]) = {
     val valuesPerPos = args.toList.transpose.map(_.toSet)
     val valuesPerArg = clo._1.args.zip(valuesPerPos).toMap
@@ -42,6 +91,8 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
     this.adaptedArgs = updateMap(updateClosurePar(update),updateSet(updateValue(update)))(adaptedArgs)(valueSetMonoid)
+    this.toJoin = updateSet(updateSet(update))(toJoin)
+    this.joinedArgs = joinedArgs.map(updateValue(update))
   }
   private def updateClosurePar(update: Component => Component)(key: (lattice.Closure, Identifier)) =
     (updateClosure(update)(key._1), key._2)

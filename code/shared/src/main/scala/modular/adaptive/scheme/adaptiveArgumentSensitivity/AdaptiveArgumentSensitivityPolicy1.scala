@@ -14,9 +14,7 @@ trait AdaptiveArgumentSensitivityPolicy1 extends AdaptiveArgumentSensitivity {
     closureCmps += (call.clo -> updatedCmps)
     // if there are too many components => do something about it!
     if (limit < updatedCmps.size) {
-      val callArgs = updatedCmps.map(view(_).asInstanceOf[Call].ctx.args)
-      joinArg(call.clo, callArgs)
-      updateAnalysis()
+      joinComponents(updatedCmps)
     }
   }
   // we need to update the `closureCmps` data structure when the analysis is adapted
