@@ -22,10 +22,10 @@ object SchemeAnalyses {
                                                                                 with ConstantPropagationDomain {
         override def toString() = "call-site-sensitivity"
     }
-    def contextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                                        with BigStepSemantics
-                                                                        with FullArgumentSensitivity
-                                                                        with ConstantPropagationDomain {
+    def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                                                with BigStepSemantics
+                                                                                with FullArgumentSensitivity
+                                                                                with ConstantPropagationDomain {
         override def toString() = "full-argument-sensitivity"
     }
     def adaptiveAnalysisPolicy1(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
