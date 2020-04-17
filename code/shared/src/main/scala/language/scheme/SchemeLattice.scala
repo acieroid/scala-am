@@ -100,6 +100,23 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** Cardinality indicates how many elements are represented by an abstract value */
   def cardinality(abs: L): Cardinality
 
+  object Injector {
+    implicit def inject(c: Closure, name: Option[String]): L = closure(c, name)
+    implicit def inject(car: A, cdr: A): L = cons(car, cdr)
+    implicit def inject(a: Any): L = a match {
+      case i: Int     => number(i)
+      case r: Double  => real(r)
+      case s: String  => string(s)
+      case b: Boolean => bool(b)
+      case c: Char    => char(c)
+      case p: P       => primitive(p)
+      case s: Symbol  => symbol(s.toString().tail) // Remove leading '.
+      case a: A       => pointer(a)
+      case Nil        => nil
+      case v          => throw new Exception(s"Attempting to inject unknown value $v.")
+    }
+  }
+
   /* TODO: move this to the tests
   trait SchemeLatticeLaw extends MonoidLaw {
     import scalaz.std.boolean.conditional

@@ -23,8 +23,8 @@ abstract class AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis
     def otherAnalyses(prg: SchemeExp): List[Analysis]
 
-    // and can, optionally, be configured in its timeouts (default: 2min.)
-    def analysisTimeout() = Timeout.start(Duration(2, MINUTES)) //timeout for (non-base) analyses
+    // and can, optionally, be configured in its timeouts (default: 5min.)
+    def analysisTimeout() = Timeout.start(Duration(5, MINUTES)) //timeout for (non-base) analyses
     def concreteTimeout() = Timeout.none                        //timeout for concrete interpreter
 
     // keep the results of the benchmarks
@@ -71,18 +71,18 @@ object AnalysisComparison1 extends AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def otherAnalyses(prg: SchemeExp) = List(
-        SchemeAnalyses.contextSensitiveAnalysis(prg)
-        //Analyses.adaptiveAnalysisPolicy1(prg, 10)
-        //Analyses.adaptiveAnalysisPolicy2(prg, 10)
+        //SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),
+        //SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5),
+        SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
     )
 
-    def main(args: Array[String]) = check("test/primtest.scm")
+    def main(args: Array[String]) = runBenchmarks(SchemeBenchmarks.standard)
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
         val prg = SchemeParser.parse(txt)
         val con = runInterpreter(prg, path).get
-        val abs = runAnalysis(SchemeAnalyses.contextSensitiveAnalysis(prg),path).get
+        val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),path).get
         val allKeys = con.keys ++ abs.keys
         val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
         interestingKeys.foreach { k =>
@@ -90,12 +90,17 @@ object AnalysisComparison1 extends AnalysisComparison[
         }
     }
 
-    def runBenchmarks() = {
-        SchemeBenchmarks.standard.foreach(runBenchmark)
+    def runBenchmarks(benchmarks: Set[Benchmark]) = {
+        benchmarks.foreach(runBenchmark)
         this.results.foreach { case (b, r) =>
-            val fullArg = r.getOrElse("full-argument-sensitivity", "T")
-            val concrete = r.getOrElse("concrete", "T")
-            println(s"$b -> $fullArg/$concrete")
+            val concreteResStr = r("concrete").getOrElse("T")
+            println(s"=> BENCHMARK $b")
+            r.foreach { 
+                case (nam,res) if nam != "concrete" =>
+                    val resStr = res.getOrElse("T")
+                    println(s"- $nam: $resStr/$concreteResStr")
+                case _ => ()
+            }
         }
     }
 }

@@ -22,10 +22,10 @@ object SchemeAnalyses {
                                                                                 with ConstantPropagationDomain {
         override def toString() = "call-site-sensitivity"
     }
-    def contextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                                        with BigStepSemantics
-                                                                        with FullArgumentSensitivity
-                                                                        with ConstantPropagationDomain {
+    def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                                                with BigStepSemantics
+                                                                                with FullArgumentSensitivity
+                                                                                with ConstantPropagationDomain {
         override def toString() = "full-argument-sensitivity"
     }
     def adaptiveAnalysisPolicy1(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
@@ -36,10 +36,10 @@ object SchemeAnalyses {
         override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
-    def adaptiveAnalysisPolicy2(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
-                                                                                        with AdaptiveArgumentSensitivityPolicy1
+    def adaptiveAnalysisPolicy3(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
+                                                                                        with AdaptiveArgumentSensitivityPolicy3
                                                                                         with ConstantPropagationDomain {
-        override def toString() = "adaptive-argument-policy2"
+        override def toString() = "adaptive-argument-policy3"
         val limit = k
         override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
