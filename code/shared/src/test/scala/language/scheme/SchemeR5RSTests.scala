@@ -18,19 +18,23 @@ trait SchemeR5RSTests extends AnyPropSpec {
   import SchemeR5RSBenchmarks._
 
   type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
+  type V
+  type L = SchemeLattice[V, _ <: Address, _ <: Primitive, _]
 
   def analysis(text: SchemeExp): Analysis
 
-  def testExpr(program: String, answer: L => V): Unit = {
+  def testExpr(program: String, answer: Any): Unit = {
     val text = SchemeParser.parse(program)
     val a = analysis(text)
-    val l = a.lattice.asInstanceOf[SchemeR5RSBenchmarks.L]
+    val l = a.lattice.asInstanceOf[L]
+
+    import l.Injector._
 
     a.analyze(Timeout.start(Duration(30 , SECONDS)))
     // All R5RS tests should terminate, no matter the analysis, because they're so simple.
     assert(a.finished(), s"Analysis of $program should finish within the given time bound out.")
     val result = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom).asInstanceOf[V]
-    assert(l.subsumes(result, answer(l)), s"Primitive computation test failed on program: $program with result $result.")
+    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result.")
   }
 
   SchemeR5RSBenchmarks.bench.foreach { case (e, a) => property (s"Primitive in $e is correct.") { testExpr(e, a) } }
@@ -46,10 +50,12 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
     with NoSensitivity
     with StandardSchemeModFSemantics
 
-  override def testExpr(program: String, answer: L => V): Unit = {
+  override def testExpr(program: String, answer: Any): Unit = {
     val text = SchemeParser.parse(program)
     val a = analysis(text)
-    val l = a.lattice.asInstanceOf[SchemeR5RSBenchmarks.L]
+    val l = a.lattice.asInstanceOf[L]
+
+    import l.Injector._
 
     val interpreter = new SchemeInterpreter((_: Identity, _: SchemeInterpreter.Value) => (), false)
     val v = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(text))), Timeout.start(Duration(30, SECONDS)))
@@ -63,7 +69,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
       case SchemeInterpreter.Value.Character(c) => l.char(c)
       case _ => ???
     }
-    assert(l.subsumes(result, answer(l)), s"Primitive computation test failed on program: $program with result $result.")
+    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result.")
   }
 
 }

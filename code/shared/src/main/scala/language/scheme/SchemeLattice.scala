@@ -101,16 +101,20 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   def cardinality(abs: L): Cardinality
 
   object Injector {
-    implicit def inject(i: Int): L = number(i)
-    implicit def inject(r: Double): L = real(r)
-    implicit def inject(s: String): L = string(s)
-    implicit def inject(b: Boolean): L = bool(b)
-    implicit def inject(c: Char): L = char(c)
-    implicit def inject(p: P): L = primitive(p)
     implicit def inject(c: Closure, name: Option[String]): L = closure(c, name)
-    implicit def inject(s: Symbol): L = symbol(s.toString())
     implicit def inject(car: A, cdr: A): L = cons(car, cdr)
-    implicit def inject(a: A): L = pointer(a)
+    implicit def inject(a: Any): L = a match {
+      case i: Int     => number(i)
+      case r: Double  => real(r)
+      case s: String  => string(s)
+      case b: Boolean => bool(b)
+      case c: Char    => char(c)
+      case p: P       => primitive(p)
+      case s: Symbol  => symbol(s.toString().tail) // Remove leading '.
+      case a: A       => pointer(a)
+      case Nil        => nil
+      case v          => throw new Exception(s"Attempting to inject unknown value $v.")
+    }
   }
 
   /* TODO: move this to the tests
