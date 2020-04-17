@@ -35,9 +35,9 @@ abstract class PrecisionBenchmarks[
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
         case analysis.ComponentAddr(_, analysis.VarAddr(v)) => VarAddr(v)
         case analysis.ComponentAddr(_, analysis.PrmAddr(n)) => PrmAddr(n)
-        case analysis.ComponentAddr(_, analysis.PtrAddr(idn)) => PtrAddr(idn)
-        case analysis.ComponentAddr(_, analysis.CarAddr(idn)) => CarAddr(idn)
-        case analysis.ComponentAddr(_, analysis.CdrAddr(idn)) => CdrAddr(idn)
+        case analysis.ComponentAddr(_, analysis.PtrAddr(e)) => PtrAddr(e.idn)
+        case analysis.ComponentAddr(_, analysis.CarAddr(e)) => CarAddr(e.idn)
+        case analysis.ComponentAddr(_, analysis.CdrAddr(e)) => CdrAddr(e.idn)
         case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body.idn)
     }
 
@@ -45,7 +45,7 @@ abstract class PrecisionBenchmarks[
     val baseDomain = new ModularSchemeLattice[BaseAddr,Unit,Str,Bln,Num,Rea,Chr,Smb]
     val baseLattice = baseDomain.schemeLattice
     case class StubPrimitive(name: String) extends SchemePrimitive[BaseValue, BaseAddr] {
-        def call(fpos: Identity, args: List[(Identity, BaseValue)], store: Store[BaseAddr,BaseValue], alloc: SchemeAllocator[BaseAddr]) =
+        def call(fpos: SchemeExp, args: List[(SchemeExp, BaseValue)], store: Store[BaseAddr,BaseValue], alloc: SchemeAllocator[BaseAddr]) =
             throw new Exception("Stub primitive: call not supported")
     }
     case class LambdaIdnEq(lambda: SchemeLambdaExp) extends SchemeLambdaExp {

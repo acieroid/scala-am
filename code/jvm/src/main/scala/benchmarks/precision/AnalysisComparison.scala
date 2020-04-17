@@ -76,7 +76,7 @@ object AnalysisComparison1 extends AnalysisComparison[
         //SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
     )
 
-    def main(args: Array[String]) = runBenchmarks(Set("test/regex.scm"))
+    def main(args: Array[String]) = runBenchmarks(SchemeBenchmarks.standard)
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
