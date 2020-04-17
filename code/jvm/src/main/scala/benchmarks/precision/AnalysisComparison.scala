@@ -71,12 +71,12 @@ object AnalysisComparison1 extends AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def otherAnalyses(prg: SchemeExp) = List(
-        //SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),
+        SchemeAnalyses.fullArgContextSensitiveAnalysis(prg)
         //SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5),
-        SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
+        //SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
     )
 
-    def main(args: Array[String]) = runBenchmarks(SchemeBenchmarks.standard)
+    def main(args: Array[String]) = runBenchmarks(Set("test/regex.scm"))
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
@@ -86,7 +86,11 @@ object AnalysisComparison1 extends AnalysisComparison[
         val allKeys = con.keys ++ abs.keys
         val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
         interestingKeys.foreach { k =>
-            println(s"$k -> ${abs.getOrElse(k,"⊥")} ; ${con.getOrElse(k,"⊥")} ")
+            val absVal = abs.getOrElse(k,"⊥")
+            val concVal = con.getOrElse(k,"⊥")
+            if (absVal != concVal) {
+                println(s"$k -> $absVal ; $concVal ")
+            }
         }
     }
 
