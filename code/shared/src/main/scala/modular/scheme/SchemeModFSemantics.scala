@@ -146,7 +146,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
         )}
     }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value = {
+    protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value = {
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
