@@ -403,11 +403,12 @@
          (map (lambda (e)
                 (make-primitive-exp e machine labels))
               (operation-exp-operands exp))))
-    (cond
-     ((null? aprocs) (op))
-     ((null? (cdr aprocs)) (op (car aprocs)))
-     ((null? (cddr aprocs)) (op (car aprocs) (cadr aprocs)))
-     (else (error "apply")))))
+    (lambda ()
+      (cond
+       ((null? aprocs) (op))
+       ((null? (cddr aprocs)) (op ((car aprocs)) ((cadr aprocs))))
+       ((null? (cdr aprocs)) (op ((car aprocs))))
+       (else (error "apply"))))))
 
 (define (operation-exp? exp)
   (and (pair? exp) (tagged-list? (car exp) 'op)))
@@ -439,6 +440,35 @@
               (> ,>)
               (display ,(lambda (x)(display x)))))
 
+;;
+;; registermachine voor grootste gemene deler
+;;
+(let ((gcd-machine
+       (make-machine '(a b t) 
+                     ops
+                     '(test-b
+                          (test (op =) (reg b) (const 0))
+                          (branch (label gcd-done))
+                          (assign t (reg a))
+                       rem-loop
+                          (test (op <) (reg t) (reg b))
+                          (branch (label rem-done))
+                          (assign t (op -) (reg t) (reg b))
+                          (goto (label rem-loop))
+                       rem-done
+                          (assign a (reg b))
+                          (assign b (reg t))
+                          (goto (label test-b))
+                       gcd-done))))
+  (display "(gcd 10 15): ")
+  ;; initialiseren invoerregisters
+  (set-register-contents! gcd-machine 'a 10)
+  (set-register-contents! gcd-machine 'b 15)
+  ;; uitvoeren van registermachine
+  (start gcd-machine)
+  ;; uitlezen uitvoerregister
+  (display (get-register-contents gcd-machine 'a))
+  (newline))
 ;;
 ;; registermachine voor faculteit
 ;; 
