@@ -26,26 +26,26 @@ object SchemeBenchmarks {
 
   val ad: Set[String] = Set(
     "test/ad/abstrct.scm",
-    //"test/ad/bfirst.scm", // VARARG
-    // "test/ad/bst.scm", // VARARG
+    "test/ad/bfirst.scm", // VARARG
+    "test/ad/bst.scm", // VARARG
     //"test/ad/btree.scm", // TODO add a body
     "test/ad/bubsort.scm",
     "test/ad/dict.scm",
     // "test/ad/dictExamples.scm", // EMPTY
     //"test/ad/heap.scm", // PARSER ERROR TODO
     "test/ad/inssort.scm",
-    //"test/ad/linear.scm", // VARARG
-    //"test/ad/list.scm", // VARARG
+    "test/ad/linear.scm", // VARARG
+    "test/ad/list.scm", // VARARG
     "test/ad/mesort.scm",
     "test/ad/prioq.scm",
     "test/ad/qsort.scm",
     "test/ad/qstand.scm",
-    //"test/ad/queue.scm", // VARARG
+    "test/ad/queue.scm", // VARARG
     "test/ad/quick.scm",
-    //"test/ad/RBtreeADT.scm", // VARARG
-    //"test/ad/selsort.scm", // PARSER ERROR TODO
+    "test/ad/RBtreeADT.scm", // VARARG
+    "test/ad/selsort.scm", // PARSER ERROR TODO
     "test/ad/stack.scm",
-    //"test/ad/stspaceCODE.scm", // VARARG
+    "test/ad/stspaceCODE.scm", // VARARG
   )
 
   val gabriel: Set[String] = Set(
@@ -65,27 +65,27 @@ object SchemeBenchmarks {
   val gambit: Set[String] = Set(
     "test/gambit/array1.scm",
     "test/gambit/browse.scm",
-    "test/gambit/cat.scm",
+    //"test/gambit/cat.scm", // open-input-file
     //"test/gambit/compiler.scm", // PARSER ERROR TODO
     "test/gambit/ctak.scm",
     "test/gambit/deriv.scm",
     "test/gambit/destruc.scm",
     "test/gambit/diviter.scm",
     "test/gambit/earley.scm",
-    "test/gambit/fibc.scm",
+    //"test/gambit/fibc.scm", // call-cc
     "test/gambit/graphs.scm",
     "test/gambit/lattice.scm",
     "test/gambit/matrix.scm",
     "test/gambit/mazefun.scm",
-    //"test/gambit/nboyer.scm", // VARARG
+    "test/gambit/nboyer.scm", // VARARG
     "test/gambit/nqueens.scm",
     "test/gambit/paraffins.scm",
     "test/gambit/perm9.scm",
-    //"test/gambit/peval.scm", // VARARG
+    //"test/gambit/peval.scm", // VARARG // ERROR CONCRETE INTERPRETER
     "test/gambit/primes.scm",
     "test/gambit/puzzle.scm",
-    //"test/gambit/sboyer.scm", // VARARG
-    //"test/gambit/scheme.scm", // VARARG
+    "test/gambit/sboyer.scm", // VARARG
+    //"test/gambit/scheme.scm", // MEMV
     //"test/gambit/slatex.scm", // PARSER LIMITATION TODO
     "test/gambit/string.scm",
     "test/gambit/sum.scm",
@@ -109,7 +109,7 @@ object SchemeBenchmarks {
     "test/scp1/3.1.scm",
     "test/scp1/3.2.1.scm",
     "test/scp1/3.2.scm",
-    "test/scp1/3.3.scm",
+    //"test/scp1/3.3.scm", // PARSER ERROR
     "test/scp1/3.4.scm",
     "test/scp1/3.6.scm",
     "test/scp1/3.8.scm",
@@ -123,7 +123,7 @@ object SchemeBenchmarks {
     "test/scp1/5.14.3.scm",
     "test/scp1/5.19.scm",
     "test/scp1/5.20.4.scm",
-    "test/scp1/5.21.scm",
+    //"test/scp1/5.21.scm", // PARSER ERROR
     "test/scp1/5.22.scm",
 
     "test/scp1/7.2.scm",
@@ -139,26 +139,26 @@ object SchemeBenchmarks {
     "test/scp1/7.15.scm",
     "test/scp1/7.16.scm",
     "test/scp1/7.17.scm",
-    "test/scp1/7.18.scm",
+    //"test/scp1/7.18.scm", // VARARG APPEND UNSUPPORTED BY CONCRETE INTERPRETER
 
     "test/scp1/8.1.1.scm",
     "test/scp1/8.1.3.scm",
-    //"test/scp1/8.5.scm", // VARARG
+    "test/scp1/8.5.scm", // VARARG
     "test/scp1/8.6.scm",
     //"test/scp1/8.10.scm", // SMALLSTEP LOOPS, EVEN WITH FINER TIMEOUT TODO
-    //"test/scp1/8.11.scm", // VARARG
+    "test/scp1/8.11.scm", // VARARG
     "test/scp1/8.12.scm",
     "test/scp1/8.13.scm",
     "test/scp1/8.14.scm",
     "test/scp1/8.15.scm",
-    //"test/scp1/8.16.scm", // VARARG
+    "test/scp1/8.16.scm", // VARARG
 
     "test/scp1/9.2.scm",
     "test/scp1/9.3.scm",
     "test/scp1/9.5.scm",
     "test/scp1/9.6.scm",
     "test/scp1/9.7.scm",
-    "test/scp1/9.8.scm",
+    //"test/scp1/9.8.scm", // Undefined variable right-rotate.
     "test/scp1/9.9.scm",
     "test/scp1/9.12.scm",
     "test/scp1/9.13.scm",
@@ -170,6 +170,7 @@ object SchemeBenchmarks {
   )
 
   val scp1_compressed: Set[String] = Set(
+    // TODO Uncomment commented out files.
     "test/scp1-compressed/2.scm",
     "test/scp1-compressed/3.scm",
     "test/scp1-compressed/4.scm",
@@ -192,7 +193,7 @@ object SchemeBenchmarks {
   )
 
   val theLittleSchemer: Set[String] = Set(
-    "test/WeiChenRompf2019/the-little-schemer/ch1.scm",
+    //"test/WeiChenRompf2019/the-little-schemer/ch1.scm", // PARSER ERROR
     "test/WeiChenRompf2019/the-little-schemer/ch2.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch3.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch4.scm",
@@ -232,7 +233,7 @@ object SchemeBenchmarks {
     //"test/WeiChenRompf2019/mbrotZ.sch", // PARSER ERROR TODO
     //"test/WeiChenRompf2019/meta-circ.scm", // UNSUPPORTED FEATURE? (lambda args body)
     //"test/WeiChenRompf2019/omega.scm", // STACKOVERFLOW CONCRETE MACHINE
-    "test/WeiChenRompf2019/regex-derivative.scm",
+    //"test/WeiChenRompf2019/regex-derivative.scm", // PARSER ERROR
     "test/WeiChenRompf2019/rsa.scm",
     "test/WeiChenRompf2019/scheme2java.scm",
     "test/WeiChenRompf2019/solovay-strassen.scm",
