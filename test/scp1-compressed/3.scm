@@ -88,33 +88,26 @@
   (close-to (calc-cos 3.1415 10) -0.9999999992346591))
 
 ; 3.4
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result2 '())
+(define display2 (lambda (i) (set! result2 (cons i result2))))
 
 (define (count1 x)
-  (cond ((= 0 x) (display x))
-    (else (display x)
+  (cond ((= 0 x) (display2 x))
+    (else (display2 x)
       (count1 (- x 1)))))
 
 (define (count2 x)
-  (cond ((= 0 x) (display x))
+  (cond ((= 0 x) (display2 x))
     (else (count2 (- x 1))
-      (display x))))
+      (display2 x))))
 
 (count1 4)
 (count2 4)
-(equal? result '(4 3 2 1 0 0 1 2 3 4))
+(equal? result2 '(4 3 2 1 0 0 1 2 3 4))
 
 ; 3.6
-(define (for-each f l)
-  (if (null? l)
-    #t
-    (if (pair? l)
-      (begin (f (car l)) (for-each f (cdr l)))
-      (error "Cannot for-each over a non-list"))))
-
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result3 '())
+(define display3 (lambda (i) (set! result3 (cons i result3))))
 
 (define (weird x)
   (cond
@@ -131,14 +124,14 @@
 (define (weird-table min max)
   (cond
     ((< min max)
-      (for-each display (list min "\t" (depth-weird min) "\n"))
+      (for-each display3 (list min "\t" (depth-weird min) "\n"))
       (weird-table (+ min 1) max))))
 
 (weird-table 1 10)
 
 (and (= (weird 15) 1)
   (= (depth-weird 15) 17)
-  (equal? result '("\n" 19 "\t" 9 "\n" 3 "\t" 8 "\n" 16 "\t" 7 "\n" 8 "\t" 6 "\n" 5 "\t" 5 "\n" 2 "\t" 4 "\n" 7 "\t" 3 "\n" 1 "\t" 2 "\n" 0 "\t" 1)))
+  (equal? result3 '("\n" 19 "\t" 9 "\n" 3 "\t" 8 "\n" 16 "\t" 7 "\n" 8 "\t" 6 "\n" 5 "\t" 5 "\n" 2 "\t" 4 "\n" 7 "\t" 3 "\n" 1 "\t" 2 "\n" 0 "\t" 1)))
 
 ; 3.8
 (define (double x) (+ x x))
@@ -156,14 +149,14 @@
   (= (sim-fast-multiply 14 2365) 19))
 
 ; 3.9
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define result4 '())
+(define display4 (lambda (i) (set! result4 (cons i result4))))
+(define newline4 (lambda () (set! result4 (cons 'newline result4))))
 
 (define (display-n n x)
   (if (> n 0)
     (begin
-      (display x)
+      (display4 x)
       (display-n (- n 1) x))))
 
 (define (parasol n)
@@ -172,21 +165,21 @@
       (begin
         (display-n (- n i 1) " ")
         (display-n (+ (* 2 i) 1) "*")
-        (newline)
+        (newline4)
         (triangle (+ i 1)))))
 
   (define (stick i)
     (if (< i 3)
       (begin
         (display-n (- n 1) " ")
-        (display "*")(newline)
+        (display4 "*")(newline4)
         (stick (+ i 1)))))
 
   (triangle 0)
   (stick 0))
 
 (parasol 10)
-(equal? result
+(equal? result4
     '(newline
        "*"
        " "
