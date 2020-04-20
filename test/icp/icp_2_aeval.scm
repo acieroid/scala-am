@@ -1,6 +1,3 @@
-(#%require (only racket/base
-                 time error))
-
 ;;
 ;; Code voor analyserende evaluator "A-Eval"
 ;;
@@ -29,7 +26,7 @@
         ((cond? exp) (analyze (cond->if exp)))
         ((application? exp) (analyze-application exp))
         (else
-         (error "Unknown expression type -- ANALYZE" exp))))
+         (error "Unknown expression type -- ANALYZE"))))
 
 ;;
 ;; zie deel 2 p8
@@ -132,7 +129,7 @@
         (else
          (error
           "Unknown procedure type -- EXECUTE-APPLICATION"
-          proc))))
+          ))))
 
 
 ;;
@@ -273,7 +270,7 @@
             (if (null? rest)
                 (sequence->exp (cond-actions first))
                 (error "ELSE clause isn't last -- COND->IF"
-                       clauses))
+                       ))
             (make-if (cond-predicate first)
                      (sequence->exp (cond-actions first))
                      (expand-clauses rest))))))
@@ -329,8 +326,8 @@
   (if (= (length vars) (length vals))
       (cons (make-frame vars vals) base-env)
       (if (< (length vars) (length vals))
-          (error "Too many arguments supplied" vars vals)
-          (error "Too few arguments supplied" vars vals))))
+          (error "Too many arguments supplied" )
+          (error "Too few arguments supplied" ))))
 
 (define (make-frame variables values)
   (cons variables values))
@@ -351,7 +348,7 @@
              (car vals))
             (else (scan (cdr vars) (cdr vals)))))
     (if (eq? env the-empty-environment)
-        (error "Unbound variable" var)
+        (error "Unbound variable")
         (let ((frame (first-frame env)))
           (scan (frame-variables frame)
                 (frame-values frame)))))
@@ -366,7 +363,7 @@
              (set-car! vals val))
             (else (scan (cdr vars) (cdr vals)))))
     (if (eq? env the-empty-environment)
-        (error "Unbound variable -- SET!" var)
+        (error "Unbound variable -- SET!")
         (let ((frame (first-frame env)))
           (scan (frame-variables frame)
                 (frame-values frame)))))
@@ -460,11 +457,10 @@
 ;;
 ;; Volgende expressie meet hoe lang het duurt om (fac 10000) te berekenen:
 ;;
-(time
  (eval '(begin
          (define (fac num) 
            (if (= num 0)
                1
                (* num (fac (- num 1)))))
          (define x (fac 10000)))
-       the-global-environment))
+       the-global-environment)
