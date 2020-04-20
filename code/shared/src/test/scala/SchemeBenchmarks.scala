@@ -182,6 +182,16 @@ object SchemeBenchmarks {
 
   val scp1_singleFile: Set[String] = Set("test/scp1-compressed/all.scm")
 
+  val SICP: Set[String] = Set(
+    "test/icp/icp_2_aeval.scm",
+    "test/icp/icp_3_leval.scm",
+    "test/icp/icp_4_qeval.scm",
+    "test/icp/icp_5_regsim.scm",
+    "test/icp/icp_6_stopandcopy_scheme.scm",
+    "test/icp/icp_2_eceval.scm",
+    "test/icp/icp_8_compiler.scm",
+  )
+
   val sigscheme: Set[String] = Set(
     "test/sigscheme/arithint.scm",
     "test/sigscheme/case.scm",
@@ -283,5 +293,5 @@ object SchemeBenchmarks {
   )
 
   val WeiChenRompf2019: Set[String] = WCR2019 ++ theLittleSchemer ++ toplas98
-  val    allBenchmarks: Set[String] = ad ++ gabriel ++ gambit ++ rosetta ++ scp1 ++ sigscheme ++ WeiChenRompf2019 ++ other
+  val    allBenchmarks: Set[String] = ad ++ gabriel ++ gambit ++ rosetta ++ scp1 ++ SICP ++ sigscheme ++ WeiChenRompf2019 ++ other
 }

@@ -78,3 +78,21 @@ object Incrementor extends App {
   mapping.map(println)
 
 }
+
+object Analyze extends App {
+  val text = """(define result '())
+               |(define display (lambda (i) (set! result (cons i result))))
+               |(define (foo x)
+               |  (display 1))
+               |(define result2 '())
+               |(define display2 (lambda (i) (set! result2 (cons i result2))))
+               |(define (bar x)
+               |  (display2 (+ x 1)))
+               |(foo 5)
+               |(bar 6)
+               |result2""".stripMargin
+  val a = new ModAnalysis(SchemeParser.parse(text)) with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
+  a.analyze()
+  val r = a.store(a.ReturnAddr(a.initialComponent))
+  println(r)
+}
