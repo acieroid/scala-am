@@ -88,8 +88,8 @@
   (close-to (calc-cos 3.1415 10) -0.9999999992346591))
 
 ; 3.4
-(define result '())
-(define display2 (lambda (i) (set! result (cons i result))))
+(define result2 '())
+(define display2 (lambda (i) (set! result2 (cons i result2))))
 
 (define (count1 x)
   (cond ((= 0 x) (display2 x))
@@ -103,11 +103,11 @@
 
 (count1 4)
 (count2 4)
-(equal? result '(4 3 2 1 0 0 1 2 3 4))
+(equal? result2 '(4 3 2 1 0 0 1 2 3 4))
 
 ; 3.6
-(define result '())
-(define display3 (lambda (i) (set! result (cons i result))))
+(define result3 '())
+(define display3 (lambda (i) (set! result3 (cons i result3))))
 
 (define (weird x)
   (cond
@@ -131,7 +131,7 @@
 
 (and (= (weird 15) 1)
   (= (depth-weird 15) 17)
-  (equal? result '("\n" 19 "\t" 9 "\n" 3 "\t" 8 "\n" 16 "\t" 7 "\n" 8 "\t" 6 "\n" 5 "\t" 5 "\n" 2 "\t" 4 "\n" 7 "\t" 3 "\n" 1 "\t" 2 "\n" 0 "\t" 1)))
+  (equal? result3 '("\n" 19 "\t" 9 "\n" 3 "\t" 8 "\n" 16 "\t" 7 "\n" 8 "\t" 6 "\n" 5 "\t" 5 "\n" 2 "\t" 4 "\n" 7 "\t" 3 "\n" 1 "\t" 2 "\n" 0 "\t" 1)))
 
 ; 3.8
 (define (double x) (+ x x))
@@ -149,9 +149,9 @@
   (= (sim-fast-multiply 14 2365) 19))
 
 ; 3.9
-(define result '())
-(define display4 (lambda (i) (set! result (cons i result))))
-(define newline4 (lambda () (set! result (cons 'newline result))))
+(define result4 '())
+(define display4 (lambda (i) (set! result4 (cons i result4))))
+(define newline4 (lambda () (set! result4 (cons 'newline result4))))
 
 (define (display-n n x)
   (if (> n 0)
@@ -179,7 +179,7 @@
   (stick 0))
 
 (parasol 10)
-(equal? result
+(equal? result4
     '(newline
        "*"
        " "

@@ -113,19 +113,19 @@
 ;  (= ((polynome 'coefficient) 2) 2))
 
 ; 8.6
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result3 '())
+(define display3 (lambda (i) (set! result3 (cons i result3))))
 
 (define hulp 2)
 (define (haha x)
   (let ((hulp (* x hulp)))
-    (display hulp))
-  (display hulp)
+    (display3 hulp))
+  (display3 hulp)
   (set! hulp 4))
 
 (haha 2)
 (haha 3)
-(equal? result '(4 12 2 4))
+(equal? result3 '(4 12 2 4))
 
 ; 8.10
 ;(define result '())
@@ -464,10 +464,10 @@
           base
           (f (car lst) (foldr-aux (cdr lst))))))
     (foldr-aux lst)))
-(define result '())
-(define display2 (lambda (i) (set! result (cons i result))))
-(define newline2 (lambda () (set! result (cons 'newline result))))
-(define error2 (lambda (e) (set! result (cons (list 'error e) result))))
+(define result2 '())
+(define display2 (lambda (i) (set! result2 (cons i result2))))
+(define newline2 (lambda () (set! result2 (cons 'newline result2))))
+(define error2 (lambda (e) (set! result2 (cons (list 'error e) result2))))
 
 
 (define (maak-buffer)
@@ -640,7 +640,7 @@
 
 (verkeersteller 'newDay)
 
-(equal? result '(newline
+(equal? result2 '(newline
                   newline
                   " auto's"
                   1
