@@ -7,7 +7,15 @@
 ;;
 ;; zie deel 1a p. 37
 ;;
-(define apply-in-underlying-scheme apply)
+(define (apply-in-underlying-scheme proc args)
+  (cond
+    ((null? args) (proc))
+    ((null? (cdr args)) (proc (car args)))
+    ((null? (cddr args)) (proc (car args) (cadr args)))
+    ((null? (cdddr args)) (proc (car args) (cadr args) (caddr args)))
+    ((null? (cddddr args)) (proc (car args) (cadr args) (caddr args) (cadddr args)))
+    ((null? (cdr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args))))
+    (else (error "Unsupported call."))))
 
 ;;
 ;; zie deel 1a p. 13
