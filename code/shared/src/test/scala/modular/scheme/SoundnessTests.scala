@@ -156,8 +156,8 @@ class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends SchemeModFSoundne
 // ... for small-step semantics
 class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                            with SmallStepSchemeModF
-                                           with SimpleBenchmarks // with AllBenchmarks
+                                           with AllBenchmarks
 
 class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                                 with SimpleAdaptiveSchemeModF
-                                                with SimpleBenchmarks // with AllBenchmarks
+                                                with AllBenchmarks
