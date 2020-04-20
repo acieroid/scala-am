@@ -136,17 +136,10 @@
 ;; Hergebruikte code van meta-circulaire evaluator "M-Eval"
 ;;
 
-(define error 'dummy)
-(call-with-current-continuation (lambda (cont)
-                                  (set! error
-                                        (lambda args
-                                          (display "!!ERROR!! ")
-                                          (newline)
-                                          (cont args)))))
 (define true #t)
 (define false #f)
 
-(define apply-in-underlying-scheme apply)
+; (define apply-in-underlying-scheme apply)
 
 (define (list-of-values exps env)
   (if (no-operands? exps)
@@ -416,20 +409,23 @@
        primitive-procedures))
 
 (define (apply-primitive-procedure proc args)
-  (apply-in-underlying-scheme
-   (primitive-implementation proc) args))
+  (cond
+   ((null? args) (proc))
+   ((null? (cdr args)) (proc (car args)))
+   ((null? (cddr args)) (proc (car args) (cadr args)))
+   (else (error "Unsupported call"))))
 
 
 (define input-prompt ";;; Analyzing-Eval input:")
 (define output-prompt ";;; Analyzing-Eval value:")
 
-(define (driver-loop)
-  (prompt-for-input input-prompt)
-  (let ((input (read)))
-    (let ((output (eval input the-global-environment)))
-      (announce-output output-prompt)
-      (user-print output)))
-  (driver-loop))
+;; (define (driver-loop)
+;;   (prompt-for-input input-prompt)
+;;   (let ((input (read)))
+;;     (let ((output (eval input the-global-environment)))
+;;       (announce-output output-prompt)
+;;       (user-print output)))
+;;   (driver-loop))
 
 (define (prompt-for-input string)
   (newline) (newline) (display string) (newline))
