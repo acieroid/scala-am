@@ -171,7 +171,7 @@
           (node-set-color-black! node-x)))
     
 
-    (define (empty?)
+    (define (tree-empty?)
       (null-tree? content))
     
     (define (lookup element)
@@ -255,14 +255,14 @@
     
     (define (dispatch msg . args)
       (cond
-        ((eq? msg 'empty) (empty?))
+        ((eq? msg 'empty) (tree-empty?))
         ((eq? msg 'insert) (insert (car args)))
         ((eq? msg 'delete) (delete (car args)))
         ((eq? msg 'lookup) (lookup (car args)))
         ((eq? msg 'display) (traverse content  'preorder
                                       (lambda (x c) (display (cons x c)) (newline))))
         (else
-         (error "unknown request -- create-BST" msg))))
+         (error "unknown request -- create-BST"))))
     dispatch))
 
 

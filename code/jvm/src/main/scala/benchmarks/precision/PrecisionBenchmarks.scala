@@ -101,7 +101,15 @@ abstract class PrecisionBenchmarks[
         case SchemeInterpreter.Value.Bool(b)            => baseLattice.bool(b)
         case SchemeInterpreter.Value.Character(c)       => baseLattice.char(c)
         case SchemeInterpreter.Value.Cons(a,d)          => baseLattice.cons(convertConcreteAddr(a),convertConcreteAddr(d))
-        case SchemeInterpreter.Value.Vector(_)          => throw new Exception("Vectors are not supported in precision benchmarks")
+      case SchemeInterpreter.Value.Vector(v)          => throw new Exception("Vectors are not supported in precision benchmarks") /*baseLattice.vector(baseLattice.number(v.size), baseLattice.bottom) match {
+        case MayFailSuccess(vec) => v.view.zipWithIndex.foldLeft(vec)({ case (acc, (value, idx)) =>
+          baseLattice.vectorSet(acc, baseLattice.number(idx), convertConcreteValue(value)) match {
+            case MayFailSuccess(vec2) => vec2
+            case _ => ???
+          }})
+        case _ => ???
+                                                                                                                                   }*/
+          
         case _                                          => throw new Exception("Unsupported concrete value for precision benchmarks")
     }
  
