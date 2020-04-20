@@ -183,6 +183,10 @@ object SchemeBenchmarks {
   val scp1_singleFile: Set[String] = Set("test/scp1-compressed/all.scm")
 
   val SICP: Set[String] = Set(
+    "test/icp/icp_1c_multiple-dwelling.scm",
+    "test/icp/icp_1c_ontleed.scm",
+    "test/icp/icp_1c_prime-sum-pair.scm",
+    // "test/icp/icp_1c_prime-sum-pair-standard.scm", // Does not want to run. :(
     "test/icp/icp_2_aeval.scm",
     "test/icp/icp_3_leval.scm",
     "test/icp/icp_4_qeval.scm",
