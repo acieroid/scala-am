@@ -410,9 +410,9 @@
 
 (define (apply-primitive-procedure proc args)
   (cond
-   ((null? args) (proc))
-   ((null? (cdr args)) (proc (car args)))
-   ((null? (cddr args)) (proc (car args) (cadr args)))
+   ((null? args) ((primitive-implementation proc)))
+   ((null? (cdr args)) ((primitive-implementation proc) (car args)))
+   ((null? (cddr args)) ((primitive-implementation proc) (car args) (cadr args)))
    (else (error "Unsupported call"))))
 
 
