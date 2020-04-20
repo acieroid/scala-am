@@ -5,14 +5,14 @@ import scalaam.language.scheme._
 import scalaam.util.Monoid
 
 trait SchemeAllocator[A] {
-  def pointer(exp: Identity): A
-  def carAddr(exp: Identity): A
-  def cdrAddr(exp: Identity): A
+  def pointer(exp: SchemeExp): A
+  def carAddr(exp: SchemeExp): A
+  def cdrAddr(exp: SchemeExp): A
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {
-  def call(fpos: Identity,
-           args: List[(Identity, V)],
+  def call(fexp: SchemeExp,
+           args: List[(SchemeExp, V)],
            store: Store[A, V],
            alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error]
 }

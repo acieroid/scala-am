@@ -31,6 +31,8 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case Main               => Main
     case Call(clo,nam,ctx)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
   }
+  // HELPER FUNCTIONS FOR `joinComponents`
+  // TODO: Extract and put this somewhere else
   private def extractComponentRefs(value: Value): Set[Component] = value match {
     case valueLattice.Elements(vs)  => vs.flatMap(extractComponentRefs)
     case valueLattice.Element(v)    => extractComponentRefs(v)
@@ -50,6 +52,36 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case Main       => None
     case call: Call => Some(call.clo)
   }
+  def similarV(v1: valueLattice.Value, v2: valueLattice.Value): Boolean = (v1,v2) match {
+    case (valueLattice.Nil, valueLattice.Nil) => true
+    case (valueLattice.Int(_), valueLattice.Int(_)) => true
+    case (valueLattice.Real(_), valueLattice.Real(_)) => true
+    case (valueLattice.Bool(_), valueLattice.Bool(_)) => true
+    case (valueLattice.Char(_), valueLattice.Char(_)) => true
+    case (valueLattice.Str(_), valueLattice.Str(_)) => true
+    case (valueLattice.Symbol(_), valueLattice.Symbol(_)) => true
+    case (valueLattice.Vec(_,_,_), valueLattice.Vec(_,_,_)) => true
+    case (valueLattice.Clo(_,p1,_),valueLattice.Clo(_,p2,_)) => 
+      getClosure(p1) == getClosure(p2)
+    case (valueLattice.Cons(a1,d1),valueLattice.Cons(a2,d2)) =>
+      getClosure(extractComponentRefs(a1)) == getClosure(extractComponentRefs(a2)) &&
+      getClosure(extractComponentRefs(d1)) == getClosure(extractComponentRefs(d2))
+    case (valueLattice.Pointer(a1),valueLattice.Pointer(a2)) =>
+      getClosure(extractComponentRefs(a1)) == getClosure(extractComponentRefs(a2))
+    case (_,_) => false
+  }
+  def similarValue(value1: Value, value2: Value): Boolean = (value1,value2) match {
+    case (valueLattice.Element(v1), valueLattice.Element(v2)) => similarV(v1,v2)
+    case (_,_) => false
+  }
+  def insertValue(values: List[Set[Value]], value: Value): List[Set[Value]] = values match {
+    case Nil => List(Set(value))
+    case vs :: rest if similarValue(vs.head,value) => (vs + value) :: rest 
+    case vs :: rest => vs :: insertValue(rest, value)
+  }
+  def partitionValues(vs: Set[Value]): List[Set[Value]] = 
+    vs.foldLeft(List.empty[Set[Value]])(insertValue)
+
   var toJoin = Set[Set[Component]]()
   var joinedArgs = List[Value]()
   def joinComponents(cmps: Set[Component]) = {

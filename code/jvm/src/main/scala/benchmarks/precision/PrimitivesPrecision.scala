@@ -10,6 +10,172 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme.primitives.SchemePrelude
 
+import scala.concurrent.duration._
+import scalaam.util._
+
+object PrimitivesBenchmarks {
+  val benchmarks = List(
+//    "test/kernighanvanwyk/ack.scm",
+//    "test/rsa.scm",
+//    "test/church.scm",
+//    "test/mceval.scm",
+//    "test/scp1/9.12.scm",
+//    "test/gabriel/browse.scm",
+//    "test/scp1/8.15.scm",
+//    "test/gambit/mazefun.scm",
+//    "test/gabriel/diviter.scm",
+//    "test/gabriel/divrec.scm",
+//    // "test/gambit/matrix.scm", // vectors
+    "test/scp1/9.18.scm",
+    "test/scp1/5.14.3.scm",
+    "test/scp1/7.16.scm",
+    "test/scp1/9.16.scm",
+    "test/gabriel/destruc.scm",
+    "test/gabriel/dderiv.scm",
+    "test/scp1/7.11.scm",
+    "test/scp1/7.13.scm",
+    "test/scp1/5.22.scm",
+    "test/scp1/7.14.scm",
+    "test/scp1/7.4.scm",
+    "test/scp1/7.17.scm",
+    "test/scp1/9.14.scm",
+    "test/scp1/7.9.scm",
+    //    "test/sigscheme/mem.scm", // vectors
+    "test/scp1/7.15.scm",
+//    "test/sat.scm",
+//    "test/gabriel/deriv.scm",
+////    "test/sigscheme/takr.scm",
+//    "test/scp1/7.12.scm",
+//    "test/regex.scm",
+//    // "test/grid.scm", // vectors
+//    // "test/gabriel/puzzle.scm", // vectors
+//    "test/scp1/5.20.4.scm",
+//    "test/scp1/5.19.scm",
+//    "test/scp1/9.15.scm",
+//    "test/regex.scm",
+//    "test/rsa.scm",
+  )
+
+  val improvedPrecision = Map(
+    "test/church.scm" -> List("plus", "mult", "pred", "sub", "church0", "church1", "church2", "church0?", "church=?"),
+    "test/mceval.scm" -> List(
+      "foldr", "foldr-aux", "foldl", "foldl-aux",
+      "self-evaluating?", "variable?", "tagged-list?", "quoted?", "text-of-quotation", "assignment?",
+      "assignment-variable", "assignment-value", "definition?", "definition-variable", "make-lambda",
+      "definition-value", "lambda?", "lambda-parameters", "lambda-body", "if?", "if-predicate", "if-consequent",
+      "if-alternative", "make-if", "begin?", "begin-actions", "last-exp?", "first-exp", "rest-exps", "mk-begin",
+      "sequence->exp", "application?", "operator", "operands", "no-operands?", "rest-operands",
+      "cond?", "cond-clauses", "cond-predicate", "cond-else-clause?", "cond-actions", "cond->if",
+      "true?", "false?", "make-procedure", "compound-procedure?", "procedure-parameters", "procedure-body",
+      "procedure-environment", "enclosing-environment", "first-frame", "make-frame", "frame-variables", "frame-values",
+      "add-binding-to-frame!", "extend-environment", "primitive-procedure", "primitive-implementation",
+      "expand-clauses", "lookup-variable-value", "set-variable-value!", "define-variable!",
+    ),
+    "test/regex.scm" -> List(
+      "regex-alt?", "regex-seq?", "regex-rep?", "regex-null?", "regex-empty?", "regex-atom?",
+      "match-seq", "match-alt", "match-rep", "seq", "alt", "rep", "regex-empty", "regex-derivative", "d/dc",
+      "regex-match", "check-expect"
+    ),
+    "test/rsa.scm" -> List(
+      "extended-gcd", "modulo-inverse", "totient", "square", "modulo-power",
+      "is-legal-public-exponent?", "private-exponent", "encrypt", "decrypt"
+    ),
+    "test/scp1/5.20.4.scm" -> List(
+      "show", "one", "één-buis?", "geen-buis?"
+    ),
+    "test/scp1/5.22.scm" -> List(
+      "foldr", "foldr-aux", "totaal", "zoek-korting", "total-iter", "loop"
+    ),
+    "test/scp1/7.9.scm" -> List(
+      "blad?", "appel?", "type", "leafs", "all-apples", "conditional-append", "apple-types", "bewerk-boom",
+      "leafs-dmv-bewerk", "all-apples-dmv-bewerk", "apple-types-dmv-bewerk"
+    ),
+    "test/scp1/7.11.scm" -> List(
+      "baas", "sub-organigrammen", "hierarchisch?", "hierarchisch?-in",
+      "collegas", "collegas-in", "werknemers-in", "werknemers"
+    ),
+    "test/scp1/7.14.scm" -> List(
+      "atom?", "maak-dier", "naam", "eigenschappen", "dier?", "maak-boom", "knoop", "deelbomen", "leeg?", "knoop?",
+      "all-kinds", "all-kinds-in", "geef-eigenschappen", "geef-eig-in", "ask?"
+    ),
+    "test/scp1/8.15.scm" -> List(
+      "foldr", "foldr-aux", "foldl", "foldl-aux",
+      "maak-buffer", "newValue", "returnSum", "flush", "value",
+      "maak-verkeersteller", "newCar", "newHour", "newDay", "loop",
+    ),
+    "test/scp1/9.12.scm" -> List(
+      "find-last", "flatten!", "atom?", "flatten2!",
+    ),
+    // That will OOM when applied with a too-high sensitivity (e.g., 10ACS)
+//    "test/sigscheme/takr.scm" -> List(
+//      "tak0", "tak1", "tak2", "tak3", "tak4", "tak5", "tak6", "tak7", "tak8", "tak9", "tak10",
+//      "tak11", "tak12", "tak13", "tak14", "tak15", "tak16", "tak17", "tak18", "tak19", "tak20",
+//      "tak21", "tak22", "tak23", "tak24", "tak25", "tak26", "tak27", "tak28", "tak29", "tak30",
+//      "tak31", "tak32", "tak33", "tak34", "tak35", "tak36", "tak37", "tak38", "tak39", "tak40",
+//      "tak41", "tak42", "tak43", "tak44", "tak45", "tak46", "tak47", "tak48", "tak49", "tak50",
+//      "tak51", "tak52", "tak53", "tak54", "tak55", "tak56", "tak57", "tak58", "tak59", "tak60",
+//      "tak61", "tak62", "tak63", "tak64", "tak65", "tak66", "tak67", "tak68", "tak69", "tak70",
+//      "tak71", "tak72", "tak73", "tak74", "tak75", "tak76", "tak77", "tak78", "tak79", "tak80",
+//      "tak81", "tak82", "tak83", "tak84", "tak85", "tak86", "tak87", "tak88", "tak89", "tak90",
+//      "tak91", "tak92", "tak93", "tak94", "tak95", "tak96", "tak97", "tak98", "tak99",
+//    ),
+    "test/gambit/peval.scm" -> List(
+      "every?", "some?", "map2", "get-last-pair", "alphabetize", "const-expr?", "const-value", "quot",
+      "not-constant?", "remove-constant", "extract-constant", "beta-subst", "binding-frame", "bound-expr",
+      "add-binding", "for-each!", "arg-pattern", "sum", "product", "reduce-global", "constant-fold-global"
+    ),
+    "test/gambit/mazefun.scm" -> List(
+      "foldr", "foldr-aux", "foldl", "foldl-aux",
+      "for", "for-aux", "concat",
+      "list-read", "list-write", "list-remove-pos", "duplicates?",
+      "make-matrix", "matrix-read", "matrix-write", "matrix-size", "matrix-map",
+      "shuffle", "shuffle-aux", "make-maze", "cave-to-maze", "pierce", "pierce-randomly",
+      "try-to-pierce", "change-cavity", "change-cavity-aux", "neighboring-cavities"
+    ),
+    "test/gabriel/browse.scm" -> List(
+      "lookup", "get", "put", "append-to-tail!", "tree-copy",
+    ),
+    "test/gabriel/dderiv.scm" -> List(
+      "lookup", "loop", "get", "put", "dderiv", "my+dderiv", "my-dderiv", "*dderiv", "/dderiv"
+    ),
+    "test/gabriel/deriv.scm" -> List(
+      "deriv"
+    ),
+    "test/gabriel/divrec.scm" -> List(
+      "create-n", "loop", "recursive-div2"
+    ),
+    "test/gabriel/destruc.scm" -> List(
+      "append-to-tail!", "destructive"
+    ),
+    "test/gabriel/diviter.scm" -> List(
+      "create-n", "iterate-div2",
+    )
+
+  ).withDefaultValue(List())
+
+
+  /* TODO:
+  val primPrecision: Set[String] = primDefs.keySet ++ Set(
+    // scp1/9.18.scm
+    "first-el", "smaller?", "same?", "merge", "merge-in",
+    // scp1/5.14.3.scm
+    "super-merge-n", "geef-n+rest",
+    // scp1/7.16.scm"
+    "foldr", "foldr-aux", "foldl", "foldl-aux",
+    "omzetcijfer", "heeft-omzetcijfer", "deel-categorien", "hoofdcategorie", "bereken", "omzet", "omzet-in", "collect-pairs", "collect-pairs-in", "verdeel-democratisch", "verdeel", "verdeel-in",
+    // scp1/9.16.scm"
+    "insert-aux!", "insert!",
+    // scp1/7.11.scm
+    "baas", "sub-organigrammen", "hierarchisch?", "hierarchisch?-in", "collegas", "collegas-in", "werknemers-in", "werknemers",
+    // scp1/7.17.scm
+    "familiehoofd", "kinderen", "laatste-nakomeling?", "verdeel-democratisch", "verdeel", "verdeel-in", "budget", "budget-hulp", "budget-hulp-in",
+    // scp1/9.14.scm
+    "schuif-in!",
+    // scp1/7.15
+    "maak-blad", "geef-type", "maak-knop", "geef-deelbomen", "maak-hybride-tak", "geef-knopen", "leeg?", "knoop?", "blad?", "tel", "combine-results", "tel-hulp", "tel-hulp-in", "member?", "normaal?", "check-normaal", "check-normaal-in",
+  )*/
+}
+
 abstract class PrimitivesComparison extends AnalysisComparison[
     ConstantPropagation.I,
     ConstantPropagation.R,
@@ -18,6 +184,8 @@ abstract class PrimitivesComparison extends AnalysisComparison[
     ConstantPropagation.S,
     Concrete.Sym
 ] {
+  var path: String = "<none>"
+
   def S_0_0(prg: SchemeExp): Analysis
   def S_CS_0(prg: SchemeExp): Analysis
   def S_2CS_0(prg: SchemeExp): Analysis
@@ -30,6 +198,7 @@ abstract class PrimitivesComparison extends AnalysisComparison[
   def S_CSFA_0(prg: SchemeExp): Analysis
 
 
+  override def analysisTimeout() = Timeout.start(Duration(2, MINUTES)) //timeout for (non-base) analyses
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
   def otherAnalyses(prg: SchemeExp) = List(
@@ -38,17 +207,17 @@ abstract class PrimitivesComparison extends AnalysisComparison[
     S_2CS_0(prg),
     S_2AcyclicCS_0(prg),
     S_10CS_0(prg),
-    S_10AcyclicCS_0(prg),
+//    S_10AcyclicCS_0(prg),
     S_FA_0(prg),
-    S_2FA_0(prg),
-    S_10FA_0(prg),
+//    S_2FA_0(prg),
+//    S_10FA_0(prg),
     S_CSFA_0(prg),
   )
 
   def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
 
-  def check(path: Benchmark) = {
-      val txt = Reader.loadFile(path)
+  def check(benchmark: Benchmark) = {
+      val txt = Reader.loadFile(benchmark)
       val prg = SchemeParser.parse(txt)
       val con = runInterpreter(prg, path).get
       val abs = runAnalysis(baseAnalysis(prg),path).get
@@ -60,7 +229,11 @@ abstract class PrimitivesComparison extends AnalysisComparison[
   }
 
   def runBenchmarks() = {
-    SchemeBenchmarks.forPrimitives.take(3).foreach(runBenchmark)
+    PrimitivesBenchmarks.benchmarks.foreach(b => {
+      System.gc()
+      path = b
+      runBenchmark(b)
+    })
     println("Results:")
     println("Benchmark & 0 & CS & 2CS & 2ACS & 10CS & 10ACS & FA & 2FA & 10FA & CSFA & Max \\\\")
     this.results.foreach { case (b, r) =>
@@ -224,5 +397,88 @@ object PrimitivesComparisonRQ3TrackLowToHigh extends PrimitivesComparison {
                                                       with ConstantPropagationDomain {
     override def toString() = "CSFA_0"
     override val primPrecision = SchemePrelude.primNames
+  }
+}
+
+object PrimitivesComparisonRQ4HighestPrecision extends PrimitivesComparison {
+  override def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                   with BigStepSemantics
+                                                   with CompoundSensitivities.SeparateLowHighSensitivity.S_0_0
+                                                   with ConstantPropagationDomain {
+    override def toString() = "0_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_CS_0
+                                                    with ConstantPropagationDomain {
+    override def toString() = "CS_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_2CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_2CS_0
+                                                    with ConstantPropagationDomain {
+    override def toString() = "2CS_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_10CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_10CS_0
+                                                    with ConstantPropagationDomain {
+    override def toString() = "10CS_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_2AcyclicCS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_2AcyclicCS_0
+                                                    with ConstantPropagationDomain {
+    override def toString() = "2AcyclicCS_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_10AcyclicCS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_10AcyclicCS_0
+                                                    with ConstantPropagationDomain {
+    override def toString() = "10AcyclicCS_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_FA_0
+                                                    with ConstantPropagationDomain {
+    override def toString() = "FA_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_2FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                     with BigStepSemantics
+                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_2FA_0
+                                                     with ConstantPropagationDomain {
+    override def toString() = "2FA_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_10FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                    with BigStepSemantics
+                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_10FA_0
+                                                    with ConstantPropagationDomain {
+    override def toString() = "10FA_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
+  }
+  def S_CSFA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+                                                      with BigStepSemantics
+                                                      with CompoundSensitivities.SeparateLowHighSensitivity.S_CSFA_0
+                                                      with ConstantPropagationDomain {
+    override def toString() = "CSFA_0"
+    override val primPrecision = SchemePrelude.primNames ++ PrimitivesBenchmarks.improvedPrecision(path)
+    override def isPrimitive(nam: Option[String]): Boolean = true
   }
 }
