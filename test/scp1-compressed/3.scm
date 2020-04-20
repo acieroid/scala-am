@@ -89,32 +89,25 @@
 
 ; 3.4
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define display2 (lambda (i) (set! result (cons i result))))
 
 (define (count1 x)
-  (cond ((= 0 x) (display x))
-    (else (display x)
+  (cond ((= 0 x) (display2 x))
+    (else (display2 x)
       (count1 (- x 1)))))
 
 (define (count2 x)
-  (cond ((= 0 x) (display x))
+  (cond ((= 0 x) (display2 x))
     (else (count2 (- x 1))
-      (display x))))
+      (display2 x))))
 
 (count1 4)
 (count2 4)
 (equal? result '(4 3 2 1 0 0 1 2 3 4))
 
 ; 3.6
-(define (for-each f l)
-  (if (null? l)
-    #t
-    (if (pair? l)
-      (begin (f (car l)) (for-each f (cdr l)))
-      (error "Cannot for-each over a non-list"))))
-
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define display3 (lambda (i) (set! result (cons i result))))
 
 (define (weird x)
   (cond
@@ -131,7 +124,7 @@
 (define (weird-table min max)
   (cond
     ((< min max)
-      (for-each display (list min "\t" (depth-weird min) "\n"))
+      (for-each display3 (list min "\t" (depth-weird min) "\n"))
       (weird-table (+ min 1) max))))
 
 (weird-table 1 10)
@@ -157,13 +150,13 @@
 
 ; 3.9
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define display4 (lambda (i) (set! result (cons i result))))
+(define newline4 (lambda () (set! result (cons 'newline result))))
 
 (define (display-n n x)
   (if (> n 0)
     (begin
-      (display x)
+      (display4 x)
       (display-n (- n 1) x))))
 
 (define (parasol n)
@@ -172,14 +165,14 @@
       (begin
         (display-n (- n i 1) " ")
         (display-n (+ (* 2 i) 1) "*")
-        (newline)
+        (newline4)
         (triangle (+ i 1)))))
 
   (define (stick i)
     (if (< i 3)
       (begin
         (display-n (- n 1) " ")
-        (display "*")(newline)
+        (display4 "*")(newline4)
         (stick (+ i 1)))))
 
   (triangle 0)
