@@ -1,8 +1,5 @@
 package scalaam.test.language.scheme
 
-import scalaam.core._
-import scalaam.language.scheme.SchemeLattice
-
 object SchemeR5RSBenchmarks {
 
   val bench: List[(String, Any)] = List(

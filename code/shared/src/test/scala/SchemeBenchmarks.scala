@@ -169,6 +169,18 @@ object SchemeBenchmarks {
     "test/scp1/9.18.scm",
   )
 
+  val scp1_compressed: Set[String] = Set(
+    "test.scp1-compressed/2.scm",
+    "test.scp1-compressed/3.scm",
+    "test.scp1-compressed/4.scm",
+    "test.scp1-compressed/5.scm",
+    "test.scp1-compressed/7.scm",
+    "test.scp1-compressed/8.scm",
+    "test.scp1-compressed/9.scm",
+  )
+
+  val scp1_singleFile: Set[String] = Set("test.scp1-compressed/all.scm")
+
   val sigscheme: Set[String] = Set(
     "test/sigscheme/arithint.scm",
     "test/sigscheme/case.scm",
