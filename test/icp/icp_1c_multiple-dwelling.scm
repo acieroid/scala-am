@@ -124,8 +124,7 @@
       (if (cond-else-clause? first)
         (if (null? rest)
           (sequence->exp (cond-actions first))
-          (error "ELSE clause isn't last -- COND->IF"
-            clauses))
+          (error "ELSE clause isn't last -- COND->IF"))
         (make-if (cond-predicate first)
           (sequence->exp (cond-actions first))
           (expand-clauses rest))))))
@@ -196,8 +195,8 @@
   (if (= (length vars) (length vals))
     (cons (make-frame vars vals) base-env)
     (if (< (length vars) (length vals))
-      (error "Too many arguments supplied" vars vals)
-      (error "Too few arguments supplied" vars vals))))
+      (error "Too many arguments supplied")
+      (error "Too few arguments supplied"))))
 
 ;;
 ;; zie deel 1a p. 31
@@ -224,7 +223,7 @@
           (car vals))
         (else (scan (cdr vars) (cdr vals)))))
     (if (eq? env the-empty-environment)
-      (error "Unbound variable" var)
+      (error "Unbound variable")
       (let ((frame (first-frame env)))
         (scan (frame-variables frame)
           (frame-values frame)))))
@@ -242,7 +241,7 @@
           (set-car! vals val))
         (else (scan (cdr vars) (cdr vals)))))
     (if (eq? env the-empty-environment)
-      (error "Unbound variable -- SET!" var)
+      (error "Unbound variable -- SET!")
       (let ((frame (first-frame env)))
         (scan (frame-variables frame)
           (frame-values frame)))))
@@ -373,7 +372,7 @@
     ((amb? exp) (analyze-amb exp))
     ((application? exp) (analyze-application exp))
     (else
-      (error "Unknown expression type -- ANALYZE" exp))))
+      (error "Unknown expression type -- ANALYZE"))))
 
 ;;
 ;; zie deel 1c p. 13
@@ -515,9 +514,7 @@
         succeed
         fail))
     (else
-      (error
-        "Unknown procedure type -- EXECUTE-APPLICATION"
-        proc))))
+      (error "Unknown procedure type -- EXECUTE-APPLICATION"))))
 
 ;;
 ;; zie deel 1c p. 21
