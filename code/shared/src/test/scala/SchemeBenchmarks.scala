@@ -26,26 +26,26 @@ object SchemeBenchmarks {
 
   val ad: Set[String] = Set(
     "test/ad/abstrct.scm",
-    //"test/ad/bfirst.scm", // VARARG
-    // "test/ad/bst.scm", // VARARG
+    "test/ad/bfirst.scm", // VARARG
+    "test/ad/bst.scm", // VARARG
     //"test/ad/btree.scm", // TODO add a body
     "test/ad/bubsort.scm",
     "test/ad/dict.scm",
     // "test/ad/dictExamples.scm", // EMPTY
     //"test/ad/heap.scm", // PARSER ERROR TODO
     "test/ad/inssort.scm",
-    //"test/ad/linear.scm", // VARARG
-    //"test/ad/list.scm", // VARARG
+    "test/ad/linear.scm", // VARARG
+    "test/ad/list.scm", // VARARG
     "test/ad/mesort.scm",
     "test/ad/prioq.scm",
     "test/ad/qsort.scm",
     "test/ad/qstand.scm",
-    //"test/ad/queue.scm", // VARARG
+    "test/ad/queue.scm", // VARARG
     "test/ad/quick.scm",
-    //"test/ad/RBtreeADT.scm", // VARARG
-    //"test/ad/selsort.scm", // PARSER ERROR TODO
+    "test/ad/RBtreeADT.scm", // VARARG
+    "test/ad/selsort.scm", // PARSER ERROR TODO
     "test/ad/stack.scm",
-    //"test/ad/stspaceCODE.scm", // VARARG
+    "test/ad/stspaceCODE.scm", // VARARG
   )
 
   val gabriel: Set[String] = Set(
@@ -77,15 +77,15 @@ object SchemeBenchmarks {
     "test/gambit/lattice.scm",
     "test/gambit/matrix.scm",
     "test/gambit/mazefun.scm",
-    //"test/gambit/nboyer.scm", // VARARG
+    "test/gambit/nboyer.scm", // VARARG
     "test/gambit/nqueens.scm",
     "test/gambit/paraffins.scm",
     "test/gambit/perm9.scm",
-    //"test/gambit/peval.scm", // VARARG
+    "test/gambit/peval.scm", // VARARG
     "test/gambit/primes.scm",
     "test/gambit/puzzle.scm",
-    //"test/gambit/sboyer.scm", // VARARG
-    //"test/gambit/scheme.scm", // VARARG
+    "test/gambit/sboyer.scm", // VARARG
+    "test/gambit/scheme.scm", // VARARG
     //"test/gambit/slatex.scm", // PARSER LIMITATION TODO
     "test/gambit/string.scm",
     "test/gambit/sum.scm",
@@ -143,15 +143,15 @@ object SchemeBenchmarks {
 
     "test/scp1/8.1.1.scm",
     "test/scp1/8.1.3.scm",
-    //"test/scp1/8.5.scm", // VARARG
+    "test/scp1/8.5.scm", // VARARG
     "test/scp1/8.6.scm",
     //"test/scp1/8.10.scm", // SMALLSTEP LOOPS, EVEN WITH FINER TIMEOUT TODO
-    //"test/scp1/8.11.scm", // VARARG
+    "test/scp1/8.11.scm", // VARARG
     "test/scp1/8.12.scm",
     "test/scp1/8.13.scm",
     "test/scp1/8.14.scm",
     "test/scp1/8.15.scm",
-    //"test/scp1/8.16.scm", // VARARG
+    "test/scp1/8.16.scm", // VARARG
 
     "test/scp1/9.2.scm",
     "test/scp1/9.3.scm",
