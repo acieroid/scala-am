@@ -1,6 +1,6 @@
-(define (++ n) (+ n 1))
+(define (my-++ n) (+ n 1))
 
-(define (-- n) (- n 1))
+(define (my--- n) (- n 1))
 
 (define false #f)
 
@@ -14,13 +14,13 @@
   (define (iter index)
     (cond ((> index 0)
            (sift-down a-vector index nr-of-elements)
-           (iter (-- index)))))
+           (iter (my--- index)))))
   (iter (quotient nr-of-elements 2)))
 
 (define (sift-down heap from to)
   (define (smallest-child parent)
     (let* ((child1 (* 2 parent))
-           (child2 (++ child1)))
+           (child2 (my-++ child1)))
       (cond ((> child1 to) false)
             ((> child2 to) child1)
             ((< (key (vector-ref heap child1))
@@ -52,15 +52,15 @@
   (iter from))
 
 (define (create-heap size)
-  (cons 0 (make-vector (++ size))))
+  (cons 0 (make-vector (my-++ size))))
 
-(define (empty? heap)
+(define (is-empty? heap)
   (eq? (car heap) 0))
 
 (define (insert heap item)
   (let* ((content (cdr heap))
-         (new-nr-of-elements (++ (car heap)))
-         (size (-- (vector-length content))))
+         (new-nr-of-elements (my-++ (car heap)))
+         (size (my--- (vector-length content))))
     (display "insert    ")
     (if (> new-nr-of-elements size)
         false

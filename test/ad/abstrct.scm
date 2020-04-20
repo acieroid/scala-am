@@ -1,4 +1,4 @@
-(define result '())
+define result '())
 (define (display item)
   (set! result (cons item result)))
 (define (newline) (set! result (cons 'newline result)))

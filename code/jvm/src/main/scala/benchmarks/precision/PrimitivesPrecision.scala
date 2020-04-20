@@ -13,50 +13,64 @@ import scala.concurrent.duration._
 import scalaam.util._
 
 object PrimitivesBenchmarks {
+  val gabriel = List(
+    "test/gabriel/browse.scm",
+    "test/gabriel/diviter.scm",
+    "test/gabriel/divrec.scm",
+    "test/gabriel/destruc.scm",
+    "test/gabriel/dderiv.scm",
+    "test/gabriel/deriv.scm",
+  )
+  val gambit = List(
+    "test/gambit/mazefun.scm",
+  )
 
   val scp1Compressed = SchemeBenchmarks.scp1_compressed
 
-  val benchmarks = List(
-//    "test/kernighanvanwyk/ack.scm",
-//    "test/rsa.scm",
-//    "test/church.scm",
-//    "test/mceval.scm",
-//    "test/scp1/9.12.scm",
-//    "test/gabriel/browse.scm",
-//    "test/scp1/8.15.scm",
-//    "test/gambit/mazefun.scm",
-//    "test/gabriel/diviter.scm",
-//    "test/gabriel/divrec.scm",
-//    // "test/gambit/matrix.scm", // vectors
-    "test/scp1/9.18.scm",
-    "test/scp1/5.14.3.scm",
-    "test/scp1/7.16.scm",
-    "test/scp1/9.16.scm",
-    "test/gabriel/destruc.scm",
-    "test/gabriel/dderiv.scm",
-    "test/scp1/7.11.scm",
-    "test/scp1/7.13.scm",
-    "test/scp1/5.22.scm",
-    "test/scp1/7.14.scm",
-    "test/scp1/7.4.scm",
-    "test/scp1/7.17.scm",
-    "test/scp1/9.14.scm",
-    "test/scp1/7.9.scm",
-    //    "test/sigscheme/mem.scm", // vectors
-    "test/scp1/7.15.scm",
-//    "test/sat.scm",
-//    "test/gabriel/deriv.scm",
-////    "test/sigscheme/takr.scm",
-//    "test/scp1/7.12.scm",
-//    "test/regex.scm",
-//    // "test/grid.scm", // vectors
-//    // "test/gabriel/puzzle.scm", // vectors
-//    "test/scp1/5.20.4.scm",
-//    "test/scp1/5.19.scm",
-//    "test/scp1/9.15.scm",
-//    "test/regex.scm",
-//    "test/rsa.scm",
+  val ad = List(
+    // "test/ad/bfirst.scm", // incorrect benchmark
+    // "test/ad/bst.scm", // only definitions
+    // "test/ad/btree.scm", // only definitions
+    "test/ad/dict.scm",
+    "test/ad/prioq.scm",
+    // "test/ad/queue.scm", // only definitions
+    "test/ad/quick.scm",
+    // "test/ad/RBtreeADT.scm", // dot notation?
+    "test/ad/stack.scm",
+    // "test/stspaceCODE.scm" // only definitions
   )
+
+  val benchmarks = gambit ++ gabriel ++ List(
+    "test/kernighanvanwyk/ack.scm",
+    "test/rsa.scm",
+    "test/church.scm",
+    "test/mceval.scm",
+    "test/sat.scm",
+    "test/regex.scm",
+    "test/rsa.scm",
+    //    "test/sigscheme/takr.scm", // has a tendency to result in OOM in concrete mode
+  )
+
+  // Benchmarks with vectors are not properly supported. They could be
+  // interesting to support, but a first look at the results shows that it does
+  // not deviates from other benchmarks
+  val vectorBenchmarks = List(
+    "test/gambit/matrix.scm",
+    "test/sigscheme/mem.scm",
+    "test/grid.scm",
+    "test/gabriel/puzzle.scm",
+    "test/ad/abstrct.scm",
+    "test/ad/bubsort.scm",
+    "test/ad/heap.scm",
+    "test/ad/inssort.scm",
+    "test/ad/linear.scm",
+    "test/ad/list.scm",
+    "test/ad/mesort.scm",
+    "test/ad/qsort.scm",
+    "test/ad/qstand.scm",
+    "test/ad/selsort.scm",
+  )
+
 
   val improvedPrecision = Map(
     "test/church.scm" -> List("plus", "mult", "pred", "sub", "church0", "church1", "church2", "church0?", "church=?"),
@@ -154,28 +168,6 @@ object PrimitivesBenchmarks {
     )
 
   ).withDefaultValue(List())
-
-
-  /* TODO:
-  val primPrecision: Set[String] = primDefs.keySet ++ Set(
-    // scp1/9.18.scm
-    "first-el", "smaller?", "same?", "merge", "merge-in",
-    // scp1/5.14.3.scm
-    "super-merge-n", "geef-n+rest",
-    // scp1/7.16.scm"
-    "foldr", "foldr-aux", "foldl", "foldl-aux",
-    "omzetcijfer", "heeft-omzetcijfer", "deel-categorien", "hoofdcategorie", "bereken", "omzet", "omzet-in", "collect-pairs", "collect-pairs-in", "verdeel-democratisch", "verdeel", "verdeel-in",
-    // scp1/9.16.scm"
-    "insert-aux!", "insert!",
-    // scp1/7.11.scm
-    "baas", "sub-organigrammen", "hierarchisch?", "hierarchisch?-in", "collegas", "collegas-in", "werknemers-in", "werknemers",
-    // scp1/7.17.scm
-    "familiehoofd", "kinderen", "laatste-nakomeling?", "verdeel-democratisch", "verdeel", "verdeel-in", "budget", "budget-hulp", "budget-hulp-in",
-    // scp1/9.14.scm
-    "schuif-in!",
-    // scp1/7.15
-    "maak-blad", "geef-type", "maak-knop", "geef-deelbomen", "maak-hybride-tak", "geef-knopen", "leeg?", "knoop?", "blad?", "tel", "combine-results", "tel-hulp", "tel-hulp-in", "member?", "normaal?", "check-normaal", "check-normaal-in",
-  )*/
 }
 
 abstract class PrimitivesComparison extends AnalysisComparison[
@@ -204,16 +196,16 @@ abstract class PrimitivesComparison extends AnalysisComparison[
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
   def otherAnalyses(prg: SchemeExp) = List(
-    S_0_0(prg),
+//    S_0_0(prg), // should be equivalent to base analysis
     S_CS_0(prg),
     S_2CS_0(prg),
     S_2AcyclicCS_0(prg),
     S_10CS_0(prg),
-//    S_10AcyclicCS_0(prg),
+//    S_10AcyclicCS_0(prg), // does not yield interesting results
     S_FA_0(prg),
-//    S_2FA_0(prg),
-//    S_10FA_0(prg),
-    S_CSFA_0(prg),
+//    S_2FA_0(prg), // does not improve on FA
+//    S_10FA_0(prg), // does not improve on FA
+    S_CSFA_0(prg), // does not improve on FA, but we want to include them still
   )
 
   def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
@@ -256,7 +248,7 @@ abstract class PrimitivesComparison extends AnalysisComparison[
 }
 
 
-object PrimitivesComparisonRQ3SeparateLowHigh extends PrimitivesComparison {
+object PrimitivesComparisonRQ3 extends PrimitivesComparison {
   def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
                                                    with BigStepSemantics
                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_0_0
@@ -323,79 +315,6 @@ object PrimitivesComparisonRQ3SeparateLowHigh extends PrimitivesComparison {
   def S_CSFA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
                                                       with BigStepSemantics
                                                       with CompoundSensitivities.SeparateLowHighSensitivity.S_CSFA_0
-                                                      with ConstantPropagationDomain {
-    override def toString() = "CSFA_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-}
-
-object PrimitivesComparisonRQ3TrackLowToHigh extends PrimitivesComparison {
-  override def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                   with BigStepSemantics
-                                                   with CompoundSensitivities.TrackLowToHighSensitivity.S_0_0
-                                                   with ConstantPropagationDomain {
-    override def toString() = "0_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
-                                                    with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
-                                                    with ConstantPropagationDomain {
-    override def toString() = "CS_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_2CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
-                                                    with CompoundSensitivities.TrackLowToHighSensitivity.S_2CS_0
-                                                    with ConstantPropagationDomain {
-    override def toString() = "2CS_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_10CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
-                                                    with CompoundSensitivities.TrackLowToHighSensitivity.S_10CS_0
-                                                    with ConstantPropagationDomain {
-    override def toString() = "10CS_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_2AcyclicCS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
-                                                    with CompoundSensitivities.TrackLowToHighSensitivity.S_2AcyclicCS_0
-                                                    with ConstantPropagationDomain {
-    override def toString() = "2AcyclicCS_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_10AcyclicCS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
-                                                    with CompoundSensitivities.TrackLowToHighSensitivity.S_10AcyclicCS_0
-                                                    with ConstantPropagationDomain {
-    override def toString() = "10AcyclicCS_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
-                                                    with CompoundSensitivities.TrackLowToHighSensitivity.S_FA_0
-                                                    with ConstantPropagationDomain {
-    override def toString() = "FA_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_2FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                     with BigStepSemantics
-                                                     with CompoundSensitivities.TrackLowToHighSensitivity.S_2FA_0
-                                                     with ConstantPropagationDomain {
-    override def toString() = "2FA_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_10FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
-                                                    with CompoundSensitivities.TrackLowToHighSensitivity.S_10FA_0
-                                                    with ConstantPropagationDomain {
-    override def toString() = "10FA_0"
-    override val primPrecision = SchemePrelude.primNames
-  }
-  def S_CSFA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                      with BigStepSemantics
-                                                      with CompoundSensitivities.TrackLowToHighSensitivity.S_CSFA_0
                                                       with ConstantPropagationDomain {
     override def toString() = "CSFA_0"
     override val primPrecision = SchemePrelude.primNames
