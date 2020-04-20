@@ -1,6 +1,7 @@
 package scalaam.cli
 
 import scalaam.util._
+
 import scala.concurrent.duration._
 import scalaam.diff.ModuleInferencer
 import scalaam.core.Position._
@@ -14,6 +15,7 @@ import scalaam.io.Reader
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
+import scalaam.language.scheme.primitives.SchemePrelude
 
 object Main {
 
@@ -79,20 +81,26 @@ object Incrementor extends App {
 
 }
 
+object Run extends App {
+  val text = Reader.loadFile("./test/icp/icp_1c_multiple-dwelling.scm")
+  val interpreter = new SchemeInterpreter((_, _) => (), true)
+  interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text)))), Timeout.none)
+}
+
 object Analyze extends App {
-  val text = """(define result '())
-               |(define display (lambda (i) (set! result (cons i result))))
-               |(define (foo x)
-               |  (display 1))
-               |(define result2 '())
-               |(define display2 (lambda (i) (set! result2 (cons i result2))))
-               |(define (bar x)
-               |  (display2 (+ x 1)))
-               |(foo 5)
-               |(bar 6)
-               |result2""".stripMargin
+  val text = Reader.loadFile("./test/icp/icp_1c_multiple-dwelling.scm") //"""(define result '())
+             //  |(define display (lambda (i) (set! result (cons i result))))
+             //  |(define (foo x)
+             //  |  (display 1))
+             //  |(define result2 '())
+             //  |(define display2 (lambda (i) (set! result2 (cons i result2))))
+             //  |(define (bar x)
+             //  |  (display2 (+ x 1)))
+             //  |(foo 5)
+             //  |(bar 6)
+             //  |result2""".stripMargin
   val a = new ModAnalysis(SchemeParser.parse(text)) with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
-  a.analyze()
+  a.analyze(Timeout.none)
   val r = a.store(a.ReturnAddr(a.initialComponent))
   println(r)
 }
