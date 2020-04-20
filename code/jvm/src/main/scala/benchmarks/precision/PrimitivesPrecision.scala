@@ -2,7 +2,6 @@ package scalaam.cli.benchmarks.precision
 
 import scalaam.cli.benchmarks._
 import scalaam.io.Reader
-import scalaam.language.scheme._
 
 import scalaam.lattice._
 import scalaam.language.scheme._
@@ -14,6 +13,9 @@ import scala.concurrent.duration._
 import scalaam.util._
 
 object PrimitivesBenchmarks {
+
+  val scp1Compressed = SchemeBenchmarks.scp1_compressed
+
   val benchmarks = List(
 //    "test/kernighanvanwyk/ack.scm",
 //    "test/rsa.scm",
@@ -229,7 +231,7 @@ abstract class PrimitivesComparison extends AnalysisComparison[
   }
 
   def runBenchmarks() = {
-    PrimitivesBenchmarks.benchmarks.foreach(b => {
+    PrimitivesBenchmarks.scp1Compressed.foreach(b => {
       System.gc()
       path = b
       runBenchmark(b)

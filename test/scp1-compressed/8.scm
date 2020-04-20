@@ -29,88 +29,88 @@
   (= (flip) 0))
 
 ; 8.5
-(define (make-point x y)
-
-  (define (dispatch msg)
-    (cond ((eq? msg 'x-value) x)
-      ((eq? msg 'y-value) y)
-      (else (error "wrong message"))))
-  dispatch)
-
-(define (make-segment start end)
-
-  (define (midpoint)
-    (make-point (/ (+ (start 'x-value) (end 'x-value)) 2)
-      (/ (+ (start 'y-value) (end 'y-value)) 2)))
-
-  (define (dispatch msg)
-    (cond ((eq? msg 'start-point) start)
-      ((eq? msg 'end-point) end)
-      ((eq? msg 'midpoint) (midpoint))
-      (else (error "wrong message"))))
-  dispatch)
-
-
-(define (make-w-vector . args)
-
-  (define (dimension)
-    (length args))
-
-  (define (coordinate n)
-    (if (or (< n 1) (> n (dimension)))
-      (error "coordinate is out of range")
-      (list-ref args (- n 1))))
-
-  (define (add w-vector)
-    (define (loop ctr res)
-      (if (= ctr 0)
-        (apply make-w-vector res)
-        (loop (- ctr 1) (cons (+ (coordinate ctr)
-                                ((w-vector 'coordinate) ctr))
-                          res))))
-    (loop (dimension) '()))
-
-
-
-  (define (dispatch msg)
-    (cond ((eq? msg 'dimension) (dimension))
-      ((eq? msg 'coordinate) coordinate)
-      ((eq? msg 'add) add)
-      (else (error "wrong message"))))
-  dispatch)
-
-
-(define (make-polynome . coefficients)
-  (let ((polynome (apply make-w-vector coefficients)))
-
-    (define (coefficient index)
-      ((polynome 'coordinate) index))
-
-    (define (order)
-      (- (polynome 'dimension) 1))
-
-    (define (dispatch msg)
-      (cond ((eq? msg 'order) (order))
-        ((eq? msg 'coefficient) coefficient)
-        (else (error "wrong message"))))
-    dispatch))
-
-(define point1 (make-point 6 10))
-(define point2 (make-point 10 20))
-(define segment (make-segment point1 point2))
-(define midpoint (segment 'midpoint))
-(define w-vector1 (make-w-vector 1 2 3))
-(define w-vector2 (make-w-vector 4 5 6))
-(define polynome (make-polynome 1 2 3))
-
-(and (= (point1 'x-value) 6)
-  (= ((segment 'start-point) 'y-value) 10)
-  (= (midpoint 'x-value) 8)
-  (= ((w-vector1 'coordinate) 2) 2)
-  (= ((w-vector2 'coordinate) 1) 4)
-  (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
-  (= (polynome 'order) 2)
-  (= ((polynome 'coefficient) 2) 2))
+;(define (make-point x y)
+;
+;  (define (dispatch msg)
+;    (cond ((eq? msg 'x-value) x)
+;      ((eq? msg 'y-value) y)
+;      (else (error "wrong message"))))
+;  dispatch)
+;
+;(define (make-segment start end)
+;
+;  (define (midpoint)
+;    (make-point (/ (+ (start 'x-value) (end 'x-value)) 2)
+;      (/ (+ (start 'y-value) (end 'y-value)) 2)))
+;
+;  (define (dispatch msg)
+;    (cond ((eq? msg 'start-point) start)
+;      ((eq? msg 'end-point) end)
+;      ((eq? msg 'midpoint) (midpoint))
+;      (else (error "wrong message"))))
+;  dispatch)
+;
+;
+;(define (make-w-vector . args)
+;
+;  (define (dimension)
+;    (length args))
+;
+;  (define (coordinate n)
+;    (if (or (< n 1) (> n (dimension)))
+;      (error "coordinate is out of range")
+;      (list-ref args (- n 1))))
+;
+;  (define (add w-vector)
+;    (define (loop ctr res)
+;      (if (= ctr 0)
+;        (apply make-w-vector res)
+;        (loop (- ctr 1) (cons (+ (coordinate ctr)
+;                                ((w-vector 'coordinate) ctr))
+;                          res))))
+;    (loop (dimension) '()))
+;
+;
+;
+;  (define (dispatch msg)
+;    (cond ((eq? msg 'dimension) (dimension))
+;      ((eq? msg 'coordinate) coordinate)
+;      ((eq? msg 'add) add)
+;      (else (error "wrong message"))))
+;  dispatch)
+;
+;
+;(define (make-polynome . coefficients)
+;  (let ((polynome (apply make-w-vector coefficients)))
+;
+;    (define (coefficient index)
+;      ((polynome 'coordinate) index))
+;
+;    (define (order)
+;      (- (polynome 'dimension) 1))
+;
+;    (define (dispatch msg)
+;      (cond ((eq? msg 'order) (order))
+;        ((eq? msg 'coefficient) coefficient)
+;        (else (error "wrong message"))))
+;    dispatch))
+;
+;(define point1 (make-point 6 10))
+;(define point2 (make-point 10 20))
+;(define segment (make-segment point1 point2))
+;(define midpoint (segment 'midpoint))
+;(define w-vector1 (make-w-vector 1 2 3))
+;(define w-vector2 (make-w-vector 4 5 6))
+;(define polynome (make-polynome 1 2 3))
+;
+;(and (= (point1 'x-value) 6)
+;  (= ((segment 'start-point) 'y-value) 10)
+;  (= (midpoint 'x-value) 8)
+;  (= ((w-vector1 'coordinate) 2) 2)
+;  (= ((w-vector2 'coordinate) 1) 4)
+;  (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
+;  (= (polynome 'order) 2)
+;  (= ((polynome 'coefficient) 2) 2))
 
 ; 8.6
 (define result '())
@@ -205,107 +205,107 @@
 (equal? result '(newline 0 "-" 0 newline 0 "-" 2 newline "De score kan slechts 1, 2 of 3 zijn!" newline newline 0 "-" 2 newline 0 "-" 0))
 
 ; 8.11
-(define (create-counter initial)
-  (define (increase) (set! initial (+ initial 1)))
-  (define (decrease) (set! initial (- initial 1)))
-  (define (read) initial)
-  (define (dispatch m)
-    (cond ((eq? m 'increase) (increase))
-      ((eq? m 'decrease) (decrease))
-      ((eq? m 'read) (read))
-      (else (display "wrong message"))))
-  dispatch)
-
-(define (create-parking . capaciteiten)
-  (let ((verdieping-ctrs (map create-counter capaciteiten))
-         (nr-verdiepingen (length capaciteiten))
-         (nbr-cars 0))
-
-    (define (total-capacity)
-      (apply + capaciteiten))
-
-    (define (full?)
-      (= nbr-cars (total-capacity)))
-
-    (define (empty?)
-      (= nbr-cars 0))
-
-    (define (max-reached-level level idx)
-      (>=  (level 'read) (list-ref capaciteiten (- idx 1))))
-
-    (define (level-current)
-      (define (loop lst index)
-        (cond ((null? lst) #f)
-          (else (let* ((level (car lst))
-                        (capacity (level 'read)))
-                  (if (> capacity 0)
-                    index
-                    (loop (cdr lst) (+ index 1)))))))
-      (loop verdieping-ctrs 1))
-
-    (define (level-to-leave)
-      (define (loop lst index)
-        (cond ((null? lst) #f)
-          (else (let* ((level (car lst))
-                        (capacity (level 'read)))
-                  (if (and (not (max-reached-level level index)) (>= capacity 0))
-                    index
-                    (loop (cdr lst) (- index 1)))))))
-      (loop (reverse verdieping-ctrs) nr-verdiepingen))
-
-    (define (car-enters)
-      (let ((level (level-current)))
-        (if level
-          (let ((verdieping-ctr (list-ref verdieping-ctrs
-                                  (- level 1))))
-            (set! nbr-cars (+ nbr-cars 1))
-            (verdieping-ctr 'decrease))
-          #f)))
-
-    (define (car-leaves)
-      (let ((level (level-to-leave)))
-
-        (if level
-          (let ((verdieping-ctr (list-ref verdieping-ctrs (- level 1))))
-            (set! nbr-cars (- nbr-cars 1))
-            (verdieping-ctr 'increase))
-          (let ((verdieping-ctr (list-ref verdieping-ctrs(- nr-verdiepingen 1))))
-            (set! nbr-cars (- nbr-cars 1))
-            (verdieping-ctr 'increase)))))
-
-    (define (dispatch msg)
-      (cond ((eq? msg 'full?) (full?))
-        ((eq? msg 'empty?) (empty?))
-        ((eq? msg 'level) (level-current))
-        ((eq? msg 'car-enters) (car-enters))
-        ((eq? msg 'lst) verdieping-ctrs)
-        ((eq? msg 'car-leaves) (car-leaves))
-        (else (error "wrong message"))))
-    dispatch))
-
-(define parking (create-parking 3 5 2))
-(and (= (parking 'level) 1)
-  (not (parking 'full?))
-  (= (begin (parking 'car-enters)
-       (parking 'car-enters)
-       (parking 'car-enters)
-       (parking 'car-enters)
-       (parking 'level))
-    2)
-  (not (parking 'empty?))
-  (begin (parking 'car-enters)
-    (parking 'car-enters)
-    (parking 'car-enters)
-    (parking 'car-enters)
-    (parking 'car-enters)
-    (parking 'car-enters)
-    (parking 'full?))
-  (not (parking 'car-enters))
-  (= (begin (parking 'car-leaves)
-       (parking 'car-leaves)
-       (parking 'car-leaves)
-       (parking 'level))
-    2))
+;(define (create-counter initial)
+;  (define (increase) (set! initial (+ initial 1)))
+;  (define (decrease) (set! initial (- initial 1)))
+;  (define (read) initial)
+;  (define (dispatch m)
+;    (cond ((eq? m 'increase) (increase))
+;      ((eq? m 'decrease) (decrease))
+;      ((eq? m 'read) (read))
+;      (else (display "wrong message"))))
+;  dispatch)
+;
+;(define (create-parking . capaciteiten)
+;  (let ((verdieping-ctrs (map create-counter capaciteiten))
+;         (nr-verdiepingen (length capaciteiten))
+;         (nbr-cars 0))
+;
+;    (define (total-capacity)
+;      (apply + capaciteiten))
+;
+;    (define (full?)
+;      (= nbr-cars (total-capacity)))
+;
+;    (define (empty?)
+;      (= nbr-cars 0))
+;
+;    (define (max-reached-level level idx)
+;      (>=  (level 'read) (list-ref capaciteiten (- idx 1))))
+;
+;    (define (level-current)
+;      (define (loop lst index)
+;        (cond ((null? lst) #f)
+;          (else (let* ((level (car lst))
+;                        (capacity (level 'read)))
+;                  (if (> capacity 0)
+;                    index
+;                    (loop (cdr lst) (+ index 1)))))))
+;      (loop verdieping-ctrs 1))
+;
+;    (define (level-to-leave)
+;      (define (loop lst index)
+;        (cond ((null? lst) #f)
+;          (else (let* ((level (car lst))
+;                        (capacity (level 'read)))
+;                  (if (and (not (max-reached-level level index)) (>= capacity 0))
+;                    index
+;                    (loop (cdr lst) (- index 1)))))))
+;      (loop (reverse verdieping-ctrs) nr-verdiepingen))
+;
+;    (define (car-enters)
+;      (let ((level (level-current)))
+;        (if level
+;          (let ((verdieping-ctr (list-ref verdieping-ctrs
+;                                  (- level 1))))
+;            (set! nbr-cars (+ nbr-cars 1))
+;            (verdieping-ctr 'decrease))
+;          #f)))
+;
+;    (define (car-leaves)
+;      (let ((level (level-to-leave)))
+;
+;        (if level
+;          (let ((verdieping-ctr (list-ref verdieping-ctrs (- level 1))))
+;            (set! nbr-cars (- nbr-cars 1))
+;            (verdieping-ctr 'increase))
+;          (let ((verdieping-ctr (list-ref verdieping-ctrs(- nr-verdiepingen 1))))
+;            (set! nbr-cars (- nbr-cars 1))
+;            (verdieping-ctr 'increase)))))
+;
+;    (define (dispatch msg)
+;      (cond ((eq? msg 'full?) (full?))
+;        ((eq? msg 'empty?) (empty?))
+;        ((eq? msg 'level) (level-current))
+;        ((eq? msg 'car-enters) (car-enters))
+;        ((eq? msg 'lst) verdieping-ctrs)
+;        ((eq? msg 'car-leaves) (car-leaves))
+;        (else (error "wrong message"))))
+;    dispatch))
+;
+;(define parking (create-parking 3 5 2))
+;(and (= (parking 'level) 1)
+;  (not (parking 'full?))
+;  (= (begin (parking 'car-enters)
+;       (parking 'car-enters)
+;       (parking 'car-enters)
+;       (parking 'car-enters)
+;       (parking 'level))
+;    2)
+;  (not (parking 'empty?))
+;  (begin (parking 'car-enters)
+;    (parking 'car-enters)
+;    (parking 'car-enters)
+;    (parking 'car-enters)
+;    (parking 'car-enters)
+;    (parking 'car-enters)
+;    (parking 'full?))
+;  (not (parking 'car-enters))
+;  (= (begin (parking 'car-leaves)
+;       (parking 'car-leaves)
+;       (parking 'car-leaves)
+;       (parking 'level))
+;    2))
 
 ; 8.12
 (define (maak-rechthoek l b)
