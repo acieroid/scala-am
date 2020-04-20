@@ -2,7 +2,6 @@ package scalaam.cli.benchmarks.precision
 
 import scalaam.cli.benchmarks._
 import scalaam.io.Reader
-import scalaam.language.scheme._
 
 import scalaam.lattice._
 import scalaam.language.scheme._
@@ -25,28 +24,10 @@ object PrimitivesBenchmarks {
   val gambit = List(
     "test/gambit/mazefun.scm",
   )
-  val scp1 = List(
-    "test/scp1/9.12.scm",
-    "test/scp1/8.15.scm",
-    "test/scp1/9.18.scm",
-    "test/scp1/5.14.3.scm",
-    "test/scp1/7.16.scm",
-    "test/scp1/9.16.scm",
-    "test/scp1/7.11.scm",
-    "test/scp1/7.13.scm",
-    "test/scp1/5.22.scm",
-    "test/scp1/7.14.scm",
-    "test/scp1/7.4.scm",
-    "test/scp1/7.17.scm",
-    "test/scp1/9.14.scm",
-    "test/scp1/7.9.scm",
-    "test/scp1/7.15.scm",
-    "test/scp1/5.20.4.scm",
-    "test/scp1/5.19.scm",
-    "test/scp1/9.15.scm",
-    "test/scp1/7.12.scm",
-  )
-  val adBenchmarks = List(
+
+  val scp1Compressed = SchemeBenchmarks.scp1_compressed
+
+  val ad = List(
     // "test/ad/bfirst.scm", // incorrect benchmark
     // "test/ad/bst.scm", // only definitions
     // "test/ad/btree.scm", // only definitions
@@ -78,7 +59,7 @@ object PrimitivesBenchmarks {
     "test/sigscheme/mem.scm",
     "test/grid.scm",
     "test/gabriel/puzzle.scm",
-    "test/ad/abstrct.scm"
+    "test/ad/abstrct.scm",
     "test/ad/bubsort.scm",
     "test/ad/heap.scm",
     "test/ad/inssort.scm",
@@ -187,28 +168,6 @@ object PrimitivesBenchmarks {
     )
 
   ).withDefaultValue(List())
-
-
-  /* TODO:
-  val primPrecision: Set[String] = primDefs.keySet ++ Set(
-    // scp1/9.18.scm
-    "first-el", "smaller?", "same?", "merge", "merge-in",
-    // scp1/5.14.3.scm
-    "super-merge-n", "geef-n+rest",
-    // scp1/7.16.scm"
-    "foldr", "foldr-aux", "foldl", "foldl-aux",
-    "omzetcijfer", "heeft-omzetcijfer", "deel-categorien", "hoofdcategorie", "bereken", "omzet", "omzet-in", "collect-pairs", "collect-pairs-in", "verdeel-democratisch", "verdeel", "verdeel-in",
-    // scp1/9.16.scm"
-    "insert-aux!", "insert!",
-    // scp1/7.11.scm
-    "baas", "sub-organigrammen", "hierarchisch?", "hierarchisch?-in", "collegas", "collegas-in", "werknemers-in", "werknemers",
-    // scp1/7.17.scm
-    "familiehoofd", "kinderen", "laatste-nakomeling?", "verdeel-democratisch", "verdeel", "verdeel-in", "budget", "budget-hulp", "budget-hulp-in",
-    // scp1/9.14.scm
-    "schuif-in!",
-    // scp1/7.15
-    "maak-blad", "geef-type", "maak-knop", "geef-deelbomen", "maak-hybride-tak", "geef-knopen", "leeg?", "knoop?", "blad?", "tel", "combine-results", "tel-hulp", "tel-hulp-in", "member?", "normaal?", "check-normaal", "check-normaal-in",
-  )*/
 }
 
 abstract class PrimitivesComparison extends AnalysisComparison[
@@ -264,7 +223,7 @@ abstract class PrimitivesComparison extends AnalysisComparison[
   }
 
   def runBenchmarks() = {
-    PrimitivesBenchmarks.vectorBenchmarks.foreach(b => {
+    PrimitivesBenchmarks.scp1Compressed.foreach(b => {
       System.gc()
       path = b
       runBenchmark(b)

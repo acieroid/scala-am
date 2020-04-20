@@ -109,7 +109,6 @@ abstract class PrecisionBenchmarks[
           }})
         case _ => ???
                                                                                                                                    }*/
-          
         case _                                          => throw new Exception("Unsupported concrete value for precision benchmarks")
     }
  

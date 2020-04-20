@@ -1,0 +1,3 @@
+All files in this and underlying folders are taken from http://soft.vub.ac.be/SCPI/ .
+
+Added/adapted tests to some files. Tests should normally evaluate to #t.
