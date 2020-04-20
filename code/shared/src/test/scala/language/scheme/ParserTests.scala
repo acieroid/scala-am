@@ -21,5 +21,6 @@ trait SchemeParserTests extends SchemeBenchmarkTests {
     }
 }
 
-class SimpleSchemeParserTests extends SchemeParserTests
-                                with SimpleBenchmarks
+// class SimpleSchemeParserTests extends SchemeParserTests with SimpleBenchmarks
+
+class ExtendedSchemeParserTests extends SchemeParserTests with AllBenchmarks
