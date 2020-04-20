@@ -1,5 +1,3 @@
-(#%require (only racket/base
-                 time error))
 
 ;;
 ;;toegevoegd
@@ -7,10 +5,45 @@
 (define true #t)
 (define false #f)
 
+(define (expand-clauses clauses)
+  (if (null? clauses)
+      'false
+      (let ((first (car clauses))
+            (rest (cdr clauses)))
+        (if (cond-else-clause? first)
+            (if (null? rest)
+                (sequence->exp (cond-actions first))
+                (error "ELSE clause isn't last -- COND->IF"
+                       ))
+            (make-if (cond-predicate first)
+                     (sequence->exp (cond-actions first))
+                     (expand-clauses rest))))))
+
+(define (sequence->exp seq)
+  (cond ((null? seq) seq)
+        ((last-exp? seq) (first-exp seq))
+        (else (make-begin seq))))
+
+(define (make-if predicate consequent alternative)
+  (list 'if predicate consequent alternative))
+
+(define (make-begin seq) (cons 'begin seq))
+
+
+(define (primitive-implementation proc) (cadr proc))
+(define (cond->if exp)
+  (expand-clauses (cond-clauses exp)))
+
+
 ;;
 ;; zie deel 1.1 p52
 ;;
-(define apply-in-underlying-scheme apply)
+(define (apply-in-underlying-scheme op args)
+  (cond
+   ((null? args) (op))
+   ((null? (cdr args)) (op (car args)))
+   ((null? (cddr args)) (op (car args) (cadr args)))
+   (else (error "apply"))))
 
 ;;
 ;; zie deel 1.1 p24
@@ -220,6 +253,8 @@
 ;;
 ;; zie deel 1.1 p52
 ;;
+
+
 (define (apply-primitive-procedure proc args)
   (apply-in-underlying-scheme
    (primitive-implementation proc) args))
@@ -603,8 +638,8 @@
                          (list-difference (registers-modified seq1)
                                           (list first-reg))
                          (append `((save ,first-reg))
-                                 (statements seq1)
-                                 `((restore ,first-reg))))
+                                 (append (statements seq1)
+                                         `((restore ,first-reg)))))
                         seq2)
             (preserving (cdr regs) seq1 seq2)))))
 
@@ -640,20 +675,20 @@
 ;; einde van compiler code
 ;; =======================
 
-;(compile
-; '(begin (define (id x)
-;           x)
-;         (id 2))
-; 'val
-; 'next)
+(compile
+ '(begin (define (id x)
+           x)
+         (id 2))
+ 'val
+ 'next)
 
-;(compile
-; '(begin (define (fac n)
-;           (if (= n 0)
-;               1
-;               (* n (fac (- n 1)))))
-;         (fac 5))
-; 'val
-; 'next)
+(compile
+ '(begin (define (fac n)
+           (if (= n 0)
+               1
+               (* n (fac (- n 1)))))
+         (fac 5))
+ 'val
+ 'next)
 
 

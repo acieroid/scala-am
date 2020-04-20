@@ -1,14 +1,7 @@
 ;; Hulpprocedures
 ;; --------------
 ;; Getest in DrRacket 7.2 met R5RS in het Language menu geselecteerd
-(#%require (only racket/base error current-print void?))
 
-(current-print (lambda (v)
-                 (if (not (void? v))
-                     (display v))))
-
-(#%require (rename r5rs apply-in-underlying-scheme apply))
-(#%require (rename r5rs eval-in-underlying-scheme eval))
 
 (define true #t)
 (define false #f)
@@ -104,26 +97,27 @@
 (define (prompt-for-input string)
   (newline) (newline) (display string) (newline))
 
-(define (query-driver-loop)
+(define (query-driver-loop input)
   (prompt-for-input input-prompt)
-  (let ((q (query-syntax-process (read))))
-    (cond ((assertion-to-be-added? q)
-           (add-rule-or-assertion! (add-assertion-body q))
-           (newline)
-           (display "Assertion added to data base.")
-           (query-driver-loop))
-          (else
-           (newline)
-           (display output-prompt)
-           (display-stream
-            (stream-map
-             (lambda (frame)
-               (instantiate q
-                            frame
-                            (lambda (v f)
-                              (contract-question-mark v))))
-             (qeval q NIL)))
-           (query-driver-loop)))))
+  (if (pair? input)
+      (let ((q (query-syntax-process (car input))))
+        (cond ((assertion-to-be-added? q)
+               (add-rule-or-assertion! (add-assertion-body q))
+               (newline)
+               (display "Assertion added to data base.")
+               (query-driver-loop (cdr input)))
+              (else
+               (newline)
+               (display output-prompt)
+               (display-stream
+                (stream-map
+                 (lambda (frame)
+                   (instantiate q
+                                frame
+                                (lambda (v f)
+                                  (contract-question-mark v))))
+                 (qeval q NIL)))
+               (query-driver-loop (cdr input)))))))
 
 ;;
 ;; zie deel 4 p15
@@ -416,7 +410,7 @@
    frame-stream))
 
 (define (execute exp)
-  (apply-in-underlying-scheme (eval-in-underlying-scheme (predicate exp) (scheme-report-environment 5)) 
+  (apply (eval (predicate exp) (scheme-report-environment 5)) 
          (args exp)))
 
 (define (predicate exps) (car exps))
@@ -610,8 +604,7 @@
     (lambda (file)
       (initialize-data-base (read file)))))
 
-(initialize-data-base-from-file "icp_4_qeval_zonnestelsel.txt")
-(query-driver-loop)
+; (initialize-data-base-from-file "icp_4_qeval_zonnestelsel.txt")
 
 
 ;  
@@ -739,3 +732,12 @@
 ; (same 3 ?x)
 ; 
 ; (zelfde-planeet ?m ?n)
+
+
+(query-driver-loop '(
+                     (assert! (rule (append () ?l ?l)))
+                     (assert! (rule (append (?first . ?rest) ?l (?first . ?x))
+                                    (append ?rest ?l ?x)))
+                     (append (a b) (c d) ?z)
+                     (append (a b) ?y (a b c d))
+                     (append ?x ?y (a b c d))))

@@ -1,5 +1,3 @@
-(#%require (only racket/base
-                 time error))
 ;;
 ;;toegevoegd
 ;;
@@ -9,7 +7,12 @@
 ;;
 ;; zie deel 1.1 p52
 ;;
-(define apply-in-underlying-scheme apply)
+(define (apply-in-underlying-scheme op args)
+  (cond
+   ((null? args) (op))
+   ((null? (cdr args)) (op (car args)))
+   ((null? (cddr args)) (op (car args) (cadr args)))
+   (else (error "apply"))))
 
 ;;
 ;; zie deel 1.1 p24
@@ -276,13 +279,13 @@
 (define input-prompt ";;; M-Eval input:")
 (define output-prompt ";;; M-Eval value:")
 
-(define (driver-loop)
-  (prompt-for-input input-prompt)
-  (let ((input (read)))
-    (let ((output (eval input the-global-environment)))
-      (announce-output output-prompt)
-      (user-print output)))
-  (driver-loop))
+;;(define (driver-loop)
+;;  (prompt-for-input input-prompt)
+;;  (let ((input (read)))
+;;    (let ((output (eval input the-global-environment)))
+;;      (announce-output output-prompt)
+;;      (user-print output)))
+;;  (driver-loop))
 
 (define (prompt-for-input string)
   (newline) (newline) (display string) (newline))
