@@ -82,7 +82,7 @@ object Incrementor extends App {
 }
 
 object Run extends App {
-  val text = Reader.loadFile("./test/icp/icp_1c_prime-sum-pair.scm")
+  val text = Reader.loadFile("./test/SETL/arithmetic.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text)))), Timeout.none)
 }
