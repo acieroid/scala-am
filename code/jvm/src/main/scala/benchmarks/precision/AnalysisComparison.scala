@@ -27,6 +27,7 @@ abstract class AnalysisComparison[
     def analysisTimeout() = Timeout.start(Duration(2, MINUTES)) //timeout for (non-base) analyses
     def concreteTimeout() = Timeout.none                        //timeout for concrete interpreter
 
+    def concreteRuns() = 20
     // keep the results of the benchmarks
     var results: Map[Benchmark, Map[String,Option[Int]]] = Map.empty
 
@@ -52,7 +53,7 @@ abstract class AnalysisComparison[
             benchmarkResults += (analysis.toString() -> refined)
         }
         // run a concrete interpreter on the benchmarks
-        val concreteResult = runInterpreter(program, path, concreteTimeout(), 20)
+        val concreteResult = runInterpreter(program, path, concreteTimeout(), concreteRuns())
         val refined = concreteResult.map(store => compareOrdered(baseResult,store).size)
         benchmarkResults += ("concrete" -> refined)
         // save the results

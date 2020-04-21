@@ -698,7 +698,11 @@
                 (make-primitive-exp e machine labels))
               (operation-exp-operands exp))))
     (lambda ()
-      (apply op (map (lambda (p) (p)) aprocs)))))
+      (cond
+       ((null? aprocs) (op))
+       ((null? (cddr aprocs)) (op ((car aprocs)) ((cadr aprocs))))
+       ((null? (cdr aprocs)) (op ((car aprocs))))
+       (else (error "apply"))))))
 
 (define (operation-exp? exp)
   (and (pair? exp) (tagged-list? (car exp) 'op)))
@@ -744,7 +748,7 @@
 (define eceval-operations
   (list
    ;;primitive Scheme operations
-   (list 'read read)
+;   (list 'read read)
 
    (list 'self-evaluating? self-evaluating?)
    (list 'quoted? quoted?)
@@ -812,7 +816,7 @@ read-eval-print-loop
   (perform (op initialize-stack))
   (perform
    (op prompt-for-input) (const ";;; EC-Eval input:"))
-  (assign exp (op read))
+  (assign exp '(begin (define (fac n) (if (= n 0) 1 (* n (fac (- n 1))))) (fac 5)))
   (assign env (op get-global-environment))
   (assign continue (label print-result))
   (goto (label eval-dispatch))
@@ -1036,8 +1040,3 @@ ev-definition-1
 ;;
 
 (start eceval)
-
-;(define (fac n)
-;  (if (= n 0)
-;      1
-;      (* n (fac (- n 1)))))

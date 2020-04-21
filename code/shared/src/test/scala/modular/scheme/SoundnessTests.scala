@@ -148,16 +148,16 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
 // ... for big-step semantics
 class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                          with BigStepSchemeModF
-                                         with AllBenchmarks
+                                         with SimpleBenchmarks
 class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends SchemeModFSoundnessTests
                                                           with BigStepSchemeModF
-                                                          with AllBenchmarks
+                                                          with SimpleBenchmarks
 
 // ... for small-step semantics
 class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                            with SmallStepSchemeModF
-                                           with AllBenchmarks
+                                           with SimpleBenchmarks
 
 class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                                 with SimpleAdaptiveSchemeModF
-                                                with AllBenchmarks
+                                                with SimpleBenchmarks

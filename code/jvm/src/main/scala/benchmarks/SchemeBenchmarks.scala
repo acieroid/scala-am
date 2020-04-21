@@ -54,4 +54,75 @@ object SchemeBenchmarks {
         "test/scp1-compressed/8.scm",
         "test/scp1-compressed/9.scm",
     )
+
+    val gabriel = List(
+      "test/gabriel/browse.scm",
+      "test/gabriel/diviter.scm",
+      "test/gabriel/divrec.scm",
+      "test/gabriel/destruc.scm",
+      "test/gabriel/dderiv.scm",
+      "test/gabriel/deriv.scm",
+      "test/gabriel/puzzle.scm",
+    )
+
+    val gambit = List(
+      //"test/gambit/scheme.scm",
+      //"test/gambit/sboyer.scm",
+      //"test/gambit/nboyer.scm",
+      "test/gambit/matrix.scm",
+      //"test/gambit/peval.scm",
+      //"test/gambit/earley.scm", // list->vector
+      "test/gambit/graphs.scm",
+      "test/gambit/lattice.scm",
+      "test/gambit/mazefun.scm",
+      "test/gambit/browse.scm",
+      "test/gambit/paraffins.scm",
+      "test/gambit/puzzle.scm",
+      // "test/gambit/trav1.scm", // append? or dot notation
+      "test/gambit/perm9.scm",
+      "test/gambit/destruc.scm",
+      // "test/gambit/triangl.scm", // list->vector
+      "test/gambit/nqueens.scm",
+      "test/gambit/primes.scm",
+      "test/gambit/sumloop.scm",
+    )
+
+
+  val ad = List(
+    // "test/ad/bfirst.scm", // incorrect benchmark
+    // "test/ad/bst.scm", // only definitions
+    // "test/ad/btree.scm", // only definitions
+    "test/ad/dict.scm",
+    "test/ad/prioq.scm",
+    // "test/ad/queue.scm", // only definitions
+    "test/ad/quick.scm",
+    // "test/ad/RBtreeADT.scm", // dot notation?
+    "test/ad/stack.scm",
+    // "test/stspaceCODE.scm" // only definitions
+    "test/ad/abstrct.scm",
+    "test/ad/bubsort.scm",
+    "test/ad/heap.scm",
+    "test/ad/inssort.scm",
+    "test/ad/linear.scm",
+    "test/ad/list.scm",
+    "test/ad/mesort.scm",
+    "test/ad/qsort.scm",
+    "test/ad/qstand.scm",
+    "test/ad/selsort.scm",
+  )
+
+
+  val icp = List(
+    // "test/icp/icp_1c_ontleed.scm", // too slow
+    // "test/icp/icp_1c_multiple-dwelling.scm", // stack overflows the concrete interpreter
+    // "test/icp/icp_1c_prime-sum-pair.scm", // too slow
+    "test/icp/icp_2_aeval.scm",
+    "test/icp/icp_3_leval.scm",
+    // "test/icp/icp_4_qeval.scm", // define-syntax, apply, eval
+    "test/icp/icp_5_regsim.scm",
+    // "test/icp/icp_6_stopandcopy_scheme", // vectors
+    // "test/icp/icp_7_eceval.scm", // too slow
+    "test/icp/icp_8_compiler.scm"
+  )
+
 }

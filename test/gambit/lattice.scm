@@ -1,9 +1,11 @@
-(define (map f l)
-  (if (null? l)
-      l
-      (if (pair? l)
-          (cons (f (car l)) (map f (cdr l)))
-          (error "Cannot map over a non-list"))))
+(define (apply-append args)
+  (cond
+   ((null? args) '())
+   ((null? (cdr args)) (car args))
+   ((null? (cddr args)) (append (car args) (cadr args)))
+   ((null? (cdddr args)) (append (car args) (append (cadr args) (caddr args))))
+   (else (error "apply-append" args))))
+
 ;;; LATTICE -- Obtained from Andrew Wright.
 
 ; Given a comparison routine that returns one of
@@ -164,7 +166,7 @@
             '()
             (lattice->elements source)
             (lambda (x) (list (map cdr x)))
-            (lambda (x) (apply append x)))
+            (lambda (x) (apply-append x)))
         (lexico (lattice->cmp target))))
 
 (define (count-maps source target)
@@ -184,10 +186,10 @@
   (let* ((l2
             (make-lattice '(low high)
                           (lambda (lhs rhs)
-                            (display lhs) (newline) (display rhs) (newline)
+                            ;(display lhs) (newline) (display rhs) (newline)
                     (case lhs
                       ((low)
-                       (display rhs)
+                       ;(display rhs)
                             (case rhs
                                 ((low)
                                     'equal)
@@ -203,7 +205,7 @@
                                     'equal)
                                 (else
                                     (error "make-lattice base"))))
-                        (else (display "not low nor high")
+                        (else ;(display "not low nor high")
                             (error "make-lattice base"))))))
         (l3 (maps l2 l2))
         (l4 (maps l3 l3)))
