@@ -40,6 +40,19 @@ object PrimitivesBenchmarks {
     // "test/stspaceCODE.scm" // only definitions
   )
 
+  val icp = List(
+    // "test/icp/icp_1c_ontleed.scm", // too slow
+    // "test/icp/icp_1c_multiple-dwelling.scm", // stack overflows the concrete interpreter
+    // "test/icp/icp_1c_prime-sum-pair.scm", // too slow
+    "test/icp/icp_2_aeval.scm",
+    "test/icp/icp_3_leval.scm",
+    // "test/icp/icp_4_qeval.scm", // define-syntax, apply, eval
+    "test/icp/icp_5_regsim.scm",
+    // "test/icp/icp_6_stopandcopy_scheme", // vectors
+    // "test/icp/icp_7_eceval.scm", // too slow
+    "test/icp/icp_8_compiler.scm"
+  )
+
   val benchmarks = gambit ++ gabriel ++ List(
     "test/kernighanvanwyk/ack.scm",
     "test/rsa.scm",
@@ -55,6 +68,7 @@ object PrimitivesBenchmarks {
   // interesting to support, but a first look at the results shows that it does
   // not deviates from other benchmarks
   val vectorBenchmarks = List(
+    "test/four-in-a-row.scm",
     "test/gambit/matrix.scm",
     "test/sigscheme/mem.scm",
     "test/grid.scm",
