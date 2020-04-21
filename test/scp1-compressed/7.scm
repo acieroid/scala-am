@@ -36,8 +36,8 @@
   (equal? (depth-and-leaf-count l) (cons 3 7)))
 
 ; 7.3
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (fringe l)
   (cond ((null? l) '())
@@ -48,7 +48,7 @@
 (equal? (fringe '((1) ((((2)))) (3 (4 5) 6) ((7) 8 9))) '(1 2 3 4 5 6 7 8 9))
 
 
-; &.4
+; 7.4
 (define (unfringe-1 l)
   (cond ((null? l) '())
     ((null? (cdr l)) (list (car l)))
@@ -72,8 +72,8 @@
   (equal? (unfringe-2 '(1 2 3 4 5 6 7 8 9)) '(((((1 2) (3 4)) ((5 6) (7 8))) (((9)))))))
 
 ; 7.5
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (same-structure? l1 l2)
   (cond ((and (atom? l1) (atom? l2)) #t)
@@ -94,8 +94,8 @@
            '((((1 2) (3 4)) ((5 6) (7 8))) 9))))
 
 ; 7.6
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (deep-combine combiner null-value l)
   (cond ((null? l) null-value)
@@ -257,54 +257,54 @@
   (equal? (collegas 'hoofd-inkoop organigram) '(hoofd-productie directeur bediende1 bediende2 bediende3)))
 
 ; 7.12
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
-(define mijn-vuurwerk '(groen ((blauw (X (blauw (X X)) X X))
-                                (rood ((groen (X X)) X))
-                                X
-                                (geel (X X)))))
-
-(define (kleur vuurwerk) (car vuurwerk))
-(define (takken vuurwerk) (cadr vuurwerk))
-(define (low-energy? vuurwerk) (eq? vuurwerk 'X))
-
-(define (tel-knallen vuurwerk)
-  (cond ((null? vuurwerk) 0)
-    ((low-energy? vuurwerk) 0)
-    ((atom? vuurwerk) 1)
-    (else (+ (tel-knallen (car vuurwerk))
-            (tel-knallen (cdr vuurwerk))))))
-
-(define (tel-low-energies v)
-  (cond ((null? v) 0)
-    ((low-energy? v) 1)
-    ((atom? v) 0)
-    (else (+ (tel-low-energies (car v))
-            (tel-low-energies (cdr v))))))
-
-(define (tel-einde-in takken een-kleur)
-  (cond ((null? takken) 0)
-    ((low-energy? (car takken)) 0)
-    (else (+ (tel-einde (car takken) een-kleur)
-            (tel-einde-in (cdr takken) een-kleur)))))
-
-(define (tel-einde vuurwerk een-kleur)
-  (if (eq? (kleur vuurwerk) een-kleur)
-    (tel-low-energies (takken vuurwerk))
-    (tel-einde-in (takken vuurwerk) een-kleur)))
-
-(define (ster? vuurwerk)
-  (not (member 'X (takken vuurwerk))))
-
-(and (eq? (kleur mijn-vuurwerk) 'groen)
-  (equal? (takken mijn-vuurwerk)
-      '((blauw (X (blauw (X X)) X X)) (rood ((groen (X X)) X)) X (geel (X X))))
-  (not (low-energy? mijn-vuurwerk))
-  (low-energy? 'X)
-  (= (tel-knallen mijn-vuurwerk) 6)
-  (= (tel-einde mijn-vuurwerk 'blauw) 5)
-  (not (ster? mijn-vuurwerk)))
+;; (define mijn-vuurwerk '(groen ((blauw (X (blauw (X X)) X X))
+;;                                 (rood ((groen (X X)) X))
+;;                                 X
+;;                                 (geel (X X)))))
+;; 
+;; (define (kleur vuurwerk) (car vuurwerk))
+;; (define (takken vuurwerk) (cadr vuurwerk))
+;; (define (low-energy? vuurwerk) (eq? vuurwerk 'X))
+;; 
+;; (define (tel-knallen vuurwerk)
+;;   (cond ((null? vuurwerk) 0)
+;;     ((low-energy? vuurwerk) 0)
+;;     ((atom? vuurwerk) 1)
+;;     (else (+ (tel-knallen (car vuurwerk))
+;;             (tel-knallen (cdr vuurwerk))))))
+;; 
+;; (define (tel-low-energies v)
+;;   (cond ((null? v) 0)
+;;     ((low-energy? v) 1)
+;;     ((atom? v) 0)
+;;     (else (+ (tel-low-energies (car v))
+;;             (tel-low-energies (cdr v))))))
+;; 
+;; (define (tel-einde-in takken een-kleur)
+;;   (cond ((null? takken) 0)
+;;     ((low-energy? (car takken)) 0)
+;;     (else (+ (tel-einde (car takken) een-kleur)
+;;             (tel-einde-in (cdr takken) een-kleur)))))
+;; 
+;; (define (tel-einde vuurwerk een-kleur)
+;;   (if (eq? (kleur vuurwerk) een-kleur)
+;;     (tel-low-energies (takken vuurwerk))
+;;     (tel-einde-in (takken vuurwerk) een-kleur)))
+;; 
+;; (define (ster? vuurwerk)
+;;   (not (member 'X (takken vuurwerk))))
+;; 
+;; (and (eq? (kleur mijn-vuurwerk) 'groen)
+;;   (equal? (takken mijn-vuurwerk)
+;;       '((blauw (X (blauw (X X)) X X)) (rood ((groen (X X)) X)) X (geel (X X))))
+;;   (not (low-energy? mijn-vuurwerk))
+;;   (low-energy? 'X)
+;;   (= (tel-knallen mijn-vuurwerk) 6)
+;;   (= (tel-einde mijn-vuurwerk 'blauw) 5)
+;;   (not (ster? mijn-vuurwerk)))
 
 ; 7.13
 (define result '())
@@ -427,8 +427,8 @@
        rechten))
 
 ; 7.14
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (maak-dier naam eigenschappen)
   (list naam eigenschappen))
@@ -447,7 +447,7 @@
 (define (knoop boom) (car boom))
 (define (deelbomen boom) (cadr boom))
 (define (leeg? boom) (null? boom))
-(define (knoop? boom) (dier? boom))
+;(define (knoop? boom) (dier? boom))
 
 
 (define classificatieboom
@@ -518,8 +518,8 @@
   (not (ask? classificatieboom 'olifant   'kan-vliegen)))
 
 ; 7.15
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (maak-blad type) type)
 (define (geef-type blad) blad)
@@ -530,9 +530,9 @@
 (define (maak-hybride-tak knopen) knopen)
 (define (geef-knopen tak) tak)
 
-(define (leeg? boom) (null? boom))
+;(define (leeg? boom) (null? boom))
 (define (knoop? boom) (pair? boom))
-(define (blad? boom) (atom? boom))
+(define (blad2? boom) (atom? boom))
 
 (define hybride-tak
   (maak-hybride-tak
@@ -572,11 +572,11 @@
 
   (define (tel-hulp boom)
     (cond ((leeg? boom) (list 0 0 0))
-      ((and (blad? boom) (eq? boom 'appel))
+      ((and (blad2? boom) (eq? boom 'appel))
         (list 1 0 0))
-      ((and (blad? boom) (eq? boom 'peer))
+      ((and (blad2? boom) (eq? boom 'peer))
         (list 0 1 0))
-      ((blad? boom) (list 0 0 1))
+      ((blad2? boom) (list 0 0 1))
       (else (tel-hulp-in (geef-knopen boom)))))
 
   (define (tel-hulp-in lst)
@@ -595,7 +595,7 @@
 
 (define (check-normaal boom)
   (cond ((leeg? boom) #t)
-    ((blad? boom) #t)
+    ((blad2? boom) #t)
     ((knoop? boom)
       (and (normaal? boom)
         (check-normaal-in (geef-knopen boom))))
@@ -620,8 +620,8 @@
           (f (car lst) (foldr-aux (cdr lst))))))
     (foldr-aux lst)))
 
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define Coca-Cola-NV
     '(Coca-Cola-NV (Frisdranken
@@ -725,7 +725,7 @@
 (define (laatste-nakomeling? fam)
   (null? (kinderen fam)))
 
-(define (verdeel-democratisch boom budget)
+(define (verdeel-democratisch2 boom budget)
   (define (verdeel boom)
     (if (laatste-nakomeling? boom)
       1
@@ -750,26 +750,26 @@
         (budget-hulp-in (cdr bomen) budget-list))))
   (budget-hulp-in (kinderen boom) budget-list))
 
-(define (verdeel boom budget)
+(define (verdeel2 boom budget)
   (cond ((laatste-nakomeling? boom)
           (list (list (familiehoofd boom) budget)))
     (else (let* ((rest (kinderen boom))
                   (new-budget (/ budget (length rest))))
-            (verdeel-in rest new-budget)))))
+            (verdeel2-in rest new-budget)))))
 
-(define (verdeel-in bomen budget)
+(define (verdeel2-in bomen budget)
   (if (null? bomen)
       '()
-    (append (verdeel    (car bomen) budget)
-      (verdeel-in (cdr bomen) budget))))
+    (append (verdeel2    (car bomen) budget)
+      (verdeel2-in (cdr bomen) budget))))
 
-(and (= (verdeel-democratisch familieboom 1500) 100)
+(and (= (verdeel-democratisch2 familieboom 1500) 100)
   (= (budget familieboom '(100 50 20)) 650)
-  (equal? (verdeel familieboom 3000) '((tom 250) (roel 250) (mie 500) (ina 125) (ilse 125) (bart 250) (iris 500) (ilse 1000))))
+  (equal? (verdeel2 familieboom 3000) '((tom 250) (roel 250) (mie 500) (ina 125) (ilse 125) (bart 250) (iris 500) (ilse 1000))))
 
 ; 7.18
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define VUB-circus '(ann (mien (eef (bas)
                                  (bob))
@@ -812,8 +812,8 @@
     (if (and (artiest? piramide)
           (eq? (hoofdartiest piramide) artiest))
       (append pad
-        (list (hoofdartiest piramide))
-        (map hoofdartiest (artiesten piramide))))
+              (append (list (hoofdartiest piramide))
+                      (map hoofdartiest (artiesten piramide)))))
     (fall-in (artiesten piramide)
       (append pad
         (list (hoofdartiest piramide)))))
