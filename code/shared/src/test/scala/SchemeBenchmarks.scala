@@ -192,7 +192,7 @@ object SchemeBenchmarks {
     "test/icp/icp_4_qeval.scm",
     "test/icp/icp_5_regsim.scm",
     "test/icp/icp_6_stopandcopy_scheme.scm",
-    "test/icp/icp_2_eceval.scm",
+    "test/icp/icp_7_eceval.scm",
     "test/icp/icp_8_compiler.scm",
   )
 
