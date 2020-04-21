@@ -75,9 +75,9 @@ object SchemeBenchmarks {
       "test/gambit/graphs.scm",
       "test/gambit/lattice.scm",
       "test/gambit/mazefun.scm",
-      "test/gambit/browse.scm",
+      // "test/gambit/browse.scm", // part of gabriel
       "test/gambit/paraffins.scm",
-      "test/gambit/puzzle.scm",
+      // "test/gambit/puzzle.scm",
       // "test/gambit/trav1.scm", // append? or dot notation
       "test/gambit/perm9.scm",
       "test/gambit/destruc.scm",

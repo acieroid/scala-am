@@ -52,7 +52,6 @@ object PrimitivesBenchmarks {
     while (work.nonEmpty) {
       work.head match {
         case SchemeVar(Identifier(name, pos)) if SchemePrelude.primNames.contains(name) =>
-          println(name)
           work = work.tail
           calls = calls + ((name, pos))
         case e => work = e.subexpressions ::: work.tail
@@ -62,19 +61,18 @@ object PrimitivesBenchmarks {
   }
 
   // Count the number of primitives used for a benchmark
-  def numberOfPrimitives(exp: SchemeExp): Int = {
+  def primitives(exp: SchemeExp): Set[String] = {
     var work: List[Expression] = List(exp)
     var prims: Set[String] = Set()
     while (work.nonEmpty) {
       work.head match {
         case Identifier(name, _) if SchemePrelude.primNames.contains(name) =>
-          println(name)
           work = work.tail
           prims = prims + name
         case e => work = e.subexpressions ::: work.tail
       }
     }
-    prims.size
+    prims
   }
 }
 
@@ -137,7 +135,9 @@ abstract class PrimitivesComparison extends AnalysisComparison[
       System.gc()
       path = b
       val parsed = SchemeParser.parse(Reader.loadFile(b))
-      println(s"Benchmark $b: ${PrimitivesBenchmarks.primitiveUsages(parsed)} usages, ${PrimitivesBenchmarks.numberOfPrimitives(parsed)} prims")
+      val usages = PrimitivesBenchmarks.primitiveUsages(parsed)
+      val prims = PrimitivesBenchmarks.primitives(parsed)
+      println(s"Benchmark $b: $prims (count: ${prims.size}), and $usages usages")
       runBenchmark(b)
     })
     println("Results:")
