@@ -76,9 +76,13 @@ object SchemeLexicalAddresser {
     scope.copy(local    = emptyFrame,
                lexical  = scope.local :: scope.lexical)
   def extend(scope: Scope, id: Identifier): Scope =
-    scope.copy(local = scope.local + (id.name -> id))
+    if(scope.local.contains(id.name)) {
+      throw new Exception(s"Duplicate definition of identifier $id")
+    } else {
+      scope.copy(local = scope.local + (id.name -> id))
+    }
   def extend(scope: Scope, ids: Iterable[Identifier]): Scope =
-    ids.foldRight(scope)((idn,scp) => extend(scp,idn))
+    ids.foldLeft(scope)(extend)
 
   def translateProgram(prg: SchemeExp, global: Set[String]): SchemeExp =
     translate(prg, extend(Scope(emptyFrame,Nil,global), defs(prg)))
