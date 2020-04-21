@@ -809,7 +809,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       val name = "newline"
       def call(args: List[Value]) = args match {
         case Nil =>
-          if (output) println("")
+          if (output) println("\n")
           Value.Undefined(Identity.none)
         case _ => throw new Exception(s"newline: wrong number of arguments, 0 expected, got ${args.length}")
       }
@@ -1217,7 +1217,13 @@ object SchemeInterpreter {
     case class Integer(n: Int) extends Value
     case class Real(r: Double) extends Value
     case class Bool(b: Boolean) extends Value
-    case class Character(c: Char) extends Value
+    case class Character(c: Char) extends Value {
+      override def toString: String = c match {
+        case ' ' => "#\\space"
+        case '\n' => "#\\newline"
+        case c => s"#\\$c"
+      }
+    }
     case object Nil extends Value
     case class Cons(car: Addr, cdr: Addr) extends Value
     // TODO: fix vector representation (use addresses)
