@@ -156,7 +156,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val component = newComponent(clo,nam,context)
           bindArgs(component, prs, argVals)
           call(component)
-        case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
+        case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length <= arity =>
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
