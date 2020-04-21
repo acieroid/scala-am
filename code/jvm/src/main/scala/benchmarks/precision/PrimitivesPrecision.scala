@@ -23,10 +23,10 @@ object PrimitivesBenchmarks {
     "test/sat.scm",
     "test/regex.scm",
     "test/rsa.scm",
-    "test/four-in-a-row.scm",
+    //"test/four-in-a-row.scm", // unsound
     "test/sigscheme/mem.scm",
     "test/grid.scm",
-    //    "test/sigscheme/takr.scm", // has a tendency to result in OOM in concrete mode
+    // "test/sigscheme/takr.scm", // has a tendency to result in OOM in concrete mode
   )
 
   val benchmarks = {
@@ -35,9 +35,47 @@ object PrimitivesBenchmarks {
     SchemeBenchmarks.scp1_compressed ++
     SchemeBenchmarks.icp ++
     SchemeBenchmarks.ad ++
-    standard
+    standard ++
+    List()
   }
-  println(s"I have ${benchmarks.size} benchmarks")
+  import scalaam.language.scheme._
+  import scalaam.core._
+
+  // Counts the number of distinct primitive usages.
+  // This is not exactly the number of primitive calls, because of situations like the following:
+  // (define foo +) (foo 1 2) (foo 2 3) // two primitive calls, one distinct usage
+  // Finding the exact number of primitive calls would be impossible, but this seems like a good approximation.
+  // Another solution is to simply count explicit primitive calls
+  def primitiveUsages(exp: SchemeExp): Int = {
+    var work: List[Expression] = List(exp)
+    var calls: Set[(String, Identity)] = Set()
+    while (work.nonEmpty) {
+      work.head match {
+        case SchemeVar(Identifier(name, pos)) if SchemePrelude.primNames.contains(name) =>
+          println(name)
+          work = work.tail
+          calls = calls + ((name, pos))
+        case e => work = e.subexpressions ::: work.tail
+      }
+    }
+    calls.size
+  }
+
+  // Count the number of primitives used for a benchmark
+  def numberOfPrimitives(exp: SchemeExp): Int = {
+    var work: List[Expression] = List(exp)
+    var prims: Set[String] = Set()
+    while (work.nonEmpty) {
+      work.head match {
+        case Identifier(name, _) if SchemePrelude.primNames.contains(name) =>
+          println(name)
+          work = work.tail
+          prims = prims + name
+        case e => work = e.subexpressions ::: work.tail
+      }
+    }
+    prims.size
+  }
 }
 
 abstract class PrimitivesComparison extends AnalysisComparison[
@@ -70,14 +108,14 @@ abstract class PrimitivesComparison extends AnalysisComparison[
   def otherAnalyses(prg: SchemeExp) = List(
 //    S_0_0(prg), // should be equivalent to base analysis
     S_CS_0(prg),
-//    S_2CS_0(prg),
-//    S_2AcyclicCS_0(prg),
-//    S_10CS_0(prg),
-//    S_10AcyclicCS_0(prg), // does not yield interesting results
-//    S_FA_0(prg),
-//    S_2FA_0(prg), // does not improve on FA
-//    S_10FA_0(prg), // does not improve on FA
-//    S_CSFA_0(prg), // does not improve on FA, but we want to include them still
+    S_2CS_0(prg),
+    S_2AcyclicCS_0(prg),
+    S_10CS_0(prg),
+    S_10AcyclicCS_0(prg), // does not yield interesting results
+    S_FA_0(prg),
+    S_2FA_0(prg), // does not improve on FA
+    S_10FA_0(prg), // does not improve on FA
+    S_CSFA_0(prg), // does not improve on FA, but we want to include them still
   )
 
   def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
@@ -98,6 +136,8 @@ abstract class PrimitivesComparison extends AnalysisComparison[
     PrimitivesBenchmarks.benchmarks.foreach(b => {
       System.gc()
       path = b
+      val parsed = SchemeParser.parse(Reader.loadFile(b))
+      println(s"Benchmark $b: ${PrimitivesBenchmarks.primitiveUsages(parsed)} usages, ${PrimitivesBenchmarks.numberOfPrimitives(parsed)} prims")
       runBenchmark(b)
     })
     println("Results:")
