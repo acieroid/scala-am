@@ -26,14 +26,14 @@
 (define display2 (lambda (i) (set! result2 (cons i result2))))
 
 (define (make-ring2 n)
-  (let ((last (cons 0 '())))
-    (define (build-list n)
+  (let ((last2 (cons 0 '())))
+    (define (build-list2 n)
       (if (= n 0)
-        last
-        (cons n (build-list (- n 1)))))
-    (let ((ring (build-list n)))
-      (set-cdr! last ring)
-      ring)))
+        last2
+        (cons n (build-list2 (- n 1)))))
+    (let ((ring2 (build-list2 n)))
+      (set-cdr! last2 ring2)
+      ring2)))
 
 (define (print-ring2 r)
   (define (aux l)
@@ -49,9 +49,9 @@
   #t)
 
 
-(define r (make-ring2 3))
-(print-ring2 r)
-(print-ring2 (cdr r))
+(define r2 (make-ring2 3))
+(print-ring2 r2)
+(print-ring2 (cdr r2))
 (equal? result2 '("..." 3 " " 0 " " 1 " " 2 " " "..." 0 " " 1 " " 2 " " 3 " "))
 
 ; 9.5
@@ -59,14 +59,14 @@
 (define display3 (lambda (i) (set! result3 (cons i result3))))
 
 (define (make-ring3 n)
-  (let ((last (cons 0 '())))
-    (define (build-list n)
+  (let ((last3 (cons 0 '())))
+    (define (build-list3 n)
       (if (= n 0)
-        last
-        (cons n (build-list (- n 1)))))
-    (let ((ring (build-list n)))
-      (set-cdr! last ring)
-      ring)))
+        last3
+        (cons n (build-list3 (- n 1)))))
+    (let ((ring3 (build-list3 n)))
+      (set-cdr! last3 ring3)
+      ring3)))
 
 (define (print-ring3 r)
   (define (aux l)
@@ -88,19 +88,19 @@
       (iter (cdr l))))
   (iter r))
 
-(define r (make-ring3 3))
-(print-ring3 (right-rotate r))
+(define r3 (make-ring3 3))
+(print-ring3 (right-rotate r3))
 (equal? result3 '("..." 1 " " 2 " " 3 " " 0 " "))
 
 ; 9.6
-(define ret4
+(define ret4-2
   (let ((last (cons 'c '())))
     (cons last (cons 'b last))))
-(define ret7
+(define ret7-2
   (let* ((last (cons 'c '()))
           (middle (cons last last)))
     (cons middle middle)))
-(define retno
+(define retno-2
   (let* ((last (cons 'c '()))
           (lst (cons 'a (cons 'b last))))
     (set-cdr! last lst)
@@ -117,24 +117,24 @@
 
 (and (not (cycles? '()))
   (not (cycles? '(1 2 3)))
-  (not (cycles? ret4))
-  (cycles? retno)
-  (not (cycles? ret7))
-  (cycles? (cons 'a (cons 'b retno))))
+  (not (cycles? ret4-2))
+  (cycles? retno-2)
+  (not (cycles? ret7-2))
+  (cycles? (cons 'a (cons 'b retno-2))))
 
 ; 9.7
 (define result4 '())
 (define display4 (lambda (i) (set! result4 (cons i result4))))
 
 (define (make-ring4 n)
-  (let ((last (cons 0 '())))
-    (define (build-list n)
+  (let ((last4 (cons 0 '())))
+    (define (build-list4 n)
       (if (= n 0)
-        last
-        (cons n (build-list (- n 1)))))
-    (let ((ring (build-list n)))
-      (set-cdr! last ring)
-      ring)))
+        last4
+        (cons n (build-list4 (- n 1)))))
+    (let ((ring4 (build-list4 n)))
+      (set-cdr! last4 ring4)
+      ring4)))
 
 (define (print-ring4 r)
   (define (aux l)
@@ -161,12 +161,12 @@
     (set-cdr! last first)
     first))
 
-(define r (make-ring4 3))
-(define s (copy-ring r))
-(print-ring4 s)
-(set-car! s 999)
-(print-ring4 s)
-(print-ring4 r)
+(define r4 (make-ring4 3))
+(define s4 (copy-ring r4))
+(print-ring4 s4)
+(set-car! s4 999)
+(print-ring4 s4)
+(print-ring4 r4)
 (equal? result4 '("..." 0 " " 1 " " 2 " " 3 " " "..." 0 " " 1 " " 2 " " 999 " " "..." 0 " " 1 " " 2 " " 3 " "))
 
 ; 9.8
@@ -174,14 +174,14 @@
 (define display5 (lambda (i) (set! result5 (cons i result5))))
 
 (define (make-ring5 n)
-  (let ((last (cons 0 '())))
-    (define (build-list n)
+  (let ((last5 (cons 0 '())))
+    (define (build-list5 n)
       (if (= n 0)
-        last
-        (cons n (build-list (- n 1)))))
-    (let ((ring (build-list n)))
-      (set-cdr! last ring)
-      ring)))
+        last5
+        (cons n (build-list5 (- n 1)))))
+    (let ((ring5 (build-list5 n)))
+      (set-cdr! last5 ring5)
+      ring5)))
 
 (define (print-ring5 r)
   (define (aux l)
@@ -216,18 +216,18 @@
       (remove-nth! (cdr l) (- n 1))))
 
   (define (iter l)
-    (print-ring l)
+    (print-ring5 l)
     (if (eq? l (cdr l))
       (car l)
       (iter (remove-nth! l n))))
 
   (if (= n 1)
     (car (right-rotate r))
-    (iter (copy-ring r))))
+    (iter (copy-ring5 r))))
 
-(define ring (make-ring5 5))
-(Josephus ring 5)
-(print-ring5 ring)
+(define ring5 (make-ring5 5))
+(Josephus ring5 5)
+(print-ring5 ring5)
 (equal? result5 '("..." 0 " " 1 " " 2 " " 3 " " 4 " " 5 " " "..." 5 " " "..." 5 " " 3 " " "..." 3 " " 4 " " 5 " " "..." 3 " " 4 " " 5 " " 0 " " "..." 2 " " 3 " " 4 " " 5 " " 0 " " "..." 0 " " 1 " " 2 " " 3 " " 4 " " 5 " "))
 
 ; 9.9
@@ -244,21 +244,21 @@
             (count (cdr current))))))
     (count lst)))
 
-(define ret3 (cons 'a (cons 'b (cons 'c '()))))
-(define ret4
+(define ret3-3 (cons 'a (cons 'b (cons 'c '()))))
+(define ret4-3
   (let ((last (cons 'c '())))
     (cons last (cons 'b last))))
-(define ret7
+(define ret7-3
   (let* ((last (cons 'c '()))
           (middle (cons last last)))
     (cons middle middle)))
-(define retno
+(define retno-3
   (let* ((last (cons 'c '()))
           (lst (cons 'a (cons 'b last))))
     (set-cdr! last lst)
     lst))
 
-(= 3 (count-pairs ret3) (count-pairs ret4) (count-pairs ret7) (count-pairs retno))
+(= 3 (count-pairs ret3-3) (count-pairs ret4-3) (count-pairs ret7-3) (count-pairs retno-3))
 
 ; 9.12
 (define (find-last lijst)
@@ -322,7 +322,7 @@
   (loop lst)
   lst)
 
-(define (print-ring r)
+(define (print-ring6 r)
   (define (aux l)
     (if (not (null? l))
       (if (eq? (cdr l) r)
@@ -338,7 +338,7 @@
 (define last-cons (cons 3 '()))
 (define test-lst (cons 1 (cons 4 last-cons)))
 (set-cdr! last-cons test-lst)
-(print-ring (kw-lijst test-lst))
+(print-ring6 (kw-lijst test-lst))
 (equal? result6 '("..." 9 " " 3 " " 16 " " 4 " " 1 " " 1 " "))
 
 ; 9.14
