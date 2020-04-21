@@ -137,7 +137,9 @@ class SExpLexer extends Lexical with SExpTokens {
         }
     }
   def character: Parser[SExpToken] =
-    '#' ~> '\\' ~> any ^^ (c => TCharacter(c))
+    (('#' ~> '\\' ~> any ^^ (c => TCharacter(c))) |
+      ('#' ~> '\\' ~> 's' ~> 'p' ~> 'a' ~> 'c' ~> 'e' ^^^ TCharacter(' ')) |
+      ('#' ~> '\\' ~> 'n' ~> 'e' ~> 'w' ~> 'l' ~> 'i' ~> 'n' ~> 'e' ^^^ TCharacter('\n')))
   def string: Parser[SExpToken] = {
     ('"' ~> stringContent ~ chrExcept('\\') <~ '"' ^^ { case s ~ ending => TString(s + ending) }) |
       ('"' ~> stringContent <~ '"' ^^ (s => TString(s)))
