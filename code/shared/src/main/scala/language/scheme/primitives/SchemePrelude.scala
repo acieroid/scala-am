@@ -71,6 +71,7 @@ object SchemePrelude {
             (if (eq? (car l) e)
               l
               (memq e (cdr l)))))""",
+    "memv" -> "(define (memv e l) (memq e l))",
     //"min" -> "(define (min a b) (if (< a b) a b))", // Variadic => implemented manually.
     "negative?" -> "(define (negative? x) (< x 0))",
     "newline" -> "(define (newline) #f)", // undefined

@@ -371,7 +371,12 @@ class ModularSchemeLattice[
             }
           case Quotient =>
             (x, y) match {
-              case (Int(n1), Int(n2)) => MayFail.success(Int(IntLattice[I].quotient(n1, n2)))
+              case (Int(n1), Int(n2)) => try {
+                MayFail.success(Int(IntLattice[I].quotient(n1, n2)))
+              } catch {
+                case _: ArithmeticException =>
+                  MayFail.failure(OperatorNotApplicable("quotient", List(x, y)))
+              }
               case _                  => MayFail.failure(OperatorNotApplicable("quotient", List(x, y)))
             }
           case Div =>

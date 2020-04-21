@@ -71,8 +71,8 @@ abstract class PrecisionBenchmarks[
         case analysis.valueLattice.Prim(p)      => baseDomain.Prim(StubPrimitive(p.name))
         case analysis.valueLattice.Clo(l,_,_)   => baseDomain.Clo(LambdaIdnEq(l),(),None)
         case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertAddr(analysis)(a), convertAddr(analysis)(d))
-        case analysis.valueLattice.Pointer(_)   => throw new Exception("Vectors not supported in precision benchmarks") //baseDomain.Pointer(convertAddr(analysis)(a))
-        case analysis.valueLattice.Vec(_,_,_)   => throw new Exception("Vectors not supported in precision benchmarks") //baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap,convertValue(analysis)(i)) 
+        case analysis.valueLattice.Pointer(a)   => baseDomain.Pointer(convertAddr(analysis)(a))
+        case analysis.valueLattice.Vec(s,e,i)   => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap,convertValue(analysis)(i))
     }
     private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
         case analysis.valueLattice.Element(v)   => baseDomain.Element(convertV(analysis)(v))
@@ -101,15 +101,15 @@ abstract class PrecisionBenchmarks[
         case SchemeInterpreter.Value.Bool(b)            => baseLattice.bool(b)
         case SchemeInterpreter.Value.Character(c)       => baseLattice.char(c)
         case SchemeInterpreter.Value.Cons(a,d)          => baseLattice.cons(convertConcreteAddr(a),convertConcreteAddr(d))
-      case SchemeInterpreter.Value.Vector(v)          => throw new Exception("Vectors are not supported in precision benchmarks") /*baseLattice.vector(baseLattice.number(v.size), baseLattice.bottom) match {
-        case MayFailSuccess(vec) => v.view.zipWithIndex.foldLeft(vec)({ case (acc, (value, idx)) =>
-          baseLattice.vectorSet(acc, baseLattice.number(idx), convertConcreteValue(value)) match {
-            case MayFailSuccess(vec2) => vec2
-            case _ => ???
-          }})
-        case _ => ???
-                                                                                                                                   }*/
-        case _                                          => throw new Exception("Unsupported concrete value for precision benchmarks")
+        case SchemeInterpreter.Value.Vector(v)          => baseLattice.vector(baseLattice.number(v.size), baseLattice.bottom) match {
+          case MayFailSuccess(vec) => v.view.zipWithIndex.foldLeft(vec)({ case (acc, (value, idx)) =>
+            baseLattice.vectorSet(acc, baseLattice.number(idx), convertConcreteValue(value)) match {
+              case MayFailSuccess(vec2) => vec2
+              case _ => ???
+            }})
+          case _ => ???
+        }
+        case v                                          => throw new Exception(s"Unsupported concrete value for precision benchmarks: $v")
     }
  
     type BaseStore = Map[BaseAddr, BaseValue]
@@ -143,7 +143,9 @@ abstract class PrecisionBenchmarks[
                     println(value1)
                     println(value2)
                 }
-                assert(baseLattice.subsumes(value1,value2))
+                if (baseLattice.isFalse(baseLattice.unaryOp(SchemeOps.UnaryOperator.IsVector)(value1).getOrElse(baseLattice.bottom)) &&
+                  baseLattice.isFalse(baseLattice.unaryOp(SchemeOps.UnaryOperator.IsVector)(value2).getOrElse(baseLattice.bottom)))
+                  assert(baseLattice.subsumes(value1,value2))
                 //println(s"[$addr1] value $value1 has been refined to $value2")
                 acc + addr1
             } else {
@@ -250,7 +252,12 @@ abstract class PrecisionBenchmarks[
             println()
             Some(baseStore)
         } catch {
-            case _: Exception | _: StackOverflowError => None
+          case e: Exception =>
+            println(s"Concrete interpreter failed with $e");
+            None
+          case e: StackOverflowError =>
+            println(s"Concrete interpreter failed with $e");
+            None
         }
     }
 

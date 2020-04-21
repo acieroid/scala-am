@@ -2,14 +2,14 @@
 ;; reduced number of iterations from 200000 to 200
 
 (define (create-x n)
-  (define result (make-vector n))
+  (define result (make-vector n 0))
   (do ((i 0 (+ i 1)))
       ((>= i n) result)
     (vector-set! result i i)))
 
 (define (create-y x)
   (let* ((n (vector-length x))
-         (result (make-vector n)))
+         (result (make-vector n 0)))
     (do ((i (- n 1) (- i 1)))
         ((< i 0) result)
       (vector-set! result i (vector-ref x i)))))

@@ -32,7 +32,7 @@
             (lambda (if-equal if-different)
               (lambda (row)
                 (let ((vec
-                       (make-vector number-of-cols)))
+                       (make-vector number-of-cols 0)))
                   (do ((i 0 (+ i 1))
                        (first first-row
                               (cdr first))
@@ -207,7 +207,7 @@
 (define proc->vector
   (lambda (size proc)
     (let ((res
-           (make-vector size)))
+           (make-vector size 0)))
       (do ((i 0
               (+ i 1)))
         ((= i size))

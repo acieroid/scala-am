@@ -45,6 +45,12 @@ sealed trait MayFail[A, E] {
     case MayFailError(errs)   => errs.map(fe)
     case MayFailBoth(a, errs) => Set(fa(a)) ++ errs.map(fe)
   }
+
+  def getOrElse(alt: A): A = this match {
+    case MayFailSuccess(a) => a
+    case MayFailError(_)   => alt
+    case MayFailBoth(a, _) => a
+  }
 }
 
 case class MayFailSuccess[A, E](a: A)            extends MayFail[A, E]
