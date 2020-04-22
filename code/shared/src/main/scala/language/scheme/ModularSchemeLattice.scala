@@ -147,6 +147,15 @@ class ModularSchemeLattice[
           case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
           case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
           case (Symbol(s1), Symbol(s2)) => SymbolLattice[Sym].subsumes(s1,s2)
+          case (Vec(siz1,els1,ini1), Vec(siz2,els2,ini2)) =>
+            IntLattice[I].subsumes(siz1, siz2) &&
+            schemeLattice.subsumes(ini1, ini2) && 
+            els2.forall { case (idx2, vlu2) =>
+              schemeLattice.subsumes(ini1, vlu2) ||
+              els1.exists { case (idx1, vlu1) => 
+                IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
+              }
+            }
           case _                    => false
         }
       }

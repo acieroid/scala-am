@@ -153,9 +153,7 @@ abstract class PrecisionBenchmarks[
                     println(value1)
                     println(value2)
                 }
-                if (baseLattice.isFalse(baseLattice.unaryOp(SchemeOps.UnaryOperator.IsVector)(value1).getOrElse(baseLattice.bottom)) &&
-                  baseLattice.isFalse(baseLattice.unaryOp(SchemeOps.UnaryOperator.IsVector)(value2).getOrElse(baseLattice.bottom)))
-                  assert(baseLattice.subsumes(value1,value2))
+                assert(baseLattice.subsumes(value1,value2))
                 //println(s"[$addr1] value $value1 has been refined to $value2")
                 acc + addr1
             } else {
