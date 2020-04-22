@@ -880,7 +880,10 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     }
     object Vectorp extends SingleArgumentPrim("vector?") {
       def fun = {
-        case _: Value.Vector => Value.Bool(true)
+        case Value.Pointer(a) => store(a) match {
+          case _ : Value.Vector => Value.Bool(true)
+          case _ => Value.Bool(false)
+        }
         case _ => Value.Bool(false)
       }
     }
