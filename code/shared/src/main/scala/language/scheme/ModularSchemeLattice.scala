@@ -506,16 +506,42 @@ class ModularSchemeLattice[
         case (Vec(size, content, init), Int(index)) =>
             val comp = IntLattice[I].lt(index, size)
             val t: L = if (BoolLattice[B].isTrue(comp)) {
-              Element(
-                Vec(
-                  size,
-                  content + (index -> schemeLattice.join(content.getOrElse(index, schemeLattice.bottom), newval)),
-                  init
-                )
-              )
+              content.find({ case (k, _) => IntLattice[I].subsumes(k, index) }) match {
+                case Some((index2, _)) =>
+                  // Case 1: there is an `index2` that already subsumes `index`
+                  // Then we just update the value for `index2`
+                  Element(
+                    Vec(
+                      size,
+                      content + (index2 -> schemeLattice.join(content.getOrElse(index, schemeLattice.bottom), newval)),
+                      init
+                    )
+                  )
+                case None =>
+                  if (content.exists({ case (k, _) => IntLattice[I].subsumes(index, k) })) {
+                    // Case 2: this index subsumes other indices
+                    // In that case, we join all values and removed the subsumed indices
+                    val subsumedKeys = content.keySet.filter(k => IntLattice[I].subsumes(index, k))
+                    val joinedValues = subsumedKeys.foldLeft(schemeLattice.bottom)((acc, k) =>
+                      schemeLattice.join(acc, content.getOrElse(k, schemeLattice.bottom)))
+                    val contentWithoutSubsumedKeys = subsumedKeys.foldLeft(content)((acc, k) => acc - k)
+                    Element(Vec(size, contentWithoutSubsumedKeys + (index -> schemeLattice.join(joinedValues, newval)), init))
+                  } else if (schemeLattice.subsumes(init, newval)) {
+                    // Case 3: there is nothing in `content` that we can update, but the value we're setting `index` to is subsumed by `init`
+                    // In that case, nothing has to be done
+                    Element(vector)
+                  } else {
+                    // Case 4: none of the cases above applies, so we add a new key
+                    Element(Vec(size, content + (index -> newval), init)
+                    )
+                  }
+              }
             } else {
               schemeLattice.bottom
             }
+            // We ignore out-of-bounds accesses, mostly because most of them will be spurious.
+            // For example, vector-set! called with Int as first argument would result in
+            // a possible out-of-bound access
             val f: L = schemeLattice.bottom
             MayFail.success(schemeLattice.join(t, f))
         case (_: Vec, _) => MayFail.failure(TypeError("expecting int to set vector", index))
