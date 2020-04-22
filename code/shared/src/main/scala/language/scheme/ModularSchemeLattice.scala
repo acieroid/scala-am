@@ -527,10 +527,10 @@ class ModularSchemeLattice[
                     )
                   )
                 case None =>
-                  if (content.exists({ case (k, _) => IntLattice[I].subsumes(index, k) })) {
+                  val subsumedKeys = content.keySet.filter(k => IntLattice[I].subsumes(index, k))
+                  if (subsumedKeys.nonEmpty) {
                     // Case 2: this index subsumes other indices
                     // In that case, we join all values and removed the subsumed indices
-                    val subsumedKeys = content.keySet.filter(k => IntLattice[I].subsumes(index, k))
                     val joinedValues = subsumedKeys.foldLeft(schemeLattice.bottom)((acc, k) =>
                       schemeLattice.join(acc, content.getOrElse(k, schemeLattice.bottom)))
                     val contentWithoutSubsumedKeys = subsumedKeys.foldLeft(content)((acc, k) => acc - k)
