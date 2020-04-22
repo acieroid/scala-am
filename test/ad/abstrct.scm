@@ -1,7 +1,7 @@
 (define result '())
-(define (display item)
+(define (display2 item)
   (set! result (cons item result)))
-(define (newline) (set! result (cons 'newline result)))
+(define (newline2) (set! result (cons 'newline result)))
 
 (define (make-row key name age wage)
   (vector key name age wage))
@@ -31,10 +31,10 @@
   (vector-set! row 3 value))
 
 (define (show-row row)
-  (display "[Sleutel:")(display (key-ref row))(display "]")
-  (display "[Naam:")(display (name-ref row))(display "]")
-  (display "[Leeftijd:")(display (age-ref row))(display "]")
-  (display "[Salaris:")(display (wage-ref row))(display "]"))
+  (display2 "[Sleutel:")(display2 (key-ref row))(display2 "]")
+  (display2 "[Naam:")(display2 (name-ref row))(display2 "]")
+  (display2 "[Leeftijd:")(display2 (age-ref row))(display2 "]")
+  (display2 "[Salaris:")(display2 (wage-ref row))(display2 "]"))
 
 (define (make-table rows)
   (make-vector rows 0))
@@ -54,10 +54,10 @@
 
 (define (show-table table)
   (define (iter index)
-    (cond ((= index (table-size table)) (newline))
+    (cond ((= index (table-size table)) (newline2))
           (else
            (show-row (row-ref table index))
-           (newline)
+           (newline2)
            (iter (+ index 1)))))
   (iter 0))
 
