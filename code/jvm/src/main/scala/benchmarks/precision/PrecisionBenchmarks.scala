@@ -101,15 +101,25 @@ abstract class PrecisionBenchmarks[
         case SchemeInterpreter.Value.Bool(b)            => baseLattice.bool(b)
         case SchemeInterpreter.Value.Character(c)       => baseLattice.char(c)
         case SchemeInterpreter.Value.Cons(a,d)          => baseLattice.cons(convertConcreteAddr(a),convertConcreteAddr(d))
-        case SchemeInterpreter.Value.Vector(v)          => baseLattice.vector(baseLattice.number(v.size), baseLattice.bottom) match {
-          case MayFailSuccess(vec) => v.view.zipWithIndex.foldLeft(vec)({ case (acc, (value, idx)) =>
-            baseLattice.vectorSet(acc, baseLattice.number(idx), convertConcreteValue(value)) match {
-              case MayFailSuccess(vec2) => vec2
-              case _ => ???
-            }})
-          case _ => ???
-        }
-        case v                                          => throw new Exception(s"Unsupported concrete value for precision benchmarks: $v")
+        case SchemeInterpreter.Value.Pointer(a)         => baseLattice.pointer(convertConcreteAddr(a))
+        case SchemeInterpreter.Value.Vector(siz,els,ini) => 
+            def convertNumber(n: Int): Num = baseLattice.number(n) match {
+                case baseDomain.Element(baseDomain.Int(num)) => num
+            }
+            val cSiz = convertNumber(siz)
+            val cIni = convertConcreteValue(ini)
+            val cEls = els.foldLeft(Map[Num,BaseValue]()) { case (acc,(idx,vlu)) =>
+                val cIdx = convertNumber(idx)
+                val cVlu = convertConcreteValue(vlu)
+                if (baseLattice.subsumes(cIni,cVlu)) {
+                    acc
+                } else {
+                    val prevVlu = acc.getOrElse(cIdx, baseLattice.bottom)
+                    val newVlu = baseLattice.join(cVlu, prevVlu)
+                    acc + (cIdx -> newVlu)
+                }
+            }
+            baseDomain.Element(baseDomain.Vec(cSiz, cEls, cIni))
     }
  
     type BaseStore = Map[BaseAddr, BaseValue]
@@ -143,9 +153,7 @@ abstract class PrecisionBenchmarks[
                     println(value1)
                     println(value2)
                 }
-                if (baseLattice.isFalse(baseLattice.unaryOp(SchemeOps.UnaryOperator.IsVector)(value1).getOrElse(baseLattice.bottom)) &&
-                  baseLattice.isFalse(baseLattice.unaryOp(SchemeOps.UnaryOperator.IsVector)(value2).getOrElse(baseLattice.bottom)))
-                  assert(baseLattice.subsumes(value1,value2))
+                assert(baseLattice.subsumes(value1,value2))
                 //println(s"[$addr1] value $value1 has been refined to $value2")
                 acc + addr1
             } else {
