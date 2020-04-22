@@ -953,37 +953,56 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     /////////////
     // Vectors //
     /////////////
-    object Vector extends SimplePrim {
+    object Vector extends Prim {
       val name = "vector"
-      def call(args: List[Value]): Value = Value.Vector(args.toArray)
+      def newVector(fexp: SchemeFuncall, siz: Int, elms: Map[Int,Value], ini: Value): Value = {
+        val ptr = newAddr(AddrInfo.PtrAddr(fexp))
+        val vct = Value.Vector(siz, elms, ini)
+        extendStore(ptr, vct)
+        Value.Pointer(ptr)
+      }
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = {
+        val elms = args.map(_._2).zipWithIndex.map(_.swap).toMap
+        newVector(fexp, args.size, elms, Value.Undefined(fexp.idn))
+      }
     }
-    object MakeVector extends SimplePrim {
+    object MakeVector extends Prim {
       val name = "make-vector"
-      def call(args: List[Value]): Value = args match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = args.map(_._2) match {
+        case Value.Integer(size) :: Nil =>
+          Vector.newVector(fexp, size, Map(), Value.Undefined(fexp.idn))
         case Value.Integer(size) :: init :: Nil =>
-          Value.Vector(Array.fill(size)(init))
+          Vector.newVector(fexp, size, Map(), init)
         case _ => throw new Exception(s"make-vector: invalid arguments $args")
       }
     }
     object VectorLength extends SingleArgumentPrim("vector-length") {
       def fun = {
-        case Value.Vector(v) => Value.Integer(v.length)
+        case Value.Pointer(a) => store(a) match {
+          case Value.Vector(siz,_,_) => Value.Integer(siz)
+        }
       }
     }
     object VectorRef extends SimplePrim {
       val name = "vector-ref"
       def call(args: List[Value]): Value = args match {
-        case Value.Vector(v) :: Value.Integer(n) :: Nil =>
-          v(n)
+        case Value.Pointer(a) :: Value.Integer(idx) :: Nil => store(a) match {
+          case Value.Vector(siz,els,ini) if idx >= 0 && idx < siz => els.getOrElse(idx, ini)
+          case Value.Vector(siz,_,_) => throw new Exception(s"Index $idx out of range (valid range: [0,${siz-1}])")  
+        }
         case _ => throw new Exception(s"vector-ref: invalid arguments $args")
       }
     }
     object VectorSet extends SimplePrim {
       val name = "vector-set!"
       def call(args: List[Value]): Value = args match {
-        case Value.Vector(vec) :: Value.Integer(idx) :: v :: Nil =>
-          vec(idx) = v
-          Value.Undefined(Identity.none)
+        case Value.Pointer(a) :: Value.Integer(idx) :: v :: Nil => store(a) match {
+          case Value.Vector(siz,els,ini) if idx >= 0 && idx < siz =>
+            val updatedVct = Value.Vector(siz, els + (idx -> v), ini)
+            extendStore(a, updatedVct)
+            Value.Undefined(Identity.none)
+          case Value.Vector(siz,_,_) => throw new Exception(s"Index $idx out of range (valid range: [0,${siz-1}])")
+        }
         case _ => throw new Exception(s"vector-set!: invalid arguments $args")
       }
     }
@@ -1217,6 +1236,7 @@ object SchemeInterpreter {
     case class Integer(n: Int) extends Value
     case class Real(r: Double) extends Value
     case class Bool(b: Boolean) extends Value
+    case class Pointer(v: Addr) extends Value
     case class Character(c: Char) extends Value {
       override def toString: String = c match {
         case ' ' => "#\\space"
@@ -1226,8 +1246,7 @@ object SchemeInterpreter {
     }
     case object Nil extends Value
     case class Cons(car: Addr, cdr: Addr) extends Value
-    // TODO: fix vector representation (use addresses)
-    case class Vector(elems: Array[Value]) extends Value
+    case class Vector(size: Int, elems: Map[Int,Value], init: Value) extends Value
   }
 
 
