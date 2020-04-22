@@ -134,8 +134,8 @@
   (equal? result3 '("\n" 19 "\t" 9 "\n" 3 "\t" 8 "\n" 16 "\t" 7 "\n" 8 "\t" 6 "\n" 5 "\t" 5 "\n" 2 "\t" 4 "\n" 7 "\t" 3 "\n" 1 "\t" 2 "\n" 0 "\t" 1)))
 
 ; 3.8
-(define (double x) (+ x x))
-(define (halve x) (/ x 2))
+;(define (double x) (+ x x))
+;(define (halve x) (/ x 2))
 (define (sim-multiply a b)
   (if (zero? b)
     1

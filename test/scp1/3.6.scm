@@ -1,10 +1,3 @@
-(define (for-each f l)
-  (if (null? l)
-      #t
-      (if (pair? l)
-          (begin (f (car l)) (for-each f (cdr l)))
-          (error "Cannot for-each over a non-list"))))
-
 (define result '())
 (define display (lambda (i) (set! result (cons i result))))
 

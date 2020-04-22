@@ -38,7 +38,15 @@ object SchemePrelude {
     "equal?" -> """(define (equal? a b)
           (or (eq? a b)
             (and (null? a) (null? b))
-            (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))))""",
+            (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
+            (and (vector? a) (vector? b)
+              (let ((n (vector-length a)))
+                (and (= (vector-length b) n)
+                  (letrec ((loop (lambda (i)
+                                   (or (= i n)
+                                     (and (equal? (vector-ref a i) (vector-ref b i))
+                                       (loop (+ i 1)))))))
+                    (loop 0)))))))""",
     "eqv?" -> "(define (eqv? x y) (eq? x y))",
     "even?" -> "(define (even? x) (= 0 (modulo x 2)))",
     // TODO: expt // TODO isn't this a primop (easier to handle real exponents).
