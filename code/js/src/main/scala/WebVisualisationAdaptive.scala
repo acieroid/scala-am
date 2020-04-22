@@ -30,7 +30,8 @@ class WebVisualisationAdaptive(override val analysis: WebAdaptiveAnalysis[_]) ex
 
   var adapted = false
 
-  override def displayText(cmp: analysis.Component) = analysis.deref(cmp).toString()
+  override def displayText(cmp: analysis.Component) = 
+    s"[$cmp] ${analysis.deref(cmp).toString()}"
 
   override def refreshDataAfterStep(cmp: analysis.Component,
                                     dps: Set[analysis.Component]) =
