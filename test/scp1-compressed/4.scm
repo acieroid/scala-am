@@ -1,12 +1,12 @@
 ; 4.1
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define display2 (lambda (i) (set! result (cons i result))))
+(define newline2 (lambda () (set! result (cons 'newline result))))
 
 (define (print-abc a b c)
-  (display a) (display " ")
-  (display b) (display " ")
-  (display c) (newline))
+  (display2 a) (display " ")
+  (display2 b) (display " ")
+  (display2 c) (newline2))
 
 (define (foo a b c)
   (print-abc a b c)

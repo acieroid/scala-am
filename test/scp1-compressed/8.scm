@@ -21,12 +21,12 @@
         (set! state 0))
       state)))
 
-(define flip (make-flip))
+(define flip2 (make-flip))
 
-(and (= (flip) 1)
-  (= (flip) 0)
-  (= (flip) 1)
-  (= (flip) 0))
+(and (= (flip2) 1)
+  (= (flip2) 0)
+  (= (flip2) 1)
+  (= (flip2) 0))
 
 ; 8.5
 ;(define (make-point x y)
