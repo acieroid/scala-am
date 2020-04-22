@@ -1,6 +1,6 @@
 (define (create-list . size)
   (let* ((list-size (if (null? size) 10 (car size)))
-         (content  (make-vector list-size))
+         (content  (make-vector list-size 0))
          (first 0)
          (list-length 0))
     (define (last)

@@ -26,7 +26,7 @@
 
 (define (bottom-up-merge-sort vector)
   (define (merge-subs len)
-    (let ((aux-vector (make-vector (vector-length vector))))
+    (let ((aux-vector (make-vector (vector-length vector) 0)))
       (define (merge-subs-iter index)
         (cond
           ((< index (- (vector-length vector) (* 2 len)))

@@ -37,7 +37,7 @@
   (display "[Salaris:")(display (wage-ref row))(display "]"))
 
 (define (make-table rows)
-  (make-vector rows))
+  (make-vector rows 0))
 
 (define (table-size table)
   (vector-length table))
