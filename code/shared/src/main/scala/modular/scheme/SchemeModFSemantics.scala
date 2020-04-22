@@ -38,9 +38,9 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     def idn(): Identity
     override def toString() = this match {
       case VarAddr(id)  => s"var ($id)"
-      case PtrAddr(idn)   => s"ptr ($idn)"
-      case CarAddr(idn)   => s"car ($idn)"
-      case CdrAddr(idn)   => s"cdr ($idn)"
+      case PtrAddr(exp)   => s"ptr (${exp.idn})"
+      case CarAddr(exp)   => s"car (${exp.idn})"
+      case CdrAddr(exp)   => s"cdr (${exp.idn})"
       case PrmAddr(nam) => s"prm ($nam)"
     }
   }
@@ -156,7 +156,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
           val component = newComponent(clo,nam,context)
           bindArgs(component, prs, argVals)
           call(component)
-        case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length < arity =>
+        case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length <= arity =>
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
