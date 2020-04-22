@@ -36,7 +36,7 @@
 
 (define (thunk-value evaluated-thunk) (cadr evaluated-thunk))
 
-(define (force-it obj) ;; herdefinitie van bovenstaande voor memoization
+(define (force-it2 obj) ;; herdefinitie van bovenstaande voor memoization
   (cond ((thunk? obj)
          (let ((result (actual-value
                         (thunk-exp obj)
@@ -49,7 +49,7 @@
          (thunk-value obj))
         (else obj)))
 
-(define memo-force-it force-it) ;;toegevoegd voor timing demonstratie onderaan
+(define memo-force-it force-it2) ;;toegevoegd voor timing demonstratie onderaan
 
 ;;
 ;; zie deel 1.1 p52

@@ -231,7 +231,7 @@
 (equal? result5 '("..." 0 " " 1 " " 2 " " 3 " " 4 " " 5 " " "..." 5 " " "..." 5 " " 3 " " "..." 3 " " 4 " " 5 " " "..." 3 " " 4 " " 5 " " 0 " " "..." 2 " " 3 " " 4 " " 5 " " 0 " " "..." 0 " " 1 " " 2 " " 3 " " 4 " " 5 " "))
 
 ; 9.9
-(define (count-pairs lst)
+(define (count-pairs2 lst)
   (let ((path '()))
     (define (count current)
       (cond
@@ -258,7 +258,7 @@
     (set-cdr! last lst)
     lst))
 
-(= 3 (count-pairs ret3-3) (count-pairs ret4-3) (count-pairs ret7-3) (count-pairs retno-3))
+(= 3 (count-pairs2 ret3-3) (count-pairs2 ret4-3) (count-pairs2 ret7-3) (count-pairs2 retno-3))
 
 ; 9.12
 (define (find-last lijst)
