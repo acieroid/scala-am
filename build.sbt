@@ -11,7 +11,7 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                         /** General settings */
                         name := "scalaam",
                         version := "2.2",
-                        scalaVersion := "2.13.1",
+                        scalaVersion := "2.13.2",
                         /** Dependencies */
                         libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "1.1.2",
                         libraryDependencies += "au.com.bytecode" % "opencsv" % "2.4",
