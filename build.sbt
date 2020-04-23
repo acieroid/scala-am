@@ -1,4 +1,5 @@
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+import sbt.Keys.libraryDependencies
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 lazy val root = project.in(file("."))
                        .aggregate(scalaamJS,scalaamJVM)
@@ -79,7 +80,8 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                         mainClass in Compile := Some("scalaam.web.Main"),
                         scalaJSUseMainModuleInitializer := true,
                         /** Dependencies */
-                        libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.8"
+                        libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.8",
+                        libraryDependencies += "com.github.cquiroz" %%% "scala-java-locales" % "0.6.0"
                       )
 
 lazy val scalaamJVM = scalaam.jvm
