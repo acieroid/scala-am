@@ -5,6 +5,7 @@ import scalaam.language.scheme._
 
 object SchemePrelude {
 
+  // TODO: string->list
   val primDefs = Map(
     "abs" -> "(define (abs x) (if (< x 0) (- 0 x) x))",
     // Disabled because it is implemented manually
@@ -58,6 +59,13 @@ object SchemePrelude {
             (if (= index 0)
               (car l)
               (list-ref (cdr l) (- index 1))))""",
+    "list->vector" -> """(define (list->vector l)
+                        |  (let ((v (make-vector (length l))))
+                        |    (let fill ((lst l) (i 0))
+                        |      (if (null? lst)
+                        |          v
+                        |          (begin (vector-set! v i (car lst))
+                        |                 (fill (cdr lst) (+ i 1)))))))""".stripMargin,
     "list-tail" -> """(define (list-tail x k)
                      |    (if (zero? k)
                      |        x

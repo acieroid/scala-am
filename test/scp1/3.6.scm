@@ -1,5 +1,5 @@
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define output (lambda (i) (set! result (cons i result))))
 
 (define (weird x)
   (cond
@@ -16,7 +16,7 @@
 (define (weird-table min max)
   (cond
     ((< min max)
-     (for-each display (list min "\t" (depth-weird min) "\n"))
+     (for-each output (list min "\t" (depth-weird min) "\n"))
      (weird-table (+ min 1) max))))
 
 (weird-table 1 10)

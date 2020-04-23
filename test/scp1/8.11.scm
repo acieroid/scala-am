@@ -1,3 +1,13 @@
+(define (apply proc args)
+  (cond
+    ((null? args) (proc))
+    ((null? (cdr args)) (proc (car args)))
+    ((null? (cddr args)) (proc (car args) (cadr args)))
+    ((null? (cdddr args)) (proc (car args) (cadr args) (caddr args)))
+    ((null? (cddddr args)) (proc (car args) (cadr args) (caddr args) (cadddr args)))
+    ((null? (cdr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args))))
+    (else (error "Unsupported call."))))
+
 (define (create-counter initial)
   (define (increase) (set! initial (+ initial 1)))
   (define (decrease) (set! initial (- initial 1)))

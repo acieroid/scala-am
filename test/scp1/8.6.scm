@@ -1,11 +1,11 @@
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define output (lambda (i) (set! result (cons i result))))
 
 (define hulp 2)
 (define (haha x)
   (let ((hulp (* x hulp)))
-    (display hulp))
-  (display hulp)
+    (output hulp))
+  (output hulp)
   (set! hulp 4))
 
 (haha 2)

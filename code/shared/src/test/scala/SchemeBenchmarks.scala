@@ -87,7 +87,7 @@ object SchemeBenchmarks {
     "test/gambit/sboyer.scm", // VARARG
     //"test/gambit/scheme.scm", // MEMV
     //"test/gambit/slatex.scm", // PARSER LIMITATION TODO
-    "test/gambit/string.scm",
+    //"test/gambit/string.scm", // Needs susbtring.
     "test/gambit/sum.scm",
     "test/gambit/sumloop.scm",
     "test/gambit/tail.scm",
@@ -189,7 +189,7 @@ object SchemeBenchmarks {
     // "test/icp/icp_1c_prime-sum-pair-standard.scm", // Does not want to run in DrRacket. :(
     "test/icp/icp_2_aeval.scm",
     "test/icp/icp_3_leval.scm",
-    "test/icp/icp_4_qeval.scm",
+    //"test/icp/icp_4_qeval.scm", // Needs define-syntax and delay.
     "test/icp/icp_5_regsim.scm",
     "test/icp/icp_6_stopandcopy_scheme.scm",
     "test/icp/icp_7_eceval.scm",

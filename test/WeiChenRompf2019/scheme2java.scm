@@ -54,12 +54,6 @@
 
 ;; Utilities.
 
-(define (map f lst) 
-  (if (pair? lst)
-      (cons (f (car lst))
-            (map f (cdr lst)))
-      '()))
-
 (define (string->list s)
   (define (f i)
     (if (< i (string-length s))
@@ -67,8 +61,6 @@
               (f (+ i 1)))
         '()))
   (f 0))
-
-
 
 ; void : -> void
 (define (void) (if #f #t))
