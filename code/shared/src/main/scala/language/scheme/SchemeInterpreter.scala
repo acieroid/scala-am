@@ -58,7 +58,6 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
 
   def eval(e: SchemeExp, env: Env, timeout: Timeout.T): Value = {
     if (timeout.reached) throw new TimeoutException()
-    println(e)
     e match {
       case lambda: SchemeLambdaExp => Value.Clo(lambda, env)
       case call@SchemeFuncall(f, args, idn) =>
