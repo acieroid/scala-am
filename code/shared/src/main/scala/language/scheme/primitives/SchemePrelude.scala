@@ -7,7 +7,7 @@ object SchemePrelude {
 
   val primDefs = Map(
     "abs" -> "(define (abs x) (if (< x 0) (- 0 x) x))",
-    // TODO: disabled, this will be defined manually
+    // Disabled because it is implemented manually
 //    "append" -> """(define (append l1 l2)
 //          (if (null? l1)
 //              l2
@@ -31,10 +31,7 @@ object SchemePrelude {
          (if (eqv? (caar l) k)
            (car l)
            (assq k (cdr l)))))""",
-
-    // "cons" is a primop? TODO maybe not exactly (could define in terms of vectors of size 2)
     "display" -> "(define (display x) x)", // undefined behavior in R5RS
-    // TODO: vectors in equal? (requires a loop, see SchemePrimitives.scala)
     "equal?" -> """(define (equal? a b)
           (or (eq? a b)
             (and (null? a) (null? b))
@@ -85,15 +82,7 @@ object SchemePrelude {
     "newline" -> "(define (newline) #f)", // undefined
     "not" -> "(define (not x) (if x #f #t))",
     "odd?" -> "(define (odd? x) (= 1 (modulo x 2)))",
-    // "pairp?" is a primop, or is it? TODO
     "positive?" -> "(define (positive? x) (> x 0))",
-    // TODO: sqrt
-    // TODO: make-vector
-    // TODO: vector
-    // TODO: vector-length
-    // TODO: vector-ref
-    // TODO: vector-set
-    // TODO: vector?
     "zero?" -> "(define (zero? x) (= x 0))",
     "<=" -> "(define (<= x y) (or (< x y) (= x y)))",
     ">" -> "(define (> x y) (not (<= x y)))",
@@ -155,26 +144,26 @@ object SchemePrelude {
     //            (foldl-aux f (f base (car lst)) (cdr lst))))"""
   )
 
-  val primDefsParsed = primDefs.map { 
-    case (nam,str) => 
+  val primDefsParsed = primDefs.map {
+    case (nam,str) =>
       val exp = SchemeParser.parse(str,Position.newTag(nam))
       (nam,exp)
   }
 
   val primNames: Set[String] = primDefs.keySet
 
-  def addPrelude(exp: SchemeExp): SchemeExp = {
+  def addPrelude(exp: SchemeExp, excl: Set[String] = Set()): SchemeExp = {
     var prelude: List[ SchemeExp] = List()
     var work:    List[Expression] = List(exp)
     var visited:  Set[    String] = Set()
 
     while (work.nonEmpty) {
       work.head match {
-        case Identifier(name, _) if primNames.contains(name) && !visited.contains(name) =>
-            val exp = primDefsParsed(name)
-            prelude = exp :: prelude
-            work = exp :: work.tail // If a primitive depends on other primitives, make sure to also inline them.
-            visited = visited + name
+        case Identifier(name, _) if primNames.contains(name) && !visited.contains(name) && !excl.contains(name) =>
+          val exp = primDefsParsed(name)
+          prelude = exp :: prelude
+          work = exp :: work.tail // If a primitive depends on other primitives, make sure to also inline them.
+          visited = visited + name
         case e => work = e.subexpressions ::: work.tail // There will be no subexpressions if e is an Identifier for which the conditions do not hold.
       }
     }

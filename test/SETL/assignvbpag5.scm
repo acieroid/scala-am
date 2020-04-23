@@ -1,3 +1,9 @@
+(define (when p body)(if b body))
+(define (unless p body)(if (not p) body))
+
+(define (char-downcase c)
+  (let ((i (assoc c '((#\A #\a) (#\B #\b) (#\C #\c) (#\D #\d) (#\E #\e) (#\F #\f) (#\G #\g) (#\H #\h) (#\I #\i) (#\j #\j) (#\K #\k) (#\L #\l) (#\M #\m) (#\N #\n) (#\O #\o) (#\P #\p) (#\Q #\q) (#\R #\r) (#\S #\s) (#\T #\t) (#\U #\u) (#\V #\v) (#\W #\w) (#\X #\x) (#\Y #\y) (#\Z #\z)))))
+    (if i (cadr i) c)))
 (define (char->string c)
   (let ((i (assoc c '((#\tab "\t")(#\newline "\n")('EOF "") (#\space " ") (#\! "!") (#\" "\"") (#\# "#") (#\$ "$") (#\% "%") (#\& "&") (#\' "'") (#\( "(") (#\) ")") (#\* "*") (#\+ "+") (#\, ",") (#\- "-") (#\. ".") (#\/ "/") (#\0 "0") (#\1 "1") (#\2 "2") (#\3 "3") (#\4 "4") (#\5 "5") (#\6 "6") (#\7 "7") (#\8 "8") (#\9 "9") (#\: ":") (#\; ";") (#\< "<") (#\= "=") (#\> ">") (#\? "?") (#\@ "@") (#\A "A") (#\B "B") (#\C "C") (#\D "D") (#\E "E") (#\F "F") (#\G "G") (#\H "H") (#\I "I") (#\J "J") (#\K "K") (#\L "L") (#\M "M") (#\N "N") (#\O "O") (#\P "P") (#\Q "Q") (#\R "R") (#\S "S") (#\T "T") (#\U "U") (#\V "V") (#\W "W") (#\X "X") (#\Y "Y") (#\Z "Z") (#\[ "[") (#\\ "\\") (#\] "]") (#\^ "^") (#\_ "_") (#\` "`") (#\a "a") (#\b "b") (#\c "c") (#\d "d") (#\e "e") (#\f "f") (#\g "g") (#\h "h") (#\i "i") (#\j "j") (#\k "k") (#\l "l") (#\m "m") (#\n "n") (#\o "o") (#\p "p") (#\q "q") (#\r "r") (#\s "s") (#\t "t") (#\u "u") (#\v "v") (#\w "w") (#\x "x") (#\y "y") (#\z "z") (#\{ "{") (#\| "|") (#\} "}") (#\~ "~")))))
     (if i (cadr i) (begin (display c)(error "Unknown character.")))))
@@ -3524,15 +3530,14 @@
 
     dispatch))
 
-;(define setl (make-setl display
-;               (lambda (message token)
-;                 (display "Read error: ") (display message)
-;                 (newline)(display "> ")(display token)(display " <")
-;                 (error "Parser error."))
-;               (lambda (message)
-;                 (display "Eval error: ")(display message)
-;                 (error "Evaluation error."))))
-(define setl (make-setl display display display))
+(define setl (make-setl display
+               (lambda (message token)
+                 (display "Read error: ") (display message)
+                 (newline)(display "> ")(display token)(display " <")
+                 (error "Parser error."))
+               (lambda (message)
+                 (display "Eval error: ")(display message)
+                 (error "Evaluation error."))))
 
 (define (send-message object message . parameters)
   (let ((method (object message)))
@@ -6976,15 +6981,14 @@
 
     dispatch))
 
-;(define setl (make-setl display
-;               (lambda (message token)
-;                 (display "Read error: ") (display message)
-;                 (newline)(display "> ")(display token)(display " <")
-;                 (error "Parser error."))
-;               (lambda (message)
-;                 (display "Eval error: ")(display message)
-;                 (error "Evaluation error."))))
-(define setl (make-setl display display display))
+(define setl (make-setl display
+               (lambda (message token)
+                 (display "Read error: ") (display message)
+                 (newline)(display "> ")(display token)(display " <")
+                 (error "Parser error."))
+               (lambda (message)
+                 (display "Eval error: ")(display message)
+                 (error "Evaluation error."))))
 
 ((setl 'read)
   "program assign;
