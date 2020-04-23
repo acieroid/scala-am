@@ -260,12 +260,13 @@ abstract class PrecisionBenchmarks[
             println()
             Some(baseStore)
         } catch {
-          case e: Exception =>
-            println(s"Concrete interpreter failed with $e");
-            None
-          case e: StackOverflowError =>
-            println(s"Concrete interpreter failed with $e");
-            None
+            case e: Exception =>
+                println(s"Concrete interpreter failed with $e")
+                None
+            case e: VirtualMachineError =>
+                System.gc()
+                println(s"Concrete interpreter failed with $e")
+                None
         }
     }
 

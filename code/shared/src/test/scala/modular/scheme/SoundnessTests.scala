@@ -38,8 +38,12 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       case _ : TimeoutException =>
         alert(s"Concrete evaluation timed out.")
         (None, idnResults)
-      case _ : StackOverflowError =>
-        alert(s"Concrete evaluation ran out of stack space.")
+      case e : Exception =>
+        alert(s"Concrete interpreter encountered an exception: $e")
+        (None, idnResults)
+      case e : VirtualMachineError =>
+        System.gc()
+        alert(s"Concrete evaluation failed with $e")
         (None, idnResults)
     }
   }
