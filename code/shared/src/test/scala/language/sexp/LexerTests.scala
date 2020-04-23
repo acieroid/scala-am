@@ -2,7 +2,6 @@ package scalaam.test.parser
 
 import org.scalatest._
 import org.scalatest.prop._
-
 import scalaam.language.sexp._
 
 class SExpLexerTests extends PropSpec with TableDrivenPropertyChecks with Matchers {

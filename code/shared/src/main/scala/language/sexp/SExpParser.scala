@@ -137,10 +137,10 @@ class SExpLexer extends Lexical with SExpTokens {
         }
     }
   def character: Parser[SExpToken] =
-    (('#' ~> '\\' ~> any ^^ (c => TCharacter(c))) |
-      ('#' ~> '\\' ~> 's' ~> 'p' ~> 'a' ~> 'c' ~> 'e' ^^^ TCharacter(' ')) |
+    (('#' ~> '\\' ~> 's' ~> 'p' ~> 'a' ~> 'c' ~> 'e' ^^^ TCharacter(' ')) |
       ('#' ~> '\\' ~> 'n' ~> 'e' ~> 'w' ~> 'l' ~> 'i' ~> 'n' ~> 'e' ^^^ TCharacter('\n')) |
-      ('#' ~> '\\' ~> 't' ~> 'a' ~> 'b' ^^^ TCharacter('\t'))) // Not present in R5RS Scheme.
+      ('#' ~> '\\' ~> 't' ~> 'a' ~> 'b' ^^^ TCharacter('\t')) | // Not present in R5RS Scheme.
+      ('#' ~> '\\' ~> any ^^ (c => TCharacter(c))))
   def string: Parser[SExpToken] = {
     ('"' ~> stringContent ~ chrExcept('\\') <~ '"' ^^ { case s ~ ending => TString(s + ending) }) |
       ('"' ~> stringContent <~ '"' ^^ (s => TString(s)))
