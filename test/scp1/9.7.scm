@@ -1,5 +1,5 @@
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define output (lambda (i) (set! result (cons i result))))
 
 (define (make-ring n)
   (let ((last (cons 0 '())))

@@ -717,11 +717,6 @@
         (cadr val)
         (error "Unknown operation -- ASSEMBLE" symbol))))
 
-(define (tagged-list? exp tag)
-  (if (pair? exp)
-      (eq? (car exp) tag)
-      false))
-
 ;;
 ;; zie deel 7 p12
 ;;

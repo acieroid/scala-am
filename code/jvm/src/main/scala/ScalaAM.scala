@@ -22,12 +22,12 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/my-test.scm")
+    val txt = Reader.loadFile("test/gambit/nqueens.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
                                                 with AdaptiveCallerSensitivity
                                                 with ConstantPropagationDomain {
-      val limit = 5
+      val limit = 10
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
@@ -35,11 +35,41 @@ object Main {
         super.step()
       }
     }
-    analysis.analyze(Timeout.start(Duration(100,SECONDS)))
-    debugResults(analysis, false)
+    analysis.analyze(Timeout.start(Duration(30,SECONDS)))
+    debugClosures(analysis)
+    //debugResults(analysis, false)
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
+
+  def debugClosures(analysis: SchemeModFAnalysis): Unit = {
+    def getClosure(cmp: analysis.Component) = analysis.view(cmp) match {
+      case _: analysis.MainComponent => None
+      case call: analysis.CallComponent => Some(call.clo)
+    }
+    def collect() = {
+      val allClosures = analysis.allComponents.flatMap(cmp => getClosure(cmp))
+      val children = allClosures.foldLeft(Map[Option[analysis.lattice.Closure],Set[analysis.lattice.Closure]]()) { (acc,clo) =>
+        val parent = getClosure(clo._2)
+        acc + (parent -> (acc.getOrElse(parent, Set()) + clo))
+      } 
+      children
+    }
+    def printClosures(children: Map[Option[analysis.lattice.Closure],Set[analysis.lattice.Closure]]) = {
+      def display(clo: analysis.lattice.Closure): String =
+        s"${clo._1.idn} [${clo._2}]"
+      def printClosure(clo: Option[analysis.lattice.Closure], indent: Int): Unit = {
+        val str = clo.map(display(_)).getOrElse("main")
+        print(" " * indent) // print indentation
+        println(s"- $str")  // print the closure
+        children.getOrElse(clo,Set()).foreach { child =>  // print its children
+          printClosure(Some(child), indent + 2)
+        }
+      }
+      printClosure(None, 0)
+    }
+    printClosures(collect())
+  }
 
   def debugResults(machine: SchemeModFAnalysis, printMore: Boolean = false): Unit =
     machine.store.foreach {
@@ -84,7 +114,8 @@ object Incrementor extends App {
 object Run extends App {
   val text = Reader.loadFile("./test/SETL/arithmetic.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
-  interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse("#\\newline")))), Timeout.none)
+  val res = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
+  println(res)
 }
 
 object Analyze extends App {

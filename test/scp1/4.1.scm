@@ -1,11 +1,11 @@
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define output (lambda (i) (set! result (cons i result))))
+(define linebreak (lambda () (set! result (cons 'linebreak result))))
 
 (define (print-abc a b c)
-  (display a) (display " ")
-  (display b) (display " ")
-  (display c) (newline))
+  (output a) (output " ")
+  (output b) (output " ")
+  (output c) (linebreak))
 
 (define (foo a b c)
   (print-abc a b c)
@@ -22,4 +22,4 @@
   (print-abc a b c))
 
 (foo 1 2 3)
-(equal? result '(newline 3 " " 2 " " 1 newline 4 " " 3 " " 3 newline 4 " " 6 " " 4 newline 5 " " 3 " " 4 newline 3 " " 2 " " 1))
+(equal? result '(linebreak 3 " " 2 " " 1 linebreak 4 " " 3 " " 3 linebreak 4 " " 6 " " 4 linebreak 5 " " 3 " " 4 linebreak 3 " " 2 " " 1))

@@ -38,8 +38,12 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       case _ : TimeoutException =>
         alert(s"Concrete evaluation timed out.")
         (None, idnResults)
-      case _ : StackOverflowError =>
-        alert(s"Concrete evaluation ran out of stack space.")
+      case e : Exception =>
+        alert(s"Concrete interpreter encountered an exception: $e")
+        (None, idnResults)
+      case e : VirtualMachineError =>
+        System.gc()
+        alert(s"Concrete evaluation failed with $e")
         (None, idnResults)
     }
   }
@@ -148,16 +152,16 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
 // ... for big-step semantics
 class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                          with BigStepSchemeModF
-                                         with SimpleBenchmarks
+                                         with AllBenchmarks
 class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends SchemeModFSoundnessTests
                                                           with BigStepSchemeModF
-                                                          with SimpleBenchmarks
+                                                          with AllBenchmarks
 
 // ... for small-step semantics
 class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                            with SmallStepSchemeModF
-                                           with SimpleBenchmarks
+                                           with AllBenchmarks
 
 class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
                                                 with SimpleAdaptiveSchemeModF
-                                                with SimpleBenchmarks
+                                                with AllBenchmarks

@@ -64,7 +64,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
         eval(f, env, timeout) match {
           case Value.Clo(lambda@SchemeLambda(argsNames, body, pos2), env2) =>
             if (argsNames.length != args.length) {
-              throw new Exception(s"Invalid function call at position ${idn}: ${args.length} arguments given, while exactly ${argsNames.length} are expected")
+              throw new Exception(s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected")
             }
             val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
               val addr = newAddr(AddrInfo.VarAddr(arg._1))
@@ -212,9 +212,8 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
   }
 
   object Primitives {
-    def primitiveMap: Map[String, Prim] = allPrimitives.map(p => (p.name, p)).toMap
-    def allPrimitives: List[Prim] = {
-    List(
+    //def primitiveMap: Map[String, Prim] = allPrimitives.map(p => (p.name, p)).toMap
+    def allPrimitives: List[Prim] = List(
       Times, /* [vv] *: Arithmetic */
       Plus, /* [vv] +: Arithmetic */
       Minus, /* [vv] -: Arithmetic */
@@ -417,7 +416,6 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       Random,
       Error
     )
-    }
 
     abstract class SingleArgumentPrim(val name: String) extends SimplePrim {
       def fun: PartialFunction[Value, Value]
@@ -1230,16 +1228,16 @@ object SchemeInterpreter {
     case class RetAddr(exp: SchemeExp)  extends AddrInfo
   }
   object Value {
-    case class Undefined(idn: Identity) extends Value /* arises from undefined behavior */
-    case class Unbound(id: Identifier) extends Value /* only used for letrec */
-    case class Clo(lambda: SchemeLambdaExp, env: Env) extends Value
-    case class Primitive(p: Prim) extends Value
-    case class Str(s: String) extends Value
-    case class Symbol(sym: String) extends Value
-    case class Integer(n: Int) extends Value
-    case class Real(r: Double) extends Value
-    case class Bool(b: Boolean) extends Value
-    case class Pointer(v: Addr) extends Value
+    case class Undefined(idn: Identity) extends Value { override def toString: String = "<#undef>" } /* arises from undefined behavior */
+    case class Unbound(id: Identifier) extends Value { override def toString: String = "<#unbound>" } /* only used for letrec */
+    case class Clo(lambda: SchemeLambdaExp, env: Env) extends Value { override def toString: String = s"<#clo ${lambda.idn.pos}>" }
+    case class Primitive(p: Prim) extends Value { override def toString: String = s"<#prim ${p.name}>" }
+    case class Str(str: String) extends Value { override def toString: String = str }
+    case class Symbol(sym: String) extends Value { override def toString: String = s"'$sym'" }
+    case class Integer(n: Int) extends Value { override def toString: String = n.toString }
+    case class Real(r: Double) extends Value { override def toString: String = r.toString }
+    case class Bool(b: Boolean) extends Value { override def toString: String = if (b) "#t" else "#f" }
+    case class Pointer(v: Addr) extends Value { override def toString: String = s"<#ptr $v>" }
     case class Character(c: Char) extends Value {
       override def toString: String = c match {
         case ' ' => "#\\space"
@@ -1247,9 +1245,9 @@ object SchemeInterpreter {
         case c => s"#\\$c"
       }
     }
-    case object Nil extends Value
-    case class Cons(car: Addr, cdr: Addr) extends Value
-    case class Vector(size: Int, elems: Map[Int,Value], init: Value) extends Value
+    case object Nil extends Value { override def toString: String = "'())'" }
+    case class Cons(car: Addr, cdr: Addr) extends Value { override def toString: String = s"<#cons $car $cdr>" }
+    case class Vector(size: Int, elems: Map[Int,Value], init: Value) extends Value { override def toString: String = s"<#vector[$size]>" }
   }
 
 
@@ -1260,7 +1258,7 @@ object SchemeInterpreter {
   def main(args: Array[String]): Unit =
     if (args.size == 1) {
       val text = Reader.loadFile(args(0))
-      val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text))))
+      val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display"))))
       val interpreter = new SchemeInterpreter((id, v) => (), true)
       val res = interpreter.run(pgm, Timeout.start(timeout))
       println(s"Result: $res")

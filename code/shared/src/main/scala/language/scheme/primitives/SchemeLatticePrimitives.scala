@@ -3,7 +3,7 @@ package scalaam.language.scheme.primitives
 import scalaam.core._
 import scalaam.language.scheme._
 
-class SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {
+class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
