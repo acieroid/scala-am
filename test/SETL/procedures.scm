@@ -25,15 +25,7 @@
 (define (hash-table-put! table key val)
   (set-cdr! table (cons (cons key val) (cdr table))))
 
-(define (apply proc args)
-  (cond
-    ((null? args) (proc))
-    ((null? (cdr args)) (proc (car args)))
-    ((null? (cddr args)) (proc (car args) (cadr args)))
-    ((null? (cdddr args)) (proc (car args) (cadr args) (caddr args)))
-    ((null? (cddddr args)) (proc (car args) (cadr args) (caddr args) (cadddr args)))
-    ((null? (cdr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args))))
-    (else (error "Unsupported call."))))
+
 
 (define ctr 0)
 (define (read-char str)
@@ -647,7 +639,6 @@
         (else (error 'scanner "unknown message"))))
 
     dispatch))
-
 
 ;(define scanner (make-scanner))
 ;(send-message scanner 'init-scan (open-input-string "3*5+2"))

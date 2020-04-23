@@ -123,6 +123,12 @@ object SchemePrelude {
     "cddadr" -> "(define (cddadr x) (cdr (cdr (car (cdr x)))))",
     "cdddar" -> "(define (cdddar x) (cdr (cdr (cdr (car x)))))",
     "cddddr" -> "(define (cddddr x) (cdr (cdr (cdr (cdr x)))))",
+    "vector->list" -> """(define (vector->list v)
+                        |  (let construct ((i (- (vector-length v) 1)) (lst '()))
+                        |    (if (< i 0)
+                        |        lst
+                        |        (construct (- i 1)
+                        |                   (cons (vector-ref v i) lst)))))""".stripMargin,
     "reverse" -> """(define (reverse l)
       (if (null? l)
           ()
@@ -150,6 +156,16 @@ object SchemePrelude {
     //        (if (null? lst)
     //            base
     //            (foldl-aux f (f base (car lst)) (cdr lst))))"""
+    // TODO: implement apply internally
+    "apply" -> """(define (apply proc args)
+                 |  (cond
+                 |    ((null? args) (proc))
+                 |    ((null? (cdr args)) (proc (car args)))
+                 |    ((null? (cddr args)) (proc (car args) (cadr args)))
+                 |    ((null? (cdddr args)) (proc (car args) (cadr args) (caddr args)))
+                 |    ((null? (cddddr args)) (proc (car args) (cadr args) (caddr args) (cadddr args)))
+                 |    ((null? (cdr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args))))
+                 |    (else (error "Unsupported call."))))""".stripMargin,
   )
 
   val primDefsParsed = primDefs.map {
