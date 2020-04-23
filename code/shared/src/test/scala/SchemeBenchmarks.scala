@@ -210,7 +210,7 @@ object SchemeBenchmarks {
     //"test/WeiChenRompf2019/the-little-schemer/ch1.scm", // PARSER ERROR
     "test/WeiChenRompf2019/the-little-schemer/ch2.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch3.scm",
-    "test/WeiChenRompf2019/the-little-schemer/ch4.scm",
+    //"test/WeiChenRompf2019/the-little-schemer/ch4.scm", // No main code (only definitions).
     //"test/WeiChenRompf2019/the-little-schemer/ch5.scm", // No main code (only definitions).
     //"test/WeiChenRompf2019/the-little-schemer/ch6.scm", // PARSER LIMITATION TODO check whether needed
     "test/WeiChenRompf2019/the-little-schemer/ch7.scm",
