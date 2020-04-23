@@ -34,7 +34,8 @@ object PrimitivesBenchmarks {
     SchemeBenchmarks.gabriel ++
     SchemeBenchmarks.scp1_compressed ++
     SchemeBenchmarks.icp ++
-    SchemeBenchmarks.ad ++
+    // SchemeBenchmarks.ad ++
+    List("test/ad/all.scm")
     standard ++
     List()
   }
@@ -74,6 +75,14 @@ object PrimitivesBenchmarks {
     }
     prims
   }
+
+  def main(args: Array[String]) =
+    benchmarks.foreach(b => {
+      val parsed = SchemeParser.parse(Reader.loadFile(b))
+      val usages = PrimitivesBenchmarks.primitiveUsages(parsed)
+      val prims = PrimitivesBenchmarks.primitives(parsed)
+      println(s"Benchmark $b: $prims (count: ${prims.size}), and $usages usages")
+    })
 }
 
 abstract class PrimitivesComparison extends AnalysisComparison[
@@ -104,7 +113,7 @@ abstract class PrimitivesComparison extends AnalysisComparison[
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
   def otherAnalyses(prg: SchemeExp) = List(
-//    S_0_0(prg), // should be equivalent to base analysis
+    S_0_0(prg), // should be equivalent to base analysis
     S_CS_0(prg),
     S_2CS_0(prg),
     S_2AcyclicCS_0(prg),
@@ -134,15 +143,11 @@ abstract class PrimitivesComparison extends AnalysisComparison[
     PrimitivesBenchmarks.benchmarks.foreach(b => {
       System.gc()
       path = b
-      val parsed = SchemeParser.parse(Reader.loadFile(b))
-      val usages = PrimitivesBenchmarks.primitiveUsages(parsed)
-      val prims = PrimitivesBenchmarks.primitives(parsed)
-      println(s"Benchmark $b: $prims (count: ${prims.size}), and $usages usages")
       runBenchmark(b)
     })
     println("Results:")
     println("Benchmark & 0 & CS & 2CS & 2ACS & 10CS & 10ACS & FA & 2FA & 10FA & CSFA & Max \\\\")
-    this.results.foreach { case (b, r) =>
+    this.results.toSeq.sortBy(_._1).foreach { case (b, r) =>
       val refined_0_0 = r.getOrElse("0_0", Some("T")).getOrElse("T")
       val refined_CS_0 = r.getOrElse("CS_0", Some("T")).getOrElse("T")
       val refined_2CS_0 = r.getOrElse("2CS_0", Some("T")).getOrElse("T")
