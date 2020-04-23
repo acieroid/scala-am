@@ -211,7 +211,7 @@ object SchemeBenchmarks {
     "test/WeiChenRompf2019/the-little-schemer/ch2.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch3.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch4.scm",
-    "test/WeiChenRompf2019/the-little-schemer/ch5.scm",
+    //"test/WeiChenRompf2019/the-little-schemer/ch5.scm", // No main code (only definitions).
     //"test/WeiChenRompf2019/the-little-schemer/ch6.scm", // PARSER LIMITATION TODO check whether needed
     "test/WeiChenRompf2019/the-little-schemer/ch7.scm",
     //"test/WeiChenRompf2019/the-little-schemer/ch8.scm", // PARSER LIMITATION TODO check whether needed
@@ -249,7 +249,7 @@ object SchemeBenchmarks {
     //"test/WeiChenRompf2019/omega.scm", // STACKOVERFLOW CONCRETE MACHINE
     //"test/WeiChenRompf2019/regex-derivative.scm", // PARSER ERROR
     "test/WeiChenRompf2019/rsa.scm",
-    "test/WeiChenRompf2019/scheme2java.scm",
+    //"test/WeiChenRompf2019/scheme2java.scm", // Needs primitive char-alphabetic?
     "test/WeiChenRompf2019/solovay-strassen.scm",
   )
 

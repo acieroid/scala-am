@@ -112,7 +112,7 @@ object Incrementor extends App {
 }
 
 object Run extends App {
-  val text = Reader.loadFile("./test/icp/icp_7_eceval.scm")
+  val text = Reader.loadFile("test/WeiChenRompf2019/the-little-schemer/ch5.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   val res = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
