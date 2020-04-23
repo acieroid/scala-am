@@ -86,7 +86,7 @@
 ;      ((null? l2) #f)
 ;      ((atom? (car l2)) #f)
 ;      (else (and (eqlist? (car l1) (car l2))
-                 (eqlist? (cdr l1) (cdr l2)))))))
+;                 (eqlist? (cdr l1) (cdr l2)))))))
 
 ;; Rewrite eqlist?
 (define eqlist?

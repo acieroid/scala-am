@@ -26,7 +26,7 @@ object SchemeBenchmarks {
 
   val ad: Set[String] = Set(
     "test/ad/abstrct.scm",
-    "test/ad/bfirst.scm", // VARARG
+    //"test/ad/bfirst.scm", // Unbound identifier: create-graph
     "test/ad/bst.scm", // VARARG
     //"test/ad/btree.scm", // TODO add a body
     "test/ad/bubsort.scm",
