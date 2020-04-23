@@ -58,13 +58,14 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
 
   def eval(e: SchemeExp, env: Env, timeout: Timeout.T): Value = {
     if (timeout.reached) throw new TimeoutException()
+    println(e)
     e match {
       case lambda: SchemeLambdaExp => Value.Clo(lambda, env)
       case call@SchemeFuncall(f, args, idn) =>
         eval(f, env, timeout) match {
           case Value.Clo(lambda@SchemeLambda(argsNames, body, pos2), env2) =>
             if (argsNames.length != args.length) {
-              throw new Exception(s"Invalid function call at position ${idn}: ${args.length} arguments given, while exactly ${argsNames.length} are expected")
+              throw new Exception(s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected")
             }
             val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
               val addr = newAddr(AddrInfo.VarAddr(arg._1))
@@ -212,9 +213,8 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
   }
 
   object Primitives {
-    def primitiveMap: Map[String, Prim] = allPrimitives.map(p => (p.name, p)).toMap
-    def allPrimitives: List[Prim] = {
-    List(
+    //def primitiveMap: Map[String, Prim] = allPrimitives.map(p => (p.name, p)).toMap
+    def allPrimitives: List[Prim] = List(
       Times, /* [vv] *: Arithmetic */
       Plus, /* [vv] +: Arithmetic */
       Minus, /* [vv] -: Arithmetic */
@@ -417,7 +417,6 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       Random,
       Error
     )
-    }
 
     abstract class SingleArgumentPrim(val name: String) extends SimplePrim {
       def fun: PartialFunction[Value, Value]
@@ -1260,7 +1259,7 @@ object SchemeInterpreter {
   def main(args: Array[String]): Unit =
     if (args.size == 1) {
       val text = Reader.loadFile(args(0))
-      val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text))))
+      val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display"))))
       val interpreter = new SchemeInterpreter((id, v) => (), true)
       val res = interpreter.run(pgm, Timeout.start(timeout))
       println(s"Result: $res")

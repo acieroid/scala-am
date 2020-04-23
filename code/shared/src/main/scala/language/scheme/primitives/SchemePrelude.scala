@@ -163,14 +163,14 @@ object SchemePrelude {
 
   val primNames: Set[String] = primDefs.keySet
 
-  def addPrelude(exp: SchemeExp): SchemeExp = {
+  def addPrelude(exp: SchemeExp, excl: Set[String] = Set()): SchemeExp = {
     var prelude: List[ SchemeExp] = List()
     var work:    List[Expression] = List(exp)
     var visited:  Set[    String] = Set()
 
     while (work.nonEmpty) {
       work.head match {
-        case Identifier(name, _) if primNames.contains(name) && !visited.contains(name) =>
+        case Identifier(name, _) if primNames.contains(name) && !visited.contains(name) && !excl.contains(name) =>
             val exp = primDefsParsed(name)
             prelude = exp :: prelude
             work = exp :: work.tail // If a primitive depends on other primitives, make sure to also inline them.

@@ -1,3 +1,6 @@
+(define (when p body)(if b body))
+(define (unless p body)(if (not p) body))
+
 (define (char-downcase c)
   (let ((i (assoc c '((#\A #\a) (#\B #\b) (#\C #\c) (#\D #\d) (#\E #\e) (#\F #\f) (#\G #\g) (#\H #\h) (#\I #\i) (#\j #\j) (#\K #\k) (#\L #\l) (#\M #\m) (#\N #\n) (#\O #\o) (#\P #\p) (#\Q #\q) (#\R #\r) (#\S #\s) (#\T #\t) (#\U #\u) (#\V #\v) (#\W #\w) (#\X #\x) (#\Y #\y) (#\Z #\z)))))
     (if i (cadr i) c)))
@@ -3490,15 +3493,14 @@
 
     dispatch))
 
-;(define setl (make-setl display
-;               (lambda (message token)
-;                 (display "Read error: ") (display message)
-;                 (newline)(display "> ")(display token)(display " <")
-;                 (error "Parser error."))
-;               (lambda (message)
-;                 (display "Eval error: ")(display message)
-;                 (error "Evaluation error."))))
-(define setl (make-setl display display display))
+(define setl (make-setl display
+               (lambda (message token)
+                 (display "Read error: ") (display message)
+                 (newline)(display "> ")(display token)(display " <")
+                 (error "Parser error."))
+               (lambda (message)
+                 (display "Eval error: ")(display message)
+                 (error "Evaluation error."))))
 
 ((setl 'read)
   "program testif;

@@ -84,7 +84,8 @@ object Incrementor extends App {
 object Run extends App {
   val text = Reader.loadFile("./test/SETL/arithmetic.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
-  interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse("#\\newline")))), Timeout.none)
+  val res = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text)))), Timeout.none)
+  println(res)
 }
 
 object Analyze extends App {
