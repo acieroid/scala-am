@@ -129,9 +129,14 @@ class ModularSchemeLattice[
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
           case (Symbol(s1), Symbol(s2)) => Right(Symbol(SymbolLattice[Sym].join(s1,s2)))
           case (Vec(size1, els1, init1), Vec(size2, els2, init2)) =>
-            Right(Vec(IntLattice[I].join(size1, size2),
-              els2.foldLeft(els1)({ case (acc, (k, v)) => acc + (k -> schemeLattice.join(v, acc.get(k).getOrElse(schemeLattice.bottom))) }),
-              schemeLattice.join(init1, init2)))
+            // First, joins the size and init (keep els1)
+            val vSizeInitJoined = Vec(IntLattice[I].join(size1, size2), els1, schemeLattice.join(init1, init2))
+            // Then, joins elements by adding (with vector-set!) all elements of els2 inside the new vector
+            val vWithElsJoined = els2.foldLeft(vSizeInitJoined)({ case (acc, (k, v)) => vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
+              case Element(v: Vec) => v // Should really be improved, this is ugly
+              case _ => ??? // should not happen?
+            }})
+            Right(vWithElsJoined)
           case _ => Left((x, y))
         }
       }
