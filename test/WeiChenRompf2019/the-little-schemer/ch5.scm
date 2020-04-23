@@ -109,13 +109,13 @@
       ((or (atom? s1) (atom? s2)) #f)
       (else (eqlist? s1 s2)))))
 
-(define eqlist?
-  (lambda (l1 l2)
-    (cond 
-      ((and (null? l1) (null? l2)) #t)
-      ((or (null? l1) (null? l2)) #f)
-      (else (and (my-equal? (car l1) (car l2))
-                 (eqlist? (cdr l1) (cdr l2)))))))
+;(define eqlist?
+;  (lambda (l1 l2)
+;    (cond
+;      ((and (null? l1) (null? l2)) #t)
+;      ((or (null? l1) (null? l2)) #f)
+;      (else (and (my-equal? (car l1) (car l2))
+;                 (eqlist? (cdr l1) (cdr l2)))))))
 
 (define rember
   (lambda (s l)
