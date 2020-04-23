@@ -46,23 +46,23 @@ object SchemeBenchmarks {
     )
 
     val scp1_compressed: List[String] = List(
-        "test/scp1-compressed/2.scm",
-        "test/scp1-compressed/3.scm",
-        "test/scp1-compressed/4.scm",
-        "test/scp1-compressed/5.scm",
-        "test/scp1-compressed/7.scm",
-        "test/scp1-compressed/8.scm",
-        "test/scp1-compressed/9.scm",
+      "test/scp1-compressed/2.scm",
+      "test/scp1-compressed/3.scm",
+      "test/scp1-compressed/4.scm",
+      "test/scp1-compressed/5.scm",
+      "test/scp1-compressed/7.scm",
+      "test/scp1-compressed/8.scm",
+      "test/scp1-compressed/9.scm",
     )
 
     val gabriel = List(
       "test/gabriel/browse.scm",
+      "test/gabriel/puzzle.scm",
+      "test/gabriel/dderiv.scm",
+      "test/gabriel/destruc.scm",
+      "test/gabriel/deriv.scm",
       "test/gabriel/diviter.scm",
       "test/gabriel/divrec.scm",
-      "test/gabriel/destruc.scm",
-      "test/gabriel/dderiv.scm",
-      "test/gabriel/deriv.scm",
-      "test/gabriel/puzzle.scm",
     )
 
     val gambit = List(
@@ -80,7 +80,7 @@ object SchemeBenchmarks {
       // "test/gambit/puzzle.scm",
       // "test/gambit/trav1.scm", // append? or dot notation
       "test/gambit/perm9.scm",
-      "test/gambit/destruc.scm",
+      // "test/gambit/destruc.scm", // part of gabriel
       // "test/gambit/triangl.scm", // list->vector
       "test/gambit/nqueens.scm",
       "test/gambit/primes.scm",
