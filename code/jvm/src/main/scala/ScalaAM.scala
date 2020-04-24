@@ -22,10 +22,10 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/gambit/nqueens.scm")
+    val txt = Reader.loadFile("test/fact.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveCallerSensitivity
+                                                with AdaptiveArgumentSensitivityPolicy1
                                                 with ConstantPropagationDomain {
       val limit = 10
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
