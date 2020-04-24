@@ -4,7 +4,7 @@ name: Daily Scala-AM tests
 # events but only for the master branch
 on:
   schedule:
-    - cron: 00 23 * * * # Executes every night at 23:00.
+    - cron: '00 23 * * *' # Executes every night at 23:00.
 
 jobs:
   # The compile job fetches the code and attempts to compile it.
