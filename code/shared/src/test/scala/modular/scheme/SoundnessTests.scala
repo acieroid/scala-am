@@ -148,20 +148,22 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   }
 }
 
+trait FastSchemeModFSoundnessTests extends SchemeModFSoundnessTests with SimpleBenchmarks
+trait FullSchemeModFSoundnessTests extends SchemeModFSoundnessTests with AllBenchmarks
+
 // concrete test suites to run ...
 // ... for big-step semantics
-class BigStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
-                                         with BigStepSchemeModF
-                                         with AllBenchmarks
-class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends SchemeModFSoundnessTests
-                                                          with BigStepSchemeModF
-                                                          with AllBenchmarks
+
+class FastBigStepSchemeModFSoundnessTests extends FastSchemeModFSoundnessTests with BigStepSchemeModF
+class FullBigStepSchemeModFSoundnessTests extends FullSchemeModFSoundnessTests with BigStepSchemeModF
+
+class FastBigStepSchemeModFPrimCSSensitivitySoundnessTests extends FastSchemeModFSoundnessTests with BigStepSchemeModFPrimCSSensitivity
+class FullBigStepSchemeModFPrimCSSensitivitySoundnessTests extends FullSchemeModFSoundnessTests with BigStepSchemeModFPrimCSSensitivity
 
 // ... for small-step semantics
-class SmallStepSchemeModFSoundnessTests extends SchemeModFSoundnessTests
-                                           with SmallStepSchemeModF
-                                           with AllBenchmarks
 
-class SimpleAdaptiveSchemeModFSoundnessTests extends SchemeModFSoundnessTests
-                                                with SimpleAdaptiveSchemeModF
-                                                with AllBenchmarks
+class FastSmallStepSchemeModFSoundnessTests extends FastSchemeModFSoundnessTests with SmallStepSchemeModF
+class FullSmallStepSchemeModFSoundnessTests extends FullSchemeModFSoundnessTests with SmallStepSchemeModF
+
+class FastSimpleAdaptiveSchemeModFSoundnessTests extends FastSchemeModFSoundnessTests with SimpleAdaptiveSchemeModF
+class FullSimpleAdaptiveSchemeModFSoundnessTests extends FullSchemeModFSoundnessTests with SimpleAdaptiveSchemeModF

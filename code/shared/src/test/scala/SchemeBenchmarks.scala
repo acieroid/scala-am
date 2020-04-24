@@ -287,15 +287,15 @@ object SchemeBenchmarks {
     "test/nested-defines.scm",
     "test/primtest.scm",
     "test/quasiquoting-simple.scm",
-    //"test/quasiquoting.scm", // unquote-splicing
+    //"test/quasiquoting.scm", // Uses unquote-splicing.
     "test/regex.scm",
     "test/rotate.scm",
     "test/rsa.scm",
     "test/sat.scm",
-    "test/scm2c.scm",
-    "test/scm2java.scm",
+    //"test/scm2c.scm", // Uses string->list.
+    //"test/scm2java.scm", // Uses list->string.
     "test/sq.scm",
-    //"test/Streams.scm", // Uses define-macro
+    //"test/Streams.scm", // Uses define-macro.
     "test/sym.scm",
     "test/widen.scm",
     "test/work.scm",
