@@ -3,7 +3,6 @@ package scalaam.web
 
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
-import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.core.Position._

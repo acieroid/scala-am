@@ -181,6 +181,12 @@ object CompoundSensitivities {
       val HighSensitivity = new kAcyclicCallSiteSensitivity[Value, Component](10)
       val LowSensitivity = new NoSensitivity[Value, Component]
     }
+
+    object Sensitivity extends Enumeration {
+      type Sensitivity = Value
+      val S_0_0, S_CS_0, S_2CS_0, S_10CS_0, S_FA_0, S_2FA_0, S_10FA_0, S_CSFA_0, S_2AcyclicCS_0, S_10AcyclicCS_0 = Value
+    }
+
   }
 
   trait TrackLowToHighSensitivity extends CompoundSensitivity {

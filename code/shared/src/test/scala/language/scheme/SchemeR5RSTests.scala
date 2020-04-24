@@ -2,7 +2,6 @@ package scalaam.test.language.scheme
 
 import org.scalatest.propspec.AnyPropSpec
 
-import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
 import scalaam.util.Timeout
@@ -14,8 +13,6 @@ import scalaam.language.scheme.primitives._
 import scala.concurrent.duration._
 
 trait SchemeR5RSTests extends AnyPropSpec {
-
-  import SchemeR5RSBenchmarks._
 
   type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   type V
@@ -42,7 +39,6 @@ trait SchemeR5RSTests extends AnyPropSpec {
 
 
 class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
-  import SchemeR5RSBenchmarks._
   def analysis(text: SchemeExp) =
     // Not really clean, we only want a proper ConstantPropagationLattice definition
     new ModAnalysis(text) with BigStepSemantics
