@@ -2,30 +2,37 @@ package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 import scalaam.core._
 import scalaam.core.Position._
-import scalaam.util._
+import scalaam.language.scheme._
 import scalaam.modular.adaptive.scheme._
 
 trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
-  case class ComponentContext(args: List[Value]) {
+  type V = valueLattice.Value
+  case class ComponentContext(args: List[V]) {
     override def toString = args.mkString(",")
   }
   def updateCtx(update: Component => Component)(ctx: ComponentContext) =
-    ComponentContext(ctx.args.map(updateValue(update)))
+    ComponentContext(ctx.args.map(updateV(update)))
   // to determine how arguments need to be adapted
-  private var adaptedArgs = Map[(lattice.Closure,Identifier),Set[Value]]()
-  protected def widenArg(clo: lattice.Closure, par: Identifier, arg: Value) = {
-    val currentAbs = adaptedArgs.getOrElse((clo,par),Set.empty)
-    val updatedAbs = currentAbs.filterNot(lattice.subsumes(arg,_)) + arg
-    this.adaptedArgs += ((clo,par) -> updatedAbs)
+  private var adaptedArgs = Map[Identifier, Set[V]]()
+  protected def widenArg(par: Identifier, arg: V) = {
+    val currentAbs = adaptedArgs.getOrElse(par,Set.empty)
+    val updatedAbs = currentAbs.filterNot(valueLattice.Value.subsumes(arg,_)) + arg
+    this.adaptedArgs += (par -> updatedAbs)
   }
-  private def adaptArg(clo: lattice.Closure, par: Identifier, arg: Value) =
-    adaptedArgs.getOrElse((clo,par),Set.empty)
-               .find(lattice.subsumes(_, arg))
+  private def adaptArg(par: Identifier, arg: V) =
+    adaptedArgs.getOrElse(par,Set.empty)
+               .find(valueLattice.Value.subsumes(_, arg))
                .getOrElse(arg)
-  private def adaptArgs(clo: lattice.Closure, args: List[Value]) =
-    clo._1.args.zip(args).map { case (par,arg) => adaptArg(clo,par,arg) }
+  private def adaptArgs(clo: lattice.Closure, args: List[V]) =
+    clo._1.args.zip(args).map { case (par,arg) => adaptArg(par,arg) }
   // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = ComponentContext(adaptArgs(clo,args))
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = {
+    val argsV = args.map { 
+      case valueLattice.Element(v) => v
+      case valueLattice.Elements(_) => throw new Exception("This should not happen!")
+    }
+    ComponentContext(adaptArgs(clo, argsV))
+  }
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
     case Main               => Main
@@ -52,38 +59,16 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case Main       => None
     case call: Call => Some(call.clo)
   }
-  def similarV(v1: valueLattice.Value, v2: valueLattice.Value): Boolean = (v1,v2) match {
-    case (valueLattice.Nil, valueLattice.Nil) => true
-    case (valueLattice.Int(_), valueLattice.Int(_)) => true
-    case (valueLattice.Real(_), valueLattice.Real(_)) => true
-    case (valueLattice.Bool(_), valueLattice.Bool(_)) => true
-    case (valueLattice.Char(_), valueLattice.Char(_)) => true
-    case (valueLattice.Str(_), valueLattice.Str(_)) => true
-    case (valueLattice.Symbol(_), valueLattice.Symbol(_)) => true
-    case (valueLattice.Vec(_,_,_), valueLattice.Vec(_,_,_)) => true
-    case (valueLattice.Clo(_,p1,_),valueLattice.Clo(_,p2,_)) => 
-      getClosure(p1) == getClosure(p2)
-    case (valueLattice.Cons(a1,d1),valueLattice.Cons(a2,d2)) =>
-      getClosure(extractComponentRefs(a1)) == getClosure(extractComponentRefs(a2)) &&
-      getClosure(extractComponentRefs(d1)) == getClosure(extractComponentRefs(d2))
-    case (valueLattice.Pointer(a1),valueLattice.Pointer(a2)) =>
-      getClosure(extractComponentRefs(a1)) == getClosure(extractComponentRefs(a2))
-    case (_,_) => false
+  def split(v: Value): Set[V] = lattice.split(v).map {
+    case valueLattice.Element(v) => v
+    case _ => throw new Exception("This should not happen")
   }
-  def similarValue(value1: Value, value2: Value): Boolean = (value1,value2) match {
-    case (valueLattice.Element(v1), valueLattice.Element(v2)) => similarV(v1,v2)
-    case (_,_) => false
-  }
-  def insertValue(values: List[Set[Value]], value: Value): List[Set[Value]] = values match {
-    case Nil => List(Set(value))
-    case vs :: rest if similarValue(vs.head,value) => (vs + value) :: rest 
-    case vs :: rest => vs :: insertValue(rest, value)
-  }
-  def partitionValues(vs: Set[Value]): List[Set[Value]] = 
-    vs.foldLeft(List.empty[Set[Value]])(insertValue)
+  def joinSplit(vs: Set[V]): Set[V] =
+    split(vs.foldLeft(lattice.bottom) { (acc,v) => 
+      lattice.join(acc, valueLattice.Element(v))
+    })
 
   var toJoin = Set[Set[Component]]()
-  var joinedArgs = List[Value]()
   def joinComponents(cmps: Set[Component]) = {
     this.toJoin = Set(cmps)
     while (toJoin.nonEmpty) {
@@ -91,53 +76,39 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
       this.toJoin = this.toJoin.tail
       // look at the next closure + contexts
       val calls = next.map(view(_).asInstanceOf[Call])
-      val (clo, args) = (calls.head.clo, calls.map(_.ctx.args))
+      val (pars, args) = (calls.head.clo._1.args, calls.map(_.ctx.args))
       //println("Joining the following components:")
       //calls.foreach(call => println(s"- $call"))
       // join all the argument values per parameter
       val valuesPerPos = args.toList.transpose.map(_.toSet)
-      this.joinedArgs = clo._1.args.zip(valuesPerPos).map { case (par,args) =>
-        val joinedArg = lattice.join(args)
-        widenArg(clo, par, joinedArg)
-        joinedArg
+      pars.zip(valuesPerPos).foreach { case (par,args) =>
+        val joinedArgsV = joinSplit(args)
+        joinedArgsV.foreach(widenArg(par,_))
+        val refs = joinedArgsV.flatMap(extractComponentRefs)
+        this.toJoin ++= refs.groupBy(getClosure(_).map(_._1)).values.map(_.toSet)
       }
-      //println("into:")
-      //println(s"=> ${calls.head.nam.getOrElse("anonymous")}(${joinedArgs.mkString(",")})")
       updateAnalysis()
-      // from the joined args, determine the next components that need to be joined
-      val componentRefs = this.joinedArgs.flatMap(extractComponentRefs)
-      this.toJoin ++= componentRefs.groupBy(getClosure(_)).values.map(_.toSet)
       this.toJoin = this.toJoin.filterNot(_.size == 1).toSet   
     }
-    //println()
   }
-
-  def joinArg(clo: lattice.Closure, args: Set[List[Value]]) = {
-    val valuesPerPos = args.toList.transpose.map(_.toSet)
-    val valuesPerArg = clo._1.args.zip(valuesPerPos).toMap
-    val (topArgument, argVals) = valuesPerArg.maxBy(_._2.size)
-    val joinedArgVal = lattice.join(argVals)
-    widenArg(clo, topArgument, joinedArgVal)
-  }
+  var cmpsPerFn = Map[SchemeExp, Set[Component]]()
+  override def onNewComponent(cmp: Component, call: Call) = 
+    cmpsPerFn += (call.body -> (cmpsPerFn.get(call.body).getOrElse(Set()) + cmp))
   // we need to update the adaptedArgs mapping when the analysis is adapted
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
-    this.adaptedArgs = updateMap(updateClosurePar(update),updateSet(updateValue(update)))(adaptedArgs)(valueSetMonoid)
+    this.adaptedArgs = updateMap(updateSet(updateV(update)))(adaptedArgs)
+    this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
     this.toJoin = updateSet(updateSet(update))(toJoin)
-    this.joinedArgs = joinedArgs.map(updateValue(update))
   }
-  private def updateClosurePar(update: Component => Component)(key: (lattice.Closure, Identifier)) =
-    (updateClosure(update)(key._1), key._2)
-  private val valueSetMonoid = new Monoid[Set[Value]] {
-    def zero = Set.empty
-    def append(s1: Set[Value], s2: => Set[Value]) =
-      if(s1.isEmpty) {
-        s2
-      } else if (s2.isEmpty) {
-        s1
-      } else {
-        val union = s1 ++ s2
-        union.filter(abs => !union.exists(other => other != abs && lattice.subsumes(other,abs)))
+  // split args!
+  override def intraAnalysis(cmp: Component) = new AdaptiveArgIntra(cmp)
+  class AdaptiveArgIntra(component: Component) extends super.IntraAnalysis(component) {
+    override def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value =
+      splitArgs(args) { argsSplitted => 
+        val fromClosures = applyClosures(fval,argsSplitted,cll,cmp)
+        val fromPrimitives = applyPrimitives(fexp,fval,argsSplitted)
+        lattice.join(fromClosures,fromPrimitives)
       }
   }
 }

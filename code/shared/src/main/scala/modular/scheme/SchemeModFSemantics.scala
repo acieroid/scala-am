@@ -137,7 +137,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       } else {
         lattice.bottom
       }
-    private def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
+    protected def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
       case Nil                      => fn(Nil)
       // TODO[minor]: use foldMap instead of foldLeft
       case (argExp,argVal) :: rest  =>
@@ -194,7 +194,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       def cdrAddr(exp: SchemeExp): Addr = allocAddr(CdrAddr(exp))
     }
     // TODO[minor]: use foldMap instead of foldLeft
-    private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
+    protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
         prm.call(fexp, args, StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
