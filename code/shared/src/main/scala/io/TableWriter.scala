@@ -6,9 +6,9 @@ object TableWriter {
     var output: String = ""
     for (row <- rows) {
       val values = columns.map(data(row).withDefaultValue(defaultValue))
-      output = row ++ " " ++ values.mkString(" & ") ++ "\\\\\\\\\n" ++ output
+      output = row ++ " " ++ values.mkString(" & ") ++ "\\\\\n" ++ output
     }
-    rowName ++ " " ++ columns.mkString(" & ") ++ "\\\\\\\\\n" ++ output
+    rowName ++ " " ++ columns.mkString(" & ") ++ "\\\\\n" ++ output
   }
 
 }
