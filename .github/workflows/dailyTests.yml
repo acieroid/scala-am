@@ -1,12 +1,9 @@
-name: Scala-AM tests
+name: Daily Scala-AM tests
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  chron: 00 23 * * * # Executes every night at 23:00.
 
 jobs:
   # The compile job fetches the code and attempts to compile it.
@@ -14,10 +11,10 @@ jobs:
     name: Compile Scala-AM
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: lokkju/github-action-sbt@v0.2.2
-      with:
-        commands: compile
+      - uses: actions/checkout@v2
+      - uses: lokkju/github-action-sbt@v0.2.2
+        with:
+          commands: compile
   # The test-lattice job executes the lattice tests.
   test-lattice:
     name: Execute lattice tests
@@ -53,14 +50,13 @@ jobs:
     name: Execute soundness tests (using ${{ matrix.test_class }})
     runs-on: ubuntu-latest
     needs: compile
+    timeout-minutes: 480 # 8 hours
     strategy:
       fail-fast: false
       matrix:
-        test_class: [BigStepSchemeModFSoundnessTests, SmallStepSchemeModFSoundnessTests, SimpleAdaptiveSchemeModFSoundnessTests]
+        test_class: [FullBigStepSchemeModFSoundnessTests, FullSmallStepSchemeModFSoundnessTests, FullSimpleAdaptiveSchemeModFSoundnessTests]
     steps:
       - uses: actions/checkout@v2
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
           commands: scalaam/testOnly scalaam.test.soundness.${{ matrix.test_class }}
-    
-    

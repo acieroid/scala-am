@@ -20,7 +20,7 @@ jobs:
       script: sbt "scalaam/testOnly scalaam.test.language.scheme.*"
     - stage: test
       name: "ModF Soundness Tests"
-      script: travis_wait 30 sbt "scalaam/testOnly scalaam.test.soundness.*"
+      script: travis_wait 30 sbt "scalaam/testOnly scalaam.test.soundness.Fast*"
 
 branches:
   only:
