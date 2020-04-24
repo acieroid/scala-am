@@ -1,8 +1,6 @@
 package scalaam.modular.scheme
 
 import scalaam.core.Position._
-import scalaam.language.scheme.SchemeExp
-import scalaam.modular.ModAnalysis
 
 /* Simplest (and most imprecise): no context-sensitivity */
 trait NoSensitivity extends SchemeModFSemantics {

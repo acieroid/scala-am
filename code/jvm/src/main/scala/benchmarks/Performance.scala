@@ -1,6 +1,5 @@
 package scalaam.cli.benchmarks
 
-import scalaam.core._
 import scalaam.io.Reader
 import scalaam.io.Writer._
 import scalaam.language.scheme._

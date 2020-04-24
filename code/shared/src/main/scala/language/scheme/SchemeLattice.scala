@@ -109,9 +109,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
       case s: String  => string(s)
       case b: Boolean => bool(b)
       case c: Char    => char(c)
-      case p: P       => primitive(p)
+      //case p: P       => primitive(p)
       case s: Symbol  => symbol(s.toString().tail) // Remove leading '.
-      case a: A       => pointer(a)
+      //case a: A       => pointer(a)
       case Nil        => nil
       case v          => throw new Exception(s"Attempting to inject unknown value $v.")
     }
