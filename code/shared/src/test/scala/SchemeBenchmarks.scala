@@ -28,7 +28,7 @@ object SchemeBenchmarks {
     "test/ad/abstrct.scm",
     //"test/ad/bfirst.scm", // Unbound identifier: create-graph
     "test/ad/bst.scm",
-    //"test/ad/btree.scm", // TODO add a body
+    //"test/ad/btree.scm", // Lacks a body.
     "test/ad/bubsort.scm",
     "test/ad/dict.scm",
     "test/ad/heap.scm",
@@ -250,11 +250,11 @@ object SchemeBenchmarks {
     "test/WeiChenRompf2019/kcfa-worst-case-256.scm",
     "test/WeiChenRompf2019/kcfa3.scm",
     //"test/WeiChenRompf2019/mbrotZ.sch", // Parser error.
-    //"test/WeiChenRompf2019/meta-circ.scm", // UNSUPPORTED FEATURE? (lambda args body)
-    //"test/WeiChenRompf2019/omega.scm", // STACKOVERFLOW CONCRETE MACHINE
-    //"test/WeiChenRompf2019/regex-derivative.scm", // PARSER ERROR
+    //"test/WeiChenRompf2019/meta-circ.scm", // Uses procedure?
+    "test/WeiChenRompf2019/omega.scm",
+    //"test/WeiChenRompf2019/regex-derivative.scm", // Parser error.
     "test/WeiChenRompf2019/rsa.scm",
-    //"test/WeiChenRompf2019/scheme2java.scm", // Needs primitive char-alphabetic?
+    //"test/WeiChenRompf2019/scheme2java.scm", // Uses char-alphabetic?
     "test/WeiChenRompf2019/solovay-strassen.scm",
   )
 
@@ -287,15 +287,15 @@ object SchemeBenchmarks {
     "test/nested-defines.scm",
     "test/primtest.scm",
     "test/quasiquoting-simple.scm",
-    //"test/quasiquoting.scm",  // unquote-splicing
+    //"test/quasiquoting.scm", // unquote-splicing
     "test/regex.scm",
     "test/rotate.scm",
     "test/rsa.scm",
     "test/sat.scm",
-    //"test/scm2c.scm",     // various unsupported primitives
-    //"test/scm2java.scm",  // various unsupported primitives
+    "test/scm2c.scm",
+    "test/scm2java.scm",
     "test/sq.scm",
-    //"test/Streams.scm",   // define-macro
+    //"test/Streams.scm", // Uses define-macro
     "test/sym.scm",
     "test/widen.scm",
     "test/work.scm",
