@@ -27,25 +27,24 @@ object SchemeBenchmarks {
   val ad: Set[String] = Set(
     "test/ad/abstrct.scm",
     //"test/ad/bfirst.scm", // Unbound identifier: create-graph
-    "test/ad/bst.scm", // VARARG
+    "test/ad/bst.scm",
     //"test/ad/btree.scm", // TODO add a body
     "test/ad/bubsort.scm",
     "test/ad/dict.scm",
-    // "test/ad/dictExamples.scm", // EMPTY
-    //"test/ad/heap.scm", // PARSER ERROR TODO
+    "test/ad/heap.scm",
     "test/ad/inssort.scm",
-    "test/ad/linear.scm", // VARARG
-    "test/ad/list.scm", // VARARG
+    "test/ad/linear.scm",
+    "test/ad/list.scm",
     "test/ad/mesort.scm",
     "test/ad/prioq.scm",
     "test/ad/qsort.scm",
     "test/ad/qstand.scm",
-    "test/ad/queue.scm", // VARARG
+    "test/ad/queue.scm",
     "test/ad/quick.scm",
-    "test/ad/RBtreeADT.scm", // VARARG
-    "test/ad/selsort.scm", // PARSER ERROR TODO
+    "test/ad/RBtreeADT.scm",
+    "test/ad/selsort.scm",
     "test/ad/stack.scm",
-    "test/ad/stspaceCODE.scm", // VARARG
+    "test/ad/stspaceCODE.scm",
   )
 
   val gabriel: Set[String] = Set(
@@ -65,34 +64,34 @@ object SchemeBenchmarks {
   val gambit: Set[String] = Set(
     "test/gambit/array1.scm",
     "test/gambit/browse.scm",
-    //"test/gambit/cat.scm", // open-input-file
-    //"test/gambit/compiler.scm", // PARSER ERROR TODO
+    //"test/gambit/cat.scm", // Needs open-input-file.
+    //"test/gambit/compiler.scm", // Parser error (see issue on Github).
     "test/gambit/ctak.scm",
     "test/gambit/deriv.scm",
     "test/gambit/destruc.scm",
     "test/gambit/diviter.scm",
     "test/gambit/earley.scm",
-    //"test/gambit/fibc.scm", // call-cc
+    //"test/gambit/fibc.scm", // Needs call-cc.
     "test/gambit/graphs.scm",
     "test/gambit/lattice.scm",
     "test/gambit/matrix.scm",
     "test/gambit/mazefun.scm",
-    "test/gambit/nboyer.scm", // VARARG
+    "test/gambit/nboyer.scm",
     "test/gambit/nqueens.scm",
     "test/gambit/paraffins.scm",
     "test/gambit/perm9.scm",
-    //"test/gambit/peval.scm", // VARARG // ERROR CONCRETE INTERPRETER
+    //"test/gambit/peval.scm", // Error in program.
     "test/gambit/primes.scm",
     "test/gambit/puzzle.scm",
-    "test/gambit/sboyer.scm", // VARARG
-    //"test/gambit/scheme.scm", // MEMV
-    //"test/gambit/slatex.scm", // PARSER LIMITATION TODO
+    "test/gambit/sboyer.scm",
+    //"test/gambit/scheme.scm", // Error in program.
+    //"test/gambit/slatex.scm", // Needs integer->char.
     //"test/gambit/string.scm", // Needs susbtring.
     "test/gambit/sum.scm",
     "test/gambit/sumloop.scm",
     "test/gambit/tail.scm",
     "test/gambit/tak.scm",
-    //"test/gambit/trav1.scm", // PARSER ERROR TODO
+    "test/gambit/trav1.scm",
     "test/gambit/triangl.scm",
     "test/gambit/wc.scm",
   )
@@ -111,14 +110,14 @@ object SchemeBenchmarks {
     "test/scp1/addition.scm",
     "test/scp1/fast-multiply.scm",
     "test/scp1/multiply.scm",
-    //"test/scp1/calc-e-and-cos.scm", // PARSER ERROR
+    "test/scp1/calc-e-and-cos.scm",
     "test/scp1/counter.scm",
     "test/scp1/weird.scm",
     "test/scp1/sim-fast-multiply.scm",
-    //"test/scp1/draw-umbrella.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
+    "test/scp1/draw-umbrella.scm",
 
     // Higher-Order Procedures
-    "test/scp1/print-abc.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
+    "test/scp1/print-abc.scm",
     "test/scp1/simpson-integral.scm",
 
     // Lists.
@@ -127,37 +126,37 @@ object SchemeBenchmarks {
     "test/scp1/super-list-merge-n.scm",
     "test/scp1/list-compare-n.scm",
     "test/scp1/grades.scm",
-    //"test/scp1/compress-measurements.scm", // PARSER ERROR
+    "test/scp1/compress-measurements.scm",
     "test/scp1/sales-period.scm",
 
     // Trees.
     "test/scp1/count-tree.scm",
     "test/scp1/fringe.scm",
     "test/scp1/unfringe.scm",
-    // "test/scp1/same-structure.scm", // DOT NOTATION
-    // "test/scp1/deep-map-combine.scm", // DOT NOTATION
-    //"test/scp1/apple-tree.scm",
+    "test/scp1/same-structure.scm",
+    "test/scp1/deep-map-combine.scm",
+    "test/scp1/apple-tree.scm",
     "test/scp1/organigram.scm",
     "test/scp1/fireworks.scm",
-    //"test/scp1/university.scm", // SOMETIMES LOOPS TODO
+    "test/scp1/university.scm",
     "test/scp1/animal-classification.scm",
     "test/scp1/tree-with-branches.scm",
     "test/scp1/coca-cola.scm",
     "test/scp1/family-budget.scm",
-    //"test/scp1/circus.scm", // VARARG APPEND UNSUPPORTED BY CONCRETE INTERPRETER
+    //"test/scp1/circus.scm", // Vararg append nog supported by concrete interpreter.
 
     // Objects.
     "test/scp1/flip.scm",
     "test/scp1/flip2.scm",
-    "test/scp1/polynome.scm", // VARARG
+    "test/scp1/polynome.scm",
     "test/scp1/haha.scm",
-    //"test/scp1/scoreboard.scm", // SMALLSTEP LOOPS, EVEN WITH FINER TIMEOUT TODO
-    "test/scp1/parking-counter.scm", // VARARG
+    "test/scp1/scoreboard.scm",
+    "test/scp1/parking-counter.scm",
     "test/scp1/square-and-rectangle.scm",
     "test/scp1/lightbulb.scm",
     "test/scp1/cashdesk-counter.scm",
     "test/scp1/car-counter.scm",
-    "test/scp1/twitter.scm", // VARARG
+    "test/scp1/twitter.scm",
 
     // Destructive operations
     "test/scp1/count-pairs.scm",
@@ -193,7 +192,6 @@ object SchemeBenchmarks {
     "test/icp/icp_1c_multiple-dwelling.scm",
     "test/icp/icp_1c_ontleed.scm",
     "test/icp/icp_1c_prime-sum-pair.scm",
-    // "test/icp/icp_1c_prime-sum-pair-standard.scm", // Does not want to run in DrRacket. :(
     "test/icp/icp_2_aeval.scm",
     "test/icp/icp_3_leval.scm",
     //"test/icp/icp_4_qeval.scm", // Needs define-syntax and delay.
@@ -214,44 +212,44 @@ object SchemeBenchmarks {
   )
 
   val theLittleSchemer: Set[String] = Set(
-    //"test/WeiChenRompf2019/the-little-schemer/ch1.scm", // PARSER ERROR
+    "test/WeiChenRompf2019/the-little-schemer/ch1.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch2.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch3.scm",
     //"test/WeiChenRompf2019/the-little-schemer/ch4.scm", // No main code (only definitions).
     //"test/WeiChenRompf2019/the-little-schemer/ch5.scm", // No main code (only definitions).
-    //"test/WeiChenRompf2019/the-little-schemer/ch6.scm", // PARSER LIMITATION TODO check whether needed
+    //"test/WeiChenRompf2019/the-little-schemer/ch6.scm", // Commented out half of the file. Now does not parse anymore.
     "test/WeiChenRompf2019/the-little-schemer/ch7.scm",
-    //"test/WeiChenRompf2019/the-little-schemer/ch8.scm", // PARSER LIMITATION TODO check whether needed
-    //"test/WeiChenRompf2019/the-little-schemer/ch9.scm", // UNSUPPORTED FEATURE? (lambda args body)
+    "test/WeiChenRompf2019/the-little-schemer/ch8.scm",
+    "test/WeiChenRompf2019/the-little-schemer/ch9.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch10.scm",
   )
 
   val toplas98: Set[String] = Set(
-    //"test/WeiChenRompf2019/toplas98/boyer.sch", // USES SQUARE BRACKETS
-    //"test/WeiChenRompf2019/toplas98/dynamic.sch", // PARSER LIMITATION TODO
-    //"test/WeiChenRompf2019/toplas98/graphs.sch", // MISSING PRIMITIVE open-input-file
-    //"test/WeiChenRompf2019/toplas98/handle.scm", // MAYBE INVALID SCHEME PROGRAM TODO check
-    //"test/WeiChenRompf2019/toplas98/lattice.scm", // PARSER ERROR TODO
-    //"test/WeiChenRompf2019/toplas98/lattice-processed.scm", // PARSER ERROR TODO
-    //"test/WeiChenRompf2019/toplas98/maze.sch", // PARSER ERROR: #\space is interpreted as #\s pace
-    //"test/WeiChenRompf2019/toplas98/nbody.sch", // PARSER LIMITATION TODO
-    //"test/WeiChenRompf2019/toplas98/nbody-processed.sch", // PARSER LIMITATION TODO
-    //"test/WeiChenRompf2019/toplas98/nucleic.sch", // PARSER ERROR TODO
-    //"test/WeiChenRompf2019/toplas98/nucleic2.sch", // USES MACROS: define-syntax
-    //"test/WeiChenRompf2019/toplas98/splay.scm", // PARSER ERROR
+    //"test/WeiChenRompf2019/toplas98/boyer.sch", // Uses square brackets.
+    //"test/WeiChenRompf2019/toplas98/dynamic.scm", // Uses call-with-input-file
+    //"test/WeiChenRompf2019/toplas98/graphs.scm", // Uses open-input-file.
+    //"test/WeiChenRompf2019/toplas98/handle.scm", // Uses defmacro (not standard r5rs).
+    //"test/WeiChenRompf2019/toplas98/lattice.scm", // Parser error. Uses undefined (void) function.
+    //"test/WeiChenRompf2019/toplas98/lattice-processed.scm", // Parser error. Uses undefined (void) function.
+    //"test/WeiChenRompf2019/toplas98/maze.scm", // Uses open-input-file.
+    //"test/WeiChenRompf2019/toplas98/nbody.scm", // Parser error.
+    //"test/WeiChenRompf2019/toplas98/nbody-processed.scm", // Parser error.
+    //"test/WeiChenRompf2019/toplas98/nucleic.sch", // Uses square brackets.
+    //"test/WeiChenRompf2019/toplas98/nucleic2.sch", // USES macros (define-syntax).
+    //"test/WeiChenRompf2019/toplas98/splay.scm", // Uses () instead of '(), but has other issues.
   )
 
   val WCR2019: Set[String] = Set(
-    //"test/WeiChenRompf2019/church_exp.sch", // PARSER LIMITATION TODO // Unknown (void) function
+    //"test/WeiChenRompf2019/church_exp.sch", // Uses non-standard (void) function.
     "test/WeiChenRompf2019/church_simple.sch",
-    //"test/WeiChenRompf2019/earley.sch", // MISSING PRIMITIVE read TODO
+    //"test/WeiChenRompf2019/earley.sch", // Uses read.
     "test/WeiChenRompf2019/fermat.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-16.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-32.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-64.scm",
     "test/WeiChenRompf2019/kcfa-worst-case-256.scm",
     "test/WeiChenRompf2019/kcfa3.scm",
-    //"test/WeiChenRompf2019/mbrotZ.sch", // PARSER ERROR TODO
+    //"test/WeiChenRompf2019/mbrotZ.sch", // Parser error.
     //"test/WeiChenRompf2019/meta-circ.scm", // UNSUPPORTED FEATURE? (lambda args body)
     //"test/WeiChenRompf2019/omega.scm", // STACKOVERFLOW CONCRETE MACHINE
     //"test/WeiChenRompf2019/regex-derivative.scm", // PARSER ERROR

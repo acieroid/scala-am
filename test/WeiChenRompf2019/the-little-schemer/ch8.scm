@@ -111,10 +111,10 @@
 (define operator 
   (lambda (aexp)
     (car aexp)))
-(define 1st-sub-exp
+(define first-sub-exp
   (lambda (aexp)
     (car (cdr aexp))))
-(define 2nd-sub-exp
+(define second-sub-exp
   (lambda (aexp)
     (car (cdr (cdr aexp)))))
 
@@ -122,14 +122,14 @@
   (lambda (nexp)
     (cond ((atom? nexp) nexp)
           ((eq? (operator nexp) '+)
-           (+ (value (1st-sub-exp nexp))
-              (value (2nd-sub-exp nexp))))
+           (+ (value (first-sub-exp nexp))
+              (value (second-sub-exp nexp))))
           ((eq? (operator nexp) '*)
-           (* (value (1st-sub-exp nexp))
-              (value (2nd-sub-exp nexp))))
+           (* (value (first-sub-exp nexp))
+              (value (second-sub-exp nexp))))
           (else 
-           (^ (value (1st-sub-exp nexp))
-              (value (2nd-sub-exp nexp)))))))
+           (^ (value (first-sub-exp nexp))
+              (value (second-sub-exp nexp)))))))
 
 (define atom-to-function
   (lambda (x)
@@ -141,8 +141,8 @@
   (lambda (nexp)
     (cond ((atom? nexp) nexp)
           (else ((atom-to-function (operator nexp))
-                 (value (1st-sub-exp nexp))
-                 (value (2nd-sub-exp nexp)))))))
+                 (value (first-sub-exp nexp))
+                 (value (second-sub-exp nexp)))))))
 
 (define multirember-f
   (lambda (test?)
