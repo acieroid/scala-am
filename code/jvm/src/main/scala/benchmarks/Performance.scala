@@ -1,6 +1,6 @@
 package scalaam.cli.benchmarks
 
-import scalaam.io.Reader
+import scalaam.io._
 import scalaam.io.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
@@ -13,6 +13,8 @@ object Performance extends App {
 
   val warmup = 3
   val actual = 15
+
+  var results: Map[String, Map[String, Double]] = Map().withDefaultValue(Map())
 
   setDefaultWriter(open("benchOutput/results.txt"))
 
@@ -31,24 +33,24 @@ object Performance extends App {
     case S_10AcyclicCS_0 => new Analysis(p) with S_10AcyclicCS_0
   }
 
-  def run(file: String, s: Sensitivity): Unit = {
+  def run(file: String, s: Sensitivity): Double = {
     val program = SchemeParser.parse(Reader.loadFile(file))
 
     var times: List[Long] = List()
 
     // Warm-up.
-    write(s"* Warmup (${warmup}) - ")
+    print(s"* Warmup (${warmup}) - ")
     for (i <- 1 to warmup) {
-      write(s"$i ")
+      print(s"$i ")
       // TODO: Add System.gc() here?
       newAnalysis(program, s).analyze()
     }
 
     System.gc()
 
-    write(s"\n* Time (${actual}) - ")
+    print(s"\n* Time (${actual}) - ")
     for (i <- 1 to actual) {
-      write(s"$i ")
+      print(s"$i ")
       val analysis = newAnalysis(program, s)
       System.gc()
       val t = Timer.timeOnly({analysis.analyze()})
@@ -56,12 +58,13 @@ object Performance extends App {
     }
 
     val m = Metrics.all(times)
-    writeln(s"\n      Mean time: ${m.mea / 1000000}ms")
-    writeln(s"      Min  time: ${m.min / 1000000}ms")
-    writeln(s"      Max  time: ${m.max / 1000000}ms")
-    writeln(s"      Med  time: ${m.med / 1000000}ms")
-    writeln(s"         Stddev: ${m.std / 1000000}ms")
+    println(s"\n      Mean time: ${m.mea / 1000000}ms")
+    println(s"      Min  time: ${m.min / 1000000}ms")
+    println(s"      Max  time: ${m.max / 1000000}ms")
+    println(s"      Med  time: ${m.med / 1000000}ms")
+    println(s"         Stddev: ${m.std / 1000000}ms")
 
+    m.mea
   }
 
   val benchmarks: List[String] = List()
@@ -69,12 +72,20 @@ object Performance extends App {
   def measure(): Unit = {
     benchmarks.foreach { b =>
       Sensitivity.values.foreach { s =>
-        writeln(s"***** $b / $s *****")
-        run(b, s)
+        try {
+          println(s"***** $b / $s *****")
+          val time: Double = run(b, s)
+          results = results + (b -> ((results(b) + (s.toString -> time))))
+        } catch {
+          case e: Exception => writeln(s"Running $b resulted in an exception: ${e.getMessage}")
+          case e: VirtualMachineError => writeln(s"Running $b resulted in an error: ${e.getMessage}")
+        }
       }
     }
   }
 
   measure()
+  val table = TableWriter.writeTable(results, "Benchmark", benchmarks, Sensitivity.values.toList.map(_.toString), "T")
+  write(table)
   closeDefaultWriter()
 }
