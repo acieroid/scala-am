@@ -36,6 +36,13 @@
     (set-cdr! last first)
     first))
 
+(define (right-rotate r)
+  (define (iter l)
+    (if (eq? (cdr l) r)
+      l
+      (iter (cdr l))))
+  (iter r))
+
 (define (Josephus r n)
   (define (remove-nth! l n)
     (if (<= n 2)

@@ -103,70 +103,77 @@ object SchemeBenchmarks {
   )
 
   val scp1: Set[String] = Set(
-    "test/scp1/2.1.scm",
-    "test/scp1/2.4.scm",
+    // Procedures, blocks, conditions.
+    "test/scp1/leap-year.scm",
+    "test/scp1/third-root.scm",
 
-    "test/scp1/3.1.scm",
-    "test/scp1/3.2.1.scm",
-    "test/scp1/3.2.scm",
-    //"test/scp1/3.3.scm", // PARSER ERROR
-    "test/scp1/3.4.scm",
-    "test/scp1/3.6.scm",
-    "test/scp1/3.8.scm",
-    //"test/scp1/3.9.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
+    // Recursion vs. iteration.
+    "test/scp1/addition.scm",
+    "test/scp1/fast-multiply.scm",
+    "test/scp1/multiply.scm",
+    //"test/scp1/calc-e-and-cos.scm", // PARSER ERROR
+    "test/scp1/counter.scm",
+    "test/scp1/weird.scm",
+    "test/scp1/sim-fast-multiply.scm",
+    //"test/scp1/draw-umbrella.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
 
-    "test/scp1/4.1.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
-    "test/scp1/4.8.scm",
+    // Higher-Order Procedures
+    "test/scp1/print-abc.scm", // LOOPS, EVEN WITH FINER TIMEOUT TODO
+    "test/scp1/simpson-integral.scm",
 
-    "test/scp1/5.6.scm",
-    "test/scp1/5.7.scm",
-    "test/scp1/5.14.3.scm",
-    "test/scp1/5.19.scm",
-    "test/scp1/5.20.4.scm",
-    //"test/scp1/5.21.scm", // PARSER ERROR
-    "test/scp1/5.22.scm",
+    // Lists.
+    "test/scp1/add-to-end.scm",
+    "test/scp1/append.scm",
+    "test/scp1/super-list-merge-n.scm",
+    "test/scp1/list-compare-n.scm",
+    "test/scp1/grades.scm",
+    //"test/scp1/compress-measurements.scm", // PARSER ERROR
+    "test/scp1/sales-period.scm",
 
-    "test/scp1/7.2.scm",
-    "test/scp1/7.3.scm",
-    "test/scp1/7.4.scm",
-    // "test/scp1/7.5.scm", // DOT NOTATION
-    // "test/scp1/7.6.scm", // DOT NOTATION
-    //"test/scp1/7.9.scm",
-    "test/scp1/7.11.scm",
-    "test/scp1/7.12.scm",
-    //"test/scp1/7.13.scm", // SOMETIMES LOOPS TODO
-    "test/scp1/7.14.scm",
-    "test/scp1/7.15.scm",
-    "test/scp1/7.16.scm",
-    "test/scp1/7.17.scm",
-    //"test/scp1/7.18.scm", // VARARG APPEND UNSUPPORTED BY CONCRETE INTERPRETER
+    // Trees.
+    "test/scp1/count-tree.scm",
+    "test/scp1/fringe.scm",
+    "test/scp1/unfringe.scm",
+    // "test/scp1/same-structure.scm", // DOT NOTATION
+    // "test/scp1/deep-map-combine.scm", // DOT NOTATION
+    //"test/scp1/apple-tree.scm",
+    "test/scp1/organigram.scm",
+    "test/scp1/fireworks.scm",
+    //"test/scp1/university.scm", // SOMETIMES LOOPS TODO
+    "test/scp1/animal-classification.scm",
+    "test/scp1/tree-with-branches.scm",
+    "test/scp1/coca-cola.scm",
+    "test/scp1/family-budget.scm",
+    //"test/scp1/circus.scm", // VARARG APPEND UNSUPPORTED BY CONCRETE INTERPRETER
 
-    "test/scp1/8.1.1.scm",
-    "test/scp1/8.1.3.scm",
-    "test/scp1/8.5.scm", // VARARG
-    "test/scp1/8.6.scm",
-    //"test/scp1/8.10.scm", // SMALLSTEP LOOPS, EVEN WITH FINER TIMEOUT TODO
-    "test/scp1/8.11.scm", // VARARG
-    "test/scp1/8.12.scm",
-    "test/scp1/8.13.scm",
-    "test/scp1/8.14.scm",
-    "test/scp1/8.15.scm",
-    "test/scp1/8.16.scm", // VARARG
+    // Objects.
+    "test/scp1/flip.scm",
+    "test/scp1/flip2.scm",
+    "test/scp1/polynome.scm", // VARARG
+    "test/scp1/haha.scm",
+    //"test/scp1/scoreboard.scm", // SMALLSTEP LOOPS, EVEN WITH FINER TIMEOUT TODO
+    "test/scp1/parking-counter.scm", // VARARG
+    "test/scp1/square-and-rectangle.scm",
+    "test/scp1/lightbulb.scm",
+    "test/scp1/cashdesk-counter.scm",
+    "test/scp1/car-counter.scm",
+    "test/scp1/twitter.scm", // VARARG
 
-    "test/scp1/9.2.scm",
-    "test/scp1/9.3.scm",
-    "test/scp1/9.5.scm",
-    "test/scp1/9.6.scm",
-    "test/scp1/9.7.scm",
-    //"test/scp1/9.8.scm", // Undefined variable right-rotate.
-    "test/scp1/9.9.scm",
-    "test/scp1/9.12.scm",
-    "test/scp1/9.13.scm",
-    "test/scp1/9.14.scm",
-    "test/scp1/9.15.scm",
-    "test/scp1/9.16.scm",
-    "test/scp1/9.17.scm",
-    "test/scp1/9.18.scm",
+    // Destructive operations
+    "test/scp1/count-pairs.scm",
+    "test/scp1/ring.scm",
+    "test/scp1/ring-rotate.scm",
+    "test/scp1/find-cycles.scm",
+    "test/scp1/ring-copy.scm",
+    "test/scp1/josephus-problem.scm",
+    "test/scp1/count-pairs2.scm",
+    "test/scp1/flatten.scm",
+    "test/scp1/ring-squares.scm",
+    "test/scp1/slide-in.scm",
+    "test/scp1/dedouble.scm",
+    "test/scp1/insert.scm",
+    "test/scp1/all-but-interval.scm",
+    "test/scp1/merge.scm",
   )
 
   val scp1_compressed: Set[String] = Set(

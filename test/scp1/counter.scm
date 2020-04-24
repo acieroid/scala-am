@@ -1,5 +1,5 @@
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define output (lambda (i) (set! result (cons i result))))
 
 (define (count1 x)
   (cond ((= 0 x) (display x))
