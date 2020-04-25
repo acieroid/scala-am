@@ -53,15 +53,14 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case Main       => None
     case call: Call => Some(call.clo)
   }
-  var toJoin = Set[Set[Component]]()
+  var toJoin = List[Set[Component]]()
   def joinComponents(cmps: Set[Component]) = {
-    this.toJoin = Set(cmps)
+    this.toJoin = List(cmps)
     while (toJoin.nonEmpty) {
-      val next = this.toJoin.head
-      this.toJoin = this.toJoin.tail
+      val next :: rest = this.toJoin
       // look at the next closure + contexts
       val calls = next.map(view(_).asInstanceOf[Call])
-      this.toJoin += calls.map(_.clo._2)
+      this.toJoin = calls.map(_.clo._2) :: rest
       val (pars, args) = (calls.head.clo._1.args, calls.map(_.ctx.args))
       //println("Joining the following components:")
       //calls.foreach(call => println(s"- $call"))
@@ -72,12 +71,13 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
         val refs = extractComponentRefs(joined).groupBy(getClosure(_).map(_._1.idn))
                                                .values
                                                .map(_.toSet)
-        this.toJoin ++= refs
+        this.toJoin = this.toJoin ::: refs.toList
         widenArg(par, joined)
       }
       updateAnalysis()
-      this.toJoin = this.toJoin.filterNot(_.size == 1).toSet   
+      this.toJoin = this.toJoin.filterNot(_.size == 1).toList   
     }
+    //println("DONE")
   }
   var cmpsPerFn = Map[SchemeExp, Set[Component]]()
   override def onNewComponent(cmp: Component, call: Call) = 
@@ -87,6 +87,6 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     super.updateAnalysisData(update)
     this.adaptedArgs = updateMap(updateSet(updateValue(update)))(adaptedArgs)
     this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
-    this.toJoin = updateSet(updateSet(update))(toJoin)
+    this.toJoin = toJoin.map(updateSet(update))
   }
 }

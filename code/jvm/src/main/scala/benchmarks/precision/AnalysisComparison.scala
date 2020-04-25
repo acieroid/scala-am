@@ -24,7 +24,7 @@ abstract class AnalysisComparison[
     def otherAnalyses(prg: SchemeExp): List[Analysis]
 
     // and can, optionally, be configured in its timeouts (default: 2min.)
-    def analysisTimeout() = Timeout.start(Duration(2, MINUTES)) //timeout for (non-base) analyses
+    def analysisTimeout() = Timeout.start(Duration(30, MINUTES)) //timeout for (non-base) analyses
     def concreteTimeout() = Timeout.none                        //timeout for concrete interpreter
 
     def concreteRuns() = 20
@@ -72,13 +72,16 @@ object AnalysisComparison1 extends AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def otherAnalyses(prg: SchemeExp) = List(
-        SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),
-        SchemeAnalyses.adaptiveCallerSensitivity(prg,10)
+        SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 5)
+        //SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),
+        //SchemeAnalyses.adaptiveCallerSensitivity(prg,10)
         //SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5),
         //SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
     )
 
-    def main(args: Array[String]) = runBenchmarks(SchemeBenchmarks.standard)
+    def main(args: Array[String]) = runBenchmarks(
+        Set("test/icp/icp_2_aeval.scm")
+    )
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
