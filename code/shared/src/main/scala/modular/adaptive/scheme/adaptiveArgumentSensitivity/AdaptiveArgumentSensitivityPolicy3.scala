@@ -39,7 +39,7 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
   override def onNewComponent(cmp: Component, call: Call) = {
     val callStack = calledBy(cmp)
     val prevCmps: Set[Component] = callStack.collect(c => view(c) match {
-      case cll: Call if cll.clo == call.clo => c
+      case cll: Call if cll.clo._1.idn == call.clo._1.idn => c
     })
     val updatedCmps = prevCmps + cmp
     if (updatedCmps.size > limit) {
@@ -55,7 +55,7 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
   // - perform the necessary bookkeeping for 'calledBy' whenever a function is called
   // - check if the analysis needs to be adapted on new function calls
   override def intraAnalysis(cmp: Component) = new AdaptiveArgIntraPolicy3(cmp)
-  class AdaptiveArgIntraPolicy3(component: Component) extends super.AdaptiveArgIntra(component) {
+  class AdaptiveArgIntraPolicy3(component: Component) extends super.IntraAnalysis(component) {
     override def call(cmp: Component) = {
       registerCall(component,cmp)
       super.call(cmp)

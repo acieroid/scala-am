@@ -6,33 +6,27 @@ import scalaam.language.scheme._
 import scalaam.modular.adaptive.scheme._
 
 trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
-  type V = valueLattice.Value
-  case class ComponentContext(args: List[V]) {
+  case class ComponentContext(args: List[Value]) {
     override def toString = args.mkString(",")
   }
   def updateCtx(update: Component => Component)(ctx: ComponentContext) =
-    ComponentContext(ctx.args.map(updateV(update)))
+    ComponentContext(ctx.args.map(updateValue(update)))
   // to determine how arguments need to be adapted
-  private var adaptedArgs = Map[Identifier, Set[V]]()
-  protected def widenArg(par: Identifier, arg: V) = {
+  private var adaptedArgs = Map[Identifier, Set[Value]]()
+  protected def widenArg(par: Identifier, arg: Value) = {
     val currentAbs = adaptedArgs.getOrElse(par,Set.empty)
-    val updatedAbs = currentAbs.filterNot(valueLattice.Value.subsumes(arg,_)) + arg
+    val updatedAbs = currentAbs.filterNot(lattice.subsumes(arg,_)) + arg
     this.adaptedArgs += (par -> updatedAbs)
   }
-  private def adaptArg(par: Identifier, arg: V) =
+  private def adaptArg(par: Identifier, arg: Value) =
     adaptedArgs.getOrElse(par,Set.empty)
-               .find(valueLattice.Value.subsumes(_, arg))
+               .find(lattice.subsumes(_, arg))
                .getOrElse(arg)
-  private def adaptArgs(clo: lattice.Closure, args: List[V]) =
+  private def adaptArgs(clo: lattice.Closure, args: List[Value]) =
     clo._1.args.zip(args).map { case (par,arg) => adaptArg(par,arg) }
   // The context for a given closure only consists of argument values for non-excluded parameters for that closure
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = {
-    val argsV = args.map { 
-      case valueLattice.Element(v) => v
-      case valueLattice.Elements(_) => throw new Exception("This should not happen!")
-    }
-    ComponentContext(adaptArgs(clo, argsV))
-  }
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) =
+    ComponentContext(adaptArgs(clo, args))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
     case Main               => Main
@@ -59,15 +53,6 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case Main       => None
     case call: Call => Some(call.clo)
   }
-  def split(v: Value): Set[V] = lattice.split(v).map {
-    case valueLattice.Element(v) => v
-    case _ => throw new Exception("This should not happen")
-  }
-  def joinSplit(vs: Set[V]): Set[V] =
-    split(vs.foldLeft(lattice.bottom) { (acc,v) => 
-      lattice.join(acc, valueLattice.Element(v))
-    })
-
   var toJoin = Set[Set[Component]]()
   def joinComponents(cmps: Set[Component]) = {
     this.toJoin = Set(cmps)
@@ -76,16 +61,19 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
       this.toJoin = this.toJoin.tail
       // look at the next closure + contexts
       val calls = next.map(view(_).asInstanceOf[Call])
+      this.toJoin += calls.map(_.clo._2)
       val (pars, args) = (calls.head.clo._1.args, calls.map(_.ctx.args))
       //println("Joining the following components:")
       //calls.foreach(call => println(s"- $call"))
       // join all the argument values per parameter
       val valuesPerPos = args.toList.transpose.map(_.toSet)
       pars.zip(valuesPerPos).foreach { case (par,args) =>
-        val joinedArgsV = joinSplit(args)
-        joinedArgsV.foreach(widenArg(par,_))
-        val refs = joinedArgsV.flatMap(extractComponentRefs)
-        this.toJoin ++= refs.groupBy(getClosure(_).map(_._1)).values.map(_.toSet)
+        val joined = lattice.join(args)
+        val refs = extractComponentRefs(joined).groupBy(getClosure(_).map(_._1.idn))
+                                               .values
+                                               .map(_.toSet)
+        this.toJoin ++= refs
+        widenArg(par, joined)
       }
       updateAnalysis()
       this.toJoin = this.toJoin.filterNot(_.size == 1).toSet   
@@ -97,18 +85,8 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // we need to update the adaptedArgs mapping when the analysis is adapted
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
-    this.adaptedArgs = updateMap(updateSet(updateV(update)))(adaptedArgs)
+    this.adaptedArgs = updateMap(updateSet(updateValue(update)))(adaptedArgs)
     this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
     this.toJoin = updateSet(updateSet(update))(toJoin)
-  }
-  // split args!
-  override def intraAnalysis(cmp: Component) = new AdaptiveArgIntra(cmp)
-  class AdaptiveArgIntra(component: Component) extends super.IntraAnalysis(component) {
-    override def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value =
-      splitArgs(args) { argsSplitted => 
-        val fromClosures = applyClosures(fval,argsSplitted,cll,cmp)
-        val fromPrimitives = applyPrimitives(fexp,fval,argsSplitted)
-        lattice.join(fromClosures,fromPrimitives)
-      }
   }
 }
