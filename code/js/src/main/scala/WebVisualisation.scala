@@ -28,21 +28,43 @@ object WebVisualisation {
     seq.foreach { item => array.push(item) }
     return array
   }
+  // more helpers
+  def randomColor(): JsAny = {
+    val r = (scala.math.random() * 255).toInt
+    val g = (scala.math.random() * 255).toInt
+    val b = (scala.math.random() * 255).toInt
+    d3.rgb(r,g,b)
+  }
 }
 
 class WebVisualisation(val analysis: ModAnalysis[_]) {
 
-  // TODO: make this abstract
+  // TODO: make these abstract
   def displayText(cmp: analysis.Component): String = cmp.toString()
+  def componentKey(cmp: analysis.Component): Any = None
 
   import WebVisualisation._
 
-  class Node(val component: analysis.Component) extends js.Object
-  class Edge(val source: Node, val target: Node) extends js.Object
+  //
+  // COLOR WHEEL
+  //
+
+  var colorWheel = Map[Any,JsAny]() 
+  def colorFor(cmp: analysis.Component): JsAny = colorForKey(componentKey(cmp))
+  def colorForKey(key: Any): JsAny = colorWheel.get(key) match {
+    case None =>
+      val newColor = randomColor()
+      colorWheel += (key -> newColor)
+      newColor
+    case Some(existingColor) => existingColor
+  }
 
   //
   // BOOKKEEPING (needed to play nice with Scala.js and d3.js)
   //
+
+  class Node(val component: analysis.Component) extends js.Object
+  class Edge(val source: Node, val target: Node) extends js.Object
 
   var nodesData = Set[Node]()
   var edgesData = Set[Edge]()
@@ -192,8 +214,6 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     }
   }
 
-  def componentKey(cmp: analysis.Component): Any = cmp
-
   // updates the visualisation: draws all nodes/edges, sets correct CSS classes, etc.
   def refreshVisualisation(): Unit = {
     // update the nodes
@@ -212,6 +232,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
          .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
          .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.work.headOption == Some(node.component))
+         .style("fill", (node: Node) => colorFor(node.component))
     // update the edges
     val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.component,e.target.component))
     edges = edgesUpdate.enter().append("path")
