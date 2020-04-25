@@ -71,7 +71,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     work ++= succs
     visited += current
     allComponents ++= newComponents
-    dependencies += (current -> intra.components)
+    dependencies += (current -> (dependencies.getOrElse(current,Set()) ++ intra.components))
   }
   def analyze(timeout: Timeout.T = Timeout.none): Unit =
     while(!finished() && !timeout.reached) {
