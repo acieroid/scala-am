@@ -1,27 +1,27 @@
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define output (lambda (i) (set! result (cons i result))))
+(define linebreak (lambda () (set! result (cons 'linebreak result))))
 
-(define (display-n n x)
+(define (output-n n x)
   (if (> n 0)
       (begin
-        (display x)
-        (display-n (- n 1) x))))
+        (output x)
+        (output-n (- n 1) x))))
 
 (define (parasol n)
   (define (triangle i)
     (if (< i n)
         (begin
-          (display-n (- n i 1) " ")
-          (display-n (+ (* 2 i) 1) "*")
-          (newline)
+          (output-n (- n i 1) " ")
+          (output-n (+ (* 2 i) 1) "*")
+          (linebreak)
           (triangle (+ i 1)))))
 
   (define (stick i)
     (if (< i 3)
         (begin
-          (display-n (- n 1) " ")
-          (display "*")(newline)
+          (output-n (- n 1) " ")
+          (output "*")(linebreak)
           (stick (+ i 1)))))
 
   (triangle 0)
@@ -29,7 +29,7 @@
 
 (parasol 10)
 (equal? result
-        '(newline
+        '(linebreak
           "*"
           " "
           " "
@@ -40,7 +40,7 @@
           " "
           " "
           " "
-          newline
+          linebreak
           "*"
           " "
           " "
@@ -51,7 +51,7 @@
           " "
           " "
           " "
-          newline
+          linebreak
           "*"
           " "
           " "
@@ -62,7 +62,7 @@
           " "
           " "
           " "
-          newline
+          linebreak
           "*"
           "*"
           "*"
@@ -82,26 +82,9 @@
           "*"
           "*"
           "*"
-          newline
+          linebreak
           "*"
           "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          " "
-          newline
           "*"
           "*"
           "*"
@@ -118,25 +101,11 @@
           "*"
           "*"
           " "
-          " "
-          newline
+          linebreak
           "*"
           "*"
           "*"
           "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          "*"
-          " "
-          " "
-          " "
-          newline
           "*"
           "*"
           "*"
@@ -150,9 +119,40 @@
           "*"
           " "
           " "
+          linebreak
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
           " "
           " "
-          newline
+          " "
+          linebreak
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          "*"
+          " "
+          " "
+          " "
+          " "
+          linebreak
           "*"
           "*"
           "*"
@@ -167,7 +167,7 @@
           " "
           " "
           " "
-          newline
+          linebreak
           "*"
           "*"
           "*"
@@ -181,7 +181,7 @@
           " "
           " "
           " "
-          newline
+          linebreak
           "*"
           "*"
           "*"
@@ -194,7 +194,7 @@
           " "
           " "
           " "
-          newline
+          linebreak
           "*"
           "*"
           "*"
@@ -206,7 +206,7 @@
           " "
           " "
           " "
-          newline
+          linebreak
           "*"
           " "
           " "
