@@ -25,14 +25,11 @@ object SchemeLexicalAddresser {
 
   type Defs = List[Identifier]
 
-  private var duplicates: Set[String] = Set()
-  private var  undefined: Set[String] = Set()
-
   /** Extract the identifier names of all definitions in a given body
     * Follows R5RS specification on where such definitions can appear */
-  private def defs(exp: SchemeExp): Defs = defs(List(exp))
-  private def defs(bdy: List[SchemeExp]): Defs = defs(bdy, Nil)
-  private def defs(bdy: List[SchemeExp], acc: Defs): Defs = bdy match {
+  def defs(exp: SchemeExp): Defs = defs(List(exp))
+  def defs(bdy: List[SchemeExp]): Defs = defs(bdy, Nil)
+  def defs(bdy: List[SchemeExp], acc: Defs): Defs = bdy match {
     case SchemeDefineVariable(id,_,_) :: rest =>
       defs(rest, id :: acc)
     case SchemeDefineFunction(id,_,_,_) :: rest =>
@@ -52,21 +49,20 @@ object SchemeLexicalAddresser {
 
   val emptyFrame: Frame = List(Map[String,Identifier]())
 
-  private def lookupFrame(frame: Frame, name: String): Option[Identifier] = frame match {
+  def lookupFrame(frame: Frame, name: String): Option[Identifier] = frame match {
     case Nil => None
     case localFrm :: rest => localFrm.get(name) match {
       case None => lookupFrame(rest, name)
       case found => found
     }
   }
-  private def extendFrame(frame: Frame, id: Identifier): Frame = frame match {
-    case stack@(localFrame :: _) if localFrame.contains(id.name) =>
-      duplicates = duplicates + id.name
-      stack
+  def extendFrame(frame: Frame, id: Identifier): Frame = frame match {
+    case localFrame :: _ if localFrame.contains(id.name) =>
+      throw new Exception(s"Duplicate definition of identifier $id")
     case localFrame :: rest =>
       (localFrame + (id.name -> id)) :: rest
   }
-  private def newLocalFrame(frame: Frame): Frame = Map[String,Identifier]() :: frame
+  def newLocalFrame(frame: Frame): Frame = Map[String,Identifier]() :: frame
 
   /** A scope consists out of multiple frames */
   case class Scope(current: Frame,
@@ -74,7 +70,7 @@ object SchemeLexicalAddresser {
                    global: Set[String])
 
   /** Given a variable reference, compute the corresponding lexical address in the given scope */
-  private def resolve(id: Identifier, scope: Scope): LexicalRef =
+  def resolve(id: Identifier, scope: Scope): LexicalRef =
     lookupFrame(scope.current, id.name) match {
       case Some(identifier) => LocalRef(identifier)
       case None => resolveLexical(id.name,scope.lexical,1) match {
@@ -84,40 +80,29 @@ object SchemeLexicalAddresser {
           NonLocalRef(identifier,depth)
         case None if scope.global.contains(id.name) =>
           PrimRef(id.name)
-        case None =>
-          undefined = undefined + id.name
-          PrimRef("")
+        case None => throw new Exception(s"Undefined variable reference: $id")
       }
     }
-  private def resolveLexical(nam: String, frames: List[Frame], depth: Int): Option[(Identifier,Int)] =
+  def resolveLexical(nam: String, frames: List[Frame], depth: Int): Option[(Identifier,Int)] =
     if (frames.isEmpty) { None } else lookupFrame(frames.head,nam) match {
       case Some(identifier) => Some((identifier,depth))
       case None             => resolveLexical(nam, frames.tail, depth + 1)
     }
 
-  private def newFrame(scope: Scope): Scope =
+  def newFrame(scope: Scope): Scope =
     scope.copy(current  = emptyFrame,
                lexical  = scope.current :: scope.lexical)
-  private def newLocalFrame(scope: Scope): Scope =
+  def newLocalFrame(scope: Scope): Scope =
     scope.copy(current = newLocalFrame(scope.current)) 
-  private def extend(scope: Scope, id: Identifier): Scope =
+  def extend(scope: Scope, id: Identifier): Scope =
     scope.copy(current = extendFrame(scope.current,id))
-  private def extend(scope: Scope, ids: Iterable[Identifier]): Scope =
+  def extend(scope: Scope, ids: Iterable[Identifier]): Scope =
     ids.foldLeft(scope)(extend)
 
-  def translateProgram(prg: SchemeExp, global: Set[String]): SchemeExp = {
-    duplicates = Set()
-    undefined  = Set()
-    val translated = translate(prg, extend(Scope(emptyFrame,Nil,global), defs(prg)))
-    (duplicates.toList, undefined.toList) match {
-      case (Nil, Nil) => translated
-      case (lst, Nil) => throw new Exception(s"Duplicate definitions: ${lst.mkString(" ")}")
-      case (Nil, lst) => throw new Exception(s"Undefined variable references: ${lst.mkString(" ")}")
-      case (ls1, ls2) => throw new Exception(s"Duplicate definitions: ${ls1.mkString(" ")}; undefined variable references: ${ls2.mkString(" ")}")
-    }
-  }
+  def translateProgram(prg: SchemeExp, global: Set[String]): SchemeExp =
+    translate(prg, extend(Scope(emptyFrame,Nil,global), defs(prg)))
 
-  private def translate(exp: SchemeExp, scope: Scope): SchemeExp = exp match {
+  def translate(exp: SchemeExp, scope: Scope): SchemeExp = exp match {
     case vexp: SchemeValue => vexp
     case SchemeLambda(prs,bdy,pos) =>
       val extScp = extend(newFrame(scope),prs)
@@ -189,9 +174,9 @@ object SchemeLexicalAddresser {
     case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
   }
 
-  private def translate(bdy: List[SchemeExp], scope: Scope): List[SchemeExp] =
+  def translate(bdy: List[SchemeExp], scope: Scope): List[SchemeExp] =
     bdy.map { exp => translate(exp,scope) }
 
-  private def translateBody(body: List[SchemeExp], scope: Scope): List[SchemeExp] =
+  def translateBody(body: List[SchemeExp], scope: Scope): List[SchemeExp] =
     translate(body, extend(scope, defs(body)))
 }

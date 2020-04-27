@@ -709,6 +709,11 @@
       (error "Unknown operation -- ASSEMBLE" symbol))))
 
 ;; from 4.1
+(define (tagged-list? exp tag)
+  (if (pair? exp)
+    (eq? (car exp) tag)
+    false))
+
 (define eceval-operations
   (list
     ;;primitive Scheme operations
