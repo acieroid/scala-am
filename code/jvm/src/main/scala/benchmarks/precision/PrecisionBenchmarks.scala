@@ -226,7 +226,16 @@ abstract class PrecisionBenchmarks[
       */
     protected def runAnalysis(analysis: Analysis, path: Benchmark, timeout: Timeout.T = Timeout.none): Option[BaseStore] = {
         println(s"... analysing $path using $analysis ...")
-        analysis.analyze(timeout)
+        try {
+            analysis.analyze(timeout)
+        } catch {
+            case e: Exception =>
+                println(s"Analyzer failed with $e")
+            case e: VirtualMachineError =>
+                System.gc()
+                println(s"Analyzer failed with $e")
+                None
+        }
         if (analysis.finished()) {
             Some(extract(analysis))
         } else {
