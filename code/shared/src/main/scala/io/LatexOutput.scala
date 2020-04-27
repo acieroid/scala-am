@@ -13,13 +13,13 @@ object LatexOutput {
    * @return              A string representing a latex table, containing the values of the given dataset for the given values of 'rows' and 'columns'.
    */
   def table[V](data: Map[String, Map[String, V]], rowName: String, rows: List[String], columns: List[String], defaultValue: V): String = {
-    var output: String = "\\bottomrule\\end{tabular}\n\\end{table}"
+    var output: String = "\n\\bottomrule\n\\end{tabular}\n\\end{table}"
     for (row <- rows.reverse) {
       val values = columns.map(data(row).withDefaultValue(defaultValue))
-      output = row ++ " " ++ values.mkString(" & ") ++ "\\\\\n" ++ output
+      output = row ++ " & " ++ values.mkString(" & ") ++ "\\\\\n" ++ output
     }
-    s"\\begin{table}\n\\center\n\\begin{tabular}{l${"c" * columns.length}\n\\toprule\n" ++
-      rowName ++ " " ++ columns.mkString(" & ") ++ "\\\\\n" ++ output
+    (s"\\begin{table}\n\\center\n\\begin{tabular}{l${"c" * columns.length}}\n\\toprule\n" ++
+      rowName ++ " & " ++ columns.mkString(" & ") ++ "\\\\\n" ++ output).replace("_", "\\_")
   }
 
 }
