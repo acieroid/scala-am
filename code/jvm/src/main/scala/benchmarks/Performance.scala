@@ -85,7 +85,7 @@ object Performance extends App {
   }
 
   measure()
-  val table = TableWriter.writeTable(results, "Benchmark", benchmarks, Sensitivity.values.toList.map(_.toString), "T")
+  val table = LatexOutput.table(results, "Benchmark", benchmarks, Sensitivity.values.toList.map(_.toString), "T")
   write(table)
   closeDefaultWriter()
 }
