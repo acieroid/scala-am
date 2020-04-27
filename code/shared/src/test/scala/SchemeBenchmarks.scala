@@ -66,7 +66,7 @@ object SchemeBenchmarks {
     "test/gambit/browse.scm",
     //"test/gambit/cat.scm", // Needs open-input-file.
     //"test/gambit/compiler.scm", // Parser error (see issue on Github).
-    "test/gambit/ctak.scm",
+    //"test/gambit/ctak.scm", // Needs call-with-current-continuation.
     "test/gambit/deriv.scm",
     "test/gambit/destruc.scm",
     "test/gambit/diviter.scm",
@@ -82,7 +82,7 @@ object SchemeBenchmarks {
     "test/gambit/perm9.scm",
     //"test/gambit/peval.scm", // Error in program.
     "test/gambit/primes.scm",
-    "test/gambit/puzzle.scm",
+    //"test/gambit/puzzle.scm",  // Needs call-with-current-continuation.
     "test/gambit/sboyer.scm",
     //"test/gambit/scheme.scm", // Error in program.
     //"test/gambit/slatex.scm", // Needs integer->char.
@@ -91,7 +91,7 @@ object SchemeBenchmarks {
     "test/gambit/sumloop.scm",
     //"test/gambit/tail.scm", // Needs file manipulation primitivies (open-input-port, close-input-port, read-char).
     "test/gambit/tak.scm",
-    "test/gambit/trav1.scm",
+    //"test/gambit/trav1.scm", // Needs append.
     "test/gambit/triangl.scm",
     //"test/gambit/wc.scm", // Needs file manipulation primitivies (open-input-port, close-input-port, read-char).
   )
@@ -218,7 +218,7 @@ object SchemeBenchmarks {
     //"test/WeiChenRompf2019/the-little-schemer/ch4.scm", // No main code (only definitions).
     //"test/WeiChenRompf2019/the-little-schemer/ch5.scm", // No main code (only definitions).
     //"test/WeiChenRompf2019/the-little-schemer/ch6.scm", // Commented out half of the file. Now does not parse anymore.
-    "test/WeiChenRompf2019/the-little-schemer/ch7.scm",
+    //"test/WeiChenRompf2019/the-little-schemer/ch7.scm", // No main code (only definitions).
     "test/WeiChenRompf2019/the-little-schemer/ch8.scm",
     //"test/WeiChenRompf2019/the-little-schemer/ch9.scm", // Unbound identifier: will-stop?
     "test/WeiChenRompf2019/the-little-schemer/ch10.scm",

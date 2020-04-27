@@ -21,9 +21,12 @@ trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
     super.updateAnalysisData(update)
     webvis.adapted = true
   }
+  def key(cmp: Component): Any
 }
 
 class WebVisualisationAdaptive(override val analysis: WebAdaptiveAnalysis[_]) extends WebVisualisation(analysis) {
+
+  override def componentKey(cmp: analysis.Component) = analysis.key(cmp)
 
   // give the analysis a pointer to the visualisation
   analysis.webvis = this

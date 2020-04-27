@@ -10,6 +10,7 @@ import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.incremental._
 import scalaam.modular.incremental.scheme._
+import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.io.Reader
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -21,12 +22,12 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/gambit/nqueens.scm")
+    val txt = Reader.loadFile("test/icp/icp_2_aeval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveCallerSensitivity
+                                                with AdaptiveArgumentSensitivityPolicy3
                                                 with ConstantPropagationDomain {
-      val limit = 10
+      val limit = 5
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
@@ -34,9 +35,9 @@ object Main {
         super.step()
       }
     }
-    analysis.analyze(Timeout.start(Duration(30,SECONDS)))
-    debugClosures(analysis)
-    //debugResults(analysis, false)
+    analysis.analyze(Timeout.start(Duration(300,SECONDS)))
+    //debugClosures(analysis)
+    debugResults(analysis, false)
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics

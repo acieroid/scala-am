@@ -118,18 +118,18 @@
   (lambda (aexp)
     (car (cdr (cdr aexp)))))
 
-(define value
-  (lambda (nexp)
-    (cond ((atom? nexp) nexp)
-          ((eq? (operator nexp) '+)
-           (+ (value (first-sub-exp nexp))
-              (value (second-sub-exp nexp))))
-          ((eq? (operator nexp) '*)
-           (* (value (first-sub-exp nexp))
-              (value (second-sub-exp nexp))))
-          (else 
-           (^ (value (first-sub-exp nexp))
-              (value (second-sub-exp nexp)))))))
+;(define value
+;  (lambda (nexp)
+;    (cond ((atom? nexp) nexp)
+;          ((eq? (operator nexp) '+)
+;           (+ (value (first-sub-exp nexp))
+;              (value (second-sub-exp nexp))))
+;          ((eq? (operator nexp) '*)
+;           (* (value (first-sub-exp nexp))
+;              (value (second-sub-exp nexp))))
+;          (else
+;           (^ (value (first-sub-exp nexp))
+;              (value (second-sub-exp nexp)))))))
 
 (define atom-to-function
   (lambda (x)

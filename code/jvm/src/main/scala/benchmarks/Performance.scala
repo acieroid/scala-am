@@ -14,7 +14,7 @@ object Performance extends App {
   val warmup = 3
   val actual = 15
 
-  var results: Map[String, Map[String, Double]] = Map().withDefaultValue(Map())
+  var results: Map[String, Map[String, Int]] = Map().withDefaultValue(Map())
 
   setDefaultWriter(open("benchOutput/results.txt"))
 
@@ -67,7 +67,7 @@ object Performance extends App {
     m.mea
   }
 
-  val benchmarks: List[String] = List()
+  val benchmarks: List[String] = SchemeBenchmarks.standard.toList.take(1)
 
   def measure(): Unit = {
     benchmarks.foreach { b =>
@@ -75,7 +75,7 @@ object Performance extends App {
         try {
           println(s"***** $b / $s *****")
           val time: Double = run(b, s)
-          results = results + (b -> ((results(b) + (s.toString -> time))))
+          results = results + (b -> ((results(b) + (s.toString -> (time / 1000000).toInt))))
         } catch {
           case e: Exception => writeln(s"Running $b resulted in an exception: ${e.getMessage}")
           case e: VirtualMachineError => writeln(s"Running $b resulted in an error: ${e.getMessage}")

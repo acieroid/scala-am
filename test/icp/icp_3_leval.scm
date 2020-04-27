@@ -84,7 +84,7 @@
          (eval-sequence (begin-actions exp) env))
         ((cond? exp) (eval (cond->if exp) env))
         ((application? exp) ;;aangepast
-         (apply (actual-value (operator exp) env) 
+         (leval-apply (actual-value (operator exp) env)
                 (operands exp)
                 env)) 
         (else
@@ -100,7 +100,7 @@
 ;; zie deel 3 p10
 ;;
 
-(define (apply procedure arguments env) ;; aangepast
+(define (leval-apply procedure arguments env) ;; aangepast
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure
           procedure

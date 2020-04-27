@@ -37,9 +37,10 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
     }
   // do a simple loop check when you have too many components in a single stracktrace
   override def onNewComponent(cmp: Component, call: Call) = {
+    super.onNewComponent(cmp,call)
     val callStack = calledBy(cmp)
     val prevCmps: Set[Component] = callStack.collect(c => view(c) match {
-      case cll: Call if cll.clo == call.clo => c
+      case cll: Call if cll.clo._1.idn == call.clo._1.idn => c
     })
     val updatedCmps = prevCmps + cmp
     if (updatedCmps.size > limit) {
@@ -54,8 +55,8 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
   // we instrument the intra-analysis to:
   // - perform the necessary bookkeeping for 'calledBy' whenever a function is called
   // - check if the analysis needs to be adapted on new function calls
-  override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFAnalysisIntra(cmp)
-  class AdaptiveSchemeModFAnalysisIntra(component: Component) extends super.IntraAnalysis(component) {
+  override def intraAnalysis(cmp: Component) = new AdaptiveArgIntraPolicy3(cmp)
+  class AdaptiveArgIntraPolicy3(component: Component) extends super.IntraAnalysis(component) {
     override def call(cmp: Component) = {
       registerCall(component,cmp)
       super.call(cmp)
