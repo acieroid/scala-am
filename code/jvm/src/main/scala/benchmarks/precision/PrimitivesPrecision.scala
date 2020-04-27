@@ -35,7 +35,7 @@ object PrimitivesBenchmarks {
     SchemeBenchmarks.scp1_compressed ++
     SchemeBenchmarks.icp ++
     // SchemeBenchmarks.ad ++
-    List("test/ad/all.scm")
+    List("test/ad/all.scm") ++
     standard ++
     List()
   }
