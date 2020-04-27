@@ -12,7 +12,7 @@ object LatexOutput {
    * @tparam V            The type of values to be put in the table. The string representation of these values will be put in the table.
    * @return              A string representing a latex table, containing the values of the given dataset for the given values of 'rows' and 'columns'.
    */
-  def table[V](data: Map[String, Map[String, V]], rowName: String, rows: List[String], columns: List[String], defaultValue: V): String = {
+  def table[V](data: Map[String, Map[String, V]], rowName: String, rows: List[String], columns: List[String], defaultValue: String): String = {
     var output: String = "\n\\bottomrule\n\\end{tabular}\n\\end{table}"
     for (row <- rows.reverse) {
       val values = columns.map(data(row).withDefaultValue(defaultValue))
@@ -21,5 +21,8 @@ object LatexOutput {
     (s"\\begin{table}\n\\center\n\\begin{tabular}{l${"c" * columns.length}}\n\\toprule\n" ++
       rowName ++ " & " ++ columns.mkString(" & ") ++ "\\\\\n" ++ output).replace("_", "\\_")
   }
+
+  def table[V](data: Map[String, Map[String, V]], rowName: String, rows: List[String], columns: List[String], defaultValue: V): String =
+    table(data, rowName, rows, columns, defaultValue.toString)
 
 }

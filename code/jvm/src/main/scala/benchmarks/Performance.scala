@@ -36,7 +36,7 @@ object Performance extends App {
   def run(file: String, s: Sensitivity): Double = {
     val program = SchemeParser.parse(Reader.loadFile(file))
 
-    var times: List[Long] = List()
+    var times: List[Double] = List()
 
     // Warm-up.
     print(s"* Warmup (${warmup}) - ")
@@ -54,10 +54,10 @@ object Performance extends App {
       val analysis = newAnalysis(program, s)
       System.gc()
       val t = Timer.timeOnly({analysis.analyze()})
-      times = t :: times
+      times = t.toDouble :: times
     }
 
-    val m = Metrics.all(times)
+    val m = Statistics.all(times)
     println(s"\n      Mean time: ${m.mea / 1000000}ms")
     println(s"      Min  time: ${m.min / 1000000}ms")
     println(s"      Max  time: ${m.max / 1000000}ms")
@@ -75,7 +75,7 @@ object Performance extends App {
         try {
           println(s"***** $b / $s *****")
           val time: Double = run(b, s)
-          results = results + (b -> ((results(b) + (s.toString -> (time / 1000000).toInt))))
+          results = results + (b -> (results(b) + (s.toString -> (time / 1000000).toInt)))
         } catch {
           case e: Exception => writeln(s"Running $b resulted in an exception: ${e.getMessage}")
           case e: VirtualMachineError => writeln(s"Running $b resulted in an error: ${e.getMessage}")
@@ -85,7 +85,7 @@ object Performance extends App {
   }
 
   measure()
-  val table = LatexOutput.table(results, "Benchmark", benchmarks, Sensitivity.values.toList.map(_.toString), "T")
+  val table = LatexOutput.table[Int](results, "Benchmark", benchmarks, Sensitivity.values.toList.map(_.toString), "T")
   write(table)
   closeDefaultWriter()
 }
