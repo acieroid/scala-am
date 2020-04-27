@@ -84,7 +84,7 @@
              (seq new old (cdr l)))
             (else (cons (car l) ((insert-g seq) new old (cdr l))))))))
 
-(define insertL (insert-g seqL))
+;(define insertL (insert-g seqL))
 (define insertR (insert-g seqR))
 
 (define insertL (insert-g 

@@ -87,63 +87,6 @@
 (define res1 (equal? (my-tweet 'username) "madewael"))
 ((my-tweet 'display))
 
-(define (make-account name username)
-  (let ((followers '())
-        (tweets '())
-        (tweet-wall '()))
-
-    (define (follow account)
-      ((account 'add-follower) dispatch))
-
-    (define (add-follower account)
-      (set! followers (cons account followers)))
-
-    (define (tweet text . tags)
-      (let ((tweet-obj (make-tweet username text tags)))
-        (set! tweets (cons tweet-obj tweets))
-        (set! tweet-wall (cons tweet-obj tweet-wall))
-        (for-each (lambda (follower)
-                    ((follower 'add-tweet-to-wall) tweet-obj))
-                  followers)))
-
-    (define (add-tweet-to-wall tweet)
-      (set! tweet-wall (cons tweet tweet-wall)))
-
-    (define (display-account symbol)
-      (cond ((eq? symbol 'wall) (display-wall))
-            ((eq? symbol 'followers) (display-followers))
-            ((eq? symbol 'account) (display-entire-account))
-            (else (display "wrong symbol given"))))
-
-    (define (display-wall)
-      (display "TWEET WALL") (newline)
-      (for-each (lambda (tweet) ((tweet 'display)) (newline))
-                tweet-wall))
-
-    (define (display-followers)
-      (display "FOLLOWERS") (newline)
-      (for-each (lambda (follower)
-                  (display (follower 'username)) (display " "))
-                followers))
-
-    (define (display-entire-account)
-      (display-all "Twitter name " username "\n"
-                   "Name " name "\n")
-      (display-wall)
-      (display-followers)
-      (newline) (newline))
-
-    (define (dispatch msg)
-      (cond ((eq? msg 'name)                           name)
-            ((eq? msg 'username)                   username)
-            ((eq? msg 'display)             display-account)
-            ((eq? msg 'follow)                       follow)
-            ((eq? msg 'add-follower)           add-follower)
-            ((eq? msg 'tweet)                         tweet)
-            ((eq? msg 'add-tweet-to-wall) add-tweet-to-wall)
-            (else (display "error - wrong msg ") (display msg))))
-    dispatch))
-
 (define accountE (make-account "Eline Philips" "ephilips"))
 (define accountM (make-account "Mattias De Wael" "madewael"))
 ((accountE 'follow) accountM)

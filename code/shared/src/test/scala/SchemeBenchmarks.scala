@@ -89,11 +89,11 @@ object SchemeBenchmarks {
     //"test/gambit/string.scm", // Needs susbtring.
     "test/gambit/sum.scm",
     "test/gambit/sumloop.scm",
-    "test/gambit/tail.scm",
+    //"test/gambit/tail.scm", // Needs file manipulation primitivies (open-input-port, close-input-port, read-char).
     "test/gambit/tak.scm",
     "test/gambit/trav1.scm",
     "test/gambit/triangl.scm",
-    "test/gambit/wc.scm",
+    //"test/gambit/wc.scm", // Needs file manipulation primitivies (open-input-port, close-input-port, read-char).
   )
 
   val rosetta: Set[String] = Set(
@@ -220,7 +220,7 @@ object SchemeBenchmarks {
     //"test/WeiChenRompf2019/the-little-schemer/ch6.scm", // Commented out half of the file. Now does not parse anymore.
     "test/WeiChenRompf2019/the-little-schemer/ch7.scm",
     "test/WeiChenRompf2019/the-little-schemer/ch8.scm",
-    "test/WeiChenRompf2019/the-little-schemer/ch9.scm",
+    //"test/WeiChenRompf2019/the-little-schemer/ch9.scm", // Unbound identifier: will-stop?
     "test/WeiChenRompf2019/the-little-schemer/ch10.scm",
   )
 
