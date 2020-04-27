@@ -21,7 +21,7 @@ abstract class AnalysisComparison[
     // - the base analysis (= lowest precision) to compare to
     // - the other analyses to compare to the base analysis
     def baseAnalysis(prg: SchemeExp): Analysis
-    def otherAnalyses(prg: SchemeExp): List[Analysis]
+    def otherAnalyses(): List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 2min.)
     def analysisTimeout() = Timeout.start(Duration(30, MINUTES)) //timeout for (non-base) analyses
@@ -43,14 +43,12 @@ abstract class AnalysisComparison[
         // keep the results of the benchmark here
         var benchmarkResults = Map.empty[String,Option[Int]]
         // run the base analysis first
-        val base = baseAnalysis(program)
-        val baseResult = runAnalysis(base, path).get // no timeout set for the base analysis!
+        val baseResult = runAnalysis(baseAnalysis, "base analysis", program, path).get // no timeout set for the base analysis!
         // run the other analyses on the benchmark
-        val other = otherAnalyses(program)
-        other.foreach { analysis =>
-            val otherResult = runAnalysis(analysis, path, analysisTimeout())
+        otherAnalyses.foreach { case (analysis, name) =>
+            val otherResult = runAnalysis(analysis, name, program, path, analysisTimeout())
             val refined = otherResult.map(store => compareOrdered(baseResult,store).size)
-            benchmarkResults += (analysis.toString() -> refined)
+            benchmarkResults += (name -> refined)
         }
         // run a concrete interpreter on the benchmarks
         val concreteResult = runInterpreter(program, path, concreteTimeout(), concreteRuns())
@@ -71,8 +69,8 @@ object AnalysisComparison1 extends AnalysisComparison[
 ] {
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
-    def otherAnalyses(prg: SchemeExp) = List(
-        SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 5)
+    def otherAnalyses() = List(
+        (SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
         //SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),
         //SchemeAnalyses.adaptiveCallerSensitivity(prg,10)
         //SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5),
@@ -80,14 +78,14 @@ object AnalysisComparison1 extends AnalysisComparison[
     )
 
     def main(args: Array[String]) = runBenchmarks(
-        Set("test/icp/icp_2_aeval.scm")
+        Set("test/regex.scm")
     )
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
         val prg = SchemeParser.parse(txt)
         val con = runInterpreter(prg, path).get
-        val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),path).get
+        val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_),"full-arg analysis",prg,path).get
         val allKeys = con.keys ++ abs.keys
         val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
         interestingKeys.foreach { k =>
