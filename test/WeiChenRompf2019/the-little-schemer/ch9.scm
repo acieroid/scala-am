@@ -317,11 +317,11 @@
 
 ;; Y combinator
 ;; Y (lambda f. < 真正的函数体,在内部用f指代自身 >)
-(define Y
-  (lambda (le)
-    ((lambda (f) (f f))
-     (lambda (f)
-       (le (lambda (x) ((f f) x)))))))
+;(define Y
+;  (lambda (le)
+;    ((lambda (f) (f f))
+;     (lambda (f)
+;       (le (lambda (x) ((f f) x)))))))
 
 ;; http://docs.huihoo.com/homepage/shredderyin/wiki/SchemeYcombinator.html
 (define Y
@@ -336,3 +336,4 @@
            (cond ((eq? n 0) 1)
                  (else (* n (f (- n 1)))))))))
 
+(Fact 6)

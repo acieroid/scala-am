@@ -10,6 +10,7 @@ import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.incremental._
 import scalaam.modular.incremental.scheme._
+import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.io.Reader
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -21,12 +22,12 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/gambit/nqueens.scm")
+    val txt = Reader.loadFile("test/icp/icp_2_aeval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveCallerSensitivity
+                                                with AdaptiveArgumentSensitivityPolicy3
                                                 with ConstantPropagationDomain {
-      val limit = 10
+      val limit = 5
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step(): Unit = {
@@ -34,9 +35,9 @@ object Main {
         super.step()
       }
     }
-    analysis.analyze(Timeout.start(Duration(30,SECONDS)))
-    debugClosures(analysis)
-    //debugResults(analysis, false)
+    analysis.analyze(Timeout.start(Duration(300,SECONDS)))
+    //debugClosures(analysis)
+    debugResults(analysis, false)
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
@@ -111,24 +112,14 @@ object Incrementor extends App {
 }
 
 object Run extends App {
-  val text = Reader.loadFile("test/scm2java.scm")
+  val text = Reader.loadFile("test/icp/icp_7_eceval.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   val res = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
 }
 
 object Analyze extends App {
-  val text = Reader.loadFile("./test/icp/icp_1c_multiple-dwelling.scm") //"""(define result '())
-             //  |(define display (lambda (i) (set! result (cons i result))))
-             //  |(define (foo x)
-             //  |  (display 1))
-             //  |(define result2 '())
-             //  |(define display2 (lambda (i) (set! result2 (cons i result2))))
-             //  |(define (bar x)
-             //  |  (display2 (+ x 1)))
-             //  |(foo 5)
-             //  |(bar 6)
-             //  |result2""".stripMargin
+  val text = Reader.loadFile("test/icp/icp_7_eceval.scm")
   val a = new ModAnalysis(SchemeParser.parse(text)) with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
   a.analyze(Timeout.none)
   val r = a.store(a.ReturnAddr(a.initialComponent))

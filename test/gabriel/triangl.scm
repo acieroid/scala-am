@@ -1,13 +1,5 @@
 ;;; TRIANGL -- Board game benchmark.
 
-  (define (vector->list v)
-    (let ((len (vector-length list)))
-      (letrec ((loop (lambda (idx)
-                       (if (= idx len)
-                           '()
-                           (cons (vector-ref v idx) (loop (+ idx 1)))))))
-        (loop 0))))
-
 (define *board*
   (vector 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1))
 

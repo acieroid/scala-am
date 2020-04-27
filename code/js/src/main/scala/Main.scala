@@ -1,6 +1,6 @@
 package scalaam.web
 
-
+import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.scheme._
@@ -41,10 +41,10 @@ object Main {
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
-                                                    with AdaptiveCallerSensitivity
+                                                    with AdaptiveArgumentSensitivityPolicy3
                                                     with ConstantPropagationDomain
                                                     with WebAdaptiveAnalysis[SchemeExp] {
-      val limit = 1
+      val limit = 5
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
       override def step() = {
@@ -55,6 +55,7 @@ object Main {
         val newResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
         println(s"$name => $newResult (previously: $prevResult)")
       }
+      def key(cmp: Component) = view(cmp).body.idn
     }
     val visualisation = new WebVisualisationAdaptive(analysis)
     // parameters for the visualisation

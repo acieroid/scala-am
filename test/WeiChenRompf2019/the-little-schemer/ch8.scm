@@ -84,7 +84,7 @@
              (seq new old (cdr l)))
             (else (cons (car l) ((insert-g seq) new old (cdr l))))))))
 
-(define insertL (insert-g seqL))
+;(define insertL (insert-g seqL))
 (define insertR (insert-g seqR))
 
 (define insertL (insert-g 
@@ -118,18 +118,18 @@
   (lambda (aexp)
     (car (cdr (cdr aexp)))))
 
-(define value
-  (lambda (nexp)
-    (cond ((atom? nexp) nexp)
-          ((eq? (operator nexp) '+)
-           (+ (value (first-sub-exp nexp))
-              (value (second-sub-exp nexp))))
-          ((eq? (operator nexp) '*)
-           (* (value (first-sub-exp nexp))
-              (value (second-sub-exp nexp))))
-          (else 
-           (^ (value (first-sub-exp nexp))
-              (value (second-sub-exp nexp)))))))
+;(define value
+;  (lambda (nexp)
+;    (cond ((atom? nexp) nexp)
+;          ((eq? (operator nexp) '+)
+;           (+ (value (first-sub-exp nexp))
+;              (value (second-sub-exp nexp))))
+;          ((eq? (operator nexp) '*)
+;           (* (value (first-sub-exp nexp))
+;              (value (second-sub-exp nexp))))
+;          (else
+;           (^ (value (first-sub-exp nexp))
+;              (value (second-sub-exp nexp)))))))
 
 (define atom-to-function
   (lambda (x)
