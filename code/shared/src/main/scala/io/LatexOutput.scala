@@ -18,7 +18,7 @@ object LatexOutput {
       val values = columns.map(data(row).withDefaultValue(defaultValue))
       output = row ++ " " ++ values.mkString(" & ") ++ "\\\\\n" ++ output
     }
-    s"\\begin{table}\n\\center\n\\begin{tabular}{l${"c" * columns.length}\n\\toprule" ++
+    s"\\begin{table}\n\\center\n\\begin{tabular}{l${"c" * columns.length}\n\\toprule\n" ++
       rowName ++ " " ++ columns.mkString(" & ") ++ "\\\\\n" ++ output
   }
 

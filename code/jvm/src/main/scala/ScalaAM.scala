@@ -112,24 +112,14 @@ object Incrementor extends App {
 }
 
 object Run extends App {
-  val text = Reader.loadFile("test/scm2java.scm")
+  val text = Reader.loadFile("test/icp/icp_7_eceval.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   val res = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
 }
 
 object Analyze extends App {
-  val text = Reader.loadFile("./test/icp/icp_1c_multiple-dwelling.scm") //"""(define result '())
-             //  |(define display (lambda (i) (set! result (cons i result))))
-             //  |(define (foo x)
-             //  |  (display 1))
-             //  |(define result2 '())
-             //  |(define display2 (lambda (i) (set! result2 (cons i result2))))
-             //  |(define (bar x)
-             //  |  (display2 (+ x 1)))
-             //  |(foo 5)
-             //  |(bar 6)
-             //  |result2""".stripMargin
+  val text = Reader.loadFile("test/icp/icp_7_eceval.scm")
   val a = new ModAnalysis(SchemeParser.parse(text)) with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
   a.analyze(Timeout.none)
   val r = a.store(a.ReturnAddr(a.initialComponent))
