@@ -18,7 +18,7 @@ object Performance extends App {
 
   setDefaultWriter(open("benchOutput/results.txt"))
 
-  abstract class Analysis(p: SchemeExp) extends ModAnalysis(p)with SmallStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics
+  abstract class Analysis(p: SchemeExp) extends ModAnalysis(p)with BigStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics
 
   def newAnalysis(p: SchemeExp, s: Sensitivity): Analysis = s match {
     case S_0_0           => new Analysis(p) with S_0_0
