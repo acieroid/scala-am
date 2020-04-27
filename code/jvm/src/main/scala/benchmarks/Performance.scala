@@ -9,31 +9,30 @@ import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.S
 import scalaam.modular.scheme._
 import scalaam.util._
 
-object Performance extends App {
+// TODO: rename to PerformanceEvaluation?
+// TODO: move to evaluation package?
+abstract class Performance extends App {
 
+  // The number of warmup runs, for which the timing is discarded
   val warmup = 3
+  // The actual number of runs made after `warmup` runs
   val actual = 15
 
+  // The list of benchmarks used for the evaluation
+  val benchmarks: List[String] = SchemeBenchmarks.standard.toList.take(1)
+
+  type Analysis = ModAnalysis[SchemeExp]
+
+  // The analyses that are evaluated (and their names)
+  def analyses: List[(SchemeExp => Analysis, String)]
+
+  // A variable that holds the results
   var results: Map[String, Map[String, Int]] = Map().withDefaultValue(Map())
 
   setDefaultWriter(open("benchOutput/results.txt"))
 
-  abstract class Analysis(p: SchemeExp) extends ModAnalysis(p)with BigStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics
-
-  def newAnalysis(p: SchemeExp, s: Sensitivity): Analysis = s match {
-    case S_0_0           => new Analysis(p) with S_0_0
-    case S_CS_0          => new Analysis(p) with S_CS_0
-    case S_2CS_0         => new Analysis(p) with S_2CS_0
-    case S_10CS_0        => new Analysis(p) with S_10CS_0
-    case S_FA_0          => new Analysis(p) with S_FA_0
-    case S_2FA_0         => new Analysis(p) with S_2FA_0
-    case S_10FA_0        => new Analysis(p) with S_10FA_0
-    case S_CSFA_0        => new Analysis(p) with S_CSFA_0
-    case S_2AcyclicCS_0  => new Analysis(p) with S_2AcyclicCS_0
-    case S_10AcyclicCS_0 => new Analysis(p) with S_10AcyclicCS_0
-  }
-
-  def run(file: String, s: Sensitivity): Double = {
+  // Runs a single analysis multiple times and returns the mean timing (in nanoseconds)
+  def run(file: String, analysis: SchemeExp => Analysis): Double = {
     val program = SchemeParser.parse(Reader.loadFile(file))
 
     var times: List[Double] = List()
@@ -42,8 +41,8 @@ object Performance extends App {
     print(s"* Warmup (${warmup}) - ")
     for (i <- 1 to warmup) {
       print(s"$i ")
-      // TODO: Add System.gc() here?
-      newAnalysis(program, s).analyze()
+      System.gc() // It never hurts (hopefully, because it may cause GC errors...)
+      analysis(program).analyze()
     }
 
     System.gc()
@@ -51,9 +50,9 @@ object Performance extends App {
     print(s"\n* Time (${actual}) - ")
     for (i <- 1 to actual) {
       print(s"$i ")
-      val analysis = newAnalysis(program, s)
+      val a = analysis(program)
       System.gc()
-      val t = Timer.timeOnly({analysis.analyze()})
+      val t = Timer.timeOnly({a.analyze()})
       times = t.toDouble :: times
     }
 
@@ -67,15 +66,15 @@ object Performance extends App {
     m.mea
   }
 
-  val benchmarks: List[String] = SchemeBenchmarks.standard.toList.take(1)
-
+  // Runs the evaluation
   def measure(): Unit = {
     benchmarks.foreach { b =>
-      Sensitivity.values.foreach { s =>
+      analyses.foreach { case (a, name) =>
         try {
-          println(s"***** $b / $s *****")
-          val time: Double = run(b, s)
-          results = results + (b -> (results(b) + (s.toString -> (time / 1000000).toInt)))
+          println(s"***** $b / $name *****")
+          val time: Double = run(b, a)
+          // We store the results in ms
+          results = results + (b -> (results(b) + (name -> (time / 1000000).toInt)))
         } catch {
           case e: Exception => writeln(s"Running $b resulted in an exception: ${e.getMessage}")
           case e: VirtualMachineError => writeln(s"Running $b resulted in an error: ${e.getMessage}")
@@ -85,7 +84,7 @@ object Performance extends App {
   }
 
   measure()
-  val table = LatexOutput.table[Int](results, "Benchmark", benchmarks, Sensitivity.values.toList.map(_.toString), "T")
+  val table = LatexOutput.table[Int](results, "Benchmark", benchmarks, analyses.map(_._2), "T")
   write(table)
   closeDefaultWriter()
 }
