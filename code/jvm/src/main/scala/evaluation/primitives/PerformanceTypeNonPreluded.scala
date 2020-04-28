@@ -31,57 +31,7 @@ object PerformanceType extends Performance {
     lazy val valueLattice = new TypeSchemeLattice[Addr, Component]
     type Value = valueLattice.L
     lazy val lattice = valueLattice.schemeLattice
-    override val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives[Value, Addr] {
-      override def allPrimitives = super.allPrimitives ++ List(
-        `equal?`,
-        `length`,
-        `not`,
-        `cddr`, `cadr`,
-        `caddr`, `cdddr`, `caadr`, `cdadr`,
-        `cadddr`,
-      )
-      class SimplePrim(val name: String, ret: Value) extends SchemePrimitive[Value, Addr] {
-        def call(fexp: SchemeExp, args: List[(SchemeExp, Value)], store: Store[Addr, Value], alloc: SchemeAllocator[Addr]): MayFail[(Value, Store[Addr, Value]), Error] =
-          MayFail.success((ret, store))
-      }
-      object `equal?` extends SimplePrim("equal?", valueLattice.Inject.bool)
-      object `length` extends SimplePrim("length", valueLattice.Inject.num)
-      object `not` extends SimplePrim("not", valueLattice.Inject.bool)
-      object `cadr` extends Store1Operation("cadr", { (x, store) =>
-        dereferenceAddrs(lattice.cdr(x), store).flatMap(v =>
-          dereferenceAddrs(lattice.car(v), store).map((_, store)))
-      })
-      object `cddr` extends Store1Operation("cddr", { (x, store) =>
-        dereferenceAddrs(lattice.cdr(x), store).flatMap(v =>
-          dereferenceAddrs(lattice.cdr(v), store).map((_, store)))
-      })
-      object `caddr` extends Store1Operation("caddr", { (x, store) =>
-        dereferenceAddrs(lattice.cdr(x), store).flatMap(v =>
-          dereferenceAddrs(lattice.cdr(v), store).flatMap(v =>
-            dereferenceAddrs(lattice.car(v), store).map((_, store))))
-      })
-      object `caadr` extends Store1Operation("caadr", { (x, store) =>
-        dereferenceAddrs(lattice.cdr(x), store).flatMap(v =>
-          dereferenceAddrs(lattice.car(v), store).flatMap(v =>
-            dereferenceAddrs(lattice.car(v), store).map((_, store))))
-      })
-      object `cdadr` extends Store1Operation("cdadr", { (x, store) =>
-        dereferenceAddrs(lattice.cdr(x), store).flatMap(v =>
-          dereferenceAddrs(lattice.car(v), store).flatMap(v =>
-            dereferenceAddrs(lattice.cdr(v), store).map((_, store))))
-      })
-      object `cdddr` extends Store1Operation("cdddr", { (x, store) =>
-        dereferenceAddrs(lattice.cdr(x), store).flatMap(v =>
-          dereferenceAddrs(lattice.cdr(v), store).flatMap(v =>
-            dereferenceAddrs(lattice.cdr(v), store).map((_, store))))
-      })
-      object `cadddr` extends Store1Operation("cadddr", { (x, store) =>
-        dereferenceAddrs(lattice.cdr(x), store).flatMap(v =>
-          dereferenceAddrs(lattice.cdr(v), store).flatMap(v =>
-            dereferenceAddrs(lattice.cdr(v), store).flatMap(v =>
-              dereferenceAddrs(lattice.car(v), store).map((_, store)))))
-      })
-    }
+    override val primitives: SchemePrimitives[Value, Addr] = valueLattice.Primitives
   }
 
   abstract class AnalysisWithPreludedPrimitives(p: SchemeExp) extends ModAnalysis(p)with BigStepSemantics with StandardSchemeModFSemantics {
