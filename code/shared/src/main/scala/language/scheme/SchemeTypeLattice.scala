@@ -4,9 +4,7 @@ import scalaam.core._
 import scalaam.lattice._
 import scalaam.util._
 import SchemeOps._
-import UnaryOperator._
-import BinaryOperator._
-import scalaam.language.scheme.primitives.SchemePrimitive
+import scalaam.language.scheme.primitives._
 
 class TypeSchemeLattice[A <: Address, Env] {
   type P = SchemePrimitive[L, A]
@@ -34,7 +32,8 @@ class TypeSchemeLattice[A <: Address, Env] {
     def show(x: L): String = s"$x"
     def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
     def isFalse(x: L): Boolean = x.bool
-    def unaryOp(op: UnaryOperator)(x: L) =
+    def unaryOp(op: UnaryOperator)(x: L) = {
+      import UnaryOperator._
       if (x.isBottom) { MayFail.success(x) } else { op match {
       case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger
          | IsString | IsReal | IsBoolean | IsVector | Not =>
@@ -62,8 +61,9 @@ class TypeSchemeLattice[A <: Address, Env] {
       case CharacterToInteger =>
           // Char -> Num
           check(x.char, Inject.num)(op.toString, List(x))
-    }}
-    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L, Error] =
+    }}}
+    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L, Error] = {
+      import BinaryOperator._
       if (x.isBottom || y.isBottom) { MayFail.success(Inject.bottom) } else { op match {
         case Plus | Minus | Times | Quotient | Div | Expt | Modulo | Remainder =>
           // Num -> Num -> Num
@@ -83,7 +83,7 @@ class TypeSchemeLattice[A <: Address, Env] {
         case StringLt =>
           // Str -> Str -> Bool
           check(x.str && y.str, Inject.bool)(op.toString, List(x, y))
-      }}
+      }}}
     def join(x: L, y: => L): L =
       L(str = x.str || y.str,
         bool = x.bool || y.bool,
@@ -132,5 +132,107 @@ class TypeSchemeLattice[A <: Address, Env] {
   }
   object L {
     implicit val lattice: SchemeLattice[L, A, P, Env] = schemeLattice
+  }
+
+  object Primitives extends SchemeLatticePrimitives[L, A]{
+    override def allPrimitives = super.allPrimitives ++ List(
+      `abs`,
+      // `assoc`, // TODO
+      // `assq`, // TODO
+      // `assv`, // TODO
+      `display`,
+      `equal?`,
+      `eqv?`,
+      `even?`,
+      `gcd`,
+      `lcm`,
+      `length`,
+      // `list-ref`, // TODO
+      // `list->vector`, // TODO? or not
+      // `list-tail`, // TODO
+      `list?`,
+      // `member`, // TODO
+      // `memq`, // TODO
+      // `memv`, // TODO
+      `negative?`,
+      `newline`,
+      `not`,
+      `odd?`,
+      `positive?`,
+      `zero?`,
+      `<=`,
+      `>`,
+      `>=`,
+      `caar`, `cadr`, `cdar`, `cddr`,
+      `caddr`, `cdddr`, `caadr`, `cdadr`,
+      `cadddr`,
+      // TODO: other cxr
+      // `vector->list // TODO
+      // We decided not to implement some primitives as they can't be properly supported in the framework: reverse, map, for-each, apply
+    )
+    class SimplePrim(val name: String, ret: L) extends SchemePrimitive[L, A] {
+      def call(fexp: SchemeExp, args: List[(SchemeExp, L)], store: Store[A, L], alloc: SchemeAllocator[A]): MayFail[(L, Store[A, L]), Error] =
+        MayFail.success((ret, store))
+    }
+    object `abs` extends SimplePrim("abs", Inject.num)
+    object `display` extends SimplePrim("display", Inject.str) // undefined behavior in R5RS
+    object `equal?` extends SimplePrim("equal?", Inject.bool)
+    object `eqv?` extends SimplePrim("eqv?", Inject.bool)
+    object `even?` extends SimplePrim("even?", Inject.bool)
+    object `gcd` extends SimplePrim("gcd", Inject.num)
+    object `lcm` extends SimplePrim("lcm", Inject.num)
+    object `length` extends SimplePrim("length", Inject.num)
+    object `list?` extends SimplePrim("list?", Inject.bool)
+    object `negative?` extends SimplePrim("negative?", Inject.bool)
+    object `newline` extends SimplePrim("newline", Inject.bool)
+    object `not` extends SimplePrim("not", Inject.bool)
+    object `odd?` extends SimplePrim("odd?", Inject.bool)
+    object `positive?` extends SimplePrim("positive?", Inject.bool)
+    object `zero?` extends SimplePrim("zero?", Inject.bool)
+    object `<=` extends SimplePrim("<=", Inject.bool)
+    object `>` extends SimplePrim(">", Inject.bool)
+    object `>=` extends SimplePrim(">=", Inject.bool)
+    object `caar` extends Store1Operation("cadr", { (x, store) =>
+      dereferenceAddrs(L.lattice.car(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.car(v), store).map((_, store)))
+    })
+    object `cadr` extends Store1Operation("cadr", { (x, store) =>
+      dereferenceAddrs(L.lattice.cdr(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.car(v), store).map((_, store)))
+    })
+    object `cdar` extends Store1Operation("cdar", { (x, store) =>
+      dereferenceAddrs(L.lattice.cdr(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.car(v), store).map((_, store)))
+    })
+    object `cddr` extends Store1Operation("cddr", { (x, store) =>
+      dereferenceAddrs(L.lattice.cdr(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.cdr(v), store).map((_, store)))
+    })
+    object `caddr` extends Store1Operation("caddr", { (x, store) =>
+      dereferenceAddrs(L.lattice.cdr(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.cdr(v), store).flatMap(v =>
+          dereferenceAddrs(L.lattice.car(v), store).map((_, store))))
+    })
+    object `caadr` extends Store1Operation("caadr", { (x, store) =>
+      dereferenceAddrs(L.lattice.cdr(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.car(v), store).flatMap(v =>
+          dereferenceAddrs(L.lattice.car(v), store).map((_, store))))
+    })
+    object `cdadr` extends Store1Operation("cdadr", { (x, store) =>
+      dereferenceAddrs(L.lattice.cdr(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.car(v), store).flatMap(v =>
+          dereferenceAddrs(L.lattice.cdr(v), store).map((_, store))))
+    })
+    object `cdddr` extends Store1Operation("cdddr", { (x, store) =>
+      dereferenceAddrs(L.lattice.cdr(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.cdr(v), store).flatMap(v =>
+          dereferenceAddrs(L.lattice.cdr(v), store).map((_, store))))
+    })
+    object `cadddr` extends Store1Operation("cadddr", { (x, store) =>
+      dereferenceAddrs(L.lattice.cdr(x), store).flatMap(v =>
+        dereferenceAddrs(L.lattice.cdr(v), store).flatMap(v =>
+          dereferenceAddrs(L.lattice.cdr(v), store).flatMap(v =>
+            dereferenceAddrs(L.lattice.car(v), store).map((_, store)))))
+    })
   }
 }
