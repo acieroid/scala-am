@@ -38,8 +38,6 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       case _ : TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
         (None, idnResults)
-      case e : Exception =>
-        cancel(s"Concrete evaluation of $benchmark encountered an exception: $e")
       case e : VirtualMachineError =>
         System.gc()
         alert(s"Concrete evaluation of $benchmark failed with $e")
@@ -54,8 +52,6 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       assume(anl.finished(), "Analysis timed out")
       anl
     } catch {
-      case e: Exception =>
-        cancel(s"Analysis of $benchmark encountered an exception: $e")
       case e: VirtualMachineError => 
         System.gc()
         cancel(s"Analysis of $benchmark encountered an error: $e")

@@ -76,14 +76,6 @@
   (lambda (new old l)
     (cons old (cons new l))))
 
-(define insert-g
-  (lambda (seq)
-    (lambda (new old l)
-      (cond ((null? l) '())
-            ((eq? (car l) old)
-             (seq new old (cdr l)))
-            (else (cons (car l) ((insert-g seq) new old (cdr l))))))))
-
 ;(define insertL (insert-g seqL))
 (define insertR (insert-g seqR))
 
