@@ -49,7 +49,7 @@ abstract class Performance extends App {
     for (i <- 1 to warmup) {
       print(s"$i ")
       System.gc() // It never hurts (hopefully, because it may cause GC errors...)
-      analysis(program).analyze()
+      analysis(program).analyze(analysisTimeout())
     }
 
     System.gc()
