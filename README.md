@@ -5,22 +5,8 @@ The goal of this artefact is to experiment with abstract machines and language
 semantics. Currently, the artefact's implementation is focused towards experiments with modular analyses.
 Additionally, semantics for R5RS Scheme are present.
 
-Current status:
-<!-- https://github.com/badges/shields -->
-![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg) 
-![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
-
 # Usage
 The Scala-AM framework can be used in several ways.
-
-## Running the test suite
-The test suite of Scala-AM can be run using sbt:
-```sbtshell
-scalaam/test
-```
-
-This repository is monitored by a CI-system. Upon every push to this repository, the test suite is run on a specific
-part of the test suite. In addition, the full test suite is run over night.
 
 ## Using the JavaScript visual front-end
 The framework includes a JavaScript front-end that can be used to visualise a MODF analysis in the browser.
@@ -56,7 +42,21 @@ like `Timeout.start(duration)`. The analysis will stop approximately when the ti
 the analysis may be run a bit longer than is specified by the timeout, but never shorter unless it finishes.
 
 Currently, no explicit result is returned by the analysis. Rather, information can be retrieved by fields of the machine,
-such as the final store
+such as the final store and dependencies between components.
+
+# Running the test suite
+The test suite of Scala-AM can be run using sbt:
+```sbtshell
+scalaam/test
+```
+
+This repository is monitored by a CI-system. Upon every push to this repository, the test suite is run on a specific
+part of the test suite. In addition, the full test suite is run over night.
+
+Current status:
+<!-- https://github.com/badges/shields -->
+![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg&service=github) 
+![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg&service=github)
 
 # References and Relevant publications
 The original idea behind Scala-AM comes from the [Abstracting Abstract Machines](http://matt.might.net/papers/vanhorn2010abstract.pdf)
