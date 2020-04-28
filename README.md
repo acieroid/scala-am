@@ -6,8 +6,8 @@ semantics. Currently, the artefact's implementation is focused towards experimen
 Additionally, semantics for R5RS Scheme are present.
 
 <!-- https://github.com/badges/shields -->
-![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg)
-![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
+Latest build: ![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg)  
+Nightly tests: ![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
 
 # Usage
 The Scala-AM framework can be used in several ways.
