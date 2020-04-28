@@ -217,20 +217,33 @@ abstract class PrecisionBenchmarks[
     /**
       * Run the analysis on a given program
       *
-      * @param analysis the analysis to run
+      * @param analysis a function that creates an analysis for a given program
+      * @param program the program to analyze
+      * @param name the name for the analysis (used for reporting to the console)
       * @param path the name of / path to the benchmark program to run
       * @param timeout (optional) the timeout
       * @return an option value, being:
       *     - the base store if the analysis terminated
       *     - `None` otherwise
       */
-    protected def runAnalysis(analysis: Analysis, path: Benchmark, timeout: Timeout.T = Timeout.none): Option[BaseStore] = {
-        println(s"... analysing $path using $analysis ...")
-        analysis.analyze(timeout)
-        if (analysis.finished()) {
-            Some(extract(analysis))
-        } else {
-            None
+    protected def runAnalysis(analysis: SchemeExp => Analysis, name: String, program: SchemeExp, path: Benchmark, timeout: Timeout.T = Timeout.none): Option[BaseStore] = {
+        try {
+            val anl = analysis(program)
+            println(s"... analysing $path using $name ...")
+            anl.analyze(timeout)
+            if (anl.finished()) {
+                Some(extract(anl))
+            } else {
+                None
+            }
+        } catch {
+            case e: Exception =>
+                println(s"Analyzer failed with exception $e")
+                None
+            case e: VirtualMachineError =>
+                System.gc()
+                println(s"Analyzer failed with error $e")
+                None
         }
     }
 

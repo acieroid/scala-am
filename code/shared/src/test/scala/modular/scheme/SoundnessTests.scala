@@ -26,27 +26,36 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // the timeout for the analysis of a single benchmark program (default: 2min.)
   def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
   // the actual testing code
-  private def evalConcrete(originalProgram: SchemeExp, t: Timeout.T): (Option[Value], Map[Identity,Set[Value]]) = {
+  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Option[Value], Map[Identity,Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = SchemeUndefiner.undefine(List(preluded))
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
     try {
-      val endResult = interpreter.run(program, t)
+      val endResult = interpreter.run(program, timeout(benchmark))
       (Some(endResult), idnResults)
     } catch {
       case _ : TimeoutException =>
-        alert(s"Concrete evaluation timed out.")
-        (None, idnResults)
-      case e : Exception =>
-        alert(s"Concrete interpreter encountered an exception: $e")
+        alert(s"Concrete evaluation of $benchmark timed out.")
         (None, idnResults)
       case e : VirtualMachineError =>
         System.gc()
-        alert(s"Concrete evaluation failed with $e")
+        alert(s"Concrete evaluation of $benchmark failed with $e")
         (None, idnResults)
     }
   }
+  private def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
+    try {
+      // analyze the program using a ModF analysis
+      val anl = analysis(program)
+      anl.analyze(timeout(benchmark))
+      assume(anl.finished(), "Analysis timed out")
+      anl
+    } catch {
+      case e: VirtualMachineError => 
+        System.gc()
+        cancel(s"Analysis of $benchmark encountered an error: $e")
+    }
   private def checkSubsumption(analysis: Analysis)(v: Set[Value], abs: analysis.Value): Boolean = {
     val lat = analysis.lattice
     v.forall {
@@ -90,19 +99,15 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       val content = Reader.loadFile(benchmark)
       val program = SchemeParser.parse(content)
       // run the program using a concrete interpreter
-      val (cResult, cPosResults) = evalConcrete(program,timeout(benchmark))
+      val (cResult, cPosResults) = evalConcrete(program,benchmark)
       // analyze the program using a ModF analysis
-      val a = analysis(program)
-      a.analyze(timeout(benchmark))
-      // assume that the analysis finished
-      // if not, cancel the test for this benchmark
-      assume(a.finished(), s"Analysis of $benchmark timed out.")
+      val anl = runAnalysis(program,benchmark)
       // check if the final result of the analysis soundly approximates the final result of concrete evaluation
       // of course, this can only be done if there was a result.
-      if (cResult.isDefined) { compareResult(a, cResult.get) }
+      if (cResult.isDefined) { compareResult(anl, cResult.get) }
       // check if the intermediate results at various program points are soundly approximated by the analysis
       // this can be done, regardless of whether the concrete evaluation terminated successfully or not
-      compareIdentities(a, cPosResults)
+      compareIdentities(anl, cPosResults)
     }
 }
 

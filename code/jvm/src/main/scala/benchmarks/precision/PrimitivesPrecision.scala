@@ -35,7 +35,7 @@ object PrimitivesBenchmarks {
     SchemeBenchmarks.scp1_compressed ++
     SchemeBenchmarks.icp ++
     // SchemeBenchmarks.ad ++
-    List("test/ad/all.scm")
+    List("test/ad/all.scm") ++
     standard ++
     List()
   }
@@ -112,18 +112,18 @@ abstract class PrimitivesComparison extends AnalysisComparison[
   override def concreteRuns() = 2
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
-  def otherAnalyses(prg: SchemeExp) = List(
-    S_0_0(prg), // should be equivalent to base analysis
-    S_CS_0(prg),
-    S_2CS_0(prg),
-    S_2AcyclicCS_0(prg),
-    S_10CS_0(prg),
-    S_10AcyclicCS_0(prg), // does not yield interesting results
-    S_FA_0(prg),
-    S_2FA_0(prg), // does not improve on FA
-    S_10FA_0(prg), // does not improve on FA
-    S_CSFA_0(prg), // does not improve on FA, but we want to include them still
-  )
+  def otherAnalyses() = List(
+    (S_0_0, "0_0"), // should be equivalent to base analysis
+    (S_CS_0, "CS_0"),
+    (S_2CS_0, "2CS_0"),
+    (S_2AcyclicCS_0, "2AcyclicCS_0"),
+    (S_10CS_0, "10CS_0"),
+    (S_10AcyclicCS_0, "10AcyclicCS_0"),
+    (S_FA_0, "FA_0"),
+    (S_2FA_0, "2FA_0"), // does not improve on FA
+    (S_10FA_0, "10FA_0"),// does not improve on FA
+    (S_CSFA_0, "CSFA_0"), // does not improve on FA, but we want to include them still
+    )
 
   def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
 
@@ -131,7 +131,7 @@ abstract class PrimitivesComparison extends AnalysisComparison[
       val txt = Reader.loadFile(benchmark)
       val prg = SchemeParser.parse(txt)
       val con = runInterpreter(prg, path).get
-      val abs = runAnalysis(baseAnalysis(prg),path).get
+      val abs = runAnalysis(baseAnalysis,"base analysis",prg,path).get
       val allKeys = con.keys ++ abs.keys
       val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
       interestingKeys.foreach { k =>
