@@ -5,19 +5,19 @@ The goal of this artefact is to experiment with abstract machines and language
 semantics. Currently, the artefact's implementation is focused towards experiments with modular analyses.
 Additionally, semantics for R5RS Scheme are present.
 
+Current status:
 <!-- https://github.com/badges/shields -->
-Latest build: ![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg)  
-Nightly tests: ![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
+![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg) 
+![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
 
 # Usage
 The Scala-AM framework can be used in several ways.
 
 ## Running the test suite
-The test suite of Scala-AM can be run using `sbt test`.
-#+BEGIN_SRC shell
-$ sbt
-> scalaam/test
-#+END_SRC
+The test suite of Scala-AM can be run using sbt:
+```sbtshell
+scalaam/test
+```
 
 This repository is monitored by a CI-system. Upon every push to this repository, the test suite is run on a specific
 part of the test suite. In addition, the full test suite is run over night.
