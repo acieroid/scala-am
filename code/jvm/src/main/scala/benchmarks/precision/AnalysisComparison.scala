@@ -28,8 +28,9 @@ abstract class AnalysisComparison[
     def concreteTimeout() = Timeout.none                        //timeout for concrete interpreter
 
     def concreteRuns() = 20
-    // keep the results of the benchmarks
-    var results: Map[Benchmark, Map[String,Option[Int]]] = Map.empty
+
+    // keep the results of the benchmarks in a table
+    var results = Table.empty[Option[Int]]
 
     /**
       * For a given benchmark, compare each analysis with the base analysis
@@ -40,22 +41,18 @@ abstract class AnalysisComparison[
       * @param program the Scheme expression of the benchmark program
       */
     protected def forBenchmark(path: Benchmark, program: SchemeExp) = {
-        // keep the results of the benchmark here
-        var benchmarkResults = Map.empty[String,Option[Int]]
         // run the base analysis first
         val baseResult = runAnalysis(baseAnalysis, "base analysis", program, path).get // no timeout set for the base analysis!
         // run the other analyses on the benchmark
         otherAnalyses.foreach { case (analysis, name) =>
             val otherResult = runAnalysis(analysis, name, program, path, analysisTimeout())
             val refined = otherResult.map(store => compareOrdered(baseResult,store).size)
-            benchmarkResults += (name -> refined)
+            results = results.add(path,name,refined)
         }
         // run a concrete interpreter on the benchmarks
         val concreteResult = runInterpreter(program, path, concreteTimeout(), concreteRuns())
         val refined = concreteResult.map(store => compareOrdered(baseResult,store).size)
-        benchmarkResults += ("concrete" -> refined)
-        // save the results
-        this.results += (path -> benchmarkResults)
+        results = results.add(path,"concrete",refined)
     }
 }
 
@@ -99,16 +96,7 @@ object AnalysisComparison1 extends AnalysisComparison[
 
     def runBenchmarks(benchmarks: Set[Benchmark]) = {
         benchmarks.foreach(runBenchmark)
-        this.results.foreach { case (b, r) =>
-            val concreteResStr = r("concrete").getOrElse("T")
-            println(s"=> BENCHMARK $b")
-            r.foreach { 
-                case (nam,res) if nam != "concrete" =>
-                    val resStr = res.getOrElse("T")
-                    println(s"- $nam: $resStr/$concreteResStr")
-                case _ => ()
-            }
-        }
+        println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
     }
 }
 

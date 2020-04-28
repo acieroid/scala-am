@@ -146,6 +146,8 @@ abstract class PrimitivesComparison extends AnalysisComparison[
       runBenchmark(b)
     })
     println("Results:")
+    println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
+    /**
     println("Benchmark & 0 & CS & 2CS & 2ACS & 10CS & 10ACS & FA & 2FA & 10FA & CSFA & Max \\\\")
     this.results.toSeq.sortBy(_._1).foreach { case (b, r) =>
       val refined_0_0 = r.getOrElse("0_0", Some("T")).getOrElse("T")
@@ -160,7 +162,8 @@ abstract class PrimitivesComparison extends AnalysisComparison[
       val refined_CSFA_0 = r.getOrElse("CSFA_0", Some("T")).getOrElse("T")
       val concrete = r.getOrElse("concrete", Some("T")).getOrElse("T")
       println(s"$b & $refined_0_0 & $refined_CS_0 & $refined_2CS_0 & $refined_2AcyclicCS_0 & $refined_10CS_0 & $refined_10AcyclicCS_0 & $refined_FA_0 & $refined_2FA_0 & $refined_10FA_0 & $refined_CSFA_0 & $concrete\\\\")
-      }
+    }
+    */
   }
 }
 

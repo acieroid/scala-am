@@ -48,7 +48,7 @@ case class Table[V](data: Map[(String,String), V]) {
     val firstRow = rowName :: columns
     val otherRows = rows.foldRight(List[List[String]]()) { (row,restRows) =>
       val values = columns.map(col => data.get((row,col)))
-      val strings = values.map(vlu => vlu.map(_.toString()).getOrElse(default))
+      val strings = values.map(vlu => vlu.map(format).getOrElse(default))
       (row :: strings) :: restRows
     }
     firstRow :: otherRows
