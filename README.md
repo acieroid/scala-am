@@ -50,8 +50,8 @@ The test suite of Scala-AM can be run using sbt:
 scalaam/test
 ```
 
-This repository is monitored by a CI-system. Upon every push to this repository, the test suite is run on a specific
-part of the test suite. In addition, the full test suite is run over night.
+This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a set of
+randomly selected benchmark programs (Scala-AM tests on action). In addition, the full test suite is run over night (Daily Scala-AM tests).
 
 Current status:
 <!-- https://github.com/badges/shields -->

@@ -2,24 +2,30 @@ package scalaam.test
 
 import org.scalatest.propspec.AnyPropSpec
 
+import scala.util.Random
+
 trait SchemeBenchmarkTests extends AnyPropSpec {
   // a benchmark is just a file name
   type Benchmark = String
   // the benchmarks involved in the tests
-  def benchmarks: Set[Benchmark] = Set.empty
+  def benchmarks(): Set[Benchmark] = Set.empty
 
   // needs to be implemented to specify the testing behaviour per benchmark
   protected def onBenchmark(b: Benchmark): Unit
   // run the benchmarks
-  benchmarks.foreach(onBenchmark)
+  benchmarks().foreach(onBenchmark)
 }
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks = SchemeBenchmarks.other
+  override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.other
+}
+
+trait RandomBenchmarks extends SchemeBenchmarkTests {
+  override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.selectRandom(40)
 }
 
 trait AllBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks = SchemeBenchmarks.allBenchmarks
+  override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.allBenchmarks
 }
 
 object SchemeBenchmarks {
@@ -303,4 +309,6 @@ object SchemeBenchmarks {
 
   val WeiChenRompf2019: Set[String] = WCR2019 ++ theLittleSchemer ++ toplas98
   val    allBenchmarks: Set[String] = ad ++ gabriel ++ gambit ++ rosetta ++ scp1 ++ SICP ++ sigscheme ++ WeiChenRompf2019 ++ other
+
+  def selectRandom(n: Int): Set[String] = Random.shuffle(allBenchmarks).take(n)
 }

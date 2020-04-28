@@ -153,7 +153,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   }
 }
 
-trait FastSchemeModFSoundnessTests extends SchemeModFSoundnessTests with SimpleBenchmarks
+trait FastSchemeModFSoundnessTests extends SchemeModFSoundnessTests with RandomBenchmarks // SimpleBenchmarks
 trait FullSchemeModFSoundnessTests extends SchemeModFSoundnessTests with AllBenchmarks
 
 // concrete test suites to run ...
