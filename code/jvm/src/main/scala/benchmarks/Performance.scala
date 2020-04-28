@@ -8,6 +8,8 @@ import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
 import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
 import scalaam.modular.scheme._
 import scalaam.util._
+import scalaam.core._
+import scala.concurrent.duration._
 
 // TODO: rename to PerformanceEvaluation?
 // TODO: move to evaluation package?
@@ -25,6 +27,11 @@ abstract class Performance extends App {
 
   // The analyses that are evaluated (and their names)
   def analyses: List[(SchemeExp => Analysis, String)]
+
+  // The timeout for the analyses
+  // Unspecified because it make sense that all performance analyses choose their timeout.
+  // Example: Timeout.start(Duration(2, MINUTES))
+  def analysisTimeout(): Timeout.T
 
   // A variable that holds the results
   var results: Map[String, Map[String, Int]] = Map().withDefaultValue(Map())
@@ -52,7 +59,7 @@ abstract class Performance extends App {
       print(s"$i ")
       val a = analysis(program)
       System.gc()
-      val t = Timer.timeOnly({a.analyze()})
+      val t = Timer.timeOnly({a.analyze(analysisTimeout())})
       times = t.toDouble :: times
     }
 
