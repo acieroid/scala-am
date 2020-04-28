@@ -1,7 +1,14 @@
 Scala-AM: A Framework for Static Analysis of Dynamic Languages
+
 * Goal
 The goal of this artefact is to experiment with abstract machines and language
 semantics. Currently, the artefact's implementation is focused towards experiments with modular analyses.
+Additionally, semantics for R5RS Scheme are present.
+
+# https://github.com/badges/shields
+![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg)
+#
+![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
 
 * Usage
 The Scala-AM framework can be used in several ways.
@@ -13,6 +20,9 @@ $ sbt
 > scalaam/test
 #+END_SRC
 
+This repository is monitored by a CI-system. Upon every push to this repository, the test suite is run on a specific
+part of the test suite. In addition, the full test suite is run over night.
+
 ** Using the JavaScript visual front-end
 The framework includes a JavaScript front-end that can be used to visualise a MODF analysis in the browser.
 To run this visualisation, open the file =scalaam.html= with your browser. The visualisation provides information with
@@ -21,33 +31,37 @@ Stepping through the visualisation can be done using the space bar.
 
 If you need to compile the code first, run the command =fastOptJS= within your sbt repl.
 
-** Running a program in command line
+** Analysing a program using command line
 The Scala-AM framework is built in a modular style. To run a modular analysis, you need to compose the
 implementation of a specific machine and an abstract domain.
 
 To analyze a specific program, an instance of the MODF analysis class must be created. The constructor of
 this class takes a parsed version of the program to be analysed, which can be obtained as follows:
 #+BEGIN_SRC scala
-scala> val program = scalaam.cli.Main.loadFile(path-to-file)
+scala> val text = scalaam.io.Reader.loadFile(path-to-file)
+scala> val prog = scalaam.language.scheme.Schemeparser.parse(text)
 #+END_SRC
-Additional preprocessing steps can be performed as well if needed.
+Additional preprocessing steps are performed by the modular analysis itself and hence must not be performed manually.
 
-Now, the MODF instance can be created. For example, to analyze =exp= using a big-step MODF analysis
+Now, the MODF instance can be created. For example, to analyze =prog= using a big-step MODF analysis
 with full argument sensitivity and a type domain:
 #+BEGIN_SRC scala
-scala> val machine = new ModAnalysis(program) with BigStepSemantics
-                                              with StandardSchemeModFSemantics
-                                              with FullArgumentSensitivity
-                                              with TypePropagationDomain
+scala> val machine = new ModAnalysis(prog) with BigStepSemantics
+                                           with StandardSchemeModFSemantics
+                                           with FullArgumentSensitivity
+                                           with TypePropagationDomain
 scala> machine.analyze()
 #+END_SRC
-This function can take an optional parameter to specify a timeout, which is obtained from a Java Duration
-like =Timeout.start(duration)=. The analysis will stop approximately when the timeout has been reached. Note that
-the timer starts from the moment where the =duration= method is called.
+The `analyze` function can take an optional parameter to specify a timeout, which is obtained from a Java Duration
+like =Timeout.start(duration)=. The analysis will stop approximately when the timeout has been reached, that is,
+the analysis may be run a bit longer than is specified by the timeout, but never shorter unless it finishes.
+
+Currently, no explicit result is returned by the analysis. Rather, information can be retrieved by fields of the machine,
+such as the final store
 
 * References and Relevant publications
-The idea behind Scala-AM comes from the [[http://matt.might.net/papers/vanhorn2010abstract.pdf][Abstracting Abstract Machines]]
-literature and has integrated the work of [[https://doi.org/10.1007/978-3-030-11245-5_12][Effect-Driven Flow Analysis]].
+The original idea behind Scala-AM comes from the [[http://matt.might.net/papers/vanhorn2010abstract.pdf][Abstracting Abstract Machines]]
+literature. Since then, the work of [[https://doi.org/10.1007/978-3-030-11245-5_12][Effect-Driven Flow Analysis]] has been integrated.
 
 The Scala-AM framework is described in the following publication:
   - Scala-AM: A Modular Static Analysis Framework. SCAM 2016. [[http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf][pdf]], [[https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am][doi]].
