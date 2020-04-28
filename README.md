@@ -55,8 +55,8 @@ part of the test suite. In addition, the full test suite is run over night.
 
 Current status:
 <!-- https://github.com/badges/shields -->
-![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg&service=github) 
-![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg&service=github)
+![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg) 
+![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
 
 # References and Relevant publications
 The original idea behind Scala-AM comes from the [Abstracting Abstract Machines](http://matt.might.net/papers/vanhorn2010abstract.pdf)
