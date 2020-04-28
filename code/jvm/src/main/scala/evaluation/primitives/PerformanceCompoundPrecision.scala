@@ -9,9 +9,12 @@ import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
 import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
 import scalaam.modular.scheme._
 import scalaam.util._
+import scala.concurrent.duration._
 
 object PerformanceCompoundPrecision extends Performance {
   abstract class CompoundPrecisionAnalysis(p: SchemeExp) extends ModAnalysis(p) with BigStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics
+
+  def analysisTimeout() = Timeout.start(Duration(2, MINUTES))
 
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (p => new CompoundPrecisionAnalysis(p) with S_0_0, "0_0"),
