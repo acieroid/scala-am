@@ -20,13 +20,6 @@
 
 (define eq?-salad (eq?-c 'salad))
 
-(define rember-f
-  (lambda (test?)
-    (lambda (a l)
-      (cond ((null? l) '())
-            ((test? (car l) a) (cdr l))
-            (else (cons (car l) ((rember-f test?) a (cdr l))))))))
-
 (define rember-eq? (rember-f eq?))
 (define rember-equal? (rember-f equal?))
 

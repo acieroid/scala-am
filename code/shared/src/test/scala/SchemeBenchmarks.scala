@@ -261,7 +261,7 @@ object SchemeBenchmarks {
     //"test/WeiChenRompf2019/regex-derivative.scm", // Parser error.
     "test/WeiChenRompf2019/rsa.scm",
     //"test/WeiChenRompf2019/scheme2java.scm", // Uses char-alphabetic?
-    "test/WeiChenRompf2019/solovay-strassen.scm",
+    //"test/WeiChenRompf2019/solovay-strassen.scm", // Program seems erroneous.
   )
 
   val other: Set[String] = Set(

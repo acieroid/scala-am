@@ -1,26 +1,26 @@
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define output (lambda (i) (set! result (cons i result))))
+(define linebreak (lambda () (set! result (cons 'linebreak result))))
 
-(define (display-all . args)
-  (for-each display args))
-(define (display-all-sep args)
-  (for-each (lambda (arg) (display arg) (display " "))
+(define (output-all . args)
+  (for-each output args))
+(define (output-all-sep args)
+  (for-each (lambda (arg) (output arg) (output " "))
             args))
 
 (define (make-tweet username text tags)
 
-  (define (display-tweet)
-    (display-all "Tweet from " username "\n" text "\nTags: ")
-    (display-all-sep tags)
-    (newline))
+  (define (output-tweet)
+    (output-all "Tweet from " username "\n" text "\nTags: ")
+    (output-all-sep tags)
+    (linebreak))
 
   (define (dispatch msg)
     (cond ((eq? msg 'text) text)
           ((eq? msg 'tags) tags)
           ((eq? msg 'username) username)
-          ((eq? msg 'display) display-tweet)
-          (else (display "error - wrong msg ") (display msg))))
+          ((eq? msg 'output) output-tweet)
+          (else (output "error - wrong msg ") (output msg))))
 
   (if (> (string-length text) 140)
       #f
@@ -48,61 +48,61 @@
     (define (add-tweet-to-wall tweet)
       (set! tweet-wall (cons tweet tweet-wall)))
 
-    (define (display-account symbol)
-      (cond ((eq? symbol 'wall) (display-wall))
-            ((eq? symbol 'followers) (display-followers))
-            ((eq? symbol 'account) (display-entire-account))
-            (else (display "wrong symbol given"))))
+    (define (output-account symbol)
+      (cond ((eq? symbol 'wall) (output-wall))
+            ((eq? symbol 'followers) (output-followers))
+            ((eq? symbol 'account) (output-entire-account))
+            (else (output "wrong symbol given"))))
 
-    (define (display-wall)
-      (display "TWEET WALL") (newline)
-      (for-each (lambda (tweet) ((tweet 'display)) (newline))
+    (define (output-wall)
+      (output "TWEET WALL") (linebreak)
+      (for-each (lambda (tweet) ((tweet 'output)) (linebreak))
                 tweet-wall))
 
-    (define (display-followers)
-      (display "FOLLOWERS") (newline)
+    (define (output-followers)
+      (output "FOLLOWERS") (linebreak)
       (for-each (lambda (follower)
-                  (display (follower 'username)) (display " "))
+                  (output (follower 'username)) (output " "))
                 followers))
 
-    (define (display-entire-account)
-      (display-all "Twitter name " username "\n"
+    (define (output-entire-account)
+      (output-all "Twitter name " username "\n"
                    "Name " name "\n")
-      (display-wall)
-      (display-followers)
-      (newline) (newline))
+      (output-wall)
+      (output-followers)
+      (linebreak) (linebreak))
 
     (define (dispatch msg)
       (cond ((eq? msg 'name)                           name)
             ((eq? msg 'username)                   username)
-            ((eq? msg 'display)             display-account)
+            ((eq? msg 'output)             output-account)
             ((eq? msg 'follow)                       follow)
             ((eq? msg 'add-follower)           add-follower)
             ((eq? msg 'tweet)                         tweet)
             ((eq? msg 'add-tweet-to-wall) add-tweet-to-wall)
-            (else (display "error - wrong msg ") (display msg))))
+            (else (output "error - wrong msg ") (output msg))))
     dispatch))
 
 (define my-tweet (make-tweet "madewael" "Racket is cool!" (list "#Racket" "#Scheme")))
 (define res1 (equal? (my-tweet 'username) "madewael"))
-((my-tweet 'display))
+((my-tweet 'output))
 
 (define accountE (make-account "Eline Philips" "ephilips"))
 (define accountM (make-account "Mattias De Wael" "madewael"))
 ((accountE 'follow) accountM)
 ((accountM 'tweet) "Racket is cool!" "#Racket" "#Scheme")
 ((accountE 'tweet) "Hello World!")
-((accountE 'display) 'account)
-((accountM 'display) 'account)
+((accountE 'output) 'account)
+((accountM 'output) 'account)
 (and res1
-     (equal? result '(newline
-                      newline
+     (equal? result '(linebreak
+                      linebreak
                       " "
                       "ephilips"
-                      newline
+                      linebreak
                       "FOLLOWERS"
-                      newline
-                      newline
+                      linebreak
+                      linebreak
                       " "
                       "#Scheme"
                       " "
@@ -112,7 +112,7 @@
                       "\n"
                       "madewael"
                       "Tweet from "
-                      newline
+                      linebreak
                       "TWEET WALL"
                       "\n"
                       "Mattias De Wael"
@@ -120,12 +120,12 @@
                       "\n"
                       "madewael"
                       "Twitter name "
-                      newline
-                      newline
-                      newline
+                      linebreak
+                      linebreak
+                      linebreak
                       "FOLLOWERS"
-                      newline
-                      newline
+                      linebreak
+                      linebreak
                       " "
                       "#Scheme"
                       " "
@@ -135,14 +135,14 @@
                       "\n"
                       "madewael"
                       "Tweet from "
-                      newline
-                      newline
+                      linebreak
+                      linebreak
                       "\nTags: "
                       "Hello World!"
                       "\n"
                       "ephilips"
                       "Tweet from "
-                      newline
+                      linebreak
                       "TWEET WALL"
                       "\n"
                       "Eline Philips"
@@ -150,7 +150,7 @@
                       "\n"
                       "ephilips"
                       "Twitter name "
-                      newline
+                      linebreak
                       " "
                       "#Scheme"
                       " "
