@@ -61,7 +61,7 @@ abstract class Performance extends App {
         System.gc()
         val t = Timer.timeOnly({a.analyze(analysisTimeout())})
         if (a.finished()) {
-          times = t.toDouble :: times
+          times = (t.toDouble / 1000000) :: times
         } else {
           // Analysis timed out
           timeout = true
@@ -85,7 +85,7 @@ abstract class Performance extends App {
           println(s"***** $b / $name *****")
           val time = run(b, a)
           // We store the results in ms
-          results = results.add(b, name, time.map(t => (t  / 1000000).toInt))
+          results = results.add(b, name, time.map(_.toInt))
         } catch {
           case e: Exception => writeln(s"Running $b resulted in an exception: ${e.getMessage}")
           case e: VirtualMachineError => writeln(s"Running $b resulted in an error: ${e.getMessage}")
