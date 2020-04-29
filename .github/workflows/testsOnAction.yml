@@ -4,55 +4,13 @@ name: Scala-AM tests on action
 # events but only for the master branch
 on:
   push:
-    branches: [ master, github-experiments ]
-  pull_request:
-    branches: [ master ]
+    branches: [ github-experiments ]
 
 jobs:
-  # The compile job fetches the code and attempts to compile it.
-  compile:
-    name: Compile Scala-AM
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: lokkju/github-action-sbt@v0.2.2
-      with:
-        commands: compile
-  # The test-lattice job executes the lattice tests.
-  test-lattice:
-    name: Execute lattice tests
-    runs-on: ubuntu-latest
-    needs: compile
-    steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: scalaam/testOnly scalaam.test.lattice.*
-  # The test-R5RS job executes the R5RS tests.
-  test-R5RS:
-    name: Execute primitive tests
-    runs-on: ubuntu-latest
-    needs: compile
-    steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: scalaam/testOnly scalaam.test.language.scheme.*
-  # The test-parser job executes the parser tests.
-  test-parser:
-    name: Execute parser tests
-    runs-on: ubuntu-latest
-    needs: compile
-    steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: scalaam/testOnly scalaam.test.parser.*
   # The test-soundness job executes the soundness tests.
-  test-soundness:
+  build:
     name: Execute soundness tests (using ${{ matrix.test_class }})
     runs-on: ubuntu-latest
-    needs: compile
     strategy:
       fail-fast: false
       matrix:
@@ -62,11 +20,11 @@ jobs:
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
           commands: scalaam/testOnly scalaam.test.soundness.${{ matrix.test_class }} -- -u testOutput -o
-      - uses: IgnusG/jest-report-action@v2.3.1
+      - uses: ashley-taylor/junit-report-annotations-action@v1.0
         if: always()
         with:
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          junit-file: testOutput/TEST-scalaam.test.soundness.${{ matrix.test_class }}.xml
-          run-name: test-soundness
+          path: testOutput/TEST-scalaam.test.soundness.${{ matrix.test_class }}.xml
+          testSrcPath: code/shared/src/test/scala/
     
     
