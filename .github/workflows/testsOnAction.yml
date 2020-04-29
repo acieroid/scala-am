@@ -4,7 +4,7 @@ name: Scala-AM tests on action
 # events but only for the master branch
 on:
   push:
-    branches: [ master ]
+    branches: [ master, github-experiments ]
   pull_request:
     branches: [ master ]
 
@@ -61,6 +61,12 @@ jobs:
       - uses: actions/checkout@v2
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
-          commands: scalaam/testOnly scalaam.test.soundness.${{ matrix.test_class }}
+          commands: scalaam/testOnly scalaam.test.soundness.${{ matrix.test_class }} -- -u testOutput -o
+      - uses: ashley-taylor/junit-report-annotations-action@v1.0
+        if: always()
+        with:
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          path: testOutput/TEST-scalaam.test.soundness.${{ matrix.test_class }}.xml
+          testSrcPath: code/shared/src/test/scala/
     
     
