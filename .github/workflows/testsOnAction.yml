@@ -27,11 +27,11 @@ jobs:
         with:
           name: test-results
           path: testOutput/TEST-scalaam.test.soundness.${{ matrix.test_class }}.xml
-      - name: Generate GitHub Annotations
-        uses: IgnusG/jest-report-action@v2.3.1
+      - name: Generate GitHub Checks
+        uses: MirrorNG/nunit-reporter@v1.0.5
         if: always()
         with:
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          junit-file: testOutput/TEST-scalaam.test.soundness.${{ matrix.test_class }}.xml
+          path: testOutput/TEST-scalaam.test.soundness.${{ matrix.test_class }}.xml
     
     
