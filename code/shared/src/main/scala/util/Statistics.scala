@@ -1,5 +1,6 @@
 package scalaam.util
 
+// Helpers to compute statistics over sets of data
 object Statistics {
 
   type Min = Double
@@ -8,6 +9,7 @@ object Statistics {
   type Med = Double
   type StD = Double
 
+  // Bundles multiple statitistical measures in one object
   case class M(min: Min, max: Max, mea: Mea, med: Med, std: StD) {
     override def toString: String = {
       s"* Values in [$min,$max]\n" ++
@@ -34,6 +36,7 @@ object Statistics {
     }
   }
 
+  // Constructs an M object from a list of values
   def all(l: List[Double]): M = M(l.min, l.max, mean(l), median(l), stddev(l))
 
   // Expect a list of tuples (weight, value).

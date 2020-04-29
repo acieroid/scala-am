@@ -34,15 +34,16 @@ abstract class Performance extends App {
   def analysisTimeout(): Timeout.T
 
   // A variable that holds the results
-  var results: Map[String, Map[String, Int]] = Map().withDefaultValue(Map())
+  var results = Table.empty[Option[Int]]
 
   setDefaultWriter(open("benchOutput/results.txt"))
 
   // Runs a single analysis multiple times and returns the mean timing (in nanoseconds)
-  def run(file: String, analysis: SchemeExp => Analysis): Double = {
+  def run(file: String, analysis: SchemeExp => Analysis): Option[Double] = {
     val program = SchemeParser.parse(Reader.loadFile(file))
 
     var times: List[Double] = List()
+    var timeout: Boolean = false
 
     // Warm-up.
     print(s"* Warmup (${warmup}) - ")
@@ -52,25 +53,28 @@ abstract class Performance extends App {
       analysis(program).analyze(analysisTimeout())
     }
 
-    System.gc()
-
     print(s"\n* Time (${actual}) - ")
     for (i <- 1 to actual) {
-      print(s"$i ")
-      val a = analysis(program)
-      System.gc()
-      val t = Timer.timeOnly({a.analyze(analysisTimeout())})
-      times = t.toDouble :: times
+      if (!timeout) { // Only run if there has been no timeout
+        print(s"$i ")
+        val a = analysis(program)
+        System.gc()
+        val t = Timer.timeOnly({a.analyze(analysisTimeout())})
+        if (a.finished()) {
+          times = t.toDouble :: times
+        } else {
+          // Analysis timed out
+          timeout = true
+        }
+      }
     }
 
     val m = Statistics.all(times)
-    println(s"\n      Mean time: ${m.mea / 1000000}ms")
-    println(s"      Min  time: ${m.min / 1000000}ms")
-    println(s"      Max  time: ${m.max / 1000000}ms")
-    println(s"      Med  time: ${m.med / 1000000}ms")
-    println(s"         Stddev: ${m.std / 1000000}ms")
+    print(s"\n")
+    if (timeout) println(s"TIMED OUT")
+    println(m.toString)
 
-    m.mea
+    if (timeout) None else Some(m.mea)
   }
 
   // Runs the evaluation
@@ -79,9 +83,9 @@ abstract class Performance extends App {
       analyses.foreach { case (a, name) =>
         try {
           println(s"***** $b / $name *****")
-          val time: Double = run(b, a)
+          val time = run(b, a)
           // We store the results in ms
-          results = results + (b -> (results(b) + (name -> (time / 1000000).toInt)))
+          results = results.add(b, name, time.map(t => (t  / 1000000).toInt))
         } catch {
           case e: Exception => writeln(s"Running $b resulted in an exception: ${e.getMessage}")
           case e: VirtualMachineError => writeln(s"Running $b resulted in an error: ${e.getMessage}")
@@ -91,7 +95,10 @@ abstract class Performance extends App {
   }
 
   measure()
-  val table = LatexOutput.table[Int](results, "Benchmark", benchmarks, analyses.map(_._2), "T")
+  val table = results.toLatexString(format = {
+    case None => "T"
+    case Some(v) => v.toString()
+  })
   write(table)
   closeDefaultWriter()
 }
