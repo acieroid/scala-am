@@ -91,7 +91,7 @@ trait BigStepSemantics extends SchemeModFSemantics {
     private def evalPair(pairExp: SchemePair): Value = {
       val carv = eval(pairExp.car)
       val cdrv = eval(pairExp.cdr)
-      allocateCons(pairExp)(carv,cdrv)
+      allocateCons(pairExp)(carv,carv)
     }
     private def evalSplicedPair(pairExp: SchemeSplicedPair): Value = {
       val splicev = eval(pairExp.splice)
