@@ -11,7 +11,6 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.incremental._
 import scalaam.modular.incremental.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
-import scalaam.io.Reader
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -35,7 +34,7 @@ object Main {
         super.step()
       }
     }
-    analysis.analyze(Timeout.start(Duration(300,SECONDS)))
+    analysis.analyze(Timeout.start(Duration(600,SECONDS)))
     //debugClosures(analysis)
     debugResults(analysis, false)
   }
