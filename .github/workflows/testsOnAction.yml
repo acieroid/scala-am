@@ -28,7 +28,7 @@ jobs:
           access-token: ${{ secrets.GITHUB_TOKEN }}
           path: testOutput/TEST-scalaam.test.soundness.${{ matrix.test_class }}.xml
           job-name: Execute soundness tests (using ${{ matrix.test_class }})
-          testSrcPath: code/shared/src/test/scala/
+          testSrcPath: code/shared/src/test/scala/modular/scheme/SoundnessTests.scala
       - name: Upload the XML test result
         if: always()
         uses: actions/upload-artifact@v2
