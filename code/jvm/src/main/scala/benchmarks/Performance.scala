@@ -68,13 +68,15 @@ abstract class Performance extends App {
         }
       }
     }
-
-    val m = Statistics.all(times)
     print(s"\n")
-    if (timeout) println(s"TIMED OUT")
-    println(m.toString)
-
-    if (timeout) None else Some(m.mea)
+    if (timeout) {
+      println(s"TIMED OUT. Times that succeeded: $times")
+      None
+    } else {
+      val m = Statistics.all(times)
+      println(m.toString)
+      Some(m.mea)
+    }
   }
 
   // Runs the evaluation
