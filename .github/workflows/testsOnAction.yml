@@ -22,7 +22,7 @@ jobs:
         with:
           commands: scalaam/testOnly scalaam.test.soundness.${{ matrix.test_class }} -- -u testOutput -o
       - name: Generate GitHub annotations from test results
-        uses: noahvanes/junit-report-annotations-action
+        uses: noahvanes/junit-report-annotations-action@v1.0-alpha
         with:
           access-token: ${{ secrets.GITHUB_TOKEN }}
           path: testOutput/TEST-scalaam.test.soundness.${{ matrix.test_class }}.xml
