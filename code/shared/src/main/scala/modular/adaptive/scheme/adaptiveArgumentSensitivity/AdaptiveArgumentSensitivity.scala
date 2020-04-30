@@ -80,8 +80,20 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     //println("DONE")
   }
   var cmpsPerFn = Map[SchemeExp, Set[Component]]()
-  override def onNewComponent(cmp: Component, call: Call) = 
+  override def onNewComponent(cmp: Component, call: Call) = {
+    // update the function to components mapping
     cmpsPerFn += (call.body -> (cmpsPerFn.get(call.body).getOrElse(Set()) + cmp))
+    // if any of the new arguments subsumes an existing widened argument, update that widened argument
+    var adapted = false
+    call.clo._1.args.zip(call.ctx.args).foreach { case (par,arg) =>
+      val widened = adaptedArgs.getOrElse(par,Set())
+      if(widened.exists(lattice.subsumes(arg,_))) {
+        widenArg(par,arg)
+        adapted = true
+      }
+    }
+    if (adapted) { updateAnalysis() }
+  }
   // we need to update the adaptedArgs mapping when the analysis is adapted
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)

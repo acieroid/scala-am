@@ -24,8 +24,8 @@ abstract class AnalysisComparison[
     def otherAnalyses(): List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 2min.)
-    def analysisTimeout() = Timeout.start(Duration(30, MINUTES)) //timeout for (non-base) analyses
-    def concreteTimeout() = Timeout.none                        //timeout for concrete interpreter
+    def analysisTimeout() = Timeout.start(Duration(15, MINUTES)) //timeout for (non-base) analyses
+    def concreteTimeout() = Timeout.none                         //timeout for concrete interpreter
 
     def concreteRuns() = 20
 
@@ -68,21 +68,21 @@ object AnalysisComparison1 extends AnalysisComparison[
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def otherAnalyses() = List(
         (SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
-        //SchemeAnalyses.fullArgContextSensitiveAnalysis(prg),
+        //(SchemeAnalyses.fullArgContextSensitiveAnalysis, "full-arg")
         //SchemeAnalyses.adaptiveCallerSensitivity(prg,10)
         //SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5),
         //SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
     )
 
-    def main(args: Array[String]) = runBenchmarks(
-        Set("test/regex.scm")
-    )
+    def main(args: Array[String]) = runBenchmarks(Set(
+        "test/icp/icp_2_aeval.scm"
+    ))
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
         val prg = SchemeParser.parse(txt)
         val con = runInterpreter(prg, path).get
-        val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_),"full-arg analysis",prg,path).get
+        val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_),"analysis",prg,path).get
         val allKeys = con.keys ++ abs.keys
         val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
         interestingKeys.foreach { k =>
