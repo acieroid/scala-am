@@ -9,7 +9,6 @@ import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
 import scalaam.core._
 import scalaam.core.Position._
-import scalaam.io.Reader
 import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
