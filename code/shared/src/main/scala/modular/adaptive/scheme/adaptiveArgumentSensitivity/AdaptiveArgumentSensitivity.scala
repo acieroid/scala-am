@@ -13,9 +13,14 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     ComponentContext(ctx.args.map(updateValue(update)))
   // to determine how arguments need to be adapted
   private var adaptedArgs = Map[Identifier, Set[Value]]()
-  protected def widenArg(par: Identifier, arg: Value) = {
+  protected def widenArg(fexp: SchemeLambdaExp, par: Identifier, arg: Value) = {
+    val otherCalls = cmpsPerFn(fexp).map { view(_).asInstanceOf[Call] }
+    val otherArgVs = otherCalls.map(_.ctx.args(fexp.args.indexOf(par)))
+    val widenedArg = otherArgVs.foldLeft(arg) { (acc, arg) =>
+      if(lattice.subsumes(arg,acc)) { arg } else { acc }
+    }
     val currentAbs = adaptedArgs.getOrElse(par,Set.empty)
-    val updatedAbs = currentAbs.filterNot(lattice.subsumes(arg,_)) + arg
+    val updatedAbs = currentAbs.filterNot(lattice.subsumes(widenedArg,_)) + widenedArg
     this.adaptedArgs += (par -> updatedAbs)
   }
   private def adaptArg(par: Identifier, arg: Value) =
@@ -72,7 +77,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
                                                .values
                                                .map(_.toSet)
         this.toJoin = this.toJoin ::: refs.toList
-        widenArg(par, joined)
+        widenArg(calls.head.clo._1, par, joined)
       }
       updateAnalysis()
       this.toJoin = this.toJoin.filterNot(_.size == 1).toList   
@@ -82,13 +87,13 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   var cmpsPerFn = Map[SchemeExp, Set[Component]]()
   override def onNewComponent(cmp: Component, call: Call) = {
     // update the function to components mapping
-    cmpsPerFn += (call.body -> (cmpsPerFn.get(call.body).getOrElse(Set()) + cmp))
+    cmpsPerFn += (call.clo._1 -> (cmpsPerFn.get(call.clo._1).getOrElse(Set()) + cmp))
     // if any of the new arguments subsumes an existing widened argument, update that widened argument
     var adapted = false
     call.clo._1.args.zip(call.ctx.args).foreach { case (par,arg) =>
       val widened = adaptedArgs.getOrElse(par,Set())
       if(widened.exists(lattice.subsumes(arg,_))) {
-        widenArg(par,arg)
+        widenArg(call.clo._1, par, arg)
         adapted = true
       }
     }
