@@ -77,6 +77,7 @@ abstract class ModularSchemeLatticeGenerator[
             iniShrinked <- Shrink.shrink(ini)
             elsShrinked <- Shrink.shrinkContainer[Set,(I,L)].shrink(els.toSet)
         } yield modularLattice.Vec(siz,elsShrinked.toMap,iniShrinked)
+        // TODO: Shrink other values (useful for e.g. concrete lattice)
         case _ => Stream.empty
     }
     implicit val shrinkBinding: Shrink[(I,L)] = Shrink[(I,L)] { case (idx,vlu) => 
