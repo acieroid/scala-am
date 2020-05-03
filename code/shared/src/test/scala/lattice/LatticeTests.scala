@@ -12,6 +12,9 @@ import scalaam.lattice._
 /** TODO[medium] tests for scheme lattice */
 
 abstract class LatticeSpecification extends AnyPropSpec with Checkers {
+  // by default, check each property for at least 100 instances
+  implicit override val generatorDrivenConfig = 
+    PropertyCheckConfiguration(minSuccessful = 100)
   def checkAll(props: Properties): Unit = {
     for ((name, prop) <- props.properties) {
       property(name) { check(prop) }
@@ -28,6 +31,7 @@ abstract class LatticeTest[L : Lattice](gen: LatticeGenerator[L]) extends Lattic
   val laws: Properties = {
     newProperties("Lattice") { p =>
       implicit val arb = gen.anyArb
+      implicit val shr = gen.shrink
       val lat: Lattice[L] = implicitly
       import lat._
 

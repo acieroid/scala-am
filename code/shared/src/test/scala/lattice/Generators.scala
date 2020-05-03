@@ -1,6 +1,6 @@
 package scalaam.test.lattice
 
-import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.{Arbitrary, Gen, Shrink}
 
 import scalaam.core.Lattice
 import scalaam.lattice._
@@ -9,6 +9,7 @@ trait LatticeGenerator[L] {
   def any: Gen[L]
   def le(l: L): Gen[L]
   implicit val anyArb: Arbitrary[L] = Arbitrary(any)
+  implicit val shrink: Shrink[L] = Shrink { v => Stream.empty }
 }
 
 object Generators {
