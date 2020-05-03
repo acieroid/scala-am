@@ -13,7 +13,7 @@ import scalaam.lattice._
 
 abstract class LatticeSpecification extends AnyPropSpec with Checkers {
   // by default, check each property for at least 100 instances
-  implicit override val generatorDrivenConfig = 
+  implicit override val generatorDrivenConfig: PropertyCheckConfiguration = 
     PropertyCheckConfiguration(minSuccessful = 100)
   def checkAll(props: Properties): Unit = {
     for ((name, prop) <- props.properties) {
