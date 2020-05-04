@@ -4,7 +4,7 @@ import org.scalatest.propspec._
 import org.scalatestplus.scalacheck.Checkers
 
 import org.scalacheck.{Prop, Properties}
-import Prop.forAll
+import Prop.{forAll, propBoolean, all}
 
 import scalaam.core.Lattice
 import scalaam.lattice._
@@ -40,15 +40,29 @@ abstract class LatticeTest[L : Lattice](gen: LatticeGenerator[L]) extends Lattic
       /** Bottom is the lower bound of all elements in the lattice */
       p.property("∀ a: ⊥ ⊑ a") = forAll((a: L) => subsumes(a, bottom))
       /** The join operation is commutative */
-      p.property("∀ a, b: a ⊔ b = b ⊔ a") = forAll((a: L, b: L) => join(a, b) == join(b, a))
+      p.property("∀ a, b: a ⊔ b = b ⊔ a") = forAll { (a: L, b: L) => 
+        val ab = join(a,b)
+        val ba = join(b,a)
+        s"a ⊔ b = $ab" |: s"b ⊔ a = $ba" |: 
+          ab == ba
+      }
       /** The join operation is associative */
-      p.property("∀ a, b, c: (a ⊔ b) ⊔ c = a ⊔ (b ⊔ c)") = forAll((a: L, b: L, c: L) => join(join(a, b), c) == join(a, join(b, c)))
+      p.property("∀ a, b, c: (a ⊔ b) ⊔ c = a ⊔ (b ⊔ c)") = forAll { (a: L, b: L, c: L) => 
+        val ab = join(a, b)
+        val bc = join(b, c)
+        val left = join(ab, c)
+        val right = join(a, bc)
+        s"a ⊔ b = $ab" |: s"b ⊔ c = $bc" |: s"(a ⊔ b) ⊔ c = $left" |: s"a (b ⊔ c) = $right" |: 
+          left == right
+      }
       /** The join operation is idempotent */
       p.property("∀ a: a ⊔ a = a") = forAll((a: L) => join(a, a) == a)
       /** The join operation is compatible with subsumption */
       p.property("∀ a, b: a ⊑ b ⇒ a ⊔ b = b") = forAll { (b: L) =>
         forAll(gen.le(b)) { (a: L) =>
-          conditional(subsumes(b, a), join(a, b) == b)
+          val ab = join(a,b)
+          s"a ⊔ b = $ab" |: 
+            subsumes(b, a) ==> (ab == b)
         }
       }
       p
