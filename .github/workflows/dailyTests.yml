@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test_class: [FullBigStepSchemeModFSoundnessTests, FullSmallStepSchemeModFSoundnessTests]
+        test_class: [BigStepSchemeModFSoundnessTests, SmallStepSchemeModFSoundnessTests]
     steps:
       - uses: actions/checkout@v2
       - uses: lokkju/github-action-sbt@v0.2.2

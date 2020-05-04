@@ -10,7 +10,7 @@ on:
 
 jobs:
   # The compile job fetches the code and attempts to compile it.
-  compile:
+  build:
     name: Compile Scala-AM
     runs-on: ubuntu-latest
     steps:
@@ -20,87 +20,7 @@ jobs:
       uses: lokkju/github-action-sbt@v0.2.2
       with:
         commands: compile
-  # The test-lattice job executes the lattice tests.
-  test-lattice:
-    name: Execute lattice tests
-    runs-on: ubuntu-latest
-    needs: compile
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-      - name: Run the lattice tests
-        uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: scalaam/testOnly scalaam.test.lattice.* -- -u testOutput -o
-      - name: Generate GitHub annotations
-        uses: noahvanes/junit-report-annotations-action@master
-        if: always()
-        with:
-          access-token: ${{ secrets.GITHUB_TOKEN }}
-          path: testOutput/*.xml
-          job-name: Execute lattice tests
-          testSrcPath: code/shared/src/test/scala/modular/scheme/LatticeTests.scala
-  # The test-R5RS job executes the R5RS tests.
-  test-R5RS:
-    name: Execute primitive tests
-    runs-on: ubuntu-latest
-    needs: compile
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-      - name: Run the primitive tests
-        uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: scalaam/testOnly scalaam.test.language.scheme.* -- -u testOutput -o
-      - name: Generate GitHub annotations
-        uses: noahvanes/junit-report-annotations-action@master
-        if: always()
-        with:
-          access-token: ${{ secrets.GITHUB_TOKEN }}
-          path: testOutput/*.xml
-          job-name: Execute primitive tests
-          testSrcPath: code/shared/src/test/scala/language/scheme/SchemeR5RSTests.scala
-  # The test-parser job executes the parser tests.
-  test-parser:
-    name: Execute parser tests
-    runs-on: ubuntu-latest
-    needs: compile
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-      - name: Run the parser tests
-        uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: scalaam/testOnly scalaam.test.parser.* -- -u testOutput -o
-      - name: Generate GitHub annotations
-        uses: noahvanes/junit-report-annotations-action@master
-        if: always()
-        with:
-          access-token: ${{ secrets.GITHUB_TOKEN }}
-          path: testOutput/*.xml
-          job-name: Execute parser tests
-          testSrcPath: code/shared/src/test/scala/language/scheme/ParserTests.scala
-  # The test-soundness job executes the soundness tests.
-  test-soundness:
-    name: Execute soundness tests (using ${{ matrix.test_class }})
-    runs-on: ubuntu-latest
-    needs: compile
-    strategy:
-      fail-fast: false
-      matrix:
-        test_class: [FastBigStepSchemeModFSoundnessTests, FastSmallStepSchemeModFSoundnessTests, FastSimpleAdaptiveSchemeModFSoundnessTests]
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-      - name: Run the soundness tests
-        uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: scalaam/testOnly scalaam.test.soundness.${{ matrix.test_class }} -- -u testOutput -o
-      - name: Generate GitHub annotations
-        uses: noahvanes/junit-report-annotations-action@master
-        if: always()
-        with:
-          access-token: ${{ secrets.GITHUB_TOKEN }}
-          path: testOutput/*.xml
-          job-name: Execute soundness tests (using ${{ matrix.test_class }})
-          testSrcPath: code/shared/src/test/scala/modular/scheme/SoundnessTests.scala
+    - name: Run the tests
+      uses: lokkju/github-action-sbt@v0.2.2
+      with:
+        commands: scalaam/testOnly -- -l SlowTest
