@@ -11,16 +11,16 @@ jobs:
   include:
     - stage: test
       name: "Parser Tests"
-      script: sbt "scalaam/testOnly scalaam.test.parser.*"
+      script: sbt "scalaam/testOnly -- -n ParserTest"
     - stage: test
       name: "Lattice Tests"
-      script: sbt "scalaam/testOnly scalaam.test.lattice.*"
+      script: sbt "scalaam/testOnly -- -n LatticeTest"
     - stage: test
       name: "R5RS Correctness Tests"
-      script: sbt "scalaam/testOnly scalaam.test.language.scheme.*"
+      script: sbt "scalaam/testOnly -- -n PrimitiveTest"
     - stage: test
       name: "ModF Soundness Tests"
-      script: travis_wait 30 sbt "scalaam/testOnly scalaam.test.soundness.Fast*"
+      script: travis_wait 30 sbt "scalaam/testOnly -- -n SoundnessTest -l SlowTest"
 
 branches:
   only:
