@@ -1,13 +1,15 @@
 package scalaam.test.parser
 
+import scalaam.test.tag._
+
 import scalaam.core._
 import scalaam.util._
 import scalaam.test._
 import scalaam.language.scheme._
 
-trait SchemeParserTests extends SchemeBenchmarkTests {
+trait SchemeParserTestsSpec extends SchemeBenchmarkTests {
   def onBenchmark(benchmark: Benchmark) =
-    property(s"SchemeParser can correctly parse $benchmark") {
+    property(s"SchemeParser can correctly parse $benchmark", ParserTest) {
       val content = Reader.loadFile(benchmark)
       val parsed = SchemeParser.parse(content)
       // Check that the parsing was succesful
@@ -21,6 +23,4 @@ trait SchemeParserTests extends SchemeBenchmarkTests {
     }
 }
 
-// class SimpleSchemeParserTests extends SchemeParserTests with SimpleBenchmarks
-
-class ExtendedSchemeParserTests extends SchemeParserTests with AllBenchmarks
+class SchemeParserTests extends SchemeParserTestsSpec with AllBenchmarks

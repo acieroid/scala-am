@@ -2,11 +2,13 @@ package scalaam.test.soundness
 
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
+import org.scalatest.Tag
 
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
+import scalaam.test.tag._
 import scalaam.core._
 import scalaam.core.Position._
 import scalaam.util._
@@ -106,8 +108,18 @@ s"""Intermediate result at $idn is unsound:
     }
   }
 
+  // indicate if a benchmark is slow or not
+  def isSlow(b: Benchmark) = false 
+
+  private def testTags(b: Benchmark): Seq[Tag] = 
+    if (isSlow(b)) {
+      Seq(SoundnessTest, SlowTest)
+    } else {
+      Seq(SoundnessTest)
+    }
+
   def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name is sound.") {
+    property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
       val program = SchemeParser.parse(content)
@@ -166,22 +178,18 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   }
 }
 
-trait FastSchemeModFSoundnessTests extends SchemeModFSoundnessTests with SimpleBenchmarks
-trait FullSchemeModFSoundnessTests extends SchemeModFSoundnessTests with AllBenchmarks
 
 // concrete test suites to run ...
-// ... for big-step semantics
 
-class FastBigStepSchemeModFSoundnessTests extends FastSchemeModFSoundnessTests with BigStepSchemeModF
-class FullBigStepSchemeModFSoundnessTests extends FullSchemeModFSoundnessTests with BigStepSchemeModF
-
-class FastBigStepSchemeModFPrimCSSensitivitySoundnessTests extends FastSchemeModFSoundnessTests with BigStepSchemeModFPrimCSSensitivity
-class FullBigStepSchemeModFPrimCSSensitivitySoundnessTests extends FullSchemeModFSoundnessTests with BigStepSchemeModFPrimCSSensitivity
-
-// ... for small-step semantics
-
-class FastSmallStepSchemeModFSoundnessTests extends FastSchemeModFSoundnessTests with SmallStepSchemeModF
-class FullSmallStepSchemeModFSoundnessTests extends FullSchemeModFSoundnessTests with SmallStepSchemeModF
-
-class FastSimpleAdaptiveSchemeModFSoundnessTests extends FastSchemeModFSoundnessTests with SimpleAdaptiveSchemeModF
-class FullSimpleAdaptiveSchemeModFSoundnessTests extends FullSchemeModFSoundnessTests with SimpleAdaptiveSchemeModF
+class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllBenchmarks {
+  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+}
+class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModFPrimCSSensitivity with AllBenchmarks {
+  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+}
+class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllBenchmarks {
+  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+}
+class SimpleAdaptiveSchemeModFSoundnessTests extends SimpleAdaptiveSchemeModF with AllBenchmarks {
+  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+}

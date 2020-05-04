@@ -2,6 +2,7 @@ package scalaam.test.language.scheme
 
 import org.scalatest.propspec.AnyPropSpec
 
+import scalaam.test.tag._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
 import scalaam.util.Timeout
@@ -34,7 +35,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
     assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result.")
   }
 
-  SchemeR5RSBenchmarks.bench.foreach { case (e, a) => property (s"Primitive in $e is correct.") { testExpr(e, a) } }
+  SchemeR5RSBenchmarks.bench.foreach { case (e, a) => property (s"Primitive in $e is correct.", PrimitiveTest) { testExpr(e, a) } }
 }
 
 

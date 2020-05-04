@@ -2,10 +2,10 @@ package scalaam.test.lattice
 
 import org.scalatest.propspec._
 import org.scalatestplus.scalacheck.Checkers
-
 import org.scalacheck.{Prop, Properties}
-import Prop.{forAll, propBoolean, all}
+import Prop.{forAll, propBoolean}
 
+import scalaam.test.tag._
 import scalaam.core.Lattice
 import scalaam.lattice._
 
@@ -17,7 +17,7 @@ abstract class LatticeSpecification extends AnyPropSpec with Checkers {
     PropertyCheckConfiguration(minSuccessful = 100)
   def checkAll(props: Properties): Unit = {
     for ((name, prop) <- props.properties) {
-      property(name) { check(prop) }
+      property(name, LatticeTest) { check(prop) }
     }
   }
   def newProperties(name: String)(f: Properties => Properties): Properties = {
