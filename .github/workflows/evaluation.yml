@@ -11,6 +11,7 @@ jobs:
   compile:
     name: Evaluate precision
     runs-on: ubuntu-latest
+    timeout-minutes: 480 # 8 hours
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
