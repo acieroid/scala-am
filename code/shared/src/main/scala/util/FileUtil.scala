@@ -1,4 +1,4 @@
-package scalaam.io
+package scalaam.util
 
 import java.io.{BufferedWriter, FileWriter}
 import java.text.SimpleDateFormat

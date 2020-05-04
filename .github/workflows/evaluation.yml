@@ -1,0 +1,26 @@
+name: Daily Scala-AM evaluation
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  schedule:
+    - cron: '00 23 * * *' # Executes every night at 23:00.
+
+jobs:
+  # The compile job fetches the code and attempts to compile it.
+  compile:
+    name: Evaluate precision
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - name: Run precision benchmarks
+        uses: lokkju/github-action-sbt@v0.2.2
+        with:
+          commands: scalaam/runMain scalaam.cli.benchmarks.precision.DailyPrecisionBenchmarks
+      - name: Upload the benchmark results
+        uses: actions/upload-artifact@v2
+        with:
+          name: Precision benchmarks results
+          path: benchOutput/daily-precision-benchmarks.csv
+  # TODO: add performance benchmarks as a second job here

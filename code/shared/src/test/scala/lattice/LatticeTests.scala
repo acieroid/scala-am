@@ -1,5 +1,8 @@
 package scalaam.test.lattice
 
+import org.scalatest.propspec._
+import org.scalatestplus.scalacheck.Checkers
+
 import org.scalacheck.{Prop, Properties}
 import Prop.forAll
 
@@ -8,19 +11,19 @@ import scalaam.lattice._
 
 /** TODO[medium] tests for scheme lattice */
 
-abstract class LatticeSpecification extends Properties("") {
-  /** Taken from Scalaz's SpecLite class */
-  override val name = this.getClass.getName.stripSuffix("$")
+abstract class LatticeSpecification extends AnyPropSpec with Checkers {
+  // by default, check each property for at least 100 instances
+  implicit override val generatorDrivenConfig: PropertyCheckConfiguration = 
+    PropertyCheckConfiguration(minSuccessful = 100)
   def checkAll(props: Properties): Unit = {
     for ((name, prop) <- props.properties) {
-      property(name) = prop
+      property(name) { check(prop) }
     }
   }
   def newProperties(name: String)(f: Properties => Properties): Properties = {
     val p = new Properties(name)
     f(p)
   }
-
   def conditional(p: Boolean, q: => Boolean): Boolean = !p || q
 }
 
@@ -28,6 +31,7 @@ abstract class LatticeTest[L : Lattice](gen: LatticeGenerator[L]) extends Lattic
   val laws: Properties = {
     newProperties("Lattice") { p =>
       implicit val arb = gen.anyArb
+      implicit val shr = gen.shrink
       val lat: Lattice[L] = implicitly
       import lat._
 

@@ -1,14 +1,11 @@
 package scalaam.cli.benchmarks.precision
 
 import scalaam.cli.benchmarks._
-import scalaam.io.Reader
-
 import scalaam.lattice._
 import scalaam.language.scheme._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme.primitives.SchemePrelude
-
 import scala.concurrent.duration._
 import scalaam.util._
 

@@ -1,6 +1,7 @@
 package scalaam.language.scheme
 
 import scalaam.core._
+import scalaam.util._
 import scalaam.util.Timeout
 import scalaam.language.sexp._
 
@@ -1253,7 +1254,6 @@ object SchemeInterpreter {
 
   import scala.concurrent.duration._
   import scalaam.language.scheme.primitives._
-  import scalaam.io._
   val timeout = Duration(30, SECONDS)
   def main(args: Array[String]): Unit =
     if (args.size == 1) {

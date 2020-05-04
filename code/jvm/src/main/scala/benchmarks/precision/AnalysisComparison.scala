@@ -2,7 +2,6 @@ package scalaam.cli.benchmarks.precision
 
 import scalaam.cli.benchmarks._
 import scalaam.util._
-import scalaam.io.Reader
 import scalaam.language.scheme._
 
 import scala.concurrent.duration._
@@ -23,8 +22,8 @@ abstract class AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis
     def otherAnalyses(): List[(SchemeExp => Analysis, String)]
 
-    // and can, optionally, be configured in its timeouts (default: 2min.)
-    def analysisTimeout() = Timeout.start(Duration(15, MINUTES)) //timeout for (non-base) analyses
+    // and can, optionally, be configured in its timeouts (default: 10min.)
+    def analysisTimeout() = Timeout.start(Duration(10, MINUTES)) //timeout for (non-base) analyses
     def concreteTimeout() = Timeout.none                         //timeout for concrete interpreter
 
     def concreteRuns() = 20

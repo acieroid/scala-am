@@ -9,7 +9,7 @@ trait AdaptiveArgumentSensitivityPolicy1 extends AdaptiveArgumentSensitivity {
   override def onNewComponent(cmp: Component, call: Call)= {
     super.onNewComponent(cmp, call)
     // if there are too many components => do something about it!
-    val cmps = cmpsPerFn(call.body)
+    val cmps = cmpsPerFn(call.clo._1)
     if (limit < cmps.size) {
       joinComponents(cmps)
     }

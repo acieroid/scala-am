@@ -1,6 +1,6 @@
 package scalaam.test.lattice
 
-import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.{Arbitrary, Gen, Shrink}
 
 import scalaam.core.Lattice
 import scalaam.lattice._
@@ -9,6 +9,7 @@ trait LatticeGenerator[L] {
   def any: Gen[L]
   def le(l: L): Gen[L]
   implicit val anyArb: Arbitrary[L] = Arbitrary(any)
+  implicit val shrink: Shrink[L] = Shrink { v => Stream.empty }
 }
 
 object Generators {
@@ -47,7 +48,10 @@ case class SetGen[A](g: Gen[A]) {
   implicit val toTraversable = (s: Set[A]) => new Traversable[A] {
     def foreach[U](f: A => U): Unit = s.foreach({ x => f(x) })
   }*/
-  val gen: Gen[Set[A]] = Gen.buildableOfN[Set[A], A](10, g)
+  val gen: Gen[Set[A]] = for {
+    n <- Gen.choose(0,10)
+    s <- Gen.buildableOfN[Set[A], A](n, g)
+  } yield s
   def genSubset(set: Set[A]): Gen[Set[A]] = {
     val list = set.toList
     for { n <- Gen.choose(0, set.size) } yield scala.util.Random.shuffle(list).take(n).toSet
@@ -62,6 +66,11 @@ class ConcreteGenerator[T](g: Gen[T])(implicit lat: Lattice[Concrete.L[T]]) exte
   def le(l: Concrete.L[T]) = l match {
     case Concrete.Top => any
     case Concrete.Values(content) => isetgen.genSubset(content).map(x => Concrete.Values(x))
+  }
+  override val shrink = Shrink { 
+    case Concrete.Top => Stream.empty
+    case Concrete.Values(vs) =>
+      Shrink.shrinkContainer[Set,T].shrink(vs).map(Concrete.Values(_))
   }
 }
 

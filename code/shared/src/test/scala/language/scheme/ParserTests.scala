@@ -1,7 +1,7 @@
 package scalaam.test.parser
 
 import scalaam.core._
-import scalaam.io.Reader
+import scalaam.util._
 import scalaam.test._
 import scalaam.language.scheme._
 

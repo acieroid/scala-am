@@ -9,7 +9,6 @@ import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.test._
 import scalaam.core._
 import scalaam.core.Position._
-import scalaam.io.Reader
 import scalaam.util._
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -56,9 +55,9 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
         System.gc()
         cancel(s"Analysis of $benchmark encountered an error: $e")
     }
-  private def checkSubsumption(analysis: Analysis)(v: Set[Value], abs: analysis.Value): Boolean = {
+  private def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value) = {
     val lat = analysis.lattice
-    v.forall {
+    v match {
       case Value.Undefined(_)   => true
       case Value.Unbound(_)     => true
       case Value.Clo(lam, _)    => lat.getClosures(abs).exists(_._1._1.idn == lam.idn)
@@ -78,8 +77,14 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
 
   private def compareResult(a: Analysis, concRes: Value) = {
     val aRes = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom)
-    assert(checkSubsumption(a)(Set(concRes), aRes),
-      s"program result is not sound: $aRes does not subsume $concRes.")
+    if (!checkSubsumption(a)(concRes, aRes)) {
+      val failureMsg = 
+s"""Program result is unsound:
+  - concrete value: $concRes
+  - abstract value: $aRes
+"""
+      fail(failureMsg)
+    }
   }
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
@@ -88,8 +93,16 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
         case _                     => Identity.none
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
-      assert(checkSubsumption(a)(values, absID(idn)),
-            s"intermediate result at $idn is not sound: ${absID(idn)} does not subsume $values.")
+      values.foreach { value => 
+        if (!checkSubsumption(a)(value, absID(idn))) {
+          val failureMsg = 
+s"""Intermediate result at $idn is unsound:
+  - concrete value: $value
+  - abstract value: ${absID(idn)}
+"""
+          fail(failureMsg)
+        }
+      }
     }
   }
 
@@ -144,7 +157,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def name = "simple adaptive argument sensitivity (limit = 5)"
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
-                                        with AdaptiveArgumentSensitivityPolicy1
+                                        with AdaptiveArgumentSensitivityPolicy3
                                         with AdaptiveSchemeModFSemantics
                                         with ConstantPropagationDomain {
     val limit = 5

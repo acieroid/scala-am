@@ -2,7 +2,6 @@ package scalaam.cli.benchmarks.precision
 
 import scalaam.util._
 import scalaam.core._
-import scalaam.io.Reader
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
