@@ -17,6 +17,9 @@ trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
     /* binary ops */
     val anyBinaryOp: Gen[SchemeOps.BinaryOperator] = Gen.oneOf(SchemeOps.BinaryOperator.values)
     implicit val arbBinop: Arbitrary[SchemeOps.BinaryOperator] = Arbitrary(anyBinaryOp)
+    /* generators for specific values */
+    def anyVec: Gen[L]
+    def anyInt: Gen[L]
 }
 
 
@@ -112,6 +115,10 @@ abstract class ModularSchemeLatticeGenerator[
                 subsumed <- Gen.sequence[Set[V],V](subset.map(SchemeVLatticeGenerator.le))
             } yield buildL(subsumed)
         }
+        /* Generating specific values */
+        def anyVec = SchemeVLatticeGenerator.anyVecV.map(modularLattice.Element)
+        def anyInt = SchemeVLatticeGenerator.anyIntV.map(modularLattice.Element)
+        /* Shrinking values */
         override val shrink = shrinkL 
     }
 

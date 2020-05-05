@@ -46,6 +46,19 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
             convert(binaryOp(binop)(bottom,a)) == bottom &&
             convert(binaryOp(binop)(a,bottom)) == bottom
         )
+        /* Properties about vectors */
+        p.property("∀ vct, idx1, val1, idx2, val2: vectorSet(vectorSet(vct,idx1,val1),idx2,val2) = vectorSet(vectorSet(vct,idx2,val2),idx1,val1)") =
+            forAll(gen.anyVec, gen.anyInt, gen.any, gen.anyInt, gen.any) { (vct: L, idx1: L, val1: L, idx2: L, val2: L) => 
+                val vct1 = convert(vectorSet(vct,idx1,val1))
+                val vct2 = convert(vectorSet(vct,idx2,val2))
+                val vct12 = convert(vectorSet(vct1,idx2,val2))
+                val vct21 = convert(vectorSet(vct2,idx1,val1))
+                s"vectorSet(vct,$idx1,$val1) = $vct1" |: 
+                s"vectorSet(vct,$idx2,$val2) = $vct2" |:
+                s"vectorSet(vectorSet(vct,$idx1,$val1),$idx2,$val2) = $vct12" |:
+                s"vectorSet(vectorSet(vct,$idx2,$val2),$idx1,$val1) = $vct21" |:
+                    vct12 == vct21
+            }
         // return the properties
         p
     }
