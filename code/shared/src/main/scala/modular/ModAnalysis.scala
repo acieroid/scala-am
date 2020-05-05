@@ -41,8 +41,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // technically, it is also possible to trigger a dependency in the inter-analysis itself
   protected def triggerDependency(dep: Dependency): Unit = addToWorkList(deps(dep))
 
-  private def addToWorkList(cmps: Iterable[Component]) = {
-    val sorted = cmps.toList.sortBy(_.toString)
+  implicit def cmpOrdering: Ordering[Component]
+  protected def addToWorkList(cmps: Iterable[Component]) = {
+    val sorted = cmps.toList.sorted
     workList = workList.add(sorted)
   }
 

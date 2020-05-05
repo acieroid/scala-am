@@ -66,7 +66,7 @@ class ModularSchemeLattice[
       case None => s"anonymous@${lambda.idn}"
       case Some(name) => name
     }
-    override def toString: String = s"#<closure $printName>"
+    override def toString: String = s"#<closure $printName ($env)>"
   }
   case class Cons(car: A, cdr: A) extends Value {
     override def toString: String = s"($car . $cdr)"

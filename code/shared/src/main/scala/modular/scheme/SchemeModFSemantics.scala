@@ -91,6 +91,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
   }
 
+  implicit def contentOrdering: Ordering[Option[lattice.Closure]] = new Ordering.OptionOrdering[lattice.Closure] {
+    def optionOrdering = Ordering[(Identity,Component)].on(clo => (clo._1.idn,clo._2))
+  }
+
   type ComponentContent = Option[lattice.Closure]
   def content(cmp: Component) = view(cmp) match {
     case _ : MainComponent => None

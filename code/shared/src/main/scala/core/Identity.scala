@@ -24,6 +24,16 @@ object Identity {
 
   type IDN = Long // Type name is IDN to avoid confusion with identifiers.
 
+  implicit val identityOrdering = new Ordering[Identity] {
+    def compare(x: Identity, y: Identity) = (x,y) match {
+      case (NoCodeIdentity, NoCodeIdentity) => 0
+      case (NoCodeIdentity, _) => -1
+      case (_, NoCodeIdentity) => 1
+      case (s1: SimpleIdentity, s2: SimpleIdentity) =>  
+        Ordering.by[SimpleIdentity,Long](_.idn).compare(s1,s2)
+    }
+  }
+
   /** Contains positional information for identifiers. ALL ACCESSES TO iMap HAVE TO BE SYNCHRONISED ON THE Identity OBJECT. */
   var iMap: Map[IDN, Position] = Map()
 
