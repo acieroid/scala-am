@@ -125,10 +125,6 @@ abstract class ModularSchemeLatticeGenerator[
     object SchemeVLatticeGenerator extends LatticeGenerator[V] {
         // any address
         val anyAddr: Gen[SimpleAddr] = Gen.choose(0,100).map(SimpleAddr(_)) // addresses are faked in 100 different variations
-                private def vectorContent(siz: I, ini: L): Gen[Map[I,L]] = for {
-            maxSize <- Gen.choose(0,5)
-            bindings <- Gen.mapOfN(maxSize, genTuple(intGen.any, SchemeValueLatticeGenerator.any)) 
-        } yield vectorNormalize(bindings, siz, ini)
         // a generator for each type of value
         val anyBotV: Gen[V] = Gen.const(modularLattice.Bot)
         val anyNilV: Gen[V] = Gen.const(modularLattice.Nil)
@@ -151,7 +147,7 @@ abstract class ModularSchemeLatticeGenerator[
             cdrAddr <- anyAddr
         } yield modularLattice.Cons(carAddr,cdrAddr)
         val anyVecV: Gen[V] = for {
-            siz <- intGen.any.suchThat(i => blnLat.isTrue(intLat.lt(intLat.inject(-1),i)))
+            siz <- intGen.any.suchThat(i => blnLat.isTrue(intLat.lt(intLat.inject(-1),i)))//Gen.oneOf(Gen.posNum[Int].map(intLat.inject), Gen.const(intLat.top))
             ini <- SchemeValueLatticeGenerator.any
             con <- vectorContent(siz,ini) 
         } yield modularLattice.Vec(siz,con,ini)
@@ -176,18 +172,18 @@ abstract class ModularSchemeLatticeGenerator[
                 case _ => Gen.const(l)  
             })
         // with the current representation, vectors are tricky to handle
+        private def vectorContent(siz: I, ini: L): Gen[Map[I,L]] = for {
+            maxSize <- Gen.choose(0,5)
+            bindings <- Gen.mapOfN(maxSize, genTuple(intGen.any, SchemeValueLatticeGenerator.any.map(valLat.join(ini,_)))) 
+        } yield vectorNormalize(bindings, siz)
         private def vectorContentLe(bds: Map[I,L], siz: I, i1: L, i2: L): Gen[Map[I,L]] = for {
             removed <- Gen.someOf(bds)
-            subsumed = removed.map(b => Gen.choose(1,3).flatMap(Gen.listOfN(_, genTuple(intGen.le(b._1), SchemeValueLatticeGenerator.le(b._2)))))
+            subsumed = removed.map(b => Gen.choose(1,3).flatMap(Gen.listOfN(_, genTuple(intGen.le(b._1), SchemeValueLatticeGenerator.le(b._2).map(valLat.join(i2,_))))))
             values <- Gen.sequence[Set[List[(I,L)]],List[(I,L)]](subsumed).map(_.flatten)
-            augmented <- Gen.choose(0,5).flatMap(Gen.mapOfN(_, genTuple(intGen.any, SchemeValueLatticeGenerator.le(i1))))
-        } yield vectorNormalize((values ++ augmented).toMap,siz,i2)
-        private def vectorNormalize(bds: Map[I,L], siz: I, ini: L): Map[I,L] = {
-            val bds1 = bds.filter { case (idx,vlu) =>
-                blnLat.isTrue(intLat.lt(idx,siz)) && 
-                blnLat.isTrue(intLat.lt(intLat.inject(-1),idx)) &&
-                !valLat.subsumes(ini,vlu)
-            }
+            augmented <- Gen.choose(0,5).flatMap(Gen.mapOfN(_, genTuple(intGen.any, SchemeValueLatticeGenerator.le(i1).map(valLat.join(i2,_)))))
+        } yield vectorNormalize((values ++ augmented).toMap,siz)
+        private def vectorNormalize(bds: Map[I,L], siz: I): Map[I,L] = {
+            val bds1 = bds.filter { case (idx,_) => blnLat.isTrue(intLat.lt(idx,siz)) }
             val idxs = bds1.map(_._1)
             bds1.filter(bnd => !idxs.exists(idx => idx != bnd._1 && intLat.subsumes(idx,bnd._1)))
         }
