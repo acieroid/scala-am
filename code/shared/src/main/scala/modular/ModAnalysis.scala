@@ -43,24 +43,24 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
   private def addToWorkList(cmps: Iterable[Component]) = {
     val sorted = cmps.toList.sortBy(_.toString)
-    work = work.add(sorted)
+    workList = workList.add(sorted)
   }
 
   // keep track of all components in the analysis
   @mutable var allComponents: Set[Component]                  = Set(initialComponent)
   // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
   @mutable var dependencies:  Map[Component, Set[Component]]  = Map().withDefaultValue(Set.empty)
-  // inter-analysis using a simple worklist algorithm
-  @mutable var work:          SetList[Component]              = SetList(initialComponent)
+  // inter-analysis using a simple workListlist algorithm
+  @mutable var workList:      WorkList[Component]             = WorkList(initialComponent)
   @mutable var visited:       Set[Component]                  = Set()
   @mutable var intra:         IntraAnalysis                   = null
   @mutable var newComponents: Set[Component]                  = Set()
   @mutable var componentsToUpdate: Set[Component]             = Set()
-  def finished(): Boolean = work.isEmpty
+  def finished(): Boolean = workList.isEmpty
   def step(): Unit = {
     // take the next component
-    val current = work.head
-    work = work.tail
+    val current = workList.head
+    workList = workList.tail
     // do the intra-analysis
     intra = intraAnalysis(current)
     intra.analyze()

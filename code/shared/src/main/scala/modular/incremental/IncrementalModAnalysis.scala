@@ -60,7 +60,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
   def updateAnalysis(newProgram: Expr, timeout: Timeout.T = Timeout.none): Unit = {
     // Assume the previous analysis has been finished.
     // This assumption is not really necessary. Hence, in theory, the program could be updated and reanalysed before a prior analysis has finished.
-    if (!work.isEmpty) throw new Exception("Previous analysis has not terminated yet.")
+    if (!workList.isEmpty) throw new Exception("Previous analysis has not terminated yet.")
 
     // Update the content of the 'program' variable.
     setProgram(newProgram)
@@ -81,7 +81,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
     // Look which components need reanalysis.
     val toUpdate = computeWork(modifiedModules)
     // Perform the actual reanalysis. We can make use of the visited set and all data from the previous analysis that are still present.
-    work = work.add(toUpdate)
+    workList = workList.add(toUpdate)
     analyze(timeout)
   }
 

@@ -54,7 +54,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
 
   // ... which in turn calls `updateAnalysisData` to update the component pointers
   def updateAnalysisData(update: Component => Component) = {
-    work            = work.map(update)
+    workList        = workList.map(update)
     visited         = updateSet(update)(visited)
     newComponents   = updateSet(update)(newComponents)
     allComponents   = updateSet(update)(allComponents)
