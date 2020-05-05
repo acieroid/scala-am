@@ -47,7 +47,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case valueLattice.Pointer(addr)     => Set(extractComponentRefs(addr))
     case valueLattice.Clo(_,cmp,_)      => Set(cmp)
     case valueLattice.Cons(car,cdr)     => Set(extractComponentRefs(car),extractComponentRefs(cdr))
-    case valueLattice.Vec(_,els,ini)    => extractComponentRefs(ini) ++ els.flatMap(p => extractComponentRefs(p._2))
+    case valueLattice.Vec(_,els)        => els.flatMap(p => extractComponentRefs(p._2)).toSet
     case _                              => Set.empty
   }
   private def extractComponentRefs(addr: Addr): Component = addr match {

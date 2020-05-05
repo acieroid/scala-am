@@ -71,7 +71,7 @@ abstract class PrecisionBenchmarks[
         case analysis.valueLattice.Clo(l,_,_)   => baseDomain.Clo(LambdaIdnEq(l),(),None)
         case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertAddr(analysis)(a), convertAddr(analysis)(d))
         case analysis.valueLattice.Pointer(a)   => baseDomain.Pointer(convertAddr(analysis)(a))
-        case analysis.valueLattice.Vec(s,e,i)   => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap,convertValue(analysis)(i))
+        case analysis.valueLattice.Vec(s,e)   => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
     }
     private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
         case analysis.valueLattice.Element(v)   => baseDomain.Element(convertV(analysis)(v))
@@ -106,19 +106,14 @@ abstract class PrecisionBenchmarks[
                 case baseDomain.Element(baseDomain.Int(num)) => num
             }
             val cSiz = convertNumber(siz)
-            val cIni = convertConcreteValue(ini)
             val cEls = els.foldLeft(Map[Num,BaseValue]()) { case (acc,(idx,vlu)) =>
                 val cIdx = convertNumber(idx)
                 val cVlu = convertConcreteValue(vlu)
-                if (baseLattice.subsumes(cIni,cVlu)) {
-                    acc
-                } else {
-                    val prevVlu = acc.getOrElse(cIdx, baseLattice.bottom)
-                    val newVlu = baseLattice.join(cVlu, prevVlu)
-                    acc + (cIdx -> newVlu)
-                }
+                val prevVlu = acc.getOrElse(cIdx, baseLattice.bottom)
+                val newVlu = baseLattice.join(cVlu, prevVlu)
+                acc + (cIdx -> newVlu)
             }
-            baseDomain.Element(baseDomain.Vec(cSiz, cEls, cIni))
+            baseDomain.Element(baseDomain.Vec(cSiz, cEls))
     }
  
     type BaseStore = Map[BaseAddr, BaseValue]

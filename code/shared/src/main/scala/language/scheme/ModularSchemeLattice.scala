@@ -79,14 +79,14 @@ class ModularSchemeLattice[
     override def toString: String = s"#<pointer $a>"
   }
 
-  case class Vec(size: I, elements: Map[I, L], init: L) extends Value {
+  case class Vec(size: I, elements: Map[I, L]) extends Value {
     override def toString: String = {
       val els = elements.toList
         .map({
           case (k, v) => s"$k: $v"
         })
         .mkString(", ")
-      s"Vec(size: $size, elems: {$els}, init: $init)"
+      s"Vec(size: $size, elems: {$els})"
     }
   }
 
@@ -128,9 +128,9 @@ class ModularSchemeLattice[
           case (Real(f1), Real(f2)) => Right(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2)) => Right(Char(CharLattice[C].join(c1, c2)))
           case (Symbol(s1), Symbol(s2)) => Right(Symbol(SymbolLattice[Sym].join(s1,s2)))
-          case (Vec(size1, els1, init1), Vec(size2, els2, init2)) =>
-            // First, joins the size and init
-            val vSizeInitJoined = Vec(IntLattice[I].join(size1, size2), Map.empty, schemeLattice.join(init1, init2))
+          case (Vec(size1, els1), Vec(size2, els2)) =>
+            // First, joins the size
+            val vSizeInitJoined = Vec(IntLattice[I].join(size1, size2), Map.empty)
             // Then, joins elements by adding (with vector-set!) all elements of els1 and then els2 inside the new vector
             val vWithEls1Joined = els1.foldLeft(vSizeInitJoined)({ case (acc, (k, v)) => vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
               case Element(v: Vec) => v // Should really be improved, this is ugly
@@ -156,11 +156,9 @@ class ModularSchemeLattice[
           case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
           case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
           case (Symbol(s1), Symbol(s2)) => SymbolLattice[Sym].subsumes(s1,s2)
-          case (Vec(siz1,els1,ini1), Vec(siz2,els2,ini2)) =>
+          case (Vec(siz1,els1), Vec(siz2,els2)) =>
             IntLattice[I].subsumes(siz1, siz2) &&
-            schemeLattice.subsumes(ini1, ini2) && 
             els2.forall { case (idx2, vlu2) =>
-              schemeLattice.subsumes(ini1, vlu2) ||
               els1.exists { case (idx1, vlu1) => 
                 IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
               }
@@ -314,8 +312,8 @@ class ModularSchemeLattice[
             }
           case VectorLength =>
             x match {
-              case Vec(size, _, _) => MayFail.success(Int(size))
-              case _               => MayFail.failure(OperatorNotApplicable("vector-length", List(x)))
+              case Vec(size, _) => MayFail.success(Int(size))
+              case _            => MayFail.failure(OperatorNotApplicable("vector-length", List(x)))
             }
           case StringLength =>
             x match {
@@ -503,12 +501,12 @@ class ModularSchemeLattice[
     }
     // This implementation is not suited for use in a concrete machine!
     def vectorRef(vector: Value, index: Value): MayFail[L, Error] = (vector, index) match {
-      case (Vec(size, content, init), Int(index)) =>
+      case (Vec(size, content), Int(index)) =>
         val comp = IntLattice[I].lt(index, size)
         val t: L = if (BoolLattice[B].isTrue(comp)) {
           val vals = content.view.filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2))).values
           if (vals.isEmpty) {
-            init
+            schemeLattice.bottom
           } else {
             schemeLattice.join(vals)
           }
@@ -525,7 +523,7 @@ class ModularSchemeLattice[
     // This implementation is not suited for use in a concrete machine!
     def vectorSet(vector: Value, index: Value, newval: L): MayFail[L, Error] =
       (vector, index) match {
-        case (Vec(size, content, init), Int(index)) =>
+        case (Vec(size, content), Int(index)) =>
             val comp = IntLattice[I].lt(index, size)
             val t: L = if (BoolLattice[B].isTrue(comp)) {
               content.find({ case (k, _) => IntLattice[I].subsumes(k, index) }) match {
@@ -535,8 +533,7 @@ class ModularSchemeLattice[
                   Element(
                     Vec(
                       size,
-                      content + (index2 -> schemeLattice.join(content(index2), newval)),
-                      init
+                      content + (index2 -> schemeLattice.join(content(index2), newval))
                     )
                   )
                 case None =>
@@ -546,15 +543,10 @@ class ModularSchemeLattice[
                     // In that case, we join all values and removed the subsumed indices
                     val joinedValues = schemeLattice.join(content.filterKeys(subsumedKeys).values)
                     val contentWithoutSubsumedKeys = subsumedKeys.foldLeft(content)((acc, k) => acc - k)
-                    Element(Vec(size, contentWithoutSubsumedKeys + (index -> schemeLattice.join(joinedValues, newval)), init))
-                  } else if (schemeLattice.subsumes(init, newval)) {
-                    // Case 3: there is nothing in `content` that we can update, but the value we're setting `index` to is subsumed by `init`
-                    // In that case, nothing has to be done
-                    Element(vector)
+                    Element(Vec(size, contentWithoutSubsumedKeys + (index -> schemeLattice.join(joinedValues, newval))))
                   } else {
-                    // Case 4: none of the cases above applies, so we add a new key
-                    Element(Vec(size, content + (index -> schemeLattice.join(newval,init)), init)
-                    )
+                    // Case 3: there is nothing in `content` that we can update, so we add a new key
+                    Element(Vec(size, content + (index -> newval)))
                   }
               }
             } else {
@@ -570,7 +562,11 @@ class ModularSchemeLattice[
       }
 
     def vector(size: Value, init: L): MayFail[Value, Error] = size match {
-      case Int(size) => MayFail.success(Vec(size, Map[I, L](), init))
+      case Int(size) => MayFail.success(if (init == IntLattice[I].bottom) {
+        Vec(size, Map[I, L]())
+      } else {
+        Vec(size, Map[I, L](IntLattice[I].top -> init))
+      })
       case _         => MayFail.failure(TypeError("expected int size when constructing vector", size))
     }
 

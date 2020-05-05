@@ -76,10 +76,9 @@ abstract class ModularSchemeLatticeGenerator[
             Shrink.shrinkContainer[Set,V].shrink(vs).map(buildL)
     }
     implicit val shrinkV: Shrink[V] = Shrink[V] {
-        case modularLattice.Vec(siz,els,ini) => for {
-            iniShrinked <- Shrink.shrink(ini)
+        case modularLattice.Vec(siz,els) => for {
             elsShrinked <- Shrink.shrinkContainer[Set,(I,L)].shrink(els.toSet)
-        } yield modularLattice.Vec(siz,elsShrinked.toMap,iniShrinked)
+        } yield modularLattice.Vec(siz,elsShrinked.toMap)
         // TODO: Shrink other values (useful for e.g. concrete lattice)
         case _ => Stream.empty
     }
@@ -148,9 +147,8 @@ abstract class ModularSchemeLatticeGenerator[
         } yield modularLattice.Cons(carAddr,cdrAddr)
         val anyVecV: Gen[V] = for {
             siz <- intGen.any.suchThat(i => blnLat.isTrue(intLat.lt(intLat.inject(-1),i)))//Gen.oneOf(Gen.posNum[Int].map(intLat.inject), Gen.const(intLat.top))
-            ini <- SchemeValueLatticeGenerator.any
-            con <- vectorContent(siz,ini) 
-        } yield modularLattice.Vec(siz,con,ini)
+            con <- vectorContent(siz) 
+        } yield modularLattice.Vec(siz,con)
         // any value
         def any: Gen[modularLattice.Value] = 
             Gen.oneOf(anyBotV, anyNilV, anyStrV, anyBlnV, anyIntV, anyReaV, anyChrV, 
@@ -164,23 +162,22 @@ abstract class ModularSchemeLatticeGenerator[
                 case modularLattice.Real(r) => reaGen.le(r).map(modularLattice.Real)
                 case modularLattice.Char(c) => chrGen.le(c).map(modularLattice.Char)
                 case modularLattice.Symbol(s) => symGen.le(s).map(modularLattice.Symbol)
-                case modularLattice.Vec(s,c,i) => for {
+                case modularLattice.Vec(s,c) => for {
                     sle <- intGen.le(s).suchThat(i => i == s || i != intLat.bottom)
-                    ile <- SchemeValueLatticeGenerator.le(i)
-                    cle <- vectorContentLe(c,sle,i,ile)
-                } yield modularLattice.Vec(sle,cle,ile)
+                    cle <- vectorContentLe(c,sle)
+                } yield modularLattice.Vec(sle,cle)
                 case _ => Gen.const(l)  
             })
         // with the current representation, vectors are tricky to handle
-        private def vectorContent(siz: I, ini: L): Gen[Map[I,L]] = for {
+        private def vectorContent(siz: I): Gen[Map[I,L]] = for {
             maxSize <- Gen.choose(0,5)
-            bindings <- Gen.mapOfN(maxSize, genTuple(intGen.any, SchemeValueLatticeGenerator.any.map(valLat.join(ini,_)))) 
+            bindings <- Gen.mapOfN(maxSize, genTuple(intGen.any, SchemeValueLatticeGenerator.any)) 
         } yield vectorNormalize(bindings, siz)
-        private def vectorContentLe(bds: Map[I,L], siz: I, i1: L, i2: L): Gen[Map[I,L]] = for {
+        private def vectorContentLe(bds: Map[I,L], siz: I): Gen[Map[I,L]] = for {
             removed <- Gen.someOf(bds)
-            subsumed = removed.map(b => Gen.choose(1,3).flatMap(Gen.listOfN(_, genTuple(intGen.le(b._1), SchemeValueLatticeGenerator.le(b._2).map(valLat.join(i2,_))))))
+            subsumed = removed.map(b => Gen.choose(1,3).flatMap(Gen.listOfN(_, genTuple(intGen.le(b._1), SchemeValueLatticeGenerator.le(b._2)))))
             values <- Gen.sequence[Set[List[(I,L)]],List[(I,L)]](subsumed).map(_.flatten)
-            augmented <- Gen.choose(0,5).flatMap(Gen.mapOfN(_, genTuple(intGen.any, SchemeValueLatticeGenerator.le(i1).map(valLat.join(i2,_)))))
+            augmented <- Gen.choose(0,5).flatMap(Gen.mapOfN(_, genTuple(intGen.any, SchemeValueLatticeGenerator.any)))
         } yield vectorNormalize((values ++ augmented).toMap,siz)
         private def vectorNormalize(bds: Map[I,L], siz: I): Map[I,L] = {
             val bds1 = bds.filter { case (idx,_) => blnLat.isTrue(intLat.lt(idx,siz)) }
