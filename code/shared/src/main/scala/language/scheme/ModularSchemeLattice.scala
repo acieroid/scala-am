@@ -507,7 +507,11 @@ class ModularSchemeLattice[
         val comp = IntLattice[I].lt(index, size)
         val t: L = if (BoolLattice[B].isTrue(comp)) {
           val vals = content.view.filterKeys(index2 => BoolLattice[B].isTrue(IntLattice[I].eql(index, index2))).values
-          vals.foldLeft(init)((acc, v) => schemeLattice.join(acc, v))
+          if (vals.isEmpty) {
+            init
+          } else {
+            schemeLattice.join(vals)
+          }
         } else {
           schemeLattice.bottom
         }
@@ -531,7 +535,7 @@ class ModularSchemeLattice[
                   Element(
                     Vec(
                       size,
-                      content + (index2 -> schemeLattice.join(content.getOrElse(index2, schemeLattice.bottom), newval)),
+                      content + (index2 -> schemeLattice.join(content(index2), newval)),
                       init
                     )
                   )
@@ -540,8 +544,7 @@ class ModularSchemeLattice[
                   if (subsumedKeys.nonEmpty) {
                     // Case 2: this index subsumes other indices
                     // In that case, we join all values and removed the subsumed indices
-                    val joinedValues = subsumedKeys.foldLeft(schemeLattice.bottom)((acc, k) =>
-                      schemeLattice.join(acc, content.getOrElse(k, schemeLattice.bottom)))
+                    val joinedValues = schemeLattice.join(content.filterKeys(subsumedKeys).values)
                     val contentWithoutSubsumedKeys = subsumedKeys.foldLeft(content)((acc, k) => acc - k)
                     Element(Vec(size, contentWithoutSubsumedKeys + (index -> schemeLattice.join(joinedValues, newval)), init))
                   } else if (schemeLattice.subsumes(init, newval)) {
@@ -550,7 +553,7 @@ class ModularSchemeLattice[
                     Element(vector)
                   } else {
                     // Case 4: none of the cases above applies, so we add a new key
-                    Element(Vec(size, content + (index -> newval), init)
+                    Element(Vec(size, content + (index -> schemeLattice.join(newval,init)), init)
                     )
                   }
               }
