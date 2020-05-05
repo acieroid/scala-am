@@ -565,6 +565,9 @@ class ModularSchemeLattice[
       case Int(size) => MayFail.success(if (init == IntLattice[I].bottom) {
         Vec(size, Map[I, L]())
       } else {
+        // Field-sensitive vectors:
+        // Vec(size, Map.from[I, L](IntLattice[I].valuesBetween(IntLattice[I].inject(0), size).map(idx => idx -> init).toList))
+        // Field-insensitive vectors:
         Vec(size, Map[I, L](IntLattice[I].top -> init))
       })
       case _         => MayFail.failure(TypeError("expected int size when constructing vector", size))

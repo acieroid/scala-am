@@ -169,6 +169,12 @@ object ConstantPropagation {
         case (Constant(x), Constant(y)) => BoolLattice[B2].inject(x < y)
         case _                          => BoolLattice[B2].bottom
       }
+      def valuesBetween(n1: I, n2: I): Set[I] = (n1, n2) match {
+        case (Top, _)                   => Set(Top)
+        case (_, Top)                   => Set(Top)
+        case (Constant(x), Constant(y)) => x.to(y).map(i => Constant(i)).toSet
+        case _                          => Set()
+      }
       def toString[S2: StringLattice](n: I): S2 = n match {
         case Top         => StringLattice[S2].top
         case Constant(x) => StringLattice[S2].inject(x.toString)

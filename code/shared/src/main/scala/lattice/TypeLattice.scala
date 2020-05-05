@@ -106,6 +106,7 @@ object Type {
         case (Top, Top) => BoolLattice[B2].top
         case _          => BoolLattice[B2].bottom
       }
+      def valuesBetween(n1: T, n2: T): Set[T] = Set(Top)
       def toString[S2: StringLattice](n: T): S2 = n match {
         case Top    => StringLattice[S2].top
         case Bottom => StringLattice[S2].bottom
