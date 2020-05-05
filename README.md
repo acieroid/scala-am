@@ -45,18 +45,39 @@ Currently, no explicit result is returned by the analysis. Rather, information c
 such as the final store and dependencies between components.
 
 # Running the test suite
-The test suite of Scala-AM can be run using sbt:
-```sbtshell
-scalaam/test
-```
-
-This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a set of
-randomly selected benchmark programs (Scala-AM tests on action). In addition, the full test suite is run over night (Daily Scala-AM tests).
+This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a specific subset of benchmark programs (Scala-AM tests on action). 
+In addition, the full test suite is run over night (Daily Scala-AM tests).
 
 Current status:
 <!-- https://github.com/badges/shields -->
 ![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg) 
 ![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
+
+The full test suite of Scala-AM can easily be run manually using sbt:
+```sbtshell
+scalaam/test
+```
+
+To allow specific tests to be run, tags have been added to the test suite. 
+ * Following tags can be used to select the component of the framework that should (not) be tested: `ParserTest`, `LatticeTest`, `PrimitiveTest` and `SoundnessTest`.
+ * Following tags can be used to select which benchmark programs (not) to run: `SlowTest`.
+
+The `SlowTest` tag currently is only used for some of the soundness tests. When these tests are disabled, only a part of the available benchmark programs
+will be used.
+
+To run tests with a specific tag, the sbt command `scalaam/testOnly` should be used. The `-n` flag indicates test tags that should be
+included from testing, whereas the `-l` flag indicates tags that should be excluded from testing.
+
+For example, to run the parser tests, the following command can be used:
+```sbt
+scalaam/testOnly -- -n ParserTest
+```
+(Note the double -- before any possible flags.)<br>
+To run all soundness tests, but only on a fast subset of benchmark programs, the command
+```sbt
+scalaam/testOnly -- -n SoundnessTest -l SlowTest
+```
+can be executed.
 
 # References and Relevant publications
 The original idea behind Scala-AM comes from the [Abstracting Abstract Machines](http://matt.might.net/papers/vanhorn2010abstract.pdf)
