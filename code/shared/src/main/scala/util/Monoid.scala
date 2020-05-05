@@ -48,6 +48,10 @@ object MonoidInstances {
     def append(x: Set[M], y: => Set[M]): Set[M] = x ++ y
     def zero: Set[M]                            = Set[M]()
   }
+  def setListMonoid[M]: Monoid[SetList[M]] = new Monoid[SetList[M]] {
+    def zero: SetList[M] = SetList[M]()
+    def append(x: SetList[M], y: => SetList[M]): SetList[M] = x.add(y.toList)
+  }
   def cardinalityMonoid: Monoid[Cardinality] = new Monoid[Cardinality] {
     def append(x: Cardinality, y: => Cardinality): Cardinality = x.add(y)
     def zero: Cardinality = Cardinality(0, 0)

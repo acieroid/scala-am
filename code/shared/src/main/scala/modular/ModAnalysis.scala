@@ -6,10 +6,6 @@ import scalaam.util.Annotations._
 
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
 
-  // (inefficient) hack to make the hashcode deterministic
-  lazy val hash = prog.hashCode()
-  override def hashCode(): Int = hash
-
   // parameterized by a 'intra-component' representation
   type Component
   def initialComponent: Component
@@ -43,14 +39,19 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   }
 
   // technically, it is also possible to trigger a dependency in the inter-analysis itself
-  protected def triggerDependency(dep: Dependency): Unit = work ++= deps(dep)
+  protected def triggerDependency(dep: Dependency): Unit = addToWorkList(deps(dep))
+
+  private def addToWorkList(cmps: Iterable[Component]) = {
+    val sorted = cmps.toList.sortBy(_.toString)
+    work = work.add(sorted)
+  }
 
   // keep track of all components in the analysis
   @mutable var allComponents: Set[Component]                  = Set(initialComponent)
   // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
   @mutable var dependencies:  Map[Component, Set[Component]]  = Map().withDefaultValue(Set.empty)
   // inter-analysis using a simple worklist algorithm
-  @mutable var work:          Set[Component]                  = Set(initialComponent)
+  @mutable var work:          SetList[Component]              = SetList(initialComponent)
   @mutable var visited:       Set[Component]                  = Set()
   @mutable var intra:         IntraAnalysis                   = null
   @mutable var newComponents: Set[Component]                  = Set()
@@ -59,7 +60,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   def step(): Unit = {
     // take the next component
     val current = work.head
-    work -= current
+    work = work.tail
     // do the intra-analysis
     intra = intraAnalysis(current)
     intra.analyze()
@@ -68,7 +69,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
     componentsToUpdate = intra.deps.flatMap(deps)
     val succs = newComponents ++ componentsToUpdate
     // update the analysis
-    work ++= succs
+    addToWorkList(succs)
     visited += current
     allComponents ++= newComponents
     dependencies += (current -> (dependencies.getOrElse(current,Set()) ++ intra.components))
