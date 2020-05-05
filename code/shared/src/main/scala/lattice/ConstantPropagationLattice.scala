@@ -12,7 +12,7 @@ object ConstantPropagation {
     def show(x: L[A]): String = x match {
       case Top         => typeName
       case Constant(x) => x.toString
-      case Bottom      => "⊥"
+      case Bottom      => s"$typeName.⊥"
     }
     val bottom: L[A] = Bottom
     val top: L[A]    = Top

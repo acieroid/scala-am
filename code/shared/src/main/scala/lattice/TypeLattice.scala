@@ -10,7 +10,7 @@ object Type {
   abstract class BaseInstance(typeName: String) extends Lattice[T] {
     def show(x: T): String = x match {
       case Top    => typeName
-      case Bottom => "⊥"
+      case Bottom => s"$typeName.⊥"
     }
     val bottom: T = Bottom
     val top: T    = Top
