@@ -18,7 +18,7 @@ object DailyPrecisionBenchmarks extends AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def otherAnalyses() = List(
-        (PrimitivesComparisonRQ4NamedFunctions.S_2CS_0, "S_2CS_0"),
+        (PrimitivesComparisonRQ3NamedFunctions.S_2CS_0, "S_2CS_0"),
         (SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
     )
 

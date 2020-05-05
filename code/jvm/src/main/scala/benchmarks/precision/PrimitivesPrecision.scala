@@ -165,7 +165,7 @@ abstract class PrimitivesComparison extends AnalysisComparison[
 }
 
 
-object PrimitivesComparisonRQ3 extends PrimitivesComparison {
+object PrimitivesComparisonRQ1 extends PrimitivesComparison {
   def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
                                                    with BigStepSemantics
                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_0_0
@@ -238,7 +238,7 @@ object PrimitivesComparisonRQ3 extends PrimitivesComparison {
   }
 }
 
-abstract class PrimitivesComparisonRQ4 extends PrimitivesComparison {
+abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
   def isPrim(nam: Option[String]): Boolean
   override def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
                                                    with BigStepSemantics
@@ -312,17 +312,17 @@ abstract class PrimitivesComparisonRQ4 extends PrimitivesComparison {
   }
 }
 
-object PrimitivesComparisonRQ4FullPrecision extends PrimitivesComparisonRQ4 {
+object PrimitivesComparisonRQ3FullPrecision extends PrimitivesComparisonRQ3 {
   def isPrim(nam: Option[String]): Boolean = true
 }
 
-object PrimitivesComparisonRQ4AnonymousFunctions extends PrimitivesComparisonRQ4 {
+object PrimitivesComparisonRQ3AnonymousFunctions extends PrimitivesComparisonRQ3 {
   def isPrim(nam: Option[String]): Boolean = nam match {
     case Some(n) => SchemePrelude.primNames.contains(n)
     case None => true /* analyze anonymous functions with high sensitivity */
   }
 }
 
-object PrimitivesComparisonRQ4NamedFunctions extends PrimitivesComparisonRQ4 {
+object PrimitivesComparisonRQ3NamedFunctions extends PrimitivesComparisonRQ3 {
   def isPrim(nam: Option[String]): Boolean = nam.isDefined /* analyze named functions with high sensitivity */
 }
