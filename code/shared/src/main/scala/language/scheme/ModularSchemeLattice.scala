@@ -531,7 +531,7 @@ class ModularSchemeLattice[
                   Element(
                     Vec(
                       size,
-                      content + (index2 -> schemeLattice.join(content.getOrElse(index, schemeLattice.bottom), newval)),
+                      content + (index2 -> schemeLattice.join(content.getOrElse(index2, schemeLattice.bottom), newval)),
                       init
                     )
                   )
