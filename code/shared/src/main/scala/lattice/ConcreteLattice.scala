@@ -164,6 +164,16 @@ object Concrete {
       def lt[B2: BoolLattice](n1: I, n2: I): B2 = n2.guardBot {
         n1.foldMap(n1 => n2.foldMap(n2 => BoolLattice[B2].inject(n1 < n2)))
       }
+      def valuesBetween(n1: I, n2: I): Set[I] = (n1, n2) match {
+        case (Top, _)                   => Set(Top)
+        case (_, Top)                   => Set(Top)
+        case (Values(vs1), Values(vs2)) =>
+          if (vs1.isEmpty || vs2.isEmpty) {
+            Set(Values(Set()))
+          } else {
+            vs1.min.to(vs2.max).map(i => Values(Set(i))).toSet
+          }
+      }
       def toString[S2: StringLattice](n: I): S2 =
         n.foldMap(n => StringLattice[S2].inject(n.toString))
     }
