@@ -50,7 +50,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
       // determine the initial state
       val initialState = EvalState(component.body, Nil)
       // standard worklist algorithm
-      var work    = Set[State](initialState)
+      var work    = WorkList[State](initialState)
       var visited = Set[State]()
       var result  = lattice.bottom
       while(work.nonEmpty) {
@@ -61,7 +61,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
             result = lattice.join(result,vlu)
           case _ if !visited.contains(state) =>
             val successors = step(state)
-            work ++= successors
+            work = work.add(successors)
             visited += state
           case _ => ()
         }
