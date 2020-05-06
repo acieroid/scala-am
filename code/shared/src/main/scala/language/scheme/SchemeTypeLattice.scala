@@ -110,7 +110,7 @@ class TypeSchemeLattice[A <: Address, Env] {
     def getClosures(x: L): Set[(Closure, Option[String])] = x.clos
     def getConsCells(x: L): Set[(A, A)] = x.consCells
     def getPrimitives(x: L): Set[P] = x.prims
-    def getPointerAddresses(x: L): Set[A] = ???
+    def getPointerAddresses(x: L): Set[A] = Set()
 
     def bottom: L = Inject.bottom
     def number(x: scala.Int): L = Inject.num

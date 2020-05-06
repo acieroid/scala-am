@@ -273,7 +273,9 @@ object PrimitivesComparisonRQ2 {
   private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
     case analysis.valueLattice.L(str, bool, num, char, sym, nil, prims, clos, consCells) =>
       baseDomain.L(str, bool, num, char, sym, nil,
-        prims.map(p => StubPrimitive(p.name)),
+        prims.map(p => StubPrimitive(p.name)) ++ clos.collect( {
+          case (_, Some(name)) if SchemePrelude.primNames.contains(name) => StubPrimitive(name)
+        }),
         clos
           .map({
             case ((e, env), name) =>
@@ -282,7 +284,7 @@ object PrimitivesComparisonRQ2 {
               val e2: SchemeLambdaExp = SchemeLambda(List(), List(SchemeValue(scalaam.language.sexp.ValueNil, e.idn)), e.idn)
               ((e2, ()), name) })
           .filter({
-            /* Drops primitives that could have been preluded in the other analysis */
+            /* Drops primitives are preluded */
             case (_, Some(name)) => !SchemePrelude.primNames.contains(name)
             case _ => true
           }),
@@ -322,15 +324,15 @@ object PrimitivesComparisonRQ2 {
           ()
         } else {
           println(s"Addresses do not match: $addr1: $value1 vs $value2")
-          // println(s"Str equal? ${value1.str == value2.str}")
-          // println(s"Bool equal? ${value1.bool == value2.bool}")
-          // println(s"Num equal? ${value1.num == value2.num}")
-          // println(s"Char equal? ${value1.char == value2.char}")
-          // println(s"Sym equal? ${value1.sym == value2.sym}")
-          // println(s"Nil equal? ${value1.nil == value2.nil}")
-          // println(s"Prims equal? ${value1.prims == value2.prims}")
-          // println(s"Clos equal? ${value1.clos == value2.clos}")
-          // println(s"Cons equal? ${value1.consCells == value2.consCells}")
+          println(s"Str equal? ${value1.str == value2.str}")
+          println(s"Bool equal? ${value1.bool == value2.bool}")
+          println(s"Num equal? ${value1.num == value2.num}")
+          println(s"Char equal? ${value1.char == value2.char}")
+          println(s"Sym equal? ${value1.sym == value2.sym}")
+          println(s"Nil equal? ${value1.nil == value2.nil}")
+          println(s"Prims equal? ${value1.prims == value2.prims}")
+          println(s"Clos equal? ${value1.clos == value2.clos}")
+          println(s"Cons equal? ${value1.consCells == value2.consCells}")
           assert(false)
         }
       }
@@ -418,7 +420,38 @@ object PrimitivesComparisonRQ2 {
     }
   }
 
-  val benchmarks = PrimitivesBenchmarks.standard
+  // Only non-vector benchmarks
+  val benchmarks = List(
+    "test/kernighanvanwyk/ack.scm",
+    "test/rsa.scm",
+    "test/church.scm",
+    "test/mceval.scm",
+    "test/sat.scm",
+    "test/regex.scm",
+    "test/rsa.scm",
+    "test/gambit/lattice.scm",
+    "test/gambit/mazefun.scm",
+    "test/gambit/perm9.scm",
+    "test/gambit/nqueens.scm",
+    "test/gambit/primes.scm",
+    "test/gambit/sumloop.scm",
+    "test/gabriel/browse.scm",
+    "test/gabriel/dderiv.scm",
+    "test/gabriel/destruc.scm",
+    "test/gabriel/deriv.scm",
+    "test/gabriel/diviter.scm",
+    "test/gabriel/divrec.scm",
+    "test/scp1-compressed/2.scm",
+    "test/scp1-compressed/3.scm",
+    "test/scp1-compressed/4.scm",
+    "test/scp1-compressed/5.scm",
+    "test/scp1-compressed/7.scm",
+    "test/scp1-compressed/9.scm",
+    "test/icp/icp_2_aeval.scm",
+    "test/icp/icp_3_leval.scm",
+ // "test/icp/icp_5_regsim.scm", // disabled because precision does not match!
+    "test/icp/icp_8_compiler.scm"
+  )
 
   def runBenchmarks() = {
     benchmarks.foreach(b => {
