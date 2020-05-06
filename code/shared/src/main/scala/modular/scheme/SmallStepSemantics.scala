@@ -61,7 +61,7 @@ trait SmallStepSemantics extends SchemeModFSemantics {
             result = lattice.join(result,vlu)
           case _ if !visited.contains(state) =>
             val successors = step(state)
-            work ++= successors
+            work = work.add(successors)
             visited += state
           case _ => ()
         }
