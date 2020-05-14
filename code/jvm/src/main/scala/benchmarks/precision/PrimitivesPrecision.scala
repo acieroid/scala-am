@@ -87,7 +87,7 @@ object PrimitivesBenchmarks {
 abstract class PrimitivesComparison extends AnalysisComparison[
     ConstantPropagation.I,
     ConstantPropagation.R,
-    Concrete.B,
+    ConstantPropagation.B,
     ConstantPropagation.C,
     ConstantPropagation.S,
     Concrete.Sym
@@ -228,7 +228,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
 
 /** Checks that results produced with manual primitives and preluded primitives
   * exactly match, using a simple type lattice */
-object PrimitivesComparisonRQ2 {
+/*object PrimitivesComparisonRQ2 {
   type Benchmark = String
 
   sealed trait BaseAddr extends Address { def printable = true }
@@ -461,7 +461,7 @@ object PrimitivesComparisonRQ2 {
   }
   def main(args: Array[String]) =
     runBenchmarks()
-}
+}*/
 
 abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
   def isPrim(nam: Option[String]): Boolean

@@ -34,7 +34,7 @@ trait TypeDomain extends AbstractDomain {
 trait ConstantPropagationDomain extends AbstractDomain {
   // use constant propagation domains everywhere, except for booleans
   type S    = ConstantPropagation.S
-  type B    = Concrete.B
+  type B    = ConstantPropagation.B
   type I    = ConstantPropagation.I
   type R    = ConstantPropagation.R
   type C    = ConstantPropagation.C

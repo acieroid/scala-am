@@ -58,7 +58,7 @@ abstract class AnalysisComparison[
 object AnalysisComparison1 extends AnalysisComparison[
     ConstantPropagation.I,
     ConstantPropagation.R,
-    Concrete.B,
+    ConstantPropagation.B,
     ConstantPropagation.C,
     ConstantPropagation.S,
     Concrete.Sym

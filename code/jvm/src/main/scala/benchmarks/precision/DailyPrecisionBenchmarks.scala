@@ -9,7 +9,7 @@ import scalaam.util._
 object DailyPrecisionBenchmarks extends AnalysisComparison[
     ConstantPropagation.I,
     ConstantPropagation.R,
-    Concrete.B,
+    ConstantPropagation.B,
     ConstantPropagation.C,
     ConstantPropagation.S,
     Concrete.Sym
