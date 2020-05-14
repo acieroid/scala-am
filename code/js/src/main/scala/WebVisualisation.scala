@@ -229,9 +229,9 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
     nodes.select("text")
          .text((node: Node) => displayText(node.component))
     nodesUpdate.exit().remove()
-    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.work.contains(node.component))
+    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.workList.toSet.contains(node.component))
          .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
-         .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.work.headOption == Some(node.component))
+         .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.workList.toList.headOption == Some(node.component))
          .style("fill", (node: Node) => colorFor(node.component))
     // update the edges
     val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.component,e.target.component))
@@ -260,7 +260,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
 
   protected def stepAnalysis() =
     if (!analysis.finished()) {
-      val component = analysis.work.head
+      val component = analysis.workList.head
       val oldDeps = analysis.dependencies(component)
       analysis.step()
       refreshDataAfterStep(component, oldDeps)
