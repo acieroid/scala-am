@@ -80,6 +80,7 @@ object ConstantPropagation {
     }
   }
 
+  type B   = L[Boolean]
   type S   = L[String]
   type I   = L[Int]
   type R   = L[Double]
@@ -88,6 +89,25 @@ object ConstantPropagation {
 
   object L {
     import scalaam.lattice._
+
+    implicit val boolCP: BoolLattice[B] = new BaseInstance[Boolean]("Bool") with BoolLattice[B] {
+      def inject(b: Boolean): B = Constant(b)
+      def isTrue(b: B): Boolean = b match {
+        case Top => true
+        case Constant(x) => x
+        case Bottom => false
+      }
+      def isFalse(b: B): Boolean = b match {
+        case Top => true
+        case Constant(x) => !x
+        case Bottom => false
+      }
+      def not(b: B): B = b match {
+        case Top => Top
+        case Constant(x) => Constant(!x)
+        case Bottom => Bottom
+      }
+    }
 
     implicit val stringCP: StringLattice[S] = new BaseInstance[String]("Str")
     with StringLattice[S] {
