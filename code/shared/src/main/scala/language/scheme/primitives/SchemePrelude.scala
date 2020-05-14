@@ -8,7 +8,7 @@ object SchemePrelude {
   // TODO: string->list
   val primDefs = Map(
     "abs" -> "(define (abs x) (if (< x 0) (- 0 x) x))",
-    // Disabled because it is implemented manually
+    // TODO: just prelude this one and remove the manual definition
 //    "append" -> """(define (append l1 l2)
 //          (if (null? l1)
 //              l2
@@ -134,6 +134,7 @@ object SchemePrelude {
           ()
           (append (reverse (cdr l))
                   (list (car l)))))""",
+    // TODO: use '() instead of l here for a more precise definition
     "map" ->  """(define (map f l)
       (if (null? l)
           l
