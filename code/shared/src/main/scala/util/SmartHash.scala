@@ -2,7 +2,7 @@ package scalaam.util
 
 import scala.runtime.ScalaRunTime
 
-/* Imported fror JSAI's notjs.util */
+/* Imported from JSAI's notjs.util */
 
 // the Scala compiler is not yet smart enough to figure out that it
 // only needs to hash immutable objects once; extending case classes

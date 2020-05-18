@@ -2,8 +2,8 @@ package scalaam.test.soundness
 
 import scala.concurrent.duration._
 import java.util.concurrent.TimeoutException
-import org.scalatest.Tag
 
+import org.scalatest.Tag
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
@@ -17,6 +17,7 @@ import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
 import scalaam.language.scheme.primitives.SchemePrelude
+import scalaam.util.benchmarks.Timeout
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics

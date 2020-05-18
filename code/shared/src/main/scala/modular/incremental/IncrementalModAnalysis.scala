@@ -4,7 +4,7 @@ import scalaam.modular.components.MutableIndirectComponents
 import scalaam.core._
 import scalaam.modular._
 import scalaam.util.Annotations.mutable
-import scalaam.util.Timeout
+import scalaam.util.benchmarks.Timeout
 
 abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extends ModAnalysis(prog)
                                                                             with MutableIndirectComponents[Expr] {

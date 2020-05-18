@@ -7,6 +7,7 @@ import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
 import scalaam.lattice._
+import scalaam.util.benchmarks.Timeout
 
 abstract class PrecisionBenchmarks[
     Num: IntLattice,

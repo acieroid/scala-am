@@ -541,7 +541,7 @@ class ModularSchemeLattice[
                   if (subsumedKeys.nonEmpty) {
                     // Case 2: this index subsumes other indices
                     // In that case, we join all values and removed the subsumed indices
-                    val joinedValues = schemeLattice.join(content.filterKeys(subsumedKeys).values)
+                    val joinedValues = schemeLattice.join(content.view.filterKeys(subsumedKeys).toMap.values)
                     val contentWithoutSubsumedKeys = subsumedKeys.foldLeft(content)((acc, k) => acc - k)
                     Element(Vec(size, contentWithoutSubsumedKeys + (index -> schemeLattice.join(joinedValues, newval))))
                   } else {

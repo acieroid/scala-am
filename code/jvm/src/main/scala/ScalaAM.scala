@@ -3,17 +3,15 @@ package scalaam.cli
 import scalaam.util._
 
 import scala.concurrent.duration._
-import scalaam.diff.ModuleInferencer
 import scalaam.core.Position._
-import scalaam.incremental._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
-import scalaam.modular.incremental._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives.SchemePrelude
+import scalaam.util.benchmarks.Timeout
 
 object Main {
 

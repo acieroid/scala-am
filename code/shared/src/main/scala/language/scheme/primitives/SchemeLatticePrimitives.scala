@@ -243,24 +243,24 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `+` extends NoStoreLOpRec("+", {
         case (Nil, _)          => number(0)
-        case (x :: rest, call) => call(rest) >>= (plus(x, _))
+        case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Plus)(x, _))
     })
     object `-` extends NoStoreLOp("-", {
         case Nil       => MayFail.failure(PrimitiveVariadicArityError("-", 1, 0))
-        case x :: Nil  => minus(number(0), x)
-        case x :: rest => `+`.call(rest) >>= (minus(x, _))
+        case x :: Nil  => binaryOp(SchemeOps.BinaryOperator.Minus)(number(0), x)
+        case x :: rest => `+`.call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Minus)(x, _))
     })
     object `*` extends NoStoreLOpRec("*", {
         case (Nil, _)          => number(1)
-        case (x :: rest, call) => call(rest) >>= (times(x, _))
+        case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Times)(x, _))
     })
     object `/` extends NoStoreLOp("/", {
       case Nil => MayFail.failure(PrimitiveVariadicArityError("/", 1, 0))
       case x :: rest =>
         for {
           multrest      <- `*`.call(rest)
-          r             <- div(x, multrest)
-          fl            <- lat_floor(r)
+          r             <- binaryOp(SchemeOps.BinaryOperator.Div)(x, multrest)
+          fl            <- unaryOp(SchemeOps.UnaryOperator.Floor)(r)
           isexact       <- eqq(r, fl)
           xisint        <- isInteger(x)
           multrestisint <- isInteger(multrest)
@@ -291,7 +291,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
         case Nil => bool(true)
         case x :: rest =>
-          ifThenElse(numEq(first, x)) {
+          ifThenElse(binaryOp(SchemeOps.BinaryOperator.NumEq)(first, x)) {
             eq(first, rest)
           } {
             bool(false)
@@ -323,8 +323,8 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       } {
         /* n >= 0 */
         for {
-          r          <- lat_sqrt(x)
-          fl         <- lat_floor(r)
+          r          <- unaryOp(SchemeOps.UnaryOperator.Sqrt)(x)
+          fl         <- unaryOp(SchemeOps.UnaryOperator.Floor)(r)
           argisexact <- isInteger(x)
           resisexact <- eqq(r, fl)
           convert    <- and(argisexact, resisexact)
@@ -349,14 +349,14 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `real?`    extends NoStore1Operation("real?", { x =>
           for {
             isint  <- isInteger(x)
-            isreal <- isReal(x)
+            isreal <- unaryOp(SchemeOps.UnaryOperator.IsReal)(x)
           } yield or(isint, isreal)
       })
     object `number?`  extends NoStore1Operation("number?", `real?`.call(_)) /* No support for complex number, so number? is equivalent as real? */
     object `boolean?` extends NoStore1Operation("boolean?", unaryOp(SchemeOps.UnaryOperator.IsBoolean))
     object `vector?`  extends Store1Operation("vector?", { (x, store) =>
         for {
-          ispointer <- isPointer(x)
+          ispointer <- unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)
           isvector <- dereferencePointer(x, store) { v =>
             isVector(v)
           }
@@ -369,7 +369,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `string->symbol` extends NoStore1Operation("string->symbol", unaryOp(SchemeOps.UnaryOperator.StringToSymbol))
     object `string-append`  extends NoStoreLOpRec("string-append", {
         case (Nil, _)          => string("")
-        case (x :: rest, call) => call(rest) >>= (stringAppend(x, _))
+        case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.StringAppend)(x, _))
     })
     object `string-ref`    extends NoStore2Operation("string-ref",    binaryOp(SchemeOps.BinaryOperator.StringRef))
     object `string<?`      extends NoStore2Operation("string<?",      binaryOp(SchemeOps.BinaryOperator.StringLt))
@@ -616,11 +616,11 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /** The actual implementation of append */
       override def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], append: Args => MayFail[V,Error]): MayFail[V,Error] = args match {
         case (l1, l2, fexp) =>
-          ifThenElse(isNull(l1)) {
+          ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsNull)(l1)) {
             // if we have l1 = '(), append(l1,l2) = l2
             l2
           } {
-            ifThenElse (isCons(l1)) {
+            ifThenElse (unaryOp(SchemeOps.UnaryOperator.IsCons)(l1)) {
             // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
             for {
               carv <- car.call(l1, store).map(_._1)
