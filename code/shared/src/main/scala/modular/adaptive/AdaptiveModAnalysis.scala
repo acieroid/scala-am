@@ -1,5 +1,6 @@
 package scalaam.modular.adaptive
 
+import scalaam.modular.components.MutableIndirectComponents
 import scalaam.core._
 import scalaam.modular._
 import scalaam.util._
@@ -7,7 +8,7 @@ import scalaam.util.MonoidImplicits._
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) with MutableIndirectComponents[Expr] {
 
-  import IndirectComponents._
+  import scalaam.modular.components.IndirectComponents._
 
   // after every step, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
   // the method `adaptAnalysis` needs to be implemented to decide when and how this is carried out

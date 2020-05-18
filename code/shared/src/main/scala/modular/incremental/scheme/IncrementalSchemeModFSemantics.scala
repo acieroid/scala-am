@@ -18,8 +18,8 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
   // Definition of call components.
   case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends ComponentData with CallComponent
 
-  lazy val initialComponent: Component = { /* initPrimitiveBenchmarks() ; */ ref(Main) } // Need init to initialize reference bookkeeping information.
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
+  lazy val initialComponent: Component = ref(Main) // Need init to initialize reference bookkeeping information upfront.
+  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx)) // A new pointer is only created when the component was not registered yet.
 
   // When a new program is set, we need to use the lexically addressed version!
   override def setProgram(newProgram: SchemeExp): Unit = prog = {

@@ -1,5 +1,6 @@
 package scalaam.modular.incremental
 
+import scalaam.modular.components.MutableIndirectComponents
 import scalaam.core._
 import scalaam.modular._
 import scalaam.util.Annotations.mutable
