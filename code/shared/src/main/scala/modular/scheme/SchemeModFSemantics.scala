@@ -66,45 +66,13 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
 
   // In ModF, components are function calls in some context.
-
-  // This abstract class is parameterised by the choice of two types of components:
-  // * A MainComponent type representing the main function of the program.
-  // * A CallComponent type representing function calls. CallComponents must have a parent pointer and lambda expression, contain a context and may contain a name.
-  // The MainComponent should be unique and can hence be an object. CallComponents can be created using the `newCallComponent` function.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
+
   implicit def view(c: Component): SchemeComponent
   trait SchemeComponent { def body: SchemeExp }
-  trait MainComponent extends SchemeComponent {
-    def body: SchemeExp = program
-    override def toString: String = "main"
-  }
-  trait CallComponent extends SchemeComponent {
-    // Requires a closure and a context and may contain a name.
-    def nam: Option[String]
-    def clo: lattice.Closure
-    def ctx: ComponentContext
-    // convenience accessors
-    lazy val (lambda, parent) = clo
-    lazy val body: SchemeExp = SchemeBody(lambda.body)
-    override def toString: String = nam match {
-      case None => s"λ@${lambda.idn} ($parent) [${ctx.toString}]"
-      case Some(name) => s"$name ($parent) [${ctx.toString}]"
-    }
-  }
 
-  implicit def contentOrdering: Ordering[Option[lattice.Closure]] = new Ordering.OptionOrdering[lattice.Closure] {
-    def optionOrdering = Ordering[(Identity,Component)].on(clo => (clo._1.idn,clo._2))
-  }
-
-  type ComponentContent = Option[lattice.Closure]
-  def content(cmp: Component) = view(cmp) match {
-    case _ : MainComponent => None
-    case call: CallComponent => Some(call.clo)
-  }
-  def context(cmp: Component) = view(cmp) match {
-    case _ : MainComponent => None
-    case call: CallComponent => Some(call.ctx)
-  }
+  /** Returns the parent of a component, if any. */
+  def componentParent(c: Component): Option[Component]
 
   /** Creates a new component, given a closure, context and an optional name. */
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
@@ -133,7 +101,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
-      if (scp == 0) { cmp } else resolveParent(view(cmp).asInstanceOf[CallComponent].parent, scp - 1)
+      if (scp == 0) { cmp } else resolveParent(componentParent(cmp).get, scp - 1)
     protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value =
       if(args.forall(_._2 != lattice.bottom)) {
         val fromClosures = applyClosures(fval,args, cll, cmp)
@@ -242,19 +210,4 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       Monoid[M].append(csqVal,altVal)
     }
   }
-}
-
-trait StandardSchemeModFSemantics extends SchemeModFSemantics {
-  // Components are just normal SchemeComponents, without any extra fancy features.
-  // Hence, to view a component as a SchemeComponent, the component itself can be used.
-  type Component = SchemeComponent
-  implicit def view(cmp: Component): SchemeComponent = cmp
-
-  // Definition of the initial component.
-  case object Main extends MainComponent
-  // Definition of call components.
-  case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends CallComponent
-
-  lazy val initialComponent: SchemeComponent = Main
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
 }

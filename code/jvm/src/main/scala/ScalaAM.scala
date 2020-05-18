@@ -9,7 +9,6 @@ import scalaam.incremental._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.incremental._
-import scalaam.modular.incremental.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -39,7 +38,7 @@ object Main {
     debugResults(analysis, false)
   }
 
-  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
+  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with StandardSchemeComponents
 
   def debugClosures(analysis: SchemeModFAnalysis): Unit = {
     def getClosure(cmp: analysis.Component) = analysis.view(cmp) match {
@@ -82,6 +81,7 @@ object Main {
     }
 }
 
+/*
 object Incrementor extends App {
 
   type Analysis = IncrementalModAnalysis[SchemeExp] with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with IncrementalSchemeModFSemantics
@@ -109,6 +109,7 @@ object Incrementor extends App {
   mapping.map(println)
 
 }
+*/
 
 object Run extends App {
   val text = Reader.loadFile("test/WeiChenRompf2019/the-little-schemer/ch8.scm")
