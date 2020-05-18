@@ -1,11 +1,9 @@
 package scalaam.cli.evaluation.primitives
 
 import scalaam.cli.benchmarks._
-import scalaam.util.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
-import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
 import scalaam.modular.scheme._
 import scalaam.util._
 import scala.concurrent.duration._

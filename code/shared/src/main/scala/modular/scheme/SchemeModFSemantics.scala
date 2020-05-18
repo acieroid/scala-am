@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.language.scheme.primitives._
 import scalaam.core.Position._
 import scalaam.core._

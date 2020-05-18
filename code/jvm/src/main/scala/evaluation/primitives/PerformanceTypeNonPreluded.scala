@@ -1,18 +1,15 @@
 package scalaam.cli.evaluation.primitives
 
 import scalaam.cli.benchmarks._
-import scalaam.util.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
-import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
 import scalaam.modular.scheme._
 import scalaam.util._
 import scala.concurrent.duration._
 
 object PerformanceType extends Performance {
   def analysisTimeout() = Timeout.start(Duration(20, MINUTES))
-  import scalaam.core._
   import scalaam.language.scheme.primitives._
   abstract class AnalysisWithManualPrimitives(p: SchemeExp) extends ModAnalysis(p)with BigStepSemantics with StandardSchemeModFSemantics {
     override lazy val program = {

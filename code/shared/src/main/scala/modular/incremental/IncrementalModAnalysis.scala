@@ -1,5 +1,6 @@
 package scalaam.modular.incremental
 
+import scalaam.modular.components.MutableIndirectComponents
 import scalaam.core._
 import scalaam.modular._
 import scalaam.util.Annotations.mutable
@@ -8,7 +9,7 @@ import scalaam.util.Timeout
 abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extends ModAnalysis(prog)
                                                                             with MutableIndirectComponents[Expr] {
 
-  override def program = prog
+  override def program: Expr = prog
   /**
       allComponents : Set[Component]
       cMap : Component -> ComponentData
@@ -76,11 +77,13 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
                              newIdentities:   Map[Identity, Option[Identity]],     // Maps old identities to new ones (if present).
                              timeout:         Timeout.T): Unit = {                 // A timeout for the reanalysis
 
-    // Update the ComponentData for all components.
+    // Update the ComponentData for all components. TODO: should this be done 'a priori', or could components & return addresses also be updated 'by need'?
     updateState(moduleDelta, newIdentities)
     // Look which components need reanalysis.
     val toUpdate = computeWork(modifiedModules)
     // Perform the actual reanalysis. We can make use of the visited set and all data from the previous analysis that are still present.
+    // TODO: should all updated components be added? Maybe not, but since the store already contains data, the updated components may not be analysed if we don't.
+    // TODO: the new Main component should be added as well, and be analyzed first (in case new functions are defined).
     workList = workList.add(toUpdate)
     analyze(timeout)
   }

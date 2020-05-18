@@ -1,6 +1,7 @@
-package scalaam.modular
+package scalaam.modular.components
 
-import scalaam.core._
+import scalaam.core.Expression
+import scalaam.modular.ModAnalysis
 
 trait ContextSensitiveComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 

@@ -8,7 +8,6 @@ import scalaam.modular.scheme._
 import scalaam.language.scheme.primitives._
 import scala.concurrent.duration._
 import scalaam.util._
-import scalaam.core._
 
 
 object PrimitivesBenchmarks {
