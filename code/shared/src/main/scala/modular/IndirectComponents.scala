@@ -14,15 +14,15 @@ object IndirectComponents {
 /** Provides the ability to reference components 'by pointer'. */
 trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
-  // Secretly, every component is a pointer to an 'actual component', but that information is not leaked to the outside.
+  /** Secretly, every component is a pointer to an 'actual component', but that information is not leaked to the outside. */
   type Component = ComponentPointer
   type Address = Int
 
-  // The 'actual component (data)' can be anything that is considered useful.
+  /** The 'actual component (data)' can be anything that is considered useful. */
   type ComponentData
 
   // Keep a mapping from component pointer addresses to actual component data.
-  @mutable protected var count: Address = _
+  @mutable private var count: Address = _ // Next free address.
   @mutable protected var cMap : Map[Address, ComponentData] = _
   @mutable protected var cMapR: Map[ComponentData, Address] = _
 
@@ -34,7 +34,7 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   }
 
   /** Returns the next unused address. */
-  protected def alloc(): Address = {
+  private def alloc(): Address = {
     val addr = count
     count += 1
     addr
@@ -42,12 +42,14 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
   /** Registers a component at a given address. */
   protected def register(cmp: ComponentData, addr: Address): Unit = {
+    // If the component was already registered, remove it from cMapR so that it can be gc'ed.
+    cMap.get(addr).foreach(oldC => cMapR = cMapR - oldC)
     cMap  = cMap  + (addr -> cmp)
     cMapR = cMapR + (cmp -> addr)
   }
 
   /** Creates a component (pointer) from an 'actual component'. */
-  protected def newComponent(cmp: ComponentData): Address = {
+  private def newComponent(cmp: ComponentData): Address = {
     val addr = alloc()
     register(cmp, addr)
     addr
