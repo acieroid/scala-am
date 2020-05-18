@@ -3,14 +3,14 @@ package scalaam.modular.incremental.scheme
 import scalaam.core._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
-import scalaam.modular.scheme.SchemeModFSemantics
+import scalaam.modular.scheme.StandardSchemeComponents
 
 /** Semantics for an incremental Scheme MODF analysis. */
-trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with SchemeModFSemantics {
+trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with StandardSchemeComponents {
 
   // Every component holds a pointer to the corresponding lexical module.
   trait ComponentData extends SchemeComponent with LinkedComponent {
-    def module: Module = body.idn
+    def mod: Module = body.idn
   }
 
   // Definition of the initial component.
@@ -41,7 +41,11 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
     case Main => // Do nothing, program is set by setProgram.
     case Call((_, parent), nam, ctx) =>
       exp match {
-        case e: SchemeLambdaExp => updateCPtr(newComponent((e, parent), nam, ctx), cmpPtr)
+        case e: SchemeLambdaExp =>
+          // To update a component, create a new component with
+          // 1) the updated version of the lambda expression, and
+          // 2) an updated version of the analysis context.
+          updateCPtr(newComponent((e, parent), nam, updateComponentContext(ctx)), cmpPtr)
         case _ => throw new Exception("A module must contain a lambda expression.")
       }
   }
@@ -56,4 +60,6 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
     case PtrAddr(e) => ??? // TODO: update expressions
     case addr => Some(addr)
   }*/
+
+  def updateComponentContext(ctx: ComponentContext): ComponentContext = ???
 }

@@ -40,7 +40,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
    *  By knowing from which module a component stems, it should become easier to find the components affected by a change.
    **/
   trait LinkedComponent {
-    def module: Module // Reference to the position of the statical module in which this component has its roots.
+    def mod: Module // Reference to the position of the statical module in which this component has its roots.
   }
 
   // Map static modules to dynamic components.
@@ -51,8 +51,8 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
   trait IntraAnalysis extends super.IntraAnalysis {
     override def spawn(cmp: Component): Unit = {
       super.spawn(cmp)
-      mMap = mMap + (cmp.module -> (mMap(cmp.module) + cmp))
-      if (!eMap.contains(cmp.module)) eMap = eMap + (cmp.module -> componentExpression(cmp)) // If test can be removed if needed.
+      mMap = mMap + (cmp.mod -> (mMap(cmp.mod) + cmp))
+      if (!eMap.contains(cmp.mod)) eMap = eMap + (cmp.mod -> componentExpression(cmp)) // If test can be removed if needed.
     }
   }
 
@@ -121,7 +121,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
        State corresponding to no longer existing modules can be removed. This should avoid spurious computations for modules/components that are no longer in the program.
     */
 
-    allComponents.foreach(c => moduleDelta(c.module).map(m => updateComponent(c, m._2)))
+    allComponents.foreach(c => moduleDelta(c.mod).map(m => updateComponent(c, m._2)))
     updateIdentities(newIdentities)
 
     // All modules for which no updated version is available.
@@ -144,7 +144,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
    * @param modifiedModules A set of new modules whose body has been modified. TODO: inner definitions?
    */
   private def computeWork(modifiedModules: Set[Module]): Set[Component] = {
-    allComponents.filter(c => modifiedModules.contains(c.module))
+    allComponents.filter(c => modifiedModules.contains(c.mod))
   }
 
   // Methods to be implemented/overridden in subclasses.
