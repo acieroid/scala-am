@@ -154,7 +154,7 @@ object Concrete {
       def div[R2: RealLattice](n1: I, n2: I): R2 = n2.guardBot {
         n1.foldMap(n1 => n2.foldMap(n2 => RealLattice[R2].inject(n1 / n2.toDouble)))
       }
-      def expt(n1: I, n2: I): I     = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => Math.pow(n1, n2).toInt)) }
+      def expt(n1: I, n2: I): I     = n2.guardBot { n1.foldMap(n1 => n2.map(n2 => Math.pow(n1.toDouble, n2.toDouble).toInt)) }
       def modulo(n1: I, n2: I): I = n2.guardBot {
         n1.foldMap(n1 => n2.map(n2 => MathOps.modulo(n1, n2)))
       }

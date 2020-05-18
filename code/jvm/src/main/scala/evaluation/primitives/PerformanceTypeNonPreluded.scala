@@ -5,7 +5,8 @@ import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
 import scalaam.modular.scheme._
-import scalaam.util._
+import scalaam.util.benchmarks.Timeout
+
 import scala.concurrent.duration._
 
 object PerformanceType extends Performance {

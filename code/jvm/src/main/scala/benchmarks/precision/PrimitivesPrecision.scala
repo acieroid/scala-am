@@ -6,8 +6,10 @@ import scalaam.language.scheme._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme.primitives._
+
 import scala.concurrent.duration._
 import scalaam.util._
+import scalaam.util.benchmarks.Timeout
 
 
 object PrimitivesBenchmarks {

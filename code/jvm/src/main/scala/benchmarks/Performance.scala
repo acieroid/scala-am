@@ -4,6 +4,7 @@ import scalaam.util._
 import scalaam.util.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
+import scalaam.util.benchmarks._
 
 // TODO: rename to PerformanceEvaluation?
 // TODO: move to evaluation package?

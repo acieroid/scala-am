@@ -6,6 +6,7 @@ import scalaam.language.scheme._
 
 import scala.concurrent.duration._
 import scalaam.lattice._
+import scalaam.util.benchmarks._
 
 abstract class AnalysisComparison[
     Num: IntLattice,

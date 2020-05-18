@@ -2,7 +2,6 @@ package scalaam.modular.adaptive.scheme
 
 import scalaam.core.Position._
 import scalaam.language.scheme._
-import scalaam.util.MonoidImplicits._
 
 trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
     // set a limit for the maximum number of recursive calls to a component

@@ -1,15 +1,13 @@
 package scalaam.test.language.scheme
 
 import org.scalatest.propspec.AnyPropSpec
-
 import scalaam.test.tag._
 import scalaam.modular.ModAnalysis
 import scalaam.modular.scheme._
-import scalaam.util.Timeout
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
-
+import scalaam.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 
