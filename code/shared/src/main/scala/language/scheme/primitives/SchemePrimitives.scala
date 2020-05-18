@@ -37,30 +37,11 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
   /* Simpler names for frequently used lattice operations. */
-  def isNull         = unaryOp(SchemeOps.UnaryOperator.IsNull) _
-  def isCons         = unaryOp(SchemeOps.UnaryOperator.IsCons) _
-  def isPointer      = unaryOp(SchemeOps.UnaryOperator.IsPointer) _
-  def isSymbol       = unaryOp(SchemeOps.UnaryOperator.IsSymbol) _
-  def isString       = unaryOp(SchemeOps.UnaryOperator.IsString) _
   def isInteger      = unaryOp(SchemeOps.UnaryOperator.IsInteger) _
-  def isReal         = unaryOp(SchemeOps.UnaryOperator.IsReal) _
-  def isBoolean      = unaryOp(SchemeOps.UnaryOperator.IsBoolean) _
   def isVector       = unaryOp(SchemeOps.UnaryOperator.IsVector) _
-  def lat_ceiling    = unaryOp(SchemeOps.UnaryOperator.Ceiling) _
-  def lat_floor      = unaryOp(SchemeOps.UnaryOperator.Floor) _
-  def lat_sqrt       = unaryOp(SchemeOps.UnaryOperator.Sqrt) _
   def vectorLength   = unaryOp(SchemeOps.UnaryOperator.VectorLength) _
-  def stringToSymbol = unaryOp(SchemeOps.UnaryOperator.StringToSymbol) _
   def inexactToExact = unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
-
-  def plus          = binaryOp(SchemeOps.BinaryOperator.Plus) _
-  def minus         = binaryOp(SchemeOps.BinaryOperator.Minus) _
-  def times         = binaryOp(SchemeOps.BinaryOperator.Times) _
-  def div           = binaryOp(SchemeOps.BinaryOperator.Div) _
-  def lt            = binaryOp(SchemeOps.BinaryOperator.Lt) _
-  def numEq         = binaryOp(SchemeOps.BinaryOperator.NumEq) _
   def eqq           = binaryOp(SchemeOps.BinaryOperator.Eq) _
-  def stringAppend  = binaryOp(SchemeOps.BinaryOperator.StringAppend) _
 
   def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
     cond >>= { condv =>
