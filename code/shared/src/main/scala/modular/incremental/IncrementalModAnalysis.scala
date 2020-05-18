@@ -14,7 +14,6 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
       allComponents : Set[Component]
       cMap : Component -> ComponentData
       cMapR : ComponentData -> Component
-      dependencies : Component -> Set[Component]
       deps : Dependency -> Set[Component]
 
       Addr : ComponentAddr + ReturnAddr
@@ -25,12 +24,11 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
       ComponentPointer : Int
       Context : _ + List[Value] (parameteriseerbaar)
       Dependency : Addr
-      Identity : UUID
+      Identity : Long
       LocalAddr[C] : (Identifier x Identity) + (SchemeExpr x Identity x C) + (String x Identity)
       Module : Identity
       ReturnAddr : Component
       SchemeEnv : Component (parent pointer)
-      SchemeExpr : Identity x Label x List[SchemeExpr] x ...
   */
 
   // A module refers to the lexical, static counterpart of a component (i.e. to a function definition).
