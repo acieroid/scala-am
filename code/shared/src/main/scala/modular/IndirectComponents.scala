@@ -73,8 +73,8 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 trait MutableIndirectComponents[Expr <: Expression] extends IndirectComponents[Expr] {
 
   /** Allows to update the 'actual component' corresponding to a given pointer. */
-  def update(cmp: ComponentData, ptr: ComponentPointer): Unit = register(cmp, ptr.addr)
+  def updateCPtr(cmp: ComponentData, ptr: ComponentPointer): Unit = register(cmp, ptr.addr)
 
   /** Allows to replace the data of a component with new data. */
-  def update(oldCmp: ComponentData, newCmp: ComponentData): Unit = update(newCmp, ref(oldCmp))
+  def updateCPtr(oldCmp: ComponentData, newCmp: ComponentData): Unit = updateCPtr(newCmp, ref(oldCmp))
 }

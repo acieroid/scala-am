@@ -2,7 +2,7 @@ package scalaam.test.lattice.scheme
 
 import scalaam.core._
 import scalaam.test.lattice._
-import org.scalacheck.{Prop, Arbitrary}
+import org.scalacheck.Prop
 import Prop.{forAll, propBoolean}
 
 import scalaam.language.scheme._

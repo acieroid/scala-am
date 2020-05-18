@@ -1,14 +1,9 @@
 package scalaam.cli.benchmarks
 
-import scalaam.core._
 import scalaam.util._
 import scalaam.util.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
-import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
-import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
-import scalaam.modular.scheme._
-import scala.concurrent.duration._
 
 // TODO: rename to PerformanceEvaluation?
 // TODO: move to evaluation package?

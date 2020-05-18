@@ -41,7 +41,7 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
     case Main => // Do nothing, program is set by setProgram.
     case Call((_, parent), nam, ctx) =>
       exp match {
-        case e: SchemeLambdaExp => update(newComponent((e, parent), nam, ctx), cmpPtr)
+        case e: SchemeLambdaExp => updateCPtr(newComponent((e, parent), nam, ctx), cmpPtr)
         case _ => throw new Exception("A module must contain a lambda expression.")
       }
   }
