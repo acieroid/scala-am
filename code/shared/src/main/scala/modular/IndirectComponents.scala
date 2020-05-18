@@ -42,8 +42,6 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
   /** Registers a component at a given address. */
   protected def register(cmp: ComponentData, addr: Address): Unit = {
-    // If the component was already registered, remove it from cMapR so that it can be gc'ed.
-    cMap.get(addr).foreach(oldC => cMapR = cMapR - oldC)
     cMap  = cMap  + (addr -> cmp)
     cMapR = cMapR + (cmp -> addr)
   }
@@ -72,8 +70,13 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
  */
 trait MutableIndirectComponents[Expr <: Expression] extends IndirectComponents[Expr] {
 
-  /** Allows to update the 'actual component' corresponding to a given pointer. */
-  def updateCPtr(cmp: ComponentData, ptr: ComponentPointer): Unit = register(cmp, ptr.addr)
+  /** Allows to update the 'actual component' corresponding to a given pointer.
+   *  If no binding exists for the pointer, this method will just register it.
+   */
+  def updateCPtr(cmp: ComponentData, ptr: ComponentPointer): Unit = {
+    cMap.get(ptr.addr).foreach(oldC => cMapR = cMapR - oldC) // If the component was already registered, remove it from cMapR so that it can be gc'ed.
+    register(cmp, ptr.addr)
+  }
 
   /** Allows to replace the data of a component with new data. */
   def updateCPtr(oldCmp: ComponentData, newCmp: ComponentData): Unit = updateCPtr(newCmp, ref(oldCmp))
