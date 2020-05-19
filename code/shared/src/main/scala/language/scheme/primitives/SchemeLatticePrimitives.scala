@@ -19,7 +19,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `asin`, /* [vv] asin: Scientific */
       /* [x]  assv: Retrieving Alist Entries => Prelude */
       `atan`, /* [vv] atan: Scientific */
-      `append`,
+      //`append`, // => SchemePrelude
       `boolean?`, /* [vv] boolean?: Booleans */
       /* [x]  call-with-current-continuation: Continuations */
       /* [x]  call-with-input-file: File Ports */

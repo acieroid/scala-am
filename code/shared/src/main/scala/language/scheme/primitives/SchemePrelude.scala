@@ -7,12 +7,11 @@ object SchemePrelude {
 
   val primDefs = Map(
     "abs" -> "(define (abs x) (if (< x 0) (- 0 x) x))",
-    // TODO: just prelude this one and remove the manual definition
-//    "append" -> """(define (append l1 l2)
-//          (if (null? l1)
-//              l2
-//              (cons (car l1)
-//                    (append (cdr l1) l2))))""",
+    "append" -> """(define (append l1 l2)
+          (if (null? l1)
+              l2
+              (cons (car l1)
+                    (append (cdr l1) l2))))""",
     "assoc" -> """(define (assoc k l)
         (if (null? l)
           #f
@@ -130,13 +129,12 @@ object SchemePrelude {
                         |                   (cons (vector-ref v i) lst)))))""".stripMargin,
     "reverse" -> """(define (reverse l)
       (if (null? l)
-          ()
+          '()
           (append (reverse (cdr l))
                   (list (car l)))))""",
-    // TODO: use '() instead of l here for a more precise definition
     "map" ->  """(define (map f l)
       (if (null? l)
-          l
+          '()
           (if (pair? l)
               (cons (f (car l)) (map f (cdr l)))
               (error "Cannot map over a non-list."))))""",
