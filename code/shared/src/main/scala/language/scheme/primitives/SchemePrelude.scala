@@ -5,7 +5,6 @@ import scalaam.language.scheme._
 
 object SchemePrelude {
 
-  // TODO: string->list
   val primDefs = Map(
     "abs" -> "(define (abs x) (if (< x 0) (- 0 x) x))",
     // Disabled because it is implemented manually
@@ -146,6 +145,14 @@ object SchemePrelude {
           (if (pair? l)
               (begin (f (car l)) (for-each f (cdr l)))
               (error "Cannot for-each over a non-list."))))""",
+    "string->list" -> """(define (string->list string)
+                        |  (define len (string-length string))
+                        |  (let convert ((n (- len 1))
+                        |                (r '()))
+                        |    (if (< n 0)
+                        |        r
+                        |        (convert (- n 1)
+                        |                 (cons (string-ref string n) r)))))""".stripMargin,
     //    "foldr" -> """(define (foldr f base lst) (foldr-aux f base lst))""",
     //    "foldr-aux" -> """(define (foldr-aux f base lst)
     //        (if (null? lst)
