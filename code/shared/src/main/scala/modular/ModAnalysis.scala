@@ -44,7 +44,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   implicit def cmpOrdering: Ordering[Component]
   protected def addToWorkList(cmps: Iterable[Component]) = {
     val sorted = cmps.toList.sorted
-    workList = workList.add(sorted)
+    workList = workList.addAll(sorted)
   }
 
   // keep track of all components in the analysis
