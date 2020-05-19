@@ -9,7 +9,7 @@ trait WorkList[X] {
 
   def add(x: X): WorkList[X]
   def add(xs: Iterable[X]): WorkList[X]           = xs.foldLeft(this)((acc,elm) => acc.add(elm))
-  def ++=(xs: Iterable[X]): WorkList[X]           = add(xs)
+  def  ++(xs: Iterable[X]): WorkList[X]           = add(xs)
 
   def map[Y]   (f: X =>       Y): WorkList[Y]
   def filter   (f: X => Boolean): WorkList[X]
@@ -35,7 +35,7 @@ case class LIFOWorkList[X](lst: List[X], set: Set[X]) extends WorkList[X] {
   def tail: LIFOWorkList[X]                       = LIFOWorkList(lst.tail, set - lst.head)
   def add(x: X): LIFOWorkList[X]                  = if(set.contains(x)) { this } else { LIFOWorkList(x :: lst, set + x) }
   // TODO Perhaps it might be more efficient to  implement add(xs: Iterable[X]) directly.
-  def map[Y](f: X => Y): LIFOWorkList[Y]          = LIFOWorkList(lst.map(f))
+  def map[Y](f: X => Y): LIFOWorkList[Y]          = LIFOWorkList(lst.map(f).reverse)
   def toList: List[X]                             = lst
   def toSet: Set[X]                               = set
   def filter(f: X => Boolean): LIFOWorkList[X]    = LIFOWorkList(lst.filter(f), set.filter(f))
@@ -63,7 +63,7 @@ case class FIFOWorkList[X](queue: Queue[X], set: Set[X]) extends WorkList[X] {
   def filterNot(f: X => Boolean): FIFOWorkList[X] = FIFOWorkList(queue.filterNot(f), set.filterNot(f))
 }
 object FIFOWorkList {
-  def empty[X]: FIFOWorkList[X]                   = FIFOWorkList(List[X](),Set[X]())
+  def empty[X]: FIFOWorkList[X]                   = FIFOWorkList(Queue[X](),Set[X]())
   def apply[X](xs: Iterable[X]): FIFOWorkList[X]  = empty.add(xs).asInstanceOf[FIFOWorkList[X]]
   def apply[X](xs: X*): FIFOWorkList[X]           = apply(xs)
 }
