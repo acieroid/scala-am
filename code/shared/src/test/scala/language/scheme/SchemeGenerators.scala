@@ -40,7 +40,7 @@ abstract class ModularSchemeLatticeGenerator[
     // useful shorthands
     val intLat = implicitly[IntLattice[I]]
     val blnLat = implicitly[BoolLattice[B]]
-    val valLat = modularLattice.schemeLattice
+    implicit val valLat = modularLattice.schemeLattice
 
     // useful helpers (TODO: some of these probably already exist somewhere in ScalaCheck)
     def genTuple[A,B](genA: Gen[A], genB: Gen[B]): Gen[(A,B)] = 
@@ -59,21 +59,10 @@ abstract class ModularSchemeLatticeGenerator[
     type L = modularLattice.L
     type V = modularLattice.Value
 
-    // helper to generate the correct Element/Elements value from a given set of Values
-    private def buildL(values: Set[V]): L = 
-        if (values.isEmpty) {
-            valLat.bottom
-        } else if (values.size == 1) {
-            modularLattice.Element(values.head)
-        } else {
-            modularLattice.Elements(values)
-        }
     // useful to reduce the size of counterexample instances
     implicit val shrinkL: Shrink[L] = Shrink[L] {
-        case modularLattice.Element(v) => 
-            Shrink.shrink(v).map(modularLattice.Element)
         case modularLattice.Elements(vs) => 
-            Shrink.shrinkContainer[Set,V].shrink(vs).map(buildL)
+            Shrink.shrinkContainer[Set,V].shrink(vs).map(modularLattice.Elements)
     }
     implicit val shrinkV: Shrink[V] = Shrink[V] {
         case modularLattice.Vec(siz,els) => for {
@@ -88,9 +77,11 @@ abstract class ModularSchemeLatticeGenerator[
 
     object SchemeValueLatticeGenerator extends SchemeLatticeGenerator[L] {
         /* Generate any Scheme value */
-        def any: Gen[L] = Gen.oneOf(elementGen, elementsGen)
+        def any: Gen[L] = Gen.oneOf(bottomGen, elementGen, elementsGen)
+        private def bottomGen: Gen[L] = 
+            valLat.bottom
         private def elementGen: Gen[L] = 
-            SchemeVLatticeGenerator.any.map(modularLattice.Element)
+            SchemeVLatticeGenerator.any.map(modularLattice.Element(_))
         private def elementsGen: Gen[L] = for {
             nil <- pickAtMost(1, SchemeVLatticeGenerator.anyNilV)
             str <- pickAtMost(1, SchemeVLatticeGenerator.anyStrV)
@@ -104,19 +95,17 @@ abstract class ModularSchemeLatticeGenerator[
             pai <- pickAtMost(3, SchemeVLatticeGenerator.anyPaiV)
             vec <- pickAtMost(1, SchemeVLatticeGenerator.anyVecV)
             clo <- pickAtMost(3, SchemeVLatticeGenerator.anyCloV)
-        } yield buildL(nil ++ str ++ bln ++ int ++ rea ++ chr ++ sym ++ prm ++ ptr ++ pai ++ vec ++ clo)
+        } yield modularLattice.Elements(nil ++ str ++ bln ++ int ++ rea ++ chr ++ sym ++ prm ++ ptr ++ pai ++ vec ++ clo)
         /* Generate a Scheme value subsumed by a given Scheme value */
         def le(l: L): Gen[L] = l match {
-            case modularLattice.Element(v) => 
-                SchemeVLatticeGenerator.le(v).map(modularLattice.Element)
             case modularLattice.Elements(vs) => for {
                 subset <- Gen.someOf(vs)
                 subsumed <- Gen.sequence[Set[V],V](subset.map(SchemeVLatticeGenerator.le))
-            } yield buildL(subsumed)
+            } yield modularLattice.Elements(subsumed)
         }
         /* Generating specific values */
-        def anyVec = SchemeVLatticeGenerator.anyVecV.map(modularLattice.Element)
-        def anyInt = SchemeVLatticeGenerator.anyIntV.map(modularLattice.Element)
+        def anyVec = SchemeVLatticeGenerator.anyVecV.map(modularLattice.Element(_))
+        def anyInt = SchemeVLatticeGenerator.anyIntV.map(modularLattice.Element(_))
         /* Shrinking values */
         override val shrink = shrinkL 
     }
@@ -125,7 +114,6 @@ abstract class ModularSchemeLatticeGenerator[
         // any address
         val anyAddr: Gen[SimpleAddr] = Gen.choose(0,100).map(SimpleAddr(_)) // addresses are faked in 100 different variations
         // a generator for each type of value
-        val anyBotV: Gen[V] = Gen.const(modularLattice.Bot)
         val anyNilV: Gen[V] = Gen.const(modularLattice.Nil)
         val anyIntV: Gen[V] = intGen.any.map(modularLattice.Int)
         val anyStrV: Gen[V] = strGen.any.map(modularLattice.Str)
@@ -151,23 +139,22 @@ abstract class ModularSchemeLatticeGenerator[
         } yield modularLattice.Vec(siz,con)
         // any value
         def any: Gen[modularLattice.Value] = 
-            Gen.oneOf(anyBotV, anyNilV, anyStrV, anyBlnV, anyIntV, anyReaV, anyChrV, 
+            Gen.oneOf(anyNilV, anyStrV, anyBlnV, anyIntV, anyReaV, anyChrV, 
                       anySymV, anyPrmV, anyPtrV, anyCloV, anyVecV, anyPaiV)
         // any value subsumed by a given value
-        def le(l: V): Gen[V] =
-            Gen.oneOf(Gen.const(modularLattice.Bot), l match {
-                case modularLattice.Str(s) => strGen.le(s).map(modularLattice.Str)
-                case modularLattice.Bool(b) => blnGen.le(b).map(modularLattice.Bool)
-                case modularLattice.Int(i) => intGen.le(i).map(modularLattice.Int)
-                case modularLattice.Real(r) => reaGen.le(r).map(modularLattice.Real)
-                case modularLattice.Char(c) => chrGen.le(c).map(modularLattice.Char)
-                case modularLattice.Symbol(s) => symGen.le(s).map(modularLattice.Symbol)
-                case modularLattice.Vec(s,c) => for {
-                    sle <- intGen.le(s).suchThat(i => i == s || i != intLat.bottom)
-                    cle <- vectorContentLe(c,sle)
-                } yield modularLattice.Vec(sle,cle)
-                case _ => Gen.const(l)  
-            })
+        def le(l: V): Gen[V] = l match {
+            case modularLattice.Str(s)      => strGen.le(s).map(modularLattice.Str)
+            case modularLattice.Bool(b)     => blnGen.le(b).map(modularLattice.Bool)
+            case modularLattice.Int(i)      => intGen.le(i).map(modularLattice.Int)
+            case modularLattice.Real(r)     => reaGen.le(r).map(modularLattice.Real)
+            case modularLattice.Char(c)     => chrGen.le(c).map(modularLattice.Char)
+            case modularLattice.Symbol(s)   => symGen.le(s).map(modularLattice.Symbol)
+            case modularLattice.Vec(s,c) => for {
+                sle <- intGen.le(s).suchThat(i => i == s || i != intLat.bottom)
+                cle <- vectorContentLe(c,sle)
+            } yield modularLattice.Vec(sle,cle)
+            case _ => Gen.const(l)  
+        }
         // with the current representation, vectors are tricky to handle
         private def vectorContent(siz: I): Gen[Map[I,L]] = for {
             maxSize <- Gen.choose(0,5)

@@ -60,7 +60,6 @@ abstract class PrecisionBenchmarks[
         }
     }
     private def convertV(analysis: Analysis)(value: analysis.valueLattice.Value): baseDomain.Value = value match {
-        case analysis.valueLattice.Bot          => baseDomain.Bot
         case analysis.valueLattice.Nil          => baseDomain.Nil
         case analysis.valueLattice.Bool(b)      => baseDomain.Bool(b)
         case analysis.valueLattice.Int(i)       => baseDomain.Int(i)
@@ -72,14 +71,10 @@ abstract class PrecisionBenchmarks[
         case analysis.valueLattice.Clo(l,_,_)   => baseDomain.Clo(LambdaIdnEq(l),(),None)
         case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertAddr(analysis)(a), convertAddr(analysis)(d))
         case analysis.valueLattice.Pointer(a)   => baseDomain.Pointer(convertAddr(analysis)(a))
-        case analysis.valueLattice.Vec(s,e)   => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
+        case analysis.valueLattice.Vec(s,e)     => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
     }
     private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
-        case analysis.valueLattice.Element(v)   => baseDomain.Element(convertV(analysis)(v))
-        case analysis.valueLattice.Elements(vs) => vs.map(convertV(analysis)) match {
-            case vs if vs.size == 1 => baseDomain.Element(vs.head)
-            case vs => baseDomain.Elements(vs)
-        }
+        case analysis.valueLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
     }
     private def convertConcreteAddr(addr: SchemeInterpreter.Addr): BaseAddr = addr._2 match {
         case SchemeInterpreter.AddrInfo.VarAddr(v) => VarAddr(v)
@@ -102,9 +97,9 @@ abstract class PrecisionBenchmarks[
         case SchemeInterpreter.Value.Character(c)       => baseLattice.char(c)
         case SchemeInterpreter.Value.Cons(a,d)          => baseLattice.cons(convertConcreteAddr(a),convertConcreteAddr(d))
         case SchemeInterpreter.Value.Pointer(a)         => baseLattice.pointer(convertConcreteAddr(a))
-        case SchemeInterpreter.Value.Vector(siz,els,ini) => 
+        case SchemeInterpreter.Value.Vector(siz,els,_) => 
             def convertNumber(n: Int): Num = baseLattice.number(n) match {
-                case baseDomain.Element(baseDomain.Int(num)) => num
+                case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
             }
             val cSiz = convertNumber(siz)
             val cEls = els.foldLeft(Map[Num,BaseValue]()) { case (acc,(idx,vlu)) =>
