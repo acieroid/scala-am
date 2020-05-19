@@ -1,6 +1,5 @@
 package scalaam.modular.incremental.scheme
 
-import scalaam.core._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
 import scalaam.modular.scheme.StandardSchemeComponents
@@ -55,11 +54,21 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
     case Call((exp, _), _, _) => exp
   }
 
-  def updateLocalAddress(addr: LocalAddr, newIdentities: Map[Identity, Option[Identity]]): Option[LocalAddr] = ??? /* addr match {
-    case VarAddr(id) => newIdentities(id.idn).map(idn => VarAddr(id.copy(idn = idn)))
-    case PtrAddr(e) => ??? // TODO: update expressions
-    case addr => Some(addr)
-  }*/
+  /**
+   * Updates local addressses by replacing the identity (VarAddr), or by updating the corresponding expression.
+   * If no corresponding identity is present, None is returned.
+   * @param addr            The address to be updated.
+   * @param newIdentities   A map from old to new identities.
+   * @param newExpressions  A map from new identities to corresponding expressions.
+   * @return
+   */
+  def updateLocalAddress(addr: LocalAddr, newIdentities: Map[OldIdn, NewIdn], newExpressions: Map[NewIdn, SchemeExp]): Option[LocalAddr] = addr match {
+    case VarAddr(id) =>  newIdentities.get(id.idn).map(idn => VarAddr(id.copy(idn = idn)))
+    case PtrAddr(exp) => newIdentities.get(exp.idn).flatMap(idn => newExpressions.get(idn).map(PtrAddr))
+    case CarAddr(exp) => newIdentities.get(exp.idn).flatMap(idn => newExpressions.get(idn).map(CarAddr))
+    case CdrAddr(exp) => newIdentities.get(exp.idn).flatMap(idn => newExpressions.get(idn).map(CdrAddr))
+    case PrmAddr(nam) => Some(PrmAddr(nam))
+  }
 
   def updateComponentContext(ctx: ComponentContext): ComponentContext = ???
 }

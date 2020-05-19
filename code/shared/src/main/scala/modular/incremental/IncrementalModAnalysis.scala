@@ -1,13 +1,19 @@
 package scalaam.modular.incremental
 
+import modular.incremental.scheme.IncrementalContextSensitiveComponents
 import scalaam.modular.components.MutableIndirectComponents
 import scalaam.core._
 import scalaam.modular._
 import scalaam.util.Annotations.mutable
 import scalaam.util.benchmarks.Timeout
 
+import scala.concurrent.duration.Duration
+
 abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extends ModAnalysis(prog)
-                                                                            with MutableIndirectComponents[Expr] {
+                                                                             with MutableIndirectComponents[Expr] {
+
+  type OldIdn = Identity
+  type NewIdn = Identity
 
   override def program: Expr = prog
   /**
@@ -56,6 +62,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
     }
   }
 
+  /*
   def updateAnalysis(newProgram: Expr, timeout: Timeout.T = Timeout.none): Unit = {
     // Assume the previous analysis has been finished.
     // This assumption is not really necessary. Hence, in theory, the program could be updated and reanalysed before a prior analysis has finished.
@@ -68,41 +75,53 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
 
     updateAnalysis(newProgram, ???, ???, ???, timeout)
   }
+   */
 
-  private def updateAnalysis(newProgram:      Expr,                                // The new version of the program.
-                             moduleDelta:     Map[Module, Option[(Module, Expr)]], // Maps old modules to updated ones (if present).
-                             modifiedModules: Set[Module],                         // The set of modules to be reanalysed. TODO can we determine this here?
-                             newIdentities:   Map[Identity, Option[Identity]],     // Maps old identities to new ones (if present).
-                             timeout:         Timeout.T): Unit = {                 // A timeout for the reanalysis
+  // Convenience class (allows to keep the arguments of functions for now).
+  case class UpdateArgs(
+                         newProgram:      Expr, // The new version of the program.
+                         oldModules:      Set[Module], // The set of modules in the old program.
+                         //moduleDelta:     Map[Module, Option[(Module, Expr)]], // Maps old modules to updated ones (if present). // Can be derived from newIdentities.
+                         modifiedModules: Set[Module], // The set of modules to be reanalysed. (Represented by the new module information.) TODO can we determine this here?
+                         newIdentities:   Map[OldIdn, NewIdn], // Maps old identities to new ones. If no corresponding new identity exists, no entry should be present.
+                         newExpressions:  Map[NewIdn, Expr], // Maps new identities to the corresponding expressions.
+                         timeout:         Duration // A timeout for the reanalysis
+                       )
 
-    // Update the ComponentData for all components. TODO: should this be done 'a priori', or could components & return addresses also be updated 'by need'?
-    updateState(moduleDelta, newIdentities)
+  private def updateAnalysis(info: UpdateArgs): Unit = {
+    updateState(info) // TODO: should this be done 'a priori', or could components & return addresses also be updated 'by need'?
+    reRun(info)
+  }
+
+  /** Reruns the analysis after the analysis state has been updated. */
+  private def reRun(args: UpdateArgs): Unit = {
     // Look which components need reanalysis.
-    val toUpdate = computeWork(modifiedModules)
+    val toUpdate = computeWork(args.modifiedModules)
+
     // Perform the actual reanalysis. We can make use of the visited set and all data from the previous analysis that are still present.
     // TODO: should all updated components be added? Maybe not, but since the store already contains data, the updated components may not be analysed if we don't.
     // TODO: the new Main component should be added as well, and be analyzed first (in case new functions are defined).
     workList = workList.addAll(toUpdate)
-    analyze(timeout)
+    analyze(Timeout.start(args.timeout))
   }
 
   /**
    * Updates the state of the analysis, including all components.
-   * @param moduleDelta A map of old modules to corresponding new expressions of the module (if a corresponding module exist).
    */
-  private def updateState(moduleDelta: Map[Module, Option[(Module, Expr)]], newIdentities: Map[Identity, Option[Identity]]): Unit = {
+  //@param moduleDelta A map of old modules to corresponding new expressions of the module (if a corresponding module exist).
+  private def updateState(args: UpdateArgs): Unit = {
     /* This function updates the internal state of the analysis to account for updates to modules/components.
        In the following parts, expressions should be updated:
-        * ComponentData of components,
-        * The "prog" variable,
-        * Local Addresses.
-       In the following parts, identities should be updated:
-        * Lexical addresses ("environment") to account for the new identities of identifiers,
-        * Effects (contain addresses),
-        * The store (maps addresses to values).
-       The following should not be updated (mostly due to the component indirection):
-        * The dependency map (contains component pointers),
-        * The MainComponent (ok if the variable "program" is updated).
+          * Components: both the expression and context,
+          * The "prog" variable,
+          * Addresses.
+          * Lexical addresses ("environment") to account for the new identities of identifiers,
+          * Effects (contain addresses),
+          * The store (maps addresses to values).
+          Updates should happen to identities, expressions, ...
+       Should not be updated:
+          * The dependency map (contains component pointers),
+          * The MainComponent (ok if the variable "program" is updated).
 
        IMPORTANT
        The mapping of old modules to new modules must be as such that the lexical addresses are not broken! Hence, a module
@@ -121,17 +140,20 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
        State corresponding to no longer existing modules can be removed. This should avoid spurious computations for modules/components that are no longer in the program.
     */
 
-    allComponents.foreach(c => moduleDelta(c.mod).map(m => updateComponent(c, m._2)))
-    updateIdentities(newIdentities)
+    // Update the content of the 'program' variable.
+    setProgram(args.newProgram)
+
+   // allComponents.foreach(c => moduleDelta(c.mod).map(m => updateComponent(c, m._2)))
+    updateIdentities(args.newIdentities)
 
     // All modules for which no updated version is available.
-    val removedModules: Set[Module] = moduleDelta.filter(_._2.isEmpty).keySet
-    val removedComponents : Set[Component] = removedModules.flatMap(mMap)
+    //val removedModules: Set[Module] = moduleDelta.filter(_._2.isEmpty).keySet
+    //val removedComponents : Set[Component] = removedModules.flatMap(mMap)
     // 'dependencies' is currently only used for the webviz?
-    dependencies = dependencies -- removedComponents
+    //dependencies = dependencies -- removedComponents
     // R/W dependencies.
-    deps = deps.view.mapValues(_.diff(removedComponents)).toMap
-    allComponents = allComponents -- removedComponents
+    //deps = deps.view.mapValues(_.diff(removedComponents)).toMap
+    //allComponents = allComponents -- removedComponents
   }
 
   /**
@@ -164,5 +186,5 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
   /**
    * Updates all identities in the analysis' data structures to correspond with the identities assigned to the new AST.
    */
-  def updateIdentities(newIdentities: Map[Identity, Option[Identity]]): Unit = {}
+  def updateIdentities(newIdentities: Map[Identity, Identity]): Unit = {}
 }
