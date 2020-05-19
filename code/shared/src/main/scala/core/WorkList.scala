@@ -34,7 +34,6 @@ case class LIFOWorkList[X](lst: List[X], set: Set[X]) extends WorkList[X] {
   def head: X                                     = lst.head
   def tail: LIFOWorkList[X]                       = LIFOWorkList(lst.tail, set - lst.head)
   def add(x: X): LIFOWorkList[X]                  = if(set.contains(x)) { this } else { LIFOWorkList(x :: lst, set + x) }
-  // TODO Perhaps it might be more efficient to  implement add(xs: Iterable[X]) directly.
   def map[Y](f: X => Y): LIFOWorkList[Y]          = LIFOWorkList(lst.map(f).reverse)
   def toList: List[X]                             = lst
   def toSet: Set[X]                               = set
@@ -55,7 +54,6 @@ case class FIFOWorkList[X](queue: Queue[X], set: Set[X]) extends WorkList[X] {
   def head: X                                     = queue.head
   def tail: FIFOWorkList[X]                       = FIFOWorkList(queue.tail, set - queue.head)
   def add(x: X): FIFOWorkList[X]                  = if(set.contains(x)) { this } else { FIFOWorkList(queue.enqueue(x), set + x) }
-  // TODO Perhaps it might be more efficient to  implement add(xs: Iterable[X]) directly.
   def map[Y](f: X => Y): FIFOWorkList[Y]          = FIFOWorkList(queue.map(f))
   def toList: List[X]                             = queue.toList
   def toSet: Set[X]                               = set
