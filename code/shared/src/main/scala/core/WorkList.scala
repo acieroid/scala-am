@@ -8,8 +8,8 @@ trait WorkList[X] {
   def tail: WorkList[X]
 
   def add(x: X): WorkList[X]
-  def add(xs: Iterable[X]): WorkList[X]           = xs.foldLeft(this)((acc,elm) => acc.add(elm))
-  def  ++(xs: Iterable[X]): WorkList[X]           = add(xs)
+  def addAll(xs: Iterable[X]): WorkList[X]        = xs.foldLeft(this)((acc, elm) => acc.add(elm))
+  def  ++(xs: Iterable[X]): WorkList[X]           = addAll(xs)
 
   def map[Y]   (f: X =>       Y): WorkList[Y]
   def filter   (f: X => Boolean): WorkList[X]
@@ -24,7 +24,7 @@ trait WorkList[X] {
 
 // Default implementation used in worklistMonoid.
 object WorkList {
-  def empty[X]: WorkList[X]                       = LIFOWorkList(List[X](),Set[X]())
+  def empty[X]: WorkList[X]                       = LIFOWorkList.empty
 }
 
 // A worklist with deterministic depth-first exploration order.
@@ -42,7 +42,7 @@ case class LIFOWorkList[X](lst: List[X], set: Set[X]) extends WorkList[X] {
 }
 object LIFOWorkList {
   def empty[X]: LIFOWorkList[X]                   = LIFOWorkList(List[X](),Set[X]())
-  def apply[X](xs: Iterable[X]): LIFOWorkList[X]  = empty.add(xs).asInstanceOf[LIFOWorkList[X]]
+  def apply[X](xs: Iterable[X]): LIFOWorkList[X]  = empty.addAll(xs).asInstanceOf[LIFOWorkList[X]]
   def apply[X](xs: X*): LIFOWorkList[X]           = apply(xs)
 }
 
@@ -62,6 +62,6 @@ case class FIFOWorkList[X](queue: Queue[X], set: Set[X]) extends WorkList[X] {
 }
 object FIFOWorkList {
   def empty[X]: FIFOWorkList[X]                   = FIFOWorkList(Queue[X](),Set[X]())
-  def apply[X](xs: Iterable[X]): FIFOWorkList[X]  = empty.add(xs).asInstanceOf[FIFOWorkList[X]]
+  def apply[X](xs: Iterable[X]): FIFOWorkList[X]  = empty.addAll(xs).asInstanceOf[FIFOWorkList[X]]
   def apply[X](xs: X*): FIFOWorkList[X]           = apply(xs)
 }

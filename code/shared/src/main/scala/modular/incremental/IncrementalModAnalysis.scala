@@ -82,7 +82,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
     // Perform the actual reanalysis. We can make use of the visited set and all data from the previous analysis that are still present.
     // TODO: should all updated components be added? Maybe not, but since the store already contains data, the updated components may not be analysed if we don't.
     // TODO: the new Main component should be added as well, and be analyzed first (in case new functions are defined).
-    workList = workList.add(toUpdate)
+    workList = workList.addAll(toUpdate)
     analyze(timeout)
   }
 

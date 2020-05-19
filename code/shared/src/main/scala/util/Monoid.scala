@@ -50,7 +50,7 @@ object MonoidInstances {
   }
   def workListMonoid[M]: Monoid[WorkList[M]] = new Monoid[WorkList[M]] {
     def zero: WorkList[M] = WorkList.empty
-    def append(x: WorkList[M], y: => WorkList[M]): WorkList[M] = x.add(y.toList)
+    def append(x: WorkList[M], y: => WorkList[M]): WorkList[M] = x.addAll(y.toList)
   }
   def cardinalityMonoid: Monoid[Cardinality] = new Monoid[Cardinality] {
     def append(x: Cardinality, y: => Cardinality): Cardinality = x.add(y)
