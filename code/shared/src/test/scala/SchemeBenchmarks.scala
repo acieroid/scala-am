@@ -182,7 +182,6 @@ object SchemeBenchmarks {
   )
 
   val scp1_compressed: Set[String] = Set(
-    // TODO Uncomment commented out files.
     "test/scp1-compressed/2.scm",
     "test/scp1-compressed/3.scm",
     "test/scp1-compressed/4.scm",

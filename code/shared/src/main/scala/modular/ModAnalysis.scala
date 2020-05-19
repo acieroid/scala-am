@@ -52,7 +52,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
   @mutable var dependencies:  Map[Component, Set[Component]]  = Map().withDefaultValue(Set.empty)
   // inter-analysis using a simple workListlist algorithm
-  @mutable var workList:      WorkList[Component]             = WorkList(initialComponent)
+  @mutable var workList:      WorkList[Component]             = LIFOWorkList(initialComponent)
   @mutable var visited:       Set[Component]                  = Set()
   @mutable var intra:         IntraAnalysis                   = null
   @mutable var newComponents: Set[Component]                  = Set()

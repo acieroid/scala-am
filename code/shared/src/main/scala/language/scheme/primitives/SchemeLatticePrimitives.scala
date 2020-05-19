@@ -17,7 +17,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  angle: Complex */
       /* [x]  apply: Fly Evaluation */
       `asin`, /* [vv] asin: Scientific */
-      /* [x]  assv: Retrieving Alist Entries */
+      /* [x]  assv: Retrieving Alist Entries => Prelude */
       `atan`, /* [vv] atan: Scientific */
       `append`,
       `boolean?`, /* [vv] boolean?: Booleans */
@@ -285,7 +285,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `expt`     extends NoStore2Operation("expt", binaryOp(SchemeOps.BinaryOperator.Expt))
     object `quotient` extends NoStore2Operation("quotient", binaryOp(SchemeOps.BinaryOperator.Quotient))
-    object `<`        extends NoStore2Operation("<", binaryOp(SchemeOps.BinaryOperator.Lt)) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
+    object `<`        extends NoStore2Operation("<", binaryOp(SchemeOps.BinaryOperator.Lt)) // xTODO[easy]: < should accept any number of arguments (same for <= etc.)
 
     object `=` extends NoStoreLOperation("=") {
       def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
