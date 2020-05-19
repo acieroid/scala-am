@@ -97,9 +97,6 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** "Splitting" an abstract value v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
   def split(abs: L): Set[L]
 
-  /** Cardinality indicates how many elements are represented by an abstract value */
-  def cardinality(abs: L): Cardinality
-
   object Injector {
     implicit def inject(c: Closure, name: Option[String]): L = closure(c, name)
     implicit def inject(car: A, cdr: A): L = cons(car, cdr)

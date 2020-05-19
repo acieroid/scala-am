@@ -19,7 +19,6 @@ object MonoidImplicits {
   implicit def setMonoid[X]: Monoid[Set[X]] = MonoidInstances.setMonoid
   implicit def latticeMonoid[L : Lattice]: Monoid[L] = MonoidInstances.latticeMonoid
   implicit def mayFail[M : Monoid]: Monoid[MayFail[M,Error]] = MonoidInstances.mayFail
-  implicit def cardinalityMonoid: Monoid[Cardinality] = MonoidInstances.cardinalityMonoid
 }
 
 object MonoidInstances {
@@ -51,10 +50,6 @@ object MonoidInstances {
   def workListMonoid[M]: Monoid[WorkList[M]] = new Monoid[WorkList[M]] {
     def zero: WorkList[M] = WorkList.empty
     def append(x: WorkList[M], y: => WorkList[M]): WorkList[M] = x.addAll(y.toList)
-  }
-  def cardinalityMonoid: Monoid[Cardinality] = new Monoid[Cardinality] {
-    def append(x: Cardinality, y: => Cardinality): Cardinality = x.add(y)
-    def zero: Cardinality = Cardinality(0, 0)
   }
   val boolOrMonoid: Monoid[Boolean] = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x || y

@@ -73,11 +73,6 @@ object ConstantPropagation {
       case Bottom => Set.empty
       case _      => Set(v)
     }
-    def cardinality(v: L[A]): Cardinality = v match {
-      case Bottom       => Cardinality(0, 0)
-      case Constant(_)  => Cardinality(1, 0)
-      case Top          => Cardinality(0, 1)
-    }
   }
 
   type B   = L[Boolean]

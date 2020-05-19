@@ -38,10 +38,6 @@ object Type {
       case Bottom => Set.empty
       case Top    => Set(Top)
     }
-    def cardinality(v: T) = v match {
-      case Bottom => Cardinality(0, 0)
-      case Top    => Cardinality(0, 1)
-    }
   }
 
   type S   = T

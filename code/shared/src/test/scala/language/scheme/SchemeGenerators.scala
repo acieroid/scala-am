@@ -43,8 +43,8 @@ abstract class ModularSchemeLatticeGenerator[
     implicit val valLat = modularLattice.schemeLattice
 
     // useful helpers (TODO: some of these probably already exist somewhere in ScalaCheck)
-    def genTuple[A,B](genA: Gen[A], genB: Gen[B]): Gen[(A,B)] = 
-        for { a <- genA ; b <- genB } yield (a,b)
+    def genTuple[X,Y](genX: Gen[X], genY: Gen[Y]): Gen[(X,Y)] = 
+        for { x <- genX ; y <- genY } yield (x,y)
     def pickAtMost[X](max: Int, gen: Gen[X]): Gen[Set[X]] = 
         for { n <- Gen.choose(0,max) ; lst <- Gen.listOfN(n,gen) } yield (lst.toSet)
 

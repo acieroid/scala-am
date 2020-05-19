@@ -53,10 +53,6 @@ object Concrete {
       case Top        => Set(Top)
       case Values(vs) => vs.map(v => Values(Set(v)))
     }
-    def cardinality(x: L[A]): Cardinality = x match {
-      case Top        => Cardinality(0, 1)
-      case Values(vs) => Cardinality(vs.size, 0)
-    }
   }
 
   type S   = L[String]

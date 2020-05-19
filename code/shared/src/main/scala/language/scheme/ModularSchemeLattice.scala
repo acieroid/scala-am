@@ -507,22 +507,6 @@ class ModularSchemeLattice[
       case Symbol(s)  => Lattice[Sym].split(s).map(Symbol)
       case _          => Set(v)
     }
-
-    def cardinality(v: Value): Cardinality = v match {
-      case Bool(b)   => Lattice[B].cardinality(b)
-      case Int(i)    => Lattice[I].cardinality(i)
-      case Char(c)   => Lattice[C].cardinality(c)
-      case Str(s)    => Lattice[S].cardinality(s)
-      case Real(r)   => Lattice[R].cardinality(r)
-      case Symbol(s) => Lattice[Sym].cardinality(s)
-      case _         => Cardinality(1, 0)
-    }
-
-    def combinedCardinality(v: Value): Cardinality = v match {
-      case Clo(_, _, _) => Cardinality(0, 0) // Have to filter these by lambda.
-      case Pointer(_)   => Cardinality(0, 0) // Have to filter these by address.
-      case _            => cardinality(v)
-    }
   }
 
   type L = Elements
@@ -610,14 +594,8 @@ class ModularSchemeLattice[
     def pointer(a: A): L                      = Element(Value.pointer(a))
     def vector(size: L, init: L): MayFail[L, Error] = size.foldMapL(sz => Value.vector(sz, init).map(v => Element(v)))
     def nil: L = Element(Value.nil)
-
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
-
     def split(abs: L): Set[L] = abs.foldMapL(v => Value.split(v).map(va => Element(va)))(setMonoid)
-
-    def cardinality(abs: L): Cardinality = abs match {
-      case Elements(vs) => vs.foldMap(v => Value.cardinality(v))
-    }
   }
 
   object L {
