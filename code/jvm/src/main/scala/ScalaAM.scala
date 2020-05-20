@@ -18,58 +18,29 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/icp/icp_2_aeval.scm")
+    val txt = Reader.loadFile("test/icp/icp_5_regsim.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
-                                                with AdaptiveArgumentSensitivityPolicy3
-                                                with ConstantPropagationDomain {
-      val limit = 5
+    val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics with BigStepSemantics
+                                        with NoSensitivity
+                                        with ConstantPropagationDomain {
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-      override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
+      var i = 0
       override def step(): Unit = {
-        //println(allComponents.size)
+        i = i + 1
+        println(s"[$i] ${view(workList.head)}")
         super.step()
       }
     }
-    analysis.analyze(Timeout.start(Duration(600,SECONDS)))
+    analysis.analyze(Timeout.start(Duration(60,SECONDS)))
     //debugClosures(analysis)
     debugResults(analysis, false)
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with StandardSchemeComponents
 
-  def debugClosures(analysis: SchemeModFAnalysis): Unit = {
-    def getClosure(cmp: analysis.Component) = analysis.view(cmp) match {
-      case _: analysis.MainComponent => None
-      case call: analysis.CallComponent => Some(call.clo)
-    }
-    def collect() = {
-      val allClosures = analysis.allComponents.flatMap(cmp => getClosure(cmp))
-      val children = allClosures.foldLeft(Map[Option[analysis.lattice.Closure],Set[analysis.lattice.Closure]]()) { (acc,clo) =>
-        val parent = getClosure(clo._2)
-        acc + (parent -> (acc.getOrElse(parent, Set()) + clo))
-      } 
-      children
-    }
-    def printClosures(children: Map[Option[analysis.lattice.Closure],Set[analysis.lattice.Closure]]) = {
-      def display(clo: analysis.lattice.Closure): String =
-        s"${clo._1.idn} [${clo._2}]"
-      def printClosure(clo: Option[analysis.lattice.Closure], indent: Int): Unit = {
-        val str = clo.map(display(_)).getOrElse("main")
-        print(" " * indent) // print indentation
-        println(s"- $str")  // print the closure
-        children.getOrElse(clo,Set()).foreach { child =>  // print its children
-          printClosure(Some(child), indent + 2)
-        }
-      }
-      printClosure(None, 0)
-    }
-    printClosures(collect())
-  }
-
   def debugResults(machine: SchemeModFAnalysis, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (machine.ReturnAddr(cmp),result) => //if cmp == machine.initialComponent =>
+      case (machine.ReturnAddr(cmp),result) if cmp == machine.initialComponent =>
         println(s"[$cmp] ${machine.view(cmp)} => $result")
       case (machine.ComponentAddr(_, _: machine.PrmAddr),_) => 
         () //don't print primitive addresses
