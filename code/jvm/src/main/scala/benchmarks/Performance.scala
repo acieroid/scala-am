@@ -5,6 +5,7 @@ import scalaam.util.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.util.benchmarks._
+import scala.concurrent.duration._
 
 // TODO: rename to PerformanceEvaluation?
 // TODO: move to evaluation package?
@@ -16,7 +17,7 @@ abstract class Performance extends App {
   val actual = 15
 
   // The list of benchmarks used for the evaluation
-  val benchmarks: List[String] = SchemeBenchmarks.standard.toList.take(1)
+  def benchmarks: List[String] = SchemeBenchmarks.standard.toList.take(1)
 
   type Analysis = ModAnalysis[SchemeExp]
 
@@ -98,4 +99,12 @@ abstract class Performance extends App {
   })
   write(table)
   closeDefaultWriter()
+}
+
+object SimplePerformance extends Performance {
+  override def benchmarks = List("test/scp1-compressed/7.scm")
+  def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  def analyses: List[(SchemeExp => Analysis, String)] = List(
+    (SchemeAnalyses.contextInsensitiveAnalysis, "base analysis")
+  )
 }

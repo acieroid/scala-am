@@ -7,6 +7,7 @@ import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
 import scalaam.language.scheme.primitives.SchemePrimitive
+import scala.annotation.tailrec
 
 /** Defines a Scheme lattice based on other lattices.
   * Example usage:
@@ -52,15 +53,14 @@ class ModularSchemeLattice[
   case class Symbol(s: Sym) extends Value {
     override def toString: String = SymbolLattice[Sym].show(s)
   }
-  case class Prim(prim: P) extends Value {
-    override def toString = s"#<primitive ${prim.name}>"
+  case class Prim(prim: Set[P]) extends Value {
+    override def toString = prim.map(_.name).mkString("{primitives ",",","}")
   }
-  case class Clo(lambda: SchemeLambdaExp, env: Env, name: Option[String]) extends Value {
-    def printName: String = name match {
-      case None => s"anonymous@${lambda.idn}"
-      case Some(name) => name
-    }
-    override def toString: String = s"#<closure $printName ($env)>"
+  // TODO: define `type Closure = (SchemeLambdaExp, Env, Option[String])` (maybe using a case class)
+  case class Clo(closures: Set[(schemeLattice.Closure, Option[String])]) extends Value {
+    override def toString: String =
+      closures.map(namedClo => namedClo._2.getOrElse(s"λ@${namedClo._1._1.idn}"))
+              .mkString("{closures ",",","}")
   }
   case class Cons(car: L, cdr: L) extends Value {
     override def toString: String = s"($car . $cdr)"
@@ -68,8 +68,8 @@ class ModularSchemeLattice[
   case object Nil extends Value {
     override def toString: String = "()"
   }
-  case class Pointer(a: A) extends Value {
-    override def toString: String = s"#<pointer $a>"
+  case class Pointer(ptrs: Set[A]) extends Value {
+    override def toString: String = ptrs.mkString("{pointers ",",","}")
   }
   case class Vec(size: I, elements: Map[I, L]) extends Value {
     override def toString: String = {
@@ -88,31 +88,21 @@ class ModularSchemeLattice[
 
   object Value {
 
-    /** Check if two values are compatible to be joined */
-    def compatible(x: Value, y: => Value): Boolean = (x, y) match {
-      case (_: Str,     _: Str)     => true
-      case (_: Bool,    _: Bool)    => true
-      case (_: Int,     _: Int)     => true
-      case (_: Real,    _: Real)    => true
-      case (_: Char,    _: Char)    => true
-      case (_: Symbol,  _: Symbol)  => true
-      case (_: Cons,    _: Cons)    => true
-      case (_: Vec,     _: Vec)     => true
-      case _                        => false
-    }
-
-    /** Tries to join. Returns a Right element if it can, otherwise a Left. */
+    /** Tries to join (returns an optional) */
     def join(x: Value, y: => Value): Option[Value] =
       if (x == y) {
         Some(x)
       } else {
         (x, y) match {
-          case (Str(s1), Str(s2))   => Some(Str(StringLattice[S].join(s1, s2)))
-          case (Bool(b1), Bool(b2)) => Some(Bool(BoolLattice[B].join(b1, b2)))
-          case (Int(i1), Int(i2))   => Some(Int(IntLattice[I].join(i1, i2)))
-          case (Real(f1), Real(f2)) => Some(Real(RealLattice[R].join(f1, f2)))
-          case (Char(c1), Char(c2)) => Some(Char(CharLattice[C].join(c1, c2)))
-          case (Symbol(s1), Symbol(s2)) => Some(Symbol(SymbolLattice[Sym].join(s1,s2)))
+          case (Str(s1), Str(s2))         => Some(Str(StringLattice[S].join(s1, s2)))
+          case (Bool(b1), Bool(b2))       => Some(Bool(BoolLattice[B].join(b1, b2)))
+          case (Int(i1), Int(i2))         => Some(Int(IntLattice[I].join(i1, i2)))
+          case (Real(f1), Real(f2))       => Some(Real(RealLattice[R].join(f1, f2)))
+          case (Char(c1), Char(c2))       => Some(Char(CharLattice[C].join(c1, c2)))
+          case (Symbol(s1), Symbol(s2))   => Some(Symbol(SymbolLattice[Sym].join(s1,s2)))
+          case (Prim(p1), Prim(p2))       => Some(Prim(p1 ++ p2))
+          case (Clo(c1), Clo(c2))         => Some(Clo(c1 ++ c2))
+          case (Pointer(a1), Pointer(a2)) => Some(Pointer(a1 ++ a2))
           case (Cons(a1,d1), Cons(a2,d2)) => Some(Cons(schemeLattice.join(a1,a2), schemeLattice.join(d1,d2)))
           case (Vec(size1, els1), Vec(size2, els2)) =>
             // First, joins the size
@@ -139,6 +129,9 @@ class ModularSchemeLattice[
           case (Real(f1), Real(f2)) => RealLattice[R].subsumes(f1, f2)
           case (Char(c1), Char(c2)) => CharLattice[C].subsumes(c1, c2)
           case (Symbol(s1), Symbol(s2)) => SymbolLattice[Sym].subsumes(s1,s2)
+          case (Clo(c1), Clo(c2))         => c2.subsetOf(c1)
+          case (Prim(p1), Prim(p2))       => p2.subsetOf(p1)
+          case (Pointer(a1), Pointer(a2)) => a2.subsetOf(a1)
           case (Cons(a1,d1), Cons(a2,d2)) => schemeLattice.subsumes(a1,a2) && schemeLattice.subsumes(d1,d2)
           case (Vec(siz1,els1), Vec(siz2,els2)) =>
             IntLattice[I].subsumes(siz1, siz2) &&
@@ -367,6 +360,7 @@ class ModularSchemeLattice[
         case (Real(n1), Real(n2)) => MayFail.success(Bool(RealLattice[R].eql(n1, n2)))
         case _                    => MayFail.failure(OperatorNotApplicable("number=", List(x, y)))
       }
+      // TODO: this should be the eql method instead of a binary op?
       case Eq => MayFail.success((x, y) match {
         case (Str(s1), Str(s2))       => Bool(StringLattice[S].eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
         case (Bool(b1), Bool(b2))     => Bool(BoolLattice[B].eql(b1, b2))
@@ -375,11 +369,12 @@ class ModularSchemeLattice[
         case (Char(c1), Char(c2))     => Bool(CharLattice[C].eql(c1, c2))
         case (Symbol(s1), Symbol(s2)) => Bool(SymbolLattice[Sym].eql(s1, s2))
         case (Nil, Nil)               => True
-        case (Prim(_), Prim(_))       => Bool(BoolLattice[B].inject(x == y))
-        case (_: Clo, _: Clo)         => Bool(BoolLattice[B].inject(x == y))
-        case (_: Cons, _: Cons)       => Bool(BoolLattice[B].inject(x == y))
-        case (_: Vec, _: Vec)         => Bool(BoolLattice[B].inject(x == y))
-        case (_: Pointer, _: Pointer) => Bool(BoolLattice[B].top) // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
+        case (Prim(_), Prim(_))       => Bool(BoolLattice[B].top) // TODO: primitive case can be made more precise easily!
+        case (_: Clo, _: Clo)         => Bool(BoolLattice[B].top) // TODO: can be made more precisely (is false if intersection is empty, top otherwise)
+        case (_: Cons, _: Cons)       => throw new Exception("should not happen")
+        case (_: Vec, _: Vec)         => throw new Exception("should not happen")
+        case (_: Pointer, _: Pointer) => Bool(BoolLattice[B].top) // TODO: can be made more precisely (is false if intersection is empty, top otherwise)
+                                                                  // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
         case _                        => False
       })
       case StringAppend => (x, y) match {
@@ -401,24 +396,23 @@ class ModularSchemeLattice[
     def string(x: String): Value                  = Str(StringLattice[S].inject(x))
     def bool(x: Boolean): Value                   = Bool(BoolLattice[B].inject(x))
     def char(x: scala.Char): Value                = Char(CharLattice[C].inject(x))
-    def primitive(x: P): Value                    = Prim(x)
-    def closure(x: schemeLattice.Closure, name: Option[String]): Value  = Clo(x._1,x._2,name)
+    def primitive(x: P): Value                    = Prim(Set(x))
+    def closure(x: schemeLattice.Closure, name: Option[String]): Value  = Clo(Set((x,name)))
     def symbol(x: String): Value                  = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value                                = Nil
     def cons(car: L, cdr: L): Value               = Cons(car, cdr)
-    def pointer(a: A): Value                      = Pointer(a)
-
+    def pointer(a: A): Value                      = Pointer(Set(a))
     def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
-      case Clo(lam, env, name) => Set(((lam, env),name))
-      case _                   => Set()
+      case Clo(closures) => closures
+      case _             => Set.empty
     }
     def getPrimitives(x: Value): Set[P] = x match {
-      case Prim(p) => Set(p)
-      case _       => Set()
+      case Prim(prms) => prms
+      case _          => Set.empty
     }
     def getPointerAddresses(x: Value): Set[A] = x match {
-      case Pointer(a) => Set(a)
-      case _          => Set()
+      case Pointer(ptrs)  => ptrs
+      case _              => Set.empty
     }
     def car(x: Value): MayFail[L, Error] = x match {
       case Cons(car, _) => MayFail.success(car)
@@ -532,24 +526,18 @@ class ModularSchemeLattice[
 
   import MonoidInstances.{boolOrMonoid, boolAndMonoid, setMonoid}
   implicit val lMonoid: Monoid[L] = new Monoid[L] {
+    private def insert(vs: List[Value], v: Value): List[Value] = vs match {
+      case scala.collection.immutable.Nil => List(v)
+      case v0 :: rest => Value.join(v,v0) match {
+        case Some(joined) => joined :: rest
+        case None         => v0 :: insert(rest,v)
+      } 
+    }
     def append(x: L, y: => L): L = (x,y) match {
       // TODO: this can probably be done more efficiently?
+      case (Elements(as), Elements(bs)) if as.size < bs.size => append(y,x)
       case (Elements(as), Elements(bs)) =>
-        /* every element in the other set has to be joined in this set */
-        Elements(as.foldLeft(bs)((acc, x2) =>
-          if (acc.exists(x1 => Value.subsumes(x1, x2))) {
-            /* the set already contains an element that subsumes x2, don't add it to the set */
-            acc
-          } else if (acc.exists(x1 => Value.compatible(x1, x2))) {
-            /* merge x2 into another element of the set */
-            acc.map(x1 => Value.join(x1, x2) match {
-                case None         => x1
-                case Some(joined) => joined
-            })
-          } else {
-            /* just add x2 to the set */
-            acc + x2
-          }))
+        Elements(bs.foldLeft(as.toList)(insert).toSet)
     }
     def zero: L = Elements(Set.empty)
   }

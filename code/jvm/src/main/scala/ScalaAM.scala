@@ -15,24 +15,20 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = "(pair? 3)" //Reader.loadFile("test/regex.scm")
+    val txt = Reader.loadFile("test/icp/icp_7_eceval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics with BigStepSemantics
-                                        with FullArgumentSensitivity
+                                        with NoSensitivity
                                         with ConstantPropagationDomain {
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       var i = 0
       override def step(): Unit = {
         i = i + 1
         println(s"[$i] ${view(workList.head)}")
-        if(!store.isEmpty) {
-          val (addr,value) = store.maxBy(p => p._2.vs.size)
-          println(s"=> $addr -> ${value.vs.size}")
-        }
         super.step()
       }
     }
-    analysis.analyze(Timeout.start(Duration(60,SECONDS)))
+    analysis.analyze(Timeout.start(Duration(3600,SECONDS)))
     //debugClosures(analysis)
     debugResults(analysis, false)
   }

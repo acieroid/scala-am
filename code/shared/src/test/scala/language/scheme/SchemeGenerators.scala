@@ -87,9 +87,9 @@ abstract class ModularSchemeLatticeGenerator[
             rea <- pickAtMost(1, SchemeVLatticeGenerator.anyReaV)
             chr <- pickAtMost(1, SchemeVLatticeGenerator.anyChrV)
             sym <- pickAtMost(1, SchemeVLatticeGenerator.anySymV)
-            prm <- pickAtMost(3, SchemeVLatticeGenerator.anyPrmV)
-            ptr <- pickAtMost(3, SchemeVLatticeGenerator.anyPtrV)
-            clo <- pickAtMost(3, SchemeVLatticeGenerator.anyCloV)
+            prm <- pickAtMost(1, SchemeVLatticeGenerator.anyPrmV)
+            ptr <- pickAtMost(1, SchemeVLatticeGenerator.anyPtrV)
+            clo <- pickAtMost(1, SchemeVLatticeGenerator.anyCloV)
         } yield modularLattice.Elements(nil ++ str ++ bln ++ int ++ rea ++ chr ++ sym ++ prm ++ ptr ++ clo)
         /* Generate any cons-cell */
         def anyPai: Gen[L] = SchemeVLatticeGenerator.anyPaiV.map(modularLattice.Element(_))
@@ -108,8 +108,14 @@ abstract class ModularSchemeLatticeGenerator[
     }
 
     object SchemeVLatticeGenerator {
-        // any address
+        // helpers
         val anyAddr: Gen[SimpleAddr] = Gen.choose(0,100).map(SimpleAddr(_)) // addresses are faked in 100 different variations
+        val anyClosure: Gen[(valLat.Closure,Option[String])] = for {
+            nm1 <- Gen.choose(0,100)                // lambdas are faked in 100 different variations
+            lam = SchemeLambda(List(),List(SchemeValue(ValueInteger(nm1), Identity.none)),Identity.none)
+            nm2 <- Gen.choose(0,100)                // environments are faked in 100 different variations
+            env = SimpleEnv(nm2)
+        } yield ((lam,env),None)
         // a generator for each type of value
         val anyNilV: Gen[V] = Gen.const(modularLattice.Nil)
         val anyIntV: Gen[V] = intGen.any.map(modularLattice.Int)
@@ -118,14 +124,9 @@ abstract class ModularSchemeLatticeGenerator[
         val anyReaV: Gen[V] = reaGen.any.map(modularLattice.Real)
         val anyChrV: Gen[V] = chrGen.any.map(modularLattice.Char)
         val anySymV: Gen[V] = symGen.any.map(modularLattice.Symbol)
-        val anyPrmV: Gen[V] = Gen.oneOf(primitives.allPrimitives).map(modularLattice.Prim)
-        val anyPtrV: Gen[V] = anyAddr.map(modularLattice.Pointer)
-        val anyCloV: Gen[V] = for {
-            nm1 <- Gen.choose(0,100)                // lambdas are faked in 100 different variations
-            lam = SchemeLambda(List(),List(SchemeValue(ValueInteger(nm1), Identity.none)),Identity.none)
-            nm2 <- Gen.choose(0,100)                // environments are faked in 100 different variations
-            env = SimpleEnv(nm2)
-        } yield modularLattice.Clo(lam,env,None)
+        val anyPrmV: Gen[V] = pickAtMost(3, Gen.oneOf(primitives.allPrimitives)).map(modularLattice.Prim)
+        val anyPtrV: Gen[V] = pickAtMost(3, anyAddr).map(modularLattice.Pointer)
+        val anyCloV: Gen[V] = pickAtMost(3, anyClosure).map(modularLattice.Clo)
         val anyPaiV: Gen[V] = for {
             car <- SchemeValueLatticeGenerator.any
             cdr <- SchemeValueLatticeGenerator.any

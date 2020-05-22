@@ -63,10 +63,10 @@ abstract class PrecisionBenchmarks[
         case analysis.valueLattice.Char(c)      => baseDomain.Char(c)
         case analysis.valueLattice.Str(s)       => baseDomain.Str(s)
         case analysis.valueLattice.Symbol(s)    => baseDomain.Symbol(s)
-        case analysis.valueLattice.Prim(p)      => baseDomain.Prim(StubPrimitive(p.name))
-        case analysis.valueLattice.Clo(l,_,_)   => baseDomain.Clo(LambdaIdnEq(l),(),None)
+        case analysis.valueLattice.Prim(ps)     => baseDomain.Prim(ps.map(p => StubPrimitive(p.name)))
+        case analysis.valueLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((LambdaIdnEq(c._1._1),()),None)))
         case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
-        case analysis.valueLattice.Pointer(a)   => baseDomain.Pointer(convertAddr(analysis)(a))
+        case analysis.valueLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
         case analysis.valueLattice.Vec(s,e)     => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
     }
     private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
