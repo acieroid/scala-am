@@ -6,8 +6,6 @@ import scalaam.util.Monoid
 
 trait SchemeAllocator[A] {
   def pointer(exp: SchemeExp): A
-  def carAddr(exp: SchemeExp): A
-  def cdrAddr(exp: SchemeExp): A
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {

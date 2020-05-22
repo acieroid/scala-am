@@ -3,7 +3,8 @@ package scalaam.language.scheme.primitives
 import scalaam.core._
 import scalaam.language.scheme._
 
-class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {
+class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] with PrimitiveBuildingBlocks[V,A] {
+  val lat = schemeLattice
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
@@ -225,21 +226,11 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     }
   }
 
-  def dereferenceAddrs(addrs: Set[A], store: Store[A,V]): MayFail[V,Error] =
-    addrs.foldLeft(MayFail.success[V,Error](schemeLattice.bottom))(
-      (acc: MayFail[V,Error], addr: A) =>
-        for {
-          v <- store.lookupMF(addr)
-          accv <- acc
-        } yield schemeLattice.join(accv,v)
-    )
-
   object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
 
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
 
     import schemeLattice._
-
 
     object `+` extends NoStoreLOpRec("+", {
         case (Nil, _)          => number(0)
@@ -340,7 +331,15 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `char->integer`  extends NoStore1Operation("char->integer",  unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
     object `null?`          extends NoStore1Operation("null?",          unaryOp(SchemeOps.UnaryOperator.IsNull))
 
-    object `pair?`    extends Store1Operation("pair?", { (x, store) => unaryOp(SchemeOps.UnaryOperator.IsCons)(x).map(v => (v, store)) })
+    object `pair?`    extends Store1Operation("pair?", { (x, store) => 
+      ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)) {
+        dereferencePointer(x, store) { cons =>
+          unaryOp(SchemeOps.UnaryOperator.IsCons)(cons)
+        }
+      } {
+        bool(false)
+      }.map(v => (v, store))
+    })
 
     object `char?`    extends NoStore1Operation("char?",    unaryOp(SchemeOps.UnaryOperator.IsChar))
     object `symbol?`  extends NoStore1Operation("symbol?",  unaryOp(SchemeOps.UnaryOperator.IsSymbol))
@@ -381,28 +380,40 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       val name = "cons"
       override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val carAddr = alloc.carAddr(fpos)
-          val cdrAddr = alloc.cdrAddr(fpos)
-          val consVal = lat.cons(carAddr, cdrAddr)
-          (consVal, store.extend(carAddr, car).extend(cdrAddr, cdr))
+          val addr = alloc.pointer(fpos)
+          val consVal = lat.cons(car, cdr)
+          val pointer = lat.pointer(addr)
+          (pointer, store.extend(addr, consVal))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
     }
 
-    object `car` extends Store1Operation("car", { (x, store) => dereferenceAddrs(lat.car(x), store).map((_, store))})
-    object `cdr` extends Store1Operation("cdr", { (x, store) => dereferenceAddrs(lat.cdr(x), store).map((_, store))})
+    object `car` extends Store1Operation("car", { (x, store) =>
+      dereferencePointer(x, store) { cons => lat.car(cons) }.map(v => (v,store))
+    })
+    object `cdr` extends Store1Operation("cdr", { (x, store) => 
+      dereferencePointer(x, store) { cons => lat.cdr(cons) }.map(v => (v,store))
+    })
 
     object `set-car!` extends Store2Operation("set-car!", { (cell, value, store) =>
-        lat.car(cell)
-          .foldLeft(store)((acc,addr) => acc.update(addr, value))
-          .map(store => (bool(false) /* undefined */, store))
-    })
+      dereferencePointerGetAddressReturnStore(cell, store) { (addr,cons,store) => 
+        for {
+          car <- lat.car(cons)
+          cdr <- lat.cdr(cons)
+          joined = lat.join(car,value)
+          updated = lat.cons(joined,cdr) 
+        } yield (bool(false), store.update(addr,updated))
+      }})
 
     object `set-cdr!` extends Store2Operation("set-cdr!", { (cell, value, store) =>
-        lat.cdr(cell)
-          .foldLeft(store)((acc,addr) => acc.update(addr, value))
-          .map(store => (bool(false) /* undefined */, store))
-    })
+      dereferencePointerGetAddressReturnStore(cell, store) { (addr,cons,store) => 
+        for {
+          car <- lat.car(cons)
+          cdr <- lat.cdr(cons)
+          joined = lat.join(cdr,value)
+          updated = lat.cons(car,joined) 
+        } yield (bool(false), store.update(addr,updated))
+      }})
 
     object `make-vector` extends SchemePrimitive[V,A] {
       val name = "make-vector"
@@ -520,124 +531,12 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
           for {
             (restv, store2) <- call(fpos, rest, store, alloc)
           } yield {
-            val carAddr = alloc.carAddr(argpos)
-            val cdrAddr = alloc.cdrAddr(argpos)
-            val updatedStore = store2.extend(carAddr, v) // Can use store here if store is mutated.
-              .extend(cdrAddr, restv)
-            (lat.cons(carAddr, cdrAddr), updatedStore)
+            val addr = alloc.pointer(argpos)
+            val pair = lat.cons(v, restv)
+            val updatedStore = store2.extend(addr, pair)
+            val pointer = lat.pointer(addr)
+            (pointer, updatedStore)
           }
-      }
-    }
-
-    abstract class FixpointPrimitiveUsingStore(val name: String, arity: Option[Int]) extends SchemePrimitive[V,A] {
-
-      // parameterized by
-      // - the arguments to the recursive call
-      type Args
-      // - the representation of 'call components' (tuning precision)
-      type Call
-      // - a mapping from arguments to call components
-      def callFor(args: Args): Call
-      // - a function to compute the initial arguments from the primitive input
-      def initialArgs(fpos: SchemeExp, argsWithExps: List[(SchemeExp, V)]): Option[Args]
-      // - a function for updating the arguments when upon a new call to a 'call'
-      def updateArgs(oldArgs: Args, newArgs: Args): Args
-      // - (optional) a function for updating the result of a function call
-      def updateResult(oldResult: MayFail[V,Error], newResult: MayFail[V,Error]): MayFail[V, Error] = mfMon.append(oldResult, newResult)
-      // - a function to execute a single 'call' with given arguments
-      def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], cache: Args => MayFail[V,Error]): MayFail[V,Error]
-
-      override def call(fpos: SchemeExp,
-                        argsWithExps: List[(SchemeExp, V)],
-                        store: Store[A,V],
-                        alloc: SchemeAllocator[A]): MayFail[(V,Store[A,V]), Error] = {
-        // determine the initial args & call from the primitive input
-        val initArgs = initialArgs(fpos, argsWithExps) match {
-          case Some(args) =>
-            args
-          case None =>
-            return MayFail.failure(PrimitiveArityError(name,arity.getOrElse(-1),argsWithExps.length))
-        }
-        val initCall = callFor(initArgs)
-        // for every call, keep track of the arguments
-        var callArgs = Map[Call,Args]((initCall -> initArgs))
-        // keep track of results for "visited" arguments
-        var cache = Map[Call,MayFail[V,Error]]().withDefaultValue(mfMon.zero)
-        // keep track of which calls depend on which other calls
-        var deps = Map[Call,Set[Call]]().withDefaultValue(Set())
-        // standard worklist algorithm
-        var worklist = Set(initCall)
-        while (worklist.nonEmpty) {
-          // take the next arguments from the worklist
-          val nextCall = worklist.head
-          worklist = worklist - nextCall
-          // call with the next arguments
-          val nextArgs = callArgs(nextCall)
-          val res = callWithArgs(nextArgs)(alloc, store, args => {
-            val call = callFor(args)
-            deps += (call -> (deps(call) + nextCall))
-            callArgs.get(call) match {
-              case None => // first time calling this 'call'
-                worklist = worklist + call
-                callArgs += (call -> args)
-              case Some(oldArgs) => // call was already called
-                val updatedArgs = updateArgs(oldArgs,args)
-                if (updatedArgs != oldArgs) {
-                  worklist = worklist + call
-                  callArgs += (call -> updatedArgs)
-                }
-            }
-            cache(call)
-          })
-          // update the cache and worklist
-          val oldValue = cache(nextCall)
-          val updatedValue = updateResult(oldValue, res)
-          if (updatedValue != oldValue) {
-            cache += (nextCall -> updatedValue)
-            worklist ++= deps(nextCall)
-          }
-        }
-        cache(initCall).map(v => (v,store))
-      }
-    }
-
-    object `append` extends FixpointPrimitiveUsingStore("append", Some(2)) {
-      /** the arguments to append are the two given input arguments + the 'append expression' */
-      type Args = (V,V,SchemeExp)
-      def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
-        case (_, l1) :: (_, l2) :: Nil  => Some((l1, l2, fexp))
-        case _                          => None
-      }
-      /** calls only take into account the current pair (= first argument of append) */
-      type Call = V
-      def callFor(args: Args) = args._1
-      /** arguments: ignore changes to the index to ensure termination (and other args are guaranteed to be the same anyway)*/
-      def updateArgs(oldArgs: Args, newArgs: Args) = oldArgs
-      /** The actual implementation of append */
-      override def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], append: Args => MayFail[V,Error]): MayFail[V,Error] = args match {
-        case (l1, l2, fexp) =>
-          ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsNull)(l1)) {
-            // if we have l1 = '(), append(l1,l2) = l2
-            l2
-          } {
-            ifThenElse (unaryOp(SchemeOps.UnaryOperator.IsCons)(l1)) {
-            // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
-            for {
-              carv <- car.call(l1, store).map(_._1)
-              cdrv <- cdr.call(l1, store).map(_._1)
-              app_next <- append((cdrv, l2, fexp))
-            } yield {
-              val carAddr = alloc.carAddr(fexp)
-              val cdrAddr = alloc.cdrAddr(fexp)
-              store.extend(carAddr, carv)
-              store.extend(cdrAddr, app_next)
-              lat.cons(carAddr,cdrAddr)
-            }
-          } {
-            // if we have have something else (i.e., not a list), append throws a type error!
-            MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
-          }
-        }
       }
     }
   }

@@ -4,9 +4,6 @@ import scalaam.util._
 
 import scala.concurrent.duration._
 import scalaam.core.Position._
-import scalaam.modular.adaptive._
-import scalaam.modular.adaptive.scheme._
-import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -18,16 +15,20 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/icp/icp_5_regsim.scm")
+    val txt = "(pair? 3)" //Reader.loadFile("test/regex.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics with BigStepSemantics
-                                        with NoSensitivity
+                                        with FullArgumentSensitivity
                                         with ConstantPropagationDomain {
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       var i = 0
       override def step(): Unit = {
         i = i + 1
         println(s"[$i] ${view(workList.head)}")
+        if(!store.isEmpty) {
+          val (addr,value) = store.maxBy(p => p._2.vs.size)
+          println(s"=> $addr -> ${value.vs.size}")
+        }
         super.step()
       }
     }
