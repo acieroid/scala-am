@@ -600,45 +600,5 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
         cache(initCall).map(v => (v,store))
       }
     }
-
-    object `append` extends FixpointPrimitiveUsingStore("append", Some(2)) {
-      /** the arguments to append are the two given input arguments + the 'append expression' */
-      type Args = (V,V,SchemeExp)
-      def initialArgs(fexp: SchemeExp, args: List[(SchemeExp, V)]) = args match {
-        case (_, l1) :: (_, l2) :: Nil  => Some((l1, l2, fexp))
-        case _                          => None
-      }
-      /** calls only take into account the current pair (= first argument of append) */
-      type Call = V
-      def callFor(args: Args) = args._1
-      /** arguments: ignore changes to the index to ensure termination (and other args are guaranteed to be the same anyway)*/
-      def updateArgs(oldArgs: Args, newArgs: Args) = oldArgs
-      /** The actual implementation of append */
-      override def callWithArgs(args: Args)(alloc: SchemeAllocator[A], store: Store[A,V], append: Args => MayFail[V,Error]): MayFail[V,Error] = args match {
-        case (l1, l2, fexp) =>
-          ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsNull)(l1)) {
-            // if we have l1 = '(), append(l1,l2) = l2
-            l2
-          } {
-            ifThenElse (unaryOp(SchemeOps.UnaryOperator.IsCons)(l1)) {
-            // if we have l1 = cons(a,d), append(l1,l2) = cons(a,append(d,l2))
-            for {
-              carv <- car.call(l1, store).map(_._1)
-              cdrv <- cdr.call(l1, store).map(_._1)
-              app_next <- append((cdrv, l2, fexp))
-            } yield {
-              val carAddr = alloc.carAddr(fexp)
-              val cdrAddr = alloc.cdrAddr(fexp)
-              store.extend(carAddr, carv)
-              store.extend(cdrAddr, app_next)
-              lat.cons(carAddr,cdrAddr)
-            }
-          } {
-            // if we have have something else (i.e., not a list), append throws a type error!
-            MayFail.failure(PrimitiveNotApplicable("length", List(l1)))
-          }
-        }
-      }
-    }
   }
 }
