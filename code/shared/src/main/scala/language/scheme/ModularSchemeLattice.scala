@@ -7,7 +7,7 @@ import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
 import scalaam.language.scheme.primitives.SchemePrimitive
-import scala.annotation.tailrec
+import scalaam.util.SmartUnion._
 
 /** Defines a Scheme lattice based on other lattices.
   * Example usage:
@@ -100,9 +100,9 @@ class ModularSchemeLattice[
           case (Real(f1), Real(f2))       => Some(Real(RealLattice[R].join(f1, f2)))
           case (Char(c1), Char(c2))       => Some(Char(CharLattice[C].join(c1, c2)))
           case (Symbol(s1), Symbol(s2))   => Some(Symbol(SymbolLattice[Sym].join(s1,s2)))
-          case (Prim(p1), Prim(p2))       => Some(Prim(p1 ++ p2))
-          case (Clo(c1), Clo(c2))         => Some(Clo(c1 ++ c2))
-          case (Pointer(a1), Pointer(a2)) => Some(Pointer(a1 ++ a2))
+          case (Prim(p1), Prim(p2))       => Some(Prim(sunion(p1,p2)))
+          case (Clo(c1), Clo(c2))         => Some(Clo(sunion(c1,c2)))
+          case (Pointer(a1), Pointer(a2)) => Some(Pointer(sunion(a1,a2)))
           case (Cons(a1,d1), Cons(a2,d2)) => Some(Cons(schemeLattice.join(a1,a2), schemeLattice.join(d1,d2)))
           case (Vec(size1, els1), Vec(size2, els2)) =>
             // First, joins the size

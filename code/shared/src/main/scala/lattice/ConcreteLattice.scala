@@ -2,6 +2,7 @@ package scalaam.lattice
 
 import scalaam.core._
 import scalaam.util.Show
+import scalaam.util.SmartUnion._
 
 object Concrete {
   sealed trait L[+X] {
@@ -35,7 +36,7 @@ object Concrete {
       case Values(content1) =>
         y match {
           case Top              => Top
-          case Values(content2) => Values(content1.union(content2))
+          case Values(content2) => Values(sunion(content1,content2))
         }
     }
     def subsumes(x: L[A], y: => L[A]): Boolean = x match {
