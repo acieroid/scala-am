@@ -34,44 +34,58 @@ class ModularSchemeLattice[
   /** We first implement all possible operations on single values, that can be
     * only joined when compatible. This therefore is not a lattice but will be
     * used to build the set lattice */
-  sealed trait Value extends SmartHash
+  sealed trait Value extends SmartHash { 
+    def ord: scala.Int
+  }
   case class Str(s: S) extends Value {
+    def ord = 0
     override def toString: String = StringLattice[S].show(s)
   }
   case class Bool(b: B) extends Value {
+    def ord = 1
     override def toString: String = BoolLattice[B].show(b)
   }
   case class Int(i: I) extends Value {
+    def ord = 2
     override def toString: String = IntLattice[I].show(i)
   }
   case class Real(r: R) extends Value {
+    def ord = 3
     override def toString: String = RealLattice[R].show(r)
   }
   case class Char(c: C) extends Value {
+    def ord = 4
     override def toString: String = CharLattice[C].show(c)
   }
   case class Symbol(s: Sym) extends Value {
+    def ord = 5
     override def toString: String = SymbolLattice[Sym].show(s)
   }
   case class Prim(prim: Set[P]) extends Value {
+    def ord = 6
     override def toString = prim.map(_.name).mkString("{primitives ",",","}")
   }
   // TODO: define `type Closure = (SchemeLambdaExp, Env, Option[String])` (maybe using a case class)
   case class Clo(closures: Set[(schemeLattice.Closure, Option[String])]) extends Value {
+    def ord = 7
     override def toString: String =
       closures.map(namedClo => namedClo._2.getOrElse(s"λ@${namedClo._1._1.idn}"))
               .mkString("{closures ",",","}")
   }
-  case class Cons(car: L, cdr: L) extends Value {
-    override def toString: String = s"($car . $cdr)"
-  }
   case object Nil extends Value {
+    def ord = 8
     override def toString: String = "()"
   }
   case class Pointer(ptrs: Set[A]) extends Value {
+    def ord = 9
     override def toString: String = ptrs.mkString("{pointers ",",","}")
   }
+  case class Cons(car: L, cdr: L) extends Value {
+    def ord = 10
+    override def toString: String = s"($car . $cdr)"
+  }
   case class Vec(size: I, elements: Map[I, L]) extends Value {
+    def ord = 11
     override def toString: String = {
       val els = elements.toList
         .map({
@@ -508,11 +522,11 @@ class ModularSchemeLattice[
   }
 
   type L = Elements
-  case class Elements(vs: Set[Value]) extends SmartHash {
+  case class Elements(vs: List[Value]) extends SmartHash {
     override def toString: String = 
       if (vs.isEmpty) {
         "⊥"
-      } else if (vs.size == 1) {
+      } else if (vs.tail.isEmpty) {
         vs.head.toString
       } else {
         vs.map(_.toString).toList.sorted.mkString("{",",","}")
@@ -521,25 +535,22 @@ class ModularSchemeLattice[
       vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
   }
   object Element {
-    def apply(v: Value): L = Elements(Set(v))
+    def apply(v: Value): L = Elements(List(v))
   }
 
   import MonoidInstances.{boolOrMonoid, boolAndMonoid, setMonoid}
   implicit val lMonoid: Monoid[L] = new Monoid[L] {
     private def insert(vs: List[Value], v: Value): List[Value] = vs match {
-      case scala.collection.immutable.Nil => List(v)
-      case v0 :: rest => Value.join(v,v0) match {
-        case Some(joined) => joined :: rest
-        case None         => v0 :: insert(rest,v)
-      } 
+      case scala.Nil                        => List(v)
+      case v0 :: _      if v.ord < v0.ord   => v :: vs
+      case v0 :: rest   if v.ord == v0.ord  => Value.join(v,v0).get :: rest
+      case v0 :: rest                       => v0 :: insert(rest,v)
     }
     def append(x: L, y: => L): L = (x,y) match {
-      // TODO: this can probably be done more efficiently?
-      case (Elements(as), Elements(bs)) if as.size < bs.size => append(y,x)
-      case (Elements(as), Elements(bs)) =>
-        Elements(bs.foldLeft(as.toList)(insert).toSet)
+      case (Elements(as), Elements(bs)) if as.size < bs.size  => append(y,x)
+      case (Elements(as), Elements(bs))                       => Elements(bs.foldLeft(as)(insert))
     }
-    def zero: L = Elements(Set.empty)
+    def zero: L = Elements(scala.Nil)
   }
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
@@ -570,7 +581,7 @@ class ModularSchemeLattice[
       x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
 
-    def bottom: L                             = Elements(Set.empty)
+    def bottom: L                             = Elements(List.empty)
     def number(x: scala.Int): L               = Element(Value.number(x))
     def numTop: L                             = Element(Int(IntLattice[I].top))
     def real(x: Double): L                    = Element(Value.real(x))
