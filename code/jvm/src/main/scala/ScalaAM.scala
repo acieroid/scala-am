@@ -15,7 +15,7 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/icp/icp_7_eceval.scm")
+    val txt = Reader.loadFile("test/mceval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics with BigStepSemantics
                                         with NoSensitivity

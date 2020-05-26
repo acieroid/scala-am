@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 abstract class Performance extends App {
 
   // The number of warmup runs, for which the timing is discarded
-  val warmup = 3
+  val warmup = 5
   // The actual number of runs made after `warmup` runs
   val actual = 15
 
@@ -102,7 +102,7 @@ abstract class Performance extends App {
 }
 
 object SimplePerformance extends Performance {
-  override def benchmarks = List("test/mceval.scm")
+  override def benchmarks = List("test/icp/icp_3_leval.scm")
   def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.contextInsensitiveAnalysis, "base analysis")
