@@ -30,13 +30,14 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `cdr`, /* [vv] cdr: Pairs */
       `ceiling`, /* [vv] ceiling: Arithmetic */
       `char->integer`, /* [x]  char->integer: Characters */
+      `char->string`,
       /* [x]  char-alphabetic?: Characters */
       /* [x]  char-ci<=?: Characters */
       /* [x]  char-ci<?: Characters */
       /* [x]  char-ci=?: Characters */
       /* [x]  char-ci>=?: Characters */
       /* [x]  char-ci>?: Characters */
-      /* [x]  char-downcase: Characters */
+      `char-downcase`, /* [x]  char-downcase: Characters */
       /* [x]  char-lower-case?: Characters */
       /* [x]  char-numeric?: Characters */
       /* [x]  char-ready?: Reading */
@@ -329,6 +330,8 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOps.UnaryOperator.ExactToInexact))
     object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOps.UnaryOperator.InexactToExact))
     object `char->integer`  extends NoStore1Operation("char->integer",  unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
+    object `char->string`   extends NoStore1Operation("char->string",   unaryOp(SchemeOps.UnaryOperator.CharacterToString))
+    object `char-downcase`  extends NoStore1Operation("char-downcase",  unaryOp(SchemeOps.UnaryOperator.CharacterDowncase))
     object `null?`          extends NoStore1Operation("null?",          unaryOp(SchemeOps.UnaryOperator.IsNull))
 
     object `pair?`    extends Store1Operation("pair?", { (x, store) => 

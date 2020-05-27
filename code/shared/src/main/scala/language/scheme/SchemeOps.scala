@@ -10,8 +10,9 @@ object SchemeOps {
     Ceiling, Floor, Round, Random, Sqrt, /* Unary arithmetic operations */
     Sin, ASin, Cos, ACos, Tan, ATan, Log, /* Transcendental functions */
     VectorLength, StringLength, /* Length operations */
-    NumberToString, SymbolToString, StringToSymbol, StringToNumber, /* Conversions */
-    ExactToInexact, InexactToExact, CharacterToInteger = Value
+    NumberToString, SymbolToString, StringToSymbol, StringToNumber,  /* Conversions */
+    ExactToInexact, InexactToExact, CharacterToInteger, CharacterToString,
+    CharacterDowncase = Value
   }
   type UnaryOperator = UnaryOperator.Value
 

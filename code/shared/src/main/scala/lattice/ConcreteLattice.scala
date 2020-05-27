@@ -222,6 +222,8 @@ object Concrete {
     }
     implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char): C = Values(Set(x))
+      def downCase(c: C): C = c.map(_.toLower)
+      def toString[S2: StringLattice](c: C): S2 = c.foldMap(char => StringLattice[S2].inject(char.toString))
       def toInt[I2 : IntLattice](c: C) = c.foldMap(c => IntLattice[I2].inject(c.toInt))
     }
     implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")

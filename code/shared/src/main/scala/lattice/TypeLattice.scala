@@ -3,7 +3,12 @@ package scalaam.lattice
 import scalaam.core._
 
 object Type {
-  sealed trait T
+  sealed trait T {
+    def to[L: Lattice]: L = this match {
+      case Bottom => Lattice[L].bottom
+      case Top    => Lattice[L].top
+    }
+  }
   case object Top    extends T
   case object Bottom extends T
 
@@ -52,10 +57,7 @@ object Type {
 
     implicit val typeIsString: StringLattice[S] = new BaseInstance("Str") with StringLattice[S] {
       def inject(x: String): T = Top
-      def length[I2: IntLattice](s: T) = s match {
-        case Top    => IntLattice[I2].top
-        case Bottom => IntLattice[I2].bottom
-      }
+      def length[I2: IntLattice](s: T) = s.to[I2]
       def append(s1: T, s2: T) = (s1, s2) match {
         case (Bottom, _) | (_, Bottom) => Bottom
         case (Top, _) | (Top, _)       => Top
@@ -69,10 +71,7 @@ object Type {
         case (Bottom, _) | (_, Bottom) => BoolLattice[B2].bottom
         case (Top, _) | (Top, _)       => BoolLattice[B2].top
       }
-      def toSymbol[Sym2: SymbolLattice](s: S) = s match {
-        case Bottom => SymbolLattice[Sym2].bottom
-        case Top    => SymbolLattice[Sym2].top
-      }
+      def toSymbol[Sym2: SymbolLattice](s: S) = s.to[Sym2]
       def toNumber[I2: IntLattice](s: S) = s match {
         case Bottom => MayFail.success(IntLattice[I2].bottom)
         case Top    => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
@@ -86,10 +85,7 @@ object Type {
     }
     implicit val typeIsInteger: IntLattice[I] = new BaseInstance("Int") with IntLattice[I] {
       def inject(x: Int): T = Top
-      def toReal[R2: RealLattice](n: T): R2 = n match {
-        case Top    => RealLattice[R2].top
-        case Bottom => RealLattice[R2].bottom
-      }
+      def toReal[R2: RealLattice](n: T): R2 = n.to[R2]
       def random(n: T): T        = n
       def plus(n1: T, n2: T): T  = meet(n1, n2)
       def minus(n1: T, n2: T): T = meet(n1, n2)
@@ -107,17 +103,11 @@ object Type {
         case _          => BoolLattice[B2].bottom
       }
       def valuesBetween(n1: T, n2: T): Set[T] = Set(Top)
-      def toString[S2: StringLattice](n: T): S2 = n match {
-        case Top    => StringLattice[S2].top
-        case Bottom => StringLattice[S2].bottom
-      }
+      def toString[S2: StringLattice](n: T): S2 = n.to[S2]
     }
     implicit val typeIsReal: RealLattice[R] = new BaseInstance("Real") with RealLattice[R] {
       def inject(x: Double): T = Top
-      def toInt[I2: IntLattice](n: T): I2 = n match {
-        case Top    => IntLattice[I2].top
-        case Bottom => IntLattice[I2].bottom
-      }
+      def toInt[I2: IntLattice](n: T): I2 = n.to[I2]
       def ceiling(n: T): T       = n
       def floor(n: T): T         = n
       def round(n: T): T         = n
@@ -139,17 +129,13 @@ object Type {
         case (Top, Top) => BoolLattice[B2].top
         case _          => BoolLattice[B2].bottom
       }
-      def toString[S2: StringLattice](n: T): S2 = n match {
-        case Top    => StringLattice[S2].top
-        case Bottom => StringLattice[S2].bottom
-      }
+      def toString[S2: StringLattice](n: T): S2 = n.to[S2]
     }
     implicit val typeIsChar: CharLattice[C] = new BaseInstance("Char") with CharLattice[C] {
       def inject(c: Char): T = Top
-      def toInt[I2: IntLattice](c: C) = c match {
-        case Bottom => IntLattice[I2].bottom
-        case Top    => IntLattice[I2].top
-      }
+      def downCase(c: C): C = c
+      def toString[S2: StringLattice](c: C): S2 = c.to[S2]
+      def toInt[I2: IntLattice](c: C) = c.to[I2]
     }
     implicit val typeIsSymbol: SymbolLattice[Sym] = new BaseInstance("Sym")
     with SymbolLattice[Sym] {
