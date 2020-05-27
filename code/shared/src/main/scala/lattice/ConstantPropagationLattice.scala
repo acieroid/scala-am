@@ -141,9 +141,9 @@ object ConstantPropagation {
         case Constant(x) => SymbolLattice[Sym2].inject(x)
       }
       def toNumber[I2: IntLattice](s: S) = s match {
-        case Bottom         => IntLattice[I2].bottom
-        case Constant(str)  => str.toIntOption.map(IntLattice[I2].inject).getOrElse(IntLattice[I2].bottom) //TODO: use MayFail
-        case Top            => IntLattice[I2].top
+        case Bottom         => MayFail.success(IntLattice[I2].bottom)
+        case Constant(str)  => MayFail.fromOption(str.toIntOption.map(IntLattice[I2].inject))(NotANumberString)
+        case Top            => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
       }
     }
     implicit val intCP: IntLattice[I] = new BaseInstance[Int]("Int") with IntLattice[I] {

@@ -74,8 +74,8 @@ object Type {
         case Top    => SymbolLattice[Sym2].top
       }
       def toNumber[I2: IntLattice](s: S) = s match {
-        case Bottom => IntLattice[I2].bottom
-        case Top    => IntLattice[I2].top
+        case Bottom => MayFail.success(IntLattice[I2].bottom)
+        case Top    => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
       }
     }
     implicit val typeIsBoolean: BoolLattice[B] = new BaseInstance("Bool") with BoolLattice[B] {

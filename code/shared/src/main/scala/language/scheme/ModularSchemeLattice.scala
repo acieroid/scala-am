@@ -286,7 +286,7 @@ class ModularSchemeLattice[
       }
       case StringToNumber => x match {
         // TODO: string may also be a float!
-        case Str(s) => MayFail.success(Int(StringLattice[S].toNumber(s)))
+        case Str(s) => StringLattice[S].toNumber(s).map(Int(_))
         case _      => MayFail.failure(OperatorNotApplicable("string->number", List(x)))
       }
       case SymbolToString => x match {

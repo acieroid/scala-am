@@ -111,10 +111,16 @@ object Concrete {
           content1.foldMap(s1 => content2.foldMap(s2 => BoolLattice[B2].inject(s1 < s2)))
       }
       def toSymbol[Sym2: SymbolLattice](s: S): Sym2 = s.foldMap(s => SymbolLattice[Sym2].inject(s))
-      def toNumber[I2: IntLattice](s: S): I2 = s.foldMap(str => 
-        // TODO: MayFail would be useful here, now bottom is returned if parsing fails
-        str.toIntOption.map(IntLattice[I2].inject).getOrElse(IntLattice[I2].bottom)
-      )
+      def toNumber[I2: IntLattice](s: S): MayFail[I2, Error] = s match {
+        case Top        => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
+        case Values(vs) => vs.foldLeft(MayFail.success(IntLattice[I2].bottom): MayFail[I2, Error]) {
+          (acc, str) => 
+            for {
+              numv <- MayFail.fromOption[I2,Error](str.toIntOption.map(IntLattice[I2].inject))(NotANumberString)
+              accv <- acc
+            } yield IntLattice[I2].join(accv,numv)
+        }
+      }
     }
     implicit val boolShow: Show[Boolean] = new Show[Boolean] {
       def show(b: Boolean): String =
