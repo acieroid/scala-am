@@ -289,6 +289,28 @@ object SchemeCond {
 }
 
 /**
+  * A when expression: (when pred body ...)
+  * Desugared into an if-expression.
+  */
+object SchemeWhen {
+  def apply(pred: SchemeExp,
+            body: List[SchemeExp],
+            idn: Identity) = 
+    SchemeIf(pred, SchemeBody(body), SchemeValue(ValueBoolean(false), idn), idn)
+}
+
+/**
+  * An unless expression: (unless pred body ...)
+  * Desugared into an if-expression.
+  */
+object SchemeUnless {
+  def apply(pred: SchemeExp,
+            body: List[SchemeExp],
+            idn: Identity) = 
+    SchemeIf(pred, SchemeValue(ValueBoolean(false), idn), SchemeBody(body), idn)
+}
+
+/**
   * A case expression: (case key ((vals1...) body1...) ... (else default...)).
   * Desugared according to R5RS.
   */
