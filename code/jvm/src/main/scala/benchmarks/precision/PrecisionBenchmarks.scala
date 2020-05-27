@@ -27,8 +27,6 @@ abstract class PrecisionBenchmarks[
     sealed trait BaseAddr extends Address { def printable = true }
     case class VarAddr(vrb: Identifier) extends BaseAddr { override def toString = s"<variable $vrb>" }
     case class PrmAddr(nam: String)     extends BaseAddr { override def toString = s"<primitive $nam>" }
-    case class CarAddr(idn: Identity)   extends BaseAddr { override def toString = s"<car $idn>" }
-    case class CdrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<cdr $idn>" }
     case class RetAddr(idn: Identity)   extends BaseAddr { override def toString = s"<return $idn>" }
     case class PtrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<pointer $idn>" }
     
@@ -36,8 +34,6 @@ abstract class PrecisionBenchmarks[
         case analysis.ComponentAddr(_, analysis.VarAddr(v)) => VarAddr(v)
         case analysis.ComponentAddr(_, analysis.PrmAddr(n)) => PrmAddr(n)
         case analysis.ComponentAddr(_, analysis.PtrAddr(e)) => PtrAddr(e.idn)
-        case analysis.ComponentAddr(_, analysis.CarAddr(e)) => CarAddr(e.idn)
-        case analysis.ComponentAddr(_, analysis.CdrAddr(e)) => CdrAddr(e.idn)
         case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body.idn)
     }
 
@@ -67,10 +63,10 @@ abstract class PrecisionBenchmarks[
         case analysis.valueLattice.Char(c)      => baseDomain.Char(c)
         case analysis.valueLattice.Str(s)       => baseDomain.Str(s)
         case analysis.valueLattice.Symbol(s)    => baseDomain.Symbol(s)
-        case analysis.valueLattice.Prim(p)      => baseDomain.Prim(StubPrimitive(p.name))
-        case analysis.valueLattice.Clo(l,_,_)   => baseDomain.Clo(LambdaIdnEq(l),(),None)
-        case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertAddr(analysis)(a), convertAddr(analysis)(d))
-        case analysis.valueLattice.Pointer(a)   => baseDomain.Pointer(convertAddr(analysis)(a))
+        case analysis.valueLattice.Prim(ps)     => baseDomain.Prim(ps.map(p => StubPrimitive(p.name)))
+        case analysis.valueLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((LambdaIdnEq(c._1._1),()),None)))
+        case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
+        case analysis.valueLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
         case analysis.valueLattice.Vec(s,e)     => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
     }
     private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
@@ -80,8 +76,6 @@ abstract class PrecisionBenchmarks[
         case SchemeInterpreter.AddrInfo.VarAddr(v) => VarAddr(v)
         case SchemeInterpreter.AddrInfo.PrmAddr(p) => PrmAddr(p)
         case SchemeInterpreter.AddrInfo.PtrAddr(p) => PtrAddr(p.idn)
-        case SchemeInterpreter.AddrInfo.CarAddr(p) => CarAddr(p.idn)
-        case SchemeInterpreter.AddrInfo.CdrAddr(p) => CdrAddr(p.idn)
         case SchemeInterpreter.AddrInfo.RetAddr(r) => RetAddr(r.idn)
     }
     private def convertConcreteValue(value: SchemeInterpreter.Value): BaseValue = value match {
@@ -95,7 +89,7 @@ abstract class PrecisionBenchmarks[
         case SchemeInterpreter.Value.Real(r)            => baseLattice.real(r)
         case SchemeInterpreter.Value.Bool(b)            => baseLattice.bool(b)
         case SchemeInterpreter.Value.Character(c)       => baseLattice.char(c)
-        case SchemeInterpreter.Value.Cons(a,d)          => baseLattice.cons(convertConcreteAddr(a),convertConcreteAddr(d))
+        case SchemeInterpreter.Value.Cons(a,d)          => baseLattice.cons(convertConcreteValue(a),convertConcreteValue(d))
         case SchemeInterpreter.Value.Pointer(a)         => baseLattice.pointer(convertConcreteAddr(a))
         case SchemeInterpreter.Value.Vector(siz,els,_) => 
             def convertNumber(n: Int): Num = baseLattice.number(n) match {

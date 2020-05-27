@@ -42,11 +42,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** Extract primitives contained in this value */
   def getPrimitives(x: L): Set[P]
 
-  /** Extract cons-cells contained in this value */
-  def getConsCells(x: L): Set[(A,A)]
-  def car(x: L): Set[A] = getConsCells(x).map(_._1)
-  def cdr(x: L): Set[A] = getConsCells(x).map(_._2)
-
+  /** Extract pointers contained in this value */
   def getPointerAddresses(x: L): Set[A]
 
   /** Injection of an integer */
@@ -77,7 +73,13 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   def symbol(x: String): L
 
   /** Injection of a cons cell */
-  def cons(car: A, cdr: A): L
+  def cons(car: L, cdr: L): L
+
+  /** Extract the car of a cons-cell */
+  def car(x: L): MayFail[L, Error]
+
+  /** Extract the cdr of a cons-cell */
+  def cdr(x: L): MayFail[L, Error]
 
   /** Injection of the nil value */
   def nil: L
@@ -99,7 +101,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
 
   object Injector {
     implicit def inject(c: Closure, name: Option[String]): L = closure(c, name)
-    implicit def inject(car: A, cdr: A): L = cons(car, cdr)
+    implicit def inject(car: L, cdr: L): L = cons(car, cdr)
     implicit def inject(a: Any): L = a match {
       case i: Int     => number(i)
       case r: Double  => real(r)

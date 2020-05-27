@@ -39,17 +39,13 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     def idn(): Identity
     override def toString() = this match {
       case VarAddr(id)  => s"var ($id)"
-      case PtrAddr(exp)   => s"ptr (${exp.idn})"
-      case CarAddr(exp)   => s"car (${exp.idn})"
-      case CdrAddr(exp)   => s"cdr (${exp.idn})"
+      case PtrAddr(exp) => s"ptr (${exp.idn})"
       case PrmAddr(nam) => s"prm ($nam)"
     }
   }
   case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
   case class PtrAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn }
-  case class CarAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn }
-  case class CdrAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn }
-  case class PrmAddr(nam: String)    extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
+  case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
@@ -69,7 +65,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
 
   implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent { def body: SchemeExp }
+  trait SchemeComponent extends SmartHash { def body: SchemeExp }
 
   /** Returns the parent of a component, if any. */
   def componentParent(c: Component): Option[Component]
@@ -146,11 +142,10 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val carAddr = allocAddr(CarAddr(pairExp))
-      val cdrAddr = allocAddr(CdrAddr(pairExp))
-      writeAddr(carAddr,car)
-      writeAddr(cdrAddr,cdr)
-      lattice.cons(carAddr,cdrAddr)
+      val addr = allocAddr(PtrAddr(pairExp))
+      val pair = lattice.cons(car,cdr)
+      writeAddr(addr,pair)
+      lattice.pointer(addr)
     }
     protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
       //TODO [difficult]: implement append
@@ -163,8 +158,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
     private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
       def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
-      def carAddr(exp: SchemeExp): Addr = allocAddr(CarAddr(exp))
-      def cdrAddr(exp: SchemeExp): Addr = allocAddr(CdrAddr(exp))
     }
     // TODO[minor]: use foldMap instead of foldLeft
     protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =

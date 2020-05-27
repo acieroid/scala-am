@@ -200,11 +200,10 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     }
   }
   def allocateCons(exp: SchemeExp, car: Value, cdr: Value): Value = {
-    val addr1 = newAddr(AddrInfo.CarAddr(exp))
-    val addr2 = newAddr(AddrInfo.CdrAddr(exp))
-    extendStore(addr1, car)
-    extendStore(addr2, cdr)
-    Value.Cons(addr1, addr2)
+    val addr = newAddr(AddrInfo.PtrAddr(exp))
+    val pair = Value.Cons(car,cdr)
+    extendStore(addr, pair)
+    Value.Pointer(addr)
   }
 
   def makeList(values: List[(SchemeExp,Value)]): Value = values match {
@@ -222,11 +221,11 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       Abs, /* [vv] abs: Arithmetic */
       ACos, /* [vv] acos: Scientific */
       /* [x]  angle: Complex */
-      Append, /* [x]  append: Append/Reverse */
+      //Append, /* [x]  append: Append/Reverse */
       /* [x]  apply: Fly Evaluation */
       ASin, /* [vv] asin: Scientific */
-      Assoc, /* [vv] assoc: Retrieving Alist Entries */
-      Assq, /* [vv] assq: Retrieving Alist Entries */
+      //Assoc, /* [vv] assoc: Retrieving Alist Entries */
+      //Assq, /* [vv] assq: Retrieving Alist Entries */
       /* [x]  assv: Retrieving Alist Entries */
       ATan, /* [vv] atan: Scientific */
       Booleanp, /* [vv] boolean?: Booleans */
@@ -268,7 +267,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
       Eq, /* [vv] eq?: Equality */
-      Equal, /* [vx] equal?: Equality */
+      //Equal, /* [vx] equal?: Equality */
       /* [x]  eqv?: Equality */
       /* [x]  eval: Fly Evaluation */
       Evenp, /* [vv] even?: Integer Operations */
@@ -288,13 +287,13 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       Integerp, /* [vv] integer?: Integers */
       /* [x]  interaction-environment: Fly Evaluation */
       /* [x]  lcm: Integer Operations */
-      Length, /* [vv] length: List Selection */
+      //Length, /* [vv] length: List Selection */
       ListPrim, /* [vv] list: List Constructors */
       /* [x]  list->string: String Constructors */
       /* [x]  list->vector: Vector Creation */
-      ListRef, /* [vv] list-ref: List Selection */
+      //ListRef, /* [vv] list-ref: List Selection */
       /* [x]  list-tail: List Selection */
-      Listp, /* [vv] list?: List Predicates */
+      //Listp, /* [vv] list?: List Predicates */
       /* [x]  load: Loading */
       Log, /* [vv] log: Scientific */
       /* [x]  magnitude: Complex */
@@ -303,8 +302,8 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       /* [x]  make-string: String Constructors */
       /* [x]  map: List Mapping */
       Max, /* [vv] max: Arithmetic */
-      Member, /* [vv] member: List Searching */
-      Memq, /* [v]  memq: List Searching */
+      //Member, /* [vv] member: List Searching */
+      //Memq, /* [v]  memq: List Searching */
       /* [x]  memv: List Searching */
       Min, /* [vv] min: Arithmetic */
       Modulo, /* [vv] modulo: Integer Operations */
@@ -385,34 +384,34 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       /* [x]  null-environment */
       /* [x]  write transcript-on */
       /* [x]  transcript-off */
-      Caar,
-      Cadr, /* [v]  caar etc. */
-      Cdar,
-      Cddr,
-      Caaar,
-      Caadr,
-      Cadar,
-      Caddr,
-      Cdaar,
-      Cdadr,
-      Cddar,
-      Cdddr,
-      Caaaar,
-      Caaadr,
-      Caadar,
-      Caaddr,
-      Cadaar,
-      Cadadr,
-      Caddar,
-      Cadddr,
-      Cdaaar,
-      Cdaadr,
-      Cdadar,
-      Cdaddr,
-      Cddaar,
-      Cddadr,
-      Cdddar,
-      Cddddr,
+      //Caar,
+      //Cadr, /* [v]  caar etc. */
+      //Cdar,
+      //Cddr,
+      //Caaar,
+      //Caadr,
+      //Cadar,
+      //Caddr,
+      //Cdaar,
+      //Cdadr,
+      //Cddar,
+      //Cdddr,
+      //Caaaar,
+      //Caaadr,
+      //Caadar,
+      //Caaddr,
+      //Cadaar,
+      //Cadadr,
+      //Caddar,
+      //Cadddr,
+      //Cdaaar,
+      //Cdaadr,
+      //Cdadar,
+      //Cdaddr,
+      //Cddaar,
+      //Cddadr,
+      //Cdddar,
+      //Cddddr,
       /* Other primitives that are not R5RS */
       Random,
       Error
@@ -841,7 +840,10 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     }
     object Pairp extends SingleArgumentPrim("pair?") {
       def fun = {
-        case _: Value.Cons => Value.Bool(true)
+        case Value.Pointer(addr) => store(addr) match {
+          case _: Value.Cons  => Value.Bool(true)
+          case _              => Value.Bool(false)
+        }
         case _ => Value.Bool(false)
       }
     }
@@ -930,28 +932,6 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
         case _ => throw new Exception(s"eq?: wrong number of arguments ${args.length}")
       }
     }
-    object Equal extends SimplePrim {
-      val name = "equal?"
-      def equal(x: Value, y: Value): Boolean = (x, y) match {
-        case (x: Value.Clo, y: Value.Clo) => x == y
-        case (x: Value.Primitive, y: Value.Primitive) => x == y
-        case (x: Value.Str, y: Value.Str) => x == y
-        case (x: Value.Symbol, y: Value.Symbol) => x == y
-        case (x: Value.Integer, y: Value.Integer) => x == y
-        case (x: Value.Real, y: Value.Real) => x == y
-        case (x: Value.Bool, y: Value.Bool) => x == y
-        case (x: Value.Character, y: Value.Character) => x == y
-        case (Value.Nil, Value.Nil) => x == y
-        case (Value.Cons(car1, cdr1), Value.Cons(car2, cdr2)) =>
-          equal(store(car1), store(car2)) && equal(store(cdr1), store(cdr2))
-        case (x: Value.Vector, y: Value.Vector) => x == y
-        case _ => false
-      }
-      def call(args: List[Value]): Value.Bool = args match {
-        case x :: y :: Nil => Value.Bool(equal(x, y))
-        case _ => throw new Exception(s"equal?: wrong number of arguments ${args.length}")
-      }
-    }
     /////////////
     // Vectors //
     /////////////
@@ -1012,57 +992,21 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     //////////
     // Cons //
     //////////
+
     object Car extends SingleArgumentPrim("car") {
       def fun = {
-        case Value.Cons(car, _) => store(car)
+        case Value.Pointer(addr) => store(addr) match {
+          case Value.Cons(car,_) => car
+        }
       }
     }
     object Cdr extends SingleArgumentPrim("cdr") {
       def fun = {
-        case Value.Cons(_, cdr) => store(cdr)
+        case Value.Pointer(addr) => store(addr) match {
+          case Value.Cons(_,cdr) => cdr
+        }      
       }
     }
-    class Cxr(name: String, ops: List[SimplePrim]) extends SingleArgumentPrim(name) {
-      def fun = {
-        case v: Value.Cons =>
-          val init: Value = v
-          ops.reverse.foldLeft(init)((acc, op) => acc match {
-            case _: Value.Cons => op.call(acc :: Nil)
-            case _ => throw new Exception(s"$name: invalid list $acc")
-          })
-      }
-    }
-    object Caar extends Cxr("caar", List(Car, Car))
-    object Cadr extends Cxr("cadr", List(Car, Cdr))
-    object Cdar extends Cxr("cdar", List(Cdr, Car))
-    object Cddr extends Cxr("cddr", List(Cdr, Cdr))
-
-    object Caaar extends Cxr("caaar", List(Car, Caar))
-    object Caadr extends Cxr("caadr", List(Car, Cadr))
-    object Cadar extends Cxr("cadar", List(Car, Cdar))
-    object Caddr extends Cxr("caddr", List(Car, Cddr))
-    object Cdaar extends Cxr("cdaar", List(Cdr, Caar))
-    object Cdadr extends Cxr("cdadr", List(Cdr, Cadr))
-    object Cddar extends Cxr("cddar", List(Cdr, Cdar))
-    object Cdddr extends Cxr("cdddr", List(Cdr, Cddr))
-
-    object Caaaar extends Cxr("caaaar", List(Car, Caaar))
-    object Caaadr extends Cxr("caaadr", List(Car, Caadr))
-    object Caadar extends Cxr("caadar", List(Car, Cadar))
-    object Caaddr extends Cxr("caaddr", List(Car, Caddr))
-    object Cadaar extends Cxr("cadaar", List(Car, Cdaar))
-    object Cadadr extends Cxr("cadadr", List(Car, Cdadr))
-    object Caddar extends Cxr("caddar", List(Car, Cddar))
-    object Cadddr extends Cxr("cadddr", List(Car, Cdddr))
-    object Cdaaar extends Cxr("cdaaar", List(Cdr, Caaar))
-    object Cdaadr extends Cxr("cdaadr", List(Cdr, Caadr))
-    object Cdadar extends Cxr("cdadar", List(Cdr, Cadar))
-    object Cdaddr extends Cxr("cdaddr", List(Cdr, Caddr))
-    object Cddaar extends Cxr("cddaar", List(Cdr, Cdaar))
-    object Cddadr extends Cxr("cddadr", List(Cdr, Cdadr))
-    object Cdddar extends Cxr("cdddar", List(Cdr, Cddar))
-    object Cddddr extends Cxr("cddddr", List(Cdr, Cdddr))
-
     object Cons extends Prim {
       val name = "cons"
       def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = args match {
@@ -1074,18 +1018,22 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     object SetCar extends SimplePrim {
       val name = "set-car!"
       def call(args: List[Value]): Value = args match {
-        case Value.Cons(car, _) :: v :: Nil =>
-          extendStore(car, v)
-          Value.Undefined(Identity.none)
+        case Value.Pointer(addr) :: v :: Nil => store(addr) match {
+          case Value.Cons(_,cdr) => 
+            extendStore(addr, Value.Cons(v,cdr))
+            Value.Undefined(Identity.none)
+        }
         case _ => throw new Exception(s"set-car!: invalid arguments $args")
       }
     }
     object SetCdr extends SimplePrim {
       val name = "set-cdr!"
       def call(args: List[Value]): Value = args match {
-        case Value.Cons(_, cdr) :: v :: Nil =>
-          extendStore(cdr, v)
-          Value.Undefined(Identity.none)
+        case Value.Pointer(addr) :: v :: Nil => store(addr) match {
+          case Value.Cons(car,_) => 
+            extendStore(addr, Value.Cons(car,v))
+            Value.Undefined(Identity.none)
+        }
         case _ => throw new Exception(s"set-cdr!: invalid arguments $args")
       }
     }
@@ -1101,99 +1049,6 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
           allocateCons(exp, head, call(fexp, rest))
       }
     }
-    object ListRef extends SimplePrim {
-      val name = "list-ref"
-      def listRef(l: Value, n: Int): Value = (n, l) match {
-        case (0, Value.Cons(car, _)) => store(car)
-        case (_, Value.Cons(_, cdr)) => listRef(store(cdr), n-1)
-        case _ => throw new Exception(s"list-ref: invalid list $l")
-      }
-      def call(args: List[Value]): Value = args match {
-        case l :: Value.Integer(n) :: Nil => listRef(l, n)
-        case _ => throw new Exception(s"list-ref: wrong number of arguments ${args.length}")
-      }
-    }
-    object Length extends SingleArgumentPrim("length") {
-      /* TODO: support circular lists */
-      def length(l: Value, acc: Int = 0): Int = l match {
-        case Value.Nil => acc
-        case Value.Cons(_, cdr) => length(store(cdr), acc+1)
-        case _ => throw new Exception(s"length: invalid list $l")
-      }
-      def fun = {
-        case l => Value.Integer(length(l, 0))
-      }
-    }
-    object Append extends Prim {
-      val name = "append"
-      // TODO: Not sure this is the R5RS-compliant behavior in terms of allocation
-      def append(fexp: SchemeFuncall, l1: Value, l2: Value): Value = l1 match {
-        case Value.Cons(car, cdr) => store(cdr) match {
-          case Value.Nil =>
-            allocateCons(fexp, store(car), l2)
-          case v =>
-            allocateCons(fexp, store(car), append(fexp, v, l2))
-        }
-        case Value.Nil => l2
-        case _ => throw new Exception(s"append: wrong type of first argument: $l1")
-      }
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = args match {
-        case (_, l1) :: (_, l2) :: Nil =>
-          append(fexp, l1, l2)
-        case _ => throw new Exception(s"append: wrong number of arguments ${args.length}")
-      }
-    }
-
-    object Listp extends SingleArgumentPrim("list?") {
-      def listp(l: Value): Boolean = l match {
-        case Value.Nil => true
-        case Value.Cons(_, cdr) => listp(store(cdr))
-        case _ => false
-      }
-      def fun = {
-        case l => Value.Bool(listp(l))
-      }
-    }
-    class MemberLike(val name: String, eq: SimplePrim) extends SimplePrim {
-      def member(e: Value, l: Value): Value = l match {
-        case Value.Nil => Value.Bool(false)
-        case Value.Cons(car, cdr) =>
-          eq.call(e :: store(car) :: Nil) match {
-            case Value.Bool(true) => l /* return the list upon success */
-            case _ => member(e, store(cdr)) /* keep on searching */
-          }
-        case _ => throw new Exception(s"$name: malformed list $l")
-      }
-      def call(args: List[Value]): Value = args match {
-        case e :: l :: Nil => member(e, l)
-        case _ => throw new Exception(s"$name: invalid arguments $args")
-      }
-    }
-    object Member extends MemberLike("member", Equal)
-    object Memq extends MemberLike("memq", Eq)
-
-    class AssocLike(val name: String, eq: SimplePrim) extends SimplePrim {
-      def assoc(e: Value, l: Value): Value = l match {
-        case Value.Nil => Value.Bool(false)
-        case Value.Cons(car, cdr) =>
-          store(car) match {
-            case carv@Value.Cons(caar, _) =>
-              eq.call(e :: store(caar) :: Nil) match {
-                case Value.Bool(true) => carv /* found it, return the matching pair */
-                case _ => assoc(e, store(cdr)) /* keep on looking */
-              }
-            case _ => throw new Exception(s"$name: malformed association list $l")
-          }
-        case _ => throw new Exception(s"$name: malformed list $l")
-      }
-      def call(args: List[Value]): Value = args match {
-        case e :: l :: Nil => assoc(e, l)
-        case _ => throw new Exception(s"$name: invalid arguments $args")
-      }
-    }
-    object Assoc extends AssocLike("assoc", Equal)
-    object Assq extends AssocLike("assq", Eq)
-
     ///////////
     // Other //
     ///////////
@@ -1224,8 +1079,6 @@ object SchemeInterpreter {
     case class VarAddr(vrb: Identifier) extends AddrInfo
     case class PrmAddr(nam: String)     extends AddrInfo
     case class PtrAddr(exp: SchemeExp)  extends AddrInfo
-    case class CarAddr(exp: SchemeExp)  extends AddrInfo
-    case class CdrAddr(exp: SchemeExp)  extends AddrInfo
     case class RetAddr(exp: SchemeExp)  extends AddrInfo
   }
   object Value {
@@ -1247,7 +1100,7 @@ object SchemeInterpreter {
       }
     }
     case object Nil extends Value { override def toString: String = "'())'" }
-    case class Cons(car: Addr, cdr: Addr) extends Value { override def toString: String = s"<#cons $car $cdr>" }
+    case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"<#cons $car $cdr>" }
     case class Vector(size: Int, elems: Map[Int,Value], init: Value) extends Value { override def toString: String = s"<#vector[$size]>" }
   }
 

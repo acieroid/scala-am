@@ -4,9 +4,6 @@ import scalaam.util._
 
 import scala.concurrent.duration._
 import scalaam.core.Position._
-import scalaam.modular.adaptive._
-import scalaam.modular.adaptive.scheme._
-import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -18,7 +15,7 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/icp/icp_5_regsim.scm")
+    val txt = Reader.loadFile("test/mceval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics with BigStepSemantics
                                         with NoSensitivity
@@ -31,7 +28,7 @@ object Main {
         super.step()
       }
     }
-    analysis.analyze(Timeout.start(Duration(60,SECONDS)))
+    analysis.analyze(Timeout.start(Duration(3600,SECONDS)))
     //debugClosures(analysis)
     debugResults(analysis, false)
   }

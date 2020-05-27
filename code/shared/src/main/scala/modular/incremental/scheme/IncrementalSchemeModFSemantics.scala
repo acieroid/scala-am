@@ -65,8 +65,6 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
   def updateLocalAddress(addr: LocalAddr, newIdentities: Map[OldIdn, NewIdn], newExpressions: Map[NewIdn, SchemeExp]): Option[LocalAddr] = addr match {
     case VarAddr(id) =>  newIdentities.get(id.idn).map(idn => VarAddr(id.copy(idn = idn)))
     case PtrAddr(exp) => newIdentities.get(exp.idn).flatMap(idn => newExpressions.get(idn).map(PtrAddr))
-    case CarAddr(exp) => newIdentities.get(exp.idn).flatMap(idn => newExpressions.get(idn).map(CarAddr))
-    case CdrAddr(exp) => newIdentities.get(exp.idn).flatMap(idn => newExpressions.get(idn).map(CdrAddr))
     case PrmAddr(nam) => Some(PrmAddr(nam))
   }
 

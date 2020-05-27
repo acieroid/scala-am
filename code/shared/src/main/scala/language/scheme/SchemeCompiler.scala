@@ -14,7 +14,7 @@ object SchemeCompiler {
     * Reserved keywords
     */
   def reserved: List[String] =
-    List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do")
+    List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do", "when", "unless")
 
   def compile(exp: SExp): SchemeExp = _compile(exp).result
 
@@ -115,6 +115,20 @@ object SchemeCompiler {
       for {
         valuev <- tailcall(_compile(value))
       } yield SchemeSet(v, valuev, exp.idn)
+    case SExpPair(SExpId(Identifier("when", _)), SExpPair(pred, body, _), _) =>
+      for {
+        predv <- tailcall(_compile(pred))
+        bodyv <- tailcall(compileBody(body))
+      } yield SchemeWhen(predv, bodyv, exp.idn)
+    case SExpPair(SExpId(Identifier("when", _)), _, _) =>
+      throw new SchemeCompilerException(s"Invalid Scheme when: $exp", exp.idn)
+    case SExpPair(SExpId(Identifier("unless", _)), SExpPair(pred, body, _), _) =>
+      for {
+        predv <- tailcall(_compile(pred))
+        bodyv <- tailcall(compileBody(body))
+      } yield SchemeUnless(predv, bodyv, exp.idn)
+    case SExpPair(SExpId(Identifier("unless", _)), _, _) =>
+      throw new SchemeCompilerException(s"Invalid Scheme unless: $exp", exp.idn)
     case SExpPair(SExpId(Identifier("set!", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme set!: $exp", exp.idn)
     case SExpPair(SExpId(Identifier("begin", _)), body, _) =>

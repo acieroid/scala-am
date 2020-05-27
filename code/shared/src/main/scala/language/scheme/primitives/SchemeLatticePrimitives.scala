@@ -60,7 +60,8 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
     )
 }
 
-class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] {
+class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] with PrimitiveBuildingBlocks[V,A] {
+  val lat = schemeLattice
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
@@ -86,13 +87,14 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `cdr`, /* [vv] cdr: Pairs */
       `ceiling`, /* [vv] ceiling: Arithmetic */
       `char->integer`, /* [x]  char->integer: Characters */
+      `char->string`,
       /* [x]  char-alphabetic?: Characters */
       /* [x]  char-ci<=?: Characters */
       /* [x]  char-ci<?: Characters */
       /* [x]  char-ci=?: Characters */
       /* [x]  char-ci>=?: Characters */
       /* [x]  char-ci>?: Characters */
-      /* [x]  char-downcase: Characters */
+      `char-downcase`, /* [x]  char-downcase: Characters */
       /* [x]  char-lower-case?: Characters */
       /* [x]  char-numeric?: Characters */
       /* [x]  char-ready?: Reading */
@@ -172,7 +174,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `sqrt`, /* [vv] sqrt: Scientific */
       /* [x]  string: String Constructors */
       /* [x]  string->list: List/String Conversion */
-      /* [x]  string->number: Conversion */
+      `string->number`, /* [x]  string->number: Conversion */
       `string->symbol`, /* [vv] string->symbol: Symbol Primitives */
       `string-append`, /* [vx] string-append: Appending Strings: only two arguments supported */
       /* [x]  string-ci<: String Comparison */
@@ -282,21 +284,11 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     }
   }
 
-  def dereferenceAddrs(addrs: Set[A], store: Store[A,V]): MayFail[V,Error] =
-    addrs.foldLeft(MayFail.success[V,Error](schemeLattice.bottom))(
-      (acc: MayFail[V,Error], addr: A) =>
-        for {
-          v <- store.lookupMF(addr)
-          accv <- acc
-        } yield schemeLattice.join(accv,v)
-    )
-
   object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
 
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
 
     import schemeLattice._
-
 
     object `+` extends NoStoreLOpRec("+", {
         case (Nil, _)          => number(0)
@@ -395,9 +387,19 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOps.UnaryOperator.ExactToInexact))
     object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOps.UnaryOperator.InexactToExact))
     object `char->integer`  extends NoStore1Operation("char->integer",  unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
+    object `char->string`   extends NoStore1Operation("char->string",   unaryOp(SchemeOps.UnaryOperator.CharacterToString))
+    object `char-downcase`  extends NoStore1Operation("char-downcase",  unaryOp(SchemeOps.UnaryOperator.CharacterDowncase))
     object `null?`          extends NoStore1Operation("null?",          unaryOp(SchemeOps.UnaryOperator.IsNull))
 
-    object `pair?`    extends Store1Operation("pair?", { (x, store) => unaryOp(SchemeOps.UnaryOperator.IsCons)(x).map(v => (v, store)) })
+    object `pair?`    extends Store1Operation("pair?", { (x, store) => 
+      ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)) {
+        dereferencePointer(x, store) { cons =>
+          unaryOp(SchemeOps.UnaryOperator.IsCons)(cons)
+        }
+      } {
+        bool(false)
+      }.map(v => (v, store))
+    })
 
     object `char?`    extends NoStore1Operation("char?",    unaryOp(SchemeOps.UnaryOperator.IsChar))
     object `symbol?`  extends NoStore1Operation("symbol?",  unaryOp(SchemeOps.UnaryOperator.IsSymbol))
@@ -424,6 +426,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `number->string` extends NoStore1Operation("number->string", unaryOp(SchemeOps.UnaryOperator.NumberToString))
     object `symbol->string` extends NoStore1Operation("symbol->string", unaryOp(SchemeOps.UnaryOperator.SymbolToString))
     object `string->symbol` extends NoStore1Operation("string->symbol", unaryOp(SchemeOps.UnaryOperator.StringToSymbol))
+    object `string->number` extends NoStore1Operation("string->number", unaryOp(SchemeOps.UnaryOperator.StringToNumber))
     object `string-append`  extends NoStoreLOpRec("string-append", {
         case (Nil, _)          => string("")
         case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.StringAppend)(x, _))
@@ -438,28 +441,40 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       val name = "cons"
       override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val carAddr = alloc.carAddr(fpos)
-          val cdrAddr = alloc.cdrAddr(fpos)
-          val consVal = lat.cons(carAddr, cdrAddr)
-          (consVal, store.extend(carAddr, car).extend(cdrAddr, cdr))
+          val addr = alloc.pointer(fpos)
+          val consVal = lat.cons(car, cdr)
+          val pointer = lat.pointer(addr)
+          (pointer, store.extend(addr, consVal))
         case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
       }
     }
 
-    object `car` extends Store1Operation("car", { (x, store) => dereferenceAddrs(lat.car(x), store).map((_, store))})
-    object `cdr` extends Store1Operation("cdr", { (x, store) => dereferenceAddrs(lat.cdr(x), store).map((_, store))})
+    object `car` extends Store1Operation("car", { (x, store) =>
+      dereferencePointer(x, store) { cons => lat.car(cons) }.map(v => (v,store))
+    })
+    object `cdr` extends Store1Operation("cdr", { (x, store) => 
+      dereferencePointer(x, store) { cons => lat.cdr(cons) }.map(v => (v,store))
+    })
 
     object `set-car!` extends Store2Operation("set-car!", { (cell, value, store) =>
-        lat.car(cell)
-          .foldLeft(store)((acc,addr) => acc.update(addr, value))
-          .map(store => (bool(false) /* undefined */, store))
-    })
+      dereferencePointerGetAddressReturnStore(cell, store) { (addr,cons,store) => 
+        for {
+          car <- lat.car(cons)
+          cdr <- lat.cdr(cons)
+          joined = lat.join(car,value)
+          updated = lat.cons(joined,cdr) 
+        } yield (bool(false), store.update(addr,updated))
+      }})
 
     object `set-cdr!` extends Store2Operation("set-cdr!", { (cell, value, store) =>
-        lat.cdr(cell)
-          .foldLeft(store)((acc,addr) => acc.update(addr, value))
-          .map(store => (bool(false) /* undefined */, store))
-    })
+      dereferencePointerGetAddressReturnStore(cell, store) { (addr,cons,store) => 
+        for {
+          car <- lat.car(cons)
+          cdr <- lat.cdr(cons)
+          joined = lat.join(cdr,value)
+          updated = lat.cons(car,joined) 
+        } yield (bool(false), store.update(addr,updated))
+      }})
 
     object `make-vector` extends SchemePrimitive[V,A] {
       val name = "make-vector"
@@ -577,11 +592,11 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
           for {
             (restv, store2) <- call(fpos, rest, store, alloc)
           } yield {
-            val carAddr = alloc.carAddr(argpos)
-            val cdrAddr = alloc.cdrAddr(argpos)
-            val updatedStore = store2.extend(carAddr, v) // Can use store here if store is mutated.
-              .extend(cdrAddr, restv)
-            (lat.cons(carAddr, cdrAddr), updatedStore)
+            val addr = alloc.pointer(argpos)
+            val pair = lat.cons(v, restv)
+            val updatedStore = store2.extend(addr, pair)
+            val pointer = lat.pointer(addr)
+            (pointer, updatedStore)
           }
       }
     }

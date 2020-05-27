@@ -1,6 +1,8 @@
 package scalaam.lattice
 
-import scalaam.core.Lattice
+import scalaam.core._
+
+case object NotANumberString extends Error
 
 /** A lattice for strings */
 trait StringLattice[S] extends Lattice[S] {
@@ -10,6 +12,7 @@ trait StringLattice[S] extends Lattice[S] {
   def ref[I: IntLattice, C: CharLattice](s: S, i: I): C
   def lt[B: BoolLattice](s1: S, s2: S): B
   def toSymbol[Sym: SymbolLattice](s: S): Sym
+  def toNumber[I: IntLattice](s: S): MayFail[I, Error]
 }
 
 object StringLattice {

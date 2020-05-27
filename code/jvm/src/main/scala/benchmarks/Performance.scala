@@ -5,18 +5,19 @@ import scalaam.util.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
 import scalaam.util.benchmarks._
+import scala.concurrent.duration._
 
 // TODO: rename to PerformanceEvaluation?
 // TODO: move to evaluation package?
 abstract class Performance extends App {
 
   // The number of warmup runs, for which the timing is discarded
-  val warmup = 3
+  val warmup = 5
   // The actual number of runs made after `warmup` runs
   val actual = 15
 
   // The list of benchmarks used for the evaluation
-  val benchmarks: List[String] = SchemeBenchmarks.standard.toList.take(1)
+  def benchmarks: List[String] = SchemeBenchmarks.standard.toList.take(1)
 
   type Analysis = ModAnalysis[SchemeExp]
 
@@ -98,4 +99,12 @@ abstract class Performance extends App {
   })
   write(table)
   closeDefaultWriter()
+}
+
+object SimplePerformance extends Performance {
+  override def benchmarks = List("test/icp/icp_3_leval.scm")
+  def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  def analyses: List[(SchemeExp => Analysis, String)] = List(
+    (SchemeAnalyses.contextInsensitiveAnalysis, "base analysis")
+  )
 }

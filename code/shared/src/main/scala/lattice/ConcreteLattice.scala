@@ -2,6 +2,7 @@ package scalaam.lattice
 
 import scalaam.core._
 import scalaam.util.Show
+import scalaam.util.SmartUnion._
 
 object Concrete {
   sealed trait L[+X] {
@@ -35,7 +36,7 @@ object Concrete {
       case Values(content1) =>
         y match {
           case Top              => Top
-          case Values(content2) => Values(content1.union(content2))
+          case Values(content2) => Values(sunion(content1,content2))
         }
     }
     def subsumes(x: L[A], y: => L[A]): Boolean = x match {
@@ -110,6 +111,16 @@ object Concrete {
           content1.foldMap(s1 => content2.foldMap(s2 => BoolLattice[B2].inject(s1 < s2)))
       }
       def toSymbol[Sym2: SymbolLattice](s: S): Sym2 = s.foldMap(s => SymbolLattice[Sym2].inject(s))
+      def toNumber[I2: IntLattice](s: S): MayFail[I2, Error] = s match {
+        case Top        => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
+        case Values(vs) => vs.foldLeft(MayFail.success(IntLattice[I2].bottom): MayFail[I2, Error]) {
+          (acc, str) => 
+            for {
+              numv <- MayFail.fromOption[I2,Error](str.toIntOption.map(IntLattice[I2].inject))(NotANumberString)
+              accv <- acc
+            } yield IntLattice[I2].join(accv,numv)
+        }
+      }
     }
     implicit val boolShow: Show[Boolean] = new Show[Boolean] {
       def show(b: Boolean): String =
@@ -211,6 +222,8 @@ object Concrete {
     }
     implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char): C = Values(Set(x))
+      def downCase(c: C): C = c.map(_.toLower)
+      def toString[S2: StringLattice](c: C): S2 = c.foldMap(char => StringLattice[S2].inject(char.toString))
       def toInt[I2 : IntLattice](c: C) = c.foldMap(c => IntLattice[I2].inject(c.toInt))
     }
     implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")

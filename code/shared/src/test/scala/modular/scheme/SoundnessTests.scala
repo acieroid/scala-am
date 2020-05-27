@@ -72,7 +72,6 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       case Value.Bool(b)        => lat.subsumes(abs, lat.bool(b))
       case Value.Character(c)   => lat.subsumes(abs, lat.char(c))
       case Value.Nil            => lat.subsumes(abs, lat.nil)
-      case Value.Cons(_, _)     => lat.getConsCells(abs).nonEmpty
       case Value.Pointer(_)     => lat.getPointerAddresses(abs).nonEmpty
       case v                    => throw new Exception(s"Unknown concrete value type: $v.")
     }
@@ -191,6 +190,7 @@ class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModF
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllBenchmarks {
   override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
 }
-class SimpleAdaptiveSchemeModFSoundnessTests extends SimpleAdaptiveSchemeModF with AllBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
-}
+
+//class SimpleAdaptiveSchemeModFSoundnessTests extends SimpleAdaptiveSchemeModF with AllBenchmarks {
+//  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+//}

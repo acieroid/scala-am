@@ -9,6 +9,8 @@ import scalaam.lattice._
 import scalaam.language.sexp._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
+import org.scalatest.propspec.AnyPropSpec
+import org.scalactic.Bool
 
 trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
     /* unary ops */
@@ -18,6 +20,7 @@ trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
     val anyBinaryOp: Gen[SchemeOps.BinaryOperator] = Gen.oneOf(SchemeOps.BinaryOperator.values)
     implicit val arbBinop: Arbitrary[SchemeOps.BinaryOperator] = Arbitrary(anyBinaryOp)
     /* generators for specific values */
+    def anyPai: Gen[L]
     def anyVec: Gen[L]
     def anyInt: Gen[L]
 }
@@ -38,15 +41,15 @@ abstract class ModularSchemeLatticeGenerator[
   symGen: LatticeGenerator[Sym]) {
 
     // useful shorthands
-    val intLat = implicitly[IntLattice[I]]
-    val blnLat = implicitly[BoolLattice[B]]
-    implicit val valLat = modularLattice.schemeLattice
+    lazy val intLat = implicitly[IntLattice[I]]
+    lazy val blnLat = implicitly[BoolLattice[B]]
+    implicit lazy val valLat = modularLattice.schemeLattice
 
     // useful helpers (TODO: some of these probably already exist somewhere in ScalaCheck)
     def genTuple[X,Y](genX: Gen[X], genY: Gen[Y]): Gen[(X,Y)] = 
         for { x <- genX ; y <- genY } yield (x,y)
-    def pickAtMost[X](max: Int, gen: Gen[X]): Gen[Set[X]] = 
-        for { n <- Gen.choose(0,max) ; lst <- Gen.listOfN(n,gen) } yield (lst.toSet)
+    def pickAtMost[X](max: Int, gen: Gen[X]): Gen[List[X]] = 
+        for { n <- Gen.choose(0,max) ; lst <- Gen.listOfN(n,gen) } yield lst
 
     // for the purposes of generating arbitrary Scheme values, we can just represent addresses and environments with integers
     case class SimpleAddr(addr: Int) extends Address { def printable = true }
@@ -62,7 +65,7 @@ abstract class ModularSchemeLatticeGenerator[
     // useful to reduce the size of counterexample instances
     implicit val shrinkL: Shrink[L] = Shrink[L] {
         case modularLattice.Elements(vs) => 
-            Shrink.shrinkContainer[Set,V].shrink(vs).map(modularLattice.Elements)
+            Shrink.shrinkContainer[List,V].shrink(vs).map(modularLattice.Elements)
     }
     implicit val shrinkV: Shrink[V] = Shrink[V] {
         case modularLattice.Vec(siz,els) => for {
@@ -77,12 +80,7 @@ abstract class ModularSchemeLatticeGenerator[
 
     object SchemeValueLatticeGenerator extends SchemeLatticeGenerator[L] {
         /* Generate any Scheme value */
-        def any: Gen[L] = Gen.oneOf(bottomGen, elementGen, elementsGen)
-        private def bottomGen: Gen[L] = 
-            valLat.bottom
-        private def elementGen: Gen[L] = 
-            SchemeVLatticeGenerator.any.map(modularLattice.Element(_))
-        private def elementsGen: Gen[L] = for {
+        lazy val any: Gen[L] = for {
             nil <- pickAtMost(1, SchemeVLatticeGenerator.anyNilV)
             str <- pickAtMost(1, SchemeVLatticeGenerator.anyStrV)
             bln <- pickAtMost(1, SchemeVLatticeGenerator.anyBlnV)
@@ -90,57 +88,57 @@ abstract class ModularSchemeLatticeGenerator[
             rea <- pickAtMost(1, SchemeVLatticeGenerator.anyReaV)
             chr <- pickAtMost(1, SchemeVLatticeGenerator.anyChrV)
             sym <- pickAtMost(1, SchemeVLatticeGenerator.anySymV)
-            prm <- pickAtMost(3, SchemeVLatticeGenerator.anyPrmV)
-            ptr <- pickAtMost(3, SchemeVLatticeGenerator.anyPtrV)
-            pai <- pickAtMost(3, SchemeVLatticeGenerator.anyPaiV)
-            vec <- pickAtMost(1, SchemeVLatticeGenerator.anyVecV)
-            clo <- pickAtMost(3, SchemeVLatticeGenerator.anyCloV)
-        } yield modularLattice.Elements(nil ++ str ++ bln ++ int ++ rea ++ chr ++ sym ++ prm ++ ptr ++ pai ++ vec ++ clo)
+            prm <- pickAtMost(1, SchemeVLatticeGenerator.anyPrmV)
+            ptr <- pickAtMost(1, SchemeVLatticeGenerator.anyPtrV)
+            clo <- pickAtMost(1, SchemeVLatticeGenerator.anyCloV)
+            lst = nil ++ str ++ bln ++ int ++ rea ++ chr ++ sym ++ prm ++ ptr ++ clo
+        } yield modularLattice.Elements(lst.sortBy(_.ord))
+        /* Generate any cons-cell */
+        def anyPai: Gen[L] = SchemeVLatticeGenerator.anyPaiV.map(modularLattice.Element(_))
+        /* Generate any vector */
+        def anyVec: Gen[L] = SchemeVLatticeGenerator.anyVecV.map(modularLattice.Element(_))
         /* Generate a Scheme value subsumed by a given Scheme value */
         def le(l: L): Gen[L] = l match {
             case modularLattice.Elements(vs) => for {
                 subset <- Gen.someOf(vs)
-                subsumed <- Gen.sequence[Set[V],V](subset.map(SchemeVLatticeGenerator.le))
+                subsumed <- Gen.sequence[List[V],V](subset.map(SchemeVLatticeGenerator.le))
             } yield modularLattice.Elements(subsumed)
         }
         /* Generating specific values */
-        def anyVec = SchemeVLatticeGenerator.anyVecV.map(modularLattice.Element(_))
         def anyInt = SchemeVLatticeGenerator.anyIntV.map(modularLattice.Element(_))
         /* Shrinking values */
         override val shrink = shrinkL 
     }
 
-    object SchemeVLatticeGenerator extends LatticeGenerator[V] {
-        // any address
+    object SchemeVLatticeGenerator  {
+        // helpers
         val anyAddr: Gen[SimpleAddr] = Gen.choose(0,100).map(SimpleAddr(_)) // addresses are faked in 100 different variations
-        // a generator for each type of value
-        val anyNilV: Gen[V] = Gen.const(modularLattice.Nil)
-        val anyIntV: Gen[V] = intGen.any.map(modularLattice.Int)
-        val anyStrV: Gen[V] = strGen.any.map(modularLattice.Str)
-        val anyBlnV: Gen[V] = blnGen.any.map(modularLattice.Bool)
-        val anyReaV: Gen[V] = reaGen.any.map(modularLattice.Real)
-        val anyChrV: Gen[V] = chrGen.any.map(modularLattice.Char)
-        val anySymV: Gen[V] = symGen.any.map(modularLattice.Symbol)
-        val anyPrmV: Gen[V] = Gen.oneOf(primitives.allPrimitives).map(modularLattice.Prim)
-        val anyPtrV: Gen[V] = anyAddr.map(modularLattice.Pointer)
-        val anyCloV: Gen[V] = for {
+        val anyClosure: Gen[(valLat.Closure,Option[String])] = for {
             nm1 <- Gen.choose(0,100)                // lambdas are faked in 100 different variations
             lam = SchemeLambda(List(),List(SchemeValue(ValueInteger(nm1), Identity.none)),Identity.none)
             nm2 <- Gen.choose(0,100)                // environments are faked in 100 different variations
             env = SimpleEnv(nm2)
-        } yield modularLattice.Clo(lam,env,None)
-        val anyPaiV: Gen[V] = for {
-            carAddr <- anyAddr
-            cdrAddr <- anyAddr
-        } yield modularLattice.Cons(carAddr,cdrAddr)
-        val anyVecV: Gen[V] = for {
+        } yield ((lam,env),None)
+        // a generator for each type of value
+        val anyNilV: Gen[V] = Gen.const(modularLattice.Nil)
+        val anyIntV: Gen[V] = intGen.any.retryUntil(_ != IntLattice[I].bottom).map(modularLattice.Int)
+        val anyStrV: Gen[V] = strGen.any.retryUntil(_ != StringLattice[S].bottom).map(modularLattice.Str)
+        val anyBlnV: Gen[V] = blnGen.any.retryUntil(_ != BoolLattice[B].bottom).map(modularLattice.Bool)
+        val anyReaV: Gen[V] = reaGen.any.retryUntil(_ != RealLattice[R].bottom).map(modularLattice.Real)
+        val anyChrV: Gen[V] = chrGen.any.retryUntil(_ != CharLattice[C].bottom).map(modularLattice.Char)
+        val anySymV: Gen[V] = symGen.any.retryUntil(_ != SymbolLattice[Sym].bottom).map(modularLattice.Symbol)
+        val anyPrmV: Gen[V] = pickAtMost(3, Gen.oneOf(primitives.allPrimitives)).retryUntil(_.nonEmpty).map(ps => modularLattice.Prim(ps.toSet))
+        val anyPtrV: Gen[V] = pickAtMost(3, anyAddr).retryUntil(_.nonEmpty).map(ps => modularLattice.Pointer(ps.toSet))
+        val anyCloV: Gen[V] = pickAtMost(3, anyClosure).retryUntil(_.nonEmpty).map(cs => modularLattice.Clo(cs.toSet))
+        lazy val anyPaiV: Gen[V] = for {
+            car <- SchemeValueLatticeGenerator.any
+            cdr <- SchemeValueLatticeGenerator.any
+        } yield modularLattice.Cons(car,cdr)
+        lazy val anyVecV: Gen[V] = for {
             siz <- intGen.any.suchThat(i => blnLat.isTrue(intLat.lt(intLat.inject(-1),i)))//Gen.oneOf(Gen.posNum[Int].map(intLat.inject), Gen.const(intLat.top))
             con <- vectorContent(siz) 
         } yield modularLattice.Vec(siz,con)
         // any value
-        def any: Gen[modularLattice.Value] = 
-            Gen.oneOf(anyNilV, anyStrV, anyBlnV, anyIntV, anyReaV, anyChrV, 
-                      anySymV, anyPrmV, anyPtrV, anyCloV, anyVecV, anyPaiV)
         // any value subsumed by a given value
         def le(l: V): Gen[V] = l match {
             case modularLattice.Str(s)      => strGen.le(s).map(modularLattice.Str)
@@ -149,6 +147,10 @@ abstract class ModularSchemeLatticeGenerator[
             case modularLattice.Real(r)     => reaGen.le(r).map(modularLattice.Real)
             case modularLattice.Char(c)     => chrGen.le(c).map(modularLattice.Char)
             case modularLattice.Symbol(s)   => symGen.le(s).map(modularLattice.Symbol)
+            case modularLattice.Cons(a,d)   => for {
+                ale <- SchemeValueLatticeGenerator.le(a)
+                dle <- SchemeValueLatticeGenerator.le(d)
+            } yield modularLattice.Cons(ale,dle)
             case modularLattice.Vec(s,c) => for {
                 sle <- intGen.le(s).suchThat(i => i == s || i != intLat.bottom)
                 cle <- vectorContentLe(c,sle)
@@ -171,7 +173,6 @@ abstract class ModularSchemeLatticeGenerator[
             val idxs = bds1.map(_._1)
             bds1.filter(bnd => !idxs.exists(idx => idx != bnd._1 && intLat.subsumes(idx,bnd._1)))
         }
-        override val shrink = shrinkV
     }
 }
 

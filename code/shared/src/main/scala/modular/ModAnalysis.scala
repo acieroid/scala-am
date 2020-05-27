@@ -1,6 +1,7 @@
 package scalaam.modular
 
 import scalaam.core._
+import scalaam.util.SmartHash
 import scalaam.util.Annotations._
 import scalaam.util.benchmarks.Timeout
 
@@ -17,7 +18,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // an intra-analysis therefore can:
   // - register a dependency on an effect (e.g., when it reads an address)
   // - trigger an effect (e.g., when it writes to an address)
-  protected trait Dependency
+  protected trait Dependency extends SmartHash
   // here, we track which components depend on which effects
   @mutable var deps: Map[Dependency,Set[Component]] =
     Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
