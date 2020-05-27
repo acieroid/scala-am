@@ -116,7 +116,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `sqrt`, /* [vv] sqrt: Scientific */
       /* [x]  string: String Constructors */
       /* [x]  string->list: List/String Conversion */
-      /* [x]  string->number: Conversion */
+      `string->number`, /* [x]  string->number: Conversion */
       `string->symbol`, /* [vv] string->symbol: Symbol Primitives */
       `string-append`, /* [vx] string-append: Appending Strings: only two arguments supported */
       /* [x]  string-ci<: String Comparison */
@@ -366,6 +366,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `number->string` extends NoStore1Operation("number->string", unaryOp(SchemeOps.UnaryOperator.NumberToString))
     object `symbol->string` extends NoStore1Operation("symbol->string", unaryOp(SchemeOps.UnaryOperator.SymbolToString))
     object `string->symbol` extends NoStore1Operation("string->symbol", unaryOp(SchemeOps.UnaryOperator.StringToSymbol))
+    object `string->number` extends NoStore1Operation("string->number", unaryOp(SchemeOps.UnaryOperator.StringToNumber))
     object `string-append`  extends NoStoreLOpRec("string-append", {
         case (Nil, _)          => string("")
         case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.StringAppend)(x, _))

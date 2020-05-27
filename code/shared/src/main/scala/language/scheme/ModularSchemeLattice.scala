@@ -284,6 +284,11 @@ class ModularSchemeLattice[
         case Real(n) => MayFail.success(Str(RealLattice[R].toString(n)))
         case _       => MayFail.failure(OperatorNotApplicable("number->string", List(x)))
       }
+      case StringToNumber => x match {
+        // TODO: string may also be a float!
+        case Str(s) => MayFail.success(Int(StringLattice[S].toNumber(s)))
+        case _      => MayFail.failure(OperatorNotApplicable("string->number", List(x)))
+      }
       case SymbolToString => x match {
         case Symbol(s) => MayFail.success(Str(SymbolLattice[Sym].toString(s)))
         case _         => MayFail.failure(OperatorNotApplicable("symbol->string", List(x)))

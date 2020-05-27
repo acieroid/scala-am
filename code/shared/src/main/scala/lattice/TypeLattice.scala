@@ -73,6 +73,10 @@ object Type {
         case Bottom => SymbolLattice[Sym2].bottom
         case Top    => SymbolLattice[Sym2].top
       }
+      def toNumber[I2: IntLattice](s: S) = s match {
+        case Bottom => IntLattice[I2].bottom
+        case Top    => IntLattice[I2].top
+      }
     }
     implicit val typeIsBoolean: BoolLattice[B] = new BaseInstance("Bool") with BoolLattice[B] {
       def inject(x: Boolean): T = Top

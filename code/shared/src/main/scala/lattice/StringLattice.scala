@@ -10,6 +10,7 @@ trait StringLattice[S] extends Lattice[S] {
   def ref[I: IntLattice, C: CharLattice](s: S, i: I): C
   def lt[B: BoolLattice](s1: S, s2: S): B
   def toSymbol[Sym: SymbolLattice](s: S): Sym
+  def toNumber[I: IntLattice](s: S): I
 }
 
 object StringLattice {
