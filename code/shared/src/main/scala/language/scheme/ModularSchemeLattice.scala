@@ -103,35 +103,31 @@ class ModularSchemeLattice[
   object Value {
 
     /** Tries to join (returns an optional) */
-    def join(x: Value, y: => Value): Option[Value] =
-      if (x == y) {
-        Some(x)
-      } else {
-        (x, y) match {
-          case (Str(s1), Str(s2))         => Some(Str(StringLattice[S].join(s1, s2)))
-          case (Bool(b1), Bool(b2))       => Some(Bool(BoolLattice[B].join(b1, b2)))
-          case (Int(i1), Int(i2))         => Some(Int(IntLattice[I].join(i1, i2)))
-          case (Real(f1), Real(f2))       => Some(Real(RealLattice[R].join(f1, f2)))
-          case (Char(c1), Char(c2))       => Some(Char(CharLattice[C].join(c1, c2)))
-          case (Symbol(s1), Symbol(s2))   => Some(Symbol(SymbolLattice[Sym].join(s1,s2)))
-          case (Prim(p1), Prim(p2))       => Some(Prim(sunion(p1,p2)))
-          case (Clo(c1), Clo(c2))         => Some(Clo(sunion(c1,c2)))
-          case (Pointer(a1), Pointer(a2)) => Some(Pointer(sunion(a1,a2)))
-          case (Cons(a1,d1), Cons(a2,d2)) => Some(Cons(schemeLattice.join(a1,a2), schemeLattice.join(d1,d2)))
-          case (Vec(size1, els1), Vec(size2, els2)) =>
-            // First, joins the size
-            val vSizeInitJoined = Vec(IntLattice[I].join(size1, size2), Map.empty)
-            // Then, joins elements by adding (with vector-set!) all elements of els1 and then els2 inside the new vector
-            val vWithEls1Joined = els1.foldLeft(vSizeInitJoined)({ case (acc, (k, v)) => vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
-              case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
-            }})
-            val vWithEls2Joined = els2.foldLeft(vWithEls1Joined)({ case (acc, (k, v)) => vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
-              case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
-            }})
-            Some(vWithEls2Joined)
-          case _ => None
-        }
-      }
+    def join(x: Value, y: => Value): Option[Value] = (x, y) match {
+      case (Str(s1), Str(s2))         => Some(Str(StringLattice[S].join(s1, s2)))
+      case (Bool(b1), Bool(b2))       => Some(Bool(BoolLattice[B].join(b1, b2)))
+      case (Int(i1), Int(i2))         => Some(Int(IntLattice[I].join(i1, i2)))
+      case (Real(f1), Real(f2))       => Some(Real(RealLattice[R].join(f1, f2)))
+      case (Char(c1), Char(c2))       => Some(Char(CharLattice[C].join(c1, c2)))
+      case (Symbol(s1), Symbol(s2))   => Some(Symbol(SymbolLattice[Sym].join(s1,s2)))
+      case (Prim(p1), Prim(p2))       => Some(Prim(sunion(p1,p2)))
+      case (Clo(c1), Clo(c2))         => Some(Clo(sunion(c1,c2)))
+      case (Pointer(a1), Pointer(a2)) => Some(Pointer(sunion(a1,a2)))
+      case (Cons(a1,d1), Cons(a2,d2)) => Some(Cons(schemeLattice.join(a1,a2), schemeLattice.join(d1,d2)))
+      case (Vec(size1, els1), Vec(size2, els2)) =>
+        // First, joins the size
+        val vSizeInitJoined = Vec(IntLattice[I].join(size1, size2), Map.empty)
+        // Then, joins elements by adding (with vector-set!) all elements of els1 and then els2 inside the new vector
+        val vWithEls1Joined = els1.foldLeft(vSizeInitJoined)({ case (acc, (k, v)) => vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
+          case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
+        }})
+        val vWithEls2Joined = els2.foldLeft(vWithEls1Joined)({ case (acc, (k, v)) => vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
+          case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
+        }})
+        Some(vWithEls2Joined)
+      case _ => None
+    }
+    
     def subsumes(x: Value, y: => Value): Boolean =
       if (x == y) {
         true
