@@ -102,7 +102,7 @@ class ModularSchemeLattice[
 
   object Value {
 
-    /** Tries to join (returns an optional) */
+    /** Tries to join (throws an exception for incompatible types) */
     def join(x: Value, y: => Value): Value = (x, y) match {
       case (Nil, Nil)                 => Nil
       case (Str(s1), Str(s2))         => Str(StringLattice[S].join(s1, s2))

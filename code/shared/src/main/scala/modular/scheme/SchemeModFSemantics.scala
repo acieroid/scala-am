@@ -65,7 +65,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
 
   implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent { def body: SchemeExp }
+  trait SchemeComponent extends SmartHash { def body: SchemeExp }
 
   /** Returns the parent of a component, if any. */
   def componentParent(c: Component): Option[Component]
