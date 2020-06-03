@@ -80,7 +80,7 @@ object SchemeLexicalAddresser {
           NonLocalRef(identifier,depth)
         case None if scope.global.contains(id.name) =>
           PrimRef(id.name)
-        case None => throw new Exception(s"Undefined variable reference: $id")
+        case None => throw new Exception(s"Undefined variable reference at ${id.idn.pos}: $id")
       }
     }
   def resolveLexical(nam: String, frames: List[Frame], depth: Int): Option[(Identifier,Int)] =

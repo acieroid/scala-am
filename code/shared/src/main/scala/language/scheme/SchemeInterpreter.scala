@@ -1,5 +1,6 @@
 package scalaam.language.scheme
 
+import scalaam.core.Position.Position
 import scalaam.core._
 import scalaam.util._
 import scalaam.language.sexp._
@@ -94,8 +95,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
             val resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
             extendStore(resAddr, res)
             res
-          case Value.Primitive(p) =>
-            p.call(call, args.map(arg => (arg, eval(arg, env, timeout))))
+          case Value.Primitive(p) => p.call(call, args.map(arg => (arg, eval(arg, env, timeout))))
           case v =>
             throw new Exception(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive")
         }
@@ -336,7 +336,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       Sqrt, /* [vv] sqrt: Scientific */
       /* [x]  string: String Constructors */
       /* [x]  string->list: List/String Conversion */
-      /* [x]  string->number: Conversion */
+      StringToNumber, /* [x]  string->number: Conversion */
       StringToSymbol, /* [vv] string->symbol: Symbol Primitives */
       StringAppend, /* [vx] string-append: Appending Strings: only two arguments supported */
       /* [x]  string-ci<: String Comparison */
@@ -918,6 +918,13 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       def call(args: List[Value]): Value.Bool = args match {
         case Value.Str(x) :: Value.Str(y) :: Nil => Value.Bool(x < y)
         case _ => throw new Exception(s"string<?: invalid arguments $args")
+      }
+    }
+    object StringToNumber extends SimplePrim {
+      val name = "string->number"
+      def call(args: List[Value]): Value.Integer = args match {
+        case Value.Str(x) :: Nil if x.toIntOption.nonEmpty => Value.Integer(x.toIntOption.get)
+        case _ => throw new Exception(s"string->number: invalid arguments $args")
       }
     }
 

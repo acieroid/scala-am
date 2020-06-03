@@ -78,14 +78,14 @@ object Incrementor extends App {
 */
 
 object Run extends App {
-  val text = Reader.loadFile("test/WeiChenRompf2019/the-little-schemer/ch8.scm")
+  val text = Reader.loadFile("test/SETL/testcase1.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   val res = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
 }
 
 object Analyze extends App {
-  val text = Reader.loadFile("test/icp/icp_7_eceval.scm")
+  val text = Reader.loadFile("test/SETL/testcase1.scm")
   val a = new ModAnalysis(SchemeParser.parse(text)) with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
   a.analyze(Timeout.none)
   val r = a.store(a.ReturnAddr(a.initialComponent))
