@@ -64,23 +64,3 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
   def finished(): Boolean                               // <= check if the analysis is finished
   def analyze(timeout: Timeout.T = Timeout.none): Unit  // <= run the analysis (with given timeout)
 }
-
-// A common, but optional extension to ModAnalysis
-// Specifically, it keeps track of:
-// - which components have spawned which other components
-// - which components have been spawned by the last intra-analysis
-trait DependencyTracking[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
-  var dependencies  = Map[Component,Set[Component]]().withDefaultValue(Set.empty)
-  var newComponents = Set[Component]() 
-  // update some rudimentary analysis results
-  override def intraAnalysis(cmp: Component): DependencyTrackingIntra
-  trait DependencyTrackingIntra extends IntraAnalysis {
-    var visited = inter.visited
-    override def commit(): Unit = {
-      super.commit()
-      // update the bookkeeping
-      newComponents = C.filterNot(visited)
-      dependencies += component -> (dependencies(component) ++ C)
-    }
-  }
-}
