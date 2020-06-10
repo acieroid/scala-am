@@ -6,6 +6,7 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.core.Position._
+import scalaam.modular._
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -43,6 +44,7 @@ object Main {
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
                                                     with AdaptiveArgumentSensitivityPolicy3
                                                     with ConstantPropagationDomain
+                                                    with LIFOWorklistAlgorithm[SchemeExp]
                                                     with WebAdaptiveAnalysis[SchemeExp] {
       val limit = 5
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)

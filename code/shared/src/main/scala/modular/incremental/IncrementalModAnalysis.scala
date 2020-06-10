@@ -10,7 +10,7 @@ import scalaam.util.benchmarks.Timeout
 import scala.concurrent.duration.Duration
 
 abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extends ModAnalysis(prog)
-                                                                             with SequentialWorkListAlgorithm[Expr]
+                                                                             with SequentialWorklistAlgorithm[Expr]
                                                                              with MutableIndirectComponents[Expr] {
 
   type OldIdn = Identity

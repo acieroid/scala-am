@@ -8,7 +8,8 @@ import scalaam.util.MonoidImplicits._
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) 
                                                                         with IndirectComponents[Expr]
-                                                                        with SequentialWorkListAlgorithm[Expr] {
+                                                                        with SequentialWorklistAlgorithm[Expr]
+                                                                        with DependencyTracking[Expr] {
 
   import scalaam.modular.components.IndirectComponents._
 
@@ -76,24 +77,4 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
       acc + (keyAbs -> Monoid[V].append(acc(keyAbs),updateV(vlu)))
     }
   def updatePair[A,B](updateA: A => A, updateB: B => B)(p: (A,B)): (A,B) = (updateA(p._1),updateB(p._2))
-
-  // automatically keep track of:
-  // - new components since the last iteration
-  // - a mapping from each component to all components it has spawned
-  var newComponents = Set[Component]() 
-  var dependencies  = Map[Component,Set[Component]]().withDefaultValue(Set.empty)
-
-  override def intraAnalysis(cmp: Component): A forSome { type A <: AdaptiveIntra }
-  trait AdaptiveIntra extends IntraAnalysis {
-    newComponents = Set()
-    // TODO: do this in another way 
-    override def spawn(cmp: Component) = {
-      dependencies += (component -> (dependencies(component) + cmp))
-      if(!visited(cmp)) {
-        newComponents += cmp
-      }
-      super.spawn(cmp)
-    }
-  }
-
 }

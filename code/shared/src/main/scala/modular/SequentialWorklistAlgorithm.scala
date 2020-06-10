@@ -3,7 +3,7 @@ package scalaam.modular
 import scalaam.core._
 import scalaam.util.benchmarks.Timeout
 
-trait SequentialWorkListAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {
+trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {
   // we can choose what kind of worklist to pick
   def emptyWorkList: WorkList[Component] 
   // adding elements to the worklist
@@ -27,10 +27,10 @@ trait SequentialWorkListAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
     }
 }
 
-trait LIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorkListAlgorithm[Expr] {
+trait LIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] {
   def emptyWorkList = LIFOWorkList()
 }
 
-trait FIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorkListAlgorithm[Expr] {
+trait FIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] {
   def emptyWorkList = FIFOWorkList()
 }

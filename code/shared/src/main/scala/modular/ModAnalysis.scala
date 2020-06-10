@@ -43,9 +43,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
     // - a set R of dependencies read by this intra-analysis
     // - a set W of dependencies written by this intra-analysis
     // - a set C of components discovered by this intra-analysis
-    private var R = Set[Dependency]()
-    private var W = Set[Dependency]()
-    private var C = Set[Component]()
+    protected var R = Set[Dependency]()
+    protected var W = Set[Dependency]()
+    protected var C = Set[Component]()
     protected def register(dep: Dependency): Unit = R += dep
     protected def trigger(dep: Dependency): Unit  = W += dep
     protected def spawn(cmp: Component): Unit     = C += cmp
@@ -63,4 +63,24 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
   // specific to the worklist algorithm!
   def finished(): Boolean                               // <= check if the analysis is finished
   def analyze(timeout: Timeout.T = Timeout.none): Unit  // <= run the analysis (with given timeout)
+}
+
+// A common, but optional extension to ModAnalysis
+// Specifically, it keeps track of:
+// - which components have spawned which other components
+// - which components have been spawned by the last intra-analysis
+trait DependencyTracking[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
+  var dependencies  = Map[Component,Set[Component]]().withDefaultValue(Set.empty)
+  var newComponents = Set[Component]() 
+  // update some rudimentary analysis results
+  override def intraAnalysis(cmp: Component): DependencyTrackingIntra
+  trait DependencyTrackingIntra extends IntraAnalysis {
+    var visited = inter.visited
+    override def commit(): Unit = {
+      super.commit()
+      // update the bookkeeping
+      newComponents = C.filterNot(visited)
+      dependencies += component -> (dependencies(component) ++ C)
+    }
+  }
 }
