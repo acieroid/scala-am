@@ -1,12 +1,14 @@
 package scalaam.modular.adaptive
 
-import scalaam.modular.components.MutableIndirectComponents
+import scalaam.modular.components.IndirectComponents
 import scalaam.core._
 import scalaam.modular._
 import scalaam.util._
 import scalaam.util.MonoidImplicits._
 
-abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) with MutableIndirectComponents[Expr] {
+abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) 
+                                                                        with IndirectComponents[Expr]
+                                                                        with SequentialWorkListAlgorithm[Expr] {
 
   import scalaam.modular.components.IndirectComponents._
 
@@ -58,7 +60,6 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
     workList        = workList.map(update)
     visited         = updateSet(update)(visited)
     newComponents   = updateSet(update)(newComponents)
-    allComponents   = updateSet(update)(allComponents)
     dependencies    = updateMap(update,updateSet(update))(dependencies)
     deps            = updateMap(updateDep(update),updateSet(update))(deps)
   }
@@ -76,6 +77,23 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
     }
   def updatePair[A,B](updateA: A => A, updateB: B => B)(p: (A,B)): (A,B) = (updateA(p._1),updateB(p._2))
 
+  // automatically keep track of:
+  // - new components since the last iteration
+  // - a mapping from each component to all components it has spawned
+  var newComponents = Set[Component]() 
+  var dependencies  = Map[Component,Set[Component]]().withDefaultValue(Set.empty)
 
+  override def intraAnalysis(cmp: Component): A forSome { type A <: AdaptiveIntra }
+  trait AdaptiveIntra extends IntraAnalysis {
+    newComponents = Set()
+    // TODO: do this in another way 
+    override def spawn(cmp: Component) = {
+      dependencies += (component -> (dependencies(component) + cmp))
+      if(!visited(cmp)) {
+        newComponents += cmp
+      }
+      super.spawn(cmp)
+    }
+  }
 
 }

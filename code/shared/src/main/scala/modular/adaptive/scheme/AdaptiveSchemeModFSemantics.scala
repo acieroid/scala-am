@@ -9,6 +9,7 @@ import scalaam.modular.adaptive._
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveGlobalStore[SchemeExp]
                                     with AdaptiveReturnValue[SchemeExp]
+                                    with SchemeModFSemantics
                                     with StandardSchemeComponents
                                     with BigStepSemantics
                                     with AbstractDomain {
@@ -57,4 +58,9 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     super.updateAnalysisData(update)
     this.toProcess = updateSet(update)(toProcess)
   }
+
+  override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFIntra(cmp)
+  class AdaptiveSchemeModFIntra(cmp: Component) extends BigStepIntra(cmp)
+                                                  with SchemeModFSemanticsIntra 
+                                                  with AdaptiveIntra
 }

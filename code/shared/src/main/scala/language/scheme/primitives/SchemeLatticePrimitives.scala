@@ -201,7 +201,6 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `make-vector`, /* [vv] make-vector: Vector Creation */
       `vector`, /* [vv] vector: Vector Creation */
       /* [x]  vector->list: Vector Creation */
-      /* [x]  vector-fill!: Vector Accessors */
       `vector-length`, /* [vv] vector-length: Vector Accessors */
       `vector-ref`, /* [vv] vector-ref: Vector Accessors */
       `vector-set!`, /* [vv] vector-set!: Vector Accessors */

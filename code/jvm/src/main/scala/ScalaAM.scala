@@ -15,9 +15,11 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/mceval.scm")
+    val txt = Reader.loadFile("test/icp/icp_7_eceval.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics with BigStepSemantics
+    val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics 
+                                        with BigStepSemantics
+                                        with FIFOWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity
                                         with ConstantPropagationDomain {
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
@@ -77,6 +79,7 @@ object Incrementor extends App {
 }
 */
 
+/*
 object Run extends App {
   val text = Reader.loadFile("test/WeiChenRompf2019/the-little-schemer/ch8.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
@@ -91,3 +94,4 @@ object Analyze extends App {
   val r = a.store(a.ReturnAddr(a.initialComponent))
   println(r)
 }
+*/
