@@ -18,7 +18,7 @@ object Main {
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics 
                                         with BigStepSemantics
-                                        with LIFOWorklistAlgorithm[SchemeExp]
+                                        with RandomWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity
                                         with ConstantPropagationDomain {
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)

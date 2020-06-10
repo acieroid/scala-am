@@ -8,8 +8,8 @@ trait WorkList[X] {
   def tail: WorkList[X]
 
   def add(x: X): WorkList[X]
-  def addAll(xs: Iterable[X]): WorkList[X]        = xs.foldLeft(this)((acc, elm) => acc.add(elm))
-  def  ++(xs: Iterable[X]): WorkList[X]           = addAll(xs)
+  def addAll(xs: Iterable[X]): WorkList[X]
+  def  ++(xs: Iterable[X]): WorkList[X] = addAll(xs)
 
   def map[Y]   (f: X =>       Y): WorkList[Y]
   def filter   (f: X => Boolean): WorkList[X]
@@ -34,6 +34,7 @@ case class LIFOWorkList[X](lst: List[X], set: Set[X]) extends WorkList[X] {
   def head: X                                     = lst.head
   def tail: LIFOWorkList[X]                       = LIFOWorkList(lst.tail, set - lst.head)
   def add(x: X): LIFOWorkList[X]                  = if(set.contains(x)) { this } else { LIFOWorkList(x :: lst, set + x) }
+  def addAll(xs: Iterable[X]): LIFOWorkList[X]    = xs.foldLeft(this)((acc, elm) => acc.add(elm))
   def map[Y](f: X => Y): LIFOWorkList[Y]          = LIFOWorkList(lst.map(f).reverse)
   def toList: List[X]                             = lst
   def toSet: Set[X]                               = set
@@ -42,7 +43,7 @@ case class LIFOWorkList[X](lst: List[X], set: Set[X]) extends WorkList[X] {
 }
 object LIFOWorkList {
   def empty[X]: LIFOWorkList[X]                   = LIFOWorkList(List[X](),Set[X]())
-  def apply[X](xs: Iterable[X]): LIFOWorkList[X]  = empty.addAll(xs).asInstanceOf[LIFOWorkList[X]]
+  def apply[X](xs: Iterable[X]): LIFOWorkList[X]  = empty.addAll(xs)
   def apply[X](xs: X*): LIFOWorkList[X]           = apply(xs)
 }
 
@@ -54,6 +55,7 @@ case class FIFOWorkList[X](queue: Queue[X], set: Set[X]) extends WorkList[X] {
   def head: X                                     = queue.head
   def tail: FIFOWorkList[X]                       = FIFOWorkList(queue.tail, set - queue.head)
   def add(x: X): FIFOWorkList[X]                  = if(set.contains(x)) { this } else { FIFOWorkList(queue.enqueue(x), set + x) }
+  def addAll(xs: Iterable[X]): FIFOWorkList[X]    = xs.foldLeft(this)((acc, elm) => acc.add(elm))  
   def map[Y](f: X => Y): FIFOWorkList[Y]          = FIFOWorkList(queue.map(f))
   def toList: List[X]                             = queue.toList
   def toSet: Set[X]                               = set
@@ -62,6 +64,26 @@ case class FIFOWorkList[X](queue: Queue[X], set: Set[X]) extends WorkList[X] {
 }
 object FIFOWorkList {
   def empty[X]: FIFOWorkList[X]                   = FIFOWorkList(Queue[X](),Set[X]())
-  def apply[X](xs: Iterable[X]): FIFOWorkList[X]  = empty.addAll(xs).asInstanceOf[FIFOWorkList[X]]
+  def apply[X](xs: Iterable[X]): FIFOWorkList[X]  = empty.addAll(xs)
   def apply[X](xs: X*): FIFOWorkList[X]           = apply(xs)
+}
+
+// A worklist with an arbitrary exploration order.
+case class RandomWorkList[X](set: Set[X]) extends WorkList[X] {
+  def isEmpty: Boolean                              = set.isEmpty
+  def nonEmpty: Boolean                             = set.nonEmpty
+  def head: X                                       = set.head
+  def tail: RandomWorkList[X]                       = RandomWorkList(set.tail)
+  def add(x: X): RandomWorkList[X]                  = RandomWorkList(set + x)
+  def addAll(xs: Iterable[X]): RandomWorkList[X]    = xs.foldLeft(this)((acc, elm) => acc.add(elm))
+  def map[Y](f: X => Y): RandomWorkList[Y]          = RandomWorkList(set.map(f))
+  def toList: List[X]                               = set.toList
+  def toSet: Set[X]                                 = set
+  def filter(f: X => Boolean): RandomWorkList[X]    = RandomWorkList(set.filter(f))
+  def filterNot(f: X => Boolean): RandomWorkList[X] = RandomWorkList(set.filterNot(f))
+}
+object RandomWorkList {
+  def empty[X]: RandomWorkList[X]                   = RandomWorkList(Set[X]())
+  def apply[X](xs: Iterable[X]): RandomWorkList[X]  = empty.addAll(xs)
+  def apply[X](xs: X*): RandomWorkList[X]           = apply(xs)
 }

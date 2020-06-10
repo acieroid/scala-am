@@ -34,3 +34,7 @@ trait LIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgori
 trait FIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] {
   def emptyWorkList = FIFOWorkList()
 }
+
+trait RandomWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] {
+  def emptyWorkList = RandomWorkList()
+}
