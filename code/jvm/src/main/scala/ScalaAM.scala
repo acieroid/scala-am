@@ -7,7 +7,6 @@ import scalaam.core.Position._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.util.benchmarks.Timeout
 
 object Main {
@@ -19,20 +18,21 @@ object Main {
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics 
                                         with BigStepSemantics
-                                        with FIFOWorklistAlgorithm[SchemeExp]
+                                        with LIFOWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity
                                         with ConstantPropagationDomain {
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       var i = 0
       override def step(): Unit = {
         i = i + 1
-        println(s"[$i] ${view(workList.head)}")
+        val cmp = workList.head
+        println(s"[$i] $cmp")
         super.step()
       }
     }
     analysis.analyze(Timeout.start(Duration(3600,SECONDS)))
     //debugClosures(analysis)
-    debugResults(analysis, false)
+    //debugResults(analysis, false)
   }
 
   type SchemeModFAnalysis = ModAnalysis[SchemeExp] with StandardSchemeComponents

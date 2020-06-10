@@ -25,7 +25,7 @@ case class ValueBoolean(value: Boolean) extends Value {
 case class ValueCharacter(value: Char) extends Value {
   override def toString = s"#\\$value"
 }
-object ValueNil extends Value {
+case object ValueNil extends Value {
   override def toString = "()"
 }
 
