@@ -169,6 +169,19 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   }
 }
 
+trait ParallelSchemeModF extends SchemeModFSoundnessTests {
+  def name = "parallel analysis"
+  def analysis(program: SchemeExp) = new ModAnalysis(program)
+                                      with BigStepSemantics
+                                      with StandardSchemeModFSemantics
+                                      with ConstantPropagationDomain
+                                      with NoSensitivity
+                                      with ParallelWorklistAlgorithm[SchemeExp] {
+      override val workers = 4
+      override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with ParallelIntra
+  }
+}
+
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def name = "simple adaptive argument sensitivity (limit = 5)"
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
@@ -192,6 +205,9 @@ class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModF
   override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
 }
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllBenchmarks {
+  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+}
+class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with AllBenchmarks {
   override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
 }
 

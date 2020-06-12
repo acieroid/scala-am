@@ -69,17 +69,23 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
     protected def writeAddr(addr: LocalAddr, value: Value, cmp: Component = component): Unit =
       writeAddr(ComponentAddr(cmp, addr),value)
     protected def writeAddr(addr: Addr, value: Value): Unit = {
-      val (updatedStore, hasChanged) = updateAddr(store,addr,value)
-      if (hasChanged) {
-        store = updatedStore
-        trigger(ReadWriteDependency(addr))
+      val (updatedStore, hasChanged) = updateAddr(intra.store,addr,value)
+      if (hasChanged) {      
+        intra.store = updatedStore
+        intra.trigger(ReadWriteDependency(addr))
       }
     }
 
-    // commit all changes 
-    override def commit(): Unit = {
-      inter.store = intra.store
-      super.commit()
+    override def commit(dep: Dependency): Boolean = dep match {
+      case ReadWriteDependency(addr) => 
+        val (updatedStore, hasChanged) = updateAddr(inter.store,addr,intra.store(addr))
+        if (hasChanged) {
+          inter.store = updatedStore
+          true
+        } else {
+          false
+        }
+      case _ => super.commit(dep)
     }
   }
 }

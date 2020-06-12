@@ -55,9 +55,10 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
     // pushes the local changes to the global analysis state
     def commit(): Unit = {
       R.foreach(inter.register(component,_))
-      W.foreach(inter.trigger)
+      W.foreach(dep => if(commit(dep)) inter.trigger(dep))
       C.foreach(inter.spawn)
     }
+    def commit(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit
   }
 
   // specific to the worklist algorithm!
