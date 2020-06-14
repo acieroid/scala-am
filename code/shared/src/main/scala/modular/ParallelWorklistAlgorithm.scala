@@ -9,7 +9,7 @@ import java.util.concurrent.locks.ReentrantLock
 trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { inter => 
 
     // determine how many workers need to be used in the parallel algorithm
-    val workers: Int = Runtime.getRuntime().availableProcessors()
+    def workers: Int = Runtime.getRuntime().availableProcessors()
     // create a threadpool 
     lazy val threadPool = new PausableScheduledThreadPoolExecutor(workers)
 

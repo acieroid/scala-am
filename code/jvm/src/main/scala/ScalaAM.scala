@@ -21,18 +21,18 @@ object Main {
                                         with ParallelWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity
                                         with ConstantPropagationDomain {
-      override val workers = 4
+      override def workers = 4
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with ParallelIntra
-      /*
+      /* 
       var i = 0
       override def step(): Unit = {
         i = i + 1
         val cmp = workList.head
         println(s"[$i] $cmp")
         super.step()
-      }     
-      */
+      }
+      */     
     }
     analysis.analyze(Timeout.start(Duration(3600,SECONDS)))
     //debugClosures(analysis)

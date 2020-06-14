@@ -93,18 +93,23 @@ abstract class Performance extends App {
   }
 
   measure()
-  val table = results.toLatexString(format = {
+  val table = results.prettyString(format = {
     case None => "T"
     case Some(v) => v.toString()
   })
+  println(table)
   write(table)
   closeDefaultWriter()
 }
 
 object SimplePerformance extends Performance {
-  override def benchmarks = List("test/icp/icp_3_leval.scm")
+  override def benchmarks = List("test/icp/icp_7_eceval.scm")
   def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.contextInsensitiveAnalysis, "base analysis")
+    (SchemeAnalyses.contextInsensitiveAnalysis, "base"),
+    (SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
+    (SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
+    (SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
+    (SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
   )
 }

@@ -14,7 +14,7 @@ object SchemeAnalyses {
                                                                           with BigStepSemantics
                                                                           with NoSensitivity
                                                                           with ConstantPropagationDomain
-                                                                          with LIFOWorklistAlgorithm[SchemeExp] {
+                                                                          with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
     }
     def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
@@ -66,6 +66,17 @@ object SchemeAnalyses {
         val limit = k
         override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
+    }
+    def parallelAnalysis(prg: SchemeExp, n: Int) = new ModAnalysis(prg) with StandardSchemeModFSemantics 
+                                                                        with BigStepSemantics
+                                                                        with ParallelWorklistAlgorithm[SchemeExp]
+                                                                        with NoSensitivity
+                                                                        with ConstantPropagationDomain {
+      
+      override def toString() = s"parallel (n = $n)"
+      override def workers = n
+      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
+      override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with ParallelIntra  
     }
 
 }
