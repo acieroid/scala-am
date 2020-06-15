@@ -209,7 +209,6 @@ class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllBenc
 }
 class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with AllBenchmarks {
   override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
-  override def benchmarks() = Set("test/icp/icp_7_eceval.scm")
 }
 
 //class SimpleAdaptiveSchemeModFSoundnessTests extends SimpleAdaptiveSchemeModF with AllBenchmarks {
