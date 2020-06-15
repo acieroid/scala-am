@@ -11,7 +11,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { 
     // determine how many workers need to be used in the parallel algorithm
     def workers: Int = Runtime.getRuntime().availableProcessors()
     // create a threadpool 
-    lazy val threadPool = new PausableScheduledThreadPoolExecutor(workers)
+    lazy val threadPool = new PausableThreadPoolExecutor(workers)
 
     // for thread synchronization
     val lock = new ReentrantLock()

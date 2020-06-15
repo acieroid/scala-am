@@ -103,7 +103,7 @@ abstract class Performance extends App {
 }
 
 object SimplePerformance extends Performance {
-  override def benchmarks = List("test/icp/icp_7_eceval.scm")
+  override def benchmarks = List("test/mceval.scm")
   def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.contextInsensitiveAnalysis, "base"),
