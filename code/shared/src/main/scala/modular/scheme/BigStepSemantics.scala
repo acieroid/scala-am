@@ -6,8 +6,8 @@ import scalaam.util.MonoidImplicits._
 
 trait BigStepSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
-  override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp)
-  class IntraAnalysis(cmp: Component) extends super.IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
+  override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp)
+  class BigStepIntra(cmp: Component) extends IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
     // analysis entry point
     def analyze(): Unit = writeResult(eval(component.body))
     // simple big-step eval

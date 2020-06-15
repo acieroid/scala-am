@@ -6,10 +6,14 @@ object Timeout {
   case class T(startingTime: Long, timeout: Option[Long]) {
     def reached: Boolean = timeout.exists(System.nanoTime - startingTime > _)
     def    time: Double  = (System.nanoTime - startingTime) / Math.pow(10, 9)
+    def timeLeft: Option[Long] = timeout.map { duration =>
+      val deadline = startingTime + duration
+      deadline - System.nanoTime
+    }      
   }
 
   def start(timeout: Duration): T = T(System.nanoTime, if (timeout.isFinite) Some(timeout.toNanos) else None)
-  val none: T = T(System.nanoTime, None)
+  def none: T = T(System.nanoTime, None)
 }
 
 object Timer {

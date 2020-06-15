@@ -7,7 +7,6 @@ import scalaam.core.Position._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.util.benchmarks.Timeout
 
 object Main {
@@ -15,18 +14,25 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/mceval.scm")
+    val txt = Reader.loadFile("test/icp/icp_7_eceval.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics with BigStepSemantics
+    val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics 
+                                        with BigStepSemantics
+                                        with ParallelWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity
                                         with ConstantPropagationDomain {
+      override def workers = 4
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
+      override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with ParallelIntra
+      /* 
       var i = 0
       override def step(): Unit = {
         i = i + 1
-        println(s"[$i] ${view(workList.head)}")
+        val cmp = workList.head
+        println(s"[$i] $cmp")
         super.step()
       }
+      */     
     }
     analysis.analyze(Timeout.start(Duration(3600,SECONDS)))
     //debugClosures(analysis)
@@ -77,6 +83,7 @@ object Incrementor extends App {
 }
 */
 
+/*
 object Run extends App {
   val text = Reader.loadFile("test/SETL/testcase1.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
@@ -91,3 +98,4 @@ object Analyze extends App {
   val r = a.store(a.ReturnAddr(a.initialComponent))
   println(r)
 }
+*/

@@ -37,7 +37,7 @@ object WebVisualisation {
   }
 }
 
-class WebVisualisation(val analysis: ModAnalysis[_]) {
+class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_]) {
 
   // TODO: make these abstract
   def displayText(cmp: analysis.Component): String = cmp.toString()
@@ -180,7 +180,7 @@ class WebVisualisation(val analysis: ModAnalysis[_]) {
   def refreshData() = {
     // refresh the nodes
     nodesData = Set.empty[Node]
-    analysis.allComponents.foreach { cmp =>
+    analysis.visited.foreach { cmp =>
       val node = getNode(cmp)
       nodesData += node
     }

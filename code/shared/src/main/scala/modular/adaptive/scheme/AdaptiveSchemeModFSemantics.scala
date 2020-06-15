@@ -1,6 +1,5 @@
 package scalaam.modular.adaptive.scheme
 
-import scalaam.modular.scheme.StandardSchemeComponents
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.modular.adaptive._
@@ -9,6 +8,7 @@ import scalaam.modular.adaptive._
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveGlobalStore[SchemeExp]
                                     with AdaptiveReturnValue[SchemeExp]
+                                    with SchemeModFSemantics
                                     with StandardSchemeComponents
                                     with BigStepSemantics
                                     with AbstractDomain {
@@ -57,4 +57,5 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     super.updateAnalysisData(update)
     this.toProcess = updateSet(update)(toProcess)
   }
+  override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with DependencyTrackingIntra
 }
