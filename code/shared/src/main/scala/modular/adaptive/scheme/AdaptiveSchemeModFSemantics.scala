@@ -9,7 +9,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveGlobalStore[SchemeExp]
                                     with AdaptiveReturnValue[SchemeExp]
                                     with SchemeModFSemantics
-                                    with StandardSchemeComponents
+                                    with StandardSchemeModFComponents
                                     with BigStepModFSemantics
                                     with AbstractDomain {
   // Definition of components
@@ -57,5 +57,5 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     super.updateAnalysisData(update)
     this.toProcess = updateSet(update)(toProcess)
   }
-  override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with DependencyTrackingIntra
+  override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with DependencyTrackingIntra
 }

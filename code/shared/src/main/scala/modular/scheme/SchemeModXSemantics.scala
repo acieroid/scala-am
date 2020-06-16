@@ -1,12 +1,13 @@
 package scalaam.modular.scheme
 
+import scalaam.core.Position.Position
 import scalaam.core._
 import scalaam.language.scheme.primitives._
 import scalaam.language.scheme._
 import scalaam.language.sexp
 import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.modular._
-import scalaam.util.Monoid
+import scalaam.util.{Monoid, SmartHash}
 
 /**
  * Base definitions for a Scheme ModX analysis.
@@ -15,6 +16,13 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
                              with GlobalStore[SchemeExp]
                              with ReturnValue[SchemeExp]
                              with ContextSensitiveComponents[SchemeExp] {
+
+  //XXXXXXXXXXXXXXXXXXXXXXXXX//
+  // COMPONENTS AND CONTEXTS //
+  //XXXXXXXXXXXXXXXXXXXXXXXXX//
+
+  implicit def view(c: Component): SchemeComponent
+  trait SchemeComponent extends SmartHash { def body: SchemeExp }
 
   //XXXXXXXXXXXXXXXXXXXX//
   // LEXICAL ADDRESSING //
@@ -63,9 +71,16 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
   // Extensions to the intraAnalysis.
   trait SchemeModXSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
 
+    // Variable lookup using the global store.
+    protected def lookupVariable(lex: LexicalRef): Value
+    protected def    setVariable(lex: LexicalRef, vlu: Value): Unit
+    protected def defineVariable( id: Identifier, vlu: Value): Unit
+
     //====================//
     // EVALUATION HELPERS //
     //====================//
+
+    protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value
 
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
@@ -98,6 +113,59 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
       val csqVal = if (lattice.isTrue(prd)) csq else Monoid[M].zero
       val altVal = if (lattice.isFalse(prd)) alt else Monoid[M].zero
       Monoid[M].append(csqVal,altVal)
+    }
+
+    // Append two lists (used for quasiquoting).
+    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
+      //TODO [difficult]: implement append
+      throw new NotImplementedError("Not yet implemented: append.")
+    }
+
+    protected def newClosure(lambda: SchemeLambdaExp, name: Option[String]): Value
+
+    // TODO[minor]: use foldMap instead of foldLeft
+    protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
+      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
+        prm.call(fexp, args, StoreAdapter, allocator) match {
+          case MayFailSuccess((vlu,_))  => vlu
+          case MayFailBoth((vlu,_),_)   => vlu
+          case MayFailError(_)          => lattice.bottom
+        }
+      ))
+
+    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value =
+      if(args.forall(_._2 != lattice.bottom)) {
+        val fromClosures = applyClosures(fval,args, cll, cmp)
+        val fromPrimitives = applyPrimitives(fexp,fval,args)
+        lattice.join(fromClosures,fromPrimitives)
+      } else {
+        lattice.bottom
+      }
+
+    protected def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
+      case Nil                      => fn(Nil)
+      // TODO[minor]: use foldMap instead of foldLeft
+      case (argExp,argVal) :: rest  =>
+        lattice.split(argVal).foldLeft(lattice.bottom) { (acc,argSplitted) => lattice.join(acc,
+          splitArgs(rest)(restSplitted => fn((argExp,argSplitted) :: restSplitted))
+        )}
+    }
+
+    //====================//
+    // ALLOCATION HELPERS //
+    //====================//
+
+    val allocator: SchemeAllocator[Addr]
+
+    protected def allocateList(elms: List[(SchemeExp,Value)]): Value = elms match {
+      case Nil                => lattice.nil
+      case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
+    }
+    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
+      val addr = allocAddr(PtrAddr(pairExp))
+      val pair = lattice.cons(car,cdr)
+      writeAddr(addr,pair)
+      lattice.pointer(addr)
     }
   }
 }

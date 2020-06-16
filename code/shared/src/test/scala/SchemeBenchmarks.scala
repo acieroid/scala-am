@@ -95,11 +95,11 @@ object SchemeBenchmarks {
     //"test/R5RS/gambit/string.scm", // Needs susbtring.
     "test/R5RS/gambit/sum.scm",
     "test/R5RS/gambit/sumloop.scm",
-    //"test/R5RS/gambit/tail.scm", // Needs file manipulation primitivies (open-input-port, close-input-port, read-char).
+    //"test/R5RS/gambit/tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
     "test/R5RS/gambit/tak.scm",
     //"test/R5RS/gambit/trav1.scm", // Needs append.
     "test/R5RS/gambit/triangl.scm",
-    //"test/R5RS/gambit/wc.scm", // Needs file manipulation primitivies (open-input-port, close-input-port, read-char).
+    //"test/R5RS/gambit/wc.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
   )
 
   val rosetta: Set[String] = Set(

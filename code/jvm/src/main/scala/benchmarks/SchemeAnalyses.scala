@@ -76,7 +76,7 @@ object SchemeAnalyses {
       override def toString() = s"parallel (n = $n)"
       override def workers = n
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-      override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with ParallelIntra  
+      override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with ParallelIntra
     }
 
 }

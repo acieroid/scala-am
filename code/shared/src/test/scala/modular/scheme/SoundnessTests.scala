@@ -178,7 +178,7 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests {
                                       with NoSensitivity
                                       with ParallelWorklistAlgorithm[SchemeExp] {
       override def workers = 4
-      override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with ParallelIntra
+      override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with ParallelIntra
   }
 }
 

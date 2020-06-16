@@ -23,7 +23,7 @@ object Main {
                                         with ConstantPropagationDomain {
       override def workers = 4
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-      override def intraAnalysis(cmp: Component) = new BigStepIntra(cmp) with ParallelIntra
+      override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with ParallelIntra
       /* 
       var i = 0
       override def step(): Unit = {
@@ -39,7 +39,7 @@ object Main {
     debugResults(analysis, false)
   }
 
-  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with StandardSchemeComponents
+  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with StandardSchemeModFComponents
 
   def debugResults(machine: SchemeModFAnalysis, printMore: Boolean = false): Unit =
     machine.store.foreach {

@@ -2,10 +2,10 @@ package scalaam.modular.incremental.scheme
 
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
-import scalaam.modular.scheme.StandardSchemeComponents
+import scalaam.modular.scheme.StandardSchemeModFComponents
 
 /** Semantics for an incremental Scheme MODF analysis. */
-trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with StandardSchemeComponents {
+trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with StandardSchemeModFComponents {
 
   // Every component holds a pointer to the corresponding lexical module.
   trait ComponentData extends SchemeComponent with LinkedComponent {

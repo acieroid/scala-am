@@ -3,7 +3,7 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.language.scheme._
 
-trait StandardSchemeComponents extends SchemeModFSemantics {
+trait StandardSchemeModFComponents extends SchemeModFSemantics {
 
   // In ModF, components are function calls in some context.
 
@@ -51,7 +51,7 @@ trait StandardSchemeComponents extends SchemeModFSemantics {
   }
 }
 
-trait StandardSchemeModFSemantics extends StandardSchemeComponents {
+trait StandardSchemeModFSemantics extends StandardSchemeModFComponents {
   // Components are just normal SchemeComponents, without any extra fancy features.
   // Hence, to view a component as a SchemeComponent, the component itself can be used.
   type Component = SchemeComponent

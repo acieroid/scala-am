@@ -18,9 +18,6 @@ trait SchemeModFSemantics extends SchemeModXSemantics
   // In ModF, components are function calls in some context.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
 
-  implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent extends SmartHash { def body: SchemeExp }
-
   /** Returns the parent of a component, if any. */
   def componentParent(c: Component): Option[Component]
 
@@ -52,76 +49,40 @@ trait SchemeModFSemantics extends SchemeModXSemantics
     @scala.annotation.tailrec
     private def resolveParent(cmp: Component, scp: Int): Component =
       if (scp == 0) { cmp } else resolveParent(componentParent(cmp).get, scp - 1)
-    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value =
-      if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args, cll, cmp)
-        val fromPrimitives = applyPrimitives(fexp,fval,args)
-        lattice.join(fromClosures,fromPrimitives)
-      } else {
-        lattice.bottom
-      }
-    protected def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
-      case Nil                      => fn(Nil)
-      // TODO[minor]: use foldMap instead of foldLeft
-      case (argExp,argVal) :: rest  =>
-        lattice.split(argVal).foldLeft(lattice.bottom) { (acc,argSplitted) => lattice.join(acc,
-          splitArgs(rest)(restSplitted => fn((argExp,argSplitted) :: restSplitted))
-        )}
-    }
+
     // TODO[minor]: use foldMap instead of foldLeft
     protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value = {
       val arity = args.length
       val closures = lattice.getClosures(fun)
-      closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
-        case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
+      closures.foldLeft(lattice.bottom)((acc, clo) => lattice.join(acc, clo match {
+        case (clo@(SchemeLambda(prs, _, _), _), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
           val context = allocCtx(nam, clo, argVals, cll, cmp)
-          val component = newComponent(clo,nam,context)
+          val component = newComponent(clo, nam, context)
           bindArgs(component, prs, argVals)
           call(component)
-        case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length <= arity =>
-          val (fixedArgs,varArgs) = args.splitAt(prs.length)
+        case (clo@(SchemeVarArgLambda(prs, vararg, _, _), _), nam) if prs.length <= arity =>
+          val (fixedArgs, varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
           val context = allocCtx(nam, clo, fixedArgVals :+ varArgVal, cll, cmp)
-          val component = newComponent(clo,nam,context)
-          bindArgs(component,prs,fixedArgVals)
-          bindArg(component,vararg,varArgVal)
+          val component = newComponent(clo, nam, context)
+          bindArgs(component, prs, fixedArgVals)
+          bindArg(component, vararg, varArgVal)
           call(component)
         case _ => lattice.bottom
       }))
     }
-    protected def allocateList(elms: List[(SchemeExp,Value)]): Value = elms match {
-      case Nil                => lattice.nil
-      case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
-    }
-    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val addr = allocAddr(PtrAddr(pairExp))
-      val pair = lattice.cons(car,cdr)
-      writeAddr(addr,pair)
-      lattice.pointer(addr)
-    }
-    protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
-      //TODO [difficult]: implement append
-      throw new Exception("NYI -- append")
-    }
+
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
       writeAddr(VarAddr(par),arg,component)
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
-    private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
+    val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
       def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
     }
-    // TODO[minor]: use foldMap instead of foldLeft
-    protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
-      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
-        prm.call(fexp, args, StoreAdapter, allocator) match {
-          case MayFailSuccess((vlu,_))  => vlu
-          case MayFailBoth((vlu,_),_)   => vlu
-          case MayFailError(_)          => lattice.bottom
-        }
-      ))
+
     // The current component serves as the lexical environment of the closure.
     protected def newClosure(lambda: SchemeLambdaExp, name: Option[String]): Value =
       lattice.closure((lambda, component), name)
