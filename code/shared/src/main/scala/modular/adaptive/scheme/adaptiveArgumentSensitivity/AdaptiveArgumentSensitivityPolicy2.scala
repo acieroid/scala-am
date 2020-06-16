@@ -7,7 +7,7 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
   override def adaptAnalysis() = {
     super.adaptAnalysis()
     // if the budged is exceeded, adapt the analysis until the budget is satisfied
-    if (allComponents.size > budget) {
+    if (visited.size > budget) {
       val cmps = cmpsPerFn.maxBy(_._2.size)._2
       joinComponents(cmps)
     } 

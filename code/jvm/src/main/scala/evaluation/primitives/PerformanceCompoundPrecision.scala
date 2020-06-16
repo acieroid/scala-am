@@ -1,5 +1,6 @@
 package scalaam.cli.evaluation.primitives
 
+import scalaam.modular._
 import scalaam.cli.benchmarks._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
@@ -10,7 +11,7 @@ import scalaam.util.benchmarks.Timeout
 import scala.concurrent.duration._
 
 object PerformanceCompoundPrecision extends Performance {
-  abstract class CompoundPrecisionAnalysis(p: SchemeExp) extends ModAnalysis(p) with BigStepSemantics with ConstantPropagationDomain with StandardSchemeModFSemantics
+  abstract class CompoundPrecisionAnalysis(p: SchemeExp) extends ModAnalysis(p) with BigStepSemantics with ConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] with StandardSchemeModFSemantics
 
   def analysisTimeout() = Timeout.start(Duration(2, MINUTES))
 

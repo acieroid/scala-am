@@ -1,13 +1,12 @@
 package scalaam.modular
 
 import scalaam.core._
-import scalaam.util.Annotations._
 
 /**
  * Adds a global store to the analysis. This store supports various addressing modes.
  * @tparam Expr The type of the expressions under analysis.
  */
-trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
+trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
 
   // parameterized by a type that represents (local) addresses
   type LocalAddr <: Address
@@ -23,23 +22,30 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
   }
 
   // the global store of the analysis
-  @mutable var store: Map[Addr,Value] = Map()
-  private def updateAddr(addr: Addr, value: Value): Boolean = store.get(addr) match {
-    case None if value == lattice.bottom => false
-    case None => store = store + (addr -> value); true
-    case Some(oldValue) =>
-      val newValue = lattice.join(oldValue,value)
-      if (newValue == oldValue) return false
-      store = store + (addr -> newValue)
-      true
-  }
+  var store: Map[Addr,Value] = Map()
+  private def updateAddr(store: Map[Addr,Value], addr: Addr, value: Value): (Map[Addr,Value],Boolean) = 
+    store.get(addr) match {
+      case None if value == lattice.bottom => (store, false)
+      case None => (store + (addr -> value), true)
+      case Some(oldValue) =>
+        val newValue = lattice.join(oldValue,value)
+        if (newValue == oldValue) {
+          (store, false)
+        } else {
+          (store + (addr -> newValue), true)
+        }
+    }
 
   // Dependency that is triggered when an abstract value at address 'addr' is updated
+  // TODO: rename to AddrDependency or something, `ReadWrite` is universal to all dependencies
   case class ReadWriteDependency(addr: Addr) extends Dependency {
     override def toString(): String = s"$addr"
   }
 
-  trait GlobalStoreIntra extends super.IntraAnalysis {
+  trait GlobalStoreIntra extends super.IntraAnalysis { intra => 
+
+    // keep the store local
+    var store = inter.store
 
     // allocating an address
     def allocAddr(addr: LocalAddr): ComponentAddr =
@@ -49,20 +55,37 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] {
     protected def readAddr(addr: LocalAddr, cmp: Component = component): Value =
       readAddr(ComponentAddr(cmp, addr))
     protected def readAddr(addr: Addr): Value = {
-      registerDependency(ReadWriteDependency(addr))
+      register(ReadWriteDependency(addr))
       store.get(addr) match {
-        case None => store += (addr -> lattice.bottom) ; lattice.bottom
-        case Some(v) => v
+        case None => 
+          store += (addr -> lattice.bottom)
+          return lattice.bottom
+        case Some(v) => 
+          return v
       }
     }
 
     // writing addresses of the global store
     protected def writeAddr(addr: LocalAddr, value: Value, cmp: Component = component): Unit =
-        writeAddr(ComponentAddr(cmp, addr),value)
-    protected def writeAddr(addr: Addr, value: Value): Unit =
-        if (updateAddr(addr,value)) { // If the value in the store changed, trigger the dependency.
-          triggerDependency(ReadWriteDependency(addr))
-          // System.out.println(s"$addr -> $value")
+      writeAddr(ComponentAddr(cmp, addr),value)
+    protected def writeAddr(addr: Addr, value: Value): Unit = {
+      val (updatedStore, hasChanged) = updateAddr(intra.store,addr,value)
+      if (hasChanged) {      
+        intra.store = updatedStore
+        intra.trigger(ReadWriteDependency(addr))
+      }
+    }
+
+    override def commit(dep: Dependency): Boolean = dep match {
+      case ReadWriteDependency(addr) => 
+        val (updatedStore, hasChanged) = updateAddr(inter.store,addr,intra.store(addr))
+        if (hasChanged) {
+          inter.store = updatedStore
+          true
+        } else {
+          false
         }
+      case _ => super.commit(dep)
+    }
   }
 }

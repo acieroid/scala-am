@@ -15,7 +15,7 @@ sealed trait Identity {
 case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 
 /** Neutral identity for to elements not in the code (constructed by the analysis). */
-object NoCodeIdentity extends Identity {
+case object NoCodeIdentity extends Identity {
   val idn: IDN = Identity.newId()
   override def pos: Position = Position(-1, 0)
 }

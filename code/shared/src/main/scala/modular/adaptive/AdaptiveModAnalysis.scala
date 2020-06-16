@@ -1,12 +1,15 @@
 package scalaam.modular.adaptive
 
-import scalaam.modular.components.MutableIndirectComponents
+import scalaam.modular.components.IndirectComponents
 import scalaam.core._
 import scalaam.modular._
 import scalaam.util._
 import scalaam.util.MonoidImplicits._
 
-abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) with MutableIndirectComponents[Expr] {
+abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) 
+                                                                        with IndirectComponents[Expr]
+                                                                        with SequentialWorklistAlgorithm[Expr]
+                                                                        with DependencyTracking[Expr] {
 
   import scalaam.modular.components.IndirectComponents._
 
@@ -58,7 +61,6 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
     workList        = workList.map(update)
     visited         = updateSet(update)(visited)
     newComponents   = updateSet(update)(newComponents)
-    allComponents   = updateSet(update)(allComponents)
     dependencies    = updateMap(update,updateSet(update))(dependencies)
     deps            = updateMap(updateDep(update),updateSet(update))(deps)
   }
@@ -75,7 +77,4 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
       acc + (keyAbs -> Monoid[V].append(acc(keyAbs),updateV(vlu)))
     }
   def updatePair[A,B](updateA: A => A, updateB: B => B)(p: (A,B)): (A,B) = (updateA(p._1),updateB(p._2))
-
-
-
 }

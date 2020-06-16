@@ -10,6 +10,7 @@ import scalaam.util.benchmarks.Timeout
 import scala.concurrent.duration.Duration
 
 abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extends ModAnalysis(prog)
+                                                                             with SequentialWorklistAlgorithm[Expr]
                                                                              with MutableIndirectComponents[Expr] {
 
   type OldIdn = Identity
@@ -166,7 +167,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
    * @param modifiedModules A set of new modules whose body has been modified. TODO: inner definitions?
    */
   private def computeWork(modifiedModules: Set[Module]): Set[Component] = {
-    allComponents.filter(c => modifiedModules.contains(c.mod))
+    visited.filter(c => modifiedModules.contains(c.mod))
   }
 
   // Methods to be implemented/overridden in subclasses.

@@ -2,10 +2,9 @@ package scalaam.modular
 
 import scalaam.core._
 import scalaam.util.SmartHash
-import scalaam.util.Annotations._
 import scalaam.util.benchmarks.Timeout
 
-abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
+abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
 
   // parameterized by a 'intra-component' representation
   type Component
@@ -14,70 +13,55 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) {
   // Retrieve a (possibly modified) version of the program
   def program: Expr = prog
 
-  // an intra-analysis of a component can cause dependencies that impact the analysis of other components
-  // an intra-analysis therefore can:
-  // - register a dependency on an effect (e.g., when it reads an address)
-  // - trigger an effect (e.g., when it writes to an address)
+  // some form of "worklist" is required to keep track of which components need to be (re-)analyzed
+  // this method is responsible for adding a given component to that worklist
+  def addToWorkList(cmp: Component): Unit 
+
+  // the intra-analysis of a component can discover new components
+  // when we discover a component that has not yet been analyzed, we add it to the worklist
+  // concretely, we keep track of a set `visited` of all components that have already been visited
+  var visited: Set[Component] = Set(initialComponent)
+  def spawn(cmp: Component) =
+    if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
+      visited += cmp
+      addToWorkList(cmp)
+    }
+
+  // an intra-analysis of a component can read ("register") or write ("trigger") dependencies
+  // a dependency represents a part of the global analysis state (such as a location in the global analysis' store)
+  // in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
   protected trait Dependency extends SmartHash
   // here, we track which components depend on which effects
-  @mutable var deps: Map[Dependency,Set[Component]] =
-    Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
-  protected def addDep(target: Component, dep: Dependency): Unit =
-    deps += (dep -> (deps(dep) + target))
+  var deps: Map[Dependency,Set[Component]] = Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
+  private def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
+  protected def trigger(dep: Dependency) = deps(dep).foreach(addToWorkList)
 
   // parameterized by an 'intra-component analysis'
   protected def intraAnalysis(component: Component): IntraAnalysis
-  protected abstract class IntraAnalysis(val component: Component) {
-    // keep track of dependencies triggered by this intra-analysis
-    @mutable private[ModAnalysis] var deps = Set[Dependency]()
-    protected def triggerDependency(dep: Dependency): Unit = deps += dep
-    protected def registerDependency(dep: Dependency): Unit = addDep(component, dep)
-    // keep track of components called by this intra-analysis
-    @mutable private[ModAnalysis] var components = Set[Component]()
-    protected def spawn(cmp: Component): Unit = components += cmp
+  protected abstract class IntraAnalysis(val component: Component) { intra => 
+    // keep track of:
+    // - a set R of dependencies read by this intra-analysis
+    // - a set W of dependencies written by this intra-analysis
+    // - a set C of components discovered by this intra-analysis
+    protected var R = Set[Dependency]()
+    protected var W = Set[Dependency]()
+    protected var C = Set[Component]()
+    protected def register(dep: Dependency): Unit = R += dep
+    protected def trigger(dep: Dependency): Unit  = W += dep
+    protected def spawn(cmp: Component): Unit     = C += cmp
     // analyses the given component
+    // should only update *local* state and not modify the global analysis state directly
     def analyze(): Unit
-  }
-
-  // technically, it is also possible to trigger a dependency in the inter-analysis itself
-  protected def triggerDependency(dep: Dependency): Unit = addToWorkList(deps(dep))
-
-  implicit def cmpOrdering: Ordering[Component]
-  protected def addToWorkList(cmps: Iterable[Component]) = {
-    val sorted = cmps.toList.sorted
-    workList = workList.addAll(sorted)
-  }
-
-  // keep track of all components in the analysis
-  @mutable var allComponents: Set[Component]                  = Set(initialComponent)
-  // keep track of the 'main dependencies' between components (currently, only used for the web visualisation)
-  @mutable var dependencies:  Map[Component, Set[Component]]  = Map().withDefaultValue(Set.empty)
-  // inter-analysis using a simple workListlist algorithm
-  @mutable var workList:      WorkList[Component]             = LIFOWorkList(initialComponent)
-  @mutable var visited:       Set[Component]                  = Set()
-  @mutable var intra:         IntraAnalysis                   = null
-  @mutable var newComponents: Set[Component]                  = Set()
-  @mutable var componentsToUpdate: Set[Component]             = Set()
-  def finished(): Boolean = workList.isEmpty
-  def step(): Unit = {
-    // take the next component
-    val current = workList.head
-    workList = workList.tail
-    // do the intra-analysis
-    intra = intraAnalysis(current)
-    intra.analyze()
-    // add the successors to the worklist
-    newComponents = intra.components.filterNot(visited)
-    componentsToUpdate = intra.deps.flatMap(deps)
-    val succs = newComponents ++ componentsToUpdate
-    // update the analysis
-    addToWorkList(succs)
-    visited += current
-    allComponents ++= newComponents
-    dependencies += (current -> (dependencies.getOrElse(current,Set()) ++ intra.components))
-  }
-  def analyze(timeout: Timeout.T = Timeout.none): Unit =
-    while(!finished() && !timeout.reached) {
-      step()
+    // pushes the local changes to the global analysis state
+    def commit(): Unit = {
+      R.foreach(inter.register(component,_))
+      W.foreach(dep => if(commit(dep)) inter.trigger(dep))
+      C.foreach(inter.spawn)
     }
+    def commit(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit
+  }
+
+  // specific to the worklist algorithm!
+  def finished(): Boolean                               // <= check if the analysis is finished
+  def analyze(timeout: Timeout.T = Timeout.none): Unit  // <= run the analysis (with given timeout)
 }
