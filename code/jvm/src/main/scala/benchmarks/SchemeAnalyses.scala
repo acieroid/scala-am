@@ -11,21 +11,21 @@ import scalaam.core.Position._
 object SchemeAnalyses {
 
     def contextInsensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                                          with BigStepSemantics
+                                                                          with BigStepModFSemantics
                                                                           with NoSensitivity
                                                                           with ConstantPropagationDomain
                                                                           with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
     }
     def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                                                with BigStepSemantics
+                                                                                with BigStepModFSemantics
                                                                                 with CallSiteSensitivity
                                                                                 with ConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "call-site-sensitivity"
     }
     def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                                                with BigStepSemantics
+                                                                                with BigStepModFSemantics
                                                                                 with FullArgumentSensitivity
                                                                                 with ConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
@@ -68,7 +68,7 @@ object SchemeAnalyses {
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
     def parallelAnalysis(prg: SchemeExp, n: Int) = new ModAnalysis(prg) with StandardSchemeModFSemantics 
-                                                                        with BigStepSemantics
+                                                                        with BigStepModFSemantics
                                                                         with ParallelWorklistAlgorithm[SchemeExp]
                                                                         with NoSensitivity
                                                                         with ConstantPropagationDomain {

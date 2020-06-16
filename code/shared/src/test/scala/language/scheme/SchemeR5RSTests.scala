@@ -41,7 +41,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
 class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) =
     // Not really clean, we only want a proper ConstantPropagationLattice definition
-    new ModAnalysis(text) with BigStepSemantics
+    new ModAnalysis(text) with BigStepModFSemantics
                           with ConstantPropagationDomain
                           with NoSensitivity
                           with StandardSchemeModFSemantics
@@ -72,7 +72,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 }
 
 class ConcreteBigStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepSemantics
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepModFSemantics
                                                         with ConstantPropagationDomain
                                                         with NoSensitivity
                                                         with StandardSchemeModFSemantics
@@ -88,7 +88,7 @@ class ConcreteSmallStepModFSoundnessTests extends SchemeR5RSTests {
 }
 
 class TypeBigStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepSemantics
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepModFSemantics
                                                         with TypeDomain
                                                         with NoSensitivity
                                                         with StandardSchemeModFSemantics

@@ -10,7 +10,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveReturnValue[SchemeExp]
                                     with SchemeModFSemantics
                                     with StandardSchemeComponents
-                                    with BigStepSemantics
+                                    with BigStepModFSemantics
                                     with AbstractDomain {
   // Definition of components
   trait ComponentData extends SchemeComponent

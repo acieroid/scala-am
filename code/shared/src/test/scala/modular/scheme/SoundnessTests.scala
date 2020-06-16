@@ -139,7 +139,7 @@ s"""Intermediate result at $idn is unsound:
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
-                                      with BigStepSemantics
+                                      with BigStepModFSemantics
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
                                       with NoSensitivity
@@ -150,7 +150,7 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
 trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def name = "big-step semantics with call-site sensitivity for primitives"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
-      with BigStepSemantics
+      with BigStepModFSemantics
       with StandardSchemeModFSemantics
       with ConstantPropagationDomain
       with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
@@ -172,7 +172,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def name = "parallel analysis (n = 4)"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
-                                      with BigStepSemantics
+                                      with BigStepModFSemantics
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
                                       with NoSensitivity

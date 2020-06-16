@@ -17,7 +17,7 @@ object Main {
     val txt = Reader.loadFile("test/icp/icp_7_eceval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics 
-                                        with BigStepSemantics
+                                        with BigStepModFSemantics
                                         with ParallelWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity
                                         with ConstantPropagationDomain {

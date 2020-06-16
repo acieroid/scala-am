@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 object PerformanceType extends Performance {
   def analysisTimeout() = Timeout.start(Duration(20, MINUTES))
   import scalaam.language.scheme.primitives._
-  abstract class AnalysisWithManualPrimitives(p: SchemeExp) extends ModAnalysis(p)with BigStepSemantics with StandardSchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp] {
+  abstract class AnalysisWithManualPrimitives(p: SchemeExp) extends ModAnalysis(p)with BigStepModFSemantics with StandardSchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp] {
     override lazy val program = {
       val originalProgram = p
       // We exclude all defined primitives from the preludation
@@ -32,7 +32,7 @@ object PerformanceType extends Performance {
     override lazy val primitives: SchemePrimitives[Value, Addr] = valueLattice.Primitives
   }
 
-  abstract class AnalysisWithPreludedPrimitives(p: SchemeExp) extends ModAnalysis(p)with BigStepSemantics with StandardSchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp] {
+  abstract class AnalysisWithPreludedPrimitives(p: SchemeExp) extends ModAnalysis(p)with BigStepModFSemantics with StandardSchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp] {
     override lazy val program = {
       val originalProgram = p
       // We exclude all defined primitives from the preludation

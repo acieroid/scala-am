@@ -155,7 +155,7 @@ abstract class PrimitivesComparison extends AnalysisComparison[
 
 object PrimitivesComparisonRQ1 extends PrimitivesComparison {
   def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                   with BigStepSemantics
+                                                   with BigStepModFSemantics
                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_0_0
                                                    with ConstantPropagationDomain
                                                    with LIFOWorklistAlgorithm[SchemeExp] {
@@ -163,7 +163,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_CS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -171,7 +171,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_2CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_2CS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -179,7 +179,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_10CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_10CS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -187,7 +187,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_2AcyclicCS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_2AcyclicCS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -195,7 +195,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_10AcyclicCS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_10AcyclicCS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -203,7 +203,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_FA_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -211,7 +211,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_2FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                     with BigStepSemantics
+                                                     with BigStepModFSemantics
                                                      with CompoundSensitivities.SeparateLowHighSensitivity.S_2FA_0
                                                      with ConstantPropagationDomain
                                                      with LIFOWorklistAlgorithm[SchemeExp] {
@@ -219,7 +219,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_10FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_10FA_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -227,7 +227,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     override val primPrecision = SchemePrelude.primNames
   }
   def S_CSFA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                      with BigStepSemantics
+                                                      with BigStepModFSemantics
                                                       with CompoundSensitivities.SeparateLowHighSensitivity.S_CSFA_0
                                                       with ConstantPropagationDomain
                                                       with LIFOWorklistAlgorithm[SchemeExp] {
@@ -477,7 +477,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
 abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
   def isPrim(nam: Option[String]): Boolean
   override def S_0_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                   with BigStepSemantics
+                                                   with BigStepModFSemantics
                                                    with CompoundSensitivities.SeparateLowHighSensitivity.S_0_0
                                                    with ConstantPropagationDomain
                                                    with LIFOWorklistAlgorithm[SchemeExp] {
@@ -485,7 +485,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_CS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -493,7 +493,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_2CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_2CS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -501,7 +501,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_10CS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_10CS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -509,7 +509,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_2AcyclicCS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_2AcyclicCS_0
                                                     with ConstantPropagationDomain 
                                                     with LIFOWorklistAlgorithm[SchemeExp]{
@@ -517,7 +517,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_10AcyclicCS_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_10AcyclicCS_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -525,7 +525,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_FA_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -533,7 +533,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_2FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                     with BigStepSemantics
+                                                     with BigStepModFSemantics
                                                      with CompoundSensitivities.SeparateLowHighSensitivity.S_2FA_0
                                                      with ConstantPropagationDomain
                                                      with LIFOWorklistAlgorithm[SchemeExp] {
@@ -541,7 +541,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_10FA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                    with BigStepSemantics
+                                                    with BigStepModFSemantics
                                                     with CompoundSensitivities.SeparateLowHighSensitivity.S_10FA_0
                                                     with ConstantPropagationDomain
                                                     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -549,7 +549,7 @@ abstract class PrimitivesComparisonRQ3 extends PrimitivesComparison {
     override def isPrimitive(nam: Option[String]): Boolean = isPrim(nam)
   }
   def S_CSFA_0(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
-                                                      with BigStepSemantics
+                                                      with BigStepModFSemantics
                                                       with CompoundSensitivities.SeparateLowHighSensitivity.S_CSFA_0
                                                       with ConstantPropagationDomain
                                                       with LIFOWorklistAlgorithm[SchemeExp] {

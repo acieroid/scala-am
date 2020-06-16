@@ -3,7 +3,7 @@ package scalaam.modular
 import scalaam.core._
 
 /**
- * Provides facilities for storing and retrieving return values of components.
+ * Provides facilities for storing and retrieving return values of components (component analyses).
  * @tparam Expr The type of the expressions under analysis.
  */
 trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
@@ -22,7 +22,7 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
     // reading the result of a component
     protected def readResult(cmp: Component): Value =
       readAddr(ReturnAddr(cmp))
-    // convenience method: calling other components registers a dependency and immediately reads their prior analysis result
+    // convenience method: "calling" other components registers a dependency and immediately reads their prior analysis result
     protected def call(cmp: Component): Value = {
       spawn(cmp)
       readResult(cmp)
