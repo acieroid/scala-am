@@ -1,0 +1,11 @@
+(letrec ((result (atom 1))
+         (fact (lambda (i)
+                (if (= i 0)
+                 result
+                 (begin (swap! result (lambda (curr) (* curr i)))
+                  (fact (- i 1))))))
+         (t1 (future (fact 4)))
+         (t2 (future (fact 5))))
+ (deref t1)
+ (deref t2)
+ (= (read result) 2880))

@@ -1,0 +1,33 @@
+All files in this directory were taken/modified from https://github.com/acieroid/scala-am/tree/modularthrds/thrds/suite .
+Date: Fri 29/03/2019
+
+Benchmarks easily modifiable to use futures instead of thrds:
+    matmul, trapr
+    fact (without fact-thrd-ref)
+    atoms, stm (without definition of atomic functions)
+
+Benchmarks modified to use futures instead of thrds:
+    bchain, count, dekker, fact, mcarlo, mceval, minimax, msort, pc, pp, rng, stm, sudoku
+
+Benchmarks now using lists instead of vectors:
+    bchain, pp, sudoku
+
+Benchmarks using references (to be replaced by atoms):
+    qsort, tsp, sieve, ringbuf, pps, pp, phild, pc, mg, nbody, life, fact, dekker, count, atoms, abp
+
+Benchmarks now using atoms instead of references:
+    actors, bchain, dekker, fact, pc, pp, rng, stm
+
+Benchmarks using locks (to be implemented on top of atoms):
+    abp, actors, atoms, bchain, count, fact, life, pc, phild, pp, tsp, stm
+
+    Lock prelude:
+
+    (define (t/new-lock) (atom #f))
+    (define (t/acquire lock)
+      (let try ()
+        (if (compare-and-set! lock #f #t)
+            #t
+            (try))))
+    (define (t/release lock)
+      (reset! lock #f))
