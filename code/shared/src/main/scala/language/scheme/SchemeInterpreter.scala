@@ -1,6 +1,5 @@
 package scalaam.language.scheme
 
-import scalaam.core.Position.Position
 import scalaam.core._
 import scalaam.util._
 import scalaam.language.sexp._

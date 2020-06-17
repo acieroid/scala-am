@@ -2,8 +2,6 @@ package scalaam.modular.scheme
 
 import scalaam.core._
 import scalaam.language.scheme._
-import scalaam.modular.{GlobalStore, ModAnalysis, ReturnValue}
-import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.util.MonoidImplicits._
 
 trait SchemeBigStepSemantics extends SchemeModXSemantics {

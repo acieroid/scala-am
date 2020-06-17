@@ -4,7 +4,6 @@ import scalaam.language.scheme.primitives._
 import scalaam.core.Position._
 import scalaam.core._
 import scalaam.language.scheme._
-import scalaam.util._
 
 /**
  * Base definitions for a Scheme MODF analysis.

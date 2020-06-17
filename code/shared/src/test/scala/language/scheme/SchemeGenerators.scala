@@ -9,8 +9,6 @@ import scalaam.lattice._
 import scalaam.language.sexp._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
-import org.scalatest.propspec.AnyPropSpec
-import org.scalactic.Bool
 
 trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
     /* unary ops */
