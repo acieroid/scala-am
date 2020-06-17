@@ -4,9 +4,9 @@ import scalaam.core._
 import scalaam.language.sexp._
 
 /**
-  * Object that provides a method to compile an s-expression into a Scheme expression
+  * Trait that provides a method to compile an s-expression into a standard Scheme expression.
   */
-object SchemeCompiler {
+trait BaseSchemeCompiler {
   class SchemeCompilerException(reason: String, position: Identity) extends Exception(reason)
   import scala.util.control.TailCalls._
 
@@ -16,7 +16,7 @@ object SchemeCompiler {
   def reserved: List[String] =
     List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do", "when", "unless")
 
-  def compile(exp: SExp): SchemeExp = _compile(exp).result
+  def compile(exp: SExp): SchemeExp = this._compile(exp).result
 
   def _compile(exp: SExp): TailRec[SchemeExp] = exp match {
     case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(ValueNil, _), _), _) =>
@@ -34,7 +34,7 @@ object SchemeCompiler {
         ) =>
       for {
         argsv  <- tailcall(compileArgs(args))
-        firstv <- tailcall(_compile(first))
+        firstv <- tailcall(this._compile(first))
         restv  <- tailcall(compileBody(rest))
       } yield makeLambda(argsv, firstv :: restv, exp.idn)
     case SExpPair(SExpId(Identifier("lambda", _)), _, _) =>
@@ -45,9 +45,9 @@ object SchemeCompiler {
         _
         ) =>
       for {
-        condv <- tailcall(_compile(cond))
-        consv <- tailcall(_compile(cons))
-        altv  <- tailcall(_compile(alt))
+        condv <- tailcall(this._compile(cond))
+        consv <- tailcall(this._compile(cons))
+        altv  <- tailcall(this._compile(alt))
       } yield SchemeIf(condv, consv, altv, exp.idn)
     case SExpPair(
         SExpId(Identifier("if", _)),
@@ -56,8 +56,8 @@ object SchemeCompiler {
         ) =>
       // Empty else branch is replaced by #f (R5RS states it's unspecified)
       for {
-        condv <- tailcall(_compile(cond))
-        consv <- tailcall(_compile(cons))
+        condv <- tailcall(this._compile(cond))
+        consv <- tailcall(this._compile(cons))
       } yield SchemeIf(condv, consv, SchemeValue(ValueBoolean(false), exp.idn), exp.idn)
     case SExpPair(SExpId(Identifier("if", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme if: $exp", exp.idn)
@@ -68,7 +68,7 @@ object SchemeCompiler {
         ) =>
       for {
         bindingsv <- tailcall(compileBindings(bindings))
-        firstv    <- tailcall(_compile(first))
+        firstv    <- tailcall(this._compile(first))
         restv     <- tailcall(compileBody(rest))
       } yield SchemeNamedLet(name, bindingsv, firstv :: restv, exp.idn)
     case SExpPair(
@@ -78,7 +78,7 @@ object SchemeCompiler {
         ) =>
       for {
         bindingsv <- tailcall(compileBindings(bindings))
-        firstv    <- tailcall(_compile(first))
+        firstv    <- tailcall(this._compile(first))
         restv     <- tailcall(compileBody(rest))
       } yield SchemeLet(bindingsv, firstv :: restv, exp.idn)
     case SExpPair(SExpId(Identifier("let", _)), _, _) =>
@@ -90,7 +90,7 @@ object SchemeCompiler {
         ) =>
       for {
         bindingsv <- tailcall(compileBindings(bindings))
-        firstv    <- tailcall(_compile(first))
+        firstv    <- tailcall(this._compile(first))
         restv     <- tailcall(compileBody(rest))
       } yield SchemeLetStar(bindingsv, firstv :: restv, exp.idn)
     case SExpPair(SExpId(Identifier("let*", _)), _, _) =>
@@ -102,7 +102,7 @@ object SchemeCompiler {
         ) =>
       for {
         bindingsv <- tailcall(compileBindings(bindings))
-        firstv    <- tailcall(_compile(first))
+        firstv    <- tailcall(this._compile(first))
         restv     <- tailcall(compileBody(rest))
       } yield SchemeLetrec(bindingsv, firstv :: restv, exp.idn)
     case SExpPair(SExpId(Identifier("letrec", _)), _, _) =>
@@ -113,18 +113,18 @@ object SchemeCompiler {
         _
         ) =>
       for {
-        valuev <- tailcall(_compile(value))
+        valuev <- tailcall(this._compile(value))
       } yield SchemeSet(v, valuev, exp.idn)
     case SExpPair(SExpId(Identifier("when", _)), SExpPair(pred, body, _), _) =>
       for {
-        predv <- tailcall(_compile(pred))
+        predv <- tailcall(this._compile(pred))
         bodyv <- tailcall(compileBody(body))
       } yield SchemeWhen(predv, bodyv, exp.idn)
     case SExpPair(SExpId(Identifier("when", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme when: $exp", exp.idn)
     case SExpPair(SExpId(Identifier("unless", _)), SExpPair(pred, body, _), _) =>
       for {
-        predv <- tailcall(_compile(pred))
+        predv <- tailcall(this._compile(pred))
         bodyv <- tailcall(compileBody(body))
       } yield SchemeUnless(predv, bodyv, exp.idn)
     case SExpPair(SExpId(Identifier("unless", _)), _, _) =>
@@ -137,7 +137,7 @@ object SchemeCompiler {
       tailcall(compileCondClauses(clauses)).map(SchemeCond(_, exp.idn))
     case SExpPair(SExpId(Identifier("case", _)), SExpPair(exp, clauses, _), _) =>
       tailcall(compileCaseClauses(clauses)).flatMap({
-        case (c, d) => tailcall(_compile(exp)).map(expv => SchemeCase(expv, c, d, exp.idn))
+        case (c, d) => tailcall(this._compile(exp)).map(expv => SchemeCase(expv, c, d, exp.idn))
       })
     case SExpPair(SExpId(Identifier("and", _)), args, _) =>
       tailcall(compileBody(args)).map(SchemeAnd(_, exp.idn))
@@ -148,7 +148,7 @@ object SchemeCompiler {
         SExpPair(SExpId(name), SExpPair(value, SExpValue(ValueNil, _), _), _),
         _
         ) =>
-      tailcall(_compile(value)).map(SchemeDefineVariable(name, _, exp.idn))
+      tailcall(this._compile(value)).map(SchemeDefineVariable(name, _, exp.idn))
     case SExpPair(
         SExpId(Identifier("define", _)),
         SExpPair(SExpPair(SExpId(name), args, _), SExpPair(first, rest, _), _),
@@ -156,7 +156,7 @@ object SchemeCompiler {
         ) =>
       for {
         argsv  <- tailcall(compileArgs(args))
-        firstv <- tailcall(_compile(first))
+        firstv <- tailcall(this._compile(first))
         restv  <- tailcall(compileBody(rest))
       } yield makeDefineFunction(name, argsv, firstv :: restv, exp.idn)
     case SExpPair(
@@ -166,13 +166,13 @@ object SchemeCompiler {
         ) =>
       for {
         bindingsv <- tailcall(compileDoBindings(bindings))
-        testv     <- tailcall(_compile(test))
+        testv     <- tailcall(this._compile(test))
         finalsv   <- tailcall(compileBody(finals))
         commandsv <- tailcall(compileBody(commands))
       } yield SchemeDo(bindingsv, testv, finalsv, commandsv, exp.idn)
     case SExpPair(f, args, _) =>
       for {
-        fv    <- tailcall(_compile(f))
+        fv    <- tailcall(this._compile(f))
         argsv <- tailcall(compileBody(args))
       } yield SchemeFuncall(fv, argsv, exp.idn)
     case SExpId(v) =>
@@ -194,7 +194,7 @@ object SchemeCompiler {
   def compileBody(body: SExp): TailRec[List[SchemeExp]] = body match {
     case SExpPair(exp, rest, _) =>
       for {
-        expv  <- tailcall(_compile(exp))
+        expv  <- tailcall(this._compile(exp))
         restv <- tailcall(compileBody(rest))
       } yield expv :: restv
     case SExpValue(ValueNil, _) => done(Nil)
@@ -205,7 +205,7 @@ object SchemeCompiler {
     case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
       if (reserved.contains(v.name)) throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
       for {
-        valuev <- tailcall(_compile(value))
+        valuev <- tailcall(this._compile(value))
         restv  <- tailcall(compileBindings(rest))
       } yield (v, valuev) :: restv
     case SExpValue(ValueNil, _) => done(Nil)
@@ -217,7 +217,7 @@ object SchemeCompiler {
       case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(ValueNil, _), _), _), rest, _) =>
         if (reserved.contains(v.name)) throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
         for {
-          valuev <- tailcall(_compile(value))
+          valuev <- tailcall(this._compile(value))
           restv  <- tailcall(compileDoBindings(rest))
         } yield (v, valuev, None) :: restv
       case SExpPair(
@@ -227,8 +227,8 @@ object SchemeCompiler {
           ) =>
         if (reserved.contains(v.name)) throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
         for {
-          valuev <- tailcall(_compile(value))
-          stepv  <- tailcall(_compile(step))
+          valuev <- tailcall(this._compile(value))
+          stepv  <- tailcall(this._compile(step))
           restv  <- tailcall(compileDoBindings(rest))
         } yield (v, valuev, Some(stepv)) :: restv
       case SExpValue(ValueNil, _) => done(Nil)
@@ -244,19 +244,19 @@ object SchemeCompiler {
           _
           ) =>
         for {
-          firstv <- tailcall(_compile(first))
+          firstv <- tailcall(this._compile(first))
           restv  <- tailcall(compileBody(rest))
         } yield List((SchemeValue(ValueBoolean(true), clauses.idn), firstv :: restv))
       case SExpPair(SExpPair(cond, SExpPair(first, rest, _), _), restClauses, _) =>
         for {
-          condv        <- tailcall(_compile(cond))
-          firstv       <- tailcall(_compile(first))
+          condv        <- tailcall(this._compile(cond))
+          firstv       <- tailcall(this._compile(first))
           restv        <- tailcall(compileBody(rest))
           restClausesv <- tailcall(compileCondClauses(restClauses))
         } yield (condv, firstv :: restv) :: restClausesv
       case SExpPair(SExpPair(cond, SExpValue(ValueNil, _), _), restClauses, _) =>
         for {
-          condv        <- tailcall(_compile(cond))
+          condv        <- tailcall(this._compile(cond))
           restClausesv <- tailcall(compileCondClauses(restClauses))
         } yield (condv, Nil) :: restClausesv
       case SExpValue(ValueNil, _) => done(Nil)
@@ -274,7 +274,7 @@ object SchemeCompiler {
           _
           ) =>
         for {
-          firstv <- tailcall(_compile(first))
+          firstv <- tailcall(this._compile(first))
           restv  <- tailcall(compileBody(rest))
         } yield (List(), firstv :: restv)
       case SExpPair(SExpPair(objects, body, _), restClauses, _) =>
@@ -337,7 +337,7 @@ object SchemeCompiler {
     // unquote
     case SExpPair(id@SExpId(Identifier("unquote",_)),pair@SExpPair(unquoted, nil@SExpValue(ValueNil, _), _),pos) =>
       if (depth == 1) {
-        tailcall(_compile(unquoted))
+        tailcall(this._compile(unquoted))
       } else {
         for {
           uqExp <- expandQuasiquoted(unquoted, depth - 1)
@@ -347,7 +347,7 @@ object SchemeCompiler {
     case SExpPair(carp@SExpPair(id@SExpId(Identifier("unquote-splicing",_)),pair@SExpPair(unquotedSpl, nil@SExpValue(ValueNil, _), _),_),cdr,pos) =>
       if (depth == 1) {
         for {
-          exp <- tailcall(_compile(unquotedSpl))
+          exp <- tailcall(this._compile(unquotedSpl))
           cdrExp <- tailcall(expandQuasiquoted(cdr, depth))
         } yield SchemeSplicedPair(exp,cdrExp,pos)
       } else {
@@ -374,3 +374,5 @@ object SchemeCompiler {
   private def value(sexp: SExpId): SchemeExp =
     SchemeValue(ValueSymbol(sexp.id.name), sexp.id.idn)
 }
+
+object SchemeCompiler extends BaseSchemeCompiler

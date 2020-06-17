@@ -21,7 +21,7 @@ case class GlobalRef(id: Identifier)                extends LexicalRef {
   override def toString = s"<global ${id.name}>"
 }
 
-object SchemeLexicalAddresser {
+trait BaseSchemeLexicalAddresser {
 
   type Defs = List[Identifier]
 
@@ -100,7 +100,7 @@ object SchemeLexicalAddresser {
     ids.foldLeft(scope)(extend)
 
   def translateProgram(prg: SchemeExp, global: Set[String]): SchemeExp =
-    translate(prg, extend(Scope(emptyFrame,Nil,global), defs(prg)))
+    this.translate(prg, extend(Scope(emptyFrame,Nil,global), defs(prg)))
 
   def translate(exp: SchemeExp, scope: Scope): SchemeExp = exp match {
     case vexp: SchemeValue => vexp
@@ -117,7 +117,7 @@ object SchemeLexicalAddresser {
     case SchemeBegin(eps,pos) =>
       SchemeBegin(translate(eps, scope), pos)
     case SchemeDefineVariable(id,vexp,pos) =>
-      val vexpLex = translate(vexp, scope)
+      val vexpLex = this.translate(vexp, scope)
       SchemeDefineVariable(id,vexpLex,pos)
     case SchemeDefineFunction(id,prs,bdy,pos) =>
       val extScp = extend(newFrame(scope),prs)
@@ -128,31 +128,31 @@ object SchemeLexicalAddresser {
       val bdyLex = translateBody(bdy, newLocalFrame(extScp))
       SchemeDefineVarArgFunction(id,prs,vararg,bdyLex,pos)
     case SchemeSet(id, vexp, pos) =>
-      val vexpLex = translate(vexp, scope)
+      val vexpLex = this.translate(vexp, scope)
       val varAddr = resolve(id, scope)
       SchemeSetLex(id, varAddr, vexpLex, pos)
     case SchemeIf(prd,csq,alt,pos) =>
-      SchemeIf(translate(prd,scope),translate(csq,scope),translate(alt,scope),pos)
+      SchemeIf(this.translate(prd,scope),this.translate(csq,scope),this.translate(alt,scope),pos)
     case SchemePair(car, cdr, pos) =>
-      SchemePair(translate(car,scope),translate(cdr,scope),pos)
+      SchemePair(this.translate(car,scope),this.translate(cdr,scope),pos)
     case SchemeSplicedPair(splice, cdr, pos) =>
-      SchemeSplicedPair(translate(splice,scope),translate(cdr,scope),pos)
+      SchemeSplicedPair(this.translate(splice,scope),this.translate(cdr,scope),pos)
     case SchemeFuncall(fun,args,pos) =>
-      SchemeFuncall(translate(fun,scope),translate(args,scope),pos)
+      SchemeFuncall(this.translate(fun,scope),translate(args,scope),pos)
     case SchemeAnd(exps,pos) =>
       SchemeAnd(translate(exps,scope),pos)
     case SchemeOr(exps,pos) =>
       SchemeOr(translate(exps,scope),pos)
     case SchemeLet(bindings,body,pos) =>
       val (vrs,eps) = bindings.unzip
-      val bdsLex = vrs.zip(eps.map(translate(_,scope)))
+      val bdsLex = vrs.zip(eps.map(this.translate(_,scope)))
       val extScp = extend(newLocalFrame(scope), vrs)
       val bdyLex = translateBody(body, newLocalFrame(extScp))
       SchemeLet(bdsLex,bdyLex,pos)
     case SchemeLetStar(bindings,body,pos) =>
       var curScp = scope
       val bdsLex = bindings.map { case (id,vexp) =>
-        val bnd = (id, translate(vexp, curScp))
+        val bnd = (id, this.translate(vexp, curScp))
         curScp = extend(newLocalFrame(curScp), id)
         bnd
       }
@@ -161,12 +161,12 @@ object SchemeLexicalAddresser {
     case SchemeLetrec(bindings,body,pos) =>
       val (vrs,eps) = bindings.unzip
       val extScp = extend(newLocalFrame(scope), vrs)
-      val bdsLex = vrs.zip(eps.map(translate(_,extScp)))
+      val bdsLex = vrs.zip(eps.map(this.translate(_,extScp)))
       val bdyLex = translateBody(body, newLocalFrame(extScp))
       SchemeLetrec(bdsLex,bdyLex,pos)
     case SchemeNamedLet(name,bindings,body,pos) =>
       val (prs,eps) = bindings.unzip
-      val bdsLex = prs.zip(eps.map(translate(_,scope)))
+      val bdsLex = prs.zip(eps.map(this.translate(_,scope)))
       val letScp = extend(newLocalFrame(scope), name)
       val extScp = extend(newFrame(letScp), prs)
       val bdyLex = translateBody(body, newLocalFrame(extScp))
@@ -175,8 +175,10 @@ object SchemeLexicalAddresser {
   }
 
   def translate(bdy: List[SchemeExp], scope: Scope): List[SchemeExp] =
-    bdy.map { exp => translate(exp,scope) }
+    bdy.map { exp => this.translate(exp,scope) }
 
   def translateBody(body: List[SchemeExp], scope: Scope): List[SchemeExp] =
     translate(body, extend(scope, defs(body)))
 }
+
+object SchemeLexicalAddresser extends BaseSchemeLexicalAddresser
