@@ -28,20 +28,6 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
   // LEXICAL ADDRESSING //
   //XXXXXXXXXXXXXXXXXXXX//
 
-  // Ensure that the program is translated to use lexical addresses first!
-  override lazy val program: SchemeExp = {
-    val originalProgram = super.program
-    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-    val initialBindings = primitives.allPrimitives.map(_.name).toSet
-    SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
-  }
-
-  // Set up initial environment and install the primitives in the global store.
-  primitives.allPrimitives.foreach { p =>
-    val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
-    store += (addr -> lattice.primitive(p))
-  }
-
   // Local addresses are simply made out of lexical information.
   sealed trait LocalAddr extends Address {
     def idn(): Identity
@@ -61,7 +47,8 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
 
   // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
   type Prim = SchemePrimitive[Value, Addr]
-  implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
+  type Env
+  implicit val lattice: SchemeLattice[Value, Addr, Prim, Env]
   lazy val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives()
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -70,11 +57,6 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
 
   // Extensions to the intraAnalysis.
   trait SchemeModXSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
-
-    // Variable lookup using the global store.
-    protected def lookupVariable(lex: LexicalRef): Value
-    protected def    setVariable(lex: LexicalRef, vlu: Value): Unit
-    protected def defineVariable( id: Identifier, vlu: Value): Unit
 
     //====================//
     // EVALUATION HELPERS //
@@ -108,20 +90,11 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
       case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
 
-    // Evaluation of conditionals.
-    protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
-      val csqVal = if (lattice.isTrue(prd)) csq else Monoid[M].zero
-      val altVal = if (lattice.isFalse(prd)) alt else Monoid[M].zero
-      Monoid[M].append(csqVal,altVal)
-    }
-
     // Append two lists (used for quasiquoting).
     protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value = {
       //TODO [difficult]: implement append
       throw new NotImplementedError("Not yet implemented: append.")
     }
-
-    protected def newClosure(lambda: SchemeLambdaExp, name: Option[String]): Value
 
     // TODO[minor]: use foldMap instead of foldLeft
     protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
@@ -155,8 +128,6 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
     // ALLOCATION HELPERS //
     //====================//
 
-    val allocator: SchemeAllocator[Addr]
-
     protected def allocateList(elms: List[(SchemeExp,Value)]): Value = elms match {
       case Nil                => lattice.nil
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
@@ -166,6 +137,10 @@ trait SchemeModXSemantics extends ModAnalysis[SchemeExp]
       val pair = lattice.cons(car,cdr)
       writeAddr(addr,pair)
       lattice.pointer(addr)
+    }
+
+    val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
+      def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
     }
   }
 }

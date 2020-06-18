@@ -161,7 +161,7 @@ trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
-                                      with SmallStepSemantics
+                                      with SmallStepModFSemantics
                                       with StandardSchemeModFSemantics
                                       with ConstantPropagationDomain
                                       with NoSensitivity

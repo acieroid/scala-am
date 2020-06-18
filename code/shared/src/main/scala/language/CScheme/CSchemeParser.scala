@@ -20,6 +20,6 @@ object CSchemeParser {
   /**
    * Parse a string representing a CScheme program.
    */
-  def parse(s: String, tag: PTag = noTag): SchemeExp = SchemeBody(SExpParser.parse(s, tag).map(compile))
+  def parse(s: String, tag: PTag = noTag): SchemeExp = undefine(List(SchemeBody(SExpParser.parse(s, tag).map(compile))))
 }
 

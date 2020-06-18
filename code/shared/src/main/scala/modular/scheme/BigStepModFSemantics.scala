@@ -2,11 +2,21 @@ package scalaam.modular.scheme
 
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.util.Monoid
 import scalaam.util.MonoidImplicits._
 
 trait SchemeBigStepSemantics extends SchemeModXSemantics {
 
   trait BigStepIntra extends SchemeModXSemanticsIntra {
+
+    // Variable lookup using the global store.
+    protected def newClosure(lambda: SchemeLambdaExp, name: Option[String]): Value
+
+    protected def lookupVariable(lex: LexicalRef): Value
+    protected def    setVariable(lex: LexicalRef, vlu: Value): Unit
+    protected def defineVariable( id: Identifier, vlu: Value): Unit
+
+    protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M
 
     def eval(exp: SchemeExp): Value = exp match {
       case SchemeValue(value, _)                                 => evalLiteralValue(value)

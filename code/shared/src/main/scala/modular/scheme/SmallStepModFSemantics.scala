@@ -4,7 +4,7 @@ import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
 
-trait SmallStepSemantics extends SchemeModFSemantics {
+trait SmallStepModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
   override def intraAnalysis(cmp: Component) = new SmallStepIntra(cmp)
   class SmallStepIntra(cmp: Component) extends IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
@@ -225,4 +225,4 @@ trait SmallStepSemantics extends SchemeModFSemantics {
   }
 }
 
-trait SmallStepSchemeModFSemantics extends SmallStepSemantics with StandardSchemeModFSemantics
+trait SmallStepSchemeModFSemantics extends SmallStepModFSemantics with StandardSchemeModFSemantics

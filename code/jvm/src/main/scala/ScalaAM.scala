@@ -4,6 +4,7 @@ import scalaam.util._
 
 import scala.concurrent.duration._
 import scalaam.core.Position._
+import scalaam.language.CScheme.CSchemeParser
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
@@ -92,8 +93,14 @@ object Run extends App {
 }
 
 object Analyze extends App {
-  val text = Reader.loadFile("test/SETL/testcase1.scm")
-  val a = new ModAnalysis(SchemeParser.parse(text)) with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with StandardSchemeModFSemantics
+  val text = Reader.loadFile("test/R5RS/blur.scm")
+  val a = new ModAnalysis(CSchemeParser.parse(text))
+    with SmallStepModConcSemantics
+    with StandardSchemeModFSemantics
+    with ConstantPropagationDomain
+    with NoSensitivity
+    with LIFOWorklistAlgorithm[SchemeExp] {
+  }
   a.analyze(Timeout.none)
   val r = a.store(a.ReturnAddr(a.initialComponent))
   println(r)

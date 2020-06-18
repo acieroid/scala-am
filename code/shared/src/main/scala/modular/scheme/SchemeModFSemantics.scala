@@ -4,12 +4,33 @@ import scalaam.language.scheme.primitives._
 import scalaam.core.Position._
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.util.Monoid
 
 /**
  * Base definitions for a Scheme MODF analysis.
  */
 trait SchemeModFSemantics extends SchemeModXSemantics
 {
+  type Env = Component
+
+  //XXXXXXXXXXXXXXXXXXXX//
+  // LEXICAL ADDRESSING //
+  //XXXXXXXXXXXXXXXXXXXX//
+
+  // Ensure that the program is translated to use lexical addresses first!
+  override lazy val program: SchemeExp = {
+    val originalProgram = super.program
+    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
+    val initialBindings = primitives.allPrimitives.map(_.name).toSet
+    SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
+  }
+
+  // Set up initial environment and install the primitives in the global store.
+  primitives.allPrimitives.foreach { p =>
+    val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
+    store += (addr -> lattice.primitive(p))
+  }
+
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
   // COMPONENTS AND CONTEXTS //
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -32,6 +53,7 @@ trait SchemeModFSemantics extends SchemeModXSemantics
 
   // Extensions to the intraAnalysis.
   trait SchemeModFSemanticsIntra extends SchemeModXSemanticsIntra {
+
     // variable lookup: use the global store
     protected def lookupVariable(lex: LexicalRef): Value = readAddr(resolveAddr(lex))
     protected def    setVariable(lex: LexicalRef, vlu: Value): Unit = writeAddr(resolveAddr(lex), vlu)
@@ -78,8 +100,11 @@ trait SchemeModFSemantics extends SchemeModXSemantics
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
-    val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
-      def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
+    // Evaluation of conditionals.
+    protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
+      val csqVal = if (lattice.isTrue(prd)) csq else Monoid[M].zero
+      val altVal = if (lattice.isFalse(prd)) alt else Monoid[M].zero
+      Monoid[M].append(csqVal,altVal)
     }
 
     // The current component serves as the lexical environment of the closure.

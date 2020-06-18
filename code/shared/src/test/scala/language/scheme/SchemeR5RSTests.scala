@@ -80,7 +80,7 @@ class ConcreteBigStepModFSoundnessTests extends SchemeR5RSTests {
 }
 
 class ConcreteSmallStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepSemantics
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepModFSemantics
                                                         with ConstantPropagationDomain
                                                         with NoSensitivity
                                                         with StandardSchemeModFSemantics
@@ -96,7 +96,7 @@ class TypeBigStepModFSoundnessTests extends SchemeR5RSTests {
 }
 
 class TypeSmallStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepSemantics
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepModFSemantics
                                                         with TypeDomain
                                                         with NoSensitivity
                                                         with StandardSchemeModFSemantics
