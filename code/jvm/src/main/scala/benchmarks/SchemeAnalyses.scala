@@ -13,27 +13,27 @@ object SchemeAnalyses {
     def contextInsensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
                                                                           with BigStepModFSemantics
                                                                           with NoSensitivity
-                                                                          with ConstantPropagationDomain
+                                                                          with ModFConstantPropagationDomain
                                                                           with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
     }
     def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
                                                                                 with BigStepModFSemantics
                                                                                 with CallSiteSensitivity
-                                                                                with ConstantPropagationDomain
+                                                                                with ModFConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "call-site-sensitivity"
     }
     def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
                                                                                 with BigStepModFSemantics
                                                                                 with FullArgumentSensitivity
-                                                                                with ConstantPropagationDomain
+                                                                                with ModFConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "full-argument-sensitivity"
     }
     def adaptiveAnalysisPolicy1(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveArgumentSensitivityPolicy1
-                                                                                        with ConstantPropagationDomain
+                                                                                        with ModFConstantPropagationDomain
                                                                                         with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "adaptive-argument-policy1"
         val limit = k
@@ -42,7 +42,7 @@ object SchemeAnalyses {
     }
     def adaptiveAnalysisPolicy2(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveArgumentSensitivityPolicy2
-                                                                                        with ConstantPropagationDomain
+                                                                                        with ModFConstantPropagationDomain
                                                                                         with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "adaptive-argument-policy2"
         val budget = k
@@ -51,7 +51,7 @@ object SchemeAnalyses {
     }
     def adaptiveAnalysisPolicy3(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)  with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveArgumentSensitivityPolicy3
-                                                                                        with ConstantPropagationDomain
+                                                                                        with ModFConstantPropagationDomain
                                                                                         with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "adaptive-argument-policy3"
         val limit = k
@@ -60,7 +60,7 @@ object SchemeAnalyses {
     }
     def adaptiveCallerSensitivity(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
                                                                                         with AdaptiveCallerSensitivity
-                                                                                        with ConstantPropagationDomain
+                                                                                        with ModFConstantPropagationDomain
                                                                                         with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "adaptive-caller"
         val limit = k
@@ -71,7 +71,7 @@ object SchemeAnalyses {
                                                                         with BigStepModFSemantics
                                                                         with ParallelWorklistAlgorithm[SchemeExp]
                                                                         with NoSensitivity
-                                                                        with ConstantPropagationDomain {
+                                                                        with ModFConstantPropagationDomain {
       
       override def toString() = s"parallel (n = $n)"
       override def workers = n

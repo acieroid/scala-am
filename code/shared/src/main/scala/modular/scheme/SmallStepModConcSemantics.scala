@@ -1,7 +1,6 @@
 package scalaam.modular.scheme
 
 import language.CScheme._
-import scalaam.core.Position.Position
 import scalaam.core._
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
@@ -30,18 +29,11 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
  // def allocPID(): PID
 
-  case object MainComponent extends SchemeComponent {
-    def body: Exp = program
-    override def toString: String = "Main"
-  }
+  //XXXXXXXXXXX//
+  // ADDRESSES //
+  //XXXXXXXXXXX//
 
-  case class ProcessComponent(pid: PID, body: Exp, ctx: ComponentContext) extends SchemeComponent {
-    override def toString: String = pid.toString
-  }
-
-  //XXXXXXXXXXXXXXXXXXXX//
-  // LEXICAL ADDRESSING //
-  //XXXXXXXXXXXXXXXXXXXX//
+  // TODO: incorporate another addressing scheme...
 
   // Local addresses are simply made out of lexical information.
   sealed trait LocalAddr extends Address {

@@ -11,7 +11,7 @@ import scalaam.util.benchmarks.Timeout
 import scala.concurrent.duration._
 
 object PerformanceCompoundPrecision extends Performance {
-  abstract class CompoundPrecisionAnalysis(p: SchemeExp) extends ModAnalysis(p) with BigStepModFSemantics with ConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] with StandardSchemeModFSemantics
+  abstract class CompoundPrecisionAnalysis(p: SchemeExp) extends ModAnalysis(p) with BigStepModFSemantics with ModFConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] with StandardSchemeModFSemantics
 
   def analysisTimeout() = Timeout.start(Duration(2, MINUTES))
 

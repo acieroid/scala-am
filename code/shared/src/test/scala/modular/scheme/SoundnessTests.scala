@@ -141,7 +141,7 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with BigStepModFSemantics
                                       with StandardSchemeModFSemantics
-                                      with ConstantPropagationDomain
+                                      with ModFConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
   }
@@ -152,7 +152,7 @@ trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new ModAnalysis(program)
       with BigStepModFSemantics
       with StandardSchemeModFSemantics
-      with ConstantPropagationDomain
+      with ModFConstantPropagationDomain
       with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
       with LIFOWorklistAlgorithm[SchemeExp] {
   }
@@ -163,7 +163,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with SmallStepModFSemantics
                                       with StandardSchemeModFSemantics
-                                      with ConstantPropagationDomain
+                                      with ModFConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
   }
@@ -174,7 +174,7 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with BigStepModFSemantics
                                       with StandardSchemeModFSemantics
-                                      with ConstantPropagationDomain
+                                      with ModFConstantPropagationDomain
                                       with NoSensitivity
                                       with ParallelWorklistAlgorithm[SchemeExp] {
       override def workers = 4
@@ -187,7 +187,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
                                         with AdaptiveArgumentSensitivityPolicy3
                                         with AdaptiveSchemeModFSemantics
-                                        with ConstantPropagationDomain
+                                        with ModFConstantPropagationDomain
                                         with LIFOWorklistAlgorithm[SchemeExp] {
     val limit = 5
     override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)

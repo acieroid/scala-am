@@ -21,7 +21,7 @@ object Main {
                                         with BigStepModFSemantics
                                         with ParallelWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity
-                                        with ConstantPropagationDomain {
+                                        with ModFConstantPropagationDomain {
       override def workers = 4
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with ParallelIntra
@@ -91,18 +91,17 @@ object Run extends App {
   val res = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
 }
-
+*/
 object Analyze extends App {
   val text = Reader.loadFile("test/R5RS/blur.scm")
   val a = new ModAnalysis(CSchemeParser.parse(text))
     with SmallStepModConcSemantics
-    with StandardSchemeModFSemantics
-    with ConstantPropagationDomain
-    with NoSensitivity
+    with StandardSchemeModConcSemantics
+    with ModConcConstantPropagationDomain
+   // with NoSensitivity
     with LIFOWorklistAlgorithm[SchemeExp] {
   }
   a.analyze(Timeout.none)
   val r = a.store(a.ReturnAddr(a.initialComponent))
   println(r)
 }
-*/

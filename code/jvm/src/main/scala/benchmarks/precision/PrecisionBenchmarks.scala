@@ -20,7 +20,7 @@ abstract class PrecisionBenchmarks[
 
     type Benchmark = String
     type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
-                                           with AbstractDomain {
+                                           with AbstractModFDomain {
         val valueLattice: ModularSchemeLattice[Addr,Component,Str,Bln,Num,Rea,Chr,Smb]
     }
 

@@ -11,7 +11,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with SchemeModFSemantics
                                     with StandardSchemeModFComponents
                                     with BigStepModFSemantics
-                                    with AbstractDomain {
+                                    with AbstractModFDomain {
   // Definition of components
   trait ComponentData extends SchemeComponent
   case object Main extends ComponentData with MainComponent

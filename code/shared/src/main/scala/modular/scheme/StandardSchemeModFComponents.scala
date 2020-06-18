@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import language.CScheme.PID
 import scalaam.core._
 import scalaam.language.scheme._
 
@@ -29,10 +30,6 @@ trait StandardSchemeModFComponents extends SchemeModFSemantics {
       case None => s"λ@${lambda.idn} ($parent) [${ctx.toString}]"
       case Some(name) => s"$name ($parent) [${ctx.toString}]"
     }
-  }
-
-  implicit def contentOrdering: Ordering[Option[lattice.Closure]] = new Ordering.OptionOrdering[lattice.Closure] {
-    def optionOrdering = Ordering[(Identity,Component)].on(clo => (clo._1.idn,clo._2))
   }
 
   type ComponentContent = Option[lattice.Closure]
@@ -66,3 +63,28 @@ trait StandardSchemeModFSemantics extends StandardSchemeModFComponents {
   def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
 }
 
+trait StandardSchemeModConcSemantics extends SmallStepModConcSemantics {
+  type Component = SchemeComponent
+  implicit def view(c: Component): SchemeComponent = c
+
+  case object MainComponent extends SchemeComponent {
+    def body: Exp = program
+    override def toString: String = "Main"
+  }
+
+  case class ProcessComponent(pid: PID, body: Exp, ctx: ComponentContext) extends SchemeComponent {
+    override def toString: String = pid.toString
+  }
+
+  lazy val initialComponent: SchemeComponent = MainComponent
+
+  type ComponentContent = Option[Exp]
+  def content(cmp: Component) = view(cmp) match {
+    case MainComponent => None
+    case p: ProcessComponent => Some(p.body)
+  }
+  def context(cmp: Component) = view(cmp) match {
+    case MainComponent => None
+    case p: ProcessComponent => Some(p.ctx)
+  }
+}
