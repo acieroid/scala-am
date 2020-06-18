@@ -115,25 +115,25 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       lattice.bottom
     }
 
-    private sealed trait State
-    private sealed trait Frame
-    private type Stack = List[Frame]
+    sealed trait State
+    sealed trait Frame
+    type Stack = List[Frame]
 
-    private case class Eval(expr: Exp, env: Env, stack: Stack) extends State
-    private case class Kont(vl: Value, stack: Stack) extends State
+    case class Eval(expr: Exp, env: Env, stack: Stack) extends State
+    case class Kont(vl: Value, stack: Stack) extends State
 
-    private case class SequenceFrame(exps: Exps, env: Env) extends Frame
-    private case class IfFrame(cons: Exp, alt: Exp, env: Env) extends Frame
-    private case class AndFrame(exps: Exps, env: Env) extends Frame
-    private case class OrFrame(exps: Exps, env: Env) extends Frame
-    private case class PairCarFrame(cdr: SchemeExp, env: Env, pair: Exp) extends Frame
-    private case class PairCdrFrame(car: Value, pair: Exp) extends Frame
-    private case class SetFrame(variable: Identifier, env: Env) extends Frame
-    private case class OperatorFrame(args: Exps, env: Env, fexp: SchemeFuncall) extends Frame
-    private case class OperandsFrame(todo: Exps, done: List[(Exp, Value)], env: Env, f: Value, fexp: SchemeFuncall) extends Frame // "todo" may also contain the expression currently evaluated.
-    private case class LetFrame(todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env) extends Frame
-    private case class LetStarFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env) extends Frame
-    private case class LetRecFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env) extends Frame
+    case class SequenceFrame(exps: Exps, env: Env) extends Frame
+    case class IfFrame(cons: Exp, alt: Exp, env: Env) extends Frame
+    case class AndFrame(exps: Exps, env: Env) extends Frame
+    case class OrFrame(exps: Exps, env: Env) extends Frame
+    case class PairCarFrame(cdr: SchemeExp, env: Env, pair: Exp) extends Frame
+    case class PairCdrFrame(car: Value, pair: Exp) extends Frame
+    case class SetFrame(variable: Identifier, env: Env) extends Frame
+    case class OperatorFrame(args: Exps, env: Env, fexp: SchemeFuncall) extends Frame
+    case class OperandsFrame(todo: Exps, done: List[(Exp, Value)], env: Env, f: Value, fexp: SchemeFuncall) extends Frame // "todo" may also contain the expression currently evaluated.
+    case class LetFrame(todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env) extends Frame
+    case class LetStarFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env) extends Frame
+    case class LetRecFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env) extends Frame
 
     private def step(state: State): Set[State] = state match {
       case Eval(exp, env, stack) => eval(exp, env, stack)
@@ -160,7 +160,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case SchemeAnd(exps, _)                        => evalAnd(exps, env, stack)
       case SchemeOr(exps, _)                         => evalOr(exps, env, stack)
       case e@SchemePair(car, cdr, _)                 => Set(Eval(car, env, PairCarFrame(cdr, env, e) :: stack))
-      case SchemeSplicedPair(splice, cdr, _)         => throw new Exception("Splicing not supported.")
+      case SchemeSplicedPair(_, _, _)                => throw new Exception("Splicing not supported.")
 
       // Multithreading.
       case CSchemeFork(body, _)                      => ???
@@ -190,7 +190,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     }
 
     private def evalArgs(todo: Exps, fexp: SchemeFuncall, f: Value, done: List[(Exp, Value)], env: Env, stack: Stack): Set[State] = todo match {
-      case Nil => Set(Kont(applyFun(fexp, f, done.reverse, fexp.idn.pos, component), stack)) // Function application.
+      case Nil => applyFun(fexp, f, done.reverse, env, stack) // Function application.
       case args@(arg :: _) => Set(Eval(arg, env, OperandsFrame(args, done, env, f, fexp) :: stack))
     }
 
@@ -258,8 +258,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     // EVALUATION HELPERS //
     //====================//
 
-    protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value = ???
-
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
     case object StoreAdapter extends Store[Addr,Value] {
@@ -286,24 +284,38 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
 
-    // TODO[minor]: use foldMap instead of foldLeft
-    protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
-      lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
+    protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], stack: Stack): Set[State] = {
+      lattice.getPrimitives(fval).map(prm => Kont(
         prm.call(fexp, args, StoreAdapter, allocator) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom
-        }
-      ))
+        },
+        stack)
+      ).toSet
+    }
 
-    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value =
-      if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args, cll, cmp)
-        val fromPrimitives = applyPrimitives(fexp,fval,args)
-        lattice.join(fromClosures,fromPrimitives)
-      } else {
-        lattice.bottom
-      }
+    protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], env: Env, stack: Stack): Set[State] = {
+      val arity = args.length
+      lattice.getClosures(fun).flatMap({
+        case ((SchemeLambda(prs,body,_),_), _) if prs.length == arity =>
+          val env2 = prs.zip(args.map(_._2)).foldLeft(env)({case (env, (f, a)) => bind(f, a, env)})
+          evalSequence(body, env2, stack)
+        case ((SchemeVarArgLambda(prs,vararg,body,_),_), _) if prs.length <= arity =>
+          val (fixedArgs, varArgs) = args.splitAt(prs.length)
+          val fixedArgVals = fixedArgs.map(_._2)
+          val varArgVal = allocateList(varArgs)
+          val env2 = bind(vararg, varArgVal, prs.zip(fixedArgVals).foldLeft(env)({case (env, (f, a)) => bind(f, a, env)}))
+          evalSequence(body, env2, stack)
+        case _ => Set()
+      })
+    }
+
+    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], env: Env, stack: Stack): Set[State] =
+      if(args.forall(_._2 != lattice.bottom))
+        applyClosures(fval,args, env, stack) ++ applyPrimitives(fexp, fval, args, stack)
+      else
+        Set(Kont(lattice.bottom, stack))
 
     //====================//
     // ALLOCATION HELPERS //
@@ -314,6 +326,11 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       val pair = lattice.cons(car,cdr)
       writeAddr(addr,pair)
       lattice.pointer(addr)
+    }
+
+    protected def allocateList(elms: List[(SchemeExp,Value)]): Value = elms match {
+      case Nil                => lattice.nil
+      case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
 
     val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
