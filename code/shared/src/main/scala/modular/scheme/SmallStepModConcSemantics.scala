@@ -67,13 +67,22 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
   class SmallStepIntra(cmp: Component) extends IntraAnalysis(cmp) with GlobalStoreIntra with ReturnResultIntra  {
 
-    def newEnv(): Env = Env(Map())
+    def newEnv(): Env = {
+      var data = Map[String, Addr]()
+      // Set up initial environment and install the primitives in the global store.
+      primitives.allPrimitives.foreach { p =>
+        val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
+        store += (addr -> lattice.primitive(p))
+        data = data + (p.name -> addr)
+      }
+      Env(data)
+    }
 
     def extendEnv(id: Identifier, addr: LocalAddr, env: Env): Env = {
       val adr = ComponentAddr(component, addr)
       env.copy(data = env.data + (id.name -> adr))
     }
-    def lookupEnv(id: Identifier, env: Env): Addr = env.data(id.name)
+    def lookupEnv(id: Identifier, env: Env): Addr = env.data.getOrElse(id.name, throw new NoSuchElementException(s"$id in $env"))
 
     def analyze(): Unit = {
       val initialState = Eval(component.body, newEnv(), Nil)
@@ -111,8 +120,8 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     sealed trait Frame
     type Stack = List[Frame]
 
-    case class Eval(expr: Exp, env: Env, stack: Stack) extends State
-    case class Kont(vl: Value, stack: Stack) extends State
+    case class Eval(expr: Exp, env: Env, stack: Stack) extends State { override def toString(): String = s"Eval $expr" }
+    case class Kont(vl: Value, stack: Stack) extends State { override def toString(): String = s"Kont $vl" }
 
     case class SequenceFrame(exps: Exps, env: Env) extends Frame
     case class IfFrame(cons: Exp, alt: Exp, env: Env) extends Frame
@@ -127,10 +136,13 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     case class LetStarFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env) extends Frame
     case class LetRecFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env) extends Frame
 
-    private def step(state: State): Set[State] = state match {
-      case Eval(exp, env, stack) => eval(exp, env, stack)
-      case Kont(vl, Nil) => throw new Exception("Cannot step a continuation state with an empty stack.")
-      case Kont(vl, stack) => kont(vl, stack.head, stack.tail)
+    private def step(state: State): Set[State] = {
+      println(state)
+      state match {
+        case Eval(exp, env, stack) => eval(exp, env, stack)
+        case Kont(vl, Nil) => throw new Exception("Cannot step a continuation state with an empty stack.")
+        case Kont(vl, stack) => kont(vl, stack.head, stack.tail)
+      }
     }
 
     private def eval(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
