@@ -93,7 +93,7 @@ object Run extends App {
 }
 */
 object Analyze extends App {
-  val text = Reader.loadFile("test/R5RS/blur.scm")
+  val text = Reader.loadFile("test/R5RS/kcfa3.scm")
   val a = new ModAnalysis(CSchemeParser.parse(text))
     with SmallStepModConcSemantics
     with StandardSchemeModConcSemantics
