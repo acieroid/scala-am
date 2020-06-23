@@ -19,9 +19,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   type Exp  = SchemeExp
   type Exps = List[Exp]
 
-  implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent extends SmartHash with TID { def body: SchemeExp } // Scheme components now are thread idenfitiers.
-
   override lazy val program: SchemeExp = {
     val originalProgram = super.program
     val preludedProgram = SchemePrelude.addPrelude(originalProgram)
@@ -37,7 +34,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   // Local addresses are simply made out of lexical information.
   sealed trait LocalAddr extends Address {
     def idn(): Identity
-    override def toString() = this match {
+    override def toString: String = this match {
       case VarAddr(id)  => s"var ($id)"
       case PtrAddr(exp) => s"ptr (${exp.idn})"
       case PrmAddr(nam) => s"prm ($nam)"
@@ -70,6 +67,45 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       data = data + (p.name -> addr)
     }
     Env(data)
+  }
+
+  //XXXXXXXXXXXX//
+  // COMPONENTS //
+  //XXXXXXXXXXXX//
+
+  //implicit def view(c: Component): SchemeComponent
+  trait SchemeComponent extends SmartHash with TID { def body: SchemeExp } // Scheme components now are thread idenfitiers.
+
+  //def newComponent(body: Exp, ctx: ComponentContext): SchemeComponent
+
+  type Component = SchemeComponent
+  implicit def view(c: Component): SchemeComponent = c
+
+  // The main process of the program.
+  case object MainComponent extends SchemeComponent {
+    def body: Exp = program
+    override def toString: String = "Main"
+  }
+
+  // The context of a component
+  type ComponentContext = Unit
+
+  // A process created by the program.
+  case class ProcessComponent(body: Exp, ctx: ComponentContext) extends SchemeComponent
+
+  lazy val initialComponent: SchemeComponent = MainComponent
+  def newComponent(body: Exp, ctx: ComponentContext): SchemeComponent = ProcessComponent(body, ctx)
+
+  // Other required definitions.
+
+  type ComponentContent = Option[Exp]
+  def content(cmp: Component) = view(cmp) match {
+    case MainComponent => None
+    case p: ProcessComponent => Some(p.body)
+  }
+  def context(cmp: Component) = view(cmp) match {
+    case MainComponent => None
+    case p: ProcessComponent => Some(p.ctx)
   }
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -180,8 +216,8 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
     sealed trait State
 
-    case class Eval(expr: Exp, env: Env, stack: Stack) extends State { override def toString(): String = s"Eval $expr" }
-    case class           Kont(vl: Value, stack: Stack) extends State { override def toString(): String = s"Kont $vl"   }
+    case class Eval(expr: Exp, env: Env, stack: Stack) extends State { override def toString: String = s"Eval $expr" }
+    case class           Kont(vl: Value, stack: Stack) extends State { override def toString: String = s"Kont $vl"   }
 
     // Computes the successor state(s) of a given state.
     private def step(state: State): Set[State] = {
@@ -216,7 +252,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case SchemeSplicedPair(_, _, _)                => throw new Exception("Splicing not supported.")
 
       // Multithreading.
-      case CSchemeFork(body, _)                      => ???
+      case CSchemeFork(body, _)                      => evalFork(body, env, stack)
       case CSchemeJoin(body, _)                      => Set(Eval(body, env, extendKStore(body, JoinFrame, stack)))
 
       // Unexpected cases.
@@ -276,6 +312,12 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       val env2 = bind(name, clo, env)
       val call = SchemeFuncall(lambda, actu, name.idn)
       evalArgs(actu, call, clo, Nil, env2, stack)
+    }
+
+    private def evalFork(body: Exp, env: Env, stack: Stack): Set[State] = {
+      val component = newComponent(body, ())
+      spawn(component)
+      Set(Kont(lattice.thread(component), stack)) // Returns the TID of the newly created thread.
     }
 
     // Continues with a value (in the abstract).

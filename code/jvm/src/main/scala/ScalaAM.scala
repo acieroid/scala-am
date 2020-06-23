@@ -93,10 +93,9 @@ object Run extends App {
 }
 */
 object Analyze extends App {
-  val text = Reader.loadFile("test/R5RS/kcfa3.scm")
+  val text = Reader.loadFile("test/concurrentScheme/threads/simple.scm")
   val a = new ModAnalysis(CSchemeParser.parse(text))
     with KAExpressionContext
-    with StandardSchemeModConcSemantics
     with ModConcConstantPropagationDomain
    // with NoSensitivity
     with LIFOWorklistAlgorithm[SchemeExp] {

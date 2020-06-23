@@ -100,6 +100,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** Changes an element of a vector */
   def vectorSet(vector: L, index: L, newval: L): MayFail[L, Error]
 
+  /** Injection of a thread identifier */
+  def thread(tid: TID): L
+
   /** "Splitting" an abstract value v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
   def split(abs: L): Set[L]
 
