@@ -54,7 +54,7 @@
                        (loop (+ i 1) (cons (f i) acc))))))
     (loop 0 '())))
 
-(define threads (do-n N (lambda (i) (t/spawn (= (mem-fib i) (mem-fib2 i))))))
+(define threads (do-n N (lambda (i) (fork (= (mem-fib i) (mem-fib2 i))))))
 
 (foldl (lambda (a b) (and a b)) #t
-       (map (lambda (t) (t/join t)) threads))
+       (map (lambda (t) (join t)) threads))

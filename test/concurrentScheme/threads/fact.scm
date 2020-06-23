@@ -27,9 +27,9 @@
       (product from to)
       (let ((steps (split from to)))
         (foldl * 1
-               (map (lambda (t) (t/join t))
+               (map (lambda (t) (join t))
                     (map (lambda (bounds)
-                           (t/spawn
+                           (fork
                             (fact-thread (car bounds) (cdr bounds))))
                          steps))))))
 
@@ -40,20 +40,20 @@
         (t/ref-set result (* (t/deref result) partial-fact))
         (t/release result-lock))
       (let ((steps (split from to)))
-        (map (lambda (t) (t/join t))
+        (map (lambda (t) (join t))
              (map (lambda (bounds)
-                    (t/spawn
+                    (fork
                      (fact-thread-ref (car bounds) (cdr bounds)
                                       result result-lock)))
                   steps)))))
 
 (define (fact n)
-  (let* ((t1 (t/spawn (fact-thread 1 n)))
+  (let* ((t1 (fork (fact-thread 1 n)))
          (result (t/ref 1))
          (result-lock (t/new-lock))
-         (t2 (t/spawn (fact-thread-ref 1 n result result-lock)))
-         (res1 (t/join t1))
-         (res2 (begin (t/join t2) (t/deref result))))
+         (t2 (fork (fact-thread-ref 1 n result result-lock)))
+         (res1 (join t1))
+         (res2 (begin (join t2) (t/deref result))))
     (if (= res1 res2)
         (display res1)
         (display "factorials don't match..."))

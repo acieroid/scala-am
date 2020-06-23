@@ -110,8 +110,8 @@
                        (loop (- i 1) (cons i acc))))))
     (loop n '())))
 (define (for-each-parallel f l)
-  (let ((ts (map (lambda (x) (t/spawn (f x))) l)))
-    (map (lambda (t) (t/join t)) ts)))
+  (let ((ts (map (lambda (x) (fork (f x))) l)))
+    (map (lambda (t) (join t)) ts)))
 
 (define (advance)
   (for-each-parallel

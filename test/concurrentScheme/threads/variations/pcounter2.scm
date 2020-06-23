@@ -5,7 +5,7 @@
                      (if (cas counter old new)
                          #t
                          (thread n)))))
-(t1 (spawn (thread 1)))
-(t2 (spawn (thread 2))))
+(t1 (fork (thread 1)))
+(t2 (fork (thread 2))))
 (join t1)
 (join t2))

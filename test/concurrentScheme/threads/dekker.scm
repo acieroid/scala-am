@@ -46,8 +46,8 @@
     (t/ref-set wants-to-enter-1 #f)))
 
 ;; Creates the two threads, which each increase counter
-(define t0 (t/spawn (p0)))
-(define t1 (t/spawn (p1)))
-(t/join t0)
-(t/join t1)
+(define t0 (fork (p0)))
+(define t1 (fork (p1)))
+(join t0)
+(join t1)
 (= (t/deref counter) 2)

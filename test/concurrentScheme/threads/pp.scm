@@ -37,5 +37,5 @@
   (vector-ref strings (modulo n (vector-length strings))))
 
 (define threads (do-n N (lambda (i)
-                          (t/spawn (ping 0 (pick-str i) i lck last)))))
-(map (lambda (t) (t/join t)) threads)
+                          (fork (ping 0 (pick-str i) i lck last)))))
+(map (lambda (t) (join t)) threads)

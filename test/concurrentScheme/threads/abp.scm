@@ -79,9 +79,9 @@
 (define client->server-lock (t/new-lock))
 (define server->client (t/ref #f))
 (define server->client-lock (t/new-lock))
-(define s (t/spawn (server data-to-send client->server client->server-lock server->client server->client-lock 0 -1)))
-(define c (t/spawn (client 0 server->client server->client-lock client->server client->server-lock 1)))
-(t/join s)
-(t/join c)
+(define s (fork (server data-to-send client->server client->server-lock server->client server->client-lock 0 -1)))
+(define c (fork (client 0 server->client server->client-lock client->server client->server-lock 1)))
+(join s)
+(join c)
 
 (t/display-recorded)

@@ -175,8 +175,8 @@
                        (define guess*total (* total (car guess) (car guess)))
                        (cons guess*total (cdr guess)))))
     (extract-best
-     (map (lambda (t) (t/join t))
-          (map  (lambda (i) (t/spawn (local-guess i)))
+     (map (lambda (t) (join t))
+          (map  (lambda (i) (fork (local-guess i)))
                 (range 0 (* max-keylen 2)))))))
 
 (display "Best key found: ")

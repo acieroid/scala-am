@@ -4,8 +4,8 @@
                      result
                      (begin (set! result (* result i))
                             (fact (- i 1))))))
-         (t1 (spawn (fact 4)))
-         (t2 (spawn (fact 5))))
+         (t1 (fork (fact 4)))
+         (t2 (fork (fact 5))))
   (join t1)
   (join t2)
   result)

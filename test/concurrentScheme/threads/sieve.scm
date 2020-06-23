@@ -19,8 +19,8 @@
 
 
 (define (for-each-parallel f l)
-  (let ((ts (map (lambda (x) (t/spawn (f x))) l)))
-    (map (lambda (t) (t/join t)) ts)))
+  (let ((ts (map (lambda (x) (fork (f x))) l)))
+    (map (lambda (t) (join t)) ts)))
 
 (define (sieve N)
   (let ((sqrtN (inexact->exact (floor (sqrt N))))

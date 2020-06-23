@@ -49,7 +49,7 @@
                        (loop (+ i 1) (cons (f i) acc))))))
     (loop 0 '())))
 
-(define philosophers (do-n N (lambda (i) (t/spawn (philosopher i)))))
+(define philosophers (do-n N (lambda (i) (fork (philosopher i)))))
 
 ;; Wait until the end
-(map (lambda (t) (t/join t)) philosophers)
+(map (lambda (t) (join t)) philosophers)

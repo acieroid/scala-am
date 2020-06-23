@@ -112,9 +112,9 @@
         #t
         (if (>= (length queue) nthreads)
             (let ((threads (map (lambda (tour)
-                                  (t/spawn (tsp-thread (list tour))))
+                                  (fork (tsp-thread (list tour))))
                                 queue)))
-              (map (lambda (t) (t/join t)) threads))
+              (map (lambda (t) (join t)) threads))
             (let ((curr-tour (dequeue queue)))
               (if (= (city-count curr-tour) N)
                   (let ((curr-cost (tour-cost curr-tour)))
@@ -134,6 +134,6 @@
   (t/deref best-tour))
 
 (define nthreads (int-top))
-(let ((tsp-sequential (t/spawn (tsp-seq)))
-      (tsp-concurrent (t/spawn (tsp nthreads))))
-  (equal? (t/join tsp-sequential) (t/join tsp-concurrent)))
+(let ((tsp-sequential (fork (tsp-seq)))
+      (tsp-concurrent (fork (tsp nthreads))))
+  (equal? (join tsp-sequential) (join tsp-concurrent)))

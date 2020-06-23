@@ -51,9 +51,9 @@
           (v2 (t/deref (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)))))
       (t/ref-set (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)) (+ v1 v2))))
   (for-each (lambda (d)
-              (for-each (lambda (t) (t/join t))
+              (for-each (lambda (t) (join t))
                         (map (lambda (k)
-                               (t/spawn (computation d k)))
+                               (fork (computation d k)))
                              (range-offset 0 n (expt 2 (+ d 1))))))
             (range 0 (log2 n))))
 
@@ -65,9 +65,9 @@
       (t/ref-set (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)) (+ t v1))))
   (t/ref-set (vector-ref v (- n 1)) 0)
   (for-each (lambda (d)
-              (for-each (lambda (t) (t/join t))
+              (for-each (lambda (t) (join t))
                         (map (lambda (k)
-                               (t/spawn (computation d k)))
+                               (fork (computation d k)))
                              (range-offset 0 n (expt 2 (+ d 1))))))
             (range-down (- (log2 n) 1) 0)))
 

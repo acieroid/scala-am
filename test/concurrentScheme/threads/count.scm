@@ -32,12 +32,12 @@
   (letrec ((loop (lambda (i acc)
                    (if (= i n)
                        acc
-                       (loop (+ i 1) (cons (t/spawn (thread cnt NOPS)) acc))))))
+                       (loop (+ i 1) (cons (fork (thread cnt NOPS)) acc))))))
     (loop 0 '())))
 
 (define N (int-top))
 (define cnt (counter))
-(map (lambda (t) (t/join t))
+(map (lambda (t) (join t))
      (create-threads cnt N))
 (display "result: ")
 (display (cnt 'get))

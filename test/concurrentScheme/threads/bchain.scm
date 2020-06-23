@@ -91,9 +91,9 @@
 (define NBlocksPerMiner 10)
 (define miner-data (vector "a" "b" "c" "d" "e" "f" "g" "h" "i" "j"))
 (define miners
-  (map (lambda (i) (t/spawn
+  (map (lambda (i) (fork
                     (miner NBlocksPerMiner
                            (vector-ref miner-data (modulo i (vector-length miner-data))))))
        (range 0 NMiners)))
-(map (lambda (t) (t/join t)) miners)
+(map (lambda (t) (join t)) miners)
 (show-blockchain)

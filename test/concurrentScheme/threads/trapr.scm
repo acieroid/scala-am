@@ -58,9 +58,9 @@
                          acc
                          (let* ((wl (+ (* range i) l))
                                 (wr (+ wl range)))
-                           (loop (+ i 1) (cons (t/spawn (worker wl wr h)) acc)))))))
+                           (loop (+ i 1) (cons (fork (worker wl wr h)) acc)))))))
       (let* ((threads (loop 0 '()))
-             (results (map (lambda (t) (t/join t)) threads))
+             (results (map (lambda (t) (join t)) threads))
              (result (foldl + 0 results)))
         result))))
 

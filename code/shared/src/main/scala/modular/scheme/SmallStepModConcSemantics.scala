@@ -74,7 +74,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   //XXXXXXXXXXXX//
 
   //implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent extends SmartHash with TID { def body: SchemeExp } // Scheme components now are thread idenfitiers.
+  trait SchemeComponent extends SmartHash with TID { def body: SchemeExp; def env: Env } // Scheme components now are thread identifiers.
 
   //def newComponent(body: Exp, ctx: ComponentContext): SchemeComponent
 
@@ -84,6 +84,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   // The main process of the program.
   case object MainComponent extends SchemeComponent {
     def body: Exp = program
+    def  env: Env = emptyEnv
     override def toString: String = "Main"
   }
 
@@ -91,21 +92,21 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   type ComponentContext = Unit
 
   // A process created by the program.
-  case class ProcessComponent(body: Exp, ctx: ComponentContext) extends SchemeComponent
+  case class ThreadComponent(body: Exp, env: Env, ctx: ComponentContext) extends SchemeComponent
 
   lazy val initialComponent: SchemeComponent = MainComponent
-  def newComponent(body: Exp, ctx: ComponentContext): SchemeComponent = ProcessComponent(body, ctx)
+  def newComponent(body: Exp, env: Env, ctx: ComponentContext): SchemeComponent = ThreadComponent(body, env, ctx)
 
   // Other required definitions.
 
-  type ComponentContent = Option[Exp]
+  type ComponentContent = Option[(Exp, Env)]
   def content(cmp: Component) = view(cmp) match {
     case MainComponent => None
-    case p: ProcessComponent => Some(p.body)
+    case p: ThreadComponent => Some((p.body, p.env))
   }
   def context(cmp: Component) = view(cmp) match {
     case MainComponent => None
-    case p: ProcessComponent => Some(p.ctx)
+    case p: ThreadComponent => Some(p.ctx)
   }
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -119,12 +120,14 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     //----------//
 
     def analyze(): Unit = {
-      val initialState = Eval(component.body, emptyEnv, KEmpty)
+      println(s"********** Evaluating thread: ${component.body}")
+      val initialState = Eval(component.body, component.env, KEmpty)
       var work: WorkList[State] = LIFOWorkList[State](initialState)
       var visited = Set[State]()
       var result  = lattice.bottom
       while(work.nonEmpty) {
         val state = work.head
+        println(state)
         work = work.tail
         state match {
           case Kont(vl, KEmpty) =>
@@ -204,7 +207,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     case class  PairCdrFrame(car: Value, pair: Exp)                                                                extends Frame
     case class      SetFrame(variable: Identifier, env: Env)                                                       extends Frame
     case class OperatorFrame(args: Exps, env: Env, fexp: SchemeFuncall)                                            extends Frame
-    case class OperandsFrame(todo: Exps, done: List[(Exp, Value)], env: Env, f: Value, fexp: SchemeFuncall)        extends Frame // "todo" may also contain the expression currently evaluated.
+    case class OperandsFrame(todo: Exps, done: List[(Exp, Value)], env: Env, f: Value, fexp: SchemeFuncall)        extends Frame // "todo" also contains the expression currently evaluated.
     case class      LetFrame(todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env) extends Frame
     case class  LetStarFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
     case class   LetRecFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
@@ -220,13 +223,10 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     case class           Kont(vl: Value, stack: Stack) extends State { override def toString: String = s"Kont $vl"   }
 
     // Computes the successor state(s) of a given state.
-    private def step(state: State): Set[State] = {
-      println(state)
-      state match {
-        case Eval(exp, env, stack) => evaluate(exp, env, stack)
-        case Kont(_, KEmpty) => throw new Exception("Cannot step a continuation state with an empty stack.")
-        case Kont(vl, cc) => lookupKStore(cc).flatMap(k => continue(vl, k.frame, k.cc))
-      }
+    private def step(state: State): Set[State] = state match {
+      case Eval(exp, env, stack) => evaluate(exp, env, stack)
+      case Kont(_, KEmpty) => throw new Exception("Cannot step a continuation state with an empty stack.")
+      case Kont(vl, cc) => lookupKStore(cc).flatMap(k => continue(vl, k.frame, k.cc))
     }
 
     // Evaluates an expression (in the abstract).
@@ -315,7 +315,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     }
 
     private def evalFork(body: Exp, env: Env, stack: Stack): Set[State] = {
-      val component = newComponent(body, ())
+      val component = newComponent(body, env, ())
       spawn(component)
       Set(Kont(lattice.thread(component), stack)) // Returns the TID of the newly created thread.
     }

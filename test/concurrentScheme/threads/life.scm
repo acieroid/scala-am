@@ -134,11 +134,11 @@
 
 (define (game-of-life-threads)
   (let ((thread-bounds (split-threads 0 N 0 N MAXTHREADSIZE)))
-    (map (lambda (bound) (t/spawn (game-of-life-thread (car bound) (cadr bound) (caddr bound) (cadddr bound)))) thread-bounds)))
+    (map (lambda (bound) (fork (game-of-life-thread (car bound) (cadr bound) (caddr bound) (cadddr bound)))) thread-bounds)))
 
 (define (game-of-life-whole-step)
   (let ((threads (game-of-life-threads)))
-    (map (lambda (t) (t/join t)) threads)
+    (map (lambda (t) (join t)) threads)
     (game-of-life-new-step)))
 
 (define (game-of-life iterations)

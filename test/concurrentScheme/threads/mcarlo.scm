@@ -20,9 +20,9 @@
 (define (monte-carlo-conc size n)
   (if (< n MAXSIZE)
       (monte-carlo-seq size n)
-      (let ((t1 (t/spawn (monte-carlo-conc size (quotient n 2))))
-            (t2 (t/spawn (monte-carlo-conc size (quotient n 2)))))
-        (+ (t/join t1) (t/join t2)))))
+      (let ((t1 (fork (monte-carlo-conc size (quotient n 2))))
+            (t2 (fork (monte-carlo-conc size (quotient n 2)))))
+        (+ (join t1) (join t2)))))
 
 (define (approximate-pi size iterations)
   (/ (* 4. (monte-carlo-conc size iterations)) iterations))

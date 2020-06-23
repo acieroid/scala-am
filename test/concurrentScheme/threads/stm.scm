@@ -150,8 +150,8 @@
                                                 (loop (+ n 1)))))))
                            (loop 0))))
                      (range nthreads)))
-         (threads (map (lambda (t) (t/spawn (t))) tasks)))
-    (map (lambda (t) (t/join t)) threads)
+         (threads (map (lambda (t) (fork (t))) tasks)))
+    (map (lambda (t) (join t)) threads)
     (map (lambda (r) (mc-deref #f r)) refs)))
 
 (test-stm 10 10 1000)

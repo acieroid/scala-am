@@ -40,12 +40,12 @@
       (eval then env)
       (eval else env)))
 
-(define (ev-spawn body env)
-  (t/spawn (eval body env)))
+(define (ev-fork body env)
+  (fork (eval body env)))
 
 (define (ev-join t env)
   (let ((thread (eval t env)))
-    (t/join thread)))
+    (join thread)))
 
 (define (eval exp env)
   (if (number? exp)
@@ -60,8 +60,8 @@
                         (ev-let (cadr exp) (caddr exp) env)
                         (if (eq? op 'if)
                             (ev-if (cadr exp) (caddr exp) (cadddr exp) env)
-                            (if (eq? op 'spawn)
-                                (ev-spawn (cadr exp) env)
+                            (if (eq? op 'fork)
+                                (ev-fork (cadr exp) env)
                                 (if (eq? op 'join)
                                     (ev-join (cadr exp) env)
                                     (apply-proc (car exp) (cdr exp) env)))))))
@@ -73,5 +73,5 @@
         (cons '+ +)
         (cons '< <)))
 
-(eval '(join (spawn ((lambda (x y) (+ x y)) n n)))
+(eval '(join (fork ((lambda (x y) (+ x y)) n n)))
       initial-environment)

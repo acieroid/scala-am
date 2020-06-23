@@ -24,9 +24,9 @@
         l
         (if (= len 2)
             (merge-lists (list (car l)) (list (cadr l)))
-            (let ((first-half (t/spawn (merge-sort (take l (quotient len 2)))))
-                  (second-half (t/spawn (merge-sort (drop l (quotient len 2))))))
-              (merge-lists (t/join first-half) (t/join second-half)))))))
+            (let ((first-half (fork (merge-sort (take l (quotient len 2)))))
+                  (second-half (fork (merge-sort (drop l (quotient len 2))))))
+              (merge-lists (join first-half) (join second-half)))))))
 
 (define (sorted? l)
   (if (or (null? l) (null? (cdr l)))

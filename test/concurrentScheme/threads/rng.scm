@@ -16,5 +16,5 @@
         (t/release lock)
         n))))
 (define gen (rng 100))
-(define ts (map (lambda (x) (t/spawn (gen))) (range 1 N)))
-(map (lambda (t) (t/join t)) ts)
+(define ts (map (lambda (x) (fork (gen))) (range 1 N)))
+(map (lambda (t) (join t)) ts)

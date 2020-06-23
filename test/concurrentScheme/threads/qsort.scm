@@ -44,10 +44,10 @@
         #t
         ;; sort
         (let* ((new-pivot (partition array left right))
-               (tleft (t/spawn (quicksort array left (- new-pivot 1))))
-               (tright (t/spawn (quicksort array (+ new-pivot 1) right))))
-          (t/join tleft)
-          (t/join tright)
+               (tleft (fork (quicksort array left (- new-pivot 1))))
+               (tright (fork (quicksort array (+ new-pivot 1) right))))
+          (join tleft)
+          (join tright)
           #t))))
 
 (define (range a b)

@@ -59,7 +59,7 @@
                                       (begin
                                         (buf-push (random 100))
                                         (loop (+ i 1)))))))
-                   (t/spawn (loop 0))))))
+                   (fork (loop 0))))))
 
 (define rthreads
   (do-n NRD (lambda ()
@@ -70,10 +70,10 @@
                                         (display (buf-pop))
                                         (newline)
                                         (loop (+ i 1)))))))
-                   (t/spawn (loop 0))))))
+                   (fork (loop 0))))))
 
-(map (lambda (t) (t/join t)) wthreads)
-(map (lambda (t) (t/join t)) rthreads)
+(map (lambda (t) (join t)) wthreads)
+(map (lambda (t) (join t)) rthreads)
 (if (= NWR NRD)
     (= (buf-size) 0)
     #t)

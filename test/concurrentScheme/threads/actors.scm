@@ -39,7 +39,7 @@
 (define (create act state)
   (let* ((name (generate-new-name)))
     (register-new-actor name (lambda () 'toremove))
-    (t/spawn (act state name))
+    (fork (act state name))
     name))
 (define (become self act st) (cons (act st self) st))
 (define (terminate) 'terminate)
