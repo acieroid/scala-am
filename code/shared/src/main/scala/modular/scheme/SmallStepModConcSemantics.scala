@@ -4,10 +4,11 @@ import language.CScheme._
 import scalaam.core._
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives.{SchemeAllocator, SchemeLatticePrimitives, SchemePrelude, SchemePrimitive, SchemePrimitives}
+import scalaam.language.scheme.primitives._
 import scalaam.language.sexp
 import scalaam.modular.components.ContextSensitiveComponents
-import scalaam.modular.{GlobalStore, ModAnalysis, ReturnValue}
+import scalaam.modular._
+import scalaam.util.Annotations.mutable
 import scalaam.util.SmartHash
 
 trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
@@ -48,7 +49,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   case class PtrAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn }
   case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
-  override def intraAnalysis(component: Component): IntraAnalysis = new SmallStepIntra(component)
+  //override def intraAnalysis(component: Component): IntraAnalysis = new SmallStepIntra(component)
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
@@ -65,7 +66,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   // INTRA-COMPONENT ANALYSIS //
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
 
-  class SmallStepIntra(cmp: Component) extends IntraAnalysis(cmp) with GlobalStoreIntra with ReturnResultIntra  {
+  trait SmallStepIntra extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra  {
 
     //----------//
     // ANALYSIS //
@@ -134,24 +135,19 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
     // TODO: improve this and abstract better.
 
-    trait KA extends SmartHash
+    sealed trait KA extends SmartHash
     case class KAddr(stack: List[Exp]) extends KA
     case object KEmpty extends KA
-    case class K(frame: Frame, cc: KA)
-    type KStore = Map[KA, Set[K]]
+    private case class K(frame: Frame, cc: KA)
+    private type KStore = Map[KA, Set[K]]
 
-    var ks: KStore = Map() // Global KStore.
+    @mutable private var ks: KStore = Map() // KStore private to this component!
 
-    def lookupKStore(cc: KA): Set[K] = ks.getOrElse(cc, Set())
-    def extendKStore(e: Exp, frame: Frame, cc: KA): KA = cc match {
-      case KEmpty =>
-        val kaddr = KAddr(List(e))
-        ks = ks + (kaddr -> (lookupKStore(kaddr) + K(frame, cc)))
-        kaddr
-      case KAddr(stack) =>
-        val kaddr = KAddr((e :: stack).take(5))
-        ks = ks + (kaddr -> (lookupKStore(kaddr) + K(frame, cc)))
-        kaddr
+    private def lookupKStore(cc: KA): Set[K] = ks.getOrElse(cc, Set())
+    private def extendKStore(e: Exp, frame: Frame, cc: KA): KA = {
+      val kaddr = allocateKAddr(e, cc)
+      ks = ks + (kaddr -> (lookupKStore(kaddr) + K(frame, cc)))
+      kaddr
     }
 
     //-------//
@@ -387,5 +383,21 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
       def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
     }
+
+    def allocateKAddr(e: Exp, cc: KA): KAddr
+  }
+}
+
+trait KAExpressionContext extends SmallStepModConcSemantics {
+
+  override def intraAnalysis(component: Component): IntraAnalysis = new AllocIntra(component)
+
+  class AllocIntra(cmp: Component) extends IntraAnalysis(cmp) with SmallStepIntra {
+
+    def allocateKAddr(e: Exp, cc: KA): KAddr = cc match {
+      case KEmpty   => KAddr(List(e))
+      case KAddr(l) => KAddr((e :: l).take(5))
+    }
+
   }
 }
