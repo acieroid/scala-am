@@ -28,8 +28,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     CSchemeUndefiner.undefine(List(preludedProgram))
   }
 
- // def allocPID(): PID
-
   //XXXXXXXXXXX//
   // ADDRESSES //
   //XXXXXXXXXXX//

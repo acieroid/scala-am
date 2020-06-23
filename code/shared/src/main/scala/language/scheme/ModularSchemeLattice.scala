@@ -6,6 +6,7 @@ import scalaam.util._
 import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
+import language.CScheme.TID
 import scalaam.language.scheme.primitives.SchemePrimitive
 import scalaam.util.SmartUnion._
 
@@ -34,7 +35,7 @@ class ModularSchemeLattice[
   /** We first implement all possible operations on single values, that can be
     * only joined when compatible. This therefore is not a lattice but will be
     * used to build the set lattice */
-  sealed trait Value extends SmartHash { 
+  sealed trait Value extends SmartHash {
     def ord: scala.Int
   }
   case class Str(s: S) extends Value {
@@ -95,6 +96,10 @@ class ModularSchemeLattice[
       s"Vec(size: $size, elems: {$els})"
     }
   }
+  case class Thread(threads: Set[TID]) extends Value {
+    def ord = 12
+    override def toString: String = s"🧵$threads"
+  }
   /** The injected true value */
   val True = Bool(BoolLattice[B].inject(true))
   /** The injected false value */
@@ -126,6 +131,7 @@ class ModularSchemeLattice[
           case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
         }})
         vWithEls2Joined
+      case (Thread(t1), Thread(t2))   => Thread(sunion(t1, t2))
       case _ => throw new Exception(s"Illegal join of $x and $y")
     }
 
@@ -151,6 +157,7 @@ class ModularSchemeLattice[
                 IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
               }
             }
+          case (Thread(t1), Thread(t2))  => t2.subsetOf(t1)
           case _                    => false
         }
       }
@@ -202,6 +209,10 @@ class ModularSchemeLattice[
       })
       case IsVector => MayFail.success(x match {
         case _: Vec => True
+        case _      => False
+      })
+      case IsThread => MayFail.success(x match {
+        case _: Thread => True
         case _      => False
       })
       case Not => MayFail.success(x match {
@@ -399,6 +410,7 @@ class ModularSchemeLattice[
         case (_: Vec, _: Vec)         => throw new Exception("should not happen")
         case (_: Pointer, _: Pointer) => Bool(BoolLattice[B].top) // TODO: can be made more precisely (is false if intersection is empty, top otherwise)
                                                                   // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
+        case (Thread(t1), Thread(t2)) => Bool(BoolLattice[B].inject(t1 == t2)) // TODO can we compare it this way?
         case _                        => False
       })
       case StringAppend => (x, y) match {
@@ -426,6 +438,7 @@ class ModularSchemeLattice[
     def nil: Value                                = Nil
     def cons(car: L, cdr: L): Value               = Cons(car, cdr)
     def pointer(a: A): Value                      = Pointer(Set(a))
+    def thread(tid: TID)                          = Thread(Set(tid))
     def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
       case Clo(closures) => closures
       case _             => Set.empty
@@ -437,6 +450,10 @@ class ModularSchemeLattice[
     def getPointerAddresses(x: Value): Set[A] = x match {
       case Pointer(ptrs)  => ptrs
       case _              => Set.empty
+    }
+    def getThreads(x: Value): Set[TID] = x match {
+      case Thread(t) => t
+      case _         => Set.empty
     }
     def car(x: Value): MayFail[L, Error] = x match {
       case Cons(car, _) => MayFail.success(car)
@@ -589,6 +606,7 @@ class ModularSchemeLattice[
     def getPrimitives(x: L): Set[P] =
       x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
+    def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
 
     def bottom: L                             = Elements(List.empty)
     def number(x: scala.Int): L               = Element(Value.number(x))
@@ -606,6 +624,7 @@ class ModularSchemeLattice[
     def cdr(x: L): MayFail[L, Error]          = x.foldMapL(v => Value.cdr(v))
     def pointer(a: A): L                      = Element(Value.pointer(a))
     def vector(size: L, init: L): MayFail[L, Error] = size.foldMapL(sz => Value.vector(sz, init).map(v => Element(v)))
+    def thread(tid: TID): L                   = Element(Value.thread(tid))
     def nil: L = Element(Value.nil)
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
     def split(abs: L): Set[L] = abs.foldMapL(v => Value.split(v).map(va => Element(va)))(setMonoid)

@@ -1,7 +1,5 @@
 package scalaam.modular.scheme
 
-import language.CScheme.PID
-import scalaam.core._
 import scalaam.language.scheme._
 
 trait StandardSchemeModFComponents extends SchemeModFSemantics {
@@ -67,16 +65,19 @@ trait StandardSchemeModConcSemantics extends SmallStepModConcSemantics {
   type Component = SchemeComponent
   implicit def view(c: Component): SchemeComponent = c
 
+  // The main process of the program.
   case object MainComponent extends SchemeComponent {
     def body: Exp = program
     override def toString: String = "Main"
   }
 
-  case class ProcessComponent(pid: PID, body: Exp, ctx: ComponentContext) extends SchemeComponent {
-    override def toString: String = pid.toString
-  }
+  // A process created by the program.
+  case class ProcessComponent(body: Exp, ctx: ComponentContext) extends SchemeComponent
 
   lazy val initialComponent: SchemeComponent = MainComponent
+  def newComponent(body: Exp, ctx: ComponentContext): SchemeComponent = ProcessComponent(body, ctx)
+
+  // Other required definitions.
 
   type ComponentContent = Option[Exp]
   def content(cmp: Component) = view(cmp) match {
