@@ -4,6 +4,7 @@ import scalaam.core._
 import scalaam.lattice._
 import scalaam.util._
 import SchemeOps._
+import language.CScheme.TID
 import scalaam.language.scheme.primitives._
 
 class TypeSchemeLattice[A <: Address, Env] {
@@ -116,6 +117,7 @@ class TypeSchemeLattice[A <: Address, Env] {
     def cdr(x: L): MayFail[L,Error] = MayFail.success(x.consCells._2)
     def getPrimitives(x: L): Set[P] = x.prims
     def getPointerAddresses(x: L): Set[A] = Set()
+    def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
 
     def bottom: L = Inject.bottom
     def number(x: scala.Int): L = Inject.num

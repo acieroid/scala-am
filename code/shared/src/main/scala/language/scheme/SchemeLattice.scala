@@ -1,5 +1,6 @@
 package scalaam.language.scheme
 
+import language.CScheme.TID
 import scalaam.core._
 
 /** A lattice for Scheme should support the following operations */
@@ -44,6 +45,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
 
   /** Extract pointers contained in this value */
   def getPointerAddresses(x: L): Set[A]
+
+  /** Extract the thread identifiers in this value */
+  def getThreads(x: L): Set[TID]
 
   /** Injection of an integer */
   def number(x: Int): L

@@ -20,7 +20,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   type Exps = List[Exp]
 
   implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent extends SmartHash { def body: SchemeExp }
+  trait SchemeComponent extends SmartHash with TID { def body: SchemeExp } // Scheme components now are thread idenfitiers.
 
   override lazy val program: SchemeExp = {
     val originalProgram = super.program
@@ -160,18 +160,19 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     sealed trait Frame
     type Stack = KA
 
-    case class SequenceFrame(exps: Exps, env: Env)                                                                extends Frame
-    case class IfFrame(cons: Exp, alt: Exp, env: Env)                                                             extends Frame
-    case class AndFrame(exps: Exps, env: Env)                                                                     extends Frame
-    case class  OrFrame(exps: Exps, env: Env)                                                                     extends Frame
-    case class PairCarFrame(cdr: SchemeExp, env: Env, pair: Exp)                                                  extends Frame
-    case class PairCdrFrame(car: Value, pair: Exp)                                                                extends Frame
-    case class SetFrame(variable: Identifier, env: Env)                                                           extends Frame
-    case class OperatorFrame(args: Exps, env: Env, fexp: SchemeFuncall)                                           extends Frame
-    case class OperandsFrame(todo: Exps, done: List[(Exp, Value)], env: Env, f: Value, fexp: SchemeFuncall)       extends Frame // "todo" may also contain the expression currently evaluated.
-    case class     LetFrame(todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env) extends Frame
-    case class LetStarFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
-    case class  LetRecFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
+    case class SequenceFrame(exps: Exps, env: Env)                                                                 extends Frame
+    case class       IfFrame(cons: Exp, alt: Exp, env: Env)                                                        extends Frame
+    case class      AndFrame(exps: Exps, env: Env)                                                                 extends Frame
+    case class       OrFrame(exps: Exps, env: Env)                                                                 extends Frame
+    case class  PairCarFrame(cdr: SchemeExp, env: Env, pair: Exp)                                                  extends Frame
+    case class  PairCdrFrame(car: Value, pair: Exp)                                                                extends Frame
+    case class      SetFrame(variable: Identifier, env: Env)                                                       extends Frame
+    case class OperatorFrame(args: Exps, env: Env, fexp: SchemeFuncall)                                            extends Frame
+    case class OperandsFrame(todo: Exps, done: List[(Exp, Value)], env: Env, f: Value, fexp: SchemeFuncall)        extends Frame // "todo" may also contain the expression currently evaluated.
+    case class      LetFrame(todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env) extends Frame
+    case class  LetStarFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
+    case class   LetRecFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
+    case object    JoinFrame                                                                                       extends Frame
 
     //-----------//
     // SEMANTICS //
@@ -216,7 +217,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
       // Multithreading.
       case CSchemeFork(body, _)                      => ???
-      case CSchemeJoin(body, _)                      => ???
+      case CSchemeJoin(body, _)                      => Set(Eval(body, env, extendKStore(body, JoinFrame, stack)))
 
       // Unexpected cases.
       case e                                         => throw new Exception(s"evaluate: unexpected expression type: ${e.label}.")
@@ -291,6 +292,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case LetFrame(todo, done, body, env)         => evalLet(todo.tail, (todo.head._1, vl) :: done, body, env, stack)
       case LetStarFrame(todo, body, env)           => evalLetStar(todo.tail, body, bind(todo.head._1, vl, env), stack)
       case LetRecFrame(todo, body, env)            => rebind(todo.head._1, vl, env); continueLetRec(todo.tail, body, env, stack)
+      case JoinFrame                               => lattice.getThreads(vl).map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack))
     }
 
     private def conditional(value: Value, t: State, f: State): Set[State] = conditional(value, Set(t), Set(f))
