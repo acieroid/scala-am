@@ -55,7 +55,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   implicit val lattice: SchemeLattice[Value, Addr, Prim, Env]
   lazy val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives()
 
-  case class Env(data: Map[String, Addr])
+  case class Env(data: Map[String, Addr]) {
+    override def toString: String = s"ENV{${data.keySet.toList.filterNot(emptyEnv.data.keySet.contains).sorted.mkString(" ")} <prims>}"
+  }
 
   // The empty environment. Binds all primitives in the store upon initialisation (hence why this is a val and not put in the intra-analysis).
   val emptyEnv: Env = {
