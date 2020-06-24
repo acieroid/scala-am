@@ -469,6 +469,7 @@ object SchemeBenchmarks {
     "test/concurrentScheme/threads/producer.scm",
     "test/concurrentScheme/threads/qsort.scm",
     "test/concurrentScheme/threads/randomness.scm",
+    "test/concurrentScheme/threads/randomness2.scm",
     "test/concurrentScheme/threads/readers2.scm",
     "test/concurrentScheme/threads/ringbuf.scm",
     "test/concurrentScheme/threads/rng.scm",
