@@ -148,8 +148,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
     def extendEnv(id: Identifier, addr: LocalAddr, env: Env): Env = {
       val adr = ComponentAddr(component, addr)
-      env.copy(data = env.data + (id.name -> adr))
+      Env(env.data + (id.name -> adr))
     }
+
     def lookupEnv(id: Identifier, env: Env): Addr = env.data.getOrElse(id.name, throw new NoSuchElementException(s"$id in $env"))
 
     //-------//

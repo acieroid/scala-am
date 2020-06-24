@@ -452,12 +452,12 @@ object SchemeBenchmarks {
     //"test/concurrentScheme/threads/atoms.scm",
     //"test/concurrentScheme/threads/bchain.scm",
     //"test/concurrentScheme/threads/count.scm",
-    "test/concurrentScheme/threads/crypt.scm",
+    //"test/concurrentScheme/threads/crypt.scm", // Uses deref?
     //"test/concurrentScheme/threads/dekker.scm",
     "test/concurrentScheme/threads/fact-indep.scm",
     //"test/concurrentScheme/threads/fact.scm",
     "test/concurrentScheme/threads/fact2.scm",
-    "test/concurrentScheme/threads/lastzero2.scm",
+    //"test/concurrentScheme/threads/lastzero2.scm", // Uses let*, but should use something like letrec*?
     //"test/concurrentScheme/threads/life.scm",
     "test/concurrentScheme/threads/matmul.scm",
     "test/concurrentScheme/threads/mcarlo.scm",

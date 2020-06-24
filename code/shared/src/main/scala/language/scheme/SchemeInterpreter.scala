@@ -273,7 +273,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       Car, /* [vv] car: Pairs */
       Cdr, /* [vv] cdr: Pairs */
       Ceiling, /* [vv] ceiling: Arithmetic */
-      /* [x]  char->integer: Characters */
+      CharToInteger, /* [vv]  char->integer: Characters */
       /* [x]  char-alphabetic?: Characters */
       /* [x]  char-ci<=?: Characters */
       /* [x]  char-ci<?: Characters */
@@ -320,7 +320,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       InexactToExact, /* [vv] inexact->exact: Exactness */
       /* [x]  inexact?: Exactness */
       /* [x]  input-port?: Ports */
-      /* [x]  integer->char: Characters */
+      IntegerToChar, /* [vv]  integer->char: Characters */
       Integerp, /* [vv] integer?: Integers */
       /* [x]  interaction-environment: Fly Evaluation */
       /* [x]  lcm: Integer Operations */
@@ -827,6 +827,16 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     object StringToSymbol extends SingleArgumentPrim("string->symbol") {
       def fun = {
         case Value.Str(x) => Value.Symbol(x)
+      }
+    }
+    object CharToInteger extends SingleArgumentPrim("char->integer") {
+      def fun = {
+        case Value.Character(c) => Value.Integer(c.toInt)
+      }
+    }
+    object IntegerToChar extends SingleArgumentPrim("integer->char") {
+      def fun = {
+        case Value.Integer(n) => Value.Character(n.toChar)
       }
     }
 

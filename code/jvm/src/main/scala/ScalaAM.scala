@@ -87,14 +87,14 @@ object Incrementor extends App {
 
 
 object Run extends App {
-  val text = Reader.loadFile("test/concurrentScheme/threads/randomness2.scm")
+  val text = Reader.loadFile("test/concurrentScheme/threads/minimax.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
 }
 
 object Analyze extends App {
-  val text = Reader.loadFile("test/concurrentScheme/threads/simple.scm")
+  val text = Reader.loadFile("test/concurrentScheme/threads/minimax.scm")
   val a = new ModAnalysis(CSchemeParser.parse(text))
     with KAExpressionContext
     with ModConcConstantPropagationDomain
