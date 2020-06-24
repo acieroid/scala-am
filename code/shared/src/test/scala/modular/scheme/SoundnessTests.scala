@@ -28,12 +28,10 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   def analysis(b: SchemeExp): Analysis
   // the timeout for the analysis of a single benchmark program (default: 2min.)
   def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
-  // Indicate whether we are testing a concurrent Scheme.
-  val concurrent: Boolean
   // the actual testing code
   private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Option[Value], Map[Identity,Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
-    val program = if (!concurrent) SchemeUndefiner.undefine(List(preluded)) else CSchemeUndefiner.undefine(List(preluded))
+    val program = SchemeUndefiner.undefine(List(preluded))
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
     try {
@@ -76,7 +74,6 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
       case Value.Character(c)   => lat.subsumes(abs, lat.char(c))
       case Value.Nil            => lat.subsumes(abs, lat.nil)
       case Value.Pointer(_)     => lat.getPointerAddresses(abs).nonEmpty
-      case Value.Thread(_) if concurrent => lat.getThreads(abs).nonEmpty
       case v                    => throw new Exception(s"Unknown concrete value type: $v.")
     }
   }
@@ -126,7 +123,7 @@ s"""Intermediate result at $idn is unsound:
     property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
-      val program = if (!concurrent) SchemeParser.parse(content) else CSchemeParser.parse(content)
+      val program = SchemeParser.parse(content)
       // run the program using a concrete interpreter
       val (cResult, cPosResults) = evalConcrete(program,benchmark)
       // analyze the program using a ModF analysis
@@ -142,7 +139,6 @@ s"""Intermediate result at $idn is unsound:
 
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
-  val concurrent = false
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with BigStepModFSemantics
                                       with StandardSchemeModFSemantics
@@ -154,7 +150,6 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
 
 trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def name = "big-step semantics with call-site sensitivity for primitives"
-  val concurrent = false
   def analysis(program: SchemeExp) = new ModAnalysis(program)
       with BigStepModFSemantics
       with StandardSchemeModFSemantics
@@ -166,7 +161,6 @@ trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
-  val concurrent = false
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with SmallStepModFSemantics
                                       with StandardSchemeModFSemantics
@@ -178,7 +172,6 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 
 trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def name = "parallel analysis (n = 4)"
-  val concurrent = false
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with BigStepModFSemantics
                                       with StandardSchemeModFSemantics
@@ -192,7 +185,6 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests {
 
 trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def name = "simple adaptive argument sensitivity (limit = 5)"
-  val concurrent = false
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
                                         with AdaptiveArgumentSensitivityPolicy3
                                         with AdaptiveSchemeModFSemantics
@@ -232,12 +224,10 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   def analysis(b: SchemeExp): Analysis
   // the timeout for the analysis of a single benchmark program (default: 2min.)
   def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
-  // Indicate whether we are testing a concurrent Scheme.
-  val concurrent: Boolean
   // the actual testing code
   private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Option[Value], Map[Identity,Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
-    val program = if (!concurrent) SchemeUndefiner.undefine(List(preluded)) else CSchemeUndefiner.undefine(List(preluded))
+    val program = CSchemeUndefiner.undefine(List(preluded))
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
     try {
@@ -280,7 +270,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
       case Value.Character(c)   => lat.subsumes(abs, lat.char(c))
       case Value.Nil            => lat.subsumes(abs, lat.nil)
       case Value.Pointer(_)     => lat.getPointerAddresses(abs).nonEmpty
-      case Value.Thread(_) if concurrent => lat.getThreads(abs).nonEmpty
+      case Value.Thread(_)      => lat.getThreads(abs).nonEmpty
       case v                    => throw new Exception(s"Unknown concrete value type: $v.")
     }
   }
@@ -330,7 +320,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
     property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
-      val program = if (!concurrent) SchemeParser.parse(content) else CSchemeParser.parse(content)
+      val program = CSchemeParser.parse(content)
       // run the program using a concrete interpreter
       val (cResult, cPosResults) = evalConcrete(program,benchmark)
       // analyze the program using a ModF analysis
@@ -346,7 +336,6 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
 
 trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   def name = "small-step ModConc"
-  val concurrent = true
   def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
     with KAExpressionContext
     with ModConcConstantPropagationDomain
