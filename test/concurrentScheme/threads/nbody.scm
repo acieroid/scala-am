@@ -150,7 +150,7 @@
 
 ;; -------------------------------
 
-(define N (int-top))
+(define N (random 42))
 (offset-momentum)
 (display (energy)) (newline)
 (map (lambda (i) (advance)) (range N))

@@ -1,6 +1,6 @@
 ;; Random number generate sharing state among multiple threads
 
-(define N (+ (int-top) 10))
+(define N (+ (random 42) 10))
 (define (range from to)
   (if (= from to)
       (cons from '())

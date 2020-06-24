@@ -1,6 +1,6 @@
 ;; Producer-consumer problem
-(define N (+ 10 (int-top)))
-(define NCONS (int-top))
+(define N (+ 10 (random 42)))
+(define NCONS (random 42))
 (define buffer (t/ref '()))
 (define done (t/ref #f))
 (define lock (t/new-lock))

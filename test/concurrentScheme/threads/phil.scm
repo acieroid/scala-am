@@ -1,6 +1,6 @@
 ;; Dining philosophers problem
-(define N (int-top))
-(define Turns (int-top))
+(define N (random 42))
+(define Turns (random 42))
 (define (build-vector n init f)
   (letrec ((v (make-vector n init))
            (loop (lambda (i)

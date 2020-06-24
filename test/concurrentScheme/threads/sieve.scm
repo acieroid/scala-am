@@ -58,5 +58,5 @@
                          (loop (+ i 1) N))))))
     (loop 2 (vector-length list))))
 
-(define N (+ 10 (int-top)))
+(define N (+ 10 (random 42)))
 (print-primes (sieve N))

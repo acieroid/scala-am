@@ -11,7 +11,7 @@
 
 
 
-(define N (+ 6 (int-top)))
+(define N (+ 6 (random 42)))
 (define (make-cities N)
   (build-vector N '()
                 (lambda (i)
@@ -133,7 +133,7 @@
   (tsp-bootstrap '(()))
   (t/deref best-tour))
 
-(define nthreads (int-top))
+(define nthreads (random 42))
 (let ((tsp-sequential (fork (tsp-seq)))
       (tsp-concurrent (fork (tsp nthreads))))
   (equal? (join tsp-sequential) (join tsp-concurrent)))

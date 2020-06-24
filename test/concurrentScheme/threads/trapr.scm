@@ -10,10 +10,10 @@
 
     (foldl-aux base lst)))
 
-(define NumWorkers (int-top))
-(define Precision (+ 10 (int-top)))
+(define NumWorkers (random 42))
+(define Precision (+ 10 (random 42)))
 (define L 0.)
-(define R (* 1. (+ 100 (int-top))))
+(define R (* 1. (+ 100 (random 42))))
 
 (define (exp x)
   (expt 2.718281828459045 x))

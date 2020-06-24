@@ -1,6 +1,6 @@
 ;; Ping-pong
-(define N (+ 1 (int-top)))
-(define Iterations (int-top))
+(define N (+ 1 (random 42)))
+(define Iterations (random 42))
 (define (prev-id id)
   (if (= id 0)
       (- N 1)

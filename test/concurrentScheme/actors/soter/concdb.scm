@@ -55,7 +55,7 @@
                            (cadr l)
                            (lookup key (cdr l))))))
          (read-bool (lambda () (bool-top)))
-         (read-int (lambda () (int-top)))
+         (read-int (lambda () (random 42)))
          (db (create db-actor '()))
          (client1 (create client-actor db))
          (client2 (create client-actor db)))

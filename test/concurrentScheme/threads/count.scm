@@ -27,7 +27,7 @@
                 (cnt 'get)))
         (thread cnt (- ops 1)))))
 
-(define NOPS (int-top))
+(define NOPS (random 42))
 (define (create-threads cnt n)
   (letrec ((loop (lambda (i acc)
                    (if (= i n)
@@ -35,7 +35,7 @@
                        (loop (+ i 1) (cons (fork (thread cnt NOPS)) acc))))))
     (loop 0 '())))
 
-(define N (int-top))
+(define N (random 42))
 (define cnt (counter))
 (map (lambda (t) (join t))
      (create-threads cnt N))

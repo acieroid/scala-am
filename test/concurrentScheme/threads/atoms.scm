@@ -45,7 +45,7 @@
                                 (+ (mem-fib2 (- n 1)) (mem-fib2 (- n 2)))))))
 
 
-(define N (int-top))
+(define N (random 42))
 
 (define (do-n n f)
   (letrec ((loop (lambda (i acc)

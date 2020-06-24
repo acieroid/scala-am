@@ -9,7 +9,7 @@
                        v))))
     (loop 0)))
 
-(define N (int-top))
+(define N (random 42))
 (define array-to-sort
   (build-vector N #f (lambda (i) (t/ref (random 100)))))
 

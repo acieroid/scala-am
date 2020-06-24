@@ -1,5 +1,5 @@
 ;; Benchmark that compare recursive concurrent matrix multiplication with naive sequential matrix multiplication
-(define N (expt 2 (int-top)))
+(define N (expt 2 (random 42)))
 (define (build-vector n init f)
   (letrec ((v (make-vector n init))
            (loop (lambda (i)

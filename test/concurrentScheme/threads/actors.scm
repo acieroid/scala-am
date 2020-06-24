@@ -13,7 +13,7 @@
   (caddr (find-actor name)))
 (define (actor-mailbox name)
   (cadddr (find-actor name)))
-(define (generate-new-name) (int-top))
+(define (generate-new-name) (random 42))
 (define (actor f)
   (lambda (init-state name)
     (letrec ((loop (lambda (receive state)
@@ -107,6 +107,6 @@
                (terminate))
              (error "unknown message"))))))
 (define act (create master-actor '()))
-(send act 'compute (list (int-top)))
+(send act 'compute (list (random 42)))
 ;(sleep 2)
 

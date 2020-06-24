@@ -28,6 +28,12 @@ trait AllBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.allBenchmarks
 }
 
+trait CSchemeBenchmarkTests extends SchemeBenchmarkTests
+
+trait ThreadBenchmarks extends CSchemeBenchmarkTests {
+  override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.threads
+}
+
 object SchemeBenchmarks {
 
   val ad: Set[String] = Set(
@@ -441,44 +447,44 @@ object SchemeBenchmarks {
   )
 
   val threads: Set[String] = Set(
-    "test/concurrentScheme/threads/abp.scm",
-    "test/concurrentScheme/threads/actors.scm",
-    "test/concurrentScheme/threads/atoms.scm",
-    "test/concurrentScheme/threads/bchain.scm",
-    "test/concurrentScheme/threads/count.scm",
+    //"test/concurrentScheme/threads/abp.scm",
+    //"test/concurrentScheme/threads/actors.scm",
+    //"test/concurrentScheme/threads/atoms.scm",
+    //"test/concurrentScheme/threads/bchain.scm",
+    //"test/concurrentScheme/threads/count.scm",
     "test/concurrentScheme/threads/crypt.scm",
-    "test/concurrentScheme/threads/dekker.scm",
+    //"test/concurrentScheme/threads/dekker.scm",
     "test/concurrentScheme/threads/fact-indep.scm",
-    "test/concurrentScheme/threads/fact.scm",
+    //"test/concurrentScheme/threads/fact.scm",
     "test/concurrentScheme/threads/fact2.scm",
     "test/concurrentScheme/threads/lastzero2.scm",
-    "test/concurrentScheme/threads/life.scm",
+    //"test/concurrentScheme/threads/life.scm",
     "test/concurrentScheme/threads/matmul.scm",
     "test/concurrentScheme/threads/mcarlo.scm",
     "test/concurrentScheme/threads/mceval.scm",
     "test/concurrentScheme/threads/minimax.scm",
     "test/concurrentScheme/threads/msort.scm",
-    "test/concurrentScheme/threads/nbody.scm",
-    "test/concurrentScheme/threads/pc.scm",
+    //"test/concurrentScheme/threads/nbody.scm",
+    //"test/concurrentScheme/threads/pc.scm",
     "test/concurrentScheme/threads/peterson.scm",
-    "test/concurrentScheme/threads/phil.scm",
-    "test/concurrentScheme/threads/phild.scm",
-    "test/concurrentScheme/threads/philosophers2.scm",
-    "test/concurrentScheme/threads/pp.scm",
-    "test/concurrentScheme/threads/pps.scm",
-    "test/concurrentScheme/threads/producer.scm",
-    "test/concurrentScheme/threads/qsort.scm",
+    //"test/concurrentScheme/threads/phil.scm",
+    //"test/concurrentScheme/threads/phild.scm",
+    //"test/concurrentScheme/threads/philosophers2.scm",
+    //"test/concurrentScheme/threads/pp.scm",
+    //"test/concurrentScheme/threads/pps.scm",
+    //"test/concurrentScheme/threads/producer.scm",
+    //"test/concurrentScheme/threads/qsort.scm",
     "test/concurrentScheme/threads/randomness.scm",
     "test/concurrentScheme/threads/randomness2.scm",
     "test/concurrentScheme/threads/readers2.scm",
-    "test/concurrentScheme/threads/ringbuf.scm",
-    "test/concurrentScheme/threads/rng.scm",
-    "test/concurrentScheme/threads/sieve.scm",
+    //"test/concurrentScheme/threads/ringbuf.scm",
+    //"test/concurrentScheme/threads/rng.scm",
+    //"test/concurrentScheme/threads/sieve.scm",
     "test/concurrentScheme/threads/simple.scm",
-    "test/concurrentScheme/threads/stm.scm",
+    //"test/concurrentScheme/threads/stm.scm",
     "test/concurrentScheme/threads/sudoku.scm",
-    "test/concurrentScheme/threads/trapr.scm",
-    "test/concurrentScheme/threads/tsp.scm",
+    //"test/concurrentScheme/threads/trapr.scm",
+    //"test/concurrentScheme/threads/tsp.scm",
   )
 
   val threadsVariations: Set[String] = Set(

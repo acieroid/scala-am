@@ -29,13 +29,13 @@
   ;;        prev-hash
   ;;        (string->bytes/utf-8 (number->string timestamp))
   ;;        (string->bytes/utf-8 data))
-  (int-top))
+  (random 42))
 
 (define (calculate-hash-for-block block)
   (calculate-hash (block-index block) (block-prev-hash block)
                   (block-timestamp block) (block-data block)))
 
-(define (current-timestamp) (int-top))
+(define (current-timestamp) (random 42))
 
 (define (generate-next-block data previous-block)
   (let* ((next-index (+ (block-index previous-block) 1))

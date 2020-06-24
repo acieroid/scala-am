@@ -20,7 +20,7 @@ import scalaam.language.scheme.SchemeInterpreter._
 import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.util.benchmarks.Timeout
 
-trait SchemeModularSoundnessTests extends SchemeBenchmarkTests {
+trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
   type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   // the analysis that is used to analyse the programs
@@ -117,9 +117,9 @@ s"""Intermediate result at $idn is unsound:
 
   private def testTags(b: Benchmark): Seq[Tag] =
     if (isSlow(b)) {
-      Seq(SoundnessTest, SlowTest)
+      Seq(SchemeTest, SoundnessTest, SlowTest)
     } else {
-      Seq(SoundnessTest)
+      Seq(SchemeTest, SoundnessTest)
     }
 
   def onBenchmark(benchmark: Benchmark): Unit =
@@ -140,7 +140,7 @@ s"""Intermediate result at $idn is unsound:
     }
 }
 
-trait BigStepSchemeModF extends SchemeModularSoundnessTests {
+trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
   val concurrent = false
   def analysis(program: SchemeExp) = new ModAnalysis(program)
@@ -152,7 +152,7 @@ trait BigStepSchemeModF extends SchemeModularSoundnessTests {
   }
 }
 
-trait BigStepSchemeModFPrimCSSensitivity extends SchemeModularSoundnessTests {
+trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def name = "big-step semantics with call-site sensitivity for primitives"
   val concurrent = false
   def analysis(program: SchemeExp) = new ModAnalysis(program)
@@ -164,7 +164,7 @@ trait BigStepSchemeModFPrimCSSensitivity extends SchemeModularSoundnessTests {
   }
 }
 
-trait SmallStepSchemeModF extends SchemeModularSoundnessTests {
+trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   val concurrent = false
   def analysis(program: SchemeExp) = new ModAnalysis(program)
@@ -176,7 +176,7 @@ trait SmallStepSchemeModF extends SchemeModularSoundnessTests {
   }
 }
 
-trait ParallelSchemeModF extends SchemeModularSoundnessTests {
+trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def name = "parallel analysis (n = 4)"
   val concurrent = false
   def analysis(program: SchemeExp) = new ModAnalysis(program)
@@ -190,7 +190,7 @@ trait ParallelSchemeModF extends SchemeModularSoundnessTests {
   }
 }
 
-trait SimpleAdaptiveSchemeModF extends SchemeModularSoundnessTests {
+trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def name = "simple adaptive argument sensitivity (limit = 5)"
   val concurrent = false
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
@@ -223,3 +223,134 @@ class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with AllBenchm
 //class SimpleAdaptiveSchemeModFSoundnessTests extends SimpleAdaptiveSchemeModF with AllBenchmarks {
 //  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
 //}
+
+trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
+  // analysis must support Scheme's ModF Semantics
+  type Analysis = ModAnalysis[SchemeExp] with KAExpressionContext with ModConcConstantPropagationDomain
+  // the analysis that is used to analyse the programs
+  def name: String
+  def analysis(b: SchemeExp): Analysis
+  // the timeout for the analysis of a single benchmark program (default: 2min.)
+  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  // Indicate whether we are testing a concurrent Scheme.
+  val concurrent: Boolean
+  // the actual testing code
+  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Option[Value], Map[Identity,Set[Value]]) = {
+    val preluded = SchemePrelude.addPrelude(originalProgram)
+    val program = if (!concurrent) SchemeUndefiner.undefine(List(preluded)) else CSchemeUndefiner.undefine(List(preluded))
+    var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
+    val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
+    try {
+      val endResult = interpreter.run(program, timeout(benchmark))
+      (Some(endResult), idnResults)
+    } catch {
+      case _ : TimeoutException =>
+        alert(s"Concrete evaluation of $benchmark timed out.")
+        (None, idnResults)
+      case e : VirtualMachineError =>
+        System.gc()
+        alert(s"Concrete evaluation of $benchmark failed with $e")
+        (None, idnResults)
+    }
+  }
+  private def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
+    try {
+      // analyze the program using a ModF analysis
+      val anl = analysis(program)
+      anl.analyze(timeout(benchmark))
+      assume(anl.finished(), "Analysis timed out")
+      anl
+    } catch {
+      case e: VirtualMachineError =>
+        System.gc()
+        cancel(s"Analysis of $benchmark encountered an error: $e")
+    }
+  private def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value) = {
+    val lat = analysis.lattice
+    v match {
+      case Value.Undefined(_)   => true
+      case Value.Unbound(_)     => true
+      case Value.Clo(lam, _)    => lat.getClosures(abs).exists(_._1._1.idn == lam.idn)
+      case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_.name == p.name)
+      case Value.Str(s)         => lat.subsumes(abs, lat.string(s))
+      case Value.Symbol(s)      => lat.subsumes(abs, lat.symbol(s))
+      case Value.Integer(i)     => lat.subsumes(abs, lat.number(i))
+      case Value.Real(r)        => lat.subsumes(abs, lat.real(r))
+      case Value.Bool(b)        => lat.subsumes(abs, lat.bool(b))
+      case Value.Character(c)   => lat.subsumes(abs, lat.char(c))
+      case Value.Nil            => lat.subsumes(abs, lat.nil)
+      case Value.Pointer(_)     => lat.getPointerAddresses(abs).nonEmpty
+      case Value.Thread(_) if concurrent => lat.getThreads(abs).nonEmpty
+      case v                    => throw new Exception(s"Unknown concrete value type: $v.")
+    }
+  }
+
+  private def compareResult(a: Analysis, concRes: Value) = {
+    val aRes = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom)
+    if (!checkSubsumption(a)(concRes, aRes)) {
+      val failureMsg =
+        s"""Program result is unsound:
+  - concrete value: $concRes
+  - abstract value: $aRes
+         """
+      fail(failureMsg)
+    }
+  }
+
+  private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
+    val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
+      case a.ComponentAddr(_, addr) => addr.idn()
+      case _                     => Identity.none
+    }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
+    concIdn.foreach { case (idn,values) =>
+      values.foreach { value =>
+        if (!checkSubsumption(a)(value, absID(idn))) {
+          val failureMsg =
+            s"""Intermediate result at $idn is unsound:
+  - concrete value: $value
+  - abstract value: ${absID(idn)}
+             """
+          fail(failureMsg)
+        }
+      }
+    }
+  }
+
+  // indicate if a benchmark is slow or not
+  def isSlow(b: Benchmark) = false
+
+  private def testTags(b: Benchmark): Seq[Tag] =
+    if (isSlow(b)) {
+      Seq(CSchemeTest, SoundnessTest, SlowTest)
+    } else {
+      Seq(CSchemeTest, SoundnessTest)
+    }
+
+  def onBenchmark(benchmark: Benchmark): Unit =
+    property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
+      // load the benchmark program
+      val content = Reader.loadFile(benchmark)
+      val program = if (!concurrent) SchemeParser.parse(content) else CSchemeParser.parse(content)
+      // run the program using a concrete interpreter
+      val (cResult, cPosResults) = evalConcrete(program,benchmark)
+      // analyze the program using a ModF analysis
+      val anl = runAnalysis(program,benchmark)
+      // check if the final result of the analysis soundly approximates the final result of concrete evaluation
+      // of course, this can only be done if there was a result.
+      if (cResult.isDefined) { compareResult(anl, cResult.get) }
+      // check if the intermediate results at various program points are soundly approximated by the analysis
+      // this can be done, regardless of whether the concrete evaluation terminated successfully or not
+      compareIdentities(anl, cPosResults)
+    }
+}
+
+trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
+  def name = "small-step ModConc"
+  val concurrent = true
+  def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
+    with KAExpressionContext
+    with ModConcConstantPropagationDomain
+    with LIFOWorklistAlgorithm[SchemeExp] {}
+}
+
+class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks

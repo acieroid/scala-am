@@ -14,7 +14,7 @@
                                (message (v) (display v) (become display-actor))))
          (disp (create display-actor))
          (act (create stack-node #f #f)))
-  (send act push (int-top))
+  (send act push (random 42))
   (send act push (bool-top))
   (send act push 3)
   (send act pop disp))

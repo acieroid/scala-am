@@ -1,6 +1,6 @@
 ;; Dining philosophers problem with dictionary
-(define N (+ 1 (int-top)))
-(define Turns (int-top))
+(define N (+ 1 (random 42)))
+(define Turns (random 42))
 
 (define (build-vector n init f)
   (letrec ((v (make-vector n init))

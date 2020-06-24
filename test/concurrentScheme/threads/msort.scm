@@ -40,6 +40,6 @@
       '()
       (cons (random 100) (generate-list (- size 1)))))
 
-(define N (+ 100 (int-top)))
+(define N (+ 100 (random 42)))
 (define L (generate-list N))
 (sorted? (merge-sort L))

@@ -122,14 +122,12 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     //----------//
 
     def analyze(): Unit = {
-      println(s"********** Evaluating thread: ${component.body}")
       val initialState = Eval(component.body, component.env, KEmpty)
       var work: WorkList[State] = LIFOWorkList[State](initialState)
       var visited = Set[State]()
       var result  = lattice.bottom
       while(work.nonEmpty) {
         val state = work.head
-        println(state)
         work = work.tail
         state match {
           case Kont(vl, KEmpty) =>

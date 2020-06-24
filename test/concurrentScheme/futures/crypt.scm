@@ -1,12 +1,4 @@
 ;; Example adapted from https://rosettacode.org/wiki/Vigen%C3%A8re_cipher/Cryptanalysis#Racket
-
-(define (integer->char n)
-  (if #t
-      #\A
-      #\B))
-(define (char->integer c)
-  42)
-
 (define (range a b)
   (letrec ((loop (lambda (i acc)
                    (if (< i a)

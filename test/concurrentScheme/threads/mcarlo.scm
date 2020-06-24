@@ -25,7 +25,7 @@
         (+ (join t1) (join t2)))))
 
 (define (approximate-pi size iterations)
-  (/ (* 4. (monte-carlo-conc size iterations)) iterations))
+  (/ (* 4.0 (monte-carlo-conc size iterations)) iterations))
 
 (define radius 1000000000)
 (define pi (approximate-pi radius 100000000))

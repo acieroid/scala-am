@@ -10,7 +10,7 @@
                        v))))
     (loop 0)))
 
-(define N (expt 2 (int-top)))
+(define N (expt 2 (random 42)))
 (define input
   (build-vector N #f (lambda (i) (t/ref i))))
 

@@ -1,5 +1,5 @@
 ;; Dining philosophers problem
-(define Turns (int-top))
+(define Turns (random 42))
 (define forks (vector (new-lock) (new-lock)))
 (define N 2)
 (define (philosopher i)
