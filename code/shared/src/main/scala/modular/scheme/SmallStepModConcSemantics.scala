@@ -90,7 +90,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     override def toString: String = "Main"
   }
 
-  // The context of a component
+  // The context of a component. TODO
   type ComponentContext = Unit
 
   // A process created by the program.
@@ -102,11 +102,11 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   // Other required definitions.
 
   type ComponentContent = Option[(Exp, Env)]
-  def content(cmp: Component) = view(cmp) match {
+  def content(cmp: Component): ComponentContent = view(cmp) match {
     case MainComponent => None
     case p: ThreadComponent => Some((p.body, p.env))
   }
-  def context(cmp: Component) = view(cmp) match {
+  def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
     case MainComponent => None
     case p: ThreadComponent => Some(p.ctx)
   }
@@ -245,31 +245,31 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     // Evaluates an expression (in the abstract).
     private def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
       // Single-step evaluation.
-      case l@SchemeLambda(_, _, _)                   => Set(Kont(lattice.closure((l, env), None), stack))
-      case SchemeValue(value, _)                     => Set(Kont(evalLiteralValue(value), stack))
-      case SchemeVar(id)                             => Set(Kont(readAddr(lookupEnv(id, env)), stack))
-      case l@SchemeVarArgLambda(_, _, _, _)          => Set(Kont(lattice.closure((l, env), None), stack))
+      case l@SchemeLambda(_, _, _)                 => Set(Kont(lattice.closure((l, env), None), stack))
+      case l@SchemeVarArgLambda(_, _, _, _)        => Set(Kont(lattice.closure((l, env), None), stack))
+      case SchemeValue(value, _)                   => Set(Kont(evalLiteralValue(value), stack))
+      case SchemeVar(id)                           => Set(Kont(readAddr(lookupEnv(id, env)), stack))
 
       // Multi-step evaluation.
-      case c@SchemeFuncall(f, args, _)               => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
-      case SchemeIf(cond, cons, alt, _)              => evalIf(cond, cons, alt, env, stack)
-      case SchemeLet(bindings, body, _)              => evalLet(bindings, List(), body, env, stack)
-      case SchemeLetStar(bindings, body, _)          => evalLetStar(bindings, body, env, stack)
-      case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body, env, stack)
-      case SchemeNamedLet(name, bindings, body, _)   => evalNamedLet(name, bindings, body, env, stack)
-      case SchemeSet(variable, value, _)             => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
-      case SchemeBegin(exps, _)                      => evalSequence(exps, env, stack)
-      case SchemeAnd(exps, _)                        => evalAnd(exps, env, stack)
-      case SchemeOr(exps, _)                         => evalOr(exps, env, stack)
-      case e@SchemePair(car, cdr, _)                 => Set(Eval(car, env, extendKStore(car, PairCarFrame(cdr, env, e), stack)))
-      case SchemeSplicedPair(_, _, _)                => throw new Exception("Splicing not supported.")
+      case c@SchemeFuncall(f, args, _)             => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
+      case e@SchemePair(car, cdr, _)               => Set(Eval(car, env, extendKStore(car, PairCarFrame(cdr, env, e), stack)))
+      case SchemeSet(variable, value, _)           => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
+      case SchemeAnd(exps, _)                      => evalAnd(exps, env, stack)
+      case SchemeBegin(exps, _)                    => evalSequence(exps, env, stack)
+      case SchemeIf(cond, cons, alt, _)            => evalIf(cond, cons, alt, env, stack)
+      case SchemeLet(bindings, body, _)            => evalLet(bindings, List(), body, env, stack)
+      case SchemeLetrec(bindings, body, _)         => evalLetRec(bindings, body, env, stack)
+      case SchemeLetStar(bindings, body, _)        => evalLetStar(bindings, body, env, stack)
+      case SchemeNamedLet(name, bindings, body, _) => evalNamedLet(name, bindings, body, env, stack)
+      case SchemeOr(exps, _)                       => evalOr(exps, env, stack)
+      case SchemeSplicedPair(_, _, _)              => throw new Exception("Splicing not supported.")
 
       // Multithreading.
-      case CSchemeFork(body, _)                      => evalFork(body, env, stack)
-      case CSchemeJoin(body, _)                      => Set(Eval(body, env, extendKStore(body, JoinFrame, stack)))
+      case CSchemeFork(body, _)                    => evalFork(body, env, stack)
+      case CSchemeJoin(body, _)                    => Set(Eval(body, env, extendKStore(body, JoinFrame, stack)))
 
       // Unexpected cases.
-      case e                                         => throw new Exception(s"evaluate: unexpected expression type: ${e.label}.")
+      case e                                       => throw new Exception(s"evaluate: unexpected expression type: ${e.label}.")
     }
 
     private def evalSequence(exps: Exps, env: Env, stack: Stack): Set[State] = exps match {
@@ -372,22 +372,22 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
       // all the other operations should not be used by the primitives ...
       def content                               = throw new Exception("Operation not allowed!")
-      def keys                                  = throw new Exception("Operation not allowed!")
-      def restrictTo(a: Set[Addr])              = throw new Exception("Operation not allowed!")
       def forall(p: ((Addr, Value)) => Boolean) = throw new Exception("Operation not allowed!")
       def join(that: Store[Addr, Value])        = throw new Exception("Operation not allowed!")
+      def keys                                  = throw new Exception("Operation not allowed!")
+      def restrictTo(a: Set[Addr])              = throw new Exception("Operation not allowed!")
       def subsumes(that: Store[Addr, Value])    = throw new Exception("Operation not allowed!")
     }
 
     // Evaluate literals by in injecting them in the lattice.
     private def evalLiteralValue(literal: sexp.Value): Value = literal match {
-      case sexp.ValueInteger(n)   => lattice.number(n)
-      case sexp.ValueReal(r)      => lattice.real(r)
       case sexp.ValueBoolean(b)   => lattice.bool(b)
-      case sexp.ValueString(s)    => lattice.string(s)
       case sexp.ValueCharacter(c) => lattice.char(c)
-      case sexp.ValueSymbol(s)    => lattice.symbol(s)
+      case sexp.ValueInteger(n)   => lattice.number(n)
       case sexp.ValueNil          => lattice.nil
+      case sexp.ValueReal(r)      => lattice.real(r)
+      case sexp.ValueString(s)    => lattice.string(s)
+      case sexp.ValueSymbol(s)    => lattice.symbol(s)
       case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
 
