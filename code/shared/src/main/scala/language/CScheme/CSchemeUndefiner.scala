@@ -1,6 +1,5 @@
-package language.CScheme
+package scalaam.language.CScheme
 
-import scalaam.language.CScheme._
 import scalaam.language.scheme._
 
 object CSchemeUndefiner extends BaseSchemeUndefiner {

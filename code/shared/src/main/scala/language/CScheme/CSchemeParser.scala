@@ -1,6 +1,5 @@
 package scalaam.language.CScheme
 
-import language.CScheme.CSchemeUndefiner
 import scalaam.core.Position._
 import scalaam.language.scheme._
 import scalaam.language.sexp._

@@ -1,11 +1,10 @@
 package scalaam.cli
 
-import language.CScheme.CSchemeUndefiner
 import scalaam.util._
 
 import scala.concurrent.duration._
 import scalaam.core.Position._
-import scalaam.language.CScheme.CSchemeParser
+import scalaam.language.CScheme._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
