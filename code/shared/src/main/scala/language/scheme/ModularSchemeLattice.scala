@@ -410,7 +410,7 @@ class ModularSchemeLattice[
         case (_: Vec, _: Vec)         => throw new Exception("should not happen")
         case (_: Pointer, _: Pointer) => Bool(BoolLattice[B].top) // TODO: can be made more precisely (is false if intersection is empty, top otherwise)
                                                                   // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
-        case (Thread(t1), Thread(t2)) => Bool(BoolLattice[B].inject(t1 == t2)) // TODO can we compare it this way?
+        case (Thread(t1), Thread(t2)) => Bool(BoolLattice[B].top) // TODO: can be made more precisely (is false if intersection is empty, top otherwise)
         case _                        => False
       })
       case StringAppend => (x, y) match {
