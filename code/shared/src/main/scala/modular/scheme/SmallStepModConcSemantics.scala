@@ -134,6 +134,11 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
             result = lattice.join(result,vl)
           case _ if !visited.contains(state) =>
             val successors = step(state)
+            if (storeChanged || kstoreChanged) {
+              visited = Set()
+               storeChanged = false
+              kstoreChanged = false
+            }
             work = work.addAll(successors)
             visited += state
           case _ => ()
@@ -157,14 +162,17 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     // STORE //
     //-------//
 
+    // Tracks changes to the global store.
+    @mutable private var storeChanged: Boolean = false
+
     private def bind(variable: Identifier, vl: Value, env: Env): Env = {
       val addr = VarAddr(variable)
-      writeAddr(addr, vl)
+      if (writeAddr(addr, vl)) storeChanged = true
       extendEnv(variable, addr, env)
     }
 
     private def rebind(variable: Identifier, vl: Value, env: Env): Value = {
-      writeAddr(lookupEnv(variable, env), vl)
+      if (writeAddr(lookupEnv(variable, env), vl)) storeChanged = true
       lattice.bottom
     }
 
@@ -184,12 +192,16 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     private type KStore = Map[KA, Set[K]]
 
     @mutable private var ks: KStore = Map() // KStore private to this component!
+    @mutable private var kstoreChanged: Boolean = false // Tracks changes to the continuation store.
 
     // Operations on continuation store.
     private def lookupKStore(cc: KA): Set[K] = ks.getOrElse(cc, Set())
     private def extendKStore(e: Exp, frame: Frame, cc: KA): KA = {
       val kaddr = allocateKAddr(e, cc)
-      ks = ks + (kaddr -> (lookupKStore(kaddr) + K(frame, cc)))
+      val knt = K(frame, cc)
+      val old = lookupKStore(kaddr)
+      if (!old.contains(knt)) kstoreChanged = true
+      ks = ks + (kaddr -> (old + knt))
       kaddr
     }
 
