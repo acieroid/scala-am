@@ -1,24 +1,30 @@
 package scalaam.language.scheme
 
+import java.util.concurrent.TimeUnit
+
 import scalaam.core._
+import scalaam.language.CScheme._
 import scalaam.util._
 import scalaam.language.sexp._
 import scalaam.util.benchmarks.Timeout
 
 import scala.concurrent.TimeoutException
+import scala.concurrent._
+import ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 
 /**
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
   * This interpreter dictates the concrete semantics of the Scheme language analyzed by Scala-AM.
  */
-class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, output: Boolean = true) {
+class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output: Boolean = true) {
   import SchemeInterpreter._
   /**
     * Evaluates `program`.
     * Will check the analysis result by calling `compare` on all encountered values.
     */
   def run(program: SchemeExp, timeout: Timeout.T): Value = {
-    store = initialSto
+    setStore(initialSto)
     val res = eval(program, initialEnv, timeout)
     val resAddr = newAddr(AddrInfo.RetAddr(program))
     extendStore(resAddr, res)
@@ -35,6 +41,13 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     }
   }
 
+  // Access to cb should be syncrhonized on 'Callback'.
+  object Callback {
+    def call(i: Identity, v: Value): Unit = synchronized {
+      cb(i, v)
+    }
+  }
+
   var compared = 0
   def check(i: Identity, v : Value): Value = {
     compared += 1
@@ -43,18 +56,38 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       case Value.Unbound(idn) => println(s"Seen unbound identifier $idn at ${i}")
       case _ => ()
     }
-    callback(i, v)
+    Callback.call(i, v)
     v
   }
 
+  // Both access to 'lastAddr' and 'store' should be synchronized on 'this'!
   var lastAddr = 0
-  def newAddr(meta: AddrInfo): (Int, AddrInfo) = {
+  def newAddr(meta: AddrInfo): (Int, AddrInfo) = synchronized {
     lastAddr += 1
     (lastAddr, meta)
   }
   var store = Map[Addr, Value]()
-  def extendStore(a: Addr, v: Value): Unit = {
+  def extendStore(a: Addr, v: Value): Unit = synchronized {
     store = store + (a -> v)
+  }
+  def lookupStore(a: Addr): Value = synchronized {
+    store(a)
+  }
+  def lookupStoreOption(a: Addr): Option[Value] = synchronized {
+    store.get(a)
+  }
+  def setStore(s: Map[Addr, Value]): Unit = synchronized {
+    store = s
+  }
+
+  // Access to the standard output stream should be synchronized on 'Out'.
+  object Out {
+    def prt(s: Value): Unit = synchronized {
+      print(s)
+    }
+    def prtln(s: String): Unit = synchronized {
+      println(s)
+    }
   }
 
   def eval(e: SchemeExp, env: Env, timeout: Timeout.T): Value = {
@@ -171,7 +204,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       case SchemeDefineVarArgFunction(_, _, _, _, _) => ???
       case SchemeVar(id) =>
         env.get(id.name) match {
-          case Some(addr) => store.get(addr) match {
+          case Some(addr) => lookupStoreOption(addr) match {
             case Some(v) => v
             case None => throw new Exception(s"Unbound variable $id at position ${id.idn}")
           }
@@ -196,6 +229,11 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
           case ValueCharacter(c)  => Value.Character(c)
           case ValueNil           => Value.Nil
         }
+      case CSchemeFork(body, _)   => Value.Thread(Future { eval(body, env, timeout) })
+      case CSchemeJoin(tExp, _)   => eval(tExp, env, timeout) match {
+        case Value.Thread(fut)    => Await.result(fut, Duration(timeout.timeLeft.getOrElse(throw new TimeoutException), TimeUnit.NANOSECONDS))
+        case v                    => throw new Exception(s"Join expected thread, but got $v")
+      }
     }
   }
   def allocateCons(exp: SchemeExp, car: Value, cdr: Value): Value = {
@@ -798,7 +836,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     object Display extends SingleArgumentPrim("display") {
       def fun = {
         case x =>
-          if (output) print(x)
+          if (output) Out.prt(x)
           Value.Undefined(Identity.none)
       }
     }
@@ -806,7 +844,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
       val name = "newline"
       def call(args: List[Value]) = args match {
         case Nil =>
-          if (output) println("\n")
+          if (output) Out.prtln("\n")
           Value.Undefined(Identity.none)
         case _ => throw new Exception(s"newline: wrong number of arguments, 0 expected, got ${args.length}")
       }
@@ -839,7 +877,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     }
     object Pairp extends SingleArgumentPrim("pair?") {
       def fun = {
-        case Value.Pointer(addr) => store(addr) match {
+        case Value.Pointer(addr) => lookupStore(addr) match {
           case _: Value.Cons  => Value.Bool(true)
           case _              => Value.Bool(false)
         }
@@ -880,7 +918,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     }
     object Vectorp extends SingleArgumentPrim("vector?") {
       def fun = {
-        case Value.Pointer(a) => store(a) match {
+        case Value.Pointer(a) => lookupStore(a) match {
           case _ : Value.Vector => Value.Bool(true)
           case _ => Value.Bool(false)
         }
@@ -966,7 +1004,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     }
     object VectorLength extends SingleArgumentPrim("vector-length") {
       def fun = {
-        case Value.Pointer(a) => store(a) match {
+        case Value.Pointer(a) => lookupStore(a) match {
           case Value.Vector(siz,_,_) => Value.Integer(siz)
         }
       }
@@ -974,7 +1012,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     object VectorRef extends SimplePrim {
       val name = "vector-ref"
       def call(args: List[Value]): Value = args match {
-        case Value.Pointer(a) :: Value.Integer(idx) :: Nil => store(a) match {
+        case Value.Pointer(a) :: Value.Integer(idx) :: Nil => lookupStore(a) match {
           case Value.Vector(siz,els,ini) if idx >= 0 && idx < siz => els.getOrElse(idx, ini)
           case Value.Vector(siz,_,_) => throw new Exception(s"Index $idx out of range (valid range: [0,${siz-1}])")  
         }
@@ -984,7 +1022,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     object VectorSet extends SimplePrim {
       val name = "vector-set!"
       def call(args: List[Value]): Value = args match {
-        case Value.Pointer(a) :: Value.Integer(idx) :: v :: Nil => store(a) match {
+        case Value.Pointer(a) :: Value.Integer(idx) :: v :: Nil => lookupStore(a) match {
           case Value.Vector(siz,els,ini) if idx >= 0 && idx < siz =>
             val updatedVct = Value.Vector(siz, els + (idx -> v), ini)
             extendStore(a, updatedVct)
@@ -1001,14 +1039,14 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
 
     object Car extends SingleArgumentPrim("car") {
       def fun = {
-        case Value.Pointer(addr) => store(addr) match {
+        case Value.Pointer(addr) => lookupStore(addr) match {
           case Value.Cons(car,_) => car
         }
       }
     }
     object Cdr extends SingleArgumentPrim("cdr") {
       def fun = {
-        case Value.Pointer(addr) => store(addr) match {
+        case Value.Pointer(addr) => lookupStore(addr) match {
           case Value.Cons(_,cdr) => cdr
         }      
       }
@@ -1024,7 +1062,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     object SetCar extends SimplePrim {
       val name = "set-car!"
       def call(args: List[Value]): Value = args match {
-        case Value.Pointer(addr) :: v :: Nil => store(addr) match {
+        case Value.Pointer(addr) :: v :: Nil => lookupStore(addr) match {
           case Value.Cons(_,cdr) => 
             extendStore(addr, Value.Cons(v,cdr))
             Value.Undefined(Identity.none)
@@ -1035,7 +1073,7 @@ class SchemeInterpreter(callback: (Identity, SchemeInterpreter.Value) => Unit, o
     object SetCdr extends SimplePrim {
       val name = "set-cdr!"
       def call(args: List[Value]): Value = args match {
-        case Value.Pointer(addr) :: v :: Nil => store(addr) match {
+        case Value.Pointer(addr) :: v :: Nil => lookupStore(addr) match {
           case Value.Cons(car,_) => 
             extendStore(addr, Value.Cons(car,v))
             Value.Undefined(Identity.none)
@@ -1108,6 +1146,7 @@ object SchemeInterpreter {
     case object Nil extends Value { override def toString: String = "'())'" }
     case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"<#cons $car $cdr>" }
     case class Vector(size: Int, elems: Map[Int,Value], init: Value) extends Value { override def toString: String = s"<#vector[$size]>" }
+    case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"<thread>"}
   }
 
 
