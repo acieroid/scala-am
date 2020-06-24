@@ -231,7 +231,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         }
       case CSchemeFork(body, _)   => Value.Thread(Future { eval(body, env, timeout) })
       case CSchemeJoin(tExp, _)   => eval(tExp, env, timeout) match {
-        case Value.Thread(fut)    => Await.result(fut, Duration(timeout.timeLeft.getOrElse(throw new TimeoutException), TimeUnit.NANOSECONDS))
+        case Value.Thread(fut)    => Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf))
         case v                    => throw new Exception(s"Join expected thread, but got $v")
       }
     }

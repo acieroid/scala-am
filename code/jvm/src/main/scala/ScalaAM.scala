@@ -1,5 +1,6 @@
 package scalaam.cli
 
+import language.CScheme.CSchemeUndefiner
 import scalaam.util._
 
 import scala.concurrent.duration._
@@ -8,6 +9,7 @@ import scalaam.language.CScheme.CSchemeParser
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
+import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.util.benchmarks.Timeout
 
 object Main {
@@ -84,14 +86,14 @@ object Incrementor extends App {
 }
 */
 
-/*
+
 object Run extends App {
-  val text = Reader.loadFile("test/SETL/testcase1.scm")
+  val text = Reader.loadFile("test/concurrentScheme/threads/lastzero2.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
-  val res = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
+  val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
 }
-*/
+
 object Analyze extends App {
   val text = Reader.loadFile("test/concurrentScheme/threads/simple.scm")
   val a = new ModAnalysis(CSchemeParser.parse(text))
