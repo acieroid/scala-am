@@ -12,6 +12,8 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { 
   def workers: Int = Runtime.getRuntime().availableProcessors()
   // create a threadpool
   lazy val threadPool = new PausableThreadPoolExecutor(workers)
+  // the currently active timeout
+  var currentTimeout: Timeout.T = Timeout.none
 
   // for thread synchronization
   /** This lock manages synchronisation for all shared state of the analysis: the global store and dependency sets. This lock should be held whenever reading/writing this state. */
@@ -45,15 +47,23 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { 
     def run(): Unit = {
       while (true) { // <- may need to analyze a component multiple times if its dependencies keep changing
         val intra = withLock(intraAnalysis(cmp))
-        intra.analyze() // <- this is where we can run things in parallel! TODO apply timeout one way or another.
-        withLock {
-          intra.commit()
-          if (intra.isDone) {
-            queued -= cmp
-            if (queued.isEmpty) {
-              done.signal()
+        intra.analyze(currentTimeout) // <- this is where we can run things in parallel!
+        if(currentTimeout.reached) {
+          // analysis timed out => need to re-analyze the component
+          withLock {
+            addToWorkList(cmp)
+          }
+        } else {
+          // analysis finished => commit changes to the global analysis state
+          withLock {
+            intra.commit()
+            if (intra.isDone) {
+              queued -= cmp
+              if (queued.isEmpty) {
+                done.signal()
+              }
+              return
             }
-            return
           }
         }
       }
@@ -81,6 +91,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { 
   def finished(): Boolean = withLock { queued.isEmpty }
   def analyze(timeout: Timeout.T): Unit = withLock { // Lock required for calling await/awaitNanos.
     if (!finished() && !timeout.reached) {
+      currentTimeout = timeout
       threadPool.resume()
       timeout.timeLeft match {
         case Some(nanos) => done.awaitNanos(nanos)
