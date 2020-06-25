@@ -94,7 +94,7 @@ object Run extends App {
 }
 
 object Analyze extends App {
-  val text = Reader.loadFile("test/concurrentScheme/threads/matmul.scm")
+  val text = Reader.loadFile("test/DEBUG.scm")
   val a = new ModAnalysis(CSchemeParser.parse(text))
     with KAExpressionContext
     with ModConcConstantPropagationDomain

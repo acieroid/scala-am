@@ -292,7 +292,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     }
 
     private def evalArgs(todo: Exps, fexp: SchemeFuncall, f: Value, done: List[(Exp, Value)], env: Env, stack: Stack): Set[State] = todo match {
-      case Nil             => apply(fexp, f, done.reverse, env, stack) // Function application.
+      case Nil             => apply(fexp, f, done.reverse, stack) // Function application.
       case args@(arg :: _) => Set(Eval(arg, env, extendKStore(arg, OperandsFrame(args, done, env, f, fexp), stack)))
     }
 
@@ -402,13 +402,13 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       ).toSet
     }
 
-    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], env: Env, stack: Stack): Set[State] = {
+    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], stack: Stack): Set[State] = {
       val arity = args.length
       lattice.getClosures(fun).flatMap({
-        case ((SchemeLambda(prs,body,_),_), _) if prs.length == arity =>
+        case ((SchemeLambda(prs,body,_),env), _) if prs.length == arity =>
           val env2 = prs.zip(args.map(_._2)).foldLeft(env)({case (env, (f, a)) => bind(f, a, env)})
           evalSequence(body, env2, stack)
-        case ((SchemeVarArgLambda(prs,vararg,body,_),_), _) if prs.length <= arity =>
+        case ((SchemeVarArgLambda(prs,vararg,body,_),env), _) if prs.length <= arity =>
           val (fixedArgs, varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
@@ -419,9 +419,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     }
 
     // Function application.
-    private def apply(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], env: Env, stack: Stack): Set[State] =
+    private def apply(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], stack: Stack): Set[State] =
       if(args.forall(_._2 != lattice.bottom))
-        applyClosures(fval,args, env, stack) ++ applyPrimitives(fexp, fval, args, stack)
+        applyClosures(fval,args, stack) ++ applyPrimitives(fexp, fval, args, stack)
       else
         Set(Kont(lattice.bottom, stack))
 

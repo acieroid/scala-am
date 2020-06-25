@@ -10,9 +10,9 @@
                        v))))
     (loop 0)))
 (define (random-matrix w h)
-  (build-vector N (vector)
+  (build-vector w (vector)
                 (lambda (i)
-                  (build-vector N 0 (lambda (j) (random 100))))))
+                  (build-vector h 0 (lambda (j) (random 100))))))
 
 (define (extract-matrix M size fromx fromy)
   (build-vector size (vector)

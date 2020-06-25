@@ -460,7 +460,7 @@ object SchemeBenchmarks {
     //"test/concurrentScheme/threads/lastzero2.scm", // Uses let*, but should use something like letrec*?
     //"test/concurrentScheme/threads/life.scm",
     "test/concurrentScheme/threads/matmul.scm",
-    "test/concurrentScheme/threads/mcarlo.scm",
+    //"test/concurrentScheme/threads/mcarlo.scm", // StackOverFlow in concrete
     "test/concurrentScheme/threads/mceval.scm",
     "test/concurrentScheme/threads/minimax.scm",
     "test/concurrentScheme/threads/msort.scm",
