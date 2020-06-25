@@ -321,8 +321,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     private def evalNamedLet(name: Identifier, bindings: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = {
       val (form, actu) = bindings.unzip
       val lambda = SchemeLambda(form, body, name.idn)
-      val clo = lattice.closure((lambda, env), Some(name.name))
-      val env2 = bind(name, clo, env)
+      val env2 = bind(name, lattice.bottom, env)
+      val clo = lattice.closure((lambda, env2), Some(name.name))
+      rebind(name, clo, env2)
       val call = SchemeFuncall(lambda, actu, name.idn)
       evalArgs(actu, call, clo, Nil, env2, stack)
     }
