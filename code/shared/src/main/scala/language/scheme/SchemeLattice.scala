@@ -1,6 +1,6 @@
 package scalaam.language.scheme
 
-import language.CScheme.TID
+import scalaam.language.CScheme.TID
 import scalaam.core._
 
 /** A lattice for Scheme should support the following operations */

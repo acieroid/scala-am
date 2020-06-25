@@ -6,7 +6,7 @@ import scalaam.util._
 import SchemeOps._
 import UnaryOperator._
 import BinaryOperator._
-import language.CScheme.TID
+import scalaam.language.CScheme.TID
 import scalaam.language.scheme.primitives.SchemePrimitive
 import scalaam.util.SmartUnion._
 

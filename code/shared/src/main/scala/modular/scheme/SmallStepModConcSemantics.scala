@@ -1,6 +1,6 @@
 package scalaam.modular.scheme
 
-import language.CScheme._
+import scalaam.language.CScheme._
 import scalaam.core._
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
@@ -137,7 +137,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
             val successors = step(state)
             if (storeChanged || kstoreChanged) {
               visited = Set()
-               storeChanged = false
+              storeChanged = false
               kstoreChanged = false
             }
             work = work.addAll(successors)
@@ -152,12 +152,11 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     // ENVIRONMENT //
     //-------------//
 
-    def extendEnv(id: Identifier, addr: LocalAddr, env: Env): Env = {
-      val adr = ComponentAddr(component, addr)
-      Env(env.data + (id.name -> adr))
-    }
+    def extendEnv(id: Identifier, addr: LocalAddr, env: Env): Env =
+      Env(env.data + (id.name -> allocAddr(addr)))
 
-    def lookupEnv(id: Identifier, env: Env): Addr = env.data.getOrElse(id.name, throw new NoSuchElementException(s"$id in $env"))
+    def lookupEnv(id: Identifier, env: Env): Addr = 
+      env.data.getOrElse(id.name, throw new NoSuchElementException(s"$id in $env"))
 
     //-------//
     // STORE //
@@ -172,6 +171,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       extendEnv(variable, addr, env)
     }
 
+    // TODO: better call this assign or something ...
     private def rebind(variable: Identifier, vl: Value, env: Env): Value = {
       if (writeAddr(lookupEnv(variable, env), vl)) storeChanged = true
       lattice.bottom
@@ -202,7 +202,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       val knt = K(frame, cc)
       val old = lookupKStore(kaddr)
       if (!old.contains(knt)) kstoreChanged = true
-      ks = ks + (kaddr -> (old + knt))
+      ks += kaddr -> (old + knt)
       kaddr
     }
 
@@ -222,9 +222,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     case class      SetFrame(variable: Identifier, env: Env)                                                       extends Frame
     case class OperatorFrame(args: Exps, env: Env, fexp: SchemeFuncall)                                            extends Frame
     case class OperandsFrame(todo: Exps, done: List[(Exp, Value)], env: Env, f: Value, fexp: SchemeFuncall)        extends Frame // "todo" also contains the expression currently evaluated.
-    case class      LetFrame(todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env) extends Frame
-    case class  LetStarFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
-    case class   LetRecFrame(todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
+    case class      LetFrame(id: Identifier, todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env) extends Frame
+    case class  LetStarFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
+    case class   LetRecFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
     case object    JoinFrame                                                                                       extends Frame
 
     //-----------//
@@ -255,7 +255,8 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case c@SchemeFuncall(f, args, _)             => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
       case e@SchemePair(car, cdr, _)               => Set(Eval(car, env, extendKStore(car, PairCarFrame(cdr, env, e), stack)))
       case SchemeSet(variable, value, _)           => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
-      case SchemeAnd(exps, _)                      => evalAnd(exps, env, stack)
+      case SchemeAnd(Nil, _)                       => Set(Kont(lattice.bool(true), stack))
+      case SchemeAnd(e :: es, _)                   => evalAnd(e,es,env,stack)
       case SchemeBegin(exps, _)                    => evalSequence(exps, env, stack)
       case SchemeIf(cond, cons, alt, _)            => evalIf(cond, cons, alt, env, stack)
       case SchemeLet(bindings, body, _)            => evalLet(bindings, List(), body, env, stack)
@@ -282,10 +283,13 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     private def evalIf(cond: Exp, cons: Exp, alt: Exp, env: Env, stack: Stack): Set[State] =
       Set(Eval(cond, env, extendKStore(cond, IfFrame(cons, alt, env), stack)))
 
-    private def evalAnd(exps: Exps, env: Env, stack: Stack): Set[State] = exps match {
-      case  Nil      => Set(Kont(lattice.bool(true), stack))
-      case e :: exps => Set(Eval(e, env, extendKStore(e, AndFrame(exps, env), stack)))
-    }
+    private def evalAnd(first: SchemeExp, rest: List[SchemeExp], env: Env, stack: Stack): Set[State] =
+      if (rest.isEmpty) {
+        Set(Eval(first, env, stack))
+      } else {
+        val frm = AndFrame(rest,env)
+        Set(Eval(first, env, extendKStore(first, frm, stack)))
+      }
 
     private def evalOr(exps: Exps, env: Env, stack: Stack): Set[State] = exps match {
       case Nil       => Set(Kont(lattice.bool(false), stack))
@@ -302,21 +306,21 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case Nil                 =>
         val env2 = done.reverse.foldLeft(env)((env, bnd) => bind(bnd._1, bnd._2, env))
         evalSequence(body, env2, stack)
-      case bnd@((_, exp) :: _) => Set(Eval(exp, env, extendKStore(exp, LetFrame(bnd, done, body, env), stack)))
+      case (id, exp) :: rest    => Set(Eval(exp, env, extendKStore(exp, LetFrame(id, rest, done, body, env), stack)))
     }
 
     // Let*: bindings are made immediately (in continue).
     private def evalLetStar(todo: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = todo match {
-      case Nil                 => evalSequence(body, env, stack)
-      case bnd@((_, exp) :: _) => Set(Eval(exp, env, extendKStore(exp, LetStarFrame(bnd, body, env), stack)))
+      case Nil                  => evalSequence(body, env, stack)
+      case (id, exp) :: rest    => Set(Eval(exp, env, extendKStore(exp, LetStarFrame(id, rest, body, env), stack)))
     }
 
-    // Letrec: bindings are made upfront and gradually updated (in continue). TODO is this correct in the abstract?
+    // Letrec: bindings are made upfront and gradually updated (in continue). TODO is this correct in the abstract? => it's letrec* semantics here, but that's ok (we also do that in ModF)
     private def evalLetRec(bindings: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = bindings match {
       case Nil                 => evalSequence(body, env, stack)
-      case bnd@((_, exp) :: _) =>
-        val env2 = bnd.map(_._1).foldLeft(env)((env, id) => bind(id, lattice.bottom, env))
-        Set(Eval(exp, env2, extendKStore(exp, LetRecFrame(bnd, body, env2), stack)))
+      case (id, exp) :: rest =>
+        val env2 = bindings.map(_._1).foldLeft(env)((env, id) => bind(id, lattice.bottom, env))
+        Set(Eval(exp, env2, extendKStore(exp, LetRecFrame(id, rest, body, env2), stack)))
     }
 
     private def evalNamedLet(name: Identifier, bindings: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = {
@@ -339,17 +343,17 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     private def continue(vl: Value, frame: Frame, stack: Stack): Set[State] = frame match {
       case SequenceFrame(exps, env)                => evalSequence(exps, env, stack)
       case IfFrame(cons, alt, env)                 => conditional(vl, Eval(cons, env, stack), Eval(alt,  env, stack))
-      case AndFrame(exps, env)                     => conditional(vl, evalAnd(exps, env, stack), Set[State](Kont(lattice.bool(false), stack)))
-      case OrFrame(exps, env)                      => conditional(vl, Set[State](Kont(lattice.bool(true), stack)), evalOr(exps, env, stack))
+      case AndFrame(exps, env)                     => conditional(vl, evalAnd(exps.head, exps.tail, env, stack), Set[State](Kont(lattice.bool(false), stack)))
+      case OrFrame(exps, env)                      => conditional(vl, Set[State](Kont(vl, stack)), evalOr(exps, env, stack))
       case PairCarFrame(cdr, env, pair)            => Set(Eval(cdr, env, extendKStore(cdr, PairCdrFrame(vl, pair), stack)))
       case PairCdrFrame(carv, pair)                => Set(Kont(allocateCons(pair)(carv, vl), stack))
       case SetFrame(variable, env)                 => Set(Kont(rebind(variable, vl, env), stack)) // Returns bottom.
       case OperatorFrame(args, env, fexp)          => evalArgs(args, fexp, vl, List(), env, stack)
       case OperandsFrame(todo, done, env, f, fexp) => evalArgs(todo.tail, fexp, f, (todo.head, vl) :: done, env, stack)
-      case LetFrame(todo, done, body, env)         => evalLet(todo.tail, (todo.head._1, vl) :: done, body, env, stack)
-      case LetStarFrame(todo, body, env)           => evalLetStar(todo.tail, body, bind(todo.head._1, vl, env), stack)
-      case LetRecFrame(todo, body, env)            => rebind(todo.head._1, vl, env); continueLetRec(todo.tail, body, env, stack)
-      case JoinFrame                               => lattice.getThreads(vl).map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack))
+      case LetFrame(id, todo, done, body, env)     => evalLet(todo, (id, vl) :: done, body, env, stack)
+      case LetStarFrame(id, todo, body, env)       => evalLetStar(todo, body, bind(id, vl, env), stack)
+      case LetRecFrame(id, todo, body, env)        => rebind(id, vl, env); continueLetRec(todo, body, env, stack)
+      case JoinFrame                               => lattice.getThreads(vl).map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack)) //TODO: parameterize ModularLattice with type of TID to avoid asInstanceOf here
     }
 
     private def conditional(value: Value, t: State, f: State): Set[State] = conditional(value, Set(t), Set(f))
@@ -359,8 +363,8 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     }
 
     private def continueLetRec(todo: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = todo match {
-      case Nil                 => evalSequence(body, env, stack)
-      case bnd@((_, exp) :: _) => Set(Eval(exp, env, extendKStore(exp, LetRecFrame(bnd, body, env), stack)))
+      case Nil                => evalSequence(body, env, stack)
+      case (id, exp) :: rest  => Set(Eval(exp, env, extendKStore(exp, LetRecFrame(id, rest, body, env), stack)))
     }
 
     //====================//

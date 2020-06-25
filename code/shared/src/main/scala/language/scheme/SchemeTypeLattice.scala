@@ -4,7 +4,7 @@ import scalaam.core._
 import scalaam.lattice._
 import scalaam.util._
 import SchemeOps._
-import language.CScheme.TID
+import scalaam.language.CScheme.TID
 import scalaam.language.scheme.primitives._
 
 class TypeSchemeLattice[A <: Address, Env] {

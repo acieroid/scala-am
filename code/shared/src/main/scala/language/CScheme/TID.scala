@@ -1,4 +1,4 @@
-package language.CScheme
+package scalaam.language.CScheme
 
 import scalaam.util.SmartHash
 
