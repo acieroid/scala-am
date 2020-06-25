@@ -315,7 +315,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case Nil                 => evalSequence(body, env, stack)
       case bnd@((_, exp) :: _) =>
         val env2 = bnd.map(_._1).foldLeft(env)((env, id) => bind(id, lattice.bottom, env))
-        Set(Eval(exp, env, extendKStore(exp, LetRecFrame(bnd, body, env2), stack)))
+        Set(Eval(exp, env2, extendKStore(exp, LetRecFrame(bnd, body, env2), stack)))
     }
 
     private def evalNamedLet(name: Identifier, bindings: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = {
