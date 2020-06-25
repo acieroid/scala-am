@@ -12,7 +12,7 @@ trait DependencyTracking[Expr <: Expression] extends ModAnalysis[Expr] { inter =
   // update some rudimentary analysis results
   override def intraAnalysis(cmp: Component): DependencyTrackingIntra
   trait DependencyTrackingIntra extends IntraAnalysis {
-    var visited = inter.visited
+    val visited = inter.visited
     override def commit(): Unit = {
       super.commit()
       // update the bookkeeping
