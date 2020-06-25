@@ -29,7 +29,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   // ADDRESSES //
   //XXXXXXXXXXX//
 
-  // TODO: incorporate another addressing scheme...
+  // TODO: incorporate another addressing scheme... (add context).
 
   // Local addresses are simply made out of lexical information.
   sealed trait LocalAddr extends Address {
@@ -457,7 +457,7 @@ trait KAExpressionContext extends SmallStepModConcSemantics {
 
     def allocateKAddr(e: Exp, cc: KA): KAddr = cc match {
       case KEmpty   => KAddr(List(e))
-      case KAddr(l) => KAddr((e :: l).take(5))
+      case KAddr(l) => KAddr((e :: l).take(1))
     }
 
   }
