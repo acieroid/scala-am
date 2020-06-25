@@ -5,6 +5,7 @@ import scalaam.core._
 import scalaam.modular._
 import scalaam.util._
 import scalaam.util.MonoidImplicits._
+import scalaam.util.benchmarks.Timeout
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) 
                                                                         with IndirectComponents[Expr]
@@ -16,8 +17,8 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   // after every step, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
   // the method `adaptAnalysis` needs to be implemented to decide when and how this is carried out
   protected def adaptAnalysis(): Unit
-  override def step(): Unit = {
-    super.step()
+  override def step(timeout: Timeout.T): Unit = {
+    super.step(timeout)
     adaptAnalysis()
   }
   // the core of the adaptive analysis: one needs to implement how components are to be "adapted"

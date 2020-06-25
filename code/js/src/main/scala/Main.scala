@@ -7,6 +7,7 @@ import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.core.Position._
 import scalaam.modular._
+import scalaam.util.benchmarks.Timeout
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -49,11 +50,11 @@ object Main {
       val limit = 5
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
-      override def step() = {
+      override def step(timeout: Timeout.T) = {
         val component = workList.head
         val name = deref(component)
         val prevResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
-        super.step()
+        super.step(timeout)
         val newResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
         println(s"$name => $newResult (previously: $prevResult)")
       }

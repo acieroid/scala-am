@@ -1,6 +1,7 @@
 package scalaam.web
 
 import scalaam.modular._
+import scalaam.util.benchmarks.Timeout
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -262,7 +263,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     if (!analysis.finished()) {
       val component = analysis.workList.head
       val oldDeps = analysis.dependencies(component)
-      analysis.step()
+      analysis.step(Timeout.none)
       refreshDataAfterStep(component, oldDeps)
       refreshVisualisation()
     } else {
