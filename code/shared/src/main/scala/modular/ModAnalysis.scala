@@ -51,7 +51,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
     protected def spawn(cmp: Component): Unit     = C += cmp
     // analyses the given component
     // should only update *local* state and not modify the global analysis state directly
-    def analyze(): Unit
+    def analyze(timeout: Timeout.T = Timeout.none): Unit
     // pushes the local changes to the global analysis state
     def commit(): Unit = {
       R.foreach(inter.register(component,_))

@@ -459,11 +459,11 @@ object SchemeBenchmarks {
     "test/concurrentScheme/threads/fact2.scm",
     //"test/concurrentScheme/threads/lastzero2.scm", // Uses let*, but should use something like letrec*?
     //"test/concurrentScheme/threads/life.scm",
-    "test/concurrentScheme/threads/matmul.scm",
-    //"test/concurrentScheme/threads/mcarlo.scm", // StackOverFlow in concrete
+    //"test/concurrentScheme/threads/matmul.scm", // StackOverflow in concrete.
+    //"test/concurrentScheme/threads/mcarlo.scm", // StackOverFlow in concrete.
     "test/concurrentScheme/threads/mceval.scm",
     "test/concurrentScheme/threads/minimax.scm",
-    "test/concurrentScheme/threads/msort.scm",
+    //"test/concurrentScheme/threads/msort.scm", // Out of Memory error.
     //"test/concurrentScheme/threads/nbody.scm",
     //"test/concurrentScheme/threads/pc.scm",
     "test/concurrentScheme/threads/peterson.scm",

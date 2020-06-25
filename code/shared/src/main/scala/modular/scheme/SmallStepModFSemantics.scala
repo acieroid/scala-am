@@ -3,6 +3,7 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
+import scalaam.util.benchmarks.Timeout
 
 trait SmallStepModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
@@ -46,7 +47,7 @@ trait SmallStepModFSemantics extends SchemeModFSemantics {
                              pairExp: SchemeSplicedPair)  extends Frame
 
     // the main analyze method
-    def analyze(): Unit = {
+    def analyze(timeout: Timeout.T = Timeout.none): Unit = {
       // determine the initial state
       val initialState = EvalState(component.body, Nil)
       // standard worklist algorithm

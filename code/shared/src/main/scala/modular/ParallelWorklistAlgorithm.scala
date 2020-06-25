@@ -45,7 +45,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { 
     def run(): Unit = {
       while (true) { // <- may need to analyze a component multiple times if its dependencies keep changing
         val intra = withLock(intraAnalysis(cmp))
-        intra.analyze() // <- this is where we can run things in parallel!
+        intra.analyze() // <- this is where we can run things in parallel! TODO apply timeout one way or another.
         withLock {
           intra.commit()
           if (intra.isDone) {

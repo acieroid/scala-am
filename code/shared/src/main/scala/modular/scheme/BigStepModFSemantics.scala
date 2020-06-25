@@ -3,13 +3,14 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
+import scalaam.util.benchmarks.Timeout
 
 trait BigStepModFSemantics extends SchemeModFSemantics {
   // defining the intra-analysis
   override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp)
   class BigStepModFIntra(cmp: Component) extends IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
     // analysis entry point
-    def analyze(): Unit = writeResult(eval(component.body))
+    def analyze(timeout: Timeout.T = Timeout.none): Unit = writeResult(eval(component.body)) // Timeout is just ignored here.
     // simple big-step eval
     private def eval(exp: SchemeExp): Value = exp match {
       case SchemeValue(value, _)                                  => evalLiteralValue(value)

@@ -10,6 +10,7 @@ import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.modular._
 import scalaam.util.Annotations.mutable
 import scalaam.util.SmartHash
+import scalaam.util.benchmarks.Timeout
 
 trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
                                    with GlobalStore[SchemeExp]
@@ -121,12 +122,12 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     // ANALYSIS //
     //----------//
 
-    def analyze(): Unit = {
+    def analyze(timeout: Timeout.T = Timeout.none): Unit = {
       val initialState = Eval(component.body, component.env, KEmpty)
       var work: WorkList[State] = LIFOWorkList[State](initialState)
       var visited = Set[State]()
       var result  = lattice.bottom
-      while(work.nonEmpty) {
+      while(work.nonEmpty && !timeout.reached) {
         val state = work.head
         work = work.tail
         state match {
