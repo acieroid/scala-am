@@ -1,5 +1,6 @@
 package scalaam.modular.incremental.scheme
 
+import scalaam.modular.scheme._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
 import scalaam.modular.scheme.StandardSchemeModFComponents
@@ -62,7 +63,7 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
    * @param newExpressions  A map from new identities to corresponding expressions.
    * @return
    */
-  def updateLocalAddress(addr: LocalAddr, newIdentities: Map[OldIdn, NewIdn], newExpressions: Map[NewIdn, SchemeExp]): Option[LocalAddr] = addr match {
+  def updateLocalAddress(addr: scalaam.core.Address, newIdentities: Map[OldIdn, NewIdn], newExpressions: Map[NewIdn, SchemeExp]): Option[scalaam.core.Address] = addr match {
     case VarAddr(id) =>  newIdentities.get(id.idn).map(idn => VarAddr(id.copy(idn = idn)))
     case PtrAddr(exp) => newIdentities.get(exp.idn).flatMap(idn => newExpressions.get(idn).map(PtrAddr))
     case PrmAddr(nam) => Some(PrmAddr(nam))

@@ -7,7 +7,6 @@ import scalaam.modular.adaptive._
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveGlobalStore[SchemeExp]
-                                    with AdaptiveReturnValue[SchemeExp]
                                     with SchemeModFSemantics
                                     with StandardSchemeModFComponents
                                     with BigStepModFSemantics

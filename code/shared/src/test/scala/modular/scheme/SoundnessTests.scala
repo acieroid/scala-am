@@ -79,7 +79,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
-    val aRes = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom)
+    val aRes = a.store.getOrElse(ComponentAddr(a.initialComponent, ReturnAddr), a.lattice.bottom)
     if (!checkSubsumption(a)(concRes, aRes)) {
       val failureMsg =
 s"""Program result is unsound:
@@ -92,8 +92,11 @@ s"""Program result is unsound:
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
-        case a.ComponentAddr(_, addr) => addr.idn()
-        case _                     => Identity.none
+        case ComponentAddr(_, VarAddr(id))  => id.idn
+        case ComponentAddr(_, PtrAddr(ep))  => ep.idn
+        case ComponentAddr(_, ReturnAddr)   => Identity.none
+        case GlobalAddr(PrmAddr(_))         => Identity.none
+        case a                              => throw new Exception(s"Unsupported address $a")
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
       values.foreach { value =>
@@ -276,7 +279,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
-    val aRes = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom)
+    val aRes = a.store.getOrElse(ComponentAddr(a.initialComponent,ReturnAddr), a.lattice.bottom)
     if (!checkSubsumption(a)(concRes, aRes)) {
       val failureMsg =
         s"""Program result is unsound:
@@ -289,8 +292,11 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
-      case a.ComponentAddr(_, addr) => addr.idn()
-      case _                     => Identity.none
+        case ComponentAddr(_, a.VarAddr(id))  => id.idn
+        case ComponentAddr(_, a.PtrAddr(ep))  => ep.idn
+        case ComponentAddr(_, ReturnAddr)   => Identity.none
+        case GlobalAddr(PrmAddr(_))         => Identity.none
+        case a                              => throw new Exception(s"Unsupported address $a")
     }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
       values.foreach { value =>

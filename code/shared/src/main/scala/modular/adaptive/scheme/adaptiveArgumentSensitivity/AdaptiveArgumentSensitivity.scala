@@ -1,6 +1,7 @@
 package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 import scalaam.core._
+import scalaam.modular._
 import scalaam.core.Position._
 import scalaam.language.scheme._
 import scalaam.modular.adaptive.scheme._
@@ -43,15 +44,15 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case valueLattice.Elements(vs)  => vs.flatMap(extractComponentRefs).toSet
   }
   private def extractComponentRefs(v: valueLattice.Value): Set[Component] = v match {
-    case valueLattice.Pointer(ps)       => ps.map(extractComponentRefs)
+    case valueLattice.Pointer(ps)       => ps.flatMap(extractComponentRefs)
     case valueLattice.Clo(cs)           => cs.map(clo => clo._1._2)
     case valueLattice.Cons(car,cdr)     => extractComponentRefs(car) ++ extractComponentRefs(cdr)
     case valueLattice.Vec(_,els)        => els.flatMap(p => extractComponentRefs(p._2)).toSet
     case _                              => Set.empty
   }
-  private def extractComponentRefs(addr: Addr): Component = addr match {
-    case ComponentAddr(cmp, _)  => cmp
-    case ReturnAddr(cmp)        => cmp
+  private def extractComponentRefs(addr: Addr): Set[Component] = addr match {
+    case ComponentAddr(cmp, _)  => Set(cmp)
+    case _                      => Set()
   }
   private def getClosure(cmp: Component): Option[lattice.Closure] = view(cmp) match {
     case Main       => None

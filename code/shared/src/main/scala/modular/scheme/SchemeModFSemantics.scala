@@ -12,51 +12,18 @@ import scalaam.util._
 /**
  * Base definitions for a Scheme MODF analysis.
  */
-trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
-                            with GlobalStore[SchemeExp]
-                            with ReturnValue[SchemeExp]
-                            with ContextSensitiveComponents[SchemeExp]
-{
-  //XXXXXXXXXXXXXXXXXXXX//
-  // LEXICAL ADDRESSING //
-  //XXXXXXXXXXXXXXXXXXXX//
-
-  // Ensure that the program is translated to use lexical addresses first!
-  override lazy val program = {
-    val originalProgram = super.program
-    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-    val initialBindings = primitives.allPrimitives.map(_.name).toSet
-    SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
-  }
-
-  // Set up initial environment and install the primitives in the global store.
-  primitives.allPrimitives.foreach { p =>
-    val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
-    store += (addr -> lattice.primitive(p))
-  }
-
-  // Local addresses are simply made out of lexical information.
-  sealed trait LocalAddr extends Address {
-    def idn(): Identity
-    override def toString() = this match {
-      case VarAddr(id)  => s"var ($id)"
-      case PtrAddr(exp) => s"ptr (${exp.idn})"
-      case PrmAddr(nam) => s"prm ($nam)"
-    }
-  }
-  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
-  case class PtrAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn }
-  case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
-
+trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
+                                    with GlobalStore[SchemeExp]
+                                    with ReturnValue[SchemeExp]
+                                    with ContextSensitiveComponents[SchemeExp] {
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
   //XXXXXXXXXXXXXXXXX//
 
   // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
-  type Prim = SchemePrimitive[Value, Addr]
+  type Prim = SchemePrimitive[Value,Addr]
+  lazy val primitives: SchemePrimitives[Value,Addr] = new SchemeLatticePrimitives()
   implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
-  lazy val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives()
-
 
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
   // COMPONENTS AND CONTEXTS //
@@ -91,7 +58,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     private def resolveAddr(lex: LexicalRef): Addr = lex match {
       case  LocalRef(identifier) => ComponentAddr(component, VarAddr(identifier))
       case GlobalRef(identifier) => ComponentAddr(initialComponent, VarAddr(identifier))
-      case   PrimRef(      name) => ComponentAddr(initialComponent, PrmAddr(name))
+      case   PrimRef(      name) => GlobalAddr(PrmAddr(name))
       case NonLocalRef(identifier,scp) =>
         val cmp = resolveParent(component,scp)
         ComponentAddr(cmp, VarAddr(identifier))
@@ -203,5 +170,23 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       val altVal = if (lattice.isFalse(prd)) alt else Monoid[M].zero
       Monoid[M].append(csqVal,altVal)
     }
+  }
+}
+
+trait SchemeModFSemantics extends GenericSchemeModFSemantics
+                             with DedicatedGlobalStore[SchemeExp] {
+
+  // Ensure that the program is translated to use lexical addresses first!
+  override lazy val program = {
+    val originalProgram = super.program
+    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
+    val initialBindings = primitives.allPrimitives.map(_.name).toSet
+    SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
+  }
+
+  // Set up initial environment and install the primitives in the global store.
+  primitives.allPrimitives.foreach { p =>
+    val addr = GlobalAddr(PrmAddr(p.name))
+    store += (addr -> lattice.primitive(p))
   }
 }

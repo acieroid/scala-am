@@ -31,10 +31,10 @@ abstract class PrecisionBenchmarks[
     case class PtrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<pointer $idn>" }
     
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
-        case analysis.ComponentAddr(_, analysis.VarAddr(v)) => VarAddr(v)
-        case analysis.ComponentAddr(_, analysis.PrmAddr(n)) => PrmAddr(n)
-        case analysis.ComponentAddr(_, analysis.PtrAddr(e)) => PtrAddr(e.idn)
-        case analysis.ReturnAddr(cmp) => RetAddr(analysis.view(cmp).body.idn)
+        case ComponentAddr(_, scalaam.modular.scheme.VarAddr(v))    => VarAddr(v)
+        case ComponentAddr(_, scalaam.modular.scheme.PtrAddr(e))    => PtrAddr(e.idn)
+        case ComponentAddr(cmp, scalaam.modular.ReturnAddr)         => RetAddr(analysis.view(cmp).body.idn)
+        case GlobalAddr(scalaam.modular.scheme.PrmAddr(n))          => PrmAddr(n)
     }
 
     type BaseValue = baseDomain.L

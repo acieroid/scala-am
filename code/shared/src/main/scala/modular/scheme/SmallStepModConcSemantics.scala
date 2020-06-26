@@ -13,7 +13,7 @@ import scalaam.util.SmartHash
 import scalaam.util.benchmarks.Timeout
 
 trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
-                                   with GlobalStore[SchemeExp]
+                                   with DedicatedGlobalStore[SchemeExp]
                                    with ReturnValue[SchemeExp]
                                    with ContextSensitiveComponents[SchemeExp] {
   
@@ -65,7 +65,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     var data = Map[String, Addr]()
     // Set up initial environment and install the primitives in the global store.
     primitives.allPrimitives.foreach { p =>
-      val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
+      val addr = GlobalAddr(PrmAddr(p.name))
       store += (addr -> lattice.primitive(p))
       data = data + (p.name -> addr)
     }

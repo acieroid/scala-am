@@ -2,27 +2,25 @@ package scalaam.modular
 
 import scalaam.core._
 
+sealed trait A[+Component] extends Address
+case class GlobalAddr(addr: Address) extends A[Nothing]                                 { def printable = addr.printable }
+case class ComponentAddr[Component](cmp: Component, addr: Address) extends A[Component] { def printable = addr.printable } 
+
 /**
- * Adds a global store to the analysis. This store supports various addressing modes.
+ * An analysis with a global store.
  * @tparam Expr The type of the expressions under analysis.
  */
 trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
 
-  // parameterized by a type that represents (local) addresses
-  type LocalAddr <: Address
-  // parameterized by a type that represents abstract values
+  type Addr = A[Component]
+
+  // the global store of the analysis
+  var store: Map[Addr,Value]
+
+  // parameterized by the type of abstract values
   type Value
   implicit val lattice: Lattice[Value]
 
-  // addresses in the global analysis are (local) addresses of the intra-analysis + the component
-  trait Addr extends Address
-  case class ComponentAddr(cmp: Component, addr: LocalAddr) extends Addr {
-    override def toString(): String = s"#<$addr $cmp>"
-    def printable: Boolean = addr.printable
-  }
-
-  // the global store of the analysis
-  var store: Map[Addr,Value] = Map()
   private def updateAddr(store: Map[Addr,Value], addr: Addr, value: Value): (Map[Addr,Value],Boolean) = 
     store.get(addr) match {
       case None if value == lattice.bottom => (store, false)
@@ -48,11 +46,11 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
     var store = inter.store
 
     // allocating an address
-    def allocAddr(addr: LocalAddr): ComponentAddr =
+    def allocAddr(addr: Address): Addr =
       ComponentAddr(component, addr)
 
     // reading addresses in the global store
-    protected def readAddr(addr: LocalAddr, cmp: Component = component): Value =
+    protected def readAddr(addr: Address, cmp: Component = component): Value =
       readAddr(ComponentAddr(cmp, addr))
     protected def readAddr(addr: Addr): Value = {
       register(ReadWriteDependency(addr))
@@ -66,7 +64,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
     }
 
     // Writing addresses of the global store, returns whether the store has changed or not.
-    protected def writeAddr(addr: LocalAddr, value: Value, cmp: Component = component): Boolean =
+    protected def writeAddr(addr: Address, value: Value, cmp: Component = component): Boolean =
       writeAddr(ComponentAddr(cmp, addr),value)
     protected def writeAddr(addr: Addr, value: Value): Boolean = {
       val (updatedStore, hasChanged) = updateAddr(intra.store,addr,value)
@@ -89,4 +87,8 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
       case _ => super.commit(dep)
     }
   }
+}
+
+trait DedicatedGlobalStore[Expr <: Expression] extends GlobalStore[Expr] {
+  override var store: Map[Addr,Value] = Map.empty
 }

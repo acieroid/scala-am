@@ -1,5 +1,6 @@
 package scalaam.test.language.scheme
 
+import scalaam.modular._
 import org.scalatest.propspec.AnyPropSpec
 import scalaam.test.tag._
 import scalaam.modular.ModAnalysis
@@ -30,7 +31,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
     a.analyze(Timeout.start(Duration(30 , SECONDS)))
     // All R5RS tests should terminate, no matter the analysis, because they're so simple.
     assert(a.finished(), s"Analysis of $program should finish within the given time bound out.")
-    val result = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom).asInstanceOf[V]
+    val result = a.store.getOrElse(ComponentAddr(a.initialComponent,ReturnAddr), a.lattice.bottom).asInstanceOf[V]
     assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result.")
   }
 
