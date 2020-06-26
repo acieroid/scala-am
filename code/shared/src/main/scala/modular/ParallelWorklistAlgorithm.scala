@@ -52,6 +52,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { 
           // analysis timed out => need to re-analyze the component
           withLock {
             addToWorkList(cmp)
+            return
           }
         } else {
           // analysis finished => commit changes to the global analysis state
@@ -59,9 +60,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { 
             intra.commit()
             if (intra.isDone) {
               queued -= cmp
-              if (queued.isEmpty) {
-                done.signal()
-              }
+              if (queued.isEmpty) done.signal()
               return
             }
           }
