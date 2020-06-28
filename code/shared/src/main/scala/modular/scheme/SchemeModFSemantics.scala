@@ -28,7 +28,7 @@ trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
     p => (p.name, GlobalAddr(PrmAddr(p.name)), lattice.primitive(p)) 
   }
   lazy val initialEnv = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
-  implicit val lattice: SchemeLattice[Value, Addr, Prim, Env]
+  implicit val lattice: SchemeLattice[Value, Addr, Prim]
 
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
   // COMPONENTS AND CONTEXTS //

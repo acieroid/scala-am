@@ -21,7 +21,7 @@ abstract class PrecisionBenchmarks[
     type Benchmark = String
     type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
                                            with AbstractModFDomain {
-        val valueLattice: ModularSchemeLattice[Addr,Env,Str,Bln,Num,Rea,Chr,Smb]
+        val valueLattice: ModularSchemeLattice[Addr,Str,Bln,Num,Rea,Chr,Smb]
     }
 
     sealed trait BaseAddr extends Address { def printable = true }
@@ -38,12 +38,13 @@ abstract class PrecisionBenchmarks[
     }
 
     type BaseValue = baseDomain.L
-    val baseDomain = new ModularSchemeLattice[BaseAddr,Unit,Str,Bln,Num,Rea,Chr,Smb]
+    val baseDomain = new ModularSchemeLattice[BaseAddr,Str,Bln,Num,Rea,Chr,Smb]
     val baseLattice = baseDomain.schemeLattice
     case class StubPrimitive(name: String) extends SchemePrimitive[BaseValue, BaseAddr] {
         def call(fpos: SchemeExp, args: List[(SchemeExp, BaseValue)], store: Store[BaseAddr,BaseValue], alloc: SchemeAllocator[BaseAddr]) =
             throw new Exception("Stub primitive: call not supported")
     }
+    val emptyEnv = Environment[BaseAddr](Iterable.empty)
     case class LambdaIdnEq(lambda: SchemeLambdaExp) extends SchemeLambdaExp {
         def idn = lambda.idn
         def args = lambda.args
@@ -64,7 +65,7 @@ abstract class PrecisionBenchmarks[
         case analysis.valueLattice.Str(s)       => baseDomain.Str(s)
         case analysis.valueLattice.Symbol(s)    => baseDomain.Symbol(s)
         case analysis.valueLattice.Prim(ps)     => baseDomain.Prim(ps.map(p => StubPrimitive(p.name)))
-        case analysis.valueLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((LambdaIdnEq(c._1._1),()),None)))
+        case analysis.valueLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((LambdaIdnEq(c._1._1),emptyEnv),None)))
         case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
         case analysis.valueLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
         case analysis.valueLattice.Vec(s,e)     => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
@@ -81,7 +82,7 @@ abstract class PrecisionBenchmarks[
     private def convertConcreteValue(value: SchemeInterpreter.Value): BaseValue = value match {
         case SchemeInterpreter.Value.Nil                => baseLattice.nil
         case SchemeInterpreter.Value.Undefined(_)       => baseLattice.bottom
-        case SchemeInterpreter.Value.Clo(l, _)          => baseLattice.closure((LambdaIdnEq(l),()),None)
+        case SchemeInterpreter.Value.Clo(l, _)          => baseLattice.closure((LambdaIdnEq(l),emptyEnv),None)
         case SchemeInterpreter.Value.Primitive(p)       => baseLattice.primitive(StubPrimitive(p.name))
         case SchemeInterpreter.Value.Str(s)             => baseLattice.string(s)
         case SchemeInterpreter.Value.Symbol(s)          => baseLattice.symbol(s)

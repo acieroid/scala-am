@@ -53,12 +53,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
   // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
   type Prim = SchemePrimitive[Value, Addr]
-  implicit val lattice: SchemeLattice[Value, Addr, Prim, Env]
+  type Env = Environment[Addr]
+  implicit val lattice: SchemeLattice[Value, Addr, Prim]
   lazy val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives()
-
-  case class Env(data: Map[String, Addr]) {
-    override def toString: String = s"ENV{${data.keySet.toList.filterNot(emptyEnv.data.keySet.contains).sorted.mkString(" ")} <prims>}"
-  }
 
   // The empty environment. Binds all primitives in the store upon initialisation (hence why this is a val and not put in the intra-analysis).
   val emptyEnv: Env = {
@@ -69,7 +66,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       store += (addr -> lattice.primitive(p))
       data = data + (p.name -> addr)
     }
-    Env(data)
+    Environment(data)
   }
 
   //XXXXXXXXXXXX//
@@ -153,10 +150,10 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     //-------------//
 
     def extendEnv(id: Identifier, addr: Addr, env: Env): Env =
-      Env(env.data + (id.name -> addr))
+      env.extend(id.name, addr)
 
     def lookupEnv(id: Identifier, env: Env): Addr = 
-      env.data.getOrElse(id.name, throw new NoSuchElementException(s"$id in $env"))
+      env.lookup(id.name).getOrElse(throw new NoSuchElementException(s"$id in $env"))
 
     //-------//
     // STORE //
