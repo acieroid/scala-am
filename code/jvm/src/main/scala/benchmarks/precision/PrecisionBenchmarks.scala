@@ -33,7 +33,7 @@ abstract class PrecisionBenchmarks[
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
         case ComponentAddr(_, scalaam.modular.scheme.VarAddr(v))    => VarAddr(v)
         case ComponentAddr(_, scalaam.modular.scheme.PtrAddr(e))    => PtrAddr(e.idn)
-        case ComponentAddr(cmp, scalaam.modular.ReturnAddr)         => RetAddr(analysis.view(cmp).body.idn)
+        case ComponentAddr(cmp, scalaam.modular.ReturnAddr)         => RetAddr(analysis.body(cmp).idn)
         case GlobalAddr(scalaam.modular.scheme.PrmAddr(n))          => PrmAddr(n)
     }
 

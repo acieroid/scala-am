@@ -2,6 +2,7 @@ package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 import scalaam.core._
 import scalaam.modular._
+import scalaam.modular.scheme._
 import scalaam.core.Position._
 import scalaam.language.scheme._
 import scalaam.modular.adaptive.scheme._
@@ -15,7 +16,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // to determine how arguments need to be adapted
   private var adaptedArgs = Map[Identifier, Set[Value]]()
   protected def widenArg(fexp: SchemeLambdaExp, par: Identifier, arg: Value) = {
-    val otherCalls = cmpsPerFn(fexp).map { view(_).asInstanceOf[Call] }
+    val otherCalls = cmpsPerFn(fexp).map { view(_).asInstanceOf[Call[ComponentContext,Addr]] }
     val otherArgVs = otherCalls.map(_.ctx.args(fexp.args.indexOf(par)))
     val widenedArg = otherArgVs.foldLeft(arg) { (acc, arg) =>
       if(lattice.subsumes(arg,acc)) { arg } else { acc }
@@ -56,7 +57,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   }
   private def getClosure(cmp: Component): Option[lattice.Closure] = view(cmp) match {
     case Main       => None
-    case call: Call => Some(call.clo)
+    case call: Call[ComponentContext,Addr] => Some(call.clo)
   }
   var toJoin = List[Set[Component]]()
   def joinComponents(cmps: Set[Component]) = {
@@ -64,7 +65,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     while (toJoin.nonEmpty) {
       val next :: rest = this.toJoin
       // look at the next closure + contexts
-      val calls = next.map(view(_).asInstanceOf[Call])
+      val calls = next.map(view(_).asInstanceOf[Call[ComponentContext,Addr]])
       this.toJoin = ??? // calls.map(_.clo._2) :: rest
       val (pars, args) = (calls.head.clo._1.args, calls.map(_.ctx.args))
       //println("Joining the following components:")
@@ -85,7 +86,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     //println("DONE")
   }
   var cmpsPerFn = Map[SchemeExp, Set[Component]]()
-  override def onNewComponent(cmp: Component, call: Call) = {
+  override def onNewComponent(cmp: Component, call: Call[ComponentContext,Addr]) = {
     // update the function to components mapping
     cmpsPerFn += (call.clo._1 -> (cmpsPerFn.get(call.clo._1).getOrElse(Set()) + cmp))
     // if any of the new arguments subsumes an existing widened argument, update that widened argument

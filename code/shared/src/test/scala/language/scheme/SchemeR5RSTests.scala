@@ -45,7 +45,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
     new ModAnalysis(text) with BigStepModFSemantics
                           with ModFConstantPropagationDomain
                           with NoSensitivity
-                          with StandardSchemeModFSemantics
+                          with StandardSchemeModFComponents
                           with LIFOWorklistAlgorithm[SchemeExp]
 
   override def testExpr(program: String, answer: Any): Unit = {
@@ -76,7 +76,7 @@ class ConcreteBigStepModFSoundnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepModFSemantics
                                                         with ModFConstantPropagationDomain
                                                         with NoSensitivity
-                                                        with StandardSchemeModFSemantics
+                                                        with StandardSchemeModFComponents
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }
 
@@ -84,7 +84,7 @@ class ConcreteSmallStepModFSoundnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepModFSemantics
                                                         with ModFConstantPropagationDomain
                                                         with NoSensitivity
-                                                        with StandardSchemeModFSemantics
+                                                        with StandardSchemeModFComponents
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }
 
@@ -92,7 +92,7 @@ class TypeBigStepModFSoundnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepModFSemantics
                                                         with ModFTypeDomain
                                                         with NoSensitivity
-                                                        with StandardSchemeModFSemantics
+                                                        with StandardSchemeModFComponents
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }
 
@@ -100,6 +100,6 @@ class TypeSmallStepModFSoundnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepModFSemantics
                                                         with ModFTypeDomain
                                                         with NoSensitivity
-                                                        with StandardSchemeModFSemantics
+                                                        with StandardSchemeModFComponents
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }

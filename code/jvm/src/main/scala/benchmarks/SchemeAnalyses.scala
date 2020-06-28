@@ -10,21 +10,21 @@ import scalaam.core.Position._
 
 object SchemeAnalyses {
 
-    def contextInsensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+    def contextInsensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFComponents
                                                                           with BigStepModFSemantics
                                                                           with NoSensitivity
                                                                           with ModFConstantPropagationDomain
                                                                           with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
     }
-    def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+    def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFComponents
                                                                                 with BigStepModFSemantics
                                                                                 with CallSiteSensitivity
                                                                                 with ModFConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "call-site-sensitivity"
     }
-    def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFSemantics
+    def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with StandardSchemeModFComponents
                                                                                 with BigStepModFSemantics
                                                                                 with FullArgumentSensitivity
                                                                                 with ModFConstantPropagationDomain
@@ -67,7 +67,7 @@ object SchemeAnalyses {
         override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
-    def parallelAnalysis(prg: SchemeExp, n: Int) = new ModAnalysis(prg) with StandardSchemeModFSemantics 
+    def parallelAnalysis(prg: SchemeExp, n: Int) = new ModAnalysis(prg) with StandardSchemeModFComponents 
                                                                         with BigStepModFSemantics
                                                                         with ParallelWorklistAlgorithm[SchemeExp]
                                                                         with NoSensitivity

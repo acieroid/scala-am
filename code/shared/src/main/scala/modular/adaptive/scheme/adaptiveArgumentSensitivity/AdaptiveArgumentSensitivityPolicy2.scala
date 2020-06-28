@@ -1,5 +1,7 @@
 package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
+import scalaam.modular.scheme._
+
 trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
   // parameterized by a simple budget
   // the analysis can have at most "budget" components at any time

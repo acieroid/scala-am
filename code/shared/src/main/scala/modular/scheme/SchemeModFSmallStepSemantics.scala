@@ -69,7 +69,7 @@ trait SmallStepModFSemantics extends SchemeModFSemantics {
     // the main analyze method
     def analyze(timeout: Timeout.T = Timeout.none): Unit = {
       // determine the initial state
-      val initialState = EvalState(component.body, component.env(component), Nil)
+      val initialState = EvalState(fnBody, fnEnv, Nil)
       // standard worklist algorithm
       var work: WorkList[State] = LIFOWorkList[State](initialState)
       var visited = Set[State]()
@@ -248,5 +248,3 @@ trait SmallStepModFSemantics extends SchemeModFSemantics {
     }
   }
 }
-
-trait SmallStepSchemeModFSemantics extends SmallStepModFSemantics with StandardSchemeModFSemantics

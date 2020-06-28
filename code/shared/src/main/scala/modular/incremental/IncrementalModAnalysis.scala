@@ -42,13 +42,11 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
   type Module = Identity
 
   // Type of 'actual components'.
-  type ComponentData <: LinkedComponent
+  type ComponentData
   /** A linked component has a reference to its lexical module.
    *  By knowing from which module a component stems, it should become easier to find the components affected by a change.
    **/
-  trait LinkedComponent {
-    def mod: Module // Reference to the position of the statical module in which this component has its roots.
-  }
+  def module(cmp: Component): Module
 
   // Map static modules to dynamic components.
   @mutable var mMap: Map[Module, Set[Component]] = Map()
@@ -58,8 +56,8 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
   trait IntraAnalysis extends super.IntraAnalysis {
     override def spawn(cmp: Component): Unit = {
       super.spawn(cmp)
-      mMap = mMap + (cmp.mod -> (mMap(cmp.mod) + cmp))
-      if (!eMap.contains(cmp.mod)) eMap = eMap + (cmp.mod -> componentExpression(cmp)) // If test can be removed if needed.
+      mMap = mMap + (module(cmp) -> (mMap(module(cmp)) + cmp))
+      if (!eMap.contains(module(cmp))) eMap = eMap + (module(cmp) -> componentExpression(cmp)) // If test can be removed if needed.
     }
   }
 
@@ -167,7 +165,7 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
    * @param modifiedModules A set of new modules whose body has been modified. TODO: inner definitions?
    */
   private def computeWork(modifiedModules: Set[Module]): Set[Component] = {
-    visited.filter(c => modifiedModules.contains(c.mod))
+    visited.filter(c => modifiedModules.contains(module(c)))
   }
 
   // Methods to be implemented/overridden in subclasses.

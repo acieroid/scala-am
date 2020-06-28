@@ -18,7 +18,7 @@ object Main {
   def test(): Unit = {
     val txt = Reader.loadFile("test/R5RS/fact.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics 
+    val analysis = new ModAnalysis(prg) with StandardSchemeModFComponents
                                         with BigStepModFSemantics
                                         with LIFOWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity

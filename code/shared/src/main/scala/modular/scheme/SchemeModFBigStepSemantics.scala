@@ -11,7 +11,7 @@ trait BigStepModFSemantics extends SchemeModFSemantics {
   class BigStepModFIntra(cmp: Component) extends IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
     // analysis entry point
     def analyze(timeout: Timeout.T = Timeout.none): Unit = // Timeout is just ignored here.
-      writeResult(eval(component.body, component.env(component))) 
+      writeResult(eval(fnBody, fnEnv)) 
     // simple big-step eval
     private def eval(exp: SchemeExp, env: Env): Value = exp match {
       case SchemeValue(value, _)                                  => evalLiteralValue(value)

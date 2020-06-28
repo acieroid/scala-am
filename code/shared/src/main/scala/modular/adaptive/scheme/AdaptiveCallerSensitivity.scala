@@ -1,5 +1,6 @@
 package scalaam.modular.adaptive.scheme
 
+import scalaam.modular.scheme._
 import scalaam.core.Position._
 import scalaam.language.scheme._
 
@@ -14,7 +15,7 @@ trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
     def adaptCaller(clo: lattice.Closure, caller: Component, position: Position): ComponentContext = ???
     def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) =
         adaptCaller(clo, caller, call)
-    override def onNewComponent(cmp: Component, call: Call) = ???
+    override def onNewComponent(cmp: Component, call: Call[ComponentContext,Addr]) = ???
     def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
         case Main                               => Main
         case Call(clo,nam,(caller,callsite))    => Call(clo, nam, adaptCaller(clo,caller,callsite))

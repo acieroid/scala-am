@@ -1,66 +1,38 @@
 package scalaam.modular.scheme
 
+import scalaam.core._
+import scalaam.util._
 import scalaam.modular._
 import scalaam.language.scheme._
 
-trait StandardSchemeModFComponents extends SchemeModFSemantics {
-
-  // In ModF, components are function calls in some context.
-
-  // This abstract class is parameterised by the choice of two types of components:
-  // * A MainComponent type representing the main function of the program.
-  // * A CallComponent type representing function calls. CallComponents must have a parent pointer and lambda expression, contain a context and may contain a name.
-  // The MainComponent should be unique and can hence be an object. CallComponents can be created using the `newCallComponent` function.
-  // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
-
-  trait MainComponent extends SchemeComponent {
-    def body: SchemeExp = program
-    def env(cmp: Component): Env = initialEnv
-    override def toString: String = "main"
+// A SchemeModFComponent represents function calls
+sealed trait SchemeModFComponent[+Context, +Addr <: Address] extends SmartHash
+// The main function call, i.e. the entry point of the program (corresponding to all top-level code)
+case object Main extends SchemeModFComponent[Nothing,Nothing] {
+  override def toString: String = "main"
+}
+// A call to a specific closure
+case class Call[Context,Addr <: Address](clo: (SchemeLambdaExp, Environment[Addr]), 
+                                         nam: Option[String], 
+                                         ctx: Context) extends SchemeModFComponent[Context,Addr] {
+  // convenience accessors
+  lazy val (lambda, env) = clo
+  // TODO: move this to SchemeLambdaExp
+  def lambdaName: String = nam match {
+    case None => s"λ@${lambda.idn}"
+    case Some(name) => s"$name"
   }
-  trait CallComponent extends SchemeComponent {
-    // Requires a closure and a context and may contain a name.
-    def nam: Option[String]
-    def clo: lattice.Closure
-    def ctx: ComponentContext
-    // convenience accessors
-    lazy val (lambda, lexEnv) = clo
-    lazy val body = SchemeBody(lambda.body)
-    def env(currentCmp: Component) = lexEnv.extend(lambda.args.map { id =>
-      (id.name, ComponentAddr(currentCmp, VarAddr(id)))
-    })
-    // TODO: move this to SchemeLambdaExp
-    def printName: String = nam match {
-      case None => s"λ@${lambda.idn}"
-      case Some(name) => s"$name"
-    }
-    override def toString(): String = printName
-  }
-
-  type ComponentContent = Option[lattice.Closure]
-  def content(cmp: Component) = view(cmp) match {
-    case _ : MainComponent => None
-    case call: CallComponent => Some(call.clo)
-  }
-  def context(cmp: Component) = view(cmp) match {
-    case _ : MainComponent => None
-    case call: CallComponent => Some(call.ctx)
-  }
+  override def toString: String = lambdaName
 }
 
-trait StandardSchemeModFSemantics extends StandardSchemeModFComponents {
-  // Components are just normal SchemeComponents, without any extra fancy features.
-  // Hence, to view a component as a SchemeComponent, the component itself can be used.
-  type Component = SchemeComponent
-  implicit def view(cmp: Component): SchemeComponent = cmp
-
-  // Definition of the initial component.
-  case object Main extends MainComponent
-  // Definition of call components.
-  case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends CallComponent
-
-  lazy val initialComponent: SchemeComponent = Main
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): SchemeComponent = Call(clo,nam,ctx)
+trait StandardSchemeModFComponents extends SchemeModFSemantics {
+  // Components are just Scheme components
+  case class Component(c: SchemeModFComponent[ComponentContext, Addr]) {
+    override def toString = c.toString()
+  }
+  lazy val initialComponent = Component(Main)
+  def newComponent(call: Call[ComponentContext,Addr]) = Component(call)
+  def view(cmp: Component) = cmp.c
 }
 
 /*package scalaam.modular.scheme

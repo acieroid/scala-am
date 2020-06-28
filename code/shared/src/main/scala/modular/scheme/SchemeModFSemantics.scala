@@ -37,14 +37,26 @@ trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
   // In ModF, components are function calls in some context.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
 
-  implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent extends SmartHash { 
-    def body: SchemeExp  
-    def env(cmp: Component): Env
+  def view(cmp: Component): SchemeModFComponent[ComponentContext,Addr]
+
+  def body(cmp: Component): SchemeExp = body(view(cmp))
+  def body(cmp: SchemeModFComponent[ComponentContext,Addr]): SchemeExp = cmp match {
+    case Main                           => program 
+    case c: Call[ComponentContext,Addr] => SchemeBody(c.lambda.body)
+  }
+
+  type ComponentContent = Option[lattice.Closure]
+  def content(cmp: Component) = view(cmp) match {
+    case Main                           => None
+    case c: Call[ComponentContext,Addr] => Some(c.clo)
+  }
+  def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
+    case Main                           => None
+    case c: Call[ComponentContext,Addr] => Some(c.ctx)
   }
 
   /** Creates a new component, given a closure, context and an optional name. */
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
+  def newComponent(call: Call[ComponentContext,Addr]): Component
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext
@@ -55,6 +67,14 @@ trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
 
   // Extensions to the intraAnalysis.
   trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
+    // components
+    protected def fnBody: SchemeExp = body(view(component))
+    protected def fnEnv: Env = view(component) match {
+      case Main         => initialEnv
+      case c: Call[ComponentContext,Addr] => c.env.extend(c.lambda.args.map { id =>
+        (id.name, allocAddr(VarAddr(id)))
+      })
+    }
     // variable lookup: use the global store
     protected def lookup(id: Identifier, env: Env): Value = env.lookup(id.name) match {
       case None       => throw new Exception(s"Undefined variable $id") //TODO: better error reporting
@@ -90,7 +110,8 @@ trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
           val context = allocCtx(nam, clo, argVals, cll, component)
-          val targetCmp = newComponent(clo,nam,context)
+          val targetCall = Call(clo,nam,context)
+          val targetCmp = newComponent(targetCall)
           bindArgs(targetCmp, prs, argVals)
           call(targetCmp)
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length <= arity =>
@@ -98,7 +119,8 @@ trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
           val context = allocCtx(nam, clo, fixedArgVals :+ varArgVal, cll, component)
-          val targetCmp = newComponent(clo,nam,context)
+          val targetCall = Call(clo,nam,context)
+          val targetCmp = newComponent(targetCall)
           bindArgs(targetCmp,prs,fixedArgVals)
           bindArg(targetCmp,vararg,varArgVal)
           call(targetCmp)

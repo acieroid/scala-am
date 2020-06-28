@@ -144,7 +144,7 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with BigStepModFSemantics
-                                      with StandardSchemeModFSemantics
+                                      with StandardSchemeModFComponents
                                       with ModFConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
@@ -155,7 +155,7 @@ trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def name = "big-step semantics with call-site sensitivity for primitives"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
       with BigStepModFSemantics
-      with StandardSchemeModFSemantics
+      with StandardSchemeModFComponents
       with ModFConstantPropagationDomain
       with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
       with LIFOWorklistAlgorithm[SchemeExp] {
@@ -166,7 +166,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with SmallStepModFSemantics
-                                      with StandardSchemeModFSemantics
+                                      with StandardSchemeModFComponents
                                       with ModFConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
@@ -177,7 +177,7 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def name = "parallel analysis (n = 4)"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
                                       with BigStepModFSemantics
-                                      with StandardSchemeModFSemantics
+                                      with StandardSchemeModFComponents
                                       with ModFConstantPropagationDomain
                                       with NoSensitivity
                                       with ParallelWorklistAlgorithm[SchemeExp] {

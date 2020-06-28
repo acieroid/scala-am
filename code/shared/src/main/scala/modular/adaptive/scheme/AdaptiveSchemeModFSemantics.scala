@@ -8,15 +8,12 @@ import scalaam.modular.adaptive._
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveGlobalStore[SchemeExp]
                                     with SchemeModFSemantics
-                                    with StandardSchemeModFComponents
                                     with BigStepModFSemantics
                                     with AbstractModFDomain {
   // Definition of components
-  trait ComponentData extends SchemeComponent
-  case object Main extends ComponentData with MainComponent
-  case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends ComponentData with CallComponent
+  type ComponentData = SchemeModFComponent[ComponentContext,Addr]
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
+  def newComponent(call: Call[ComponentContext,Addr]): Component = ref(call)
 
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
@@ -39,7 +36,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   }
 
   // callback function that can adapt the analysis whenever a new component is 'discovered'
-  protected def onNewComponent(cmp: Component, call: Call): Unit = ()
+  protected def onNewComponent(cmp: Component, call: Call[ComponentContext,Addr]): Unit = ()
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
   var toProcess = Set[Component]()
@@ -48,7 +45,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     while(toProcess.nonEmpty) {
       val cmp = toProcess.head
       toProcess = toProcess.tail
-      val call = view(cmp).asInstanceOf[Call]
+      val call = view(cmp).asInstanceOf[Call[ComponentContext,Addr]]
       onNewComponent(cmp, call)
     }
   }

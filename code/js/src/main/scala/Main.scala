@@ -58,7 +58,7 @@ object Main {
         val newResult = store.get(ComponentAddr(component,ReturnAddr)).getOrElse(lattice.bottom)
         println(s"$name => $newResult (previously: $prevResult)")
       }
-      def key(cmp: Component) = view(cmp).body.idn
+      def key(cmp: Component) = body(cmp).idn
     }
     val visualisation = new WebVisualisationAdaptive(analysis)
     // parameters for the visualisation
