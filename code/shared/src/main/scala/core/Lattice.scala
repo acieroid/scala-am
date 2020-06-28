@@ -28,9 +28,6 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
   /** Equality check, returning an abstract result */
   def eql[B: scalaam.lattice.BoolLattice](x: L, y: L): B
 
-  /** "Splitting" an lattice element v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
-  def split(abs: L): Set[L]
-
   /** For PartialOrdering[L]: a lattice has a partial order, defined by subsumes... */
   final def lteq(x: L, y: L): Boolean = subsumes(y, x)
 
@@ -53,6 +50,5 @@ object Lattice {
     def join(x: Set[A], y: => Set[A]): Set[A]                        = x.union(y)
     def subsumes(x: Set[A], y: => Set[A]): Boolean                   = y.subsetOf(x)
     def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A])    = ???
-    def split(x: Set[A])                                             = x.map(Set(_))
   }
 }

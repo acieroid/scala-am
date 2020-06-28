@@ -82,14 +82,6 @@ trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
       } else {
         lattice.bottom
       }
-    protected def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
-      case Nil                      => fn(Nil)
-      // TODO[minor]: use foldMap instead of foldLeft
-      case (argExp,argVal) :: rest  =>
-        lattice.split(argVal).foldLeft(lattice.bottom) { (acc,argSplitted) => lattice.join(acc,
-          splitArgs(rest)(restSplitted => fn((argExp,argSplitted) :: restSplitted))
-        )}
-    }
     // TODO[minor]: use foldMap instead of foldLeft
     protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position): Value = {
       val arity = args.length

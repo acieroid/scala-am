@@ -104,9 +104,6 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Injection of a thread identifier */
   def thread(tid: TID): L
 
-  /** "Splitting" an abstract value v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
-  def split(abs: L): Set[L]
-
   object Injector {
     implicit def inject(c: Closure, name: Option[String]): L = closure(c, name)
     implicit def inject(car: L, cdr: L): L = cons(car, cdr)

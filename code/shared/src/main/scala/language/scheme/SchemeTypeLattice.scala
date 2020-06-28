@@ -135,7 +135,6 @@ class TypeSchemeLattice[A <: Address] {
     def eql[B : BoolLattice](x: L, y: L) = BoolLattice[B].top /* could be refined in some cases */
     def vector(size: L, init: L): MayFail[L, Error] = ???
     def thread(tid: TID): L                   = ???
-    def split(v: L): Set[L] = ???
   }
   object L {
     implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
