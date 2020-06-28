@@ -330,7 +330,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       val clo = lattice.closure((lambda, env2), Some(name.name))
       rebind(name, clo, env2)
       val call = SchemeFuncall(lambda, actu, name.idn)
-      evalArgs(actu, call, clo, Nil, env2, stack)
+      evalArgs(actu, call, clo, Nil, env, stack)
     }
 
     private def evalFork(body: Exp, env: Env, stack: Stack): Set[State] = {
