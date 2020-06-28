@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import scalaam.modular._
 import scalaam.language.scheme._
 
 trait StandardSchemeModFComponents extends SchemeModFSemantics {
@@ -14,6 +15,7 @@ trait StandardSchemeModFComponents extends SchemeModFSemantics {
 
   trait MainComponent extends SchemeComponent {
     def body: SchemeExp = program
+    def env(cmp: Component): Env = initialEnv
     override def toString: String = "main"
   }
   trait CallComponent extends SchemeComponent {
@@ -22,12 +24,17 @@ trait StandardSchemeModFComponents extends SchemeModFSemantics {
     def clo: lattice.Closure
     def ctx: ComponentContext
     // convenience accessors
-    lazy val (lambda, parent) = clo
-    lazy val body: SchemeExp = SchemeBody(lambda.body)
-    override def toString: String = nam match {
-      case None => s"λ@${lambda.idn} ($parent) [${ctx.toString}]"
-      case Some(name) => s"$name ($parent) [${ctx.toString}]"
+    lazy val (lambda, lexEnv) = clo
+    lazy val body = SchemeBody(lambda.body)
+    def env(currentCmp: Component) = lexEnv.extend(lambda.args.map { id =>
+      (id.name, ComponentAddr(currentCmp, VarAddr(id)))
+    })
+    // TODO: move this to SchemeLambdaExp
+    def printName: String = nam match {
+      case None => s"λ@${lambda.idn}"
+      case Some(name) => s"$name"
     }
+    override def toString(): String = printName
   }
 
   type ComponentContent = Option[lattice.Closure]
@@ -38,11 +45,6 @@ trait StandardSchemeModFComponents extends SchemeModFSemantics {
   def context(cmp: Component) = view(cmp) match {
     case _ : MainComponent => None
     case call: CallComponent => Some(call.ctx)
-  }
-
-  def componentParent(cmp: Component): Option[Component] = view(cmp) match {
-    case _ : MainComponent => None
-    case call: CallComponent => Some(call.parent)
   }
 }
 

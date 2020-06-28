@@ -45,7 +45,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   }
   private def extractComponentRefs(v: valueLattice.Value): Set[Component] = v match {
     case valueLattice.Pointer(ps)       => ps.flatMap(extractComponentRefs)
-    case valueLattice.Clo(cs)           => cs.map(clo => clo._1._2)
+    case valueLattice.Clo(cs)           => cs.map(clo => ???)
     case valueLattice.Cons(car,cdr)     => extractComponentRefs(car) ++ extractComponentRefs(cdr)
     case valueLattice.Vec(_,els)        => els.flatMap(p => extractComponentRefs(p._2)).toSet
     case _                              => Set.empty
@@ -65,7 +65,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
       val next :: rest = this.toJoin
       // look at the next closure + contexts
       val calls = next.map(view(_).asInstanceOf[Call])
-      this.toJoin = calls.map(_.clo._2) :: rest
+      this.toJoin = ??? // calls.map(_.clo._2) :: rest
       val (pars, args) = (calls.head.clo._1.args, calls.map(_.ctx.args))
       //println("Joining the following components:")
       //calls.foreach(call => println(s"- $call"))

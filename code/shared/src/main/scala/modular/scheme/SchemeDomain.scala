@@ -12,7 +12,7 @@ trait AbstractModFDomain extends SchemeModFSemantics {
   type C
   type Sym
   // which are used to construct a "modular" (~ product) lattice
-  val valueLattice: ModularSchemeLattice[Addr,Component,S,B,I,R,C,Sym]
+  val valueLattice: ModularSchemeLattice[Addr,Env,S,B,I,R,C,Sym]
   type Value = valueLattice.L
   lazy val lattice = valueLattice.schemeLattice
 }

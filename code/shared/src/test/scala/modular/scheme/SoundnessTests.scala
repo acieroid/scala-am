@@ -294,8 +294,8 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
         case ComponentAddr(_, a.VarAddr(id))  => id.idn
         case ComponentAddr(_, a.PtrAddr(ep))  => ep.idn
-        case ComponentAddr(_, ReturnAddr)   => Identity.none
-        case GlobalAddr(PrmAddr(_))         => Identity.none
+        case ComponentAddr(_, ReturnAddr)     => Identity.none
+        case GlobalAddr(a.PrmAddr(_))         => Identity.none
         case a                              => throw new Exception(s"Unsupported address $a")
     }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>

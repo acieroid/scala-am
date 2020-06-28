@@ -152,8 +152,8 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     // ENVIRONMENT //
     //-------------//
 
-    def extendEnv(id: Identifier, addr: LocalAddr, env: Env): Env =
-      Env(env.data + (id.name -> allocAddr(addr)))
+    def extendEnv(id: Identifier, addr: Addr, env: Env): Env =
+      Env(env.data + (id.name -> addr))
 
     def lookupEnv(id: Identifier, env: Env): Addr = 
       env.data.getOrElse(id.name, throw new NoSuchElementException(s"$id in $env"))
@@ -166,7 +166,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     @mutable private var storeChanged: Boolean = false
 
     private def bind(variable: Identifier, vl: Value, env: Env): Env = {
-      val addr = VarAddr(variable)
+      val addr = allocAddr(VarAddr(variable))
       if (writeAddr(addr, vl)) storeChanged = true
       extendEnv(variable, addr, env)
     }

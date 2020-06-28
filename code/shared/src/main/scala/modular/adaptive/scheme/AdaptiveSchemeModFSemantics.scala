@@ -20,7 +20,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
 
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
-    case (lambda, parent) => (lambda, update(parent))
+    case (lambda, env) => (lambda, env.mapAddrs(updateAddr(update)))
   }
   def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData = cmp match {
     case Main => Main

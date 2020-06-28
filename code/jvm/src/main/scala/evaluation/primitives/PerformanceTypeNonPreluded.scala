@@ -26,7 +26,7 @@ object PerformanceType extends Performance {
       val initialBindings = primitives.allPrimitives.map(_.name).toSet
       SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
     }
-    lazy val valueLattice = new TypeSchemeLattice[Addr, Component]
+    lazy val valueLattice = new TypeSchemeLattice[Addr, Env]
     type Value = valueLattice.L
     lazy val lattice = valueLattice.schemeLattice
     override lazy val primitives: SchemePrimitives[Value, Addr] = valueLattice.Primitives
@@ -45,7 +45,7 @@ object PerformanceType extends Performance {
       val initialBindings = primitives.allPrimitives.map(_.name).toSet
       SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
     }
-    lazy val valueLattice = new TypeSchemeLattice[Addr, Component]
+    lazy val valueLattice = new TypeSchemeLattice[Addr, Env]
     type Value = valueLattice.L
     lazy val lattice = valueLattice.schemeLattice
   }

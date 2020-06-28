@@ -12,6 +12,7 @@ trait SmallStepModFSemantics extends SchemeModFSemantics {
     // the intermediate states in the intra-analysis
     sealed trait State
     case class EvalState(exp: SchemeExp,
+                         env: Env,
                          cnt: Kont) extends State
     case class KontState(vlu: Value,
                          cnt: Kont) extends State
@@ -22,34 +23,53 @@ trait SmallStepModFSemantics extends SchemeModFSemantics {
     // the frames used to build the continuation
     type Kont = List[Frame]
     sealed trait Frame
-    case class SeqFrame(exps: List[SchemeExp])            extends Frame
-    case class DefVarFrame(id: Identifier)                extends Frame
-    case class SetFrame(lex: LexicalRef)                  extends Frame
+    case class SeqFrame(exps: List[SchemeExp], 
+                        env: Env)                         extends Frame
+    case class SetFrame(id: Identifier,
+                        env: Env)                         extends Frame
     case class IfFrame(csq: SchemeExp,
-                       alt: SchemeExp)                    extends Frame
+                       alt: SchemeExp,
+                       env: Env)                          extends Frame
     case class LetFrame(id: Identifier,
                         bds: List[(Identifier, SchemeExp)],
-                        bdy: List[SchemeExp])             extends Frame
+                        done: List[(Identifier, Value)],
+                        bdy: List[SchemeExp],
+                        env: Env)                         extends Frame
+    case class LetStarFrame(id: Identifier,
+                            bds: List[(Identifier, SchemeExp)],
+                            bdy: List[SchemeExp],
+                            env: Env)                     extends Frame
+    case class LetrecFrame(id: Identifier,
+                           bds: List[(Identifier, SchemeExp)],
+                           done: List[(Identifier, Value)],
+                           bdy: List[SchemeExp],
+                           env: Env)                      extends Frame
     case class ArgsFrame(fexp: SchemeFuncall,
                          fval: Value,
                          curExp: SchemeExp,
                          toEval: List[SchemeExp],
-                         args: List[(SchemeExp,Value)])   extends Frame
+                         args: List[(SchemeExp,Value)],
+                         env: Env)                        extends Frame
     case class FunFrame(fexp: SchemeFuncall,
-                        args: List[SchemeExp])            extends Frame
-    case class AndFrame(exps: List[SchemeExp])            extends Frame
-    case class OrFrame(exps: List[SchemeExp])             extends Frame
-    case class PairCarFrm(pairExp: SchemePair)            extends Frame
+                        args: List[SchemeExp],
+                        env: Env)                         extends Frame
+    case class AndFrame(exps: List[SchemeExp],
+                        env: Env)                         extends Frame
+    case class OrFrame(exps: List[SchemeExp],
+                        env: Env)                         extends Frame
+    case class PairCarFrm(pairExp: SchemePair,
+                          env: Env)                       extends Frame
     case class PairCdrFrm(carValue: Value,
                           pairExp: SchemePair)            extends Frame
-    case class SplicedCarFrm(pairExp: SchemeSplicedPair)  extends Frame
+    case class SplicedCarFrm(pairExp: SchemeSplicedPair,
+                             env: Env)                    extends Frame
     case class SplicedCdrFrm(carValue: Value,
                              pairExp: SchemeSplicedPair)  extends Frame
 
     // the main analyze method
     def analyze(timeout: Timeout.T = Timeout.none): Unit = {
       // determine the initial state
-      val initialState = EvalState(component.body, Nil)
+      val initialState = EvalState(component.body, component.env(component), Nil)
       // standard worklist algorithm
       var work: WorkList[State] = LIFOWorkList[State](initialState)
       var visited = Set[State]()
@@ -71,154 +91,157 @@ trait SmallStepModFSemantics extends SchemeModFSemantics {
     }
     // stepping a state
     private def step(state: State): Set[State] = state match {
-      case EvalState(exp, cnt) =>
-        eval(exp, cnt)
+      case EvalState(exp, env, cnt) =>
+        eval(exp, env, cnt)
       case KontState(vlu, cnt) =>
         val frm = cnt.head
         continue(frm, vlu, cnt.tail)
       case CallState(fexp, fval, args, cnt) =>
-        val result = applyFun(fexp, fval, args, fexp.idn.pos, component)
+        val result = applyFun(fexp, fval, args, fexp.idn.pos)
         Set(KontState(result, cnt))
     }
     // eval
-    private def eval(exp: SchemeExp, cnt: Kont): Set[State] = exp match {
+    private def eval(exp: SchemeExp, env: Env, cnt: Kont): Set[State] = exp match {
       case SchemeValue(value, _) =>
         val result = evalLiteralValue(value)
         Set(KontState(result, cnt))
       case lambda: SchemeLambdaExp =>
-        val result = newClosure(lambda, None)
+        val result = newClosure(lambda, env, None)
         Set(KontState(result, cnt))
-      case SchemeVarLex(_, lex) =>
-        val result = lookupVariable(lex)
+      case SchemeVar(id) =>
+        val result = lookup(id, env)
         Set(KontState(result, cnt))
       case SchemeBegin(exps, _) =>
-        evalSequence(exps, cnt)
-      case SchemeDefineVariable(id, vexp, _) =>
-        val frm = DefVarFrame(id)
-        Set(EvalState(vexp, frm :: cnt))
-      case SchemeDefineFunction(id, prs, bdy, pos) =>
-        val lambda = SchemeLambda(prs, bdy, pos)
-        val result = newClosure(lambda,Some(id.name))
-        defineVariable(id, result)
-        Set(KontState(result, cnt))
-      case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos) =>
-        val lambda = SchemeVarArgLambda(prs, vararg, bdy, pos)
-        val result = newClosure(lambda,Some(id.name))
-        defineVariable(id, result)
-        Set(KontState(result, cnt))
-      case SchemeSetLex(_, lex, vexp, _) =>
-        val frm = SetFrame(lex)
-        Set(EvalState(vexp, frm :: cnt))
+        evalSequence(exps, env, cnt)
+      case SchemeSet(id, vexp, _) =>
+        val frm = SetFrame(id, env)
+        Set(EvalState(vexp, env, frm :: cnt))
       case SchemeIf(prd, csq, alt, _) =>
-        val frm = IfFrame(csq, alt)
-        Set(EvalState(prd, frm :: cnt))
+        val frm = IfFrame(csq, alt, env)
+        Set(EvalState(prd, env, frm :: cnt))
       case SchemeLet(bindings, body, _) =>
-        evalLet(bindings,body,cnt)
+        evalLet(bindings, Nil, body, env, cnt)
       case SchemeLetStar(bindings, body, _) =>
-        evalLet(bindings,body,cnt)
+        evalLetStar(bindings, body, env, cnt)
       case SchemeLetrec(bindings, body, _) =>
-        evalLet(bindings,body,cnt)
+        val extEnv = bindings.foldLeft(env) { 
+          case (env2, (id, _)) => bind(id, env2, lattice.bottom) 
+        }
+        evalLetrec(bindings, Nil, body, extEnv, cnt)
       case SchemeNamedLet(id,bindings,body,pos) =>
         val (prs,ags) = bindings.unzip
         val lambda = SchemeLambda(prs,body,pos)
-        val closure = newClosure(lambda,Some(id.name))
+        val extEnv = bind(id, env, lattice.bottom)
+        val closure = newClosure(lambda,extEnv,Some(id.name))
+        assign(id, extEnv, closure)
         val call = SchemeFuncall(lambda,ags,pos)
-        defineVariable(id, closure)
-        evalArgs(call,closure,ags,Nil,cnt)
+        evalArgs(call, closure, ags, Nil, env, cnt)
       case call@SchemeFuncall(fexp,args,_) =>
-        val frm = FunFrame(call,args)
-        Set(EvalState(fexp, frm :: cnt))
+        val frm = FunFrame(call,args,env)
+        Set(EvalState(fexp, env, frm :: cnt))
       case SchemeAnd(Nil,_) =>
         Set(KontState(lattice.bool(true), cnt))
       case SchemeAnd(first :: rest, _) =>
-        evalAnd(first,rest,cnt)
+        evalAnd(first,rest,env,cnt)
       case SchemeOr(exps,_) =>
-        evalOr(exps,cnt)
+        evalOr(exps,env,cnt)
       case pair: SchemePair =>
-        val frm = PairCarFrm(pair)
-        Set(EvalState(pair.car, frm :: cnt))
+        val frm = PairCarFrm(pair,env)
+        Set(EvalState(pair.car, env, frm :: cnt))
       case spliced: SchemeSplicedPair =>
-        val frm = SplicedCarFrm(spliced)
-        Set(EvalState(spliced.splice, frm :: cnt))
+        val frm = SplicedCarFrm(spliced,env)
+        Set(EvalState(spliced.splice, env, frm :: cnt))
       case _ =>
         throw new Exception(s"Unsupported Scheme expression: $exp")
     }
-    private def evalSequence(exps: List[SchemeExp], cnt: Kont): Set[State] =
+    private def evalSequence(exps: List[SchemeExp], env: Env, cnt: Kont): Set[State] =
       if (exps.tail.isEmpty) {
-        Set(EvalState(exps.head, cnt))
+        Set(EvalState(exps.head, env, cnt))
       } else {
-        val frm = SeqFrame(exps.tail)
-        Set(EvalState(exps.head, frm :: cnt))
+        val frm = SeqFrame(exps.tail, env)
+        Set(EvalState(exps.head, env, frm :: cnt))
       }
-    private def evalLet(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], cnt: Kont): Set[State] =
-      if (bindings.isEmpty) {
-        evalSequence(body,cnt)
-      } else {
-        val (id,vexp) = bindings.head
-        val frm = LetFrame(id,bindings.tail,body)
-        Set(EvalState(vexp, frm :: cnt))
-      }
-    private def evalArgs(fexp: SchemeFuncall, fval: Value, toEval: List[SchemeExp], ags: List[(SchemeExp,Value)], cnt: Kont): Set[State] =
-      if (toEval.isEmpty) {
-        Set(CallState(fexp,fval,ags.reverse,cnt))
-      } else {
-        val curExp = toEval.head
-        val frm = ArgsFrame(fexp, fval, curExp, toEval.tail, ags)
-        Set(EvalState(curExp, frm :: cnt))
-      }
-    private def evalAnd(first: SchemeExp, rest: List[SchemeExp], cnt: Kont): Set[State] =
+    private def evalLet(bindings: List[(Identifier,SchemeExp)], done: List[(Identifier,Value)], body: List[SchemeExp], env: Env, cnt: Kont): Set[State] = bindings match {
+      case Nil => 
+        val extEnv = bind(done,env)
+        evalSequence(body, extEnv, cnt) 
+      case (id,vexp) :: rest  => 
+        val frm = LetFrame(id,rest,done,body,env)
+        Set(EvalState(vexp, env, frm :: cnt))
+    }
+    private def evalLetStar(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], env: Env, cnt: Kont): Set[State] = bindings match {
+      case Nil => evalSequence(body, env, cnt)
+      case (id,vexp) :: rest =>
+        val frm = LetStarFrame(id,rest,body,env)
+        Set(EvalState(vexp, env, frm :: cnt))
+    }
+    private def evalLetrec(bindings: List[(Identifier,SchemeExp)], done: List[(Identifier,Value)], body: List[SchemeExp], env: Env, cnt: Kont): Set[State] = bindings match {
+      case Nil => 
+        assign(done, env)
+        evalSequence(body, env, cnt)
+      case (id,vexp) :: rest =>
+        val frm = LetrecFrame(id,rest,done,body,env)
+        Set(EvalState(vexp, env, frm :: cnt))
+    }
+    private def evalArgs(fexp: SchemeFuncall, fval: Value, toEval: List[SchemeExp], ags: List[(SchemeExp,Value)], env: Env, cnt: Kont): Set[State] = toEval match {
+      case Nil => Set(CallState(fexp,fval,ags.reverse,cnt))
+      case exp :: rest => 
+        val frm = ArgsFrame(fexp, fval, exp, rest, ags, env)
+        Set(EvalState(exp, env, frm :: cnt))
+    }
+    private def evalAnd(first: SchemeExp, rest: List[SchemeExp], env: Env, cnt: Kont): Set[State] =
       if (rest.isEmpty) {
-        Set(EvalState(first,cnt))
+        Set(EvalState(first, env, cnt))
       } else {
-        val frm = AndFrame(rest)
-        Set(EvalState(first, frm :: cnt))
+        val frm = AndFrame(rest, env)
+        Set(EvalState(first, env, frm :: cnt))
       }
-    private def evalOr(exps: List[SchemeExp], cnt: Kont): Set[State] = exps match {
+    private def evalOr(exps: List[SchemeExp], env: Env, cnt: Kont): Set[State] = exps match {
       case Nil =>
         Set(KontState(lattice.bool(false),cnt))
       case nxt :: rst =>
-        val frm = OrFrame(rst)
-        Set(EvalState(nxt, frm :: cnt))
+        val frm = OrFrame(rst, env)
+        Set(EvalState(nxt, env, frm :: cnt))
       }
     // continue
     private def continue(frm: Frame, vlu: Value, cnt: Kont): Set[State] = frm match {
-      case SeqFrame(exps) =>
-        evalSequence(exps, cnt)
-      case DefVarFrame(id) =>
-        defineVariable(id,vlu)
-        Set(KontState(vlu,cnt))
-      case SetFrame(lex) =>
-        setVariable(lex,vlu)
+      case SeqFrame(exps, env) =>
+        evalSequence(exps, env, cnt)
+      case SetFrame(id,env) =>
+        assign(id,env,vlu)
         Set(KontState(lattice.bottom,cnt))
-      case IfFrame(csq, alt) =>
+      case IfFrame(csq, alt, env) =>
         conditional(vlu,
-                    Set(EvalState(csq,cnt)),
-                    Set(EvalState(alt,cnt)))
-      case LetFrame(id,bindings,body) =>
-        defineVariable(id, vlu)
-        evalLet(bindings, body, cnt)
-      case FunFrame(fexp, args) =>
-        evalArgs(fexp,vlu,args,Nil,cnt)
-      case ArgsFrame(fexp,fval,curExp,toEval,args) =>
+                    Set(EvalState(csq,env,cnt)),
+                    Set(EvalState(alt,env,cnt)))
+      case LetFrame(id,rest,done,body,env) =>
+        evalLet(rest, (id,vlu) :: done, body, env, cnt)
+      case LetStarFrame(id,rest,body,env) => 
+        evalLetStar(rest, body, bind(id,env,vlu), cnt)
+      case LetrecFrame(id, rest, done, body, env) => 
+        evalLetrec(rest, (id,vlu) :: done, body, env, cnt)
+      case FunFrame(fexp, args, env) =>
+        evalArgs(fexp, vlu, args, Nil, env, cnt)
+      case ArgsFrame(fexp,fval,curExp,toEval,args,env) =>
         val newArgs = (curExp, vlu) :: args
-        evalArgs(fexp,fval,toEval,newArgs,cnt)
-      case AndFrame(exps) =>
+        evalArgs(fexp, fval, toEval, newArgs, env, cnt)
+      case AndFrame(exps,env) =>
         conditional(vlu,
-                    evalAnd(exps.head,exps.tail,cnt),
+                    evalAnd(exps.head,exps.tail,env,cnt),
                     Set(KontState(lattice.bool(false),cnt)))
-      case OrFrame(exps) =>
+      case OrFrame(exps,env) =>
         conditional(vlu,
                     Set(KontState(vlu,cnt)),
-                    evalOr(exps,cnt))
-      case PairCarFrm(pair) =>
+                    evalOr(exps,env,cnt))
+      case PairCarFrm(pair,env) =>
         val frm = PairCdrFrm(vlu,pair)
-        Set(EvalState(pair.cdr, frm :: cnt))
+        Set(EvalState(pair.cdr, env, frm :: cnt))
       case PairCdrFrm(carVlu,pairExp) =>
         val result = allocateCons(pairExp)(carVlu,vlu)
-        Set(KontState(result,cnt))
-      case SplicedCarFrm(spliced) =>
+        Set(KontState(result, cnt))
+      case SplicedCarFrm(spliced, env) =>
         val frm = SplicedCdrFrm(vlu,spliced)
-        Set(EvalState(spliced.cdr, frm :: cnt))
+        Set(EvalState(spliced.cdr, env, frm :: cnt))
       case SplicedCdrFrm(spliceValue,pairExp) =>
         val result = append(pairExp)((pairExp.splice, spliceValue), (pairExp.cdr,vlu))
         Set(KontState(result,cnt))

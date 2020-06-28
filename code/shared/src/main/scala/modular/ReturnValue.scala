@@ -14,10 +14,10 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
   trait ReturnResultIntra extends GlobalStoreIntra {
     // updating the result of a component (default: of the current component)
     protected def writeResult(result: Value, cmp: Component = component): Unit =
-      writeAddr(ReturnAddr,result,cmp)
+      writeAddr(ComponentAddr(cmp,ReturnAddr),result)
     // reading the result of a component
     protected def readResult(cmp: Component): Value =
-      readAddr(ReturnAddr,cmp)
+      readAddr(ComponentAddr(cmp,ReturnAddr))
     // convenience method: "calling" other components registers a dependency and immediately reads their prior analysis result
     protected def call(cmp: Component): Value = {
       spawn(cmp)

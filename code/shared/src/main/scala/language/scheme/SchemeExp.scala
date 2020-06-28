@@ -69,8 +69,8 @@ trait SchemeLambdaExp extends SchemeExp {
     } else {
       argc >= args.length
     }
-  // free variables
-  def fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
+  // free variables 
+  lazy val fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
   // height
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
   def label: Label = LAM

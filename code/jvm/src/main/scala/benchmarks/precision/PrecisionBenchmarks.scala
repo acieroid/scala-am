@@ -21,7 +21,7 @@ abstract class PrecisionBenchmarks[
     type Benchmark = String
     type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
                                            with AbstractModFDomain {
-        val valueLattice: ModularSchemeLattice[Addr,Component,Str,Bln,Num,Rea,Chr,Smb]
+        val valueLattice: ModularSchemeLattice[Addr,Env,Str,Bln,Num,Rea,Chr,Smb]
     }
 
     sealed trait BaseAddr extends Address { def printable = true }

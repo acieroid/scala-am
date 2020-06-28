@@ -28,9 +28,9 @@ trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
     override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFAnalysisIntra(cmp)
     class AdaptiveSchemeModFAnalysisIntra(component: Component) extends BigStepModFIntra(component) with DependencyTrackingIntra {
         var currentPos: Position = null
-        override def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component) = {
+        override def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position) = {
             this.currentPos = cll
-            super.applyClosures(fun,args,cll,cmp)
+            super.applyClosures(fun,args,cll)
         }
         override def call(cmp: Component) = {
             registerCall((component,currentPos),cmp)
