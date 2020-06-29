@@ -1,6 +1,5 @@
 package scalaam.modular.scheme
 
-import scalaam.language.CScheme._
 import scalaam.core._
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
@@ -12,52 +11,63 @@ import scalaam.util.Annotations.mutable
 import scalaam.util.SmartHash
 import scalaam.util.benchmarks.Timeout
 
+/**
+ * Provides a small-step ModConc semantics for a concurrent Scheme with threads.
+ * Additionally supported primitives (upon R5RS): fork, join.
+ */
 trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
                                    with GlobalStore[SchemeExp]
                                    with ReturnValue[SchemeExp]
                                    with ContextSensitiveComponents[SchemeExp] {
+
+  //XXXXXXXXX//
+  // PROGRAM //
+  //XXXXXXXXX//
   
   type Exp  = SchemeExp
   type Exps = List[Exp]
 
+  // The analysis expects the program to be undefined.
   override lazy val program: SchemeExp = {
-    val originalProgram = super.program
-    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
+    val preludedProgram = SchemePrelude.addPrelude(super.program)
     CSchemeUndefiner.undefine(List(preludedProgram))
   }
+
 
   //XXXXXXXXXXX//
   // ADDRESSES //
   //XXXXXXXXXXX//
 
+
   // TODO: incorporate another addressing scheme... (add context).
 
-  // Local addresses are simply made out of lexical information.
   sealed trait LocalAddr extends Address {
     def idn(): Identity
-    override def toString: String = this match {
-      case VarAddr(id)  => s"var ($id)"
-      case PtrAddr(exp) => s"ptr (${exp.idn})"
-      case PrmAddr(nam) => s"prm ($nam)"
-    }
   }
-  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
-  case class PtrAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn }
-  case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
 
-  //override def intraAnalysis(component: Component): IntraAnalysis = new SmallStepIntra(component)
+  case class VarAddr(id: Identifier) extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn;       override def toString: String = s"var ($id)"        }
+  case class PtrAddr(exp: SchemeExp) extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn;      override def toString: String = s"ptr (${exp.idn})" }
+  case class PrmAddr(nam: String)    extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none; override def toString: String = s"prm ($nam)"       }
+
 
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
   //XXXXXXXXXXXXXXXXX//
+
 
   // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
   type Prim = SchemePrimitive[Value, Addr]
   implicit val lattice: SchemeLattice[Value, Addr, Prim, Env]
   lazy val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives()
 
+
+  //XXXXXXXXXXXXX//
+  // ENVIRONMENT //
+  //XXXXXXXXXXXXX//
+
+
   case class Env(data: Map[String, Addr]) {
-    override def toString: String = s"ENV{${data.keySet.toList.filterNot(emptyEnv.data.keySet.contains).sorted.mkString(" ")} <prims>}"
+    override def toString: String = s"ENV{${data.toList.filter(_._2.printable).map(_._1).sorted.mkString(" ")} <prims>}"
   }
 
   // The empty environment. Binds all primitives in the store upon initialisation (hence why this is a val and not put in the intra-analysis).
@@ -72,30 +82,34 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     Env(data)
   }
 
+
   //XXXXXXXXXXXX//
   // COMPONENTS //
   //XXXXXXXXXXXX//
 
-  //implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent extends SmartHash with TID { def body: SchemeExp; def env: Env } // Scheme components now are thread identifiers.
-
-  //def newComponent(body: Exp, ctx: ComponentContext): SchemeComponent
+  /**
+   * Definition of Scheme components. In ModConc, Scheme components also double as thread identifiers.
+   */
+  trait SchemeComponent extends SmartHash with TID {
+    def exp: SchemeExp; // The expression to evaluate within the component.
+    def env: Env        // The environment in which the expression should be evaluated.
+  }
 
   type Component = SchemeComponent
   implicit def view(c: Component): SchemeComponent = c
 
-  // The main process of the program.
+  // The main thread of the program.
   case object MainComponent extends SchemeComponent {
-    def body: Exp = program
-    def  env: Env = emptyEnv
+    def exp: Exp = program
+    def env: Env = emptyEnv
     override def toString: String = "Main"
   }
 
-  // The context of a component. TODO
+  // The context of a ThreadComponent. TODO
   type ComponentContext = Unit
 
-  // A process created by the program.
-  case class ThreadComponent(body: Exp, env: Env, ctx: ComponentContext) extends SchemeComponent
+  // A thread created by the program.
+  case class ThreadComponent(exp: Exp, env: Env, ctx: ComponentContext) extends SchemeComponent
 
   lazy val initialComponent: SchemeComponent = MainComponent
   def newComponent(body: Exp, env: Env, ctx: ComponentContext): SchemeComponent = ThreadComponent(body, env, ctx)
@@ -105,28 +119,36 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   type ComponentContent = Option[(Exp, Env)]
   def content(cmp: Component): ComponentContent = view(cmp) match {
     case MainComponent => None
-    case p: ThreadComponent => Some((p.body, p.env))
+    case p: ThreadComponent => Some((p.exp, p.env))
   }
   def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
     case MainComponent => None
     case p: ThreadComponent => Some(p.ctx)
   }
 
+
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
 
+
   trait SmallStepIntra extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra  {
+
 
     //----------//
     // ANALYSIS //
     //----------//
 
+
     def analyze(timeout: Timeout.T = Timeout.none): Unit = {
-      val initialState = Eval(component.body, component.env, KEmpty)
-      var work: WorkList[State] = LIFOWorkList[State](initialState)
-      var visited = Set[State]()
-      var result  = lattice.bottom
+      // Create an initial state based on the component's expression and environment, together with an empty continuation stack.
+      val initialState = Eval(component.exp, component.env, KEmpty)
+
+      @mutable var work: WorkList[State] = LIFOWorkList[State](initialState)
+      @mutable var visited = Set[State]()
+      @mutable var result  = lattice.bottom
+
+      // Step states until a fixpoint/timeout is reached.
       while(work.nonEmpty && !timeout.reached) {
         val state = work.head
         work = work.tail
@@ -135,51 +157,61 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
             result = lattice.join(result,vl)
           case _ if !visited.contains(state) =>
             val successors = step(state)
+            work = work.addAll(successors)
+            // Clear the visited set when one of the global stores has changed.
             if (storeChanged || kstoreChanged) {
               visited = Set()
-              storeChanged = false
+               storeChanged = false
               kstoreChanged = false
             }
-            work = work.addAll(successors)
             visited += state
           case _ => ()
         }
       }
+
+      // Write the result value to the store.
       writeResult(result)
     }
 
-    //-------------//
-    // ENVIRONMENT //
-    //-------------//
 
-    def extendEnv(id: Identifier, addr: LocalAddr, env: Env): Env =
+    //-----------------------//
+    // ENVIRONMENT AND STORE //
+    //-----------------------//
+
+
+    // Should not be used directly.
+    private def extendEnv(id: Identifier, addr: LocalAddr, env: Env): Env =
       Env(env.data + (id.name -> allocAddr(addr)))
 
-    def lookupEnv(id: Identifier, env: Env): Addr = 
+    // Should not be used directly.
+    private def lookupEnv(id: Identifier, env: Env): Addr =
       env.data.getOrElse(id.name, throw new NoSuchElementException(s"$id in $env"))
-
-    //-------//
-    // STORE //
-    //-------//
 
     // Tracks changes to the global store.
     @mutable private var storeChanged: Boolean = false
 
-    private def bind(variable: Identifier, vl: Value, env: Env): Env = {
+    /** Defines a new variable: extends the store and environment. */
+    private def define(variable: Identifier, vl: Value, env: Env): Env = {
       val addr = VarAddr(variable)
       if (writeAddr(addr, vl)) storeChanged = true
       extendEnv(variable, addr, env)
     }
 
-    // TODO: better call this assign or something ...
-    private def rebind(variable: Identifier, vl: Value, env: Env): Value = {
+    /** Assigns a variable: updates the store at the corresponding address in environment. */
+    private def assign(variable: Identifier, vl: Value, env: Env): Value = {
       if (writeAddr(lookupEnv(variable, env), vl)) storeChanged = true
       lattice.bottom
     }
 
+    /** Looks up a variable in the store, given the current environment. */
+    private def lookup(variable: Identifier, env: Env): Value =
+      readAddr(lookupEnv(variable, env))
+
+
     //--------//
     // KSTORE //
     //--------//
+
 
     // TODO: improve this and abstract better.
 
@@ -206,9 +238,11 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       kaddr
     }
 
-    //-------//
-    // STACK //
-    //-------//
+
+    //--------------//
+    // STACK FRAMES //
+    //--------------//
+
 
     sealed trait Frame
     type Stack = KA
@@ -227,9 +261,11 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     case class   LetRecFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
     case object    JoinFrame                                                                                       extends Frame
 
+
     //-----------//
     // SEMANTICS //
     //-----------//
+
 
     sealed trait State
 
@@ -249,7 +285,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case l@SchemeLambda(_, _, _)                 => Set(Kont(lattice.closure((l, env), None), stack))
       case l@SchemeVarArgLambda(_, _, _, _)        => Set(Kont(lattice.closure((l, env), None), stack))
       case SchemeValue(value, _)                   => Set(Kont(evalLiteralValue(value), stack))
-      case SchemeVar(id)                           => Set(Kont(readAddr(lookupEnv(id, env)), stack))
+      case SchemeVar(id)                           => Set(Kont(lookup(id, env), stack))
 
       // Multi-step evaluation.
       case c@SchemeFuncall(f, args, _)             => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
@@ -303,32 +339,32 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
     // Let: bindings are made after all expressions are evaluated.
     private def evalLet(todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env, stack: Stack): Set[State] = todo match {
-      case Nil                 =>
-        val env2 = done.reverse.foldLeft(env)((env, bnd) => bind(bnd._1, bnd._2, env))
+      case Nil               =>
+        val env2 = done.reverse.foldLeft(env)((env, bnd) => define(bnd._1, bnd._2, env))
         evalSequence(body, env2, stack)
-      case (id, exp) :: rest    => Set(Eval(exp, env, extendKStore(exp, LetFrame(id, rest, done, body, env), stack)))
+      case (id, exp) :: rest => Set(Eval(exp, env, extendKStore(exp, LetFrame(id, rest, done, body, env), stack)))
     }
 
     // Let*: bindings are made immediately (in continue).
     private def evalLetStar(todo: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = todo match {
-      case Nil                  => evalSequence(body, env, stack)
-      case (id, exp) :: rest    => Set(Eval(exp, env, extendKStore(exp, LetStarFrame(id, rest, body, env), stack)))
+      case Nil               => evalSequence(body, env, stack)
+      case (id, exp) :: rest => Set(Eval(exp, env, extendKStore(exp, LetStarFrame(id, rest, body, env), stack)))
     }
 
-    // Letrec: bindings are made upfront and gradually updated (in continue). TODO is this correct in the abstract? => it's letrec* semantics here, but that's ok (we also do that in ModF)
+    // Letrec: bindings are made upfront and gradually updated (in continue).
     private def evalLetRec(bindings: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = bindings match {
-      case Nil                 => evalSequence(body, env, stack)
+      case Nil               => evalSequence(body, env, stack)
       case (id, exp) :: rest =>
-        val env2 = bindings.map(_._1).foldLeft(env)((env, id) => bind(id, lattice.bottom, env))
+        val env2 = bindings.map(_._1).foldLeft(env)((env, id) => define(id, lattice.bottom, env))
         Set(Eval(exp, env2, extendKStore(exp, LetRecFrame(id, rest, body, env2), stack)))
     }
 
     private def evalNamedLet(name: Identifier, bindings: List[(Identifier, Exp)], body: Exps, env: Env, stack: Stack): Set[State] = {
       val (form, actu) = bindings.unzip
       val lambda = SchemeLambda(form, body, name.idn)
-      val env2 = bind(name, lattice.bottom, env)
+      val env2 = define(name, lattice.bottom, env)
       val clo = lattice.closure((lambda, env2), Some(name.name))
-      rebind(name, clo, env2)
+      assign(name, clo, env2)
       val call = SchemeFuncall(lambda, actu, name.idn)
       evalArgs(actu, call, clo, Nil, env2, stack)
     }
@@ -347,12 +383,12 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case OrFrame(exps, env)                      => conditional(vl, Set[State](Kont(vl, stack)), evalOr(exps, env, stack))
       case PairCarFrame(cdr, env, pair)            => Set(Eval(cdr, env, extendKStore(cdr, PairCdrFrame(vl, pair), stack)))
       case PairCdrFrame(carv, pair)                => Set(Kont(allocateCons(pair)(carv, vl), stack))
-      case SetFrame(variable, env)                 => Set(Kont(rebind(variable, vl, env), stack)) // Returns bottom.
+      case SetFrame(variable, env)                 => Set(Kont(assign(variable, vl, env), stack)) // Returns bottom.
       case OperatorFrame(args, env, fexp)          => evalArgs(args, fexp, vl, List(), env, stack)
       case OperandsFrame(todo, done, env, f, fexp) => evalArgs(todo.tail, fexp, f, (todo.head, vl) :: done, env, stack)
       case LetFrame(id, todo, done, body, env)     => evalLet(todo, (id, vl) :: done, body, env, stack)
-      case LetStarFrame(id, todo, body, env)       => evalLetStar(todo, body, bind(id, vl, env), stack)
-      case LetRecFrame(id, todo, body, env)        => rebind(id, vl, env); continueLetRec(todo, body, env, stack)
+      case LetStarFrame(id, todo, body, env)       => evalLetStar(todo, body, define(id, vl, env), stack)
+      case LetRecFrame(id, todo, body, env)        => assign(id, vl, env); continueLetRec(todo, body, env, stack)
       case JoinFrame                               => lattice.getThreads(vl).map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack)) //TODO: parameterize ModularLattice with type of TID to avoid asInstanceOf here
     }
 
@@ -367,9 +403,11 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case (id, exp) :: rest  => Set(Eval(exp, env, extendKStore(exp, LetRecFrame(id, rest, body, env), stack)))
     }
 
-    //====================//
+
+    //--------------------//
     // EVALUATION HELPERS //
-    //====================//
+    //--------------------//
+
 
     // primitives glue code
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
@@ -397,43 +435,48 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
 
-    private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], stack: Stack): Set[State] = {
-      lattice.getPrimitives(fval).map(prm => Kont(
-        prm.call(fexp, args, StoreAdapter, allocator) match {
-          case MayFailSuccess((vlu,_))  => vlu
-          case MayFailBoth((vlu,_),_)   => vlu
-          case MayFailError(_)          => lattice.bottom
-        },
-        stack)
-      ).toSet
-    }
-
-    private def applyClosures(fun: Value, args: List[(SchemeExp,Value)], stack: Stack): Set[State] = {
-      val arity = args.length
-      lattice.getClosures(fun).flatMap({
-        case ((SchemeLambda(prs,body,_),env), _) if prs.length == arity =>
-          val env2 = prs.zip(args.map(_._2)).foldLeft(env)({case (env, (f, a)) => bind(f, a, env)})
-          evalSequence(body, env2, stack)
-        case ((SchemeVarArgLambda(prs,vararg,body,_),env), _) if prs.length <= arity =>
-          val (fixedArgs, varArgs) = args.splitAt(prs.length)
-          val fixedArgVals = fixedArgs.map(_._2)
-          val varArgVal = allocateList(varArgs)
-          val env2 = bind(vararg, varArgVal, prs.zip(fixedArgVals).foldLeft(env)({case (env, (f, a)) => bind(f, a, env)}))
-          evalSequence(body, env2, stack)
-        case _ => Set()
-      })
-    }
-
     // Function application.
-    private def apply(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], stack: Stack): Set[State] =
+    private def apply(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)], stack: Stack): Set[State] = {
+      // Application of primitives.
+      def applyPrimitives(): Set[State] = {
+        lattice.getPrimitives(fval).map(prm => Kont(
+          prm.call(fexp, args, StoreAdapter, allocator) match {
+            case MayFailSuccess((vlu,_))  => vlu
+            case MayFailBoth((vlu,_),_)   => vlu
+            case MayFailError(_)          => lattice.bottom
+          },
+          stack)
+        ).toSet
+      }
+
+      // Application of closures.
+      def applyClosures(): Set[State] = {
+        lattice.getClosures(fval).flatMap({
+          case ((SchemeLambda(prs,body,_),env), _) if prs.length == args.length =>
+            val env2 = prs.zip(args.map(_._2)).foldLeft(env)({case (env, (f, a)) => define(f, a, env)})
+            evalSequence(body, env2, stack)
+          case ((SchemeVarArgLambda(prs,vararg,body,_),env), _) if prs.length <= args.length =>
+            val (fixedArgs, varArgs) = args.splitAt(prs.length)
+            val fixedArgVals = fixedArgs.map(_._2)
+            val varArgVal = allocateList(varArgs)
+            val env2 = define(vararg, varArgVal, prs.zip(fixedArgVals).foldLeft(env)({case (env, (f, a)) => define(f, a, env)}))
+            evalSequence(body, env2, stack)
+          case _ => Set()
+        })
+      }
+
+      // Function application.
       if(args.forall(_._2 != lattice.bottom))
-        applyClosures(fval,args, stack) ++ applyPrimitives(fexp, fval, args, stack)
+        applyClosures() ++ applyPrimitives()
       else
         Set(Kont(lattice.bottom, stack))
+    }
 
-    //====================//
+
+    //--------------------//
     // ALLOCATION HELPERS //
-    //====================//
+    //--------------------//
+
 
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
       val addr = allocAddr(PtrAddr(pairExp))
