@@ -25,7 +25,7 @@ trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
   type Prim = SchemePrimitive[Value,Addr]
   lazy val primitives: SchemePrimitives[Value,Addr] = new SchemeLatticePrimitives()
   lazy val initialBds: Iterable[(String,Addr,Value)] = primitives.allPrimitives.map {
-    p => (p.name, GlobalAddr(PrmAddr(p.name)), lattice.primitive(p)) 
+    p => (p.name, sharedAddr(PrmAddr(p.name)), lattice.primitive(p)) 
   }
   lazy val initialEnv = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
   implicit val lattice: SchemeLattice[Value, Addr, Prim]
@@ -142,7 +142,7 @@ trait GenericSchemeModFSemantics extends ModAnalysis[SchemeExp]
       throw new Exception("NYI -- append")
     }
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
-      writeAddr(ComponentAddr(component,VarAddr(par)), arg)
+      writeAddr(componentAddr(component,VarAddr(par)), arg)
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
@@ -207,7 +207,7 @@ trait SchemeModFSemantics extends GenericSchemeModFSemantics
 
   // Set up initial environment and install the primitives in the global store.
   primitives.allPrimitives.foreach { p =>
-    val addr = GlobalAddr(PrmAddr(p.name))
+    val addr = sharedAddr(PrmAddr(p.name))
     store += (addr -> lattice.primitive(p))
   }
 }
