@@ -5,33 +5,33 @@ import org.scalatest.propspec.AnyPropSpec
 import scala.util.Random
 
 trait SchemeBenchmarkTests extends AnyPropSpec {
-  // a benchmark is just a file name
+  // A benchmark is just a file name.
   type Benchmark = String
-  // the benchmarks involved in the tests
+  // The benchmarks involved in the tests. Needs to be overridden later.
   def benchmarks(): Set[Benchmark] = Set.empty
 
-  // needs to be implemented to specify the testing behaviour per benchmark
+  // Needs to be implemented to specify the testing behaviour per benchmark.
   protected def onBenchmark(b: Benchmark): Unit
-  // run the benchmarks
+  // Run the benchmarks.
   benchmarks().foreach(onBenchmark)
 }
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.other
+  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.other
 }
 
 trait RandomBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.selectRandom(40)
+  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.selectRandom(40)
 }
 
 trait AllBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.allBenchmarks
+  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.allBenchmarks
 }
 
 trait CSchemeBenchmarkTests extends SchemeBenchmarkTests
 
 trait ThreadBenchmarks extends CSchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = SchemeBenchmarks.threads
+  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.threads
 }
 
 object SchemeBenchmarks {
