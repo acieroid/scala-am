@@ -5,38 +5,70 @@ import scalaam.modular._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
 import scalaam.language.CScheme._
-/*
-trait SchemeModConcSemantics extends DedicatedGlobalStore[SchemeExp]
-                                with ReturnValue[SchemeExp] {
+import scalaam.modular.components.ContextSensitiveComponents
+import scalaam.util.benchmarks.Timeout
+import scalaam.lattice.ConstantPropagation
 
-    trait Component { def bdy: SchemeExp }
-    case object MainThread extends Component { def bdy = program }
-    case class Thread(bdy: SchemeExp) extends Component  // TODO: add context
+trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
+                                with DedicatedGlobalStore[SchemeExp]
+                                with ReturnValue[SchemeExp]
+                                with ContextSensitiveComponents[SchemeExp] {
 
+    // SCHEME SETUP
+
+    type Env = Environment[Addr]
     type Prim = SchemePrimitive[Value,Addr]
     lazy val primitives: SchemePrimitives[Value,Addr] = new SchemeLatticePrimitives()
-    implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
-
-    // add the primitives to the global store
-    trait Addr
-    case class Addr(cmp: Component)
-    case class Addr(cmp: Component, addr: Address) extends Address  { def printable = addr.printable }
-    def buildAddr(cmp: Thread, addr: Address) = Addr(cmp,addr)
-
-    primitives.allPrimitives.foreach { p =>
-        val addr = Addr(initialComponent, p.name)
-        store += (addr -> lattice.primitive(p))
+    lazy val initialBds: Iterable[(String,Addr,Value)] = primitives.allPrimitives.map {
+        p => (p.name, GlobalAddr(PrmAddr(p.name)), lattice.primitive(p)) 
     }
+    lazy val initialEnv = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
+    implicit val lattice: SchemeLattice[Value, Addr, Prim]
 
-    
     // prelude other primitives and translate the program to use lexical addresses
     override val program: SchemeExp = {
         val originalProgram = super.program
         val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-        val initialBindings = Set[String]() //primitives.allPrimitives.map(_.name).toSet
-        CSchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
+        CSchemeUndefiner.undefine(List(preludedProgram))
+    }
+
+    primitives.allPrimitives.foreach { p =>
+        val addr = GlobalAddr(PrmAddr(p.name))
+        store += (addr -> lattice.primitive(p))
+    }
+
+    // COMPONENTS
+
+    def view(cmp: Component): SchemeModConcComponent[ComponentContext,Addr]
+    def initialComponent: Component 
+    def newComponent(thread: Thread[ComponentContext,Addr]): Component
+
+    def body(cmp: Component): SchemeExp = body(view(cmp))
+    def body(cmp: SchemeModConcComponent[ComponentContext,Addr]): SchemeExp = cmp match {
+        case MainThread         => program
+        case Thread(bdy, _, _)  => bdy
+    }
+    
+    type ComponentContent = (SchemeExp, Env)
+    def content(cmp: Component) = view(cmp) match {
+        case MainThread             => (program, initialEnv)
+        case Thread(bdy, env, ctx)  => (bdy, env)
+    }
+    def context(cmp: Component) = view(cmp) match {
+        case MainThread             => None
+        case Thread(bdy, env, ctx)  => Some(ctx)
+    }
+
+    class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp) {
+        val modFAnalysis = new ModAnalysis[SchemeExp](body(cmp)) with GenericSchemeModFSemantics
+                                                                 with BigStepModFSemantics
+                                                                 with NoSensitivity
+                                                                 with ModFConstantPropagationDomain
+                                                                 with StandardSchemeModFComponents
+                                                                 with FIFOWorklistAlgorithm[SchemeExp]
+        def analyze(timeout: Timeout.T): Unit = {
+            
+        }
     }
 
 }
-
-*/

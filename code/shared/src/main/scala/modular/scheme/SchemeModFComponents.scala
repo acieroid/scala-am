@@ -27,6 +27,7 @@ case class Call[Context,Addr <: Address](clo: (SchemeLambdaExp, Environment[Addr
 
 trait StandardSchemeModFComponents extends SchemeModFSemantics {
   // Components are just Scheme components
+  // TODO: make this an "opaque type" in Scala 3?
   case class Component(c: SchemeModFComponent[ComponentContext, Addr]) {
     override def toString = c.toString()
   }
