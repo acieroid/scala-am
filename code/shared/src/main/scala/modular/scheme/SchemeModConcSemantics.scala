@@ -60,7 +60,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     }
 
     class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp) {
-        val modFAnalysis = new ModAnalysis[SchemeExp](body(cmp)) with GenericSchemeModFSemantics
+        val modFAnalysis = new ModAnalysis[SchemeExp](body(cmp)) with BaseSchemeModFSemantics
                                                                  with BigStepModFSemantics
                                                                  with NoSensitivity
                                                                  with ModFConstantPropagationDomain
