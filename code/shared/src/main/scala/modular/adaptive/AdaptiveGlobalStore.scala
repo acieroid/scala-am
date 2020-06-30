@@ -1,12 +1,14 @@
 package scalaam.modular.adaptive
 
-import scalaam.core.Expression
-import scalaam.modular.GlobalStore
+import scalaam.core._
+import scalaam.modular._
 import scalaam.util.MonoidImplicits._
 
-trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] {
+trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
+                                                 with DedicatedGlobalStore[Expr] {
   // update implementation for addresses and dependencies
   def updateAddr(update: Component => Component)(addr: Addr): Addr = addr match {
+    case _ : GlobalAddr => addr
     case ComponentAddr(cmp, localAddr) => ComponentAddr(update(cmp), localAddr)
   }
   override def updateDep(update: Component => Component)(dep: Dependency): Dependency = dep match {

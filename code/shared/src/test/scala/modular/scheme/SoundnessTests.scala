@@ -79,7 +79,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
-    val aRes = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom)
+    val aRes = a.store.getOrElse(ComponentAddr(a.initialComponent, ReturnAddr), a.lattice.bottom)
     if (!checkSubsumption(a)(concRes, aRes)) {
       val failureMsg =
 s"""Program result is unsound:
@@ -92,8 +92,11 @@ s"""Program result is unsound:
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
-        case a.ComponentAddr(_, addr) => addr.idn()
-        case _                     => Identity.none
+        case ComponentAddr(_, VarAddr(id))  => id.idn
+        case ComponentAddr(_, PtrAddr(ep))  => ep.idn
+        case ComponentAddr(_, ReturnAddr)   => Identity.none
+        case GlobalAddr(PrmAddr(_))         => Identity.none
+        case a                              => throw new Exception(s"Unsupported address $a")
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
       values.foreach { value =>
@@ -139,47 +142,42 @@ s"""Intermediate result at $idn is unsound:
 
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
-  def analysis(program: SchemeExp) = new ModAnalysis(program)
-                                      with BigStepModFSemantics
-                                      with StandardSchemeModFSemantics
-                                      with ModFConstantPropagationDomain
+  def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
+                                      with SchemeConstantPropagationDomain
                                       with NoSensitivity
-                                      with LIFOWorklistAlgorithm[SchemeExp] {
-  }
+                                      with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def name = "big-step semantics with call-site sensitivity for primitives"
-  def analysis(program: SchemeExp) = new ModAnalysis(program)
-      with BigStepModFSemantics
-      with StandardSchemeModFSemantics
-      with ModFConstantPropagationDomain
+  def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
+      with SchemeConstantPropagationDomain
       with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
-      with LIFOWorklistAlgorithm[SchemeExp] {
-  }
+      with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
+                                      with SchemeModFSemantics
                                       with SmallStepModFSemantics
-                                      with StandardSchemeModFSemantics
-                                      with ModFConstantPropagationDomain
+                                      with StandardSchemeModFComponents
+                                      with SchemeConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra 
+                                                                        with DedicatedGlobalStoreIntra 
   }
 }
 
 trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def name = "parallel analysis (n = 4)"
-  def analysis(program: SchemeExp) = new ModAnalysis(program)
-                                      with BigStepModFSemantics
-                                      with StandardSchemeModFSemantics
-                                      with ModFConstantPropagationDomain
+  def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
+                                      with SchemeConstantPropagationDomain
                                       with NoSensitivity
                                       with ParallelWorklistAlgorithm[SchemeExp] {
       override def workers = 4
-      override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with ParallelIntra
+      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with DedicatedGlobalStoreIntra with ParallelIntra
   }
 }
 
@@ -188,7 +186,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
                                         with AdaptiveArgumentSensitivityPolicy3
                                         with AdaptiveSchemeModFSemantics
-                                        with ModFConstantPropagationDomain
+                                        with SchemeConstantPropagationDomain
                                         with LIFOWorklistAlgorithm[SchemeExp] {
     val limit = 5
     override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
@@ -276,7 +274,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
-    val aRes = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom)
+    val aRes = a.store.getOrElse(ComponentAddr(a.initialComponent,ReturnAddr), a.lattice.bottom)
     if (!checkSubsumption(a)(concRes, aRes)) {
       val failureMsg =
         s"""Program result is unsound:
@@ -289,8 +287,11 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
-      case a.ComponentAddr(_, addr) => addr.idn()
-      case _                     => Identity.none
+        case ComponentAddr(_, a.VarAddr(id))  => id.idn
+        case ComponentAddr(_, a.PtrAddr(ep))  => ep.idn
+        case ComponentAddr(_, ReturnAddr)     => Identity.none
+        case GlobalAddr(a.PrmAddr(_))         => Identity.none
+        case a                              => throw new Exception(s"Unsupported address $a")
     }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
       values.foreach { value =>

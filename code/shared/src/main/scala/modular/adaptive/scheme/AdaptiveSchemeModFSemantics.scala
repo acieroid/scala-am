@@ -7,21 +7,17 @@ import scalaam.modular.adaptive._
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveGlobalStore[SchemeExp]
-                                    with AdaptiveReturnValue[SchemeExp]
                                     with SchemeModFSemantics
-                                    with StandardSchemeModFComponents
                                     with BigStepModFSemantics
-                                    with AbstractModFDomain {
+                                    with AbstractSchemeDomain {
   // Definition of components
-  trait ComponentData extends SchemeComponent
-  case object Main extends ComponentData with MainComponent
-  case class Call(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext) extends ComponentData with CallComponent
+  type ComponentData = SchemeModFComponent[ComponentContext,Addr]
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component = ref(Call(clo,nam,ctx))
+  def newComponent(call: Call[ComponentContext,Addr]): Component = ref(call)
 
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
-    case (lambda, parent) => (lambda, update(parent))
+    case (lambda, env) => (lambda, env.mapAddrs(updateAddr(update)))
   }
   def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData = cmp match {
     case Main => Main
@@ -40,7 +36,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   }
 
   // callback function that can adapt the analysis whenever a new component is 'discovered'
-  protected def onNewComponent(cmp: Component, call: Call): Unit = ()
+  protected def onNewComponent(cmp: Component, call: Call[ComponentContext,Addr]): Unit = ()
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
   var toProcess = Set[Component]()
@@ -49,7 +45,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     while(toProcess.nonEmpty) {
       val cmp = toProcess.head
       toProcess = toProcess.tail
-      val call = view(cmp).asInstanceOf[Call]
+      val call = view(cmp).asInstanceOf[Call[ComponentContext,Addr]]
       onNewComponent(cmp, call)
     }
   }
@@ -57,5 +53,9 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     super.updateAnalysisData(update)
     this.toProcess = updateSet(update)(toProcess)
   }
-  override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with DependencyTrackingIntra
+  class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp)
+                                                with BigStepModFIntra
+                                                with DependencyTrackingIntra
+                                                with DedicatedGlobalStoreIntra
+  override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFIntra(cmp)
 }

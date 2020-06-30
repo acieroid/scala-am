@@ -1,5 +1,6 @@
 package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
+import scalaam.modular.scheme._
 import scalaam.util.MonoidImplicits._
 
 trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
@@ -36,11 +37,11 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
       propagate(updatedWorklist)
     }
   // do a simple loop check when you have too many components in a single stracktrace
-  override def onNewComponent(cmp: Component, call: Call) = {
+  override def onNewComponent(cmp: Component, call: Call[ComponentContext,Addr]) = {
     super.onNewComponent(cmp,call)
     val callStack = calledBy(cmp)
     val prevCmps: Set[Component] = callStack.collect(c => view(c) match {
-      case cll: Call if cll.clo._1.idn == call.clo._1.idn => c
+      case cll: Call[ComponentContext,Addr] if cll.clo._1.idn == call.clo._1.idn => c
     })
     val updatedCmps = prevCmps + cmp
     if (updatedCmps.size > limit) {
@@ -56,7 +57,7 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
   // - perform the necessary bookkeeping for 'calledBy' whenever a function is called
   // - check if the analysis needs to be adapted on new function calls
   override def intraAnalysis(cmp: Component) = new AdaptiveArgIntraPolicy3(cmp)
-  class AdaptiveArgIntraPolicy3(component: Component) extends BigStepModFIntra(component) with DependencyTrackingIntra {
+  class AdaptiveArgIntraPolicy3(component: Component) extends AdaptiveSchemeModFIntra(component) {
     override def call(cmp: Component) = {
       registerCall(component,cmp)
       super.call(cmp)

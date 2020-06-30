@@ -12,51 +12,10 @@ import scalaam.util._
 /**
  * Base definitions for a Scheme MODF analysis.
  */
-trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
-                            with GlobalStore[SchemeExp]
-                            with ReturnValue[SchemeExp]
-                            with ContextSensitiveComponents[SchemeExp]
-{
-  //XXXXXXXXXXXXXXXXXXXX//
-  // LEXICAL ADDRESSING //
-  //XXXXXXXXXXXXXXXXXXXX//
-
-  // Ensure that the program is translated to use lexical addresses first!
-  override lazy val program = {
-    val originalProgram = super.program
-    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-    val initialBindings = primitives.allPrimitives.map(_.name).toSet
-    SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
-  }
-
-  // Set up initial environment and install the primitives in the global store.
-  primitives.allPrimitives.foreach { p =>
-    val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
-    store += (addr -> lattice.primitive(p))
-  }
-
-  // Local addresses are simply made out of lexical information.
-  sealed trait LocalAddr extends Address {
-    def idn(): Identity
-    override def toString() = this match {
-      case VarAddr(id)  => s"var ($id)"
-      case PtrAddr(exp) => s"ptr (${exp.idn})"
-      case PrmAddr(nam) => s"prm ($nam)"
-    }
-  }
-  case class VarAddr(id: Identifier)  extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn }
-  case class PtrAddr(exp: SchemeExp)  extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn }
-  case class PrmAddr(nam: String)     extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none }
-
-  //XXXXXXXXXXXXXXXXX//
-  // ABSTRACT VALUES //
-  //XXXXXXXXXXXXXXXXX//
-
-  // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
-  type Prim = SchemePrimitive[Value, Addr]
-  implicit val lattice: SchemeLattice[Value, Addr, Prim, Component]
-  lazy val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives()
-
+// TODO: Most of this can be factored out to SchemeSemantics
+trait BaseSchemeModFSemantics extends SchemeSemantics
+                                 with ReturnValue[SchemeExp] 
+                                 with ContextSensitiveComponents[SchemeExp] {
 
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
   // COMPONENTS AND CONTEXTS //
@@ -65,14 +24,26 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
   // In ModF, components are function calls in some context.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
 
-  implicit def view(c: Component): SchemeComponent
-  trait SchemeComponent extends SmartHash { def body: SchemeExp }
+  def view(cmp: Component): SchemeModFComponent[ComponentContext,Addr]
 
-  /** Returns the parent of a component, if any. */
-  def componentParent(c: Component): Option[Component]
+  def body(cmp: Component): SchemeExp = body(view(cmp))
+  def body(cmp: SchemeModFComponent[ComponentContext,Addr]): SchemeExp = cmp match {
+    case Main                           => program 
+    case c: Call[ComponentContext,Addr] => SchemeBody(c.lambda.body)
+  }
+
+  type ComponentContent = Option[lattice.Closure]
+  def content(cmp: Component) = view(cmp) match {
+    case Main                           => None
+    case c: Call[ComponentContext,Addr] => Some(c.clo)
+  }
+  def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
+    case Main                           => None
+    case c: Call[ComponentContext,Addr] => Some(c.ctx)
+  }
 
   /** Creates a new component, given a closure, context and an optional name. */
-  def newComponent(clo: lattice.Closure, nam: Option[String], ctx: ComponentContext): Component
+  def newComponent(call: Call[ComponentContext,Addr]): Component
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext
@@ -83,58 +54,63 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
 
   // Extensions to the intraAnalysis.
   trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
-    // variable lookup: use the global store
-    protected def lookupVariable(lex: LexicalRef): Value = readAddr(resolveAddr(lex))
-    protected def    setVariable(lex: LexicalRef, vlu: Value): Unit = writeAddr(resolveAddr(lex), vlu)
-    protected def defineVariable( id: Identifier, vlu: Value): Unit = writeAddr(    VarAddr( id), vlu)
-    // resolve a lexical address to the corresponding address in the store
-    private def resolveAddr(lex: LexicalRef): Addr = lex match {
-      case  LocalRef(identifier) => ComponentAddr(component, VarAddr(identifier))
-      case GlobalRef(identifier) => ComponentAddr(initialComponent, VarAddr(identifier))
-      case   PrimRef(      name) => ComponentAddr(initialComponent, PrmAddr(name))
-      case NonLocalRef(identifier,scp) =>
-        val cmp = resolveParent(component,scp)
-        ComponentAddr(cmp, VarAddr(identifier))
+    // components
+    protected def fnBody: SchemeExp = body(view(component))
+    protected def fnEnv: Env = view(component) match {
+      case Main                           => initialEnv
+      case c: Call[ComponentContext,Addr] => c.env.extend(c.lambda.args.map { id =>
+        (id.name, allocAddr(VarAddr(id)))
+      })
     }
-    @scala.annotation.tailrec
-    private def resolveParent(cmp: Component, scp: Int): Component =
-      if (scp == 0) { cmp } else resolveParent(componentParent(cmp).get, scp - 1)
-    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value =
+    // variable lookup: use the global store
+    protected def lookup(id: Identifier, env: Env): Value = env.lookup(id.name) match {
+      case None       => throw new Exception(s"Undefined variable $id") //TODO: better error reporting
+      case Some(addr) => readAddr(addr)
+    }
+    protected def assign(id: Identifier, env: Env, vlu: Value): Unit = env.lookup(id.name) match {
+      case None       => throw new Exception(s"Undefined variable $id") //TODO: better error reporting
+      case Some(addr) => writeAddr(addr, vlu)   
+    }
+    protected def assign(bds: List[(Identifier,Value)], env: Env): Unit = 
+      bds.foreach { case (id,vlu) => assign(id,env,vlu) }
+    protected def bind(id: Identifier, env: Env, vlu: Value): Env = {
+      val addr = allocAddr(VarAddr(id))
+      val env2 = env.extend(id.name,addr)
+      writeAddr(addr,vlu)
+      env2
+    }
+    protected def bind(bds: List[(Identifier,Value)], env: Env): Env =
+      bds.foldLeft(env)((env2, bnd) => bind(bnd._1, env2, bnd._2))
+    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position): Value =
       if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args, cll, cmp)
+        val fromClosures = applyClosures(fval,args,cll)
         val fromPrimitives = applyPrimitives(fexp,fval,args)
         lattice.join(fromClosures,fromPrimitives)
       } else {
         lattice.bottom
       }
-    protected def splitArgs(args: List[(SchemeExp,Value)])(fn: List[(SchemeExp,Value)] => Value): Value = args match {
-      case Nil                      => fn(Nil)
-      // TODO[minor]: use foldMap instead of foldLeft
-      case (argExp,argVal) :: rest  =>
-        lattice.split(argVal).foldLeft(lattice.bottom) { (acc,argSplitted) => lattice.join(acc,
-          splitArgs(rest)(restSplitted => fn((argExp,argSplitted) :: restSplitted))
-        )}
-    }
     // TODO[minor]: use foldMap instead of foldLeft
-    protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component): Value = {
+    protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position): Value = {
       val arity = args.length
       val closures = lattice.getClosures(fun)
       closures.foldLeft(lattice.bottom)((acc,clo) => lattice.join(acc, clo match {
         case (clo@(SchemeLambda(prs,_,_),_), nam) if prs.length == arity =>
           val argVals = args.map(_._2)
-          val context = allocCtx(nam, clo, argVals, cll, cmp)
-          val component = newComponent(clo,nam,context)
-          bindArgs(component, prs, argVals)
-          call(component)
+          val context = allocCtx(nam, clo, argVals, cll, component)
+          val targetCall = Call(clo,nam,context)
+          val targetCmp = newComponent(targetCall)
+          bindArgs(targetCmp, prs, argVals)
+          call(targetCmp)
         case (clo@(SchemeVarArgLambda(prs,vararg,_,_),_), nam) if prs.length <= arity =>
           val (fixedArgs,varArgs) = args.splitAt(prs.length)
           val fixedArgVals = fixedArgs.map(_._2)
           val varArgVal = allocateList(varArgs)
-          val context = allocCtx(nam, clo, fixedArgVals :+ varArgVal, cll, cmp)
-          val component = newComponent(clo,nam,context)
-          bindArgs(component,prs,fixedArgVals)
-          bindArg(component,vararg,varArgVal)
-          call(component)
+          val context = allocCtx(nam, clo, fixedArgVals :+ varArgVal, cll, component)
+          val targetCall = Call(clo,nam,context)
+          val targetCmp = newComponent(targetCall)
+          bindArgs(targetCmp,prs,fixedArgVals)
+          bindArg(targetCmp,vararg,varArgVal)
+          call(targetCmp)
         case _ => lattice.bottom
       }))
     }
@@ -153,7 +129,7 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       throw new Exception("NYI -- append")
     }
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
-      writeAddr(VarAddr(par),arg,component)
+      writeAddr(componentAddr(component,VarAddr(par)), arg)
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
@@ -174,13 +150,6 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
     case object StoreAdapter extends Store[Addr,Value] {
       def lookup(a: Addr): Option[Value] = Some(readAddr(a))
       def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
-      // all the other operations should not be used by the primitives ...
-      def content                               = throw new Exception("Operation not allowed!")
-      def keys                                  = throw new Exception("Operation not allowed!")
-      def restrictTo(a: Set[Addr])              = throw new Exception("Operation not allowed!")
-      def forall(p: ((Addr, Value)) => Boolean) = throw new Exception("Operation not allowed!")
-      def join(that: Store[Addr, Value])        = throw new Exception("Operation not allowed!")
-      def subsumes(that: Store[Addr, Value])    = throw new Exception("Operation not allowed!")
     }
     // evaluation helpers
     protected def evalLiteralValue(literal: sexp.Value): Value = literal match {
@@ -194,8 +163,8 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       case _ => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
     // The current component serves as the lexical environment of the closure.
-    protected def newClosure(lambda: SchemeLambdaExp, name: Option[String]): Value =
-      lattice.closure((lambda, component), name)
+    protected def newClosure(lambda: SchemeLambdaExp, env: Env, name: Option[String]): Value =
+      lattice.closure((lambda, env.restrictTo(lambda.fv)), name)
 
     // other helpers
     protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {
@@ -204,4 +173,15 @@ trait SchemeModFSemantics extends ModAnalysis[SchemeExp]
       Monoid[M].append(csqVal,altVal)
     }
   }
+}
+
+trait SchemeModFSemantics extends BaseSchemeModFSemantics
+                             with DedicatedSchemeSemantics
+
+// for convenience, since most Scheme analyses don't need this much parameterization
+abstract class SimpleSchemeModFAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) 
+                                                            with StandardSchemeModFComponents
+                                                            with SchemeModFSemantics
+                                                            with BigStepModFSemantics {
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with DedicatedGlobalStoreIntra
 }

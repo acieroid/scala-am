@@ -1,5 +1,6 @@
 package scalaam.modular.adaptive.scheme
 
+import scalaam.modular.scheme._
 import scalaam.core.Position._
 import scalaam.language.scheme._
 
@@ -14,7 +15,7 @@ trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
     def adaptCaller(clo: lattice.Closure, caller: Component, position: Position): ComponentContext = ???
     def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) =
         adaptCaller(clo, caller, call)
-    override def onNewComponent(cmp: Component, call: Call) = ???
+    override def onNewComponent(cmp: Component, call: Call[ComponentContext,Addr]) = ???
     def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
         case Main                               => Main
         case Call(clo,nam,(caller,callsite))    => Call(clo, nam, adaptCaller(clo,caller,callsite))
@@ -26,11 +27,11 @@ trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
     }
     // we instrument the intra-analysis to perform the necessary bookkeeping for 'calledBy' whenever a function is called
     override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFAnalysisIntra(cmp)
-    class AdaptiveSchemeModFAnalysisIntra(component: Component) extends BigStepModFIntra(component) with DependencyTrackingIntra {
+    class AdaptiveSchemeModFAnalysisIntra(component: Component) extends AdaptiveSchemeModFIntra(component) {
         var currentPos: Position = null
-        override def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position, cmp: Component) = {
+        override def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position) = {
             this.currentPos = cll
-            super.applyClosures(fun,args,cll,cmp)
+            super.applyClosures(fun,args,cll)
         }
         override def call(cmp: Component) = {
             registerCall((component,currentPos),cmp)

@@ -1,3 +1,41 @@
+package scalaam.modular.scheme
+
+import scalaam.core._
+import scalaam.util._
+import scalaam.modular._
+import scalaam.language.scheme._
+
+// A SchemeModFComponent represents function calls
+sealed trait SchemeModFComponent[+Context, +Addr <: Address] extends SmartHash
+// The main function call, i.e. the entry point of the program (corresponding to all top-level code)
+case object Main extends SchemeModFComponent[Nothing,Nothing] {
+  override def toString: String = "main"
+}
+// A call to a specific closure
+case class Call[Context,Addr <: Address](clo: (SchemeLambdaExp, Environment[Addr]), 
+                                         nam: Option[String], 
+                                         ctx: Context) extends SchemeModFComponent[Context,Addr] {
+  // convenience accessors
+  lazy val (lambda, env) = clo
+  // TODO: move this to SchemeLambdaExp
+  def lambdaName: String = nam match {
+    case None => s"λ@${lambda.idn}"
+    case Some(name) => s"$name"
+  }
+  override def toString: String = lambdaName
+}
+
+trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {
+  // Components are just Scheme components
+  // TODO: make this an "opaque type" in Scala 3?
+  case class Component(c: SchemeModFComponent[ComponentContext, Addr]) {
+    override def toString = c.toString()
+  }
+  lazy val initialComponent = Component(Main)
+  def newComponent(call: Call[ComponentContext,Addr]) = Component(call)
+  def view(cmp: Component): SchemeModFComponent[ComponentContext, Addr] = cmp.c
+}
+
 /*package scalaam.modular.scheme
 
 import scalaam.core._

@@ -3,7 +3,7 @@ package scalaam.modular.scheme
 import scalaam.core.Position._
 
 /* Simplest (and most imprecise): no context-sensitivity */
-trait NoSensitivity extends SchemeModFSemantics {
+trait NoSensitivity extends BaseSchemeModFSemantics {
   case class ComponentContext() {
     override def toString = ""
   }
@@ -11,21 +11,21 @@ trait NoSensitivity extends SchemeModFSemantics {
 }
 
 /* Full argument sensitivity for ModF */
-trait FullArgumentSensitivity extends SchemeModFSemantics {
+trait FullArgumentSensitivity extends BaseSchemeModFSemantics {
   case class ComponentContext(args: List[Value]) {
     override def toString: String = args.mkString(",")
   }
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ComponentContext(args)
 }
 
-trait CallSiteSensitivity extends SchemeModFSemantics {
+trait CallSiteSensitivity extends BaseSchemeModFSemantics {
   case class ComponentContext(fn: Position, call: Position) {
     override def toString: String = s"$call->$fn"
   }
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ComponentContext(clo._1.idn.pos, call)
 }
 
-trait FullArgumentCallSiteSensitivity extends SchemeModFSemantics {
+trait FullArgumentCallSiteSensitivity extends BaseSchemeModFSemantics {
   case class ComponentContext(fn: Position, call: Position, args: List[Value]) {
     override def toString: String = {
       val argsstr = args.mkString(",")

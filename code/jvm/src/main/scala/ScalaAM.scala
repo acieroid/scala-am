@@ -16,38 +16,34 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/icp/icp_7_eceval.scm")
+    val txt = Reader.loadFile("test/R5RS/fact.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with StandardSchemeModFSemantics 
-                                        with BigStepModFSemantics
-                                        with ParallelWorklistAlgorithm[SchemeExp]
+    val analysis = new SimpleSchemeModFAnalysis(prg)
                                         with NoSensitivity
-                                        with ModFConstantPropagationDomain {
-      override def workers = 4
+                                        with SchemeConstantPropagationDomain
+                                        with LIFOWorklistAlgorithm[SchemeExp] {
+      //override def workers = 4
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-      override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with ParallelIntra
-      /* 
       var i = 0
-      override def step(): Unit = {
+      override def step(t: Timeout.T = Timeout.none): Unit = {
         i = i + 1
         val cmp = workList.head
         println(s"[$i] $cmp")
-        super.step()
+        super.step(t)
       }
-      */     
     }
     analysis.analyze(Timeout.start(Duration(3600,SECONDS)))
     //debugClosures(analysis)
     debugResults(analysis, false)
   }
 
-  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with StandardSchemeModFComponents
+  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics with StandardSchemeModFComponents
 
   def debugResults(machine: SchemeModFAnalysis, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (machine.ReturnAddr(cmp),result) if cmp == machine.initialComponent =>
+      case (ComponentAddr(cmp, ReturnAddr),result) if cmp == machine.initialComponent =>
         println(s"[$cmp] ${machine.view(cmp)} => $result")
-      case (machine.ComponentAddr(_, _: machine.PrmAddr),_) => 
+      case (ComponentAddr(_, _: PrmAddr), _) => 
         () //don't print primitive addresses
       case (addr,value) if printMore =>
         println(s"$addr => $value")
@@ -92,7 +88,7 @@ object Run extends App {
   val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
 }
-
+/*
 object Analyze extends App {
   val text = Reader.loadFile("test/DEBUG.scm")
   val a = new ModAnalysis(CSchemeParser.parse(text))
@@ -105,3 +101,4 @@ object Analyze extends App {
   val r = a.store(a.ReturnAddr(a.initialComponent))
   println(r)
 }
+*/

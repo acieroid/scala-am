@@ -10,13 +10,14 @@ import scalaam.modular._
 import scalaam.util.Annotations.mutable
 import scalaam.util.SmartHash
 import scalaam.util.benchmarks.Timeout
+import scalaam.lattice._
 
 /**
  * Provides a small-step ModConc semantics for a concurrent Scheme with threads.
  * Additionally supported primitives (upon R5RS): fork, join.
  */
 trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
-                                   with GlobalStore[SchemeExp]
+                                   with DedicatedGlobalStore[SchemeExp]
                                    with ReturnValue[SchemeExp]
                                    with ContextSensitiveComponents[SchemeExp] {
 
@@ -57,29 +58,22 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
   // Abstract values come from a Scala-AM Scheme lattice (a type lattice).
   type Prim = SchemePrimitive[Value, Addr]
-  implicit val lattice: SchemeLattice[Value, Addr, Prim, Env]
+  type Env = Environment[Addr]
+  implicit val lattice: SchemeLattice[Value, Addr, Prim]
   lazy val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives()
-
-
-  //XXXXXXXXXXXXX//
-  // ENVIRONMENT //
-  //XXXXXXXXXXXXX//
-
-
-  case class Env(data: Map[String, Addr]) {
-    override def toString: String = s"ENV{${data.toList.filter(_._2.printable).map(_._1).sorted.mkString(" ")} <prims>}"
-  }
 
   // The empty environment. Binds all primitives in the store upon initialisation (hence why this is a val and not put in the intra-analysis).
   val emptyEnv: Env = {
     var data = Map[String, Addr]()
     // Set up initial environment and install the primitives in the global store.
+    primitives.allPrimitives.foreach { p =>
+      val addr = GlobalAddr(PrmAddr(p.name))
     primitives.CSchemePrimitives.foreach { p =>
       val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
       store += (addr -> lattice.primitive(p))
       data = data + (p.name -> addr)
     }
-    Env(data)
+    Environment(data)
   }
 
 
@@ -132,7 +126,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
 
 
-  trait SmallStepIntra extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra  {
+  trait SmallStepIntra extends IntraAnalysis with DedicatedGlobalStoreIntra with ReturnResultIntra  {
 
 
     //----------//
@@ -180,19 +174,19 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
 
     // Should not be used directly.
-    private def extendEnv(id: Identifier, addr: LocalAddr, env: Env): Env =
-      Env(env.data + (id.name -> allocAddr(addr)))
+    def extendEnv(id: Identifier, addr: Addr, env: Env): Env =
+      env.extend(id.name, addr)
 
     // Should not be used directly.
-    private def lookupEnv(id: Identifier, env: Env): Addr =
-      env.data.getOrElse(id.name, throw new NoSuchElementException(s"$id in $env"))
+    def lookupEnv(id: Identifier, env: Env): Addr =
+      env.lookup(id.name).getOrElse(throw new NoSuchElementException(s"$id in $env"))
 
     // Tracks changes to the global store.
     @mutable private var storeChanged: Boolean = false
 
     /** Defines a new variable: extends the store and environment. */
     private def define(variable: Identifier, vl: Value, env: Env): Env = {
-      val addr = VarAddr(variable)
+      val addr = allocAddr(VarAddr(variable))
       if (writeAddr(addr, vl)) storeChanged = true
       extendEnv(variable, addr, env)
     }
@@ -366,7 +360,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       val clo = lattice.closure((lambda, env2), Some(name.name))
       assign(name, clo, env2)
       val call = SchemeFuncall(lambda, actu, name.idn)
-      evalArgs(actu, call, clo, Nil, env2, stack)
+      evalArgs(actu, call, clo, Nil, env, stack)
     }
 
     private def evalFork(body: Exp, env: Env, stack: Stack): Set[State] = {
@@ -500,7 +494,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
 trait KAExpressionContext extends SmallStepModConcSemantics {
 
-  override def intraAnalysis(component: Component): IntraAnalysis = new AllocIntra(component)
+  override def intraAnalysis(component: Component) = new AllocIntra(component)
 
   class AllocIntra(cmp: Component) extends IntraAnalysis(cmp) with SmallStepIntra {
 
@@ -510,4 +504,45 @@ trait KAExpressionContext extends SmallStepModConcSemantics {
     }
 
   }
+}
+
+
+trait AbstractModConcDomain extends SmallStepModConcSemantics {
+  // parameterized by different abstract domains for each type
+  type S
+  type B
+  type I
+  type R
+  type C
+  type Sym
+  // which are used to construct a "modular" (~ product) lattice
+  val valueLattice: ModularSchemeLattice[Addr,S,B,I,R,C,Sym]
+  type Value = valueLattice.L
+  lazy val lattice = valueLattice.schemeLattice
+}
+
+/* A type lattice for ModConc. */
+trait ModConcTypeDomain extends AbstractModConcDomain {
+  // use type domains everywhere, except for booleans
+  type S    = Type.S
+  type B    = Concrete.B
+  type I    = Type.I
+  type R    = Type.R
+  type C    = Type.C
+  type Sym  = Concrete.Sym
+  // make the scheme lattice
+  lazy val valueLattice = new ModularSchemeLattice
+}
+
+/* A constant propagation lattice for ModConc. */
+trait ModConcConstantPropagationDomain extends AbstractModConcDomain {
+  // use constant propagation domains everywhere, except for booleans
+  type S    = ConstantPropagation.S
+  type B    = ConstantPropagation.B
+  type I    = ConstantPropagation.I
+  type R    = ConstantPropagation.R
+  type C    = ConstantPropagation.C
+  type Sym  = Concrete.Sym
+  // make the scheme lattice
+  lazy val valueLattice = new ModularSchemeLattice
 }

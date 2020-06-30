@@ -1,5 +1,6 @@
 package scalaam.test.language.scheme
 
+import scalaam.modular._
 import org.scalatest.propspec.AnyPropSpec
 import scalaam.test.tag._
 import scalaam.modular.ModAnalysis
@@ -16,7 +17,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
 
   type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   type V
-  type L = SchemeLattice[V, _ <: Address, _ <: Primitive, _]
+  type L = SchemeLattice[V, _ <: Address, _ <: Primitive]
 
   def analysis(text: SchemeExp): Analysis
 
@@ -30,7 +31,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
     a.analyze(Timeout.start(Duration(30 , SECONDS)))
     // All R5RS tests should terminate, no matter the analysis, because they're so simple.
     assert(a.finished(), s"Analysis of $program should finish within the given time bound out.")
-    val result = a.store.getOrElse(a.ReturnAddr(a.initialComponent), a.lattice.bottom).asInstanceOf[V]
+    val result = a.store.getOrElse(ComponentAddr(a.initialComponent,ReturnAddr), a.lattice.bottom).asInstanceOf[V]
     assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result.")
   }
 
@@ -41,10 +42,9 @@ trait SchemeR5RSTests extends AnyPropSpec {
 class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) =
     // Not really clean, we only want a proper ConstantPropagationLattice definition
-    new ModAnalysis(text) with BigStepModFSemantics
-                          with ModFConstantPropagationDomain
+    new SimpleSchemeModFAnalysis(text)
+                          with SchemeConstantPropagationDomain
                           with NoSensitivity
-                          with StandardSchemeModFSemantics
                           with LIFOWorklistAlgorithm[SchemeExp]
 
   override def testExpr(program: String, answer: Any): Unit = {
@@ -72,33 +72,15 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 }
 
 class ConcreteBigStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepModFSemantics
-                                                        with ModFConstantPropagationDomain
+  def analysis(text: SchemeExp) = new SimpleSchemeModFAnalysis(text)
+                                                        with SchemeConstantPropagationDomain
                                                         with NoSensitivity
-                                                        with StandardSchemeModFSemantics
-                                                        with LIFOWorklistAlgorithm[SchemeExp]
-}
-
-class ConcreteSmallStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepModFSemantics
-                                                        with ModFConstantPropagationDomain
-                                                        with NoSensitivity
-                                                        with StandardSchemeModFSemantics
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 class TypeBigStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepModFSemantics
-                                                        with ModFTypeDomain
+  def analysis(text: SchemeExp) = new SimpleSchemeModFAnalysis(text)
+                                                        with SchemeTypeDomain
                                                         with NoSensitivity
-                                                        with StandardSchemeModFSemantics
-                                                        with LIFOWorklistAlgorithm[SchemeExp]
-}
-
-class TypeSmallStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepModFSemantics
-                                                        with ModFTypeDomain
-                                                        with NoSensitivity
-                                                        with StandardSchemeModFSemantics
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }

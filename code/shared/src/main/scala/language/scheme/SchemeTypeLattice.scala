@@ -7,10 +7,10 @@ import SchemeOps._
 import scalaam.language.CScheme.TID
 import scalaam.language.scheme.primitives._
 
-class TypeSchemeLattice[A <: Address, Env] {
+class TypeSchemeLattice[A <: Address] {
   type P = SchemePrimitive[L, A]
 
-  case class L(str: Boolean = false, bool: Boolean = false, num: Boolean = false, char: Boolean = false, sym: Boolean = false, nil: Boolean = false, prims: Set[P] = Set.empty, clos: Set[((SchemeLambdaExp, Env), Option[String])] = Set.empty, ptrs: Set[A] = Set.empty, consCells: (L,L) = (L(),L())) extends SmartHash {
+  case class L(str: Boolean = false, bool: Boolean = false, num: Boolean = false, char: Boolean = false, sym: Boolean = false, nil: Boolean = false, prims: Set[P] = Set.empty, clos: Set[((SchemeLambdaExp, schemeLattice.Env), Option[String])] = Set.empty, ptrs: Set[A] = Set.empty, consCells: (L,L) = (L(),L())) extends SmartHash {
     def isBottom: Boolean = !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom
   }
   object Inject {
@@ -30,7 +30,7 @@ class TypeSchemeLattice[A <: Address, Env] {
   def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
     if (b) { MayFail.success(v) } else { MayFail.failure(OperatorNotApplicable(name, args)) }
 
-  val schemeLattice: SchemeLattice[L, A, P, Env] = new SchemeLattice[L, A, P, Env] {
+  val schemeLattice: SchemeLattice[L, A, P] = new SchemeLattice[L, A, P] {
     def show(x: L): String = s"$x"
     def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
     def isFalse(x: L): Boolean = x.bool
@@ -140,7 +140,7 @@ class TypeSchemeLattice[A <: Address, Env] {
     def split(v: L): Set[L] = ???
   }
   object L {
-    implicit val lattice: SchemeLattice[L, A, P, Env] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
   }
 
   object Primitives extends SchemeLatticePrimitives[L, A] with PrimitiveBuildingBlocks[L,A] {

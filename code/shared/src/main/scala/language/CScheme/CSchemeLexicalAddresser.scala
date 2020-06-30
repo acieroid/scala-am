@@ -1,4 +1,4 @@
-package language.CScheme
+package scalaam.language.CScheme
 
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
@@ -10,6 +10,6 @@ object CSchemeLexicalAddresser extends BaseSchemeLexicalAddresser {
     case    CSchemeJoin(exp, idn) =>    CSchemeJoin(translate(exp, scope), idn)
     case CSchemeAcquire(exp, idn) => CSchemeAcquire(translate(exp, scope), idn)
     case CSchemeRelease(exp, idn) => CSchemeRelease(translate(exp, scope), idn)
-    case _ => super.translate(exp, scope)
+    case _                        => super.translate(exp, scope)
   }
 }

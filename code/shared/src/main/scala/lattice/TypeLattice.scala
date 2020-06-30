@@ -39,10 +39,6 @@ object Type {
       case (Top, Top) => BoolLattice[B2].top
       case _          => BoolLattice[B2].bottom
     }
-    def split(v: T) = v match {
-      case Bottom => Set.empty
-      case Top    => Set(Top)
-    }
   }
 
   type S   = T

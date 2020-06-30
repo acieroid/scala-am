@@ -38,6 +38,8 @@ abstract class ModularSchemeLatticeGenerator[
   chrGen: LatticeGenerator[C],
   symGen: LatticeGenerator[Sym]) {
 
+    val emptyEnv = Environment[SimpleAddr](Iterable.empty)
+
     // useful shorthands
     lazy val intLat = implicitly[IntLattice[I]]
     lazy val blnLat = implicitly[BoolLattice[B]]
@@ -49,13 +51,12 @@ abstract class ModularSchemeLatticeGenerator[
     def pickAtMost[X](max: Int, gen: Gen[X]): Gen[List[X]] = 
         for { n <- Gen.choose(0,max) ; lst <- Gen.listOfN(n,gen) } yield lst
 
-    // for the purposes of generating arbitrary Scheme values, we can just represent addresses and environments with integers
+    // for the purposes of generating arbitrary Scheme values, we can just represent addresses with integers
     case class SimpleAddr(addr: Int) extends Address { def printable = true }
-    case class SimpleEnv(id: Int)
     // we'll use the "real" primitives
     def primitives = new SchemeLatticePrimitives[modularLattice.L, SimpleAddr]
     // the modular lattice that is used
-    lazy val modularLattice: ModularSchemeLattice[SimpleAddr,SimpleEnv,S,B,I,R,C,Sym] = new ModularSchemeLattice
+    lazy val modularLattice: ModularSchemeLattice[SimpleAddr,S,B,I,R,C,Sym] = new ModularSchemeLattice
     
     type L = modularLattice.L
     type V = modularLattice.Value
@@ -115,8 +116,7 @@ abstract class ModularSchemeLatticeGenerator[
             nm1 <- Gen.choose(0,100)                // lambdas are faked in 100 different variations
             lam = SchemeLambda(List(),List(SchemeValue(ValueInteger(nm1), Identity.none)),Identity.none)
             nm2 <- Gen.choose(0,100)                // environments are faked in 100 different variations
-            env = SimpleEnv(nm2)
-        } yield ((lam,env),None)
+        } yield ((lam,emptyEnv),None)
         // a generator for each type of value
         val anyNilV: Gen[V] = Gen.const(modularLattice.Nil)
         val anyIntV: Gen[V] = intGen.any.retryUntil(_ != IntLattice[I].bottom).map(modularLattice.Int)

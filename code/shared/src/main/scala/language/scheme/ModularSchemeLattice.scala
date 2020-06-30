@@ -19,7 +19,6 @@ import scalaam.util.SmartUnion._
 /** TODO[medium]: use Show and ShowStore here */
 class ModularSchemeLattice[
     A <: Address,
-    Env,
     S: StringLattice,
     B: BoolLattice,
     I: IntLattice,
@@ -608,7 +607,7 @@ class ModularSchemeLattice[
   }
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
-  val schemeLattice: SchemeLattice[L, A, P, Env] = new SchemeLattice[L, A, P, Env] {
+  val schemeLattice: SchemeLattice[L, A, P] = new SchemeLattice[L, A, P] {
     def    show(x: L):  String = x.toString /* TODO[easy]: implement better */
     def  isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
@@ -659,10 +658,9 @@ class ModularSchemeLattice[
     def lock(): L                             = Element(Value.lock())
     def nil: L = Element(Value.nil)
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
-    def split(abs: L): Set[L] = abs.foldMapL(v => Value.split(v).map(va => Element(va)))(setMonoid)
   }
 
   object L {
-    implicit val lattice: SchemeLattice[L, A, P, Env] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
   }
 }

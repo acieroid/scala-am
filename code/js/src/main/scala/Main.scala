@@ -44,7 +44,7 @@ object Main {
     val program = SchemeParser.parse(text)
     val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
                                                     with AdaptiveArgumentSensitivityPolicy3
-                                                    with ModFConstantPropagationDomain
+                                                    with SchemeConstantPropagationDomain
                                                     with FIFOWorklistAlgorithm[SchemeExp]
                                                     with WebAdaptiveAnalysis[SchemeExp] {
       val limit = 5
@@ -53,12 +53,12 @@ object Main {
       override def step(timeout: Timeout.T) = {
         val component = workList.head
         val name = deref(component)
-        val prevResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
+        val prevResult = store.get(ComponentAddr(component,ReturnAddr)).getOrElse(lattice.bottom)
         super.step(timeout)
-        val newResult = store.get(ReturnAddr(component)).getOrElse(lattice.bottom)
+        val newResult = store.get(ComponentAddr(component,ReturnAddr)).getOrElse(lattice.bottom)
         println(s"$name => $newResult (previously: $prevResult)")
       }
-      def key(cmp: Component) = view(cmp).body.idn
+      def key(cmp: Component) = body(cmp).idn
     }
     val visualisation = new WebVisualisationAdaptive(analysis)
     // parameters for the visualisation

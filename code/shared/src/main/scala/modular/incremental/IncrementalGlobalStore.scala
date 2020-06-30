@@ -1,11 +1,11 @@
 package modular.incremental
 
 import scalaam.core._
-import scalaam.modular.GlobalStore
+import scalaam.modular._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.util.Annotations.assume
 
-trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] {
+trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with DedicatedGlobalStore[Expr] {
 
   /** Updates an address itself in the store. Removes the old address and stores the corresponding value at the new address. */
   @assume("The address nw is not bound in the store.")
