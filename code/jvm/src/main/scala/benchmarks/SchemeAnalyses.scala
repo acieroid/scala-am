@@ -10,25 +10,19 @@ import scalaam.core.Position._
 
 object SchemeAnalyses {
 
-    def contextInsensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with SchemeModFSemantics
-                                                                          with StandardSchemeModFComponents
-                                                                          with BigStepModFSemantics
+    def contextInsensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
                                                                           with NoSensitivity
                                                                           with SchemeConstantPropagationDomain
                                                                           with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
     }
-    def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg) with SchemeModFSemantics
-                                                                                with StandardSchemeModFComponents
-                                                                                with BigStepModFSemantics
+    def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
                                                                                 with CallSiteSensitivity
                                                                                 with SchemeConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "call-site-sensitivity"
     }
-    def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new ModAnalysis(prg)  with SchemeModFSemantics
-                                                                                with StandardSchemeModFComponents
-                                                                                with BigStepModFSemantics
+    def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
                                                                                 with FullArgumentSensitivity
                                                                                 with SchemeConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
@@ -84,7 +78,7 @@ object SchemeAnalyses {
       override def toString() = s"parallel (n = $n)"
       override def workers = n
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-      override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with ParallelIntra
+      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with DedicatedGlobalStoreIntra with ParallelIntra
     }
 
 }

@@ -177,3 +177,11 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
 
 trait SchemeModFSemantics extends BaseSchemeModFSemantics
                              with DedicatedSchemeSemantics
+
+// for convenience, since most Scheme analyses don't need this much parameterization
+abstract class SimpleSchemeModFAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) 
+                                                            with StandardSchemeModFComponents
+                                                            with SchemeModFSemantics
+                                                            with BigStepModFSemantics {
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with DedicatedGlobalStoreIntra
+}

@@ -7,8 +7,7 @@ import scalaam.util.benchmarks.Timeout
 
 trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
   // defining the intra-analysis
-  override def intraAnalysis(cmp: Component) = new SmallStepIntra(cmp)
-  class SmallStepIntra(cmp: Component) extends IntraAnalysis(cmp) with SchemeModFSemanticsIntra {
+  trait SmallStepIntra extends IntraAnalysis with SchemeModFSemanticsIntra {
     // the intermediate states in the intra-analysis
     sealed trait State
     case class EvalState(exp: SchemeExp,

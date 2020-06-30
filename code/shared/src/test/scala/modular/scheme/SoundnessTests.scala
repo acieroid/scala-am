@@ -142,26 +142,18 @@ s"""Intermediate result at $idn is unsound:
 
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
-  def analysis(program: SchemeExp) = new ModAnalysis(program)
-                                      with SchemeModFSemantics
-                                      with BigStepModFSemantics
-                                      with StandardSchemeModFComponents
+  def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
                                       with SchemeConstantPropagationDomain
                                       with NoSensitivity
-                                      with LIFOWorklistAlgorithm[SchemeExp] {
-  }
+                                      with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def name = "big-step semantics with call-site sensitivity for primitives"
-  def analysis(program: SchemeExp) = new ModAnalysis(program)
-      with SchemeModFSemantics
-      with BigStepModFSemantics
-      with StandardSchemeModFComponents
+  def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
       with SchemeConstantPropagationDomain
       with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
-      with LIFOWorklistAlgorithm[SchemeExp] {
-  }
+      with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
@@ -173,20 +165,19 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                       with SchemeConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra 
+                                                                        with DedicatedGlobalStoreIntra 
   }
 }
 
 trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def name = "parallel analysis (n = 4)"
-  def analysis(program: SchemeExp) = new ModAnalysis(program)
-                                      with SchemeModFSemantics
-                                      with BigStepModFSemantics
-                                      with StandardSchemeModFComponents
+  def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
                                       with SchemeConstantPropagationDomain
                                       with NoSensitivity
                                       with ParallelWorklistAlgorithm[SchemeExp] {
       override def workers = 4
-      override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp) with ParallelIntra
+      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with DedicatedGlobalStoreIntra with ParallelIntra
   }
 }
 

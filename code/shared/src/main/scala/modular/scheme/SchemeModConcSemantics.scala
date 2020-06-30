@@ -48,20 +48,26 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     // MODCONC INTRA-ANALYSIS
     //
 
-    class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp) { intra =>
+    abstract class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp)
+                                                         with GlobalStoreIntra { intra =>
         // TODO: create a new trait for this kind of intra analysis, then parameterize the ModConc analysis with a constructor for such analyses
         val modFAnalysis = new ModAnalysis[SchemeExp](body(cmp)) with BaseSchemeModFSemantics
                                                                  with BigStepModFSemantics
                                                                  with NoSensitivity
                                                                  with StandardSchemeModFComponents
                                                                  with FIFOWorklistAlgorithm[SchemeExp] {
+            // SCHEME SEMANTICS SETUP
             type Addr = inter.Addr
             type Value = inter.Value
             lazy val lattice = inter.lattice 
-            lazy val initialEnv: Environment[Addr] = inter.env(cmp) 
-            def componentAddr(cmp: Component, addr: Address) = ???
-            def sharedAddr(addr: Address) = ???
-            override var store: Map[Addr,Value] = ???
+            lazy val initialEnv: Environment[Addr] = inter.env(cmp)
+            // GLOBAL STORE SETUP 
+            def componentAddr(cmp: Component, addr: Address) = intra.allocAddr(ComponentAddr(cmp,addr))
+            def sharedAddr(addr: Address) = intra.allocAddr(addr)
+            def read(addr: Addr) = Some(intra.readAddr(addr))
+            def write(addr: Addr, value: Value) = intra.writeAddr(addr, value)
+            // INTRA-ANALYSIS
+            def intraAnalysis(cmp: Component) = ???
         }
         def analyze(timeout: Timeout.T): Unit = {
             

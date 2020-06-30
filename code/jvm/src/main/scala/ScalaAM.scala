@@ -18,15 +18,12 @@ object Main {
   def test(): Unit = {
     val txt = Reader.loadFile("test/R5RS/fact.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with SchemeModFSemantics
-                                        with BigStepModFSemantics
-                                        with StandardSchemeModFComponents
-                                        with LIFOWorklistAlgorithm[SchemeExp]
+    val analysis = new SimpleSchemeModFAnalysis(prg)
                                         with NoSensitivity
-                                        with SchemeConstantPropagationDomain {
+                                        with SchemeConstantPropagationDomain
+                                        with LIFOWorklistAlgorithm[SchemeExp] {
       //override def workers = 4
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-      override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp)
       var i = 0
       override def step(t: Timeout.T = Timeout.none): Unit = {
         i = i + 1

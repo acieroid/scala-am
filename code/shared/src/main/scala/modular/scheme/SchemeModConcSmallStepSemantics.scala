@@ -124,7 +124,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
 
 
-  trait SmallStepIntra extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra  {
+  trait SmallStepIntra extends IntraAnalysis with DedicatedGlobalStoreIntra with ReturnResultIntra  {
 
 
     //----------//
@@ -484,7 +484,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
 trait KAExpressionContext extends SmallStepModConcSemantics {
 
-  override def intraAnalysis(component: Component): IntraAnalysis = new AllocIntra(component)
+  override def intraAnalysis(component: Component) = new AllocIntra(component)
 
   class AllocIntra(cmp: Component) extends IntraAnalysis(cmp) with SmallStepIntra {
 
