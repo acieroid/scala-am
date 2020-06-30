@@ -1,0 +1,35 @@
+package scalaam.modular.scheme
+
+import scalaam.core._
+import scalaam.modular._
+import scalaam.language.scheme._
+import scalaam.language.CScheme._
+import scalaam.language.scheme.primitives._
+
+trait SchemeSemantics extends ModAnalysis[SchemeExp]
+                         with GlobalStore[SchemeExp] {
+  type Env  = Environment[Addr]
+  type Prim = SchemePrimitive[Value,Addr]
+  val initialEnv: Env
+  implicit val lattice: SchemeLattice[Value, Addr, Prim] 
+}
+
+trait DedicatedSchemeSemantics extends SchemeSemantics
+                                  with DedicatedGlobalStore[SchemeExp] {
+  // Ensure that the program is translated to use lexical addresses first!
+  override lazy val program = {
+    val originalProgram = super.program
+    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
+    CSchemeUndefiner.undefine(List(preludedProgram))
+  }
+  lazy val primitives: SchemePrimitives[Value,Addr] = new SchemeLatticePrimitives()
+  lazy val initialBds: Iterable[(String,Addr,Value)] = primitives.allPrimitives.map {
+    p => (p.name, sharedAddr(PrmAddr(p.name)), lattice.primitive(p)) 
+  }
+  lazy val initialEnv = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
+  // Set up initial environment and install the primitives in the global store.
+  primitives.allPrimitives.foreach { p =>
+    val addr = sharedAddr(PrmAddr(p.name))
+    store += (addr -> lattice.primitive(p))
+  }  
+}

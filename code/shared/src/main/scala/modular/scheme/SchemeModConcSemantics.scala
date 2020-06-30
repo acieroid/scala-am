@@ -10,32 +10,9 @@ import scalaam.util.benchmarks.Timeout
 import scalaam.lattice.ConstantPropagation
 
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
-                                with DedicatedGlobalStore[SchemeExp]
+                                with DedicatedSchemeSemantics
                                 with ReturnValue[SchemeExp]
                                 with ContextSensitiveComponents[SchemeExp] {
-
-    // SCHEME SETUP
-
-    type Env = Environment[Addr]
-    type Prim = SchemePrimitive[Value,Addr]
-    lazy val primitives: SchemePrimitives[Value,Addr] = new SchemeLatticePrimitives()
-    lazy val initialBds: Iterable[(String,Addr,Value)] = primitives.allPrimitives.map {
-        p => (p.name, GlobalAddr(PrmAddr(p.name)), lattice.primitive(p)) 
-    }
-    lazy val initialEnv = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
-    implicit val lattice: SchemeLattice[Value, Addr, Prim]
-
-    // prelude other primitives and translate the program to use lexical addresses
-    override val program: SchemeExp = {
-        val originalProgram = super.program
-        val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-        CSchemeUndefiner.undefine(List(preludedProgram))
-    }
-
-    primitives.allPrimitives.foreach { p =>
-        val addr = GlobalAddr(PrmAddr(p.name))
-        store += (addr -> lattice.primitive(p))
-    }
 
     // COMPONENTS
 

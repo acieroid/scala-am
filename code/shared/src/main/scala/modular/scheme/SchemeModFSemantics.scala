@@ -12,15 +12,10 @@ import scalaam.util._
 /**
  * Base definitions for a Scheme MODF analysis.
  */
-trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
-                                 with GlobalStore[SchemeExp]
+// TODO: Most of this can be factored out to SchemeSemantics
+trait BaseSchemeModFSemantics extends SchemeSemantics
                                  with ReturnValue[SchemeExp] 
                                  with ContextSensitiveComponents[SchemeExp] {
-  
-  type Prim = SchemePrimitive[Value,Addr]
-  type Env = Environment[Addr]
-  val initialEnv: Env
-  implicit val lattice: SchemeLattice[Value, Addr, Prim] 
 
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
   // COMPONENTS AND CONTEXTS //
@@ -62,7 +57,7 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
     // components
     protected def fnBody: SchemeExp = body(view(component))
     protected def fnEnv: Env = view(component) match {
-      case Main         => initialEnv
+      case Main                           => initialEnv
       case c: Call[ComponentContext,Addr] => c.env.extend(c.lambda.args.map { id =>
         (id.name, allocAddr(VarAddr(id)))
       })
@@ -155,13 +150,6 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
     case object StoreAdapter extends Store[Addr,Value] {
       def lookup(a: Addr): Option[Value] = Some(readAddr(a))
       def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
-      // all the other operations should not be used by the primitives ...
-      def content                               = throw new Exception("Operation not allowed!")
-      def keys                                  = throw new Exception("Operation not allowed!")
-      def restrictTo(a: Set[Addr])              = throw new Exception("Operation not allowed!")
-      def forall(p: ((Addr, Value)) => Boolean) = throw new Exception("Operation not allowed!")
-      def join(that: Store[Addr, Value])        = throw new Exception("Operation not allowed!")
-      def subsumes(that: Store[Addr, Value])    = throw new Exception("Operation not allowed!")
     }
     // evaluation helpers
     protected def evalLiteralValue(literal: sexp.Value): Value = literal match {
@@ -188,21 +176,4 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
 }
 
 trait SchemeModFSemantics extends BaseSchemeModFSemantics
-                             with DedicatedGlobalStore[SchemeExp] {
-  // Ensure that the program is translated to use lexical addresses first!
-  override lazy val program = {
-    val originalProgram = super.program
-    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-    SchemeUndefiner.undefine(List(preludedProgram))
-  }
-  lazy val primitives: SchemePrimitives[Value,Addr] = new SchemeLatticePrimitives()
-  lazy val initialBds: Iterable[(String,Addr,Value)] = primitives.allPrimitives.map {
-    p => (p.name, sharedAddr(PrmAddr(p.name)), lattice.primitive(p)) 
-  }
-  lazy val initialEnv = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
-  // Set up initial environment and install the primitives in the global store.
-  primitives.allPrimitives.foreach { p =>
-    val addr = sharedAddr(PrmAddr(p.name))
-    store += (addr -> lattice.primitive(p))
-  }  
-}
+                             with DedicatedSchemeSemantics
