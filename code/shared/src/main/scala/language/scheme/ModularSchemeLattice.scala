@@ -100,6 +100,11 @@ class ModularSchemeLattice[
     def ord = 12
     override def toString: String = s"🧵$threads"
   }
+  // Could also store Threads here, but this seems to be simpler. An empty set indicates the lock is not held, but a non-empty set may also indicate this...
+  case class Lock(threads: Set[TID]) extends Value {
+    def ord = 13
+    override def toString: String = s"<Lock $threads>"
+  }
   /** The injected true value */
   val True = Bool(BoolLattice[B].inject(true))
   /** The injected false value */
@@ -132,6 +137,7 @@ class ModularSchemeLattice[
         }})
         vWithEls2Joined
       case (Thread(t1), Thread(t2))   => Thread(sunion(t1, t2))
+      case (Lock(l1), Lock(l2))       => Lock(sunion(l1, l2))
       case _ => throw new Exception(s"Illegal join of $x and $y")
     }
 
@@ -158,6 +164,7 @@ class ModularSchemeLattice[
               }
             }
           case (Thread(t1), Thread(t2))  => t2.subsetOf(t1)
+          case (Lock(l1), Lock(l2))      => l2.subsetOf(l1)
           case _                    => false
         }
       }
@@ -213,7 +220,11 @@ class ModularSchemeLattice[
       })
       case IsThread => MayFail.success(x match {
         case _: Thread => True
-        case _      => False
+        case _         => False
+      })
+      case IsLock => MayFail.success(x match {
+        case _: Lock => True
+        case _       => False
       })
       case Not => MayFail.success(x match {
         case Bool(b) => Bool(BoolLattice[B].not(b))
@@ -438,7 +449,8 @@ class ModularSchemeLattice[
     def nil: Value                                = Nil
     def cons(car: L, cdr: L): Value               = Cons(car, cdr)
     def pointer(a: A): Value                      = Pointer(Set(a))
-    def thread(tid: TID)                          = Thread(Set(tid))
+    def thread(tid: TID): Value                   = Thread(Set(tid))
+    def lock(): Value                             = Lock(Set())
     def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
       case Clo(closures) => closures
       case _             => Set.empty
@@ -454,6 +466,10 @@ class ModularSchemeLattice[
     def getThreads(x: Value): Set[TID] = x match {
       case Thread(t) => t
       case _         => Set.empty
+    }
+    def getLocks(x: Value): Set[TID] = x match {
+      case Lock(l) => l
+      case _       => Set.empty
     }
     def car(x: Value): MayFail[L, Error] = x match {
       case Cons(car, _) => MayFail.success(car)
@@ -537,6 +553,18 @@ class ModularSchemeLattice[
       case _         => MayFail.failure(TypeError("expected int size when constructing vector", size))
     }
 
+    // Indicates whether a lock is held.
+    //def isHeld(lock: Value): MayFail[L, Error] = lock match {
+    //  case Lock(tids) => MayFail.success(Element(bool(tids.nonEmpty)))
+    //  case _          => MayFail.failure(TypeError("acquire: expected a lock", lock))
+    //}
+
+    // Acquire creates a new lock to which the given TID is added.
+    def acquire(lock: Value, tid: TID): MayFail[L, Error] = lock match {
+      case Lock(tids) => MayFail.success(Element(Lock(tids + tid)))
+      case _          => MayFail.failure(TypeError("acquire: expected a lock", lock))
+    }
+
     def split(v: Value): Set[Value] = v match {
       case Bool(b)    => Lattice[B].split(b).map(Bool)
       case Int(i)     => Lattice[I].split(i).map(Int)
@@ -608,6 +636,9 @@ class ModularSchemeLattice[
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
     def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
 
+    def acquire(lock: L, tid: TID): MayFail[L, Error] =
+      lock.foldMapL(l => Value.acquire(l, tid))
+
     def bottom: L                             = Elements(List.empty)
     def number(x: scala.Int): L               = Element(Value.number(x))
     def numTop: L                             = Element(Int(IntLattice[I].top))
@@ -625,6 +656,7 @@ class ModularSchemeLattice[
     def pointer(a: A): L                      = Element(Value.pointer(a))
     def vector(size: L, init: L): MayFail[L, Error] = size.foldMapL(sz => Value.vector(sz, init).map(v => Element(v)))
     def thread(tid: TID): L                   = Element(Value.thread(tid))
+    def lock(): L                             = Element(Value.lock())
     def nil: L = Element(Value.nil)
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
     def split(abs: L): Set[L] = abs.foldMapL(v => Value.split(v).map(va => Element(va)))(setMonoid)

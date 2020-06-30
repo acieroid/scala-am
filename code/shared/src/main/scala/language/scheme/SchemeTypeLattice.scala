@@ -135,6 +135,8 @@ class TypeSchemeLattice[A <: Address, Env] {
     def eql[B : BoolLattice](x: L, y: L) = BoolLattice[B].top /* could be refined in some cases */
     def vector(size: L, init: L): MayFail[L, Error] = ???
     def thread(tid: TID): L                   = ???
+    def lock()                                = ???
+    def acquire(lock: L, caller: TID): MayFail[L, Error] = ???
     def split(v: L): Set[L] = ???
   }
   object L {

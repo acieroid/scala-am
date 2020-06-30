@@ -9,7 +9,7 @@ import scala.util.control.TailCalls
 object CSchemeCompiler extends BaseSchemeCompiler {
   import scala.util.control.TailCalls._
 
-  override def reserved: List[String] = List("fork", "join") ::: super.reserved
+  override def reserved: List[String] = List("fork", "join", "acquire", "release") ::: super.reserved
 
   override def _compile(exp: SExp): TailCalls.TailRec[SchemeExp] = exp match {
     case SExpPair(SExpId(Identifier("fork", _)), SExpPair(expr, SExpValue(ValueNil, _), _), _) =>
@@ -20,6 +20,14 @@ object CSchemeCompiler extends BaseSchemeCompiler {
       tailcall(this._compile(expr)).map(CSchemeJoin(_, exp.idn))
     case SExpPair(SExpId(Identifier("join", _)), _, _) =>
       throw new Exception(s"Invalid CScheme join: $exp (${exp.idn}).")
+    case SExpPair(SExpId(Identifier("acquire", _)), SExpPair(expr, SExpValue(ValueNil, _), _), _) =>
+      tailcall(this._compile(expr)).map(CSchemeAcquire(_, exp.idn))
+    case SExpPair(SExpId(Identifier("acquire", _)), _, _) =>
+      throw new Exception(s"Invalid CScheme acquire: $exp (${exp.idn}).")
+    case SExpPair(SExpId(Identifier("release", _)), SExpPair(expr, SExpValue(ValueNil, _), _), _) =>
+      tailcall(this._compile(expr)).map(CSchemeRelease(_, exp.idn))
+    case SExpPair(SExpId(Identifier("release", _)), _, _) =>
+      throw new Exception(s"Invalid CScheme release: $exp (${exp.idn}).")
     case _ => super._compile(exp)
   }
 }

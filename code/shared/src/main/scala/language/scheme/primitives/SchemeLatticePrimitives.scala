@@ -1,6 +1,7 @@
 package scalaam.language.scheme.primitives
 
 import scalaam.core._
+import scalaam.language.CScheme.TID
 import scalaam.language.scheme._
 import scalaam.util.Monoid
 
@@ -18,6 +19,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   /* Simpler names for frequently used lattice operations. */
   def isInteger      = unaryOp(SchemeOps.UnaryOperator.IsInteger) _
   def isVector       = unaryOp(SchemeOps.UnaryOperator.IsVector) _
+  def isLock         = unaryOp(SchemeOps.UnaryOperator.IsLock) _
   def vectorLength   = unaryOp(SchemeOps.UnaryOperator.VectorLength) _
   def inexactToExact = unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
   def eqq           = binaryOp(SchemeOps.BinaryOperator.Eq) _
@@ -47,10 +49,10 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
       (acc: MayFail[(V, Store[A, V]), Error], a: A) =>
         acc >>= ({
           case (accv, updatedStore) =>
-            /* We use the old store because the new added information can only negatively influence precision (as it didn't hold at the point of the function call */
+            /* We use the old store because the new added information can only negatively influence precision (as it didn't hold at the point of the function call). */
             store.lookupMF(a) >>= (
               v =>
-                /* But we pass the updated store around as it should reflect all updates */
+                /* But we pass the updated store around as it should reflect all updates. */
                 f(a, v, updatedStore) >>= ({
                   case (res, newStore) =>
                     MayFail.success((join(accv, res), newStore))
@@ -222,6 +224,15 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `random`,
       `error`
     )
+  }
+
+  def CSchemePrimitives: List[SchemePrimitive[V,A]] = {
+    import PrimitiveDefs._
+    List(
+      `new-lock`,
+      `lock?`,
+      `thread?`,
+    ) ++ allPrimitives
   }
 
   class NoStore1Operation(val name: String, val call: V => MayFail[V, Error]) extends SchemePrimitive[V, A] {
@@ -420,6 +431,17 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
           }
         } yield (and(ispointer, isvector), store)
     })
+    object `thread?`  extends NoStore1Operation("thread?", unaryOp(SchemeOps.UnaryOperator.IsThread))
+    object `lock?`    extends Store1Operation("lock?", { (x, store) => // Analogous to `pair?`, could also do analogous to `vector?`.
+      ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)) {
+        dereferencePointer(x, store) { lock =>
+          unaryOp(SchemeOps.UnaryOperator.IsLock)(lock)
+        }
+      } {
+        bool(false)
+      }.map(v => (v, store))
+    })
+
     object `eq?` extends NoStore2Operation("eq?", eqq)
 
     object `number->string` extends NoStore1Operation("number->string", unaryOp(SchemeOps.UnaryOperator.NumberToString))
@@ -599,5 +621,37 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
           }
       }
     }
+
+    object `new-lock` extends SchemePrimitive[V, A] {
+      val name = "new-lock"
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
+        case Nil =>
+          val addr = alloc.pointer(fpos)
+          val lock = lat.lock()
+          val ptr  = lat.pointer(addr)
+          (ptr, store.extend(addr, lock))
+        case l => MayFail.failure(PrimitiveArityError(name, 0, l.size))
+      }
+    }
+
+    // Does not follow the SchemePrimitive interface, as it needs the caller of the function.
+/*
+    object Acquire {
+      val name = "acquire"
+      def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A], caller: TID): MayFail[(V, Store[A, V]), Error] = args match {
+        case (_, lockPtr) :: Nil =>
+          dereferencePointerGetAddressReturnStore(lockPtr, store)( {case (addr, lock, store) =>
+              ifThenElse(isLock(lock)) {
+                // We do not explicitly check whether a lock is free, since (using our representation), it might always be free...
+                lat.acquire(lock, caller) >>= { newLock =>
+                  MayFail.success((lat.bottom, store.extend(addr, newLock)))
+                }
+              } {
+                MayFail.failure(PrimitiveNotApplicable(name, List(lock)))
+              }
+          })
+        case l => MayFail.failure(PrimitiveArityError(name, 0, l.size))
+      }
+    } */
   }
 }

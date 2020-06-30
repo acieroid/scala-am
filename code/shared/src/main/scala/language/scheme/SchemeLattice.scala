@@ -103,6 +103,12 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, Env] extends Lattice[L] {
   /** Injection of a thread identifier */
   def thread(tid: TID): L
 
+  /** Creates a new lock. */
+  def lock(): L
+
+  /** Acquires a given lock. */
+  def acquire(lock: L, caller: TID): MayFail[L, Error]
+
   /** "Splitting" an abstract value v into a set of values v1, v2, ..., vn so that v = join(v1,v2,...,vn) */
   def split(abs: L): Set[L]
 
