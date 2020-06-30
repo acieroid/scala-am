@@ -1,8 +1,8 @@
 package scalaam.modular.scheme
 
+import scalaam.modular.scheme.semantics._
 import scalaam.core._
 import scalaam.util._
-import scalaam.modular._
 import scalaam.language.scheme._
 
 // A SchemeModFComponent represents function calls

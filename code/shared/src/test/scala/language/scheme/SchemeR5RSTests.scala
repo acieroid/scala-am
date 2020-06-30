@@ -1,5 +1,6 @@
 package scalaam.test.language.scheme
 
+import scalaam.modular.scheme.semantics._
 import scalaam.modular._
 import org.scalatest.propspec.AnyPropSpec
 import scalaam.test.tag._

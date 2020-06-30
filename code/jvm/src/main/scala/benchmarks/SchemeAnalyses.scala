@@ -1,5 +1,6 @@
 package scalaam.cli.benchmarks
 
+import scalaam.modular.scheme.semantics._
 import scalaam.language.scheme._
 import scalaam.modular._
 import scalaam.modular.scheme._

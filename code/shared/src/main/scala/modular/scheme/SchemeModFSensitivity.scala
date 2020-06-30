@@ -1,5 +1,6 @@
 package scalaam.modular.scheme
 
+import scalaam.modular.scheme.semantics._
 import scalaam.core.Position._
 
 /* Simplest (and most imprecise): no context-sensitivity */

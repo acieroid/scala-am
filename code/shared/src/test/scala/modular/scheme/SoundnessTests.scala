@@ -18,6 +18,7 @@ import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.SchemeInterpreter._
 import scalaam.language.scheme.primitives.SchemePrelude
+import scalaam.modular.scheme.semantics._
 import scalaam.util.benchmarks.Timeout
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {

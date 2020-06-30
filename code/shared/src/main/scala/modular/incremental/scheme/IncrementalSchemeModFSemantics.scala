@@ -1,9 +1,9 @@
 package scalaam.modular.incremental.scheme
 
+import scalaam.modular.scheme.semantics.SchemeModFSemantics
 import scalaam.modular.scheme._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
-import scalaam.modular.scheme.StandardSchemeModFComponents
 
 /** Semantics for an incremental Scheme MODF analysis. */
 trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with SchemeModFSemantics {

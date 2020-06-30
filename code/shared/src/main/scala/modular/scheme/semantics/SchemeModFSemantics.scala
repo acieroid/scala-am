@@ -1,12 +1,13 @@
-package scalaam.modular.scheme
+package scalaam.modular.scheme.semantics
 
-import scalaam.modular.components.ContextSensitiveComponents
-import scalaam.language.scheme.primitives._
 import scalaam.core.Position._
 import scalaam.core._
-import scalaam.modular._
 import scalaam.language.scheme._
+import scalaam.language.scheme.primitives._
 import scalaam.language.sexp
+import scalaam.modular._
+import scalaam.modular.components.ContextSensitiveComponents
+import scalaam.modular.scheme._
 import scalaam.util._
 
 /**

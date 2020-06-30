@@ -1,5 +1,6 @@
 package scalaam.cli.benchmarks.precision
 
+import scalaam.modular.scheme.semantics.SimpleSchemeModFAnalysis
 import scalaam.cli.benchmarks._
 import scalaam.lattice._
 import scalaam.language.scheme._

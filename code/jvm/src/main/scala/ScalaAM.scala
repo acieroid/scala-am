@@ -1,5 +1,6 @@
 package scalaam.cli
 
+import scalaam.modular.scheme.semantics._
 import scalaam.util._
 
 import scala.concurrent.duration._

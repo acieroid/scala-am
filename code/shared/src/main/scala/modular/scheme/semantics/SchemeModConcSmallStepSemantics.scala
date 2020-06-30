@@ -1,16 +1,16 @@
-package scalaam.modular.scheme
+package scalaam.modular.scheme.semantics
 
 import scalaam.core._
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
 import scalaam.language.sexp
-import scalaam.modular.components.ContextSensitiveComponents
+import scalaam.lattice._
 import scalaam.modular._
+import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.util.Annotations.mutable
 import scalaam.util.SmartHash
 import scalaam.util.benchmarks.Timeout
-import scalaam.lattice._
 
 /**
  * Provides a small-step ModConc semantics for a concurrent Scheme with threads.

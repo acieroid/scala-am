@@ -1,13 +1,11 @@
-package scalaam.modular.scheme
+package scalaam.modular.scheme.semantics
 
 import scalaam.core._
-import scalaam.modular._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives._
-import scalaam.language.CScheme._
+import scalaam.modular._
 import scalaam.modular.components.ContextSensitiveComponents
+import scalaam.modular.scheme._
 import scalaam.util.benchmarks.Timeout
-import scalaam.lattice.ConstantPropagation
 
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                                 with DedicatedSchemeSemantics

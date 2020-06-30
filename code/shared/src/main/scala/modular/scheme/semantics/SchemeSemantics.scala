@@ -1,10 +1,11 @@
-package scalaam.modular.scheme
+package scalaam.modular.scheme.semantics
 
 import scalaam.core._
-import scalaam.modular._
-import scalaam.language.scheme._
 import scalaam.language.CScheme._
+import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
+import scalaam.modular._
+import scalaam.modular.scheme.PrmAddr
 
 trait SchemeSemantics extends ModAnalysis[SchemeExp]
                          with GlobalStore[SchemeExp] {

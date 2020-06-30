@@ -1,6 +1,5 @@
 package scalaam.modular.incremental
 
-import modular.incremental.scheme.IncrementalContextSensitiveComponents
 import scalaam.modular.components.MutableIndirectComponents
 import scalaam.core._
 import scalaam.modular._

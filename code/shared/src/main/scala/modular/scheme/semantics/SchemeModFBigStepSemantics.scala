@@ -1,4 +1,4 @@
-package scalaam.modular.scheme
+package scalaam.modular.scheme.semantics
 
 import scalaam.core._
 import scalaam.language.scheme._
