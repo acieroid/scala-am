@@ -52,11 +52,11 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     type ComponentContent = (SchemeExp, Env)
     def content(cmp: Component) = view(cmp) match {
         case MainThread             => (program, initialEnv)
-        case Thread(bdy, env, ctx)  => (bdy, env)
+        case Thread(bdy, env, _)    => (bdy, env)
     }
     def context(cmp: Component) = view(cmp) match {
         case MainThread             => None
-        case Thread(bdy, env, ctx)  => Some(ctx)
+        case Thread(_, _, ctx)      => Some(ctx)
     }
 
     class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp) {
