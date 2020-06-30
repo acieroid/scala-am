@@ -3,7 +3,7 @@ package scalaam.language.scheme
 import scalaam.language.CScheme.TID
 import scalaam.core._
 
-/** A scalaam.lattice for Scheme should support the following operations */
+/** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
 
   /** Can this value be considered true for conditionals? */

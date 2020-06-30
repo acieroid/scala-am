@@ -2,7 +2,7 @@ package scalaam.lattice
 
 import scalaam.core.Lattice
 
-/** A scalaam.lattice for reals (i.e., floating point numbers) */
+/** A lattice for reals (i.e., floating point numbers) */
 trait RealLattice[R] extends Lattice[R] { self =>
   def inject(n: Double): R
   def toInt[I: IntLattice](n: R): I

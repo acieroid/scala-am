@@ -10,7 +10,7 @@ import scalaam.core._
   */
 /** NOTE: How the lexer/parser works and how to debug it
   *
-  * The SExpTokens trait defines the tokens of the scalaam.language. The chars field of
+  * The SExpTokens trait defines the tokens of the language. The chars field of
   * each token is the textual representation of the token.
   *
 
@@ -22,7 +22,7 @@ import scalaam.core._
   * To test a lexer, one just has to apply it, providing a Reader[Char] as
   * argument. For example, to test the character lexer:
   *   val lexical = new SExpLexer
-  *   println(lexical.character(new scala.scalaam.util.parsing.input.CharArrayReader("#\c".toCharArray))
+  *   println(lexical.character(new scala.util.parsing.input.CharArrayReader("#\c".toCharArray))
 
   * The SExpParser class defines parsers, similarly as SExpLexer. The difference
   * is that the parser works by assembling a bunch of tokens into grammar items,

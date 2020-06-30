@@ -1,8 +1,8 @@
 Scala-AM: A Framework for Static Analysis of Dynamic Languages
 
 # Goal
-The goal of this artefact is to experiment with abstract machines and scalaam.language
-semantics. Currently, the artefact's implementation is focused towards experiments with scalaam.modular analyses.
+The goal of this artefact is to experiment with abstract machines and language
+semantics. Currently, the artefact's implementation is focused towards experiments with modular analyses.
 Additionally, semantics for R5RS Scheme are present.
 
 # Usage
@@ -17,16 +17,16 @@ Stepping through the visualisation can be done using the space bar.
 If you need to compile the code first, run the command `fastOptJS` within your sbt repl.
 
 ## Analysing a program using command line
-The Scala-AM framework is built in a scalaam.modular style. To run a scalaam.modular analysis, you need to compose the
+The Scala-AM framework is built in a modular style. To run a modular analysis, you need to compose the
 implementation of a specific machine and an abstract domain.
 
 To analyze a specific program, an instance of the MODF analysis class must be created. The constructor of
 this class takes a parsed version of the program to be analysed, which can be obtained as follows:
 ```scala
-val text = scalaam.io.Reader.loadFile(path-to-file)
-val prog = scalaam.scalaam.language.scheme.Schemeparser.parse(text)
+val text = io.Reader.loadFile(path-to-file)
+val prog = language.scheme.Schemeparser.parse(text)
 ```
-Additional preprocessing steps are performed by the scalaam.modular analysis itself and hence must not be performed manually.
+Additional preprocessing steps are performed by the modular analysis itself and hence must not be performed manually.
 
 Now, the MODF instance can be created. For example, to analyze `prog` using a big-step MODF analysis
 with full argument sensitivity and a type domain:
@@ -92,7 +92,7 @@ following publications:
   * Garbage-Free Abstract Interpretation through Abstract Reference
     Counting. ECOOP 2019. [pdf](http://drops.dagstuhl.de/opus/volltexte/2019/10784/).
   * A general method for rendering static analyses for diverse concurrency
-    models scalaam.modular. Journal of Systems and Software, Volume 149. 2019. [pdf](https://soft.vub.ac.be/~qstieven/fwo-proposal-jss.pdf), [doi](https://doi.org/10.1016/j.jss.2018.10.001).
+    models modular. Journal of Systems and Software, Volume 149. 2019. [pdf](https://soft.vub.ac.be/~qstieven/fwo-proposal-jss.pdf), [doi](https://doi.org/10.1016/j.jss.2018.10.001).
   * Mailbox Abstractions for Static Analysis of Actor Programs. ECOOP 2017. [pdf](http://soft.vub.ac.be/~qstieven/ecoop2017/ecoop2017actors-final.pdf), [doi](https://doi.org/10.4230/LIPIcs.ECOOP.2017.25).
   * Employing Run-time Static Analysis to Improve Concolic
     Execution. BENEVOL 2017. [pdf](http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_7.pdf).

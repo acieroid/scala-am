@@ -16,7 +16,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
 
   implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
-  /* Simpler names for frequently used scalaam.lattice operations. */
+  /* Simpler names for frequently used lattice operations. */
   def isInteger      = unaryOp(SchemeOps.UnaryOperator.IsInteger) _
   def isVector       = unaryOp(SchemeOps.UnaryOperator.IsVector) _
   def isLock         = unaryOp(SchemeOps.UnaryOperator.IsLock) _

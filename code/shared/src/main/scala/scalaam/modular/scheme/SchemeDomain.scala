@@ -12,7 +12,7 @@ trait AbstractSchemeDomain extends SchemeSemantics {
   type R
   type C
   type Sym
-  // which are used to construct a "scalaam.modular" (~ product) scalaam.lattice
+  // which are used to construct a "modular" (~ product) scalaam.lattice
   val valueLattice: ModularSchemeLattice[Addr,S,B,I,R,C,Sym]
   type Value = valueLattice.L
   lazy val lattice = valueLattice.schemeLattice

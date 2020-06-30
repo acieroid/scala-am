@@ -9,7 +9,7 @@
 ; square(x) = x^2
 (define (square x) (* x x))
 
-; modulo-power: a fast scalaam.modular exponentiation routine.
+; modulo-power: a fast modular exponentiation routine.
 ; modulo-power(base,exp,n) = base^exp [mod n]
 (define (modulo-power base exp n)
   (if (= exp 0)

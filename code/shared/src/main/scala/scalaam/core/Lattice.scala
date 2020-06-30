@@ -2,21 +2,21 @@ package scalaam.core
 
 import scalaam.util.Show
 
-/** Error raised when trying to construct the top element of a scalaam.lattice which doesn't have one */
+/** Error raised when trying to construct the top element of a lattice which doesn't have one */
 object LatticeTopUndefined extends ScalaAMException
 
-/** A scalaam.lattice typeclass.
-  * It is actually a join-semi scalaam.lattice as it only need a join operation and a bottom element
+/** A lattice typeclass.
+  * It is actually a join-semi lattice as it only need a join operation and a bottom element
   */
 trait Lattice[L] extends PartialOrdering[L] with Show[L] {
 
-  /** A scalaam.lattice has a bottom element */
+  /** A lattice has a bottom element */
   def bottom: L
 
-  /** A scalaam.lattice has a top element (might be undefined) */
+  /** A lattice has a top element (might be undefined) */
   def top: L
 
-  /** Elements of the scalaam.lattice can be joined together */
+  /** Elements of the lattice can be joined together */
   def join(x: L, y: => L): L
 
   /** Joining multiple elements */
@@ -28,10 +28,10 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] {
   /** Equality check, returning an abstract result */
   def eql[B: scalaam.lattice.BoolLattice](x: L, y: L): B
 
-  /** For PartialOrdering[L]: a scalaam.lattice has a partial order, defined by subsumes... */
+  /** For PartialOrdering[L]: a lattice has a partial order, defined by subsumes... */
   final def lteq(x: L, y: L): Boolean = subsumes(y, x)
 
-  /** ...and elements of the scalaam.lattice can be compared */
+  /** ...and elements of the lattice can be compared */
   final def tryCompare(x: L, y: L): Option[Int] = (subsumes(x, y), subsumes(y, x)) match {
     case (true, true)   => Some(0)  // x >= y and y >= x => x = y
     case (true, false)  => Some(1)  // x >= y and x != y

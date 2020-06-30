@@ -73,7 +73,7 @@ object SchemeBenchmarks {
     "test/R5RS/gambit/earley.scm",
     //"test/R5RS/gambit/fibc.scm", // Needs call-cc.
     "test/R5RS/gambit/graphs.scm",
-    "test/R5RS/gambit/scalaam.lattice.scm",
+    "test/R5RS/gambit/lattice.scm",
     "test/R5RS/gambit/matrix.scm",
     "test/R5RS/gambit/mazefun.scm",
     "test/R5RS/gambit/nboyer.scm",
@@ -228,8 +228,8 @@ object SchemeBenchmarks {
     //"test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm", // Uses call-with-input-file
     //"test/R5RS/WeiChenRompf2019/toplas98/graphs.scm", // Uses open-input-file.
     //"test/R5RS/WeiChenRompf2019/toplas98/handle.scm", // Uses defmacro (not standard r5rs).
-    //"test/R5RS/WeiChenRompf2019/toplas98/scalaam.lattice.scm", // Parser error. Uses undefined (void) function.
-    //"test/R5RS/WeiChenRompf2019/toplas98/scalaam.lattice-processed.scm", // Parser error. Uses undefined (void) function.
+    //"test/R5RS/WeiChenRompf2019/toplas98/lattice.scm", // Parser error. Uses undefined (void) function.
+    //"test/R5RS/WeiChenRompf2019/toplas98/lattice-processed.scm", // Parser error. Uses undefined (void) function.
     //"test/R5RS/WeiChenRompf2019/toplas98/maze.scm", // Uses open-input-file.
     //"test/R5RS/WeiChenRompf2019/toplas98/nbody.scm", // Parser error.
     //"test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm", // Parser error.

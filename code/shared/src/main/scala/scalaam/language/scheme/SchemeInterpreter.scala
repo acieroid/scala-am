@@ -15,7 +15,7 @@ import scala.concurrent.duration.Duration
 
 /**
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
-  * This interpreter dictates the concrete semantics of the Scheme scalaam.language analyzed by Scala-AM.
+  * This interpreter dictates the concrete semantics of the Scheme language analyzed by Scala-AM.
  */
 class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output: Boolean = true) {
   import SchemeInterpreter._

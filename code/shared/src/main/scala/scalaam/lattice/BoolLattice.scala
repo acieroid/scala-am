@@ -2,7 +2,7 @@ package scalaam.lattice
 
 import scalaam.core.Lattice
 
-/** A scalaam.lattice for booleans */
+/** A lattice for booleans */
 trait BoolLattice[B] extends Lattice[B] {
   def inject(b: Boolean): B
   def isTrue(b: B): Boolean

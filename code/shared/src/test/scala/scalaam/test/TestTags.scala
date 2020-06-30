@@ -11,6 +11,6 @@ object LatticeTest      extends Tag("LatticeTest")
 object PrimitiveTest    extends Tag("PrimitiveTest")
 object SoundnessTest    extends Tag("SoundnessTest")
 
-// Tags by scalaam.language.
+// Tags by language.
 object SchemeTest       extends Tag("SchemeTest")
 object CSchemeTest      extends Tag("CSchemeTest")

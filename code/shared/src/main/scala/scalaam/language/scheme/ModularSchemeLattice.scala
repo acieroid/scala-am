@@ -10,11 +10,11 @@ import scalaam.language.CScheme.TID
 import scalaam.language.scheme.primitives.SchemePrimitive
 import scalaam.util.SmartUnion._
 
-/** Defines a Scheme scalaam.lattice based on other lattices.
+/** Defines a Scheme lattice based on other lattices.
   * Example usage:
   *    val address = NameAddress
-  *    val scalaam.lattice = new ModularSchemeLattice[SchemeExp, address.A, Type.S, Type.B, Type.I, Type.R, Type.C, Type.Sym]
-  * Now `scalaam.lattice.L` is a SchemeLattice, of which the implicit for the typeclass is available in the current scope.
+  *    val lattice = new ModularSchemeLattice[SchemeExp, address.A, Type.S, Type.B, Type.I, Type.R, Type.C, Type.Sym]
+  * Now `lattice.L` is a SchemeLattice, of which the implicit for the typeclass is available in the current scope.
   */
 /** TODO[medium]: use Show and ShowStore here */
 class ModularSchemeLattice[
@@ -32,8 +32,8 @@ class ModularSchemeLattice[
   implicit def mfAddrMonoid[X]: Monoid[MayFail[Set[X],Error]] = MonoidImplicits.mayFail[Set[X]](MonoidImplicits.setMonoid[X])
 
   /** We first implement all possible operations on single values, that can be
-    * only joined when compatible. This therefore is not a scalaam.lattice but will be
-    * used to build the set scalaam.lattice */
+    * only joined when compatible. This therefore is not a lattice but will be
+    * used to build the set lattice */
   sealed trait Value extends SmartHash {
     def ord: scala.Int
   }
