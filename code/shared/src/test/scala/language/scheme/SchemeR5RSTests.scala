@@ -42,8 +42,9 @@ trait SchemeR5RSTests extends AnyPropSpec {
 class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) =
     // Not really clean, we only want a proper ConstantPropagationLattice definition
-    new ModAnalysis(text) with BigStepModFSemantics
-                          with ModFConstantPropagationDomain
+    new ModAnalysis(text) with SchemeModFSemantics
+                          with BigStepModFSemantics
+                          with SchemeConstantPropagationDomain
                           with NoSensitivity
                           with StandardSchemeModFComponents
                           with LIFOWorklistAlgorithm[SchemeExp]
@@ -73,32 +74,36 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 }
 
 class ConcreteBigStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepModFSemantics
-                                                        with ModFConstantPropagationDomain
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with SchemeModFSemantics
+                                                        with BigStepModFSemantics
+                                                        with SchemeConstantPropagationDomain
                                                         with NoSensitivity
                                                         with StandardSchemeModFComponents
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 class ConcreteSmallStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepModFSemantics
-                                                        with ModFConstantPropagationDomain
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with SchemeModFSemantics
+                                                        with SmallStepModFSemantics
+                                                        with SchemeConstantPropagationDomain
                                                         with NoSensitivity
                                                         with StandardSchemeModFComponents
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 class TypeBigStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with BigStepModFSemantics
-                                                        with ModFTypeDomain
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with SchemeModFSemantics
+                                                        with BigStepModFSemantics
+                                                        with SchemeTypeDomain
                                                         with NoSensitivity
                                                         with StandardSchemeModFComponents
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 class TypeSmallStepModFSoundnessTests extends SchemeR5RSTests {
-  def analysis(text: SchemeExp) = new ModAnalysis(text) with SmallStepModFSemantics
-                                                        with ModFTypeDomain
+  def analysis(text: SchemeExp) = new ModAnalysis(text) with SchemeModFSemantics
+                                                        with SmallStepModFSemantics
+                                                        with SchemeTypeDomain
                                                         with NoSensitivity
                                                         with StandardSchemeModFComponents
                                                         with LIFOWorklistAlgorithm[SchemeExp]

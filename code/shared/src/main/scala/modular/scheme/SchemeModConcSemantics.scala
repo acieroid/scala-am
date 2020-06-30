@@ -12,9 +12,11 @@ import scalaam.lattice.ConstantPropagation
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                                 with DedicatedSchemeSemantics
                                 with ReturnValue[SchemeExp]
-                                with ContextSensitiveComponents[SchemeExp] {
+                                with ContextSensitiveComponents[SchemeExp] { inter =>
 
-    // COMPONENTS
+    //
+    // MODCONC COMPONENTS
+    //
 
     def view(cmp: Component): SchemeModConcComponent[ComponentContext,Addr]
     def initialComponent: Component 
@@ -24,6 +26,12 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     def body(cmp: SchemeModConcComponent[ComponentContext,Addr]): SchemeExp = cmp match {
         case MainThread         => program
         case Thread(bdy, _, _)  => bdy
+    }
+
+    def env(cmp: Component): Env = env(view(cmp))
+    def env(cmp: SchemeModConcComponent[ComponentContext,Addr]): Env = cmp match {
+        case MainThread         => initialEnv
+        case Thread(_, env, _)  => env
     }
     
     type ComponentContent = (SchemeExp, Env)
@@ -36,13 +44,25 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         case Thread(_, _, ctx)      => Some(ctx)
     }
 
-    class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp) {
+    //
+    // MODCONC INTRA-ANALYSIS
+    //
+
+    class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp) { intra =>
+        // TODO: create a new trait for this kind of intra analysis, then parameterize the ModConc analysis with a constructor for such analyses
         val modFAnalysis = new ModAnalysis[SchemeExp](body(cmp)) with BaseSchemeModFSemantics
                                                                  with BigStepModFSemantics
                                                                  with NoSensitivity
-                                                                 with ModFConstantPropagationDomain
                                                                  with StandardSchemeModFComponents
-                                                                 with FIFOWorklistAlgorithm[SchemeExp]
+                                                                 with FIFOWorklistAlgorithm[SchemeExp] {
+            type Addr = inter.Addr
+            type Value = inter.Value
+            lazy val lattice = inter.lattice 
+            lazy val initialEnv: Environment[Addr] = inter.env(cmp) 
+            def componentAddr(cmp: Component, addr: Address) = ???
+            def sharedAddr(addr: Address) = ???
+            override var store: Map[Addr,Value] = ???
+        }
         def analyze(timeout: Timeout.T): Unit = {
             
         }

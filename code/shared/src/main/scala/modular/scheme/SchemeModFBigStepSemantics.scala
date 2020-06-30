@@ -5,7 +5,7 @@ import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
 import scalaam.util.benchmarks.Timeout
 
-trait BigStepModFSemantics extends SchemeModFSemantics {
+trait BigStepModFSemantics extends BaseSchemeModFSemantics {
   // defining the intra-analysis
   override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp)
   class BigStepModFIntra(cmp: Component) extends IntraAnalysis(cmp) with SchemeModFSemanticsIntra {

@@ -5,7 +5,7 @@ import scalaam.language.scheme._
 import scalaam.util.MonoidImplicits._
 import scalaam.util.benchmarks.Timeout
 
-trait SmallStepModFSemantics extends SchemeModFSemantics {
+trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
   // defining the intra-analysis
   override def intraAnalysis(cmp: Component) = new SmallStepIntra(cmp)
   class SmallStepIntra(cmp: Component) extends IntraAnalysis(cmp) with SchemeModFSemanticsIntra {

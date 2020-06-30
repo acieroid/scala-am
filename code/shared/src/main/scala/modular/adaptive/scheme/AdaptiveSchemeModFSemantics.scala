@@ -9,7 +9,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with AdaptiveGlobalStore[SchemeExp]
                                     with SchemeModFSemantics
                                     with BigStepModFSemantics
-                                    with AbstractModFDomain {
+                                    with AbstractSchemeDomain {
   // Definition of components
   type ComponentData = SchemeModFComponent[ComponentContext,Addr]
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.

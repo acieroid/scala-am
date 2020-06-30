@@ -143,9 +143,10 @@ s"""Intermediate result at $idn is unsound:
 trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
+                                      with SchemeModFSemantics
                                       with BigStepModFSemantics
                                       with StandardSchemeModFComponents
-                                      with ModFConstantPropagationDomain
+                                      with SchemeConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
   }
@@ -154,9 +155,10 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
 trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def name = "big-step semantics with call-site sensitivity for primitives"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
+      with SchemeModFSemantics
       with BigStepModFSemantics
       with StandardSchemeModFComponents
-      with ModFConstantPropagationDomain
+      with SchemeConstantPropagationDomain
       with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
       with LIFOWorklistAlgorithm[SchemeExp] {
   }
@@ -165,9 +167,10 @@ trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
+                                      with SchemeModFSemantics
                                       with SmallStepModFSemantics
                                       with StandardSchemeModFComponents
-                                      with ModFConstantPropagationDomain
+                                      with SchemeConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
   }
@@ -176,9 +179,10 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def name = "parallel analysis (n = 4)"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
+                                      with SchemeModFSemantics
                                       with BigStepModFSemantics
                                       with StandardSchemeModFComponents
-                                      with ModFConstantPropagationDomain
+                                      with SchemeConstantPropagationDomain
                                       with NoSensitivity
                                       with ParallelWorklistAlgorithm[SchemeExp] {
       override def workers = 4
@@ -191,7 +195,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new AdaptiveModAnalysis(program)
                                         with AdaptiveArgumentSensitivityPolicy3
                                         with AdaptiveSchemeModFSemantics
-                                        with ModFConstantPropagationDomain
+                                        with SchemeConstantPropagationDomain
                                         with LIFOWorklistAlgorithm[SchemeExp] {
     val limit = 5
     override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)

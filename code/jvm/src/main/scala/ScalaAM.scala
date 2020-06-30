@@ -18,11 +18,12 @@ object Main {
   def test(): Unit = {
     val txt = Reader.loadFile("test/R5RS/fact.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with StandardSchemeModFComponents
+    val analysis = new ModAnalysis(prg) with SchemeModFSemantics
                                         with BigStepModFSemantics
+                                        with StandardSchemeModFComponents
                                         with LIFOWorklistAlgorithm[SchemeExp]
                                         with NoSensitivity
-                                        with ModFConstantPropagationDomain {
+                                        with SchemeConstantPropagationDomain {
       //override def workers = 4
       override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       override def intraAnalysis(cmp: Component) = new BigStepModFIntra(cmp)
@@ -39,11 +40,11 @@ object Main {
     debugResults(analysis, false)
   }
 
-  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with StandardSchemeModFComponents
+  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics with StandardSchemeModFComponents
 
   def debugResults(machine: SchemeModFAnalysis, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (ComponentAddr(cmp,ReturnAddr),result) if cmp == machine.initialComponent =>
+      case (ComponentAddr(cmp, ReturnAddr),result) if cmp == machine.initialComponent =>
         println(s"[$cmp] ${machine.view(cmp)} => $result")
       case (ComponentAddr(_, _: PrmAddr), _) => 
         () //don't print primitive addresses

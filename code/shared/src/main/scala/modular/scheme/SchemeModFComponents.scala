@@ -25,7 +25,7 @@ case class Call[Context,Addr <: Address](clo: (SchemeLambdaExp, Environment[Addr
   override def toString: String = lambdaName
 }
 
-trait StandardSchemeModFComponents extends SchemeModFSemantics {
+trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {
   // Components are just Scheme components
   // TODO: make this an "opaque type" in Scala 3?
   case class Component(c: SchemeModFComponent[ComponentContext, Addr]) {
@@ -33,7 +33,7 @@ trait StandardSchemeModFComponents extends SchemeModFSemantics {
   }
   lazy val initialComponent = Component(Main)
   def newComponent(call: Call[ComponentContext,Addr]) = Component(call)
-  def view(cmp: Component) = cmp.c
+  def view(cmp: Component): SchemeModFComponent[ComponentContext, Addr] = cmp.c
 }
 
 /*package scalaam.modular.scheme
