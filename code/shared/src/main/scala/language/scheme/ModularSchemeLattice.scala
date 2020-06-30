@@ -563,16 +563,6 @@ class ModularSchemeLattice[
       case Lock(tids) => MayFail.success(Element(Lock(tids + tid)))
       case _          => MayFail.failure(TypeError("acquire: expected a lock", lock))
     }
-
-    def split(v: Value): Set[Value] = v match {
-      case Bool(b)    => Lattice[B].split(b).map(Bool)
-      case Int(i)     => Lattice[I].split(i).map(Int)
-      case Char(c)    => Lattice[C].split(c).map(Char)
-      case Str(s)     => Lattice[S].split(s).map(Str)
-      case Real(r)    => Lattice[R].split(r).map(Real)
-      case Symbol(s)  => Lattice[Sym].split(s).map(Symbol)
-      case _          => Set(v)
-    }
   }
 
   type L = Elements

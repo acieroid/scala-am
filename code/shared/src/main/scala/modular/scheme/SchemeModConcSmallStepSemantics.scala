@@ -66,10 +66,8 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   val emptyEnv: Env = {
     var data = Map[String, Addr]()
     // Set up initial environment and install the primitives in the global store.
-    primitives.allPrimitives.foreach { p =>
-      val addr = GlobalAddr(PrmAddr(p.name))
     primitives.CSchemePrimitives.foreach { p =>
-      val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
+      val addr = GlobalAddr(PrmAddr(p.name))
       store += (addr -> lattice.primitive(p))
       data = data + (p.name -> addr)
     }
