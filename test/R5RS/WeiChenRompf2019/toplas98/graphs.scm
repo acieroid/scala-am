@@ -37,7 +37,7 @@
 ; 		(begin e-first
 ; 		    e-rest ...)))))
 
-;;; ==== util.ss ====
+;;; ==== scalaam.util.ss ====
 
 
 ; Fold over list elements, associating to the left.

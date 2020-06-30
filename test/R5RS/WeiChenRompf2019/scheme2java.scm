@@ -7,7 +7,7 @@
 ;; Site:   http://matt.might.net/
 ;;         http://www.ucombinator.org/
 
-;; The input language contains integers, variables,
+;; The input scalaam.language contains integers, variables,
 ;; a few primitives, lambda terms, let terms, explicit
 ;; recursion (letrec), conditionals and function
 ;; applications, sequencing and mutable variables.
@@ -327,7 +327,7 @@
 ; java-compile-exp : exp -> string
 (define (java-compile-exp exp)
   (cond
-    ; core forms:
+    ; scalaam.core forms:
     ((const? exp)       (java-compile-const exp))
     ((prim?  exp)       (java-compile-prim exp))
     ((ref?   exp)       (java-compile-ref exp))

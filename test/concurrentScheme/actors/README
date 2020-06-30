@@ -1,4 +1,4 @@
-The following code is in Scheme-with-Actors. No implementation of this language
+The following code is in Scheme-with-Actors. No implementation of this scalaam.language
 exists, but it can be easily run on Racket provided the following macros:
 
 (define log-thread (thread (lambda ()

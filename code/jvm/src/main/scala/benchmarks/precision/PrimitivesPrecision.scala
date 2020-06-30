@@ -229,7 +229,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
 
 
 /** Checks that results produced with manual primitives and preluded primitives
-  * exactly match, using a simple type lattice */
+  * exactly match, using a simple type scalaam.lattice */
 /*object PrimitivesComparisonRQ2 {
   type Benchmark = String
 
@@ -283,7 +283,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
             case ((e, env), name) =>
               /* Replace the expression, but keep its position.
                This is to avoid situations where we have the same expression, but it's parsed differently due to preludation (i.e., primitives/global) */
-              val e2: SchemeLambdaExp = SchemeLambda(List(), List(SchemeValue(scalaam.language.sexp.ValueNil, e.idn)), e.idn)
+              val e2: SchemeLambdaExp = SchemeLambda(List(), List(SchemeValue(scalaam.scalaam.language.sexp.ValueNil, e.idn)), e.idn)
               ((e2, ()), name) })
           .filter({
             /* Drops primitives are preluded */
@@ -349,7 +349,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
   protected def extract(analysis: Analysis): BaseStore =
     analysis.store.groupBy(p => convertAddr(analysis)(p._1)).view
       .filterKeys(!_.isInstanceOf[PrmAddr])
-      .mapValues(m => analysis.lattice.join(m.values))
+      .mapValues(m => analysis.scalaam.lattice.join(m.values))
       .mapValues(convertValue(analysis))
       .toMap
 
@@ -397,8 +397,8 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
   }
 
 
-  import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
-  import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
+  import scalaam.scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
+  import scalaam.scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
 
   def analysis1(p: SchemeExp) = new scalaam.cli.evaluation.primitives.PerformanceType.AnalysisWithPreludedPrimitives(p) with S_CSFA_0 {
     override def toString = "P"
@@ -431,7 +431,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
     "test/sat.scm",
     "test/regex.scm",
     "test/rsa.scm",
-    "test/gambit/lattice.scm",
+    "test/gambit/scalaam.lattice.scm",
     "test/gambit/mazefun.scm",
     "test/gambit/perm9.scm",
     "test/gambit/nqueens.scm",

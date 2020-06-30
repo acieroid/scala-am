@@ -196,7 +196,7 @@
                                 ((high)
                                     'less)
                                 (else
-                                    (error "make-lattice base"))))
+                                    (error "make-scalaam.lattice base"))))
                         ((high)
                             (case rhs
                                 ((low)
@@ -204,9 +204,9 @@
                                 ((high)
                                     'equal)
                                 (else
-                                    (error "make-lattice base"))))
+                                    (error "make-scalaam.lattice base"))))
                         (else ;(display "not low nor high")
-                            (error "make-lattice base"))))))
+                            (error "make-scalaam.lattice base"))))))
         (l3 (maps l2 l2))
         (l4 (maps l3 l3)))
     (count-maps l2 l2)

@@ -30,14 +30,14 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                           "-encoding", "utf-8",                // Specify character encoding used by source files.
                           "-explaintypes",                     // Explain type errors in more detail.
                           "-feature",                          // Emit warning and location for usages of features that should be imported explicitly.
-                          "-language:existentials",            // Existential types (besides wildcard types) can be written and inferred
-                          "-language:experimental.macros",     // Allow macro definition (besides implementation and application)
-                          "-language:higherKinds",             // Allow higher-kinded types
-                          "-language:implicitConversions",     // Allow definition of implicit functions called views
+                          "-scalaam.language:existentials",            // Existential types (besides wildcard types) can be written and inferred
+                          "-scalaam.language:experimental.macros",     // Allow macro definition (besides implementation and application)
+                          "-scalaam.language:higherKinds",             // Allow higher-kinded types
+                          "-scalaam.language:implicitConversions",     // Allow definition of implicit functions called views
                           "-unchecked",                        // Enable additional warnings where generated code depends on assumptions.
                           "-Xcheckinit",                       // Wrap field accessors to throw an exception on uninitialized access.
                           //"-Xfatal-warnings",                  // Fail the compilation if there are any warnings.
-                          //"-Xfuture",                          // Turn on future language features.
+                          //"-Xfuture",                          // Turn on future scalaam.language features.
                           "-Xlint:adapted-args",               // Warn if an argument list is modified to match the receiver.
                           //"-Xlint:by-name-right-associative",  // By-name parameter of right associative operator.
                           "-Xlint:constant",                   // Evaluation of a constant arithmetic expression results in an error.

@@ -75,7 +75,7 @@ object SchemeBenchmarks {
       //"test/R5RS/gambit/peval.scm",
       //"test/R5RS/gambit/earley.scm", // list->vector
       "test/R5RS/gambit/graphs.scm",
-      "test/R5RS/gambit/lattice.scm",
+      "test/R5RS/gambit/scalaam.lattice.scm",
       "test/R5RS/gambit/mazefun.scm",
       // "test/R5RS/gambit/browse.scm", // part of gabriel
       "test/R5RS/gambit/paraffins.scm",

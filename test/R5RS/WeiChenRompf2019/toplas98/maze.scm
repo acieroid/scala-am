@@ -149,7 +149,7 @@
 ;;; Building mazes with union/find disjoint sets.
 ;;; Copyright (c) 1995 by Olin Shivers.
 
-;;; This is the algorithmic core of the maze constructor.
+;;; This is the algorithmic scalaam.core of the maze constructor.
 ;;; External dependencies:
 ;;; - RANDOM-INT
 ;;; - Union/find code
@@ -213,7 +213,7 @@
   v)
 
 
-;;; This is the core of the algorithm.
+;;; This is the scalaam.core of the algorithm.
 
 (define (dig-maze walls ncells)
   (call-with-current-continuation

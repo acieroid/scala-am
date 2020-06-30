@@ -14,7 +14,7 @@
                                   (send p value (lookup key l))
                                   (become db-actor l))))
          (db-write-actor (actor "db-write" (l p key)
-                                ;; In this actor language we can't express the fact that we only receive if p == p2
+                                ;; In this actor scalaam.language we can't express the fact that we only receive if p == p2
                                 ;; therefore the benchmark isn't completely equivalent, but we can still show that
                                 ;; the label client_writes is accessible only by one client at a time
                                 (value (value p2)

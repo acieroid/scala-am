@@ -199,7 +199,7 @@
 				((high)
 				    'less)
 				(else
-				    (error "make-lattice"))))
+				    (error "make-scalaam.lattice"))))
 			((high)
 			    (case rhs4
 				((low)
@@ -207,8 +207,8 @@
 				((high)
 				    'equal)
 				(else
-				    (error "make-lattice"))))
+				    (error "make-scalaam.lattice"))))
 			(else
-			    (error "make-lattice")))))))
+			    (error "make-scalaam.lattice")))))))
   (display (count-maps l3 l3)))
 
