@@ -406,13 +406,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     private case object StoreAdapter extends Store[Addr,Value] {
       def lookup(a: Addr): Option[Value] = Some(readAddr(a))
       def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
-      // all the other operations should not be used by the primitives ...
-      def content                               = throw new Exception("Operation not allowed!")
-      def forall(p: ((Addr, Value)) => Boolean) = throw new Exception("Operation not allowed!")
-      def join(that: Store[Addr, Value])        = throw new Exception("Operation not allowed!")
-      def keys                                  = throw new Exception("Operation not allowed!")
-      def restrictTo(a: Set[Addr])              = throw new Exception("Operation not allowed!")
-      def subsumes(that: Store[Addr, Value])    = throw new Exception("Operation not allowed!")
     }
 
     // Evaluate literals by in injecting them in the scalaam.lattice.
