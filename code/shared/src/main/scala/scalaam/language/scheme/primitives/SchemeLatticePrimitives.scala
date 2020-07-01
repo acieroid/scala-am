@@ -625,34 +625,15 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `new-lock` extends SchemePrimitive[V, A] {
       val name = "new-lock"
-      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]) = args match {
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error] = args match {
         case Nil =>
           val addr = alloc.pointer(fpos)
-          val lock = lat.lock()
+          val lock = lat.lock(Set()) // An initial lock does not contain any thread since it is not held.
           val ptr  = lat.pointer(addr)
           (ptr, store.extend(addr, lock))
         case l => MayFail.failure(PrimitiveArityError(name, 0, l.size))
       }
     }
 
-    // Does not follow the SchemePrimitive interface, as it needs the caller of the function.
-/*
-    object Acquire {
-      val name = "acquire"
-      def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeAllocator[A], caller: TID): MayFail[(V, Store[A, V]), Error] = args match {
-        case (_, lockPtr) :: Nil =>
-          dereferencePointerGetAddressReturnStore(lockPtr, store)( {case (addr, lock, store) =>
-              ifThenElse(isLock(lock)) {
-                // We do not explicitly check whether a lock is free, since (using our representation), it might always be free...
-                lat.acquire(lock, caller) >>= { newLock =>
-                  MayFail.success((lat.bottom, store.extend(addr, newLock)))
-                }
-              } {
-                MayFail.failure(PrimitiveNotApplicable(name, List(lock)))
-              }
-          })
-        case l => MayFail.failure(PrimitiveArityError(name, 0, l.size))
-      }
-    } */
   }
 }

@@ -99,7 +99,9 @@ class ModularSchemeLattice[
     def ord = 12
     override def toString: String = s"🧵$threads"
   }
-  // Could also store Threads here, but this seems to be simpler. An empty set indicates the lock is not held, but a non-empty set may also indicate this...
+  // Could also store (a) Thread(s) here, but this seems to be simpler.
+  // An empty set indicates the lock is not held, but a non-empty set may also indicate this... (due to the monotonicity of the analysis, threads will only increase in size).
+  // This should correspond to the formalisation of ModConc and \lambda_\tau.
   case class Lock(threads: Set[TID]) extends Value {
     def ord = 13
     override def toString: String = s"<Lock $threads>"
@@ -449,7 +451,7 @@ class ModularSchemeLattice[
     def cons(car: L, cdr: L): Value               = Cons(car, cdr)
     def pointer(a: A): Value                      = Pointer(Set(a))
     def thread(tid: TID): Value                   = Thread(Set(tid))
-    def lock(): Value                             = Lock(Set())
+    def lock(threads: Set[TID]): Value            = Lock(threads)
     def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
       case Clo(closures) => closures
       case _             => Set.empty
@@ -645,7 +647,7 @@ class ModularSchemeLattice[
     def pointer(a: A): L                      = Element(Value.pointer(a))
     def vector(size: L, init: L): MayFail[L, Error] = size.foldMapL(sz => Value.vector(sz, init).map(v => Element(v)))
     def thread(tid: TID): L                   = Element(Value.thread(tid))
-    def lock(): L                             = Element(Value.lock())
+    def lock(threads: Set[TID]): L            = Element(Value.lock(threads))
     def nil: L = Element(Value.nil)
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
   }
