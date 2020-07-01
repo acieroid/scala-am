@@ -174,7 +174,7 @@ object SchemePrelude {
                  |    (else (error "Unsupported call."))))""".stripMargin,
   )
 
-  val primDefsParsed = primDefs.map {
+  val primDefsParsed: Map[String, SchemeExp] = primDefs.map {
     case (nam,str) =>
       val exp = SchemeParser.parse(str,Position.newTag(nam))
       (nam,exp)
@@ -182,6 +182,7 @@ object SchemePrelude {
 
   val primNames: Set[String] = primDefs.keySet
 
+  /** Transively adds all required definitions to the prelude, except the ones listed in `excl`. */
   def addPrelude(exp: SchemeExp, excl: Set[String] = Set()): SchemeExp = {
     var prelude: List[ SchemeExp] = List()
     var work:    List[Expression] = List(exp)

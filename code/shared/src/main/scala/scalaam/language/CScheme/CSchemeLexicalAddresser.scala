@@ -1,6 +1,5 @@
 package scalaam.language.CScheme
 
-import scalaam.language.CScheme._
 import scalaam.language.scheme._
 
 object CSchemeLexicalAddresser extends BaseSchemeLexicalAddresser {

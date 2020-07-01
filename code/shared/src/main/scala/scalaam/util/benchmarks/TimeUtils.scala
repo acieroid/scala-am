@@ -4,8 +4,8 @@ object Timeout {
   import scala.concurrent.duration.Duration
 
   case class T(startingTime: Long, timeout: Option[Long]) {
-    def reached: Boolean = timeout.exists(System.nanoTime - startingTime > _)
-    def    time: Double  = (System.nanoTime - startingTime) / Math.pow(10, 9)
+    def reached : Boolean      = timeout.exists(System.nanoTime - startingTime > _)
+    def time    : Double       = (System.nanoTime - startingTime) / Math.pow(10, 9)
     def timeLeft: Option[Long] = timeout.map { duration =>
       val deadline = startingTime + duration
       deadline - System.nanoTime

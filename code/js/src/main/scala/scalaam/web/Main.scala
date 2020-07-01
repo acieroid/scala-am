@@ -54,9 +54,9 @@ object Main {
       override def step(timeout: Timeout.T) = {
         val component = workList.head
         val name = deref(component)
-        val prevResult = store.get(ComponentAddr(component,ReturnAddr)).getOrElse(lattice.bottom)
+        val prevResult = store.getOrElse(ComponentAddr(component, ReturnAddr), lattice.bottom)
         super.step(timeout)
-        val newResult = store.get(ComponentAddr(component,ReturnAddr)).getOrElse(lattice.bottom)
+        val newResult = store.getOrElse(ComponentAddr(component, ReturnAddr), lattice.bottom)
         println(s"$name => $newResult (previously: $prevResult)")
       }
       def key(cmp: Component) = body(cmp).idn

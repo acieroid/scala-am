@@ -22,7 +22,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   def isLock         = unaryOp(SchemeOps.UnaryOperator.IsLock) _
   def vectorLength   = unaryOp(SchemeOps.UnaryOperator.VectorLength) _
   def inexactToExact = unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
-  def eqq           = binaryOp(SchemeOps.BinaryOperator.Eq) _
+  def eqq            = binaryOp(SchemeOps.BinaryOperator.Eq) _
 
   def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
     cond >>= { condv =>
@@ -226,6 +226,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     )
   }
 
+  /** Primitives for a concurrent Scheme that are not part of R5RS. */
   def CSchemePrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
     List(

@@ -13,7 +13,7 @@ object WebVisualisation {
   // some shorthands
   type JsAny = js.Dynamic
   type JsArray[A] = js.Array[A]
-  val d3 = js.Dynamic.global.d3
+  val d3: JsAny = js.Dynamic.global.d3
   // some constants
   val __CIRCLE_RADIUS__ = 15
   val __SVG_ARROW_ID__ = "endarrow"
@@ -42,7 +42,7 @@ object WebVisualisation {
 class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_]) {
 
   // TODO: make these abstract
-  def displayText(cmp: analysis.Component): String = cmp.toString()
+  def displayText(cmp: analysis.Component): String = cmp.toString
   def componentKey(cmp: analysis.Component): Any = None
 
   import WebVisualisation._
@@ -51,7 +51,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   // COLOR WHEEL
   //
 
-  var colorWheel = Map[Any,JsAny]() 
+  var colorWheel: Map[Any, JsAny] = Map()
   def colorFor(cmp: analysis.Component): JsAny = colorForKey(componentKey(cmp))
   def colorForKey(key: Any): JsAny = colorWheel.get(key) match {
     case None =>

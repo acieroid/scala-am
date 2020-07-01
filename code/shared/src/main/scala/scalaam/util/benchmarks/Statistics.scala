@@ -3,14 +3,8 @@ package scalaam.util.benchmarks
 // Helpers to compute statistics over sets of data
 object Statistics {
 
-  type Min = Double
-  type Max = Double
-  type Mea = Double
-  type Med = Double
-  type StD = Double
-
   // Bundles multiple statitistical measures in one object
-  case class M(min: Min, max: Max, mea: Mea, med: Med, std: StD) {
+  case class M(min: Double, max: Double, mea: Double, med: Double, std: Double) {
     override def toString: String = {
       s"* Values in [$min,$max]\n" ++
       s"* Mean: $mea , Median: $med\n" ++

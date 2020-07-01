@@ -13,7 +13,7 @@ object Monoid {
 
 object MonoidImplicits {
   implicit class FoldMapExtension[X](coll: Iterable[X]) {
-      def foldMap[M : Monoid](f: X => M) =
+      def foldMap[M : Monoid](f: X => M): M =
         coll.foldLeft(Monoid[M].zero)((acc,elm) => Monoid[M].append(acc,f(elm)))
   }
   implicit def setMonoid[X]: Monoid[Set[X]] = MonoidInstances.setMonoid
