@@ -92,7 +92,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
             intra.trigger(lift(dep))
         }
         // MODF INTRA-ANALYSIS EXTENDED WITH SUPPORT FOR THREADS
-        def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra {
+        def intraAnalysis(cmp: Component) = new InnerModFIntra(cmp)
+        class InnerModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
             var T: Set[inter.Component] = Set()
             def spawnThread(t: inter.Component) = T += t 
             def readThreadResult(t: inter.Component) = readAddr(ComponentAddr(t, ReturnAddr))               
@@ -126,6 +127,7 @@ abstract class SimpleModConcAnalysis(prg: SchemeExp) extends ModAnalysis(prg)
                                                 with StandardSchemeModConcComponents
 
 // examples
+// TODO: put different inner ModF instantiations in different traits for ModConc
 class MyModConcAnalysis1(prg: SchemeExp) extends SimpleModConcAnalysis(prg)
                                             with SchemeConstantPropagationDomain
                                             with LIFOWorklistAlgorithm[SchemeExp] {
