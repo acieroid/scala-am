@@ -12,7 +12,7 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr]
     case ComponentAddr(cmp, localAddr) => ComponentAddr(update(cmp), localAddr)
   }
   override def updateDep(update: Component => Component)(dep: Dependency): Dependency = dep match {
-    case ReadWriteDependency(addr) => ReadWriteDependency(updateAddr(update)(addr))
+    case AddrDependency(addr) => AddrDependency(updateAddr(update)(addr))
     case _ => super.updateDep(update)(dep)
   }
   // requires an implementation of alpha for the abstract domain
@@ -27,7 +27,7 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr]
       val newKey = updateAddr(update)(oldKey)
       val newValue = store(newKey)
       if (oldValue != newValue) {
-        trigger(ReadWriteDependency(newKey))
+        trigger(AddrDependency(newKey))
       }
     }
   }

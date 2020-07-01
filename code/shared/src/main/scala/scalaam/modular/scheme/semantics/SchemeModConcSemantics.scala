@@ -2,6 +2,7 @@ package scalaam.modular.scheme.semantics
 
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.language.CScheme._
 import scalaam.modular._
 import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.modular.scheme._
@@ -16,6 +17,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     // MODCONC COMPONENTS
     //
 
+    type Component <: TID
     def view(cmp: Component): SchemeModConcComponent[ComponentContext,Addr]
     def initialComponent: Component 
     def newComponent(thread: Thread[ComponentContext,Addr]): Component
@@ -41,13 +43,16 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         case MainThread             => None
         case Thread(_, _, ctx)      => Some(ctx)
     }
+    // TODO: parameterize to allow different sensitivities for threads
+    type ComponentContext = ()
 
     //
     // MODCONC INTRA-ANALYSIS
     //
 
     abstract class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp)
-                                                         with GlobalStoreIntra { intra =>
+                                                         with GlobalStoreIntra
+                                                         with ReturnResultIntra { intra =>
         // TODO: create a new trait for this kind of intra analysis, then parameterize the ModConc analysis with a constructor for such analyses
         val modFAnalysis = new ModAnalysis[SchemeExp](body(cmp)) with BaseSchemeModFSemantics
                                                                  with BigStepModFSemantics
@@ -60,15 +65,53 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
             lazy val lattice = inter.lattice 
             lazy val initialEnv: Environment[Addr] = inter.env(cmp)
             // GLOBAL STORE SETUP 
+            def store = intra.store
+            def store_=(s: Map[Addr,Value]) = intra.store = s            
+            def sharedAddr(addr: Address) = intra.allocAddr(GlobalAddr(addr))
             def componentAddr(cmp: Component, addr: Address) = intra.allocAddr(ComponentAddr(cmp,addr))
-            def sharedAddr(addr: Address) = intra.allocAddr(addr)
-            def read(addr: Addr) = Some(intra.readAddr(addr))
-            def write(addr: Addr, value: Value) = intra.writeAddr(addr, value)
+            // SYNCING DEPENDENCIES
+            def lift(dep: Dependency): inter.Dependency = dep match {
+                case AddrDependency(addr) => inter.AddrDependency(addr)
+            }
+            override def register(target: Component, dep: Dependency) = {
+                super.register(target, dep)
+                intra.register(lift(dep))
+            }
+            override def trigger(dep: Dependency) = {
+                super.trigger(dep)
+                intra.trigger(lift(dep))
+            }
             // INTRA-ANALYSIS
-            def intraAnalysis(cmp: Component) = ???
+            def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra {
+                var T: Set[inter.Component] = Set()
+                def spawnThread(t: inter.Component) = T += t 
+                def readThreadResult(t: inter.Component) = 
+                    readAddr(ComponentAddr(t, ReturnAddr))               
+                override def eval(exp: SchemeExp, env: Env) = exp match {
+                    case CSchemeFork(bdy, _)    => evalFork(bdy, env)
+                    case CSchemeJoin(thr, _)    => evalJoin(thr, env)
+                    case _                      => super.eval(exp, env)   
+                }
+                private def evalFork(exp: SchemeExp, env: Env) = {
+                    val targetCmp = inter.newComponent(Thread(exp, env, ()))
+                    spawnThread(targetCmp)
+                    lattice.thread(targetCmp)
+                }
+                private def evalJoin(thrExp: SchemeExp, env: Env) = {
+                    val thrVal = eval(thrExp, env)
+                    lattice.getThreads(thrVal).foldLeft(lattice.bottom)((acc, tid) => 
+                        lattice.join(acc, readThreadResult(tid.asInstanceOf[inter.Component]))
+                    )
+                }
+                override def commit() = {
+                    super.commit()
+                    T.foreach(intra.spawn)
+                }
+            }
         }
         def analyze(timeout: Timeout.T): Unit = {
-            
+            modFAnalysis.analyze(timeout)
+            writeResult(modFAnalysis.finalResult)
         }
     }
 

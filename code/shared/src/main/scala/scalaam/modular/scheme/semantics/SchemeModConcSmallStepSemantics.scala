@@ -124,7 +124,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
 
 
-  trait SmallStepIntra extends IntraAnalysis with DedicatedGlobalStoreIntra with ReturnResultIntra  {
+  trait SmallStepIntra extends IntraAnalysis with ReturnResultIntra  {
 
 
     //----------//

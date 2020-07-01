@@ -7,7 +7,7 @@ import scalaam.language.scheme._
 import scalaam.language.CScheme._
 
 // A SchemeModConcComponent represents threads
-sealed trait SchemeModConcComponent[+Context, +Addr <: Address] extends TID with SmartHash
+sealed trait SchemeModConcComponent[+Context, +Addr <: Address] extends SmartHash
 // The main function call, i.e. the entry point of the program (corresponding to all top-level code)
 case object MainThread extends SchemeModConcComponent[Nothing,Nothing] {
   override def toString: String = "main-thread"
@@ -22,7 +22,7 @@ case class Thread[Context,Addr <: Address](exp: SchemeExp,
 trait StandardSchemeModConcComponents extends SchemeModConcSemantics {
     // Components are just Scheme ModConc components
     // TODO: make this an "opaque type" in Scala 3?
-    case class Component(cmp: SchemeModConcComponent[ComponentContext,Addr]) {
+    case class Component(cmp: SchemeModConcComponent[ComponentContext,Addr]) extends TID {
         override def toString = cmp.toString()
     }
     lazy val initialComponent = Component(MainThread)
