@@ -12,7 +12,7 @@ import scala.scalajs.js
 object WebVisualisation {
   // some shorthands
   type JsAny = js.Dynamic
-  type JsArray[A] = js.Array[A]
+  type JsArray[E] = js.Array[E]
   val d3: JsAny = js.Dynamic.global.d3
   // some constants
   val __CIRCLE_RADIUS__ = 15
@@ -25,8 +25,8 @@ object WebVisualisation {
   val __FORCE_LINKS__ = "links"
   val __FORCE_CENTER__ = "center"
   // some JS helpers
-  implicit def toJsArray[A](seq: Iterable[A]): JsArray[A] = {
-    val array = new js.Array[A]()
+  implicit def toJsArray[E](seq: Iterable[E]): JsArray[E] = {
+    val array = new js.Array[E]()
     seq.foreach { item => array.push(item) }
     return array
   }

@@ -137,6 +137,8 @@ class TypeSchemeLattice[A <: Address] {
     def thread(tid: TID): L                   = ???
     def lock(threads: Set[TID])               = ???
     def acquire(lock: L, caller: TID): MayFail[L, Error] = ???
+    def release(lock: L, caller: TID): MayFail[L, Error] = ???
+
   }
   object L {
     implicit val lattice: SchemeLattice[L, A, P] = schemeLattice

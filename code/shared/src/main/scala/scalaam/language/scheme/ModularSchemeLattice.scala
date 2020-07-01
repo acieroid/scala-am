@@ -565,6 +565,12 @@ class ModularSchemeLattice[
       case Lock(tids) => MayFail.success(Element(Lock(tids + tid)))
       case _          => MayFail.failure(TypeError("acquire: expected a lock", lock))
     }
+
+    def release(lock: Value, tid: TID): MayFail[L, Error] = lock match {
+      case Lock(tids) if tids.contains(tid) => MayFail.success(Element(Lock(tids - tid)))
+      case Lock(_) => MayFail.failure(InvalidRelease("Cannot release lock since it is not held by the requesting thread.", lock))
+      case _       => MayFail.failure(TypeError("release: expected a lock", lock))
+    }
   }
 
   type L = Elements
@@ -629,6 +635,8 @@ class ModularSchemeLattice[
 
     def acquire(lock: L, tid: TID): MayFail[L, Error] =
       lock.foldMapL(l => Value.acquire(l, tid))
+    def release(lock: L, tid: TID): MayFail[L, Error] =
+      lock.foldMapL(l => Value.release(l, tid))
 
     def bottom: L                             = Elements(List.empty)
     def number(x: scala.Int): L               = Element(Value.number(x))

@@ -1,7 +1,6 @@
 package scalaam.language.scheme.primitives
 
 import scalaam.core._
-import scalaam.language.CScheme.TID
 import scalaam.language.scheme._
 import scalaam.util.Monoid
 

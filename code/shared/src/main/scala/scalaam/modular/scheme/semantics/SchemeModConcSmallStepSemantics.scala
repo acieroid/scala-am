@@ -248,11 +248,13 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     case class      SetFrame(variable: Identifier, env: Env)                                                       extends Frame
     case class OperatorFrame(args: Exps, env: Env, fexp: SchemeFuncall)                                            extends Frame
     case class OperandsFrame(todo: Exps, done: List[(Exp, Value)], env: Env, f: Value, fexp: SchemeFuncall)        extends Frame // "todo" also contains the expression currently evaluated.
-    case class      LetFrame(id: Identifier, todo: List[(Identifier, Exp)], done: List[(Identifier, Value)], body: Exps, env: Env) extends Frame
-    case class  LetStarFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
-    case class   LetRecFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                                  extends Frame
+    case class      LetFrame(id: Identifier, todo: List[(Identifier, Exp)], done: List[(Identifier, Value)],
+                                                                            body: Exps, env: Env)                  extends Frame
+    case class  LetStarFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                  extends Frame
+    case class   LetRecFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                  extends Frame
     case object    JoinFrame                                                                                       extends Frame
     case object AcquireFrame                                                                                       extends Frame
+    case object ReleaseFrame                                                                                       extends Frame
 
 
     //-----------//
@@ -301,6 +303,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
       // Locking.
       case CSchemeAcquire(lock, _)                 => Set(Eval(lock, env, extendKStore(lock, AcquireFrame, stack)))
+      case CSchemeRelease(lock, _)                 => Set(Eval(lock, env, extendKStore(lock, ReleaseFrame, stack)))
 
       // Unexpected cases.
       case e                                       => throw new Exception(s"evaluate: unexpected expression type: ${e.label}.")
@@ -387,6 +390,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case LetRecFrame(id, todo, body, env)        => assign(id, vl, env); continueLetRec(todo, body, env, stack)
       case JoinFrame                               => lattice.getThreads(vl).map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack)) //TODO: parameterize ModularLattice with type of TID to avoid asInstanceOf here
       case AcquireFrame                            => Acquire.call(vl, stack)
+      case ReleaseFrame                            => Release.call(vl, stack)
     }
 
     private def conditional(value: Value, t: State, f: State): Set[State] = conditional(value, Set(t), Set(f))
@@ -465,13 +469,12 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     // Expressed as irregular Scheme primitives.
 
     object Acquire extends PrimitiveBuildingBlocks[Value, Addr] {
-      val name = "acquire"
       def call(lockPtr: Value, stack: Stack): Set[State] = {
           val ret = dereferencePointerGetAddressReturnStore(lockPtr, StoreAdapter)( {case (addr, lock, store) =>
               isLock(lock) >>= { test =>
                 // We do not explicitly check whether a lock is free, since (using our representation) it might always be free.
-                val t: MayFail[(Value, Store[Addr, Value]), Error] = if (lattice.isTrue(test)) lat.acquire(lock, component).map(newlock => (lattice.bool(true), store.extend(addr, newlock))) else (lattice.bool(false), store)
-                if (lattice.isFalse(test)) t >>= {case (v, store) => MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable(name, List(lock))), lattice.join).map((_, store))} else t
+                val t: MayFail[(Value, Store[Addr, Value]), Error] = if (lattice.isTrue(test)) lattice.acquire(lock, component).map(newlock => (lattice.bool(true), store.extend(addr, newlock))) else (lattice.bool(false), store)
+                if (lattice.isFalse(test)) t >>= {case (v, store) => MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable("acquire", List(lock))), lattice.join).map((_, store))} else t
               }
             }) match { // We don't need the store back...
               case MayFailSuccess((vlu,_))  => vlu
@@ -479,6 +482,26 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
               case MayFailError(_)          => lattice.bottom
             }
           Set(Kont(ret, stack))
+      }
+
+      override val lat: SchemeLattice[Value, A[SchemeComponent], SchemePrimitive[Value, A[SchemeComponent]]] = lattice
+    }
+
+    object Release extends PrimitiveBuildingBlocks[Value, Addr] {
+      def call(lockPtr: Value, stack: Stack): Set[State] = {
+        val ret = dereferencePointerGetAddressReturnStore(lockPtr, StoreAdapter)({ case (addr, lock, store) =>
+          isLock(lock) >>= { test =>
+            // To release a lock, we just have to see whether it is held by the current thread.
+            val t: MayFail[(Value, Store[Addr, Value]), Error] = if (lattice.isTrue(test)) lattice.release(lock, component).map(newlock => (lattice.bool(true), store.extend(addr, newlock))) else (lattice.bool(false), store)
+            if (lattice.isFalse(test)) t >>= {case (v, store) => MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable("acquire", List(lock))), lattice.join).map((_, store))} else t
+
+            }
+        }) match { // We don't need the store back...
+          case MayFailSuccess((vlu,_))  => vlu
+          case MayFailBoth((vlu,_),_)   => vlu
+          case MayFailError(_)          => lattice.bottom
+        }
+        Set(Kont(ret, stack))
       }
 
       override val lat: SchemeLattice[Value, A[SchemeComponent], SchemePrimitive[Value, A[SchemeComponent]]] = lattice
