@@ -105,7 +105,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def thread(tid: TID): L
 
   /** Creates a new lock. */
-  def lock(): L
+  def lock(threads: Set[TID]): L
 
   /** Acquires a given lock. */
   def acquire(lock: L, caller: TID): MayFail[L, Error]
