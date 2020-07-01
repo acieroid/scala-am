@@ -25,8 +25,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
   def componentAddr(cmp: Component, addr: Address): Addr 
 
   // Dependency that is triggered when an abstract value at address 'addr' is updated
-  // TODO: rename to AddrDependency or something, `ReadWrite` is universal to all dependencies
-  case class ReadWriteDependency(addr: Addr) extends Dependency {
+  case class AddrDependency(addr: Addr) extends Dependency {
     override def toString(): String = s"$addr"
   }
 
@@ -51,7 +50,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
       componentAddr(component, addr)
     // reading addresses in the global store
     protected def readAddr(addr: Addr): Value = {
-      register(ReadWriteDependency(addr))
+      register(AddrDependency(addr))
       intra.store.get(addr) match {
         case None => 
           intra.store = intra.store + (addr -> lattice.bottom) // TODO: <- currently required by AdaptiveGlobalStore, but can go once fixed there
@@ -65,16 +64,14 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
       updateAddr(intra.store, addr, value)
         .map(updated => {
           intra.store = updated
-          trigger(ReadWriteDependency(addr))
+          trigger(AddrDependency(addr))
         })
         .isDefined
 
     override def commit(dep: Dependency): Boolean = dep match {
-      case ReadWriteDependency(addr) => 
+      case AddrDependency(addr) => 
         updateAddr(inter.store, addr, intra.store(addr))
-          .map(updated => {
-            inter.store = updated
-          })
+          .map(updated => inter.store = updated)
           .isDefined
       case _ => super.commit(dep)
     }

@@ -71,7 +71,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
             def componentAddr(cmp: Component, addr: Address) = intra.allocAddr(ComponentAddr(cmp,addr))
             // SYNCING DEPENDENCIES
             def lift(dep: Dependency): inter.Dependency = dep match {
-                case ReadWriteDependency(addr) => inter.ReadWriteDependency(addr)
+                case AddrDependency(addr) => inter.AddrDependency(addr)
             }
             override def register(target: Component, dep: Dependency) = {
                 super.register(target, dep)
