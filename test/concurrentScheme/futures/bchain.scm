@@ -43,7 +43,7 @@
 (define *blockchain*
   (atom (list
           (block 0 0 1509658251 "genesis block" (calculate-hash 0 0 1598658251 "genesis-block")))))
-(define *blockchain-lock* (t/new-lock))
+(define *blockchain-lock* (new-lock))
 
 (define (show-blockchain)
   (for-each (lambda (b) (display (block-data b)) (display " "))
@@ -59,14 +59,14 @@
        (equal? (calculate-hash-for-block new-block) (block-hash new-block))))
 
 (define (add-block b)
-  (t/acquire *blockchain-lock*)
+  (acquire *blockchain-lock*)
   (if (is-valid-new-block b (get-latest-block))
       (begin
         (reset! *blockchain* (cons b (read *blockchain*)))
-        (t/release *blockchain-lock*)
+        (release *blockchain-lock*)
         #t)
       (begin
-        (t/release *blockchain-lock*)
+        (release *blockchain-lock*)
         #f)))
 
 (define (mine-new-block data)

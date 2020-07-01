@@ -1,11 +1,11 @@
-(define (t/new-lock)
+(define (new-lock)
   (atom #f))
-(define (t/acquire lock)
+(define (acquire lock)
   (let try ()
     (if (compare-and-set! lock #f #t)
         #t
         (try))))
-(define (t/release lock)
+(define (release lock)
   (reset! lock #f))
 
 ;; Ping-pong
@@ -17,22 +17,22 @@
       (- id 1)))
 
 (define (ping n str id lock last-ref)
-  (t/acquire lock)
+  (acquire lock)
   (if (= (read last-ref) (prev-id id))
       ;; my turn
       (begin
         (display str) (newline)
         (reset! last-ref id)
-        (t/release lock)
+        (release lock)
         (if (= n Iterations)
             'done
             (ping (+ n 1) str id lock last-ref)))
       ;; not my turn
       (begin
-        (t/release lock)
+        (release lock)
         (ping n str id lock last-ref))))
 
-(define lck (t/new-lock))
+(define lck (new-lock))
 (define last (atom 1))
 
 (define (do-n n f)

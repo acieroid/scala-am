@@ -3,16 +3,16 @@
 (define NCONS 42)
 (define buffer (atom '()))
 (define done (atom #f))
-(define lock (t/new-lock))
+(define lock (new-lock))
 (define (do-something element)
   (display element) (newline))
 (define (producer n)
   (if (= n 0)
       (reset! done #t)
       (begin
-        (t/acquire lock)
+        (acquire lock)
         (reset! buffer (cons n (read buffer)))
-        (t/release lock)
+        (release lock)
         (producer (- n 1)))))
 (define (consumer)
   (if (null? (read buffer))
@@ -21,10 +21,10 @@
             'done
             (consumer)))
       (begin
-        (t/acquire lock)
+        (acquire lock)
         (do-something (car (read buffer)))
         (reset! buffer (cdr (read buffer)))
-        (t/release lock)
+        (release lock)
         (consumer))))
 
 (define producer-thrd (future (producer N)))

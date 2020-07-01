@@ -1,17 +1,17 @@
 ;; Implementation of STM
 
 (define (atom v)
-  (cons (t/ref v)
-        (t/new-lock)))
+  (cons (ref v)
+        (new-lock)))
 
 (define (atom-deref a)
-  (t/deref (car a)))
+  (deref (car a)))
 
 (define (atom-swap! a f)
-  (t/acquire (cdr a))
-  (let* ((v (t/deref (car a))))
-    (t/ref-set (car a) (f v))
-    (t/release (cdr a))
+  (acquire (cdr a))
+  (let* ((v (deref (car a))))
+    (ref-set (car a) (f v))
+    (release (cdr a))
     v))
 
 (define (mc-ref val)
@@ -83,7 +83,7 @@
       #t)
   val)
 
-(define COMMIT_LOCK (t/new-lock))
+(define COMMIT_LOCK (new-lock))
 
 (define (keys m)
   (map car m))
@@ -100,14 +100,14 @@
     (every? (lambda (ref) (= (cdr (atom-deref ref))
                              (cdr (assoc ref (atom-deref (trn-last-seen-rev tx))))))
             refs))
-  (t/acquire COMMIT_LOCK)
+  (acquire COMMIT_LOCK)
   (let* ((in-tx-values (atom-deref (trn-in-tx-values tx)))
          (success (validate (keys in-tx-values))))
     (map (lambda (ref)
            (atom-swap! ref (lambda (v) (cons (cdr (assoc ref in-tx-values))
                                              (trn-id tx)))))
          (atom-deref (trn-written-refs tx)))
-    (t/release COMMIT_LOCK)
+    (release COMMIT_LOCK)
     success))
 
 (define (tx-run tx fun)

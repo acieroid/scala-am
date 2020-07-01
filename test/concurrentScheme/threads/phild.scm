@@ -12,10 +12,10 @@
                        v))))
     (loop 0)))
 (define forks
-  (build-vector N #f (lambda (i) (t/new-lock))))
+  (build-vector N #f (lambda (i) (new-lock))))
 
-(define dictionary (t/ref 0))
-(define dictionary-lock (t/new-lock))
+(define dictionary (ref 0))
+(define dictionary-lock (new-lock))
 
 (define (philosopher i)
   (letrec ((left i)
@@ -25,20 +25,20 @@
                           'done
                           (if (bool-top)
                               (begin
-                                (t/acquire (vector-ref forks (min left right)))
-                                (t/acquire (vector-ref forks (max left right)))
+                                (acquire (vector-ref forks (min left right)))
+                                (acquire (vector-ref forks (max left right)))
                                 ;; eat
                                 (display "Eating...")
-                                (t/release (vector-ref forks (min left right)))
-                                (t/release (vector-ref forks (max left right)))
+                                (release (vector-ref forks (min left right)))
+                                (release (vector-ref forks (max left right)))
                                 (process (+ turn 1)))
                               (begin
-                                (t/acquire dictionary-lock)
-                                (if (= (t/deref dictionary) i)
-                                    (t/ref-set dictionary (modulo (+ i 1) N))
+                                (acquire dictionary-lock)
+                                (if (= (deref dictionary) i)
+                                    (ref-set dictionary (modulo (+ i 1) N))
                                     ;; doesn't have the dictionary
                                     'nothing)
-                                (t/release dictionary-lock)
+                                (release dictionary-lock)
                                 (process turn)))))))
     (process 0)))
 

@@ -1,9 +1,9 @@
 (define *actors* (atom '()))
-(define *actors-lock* (t/new-lock))
+(define *actors-lock* (new-lock))
 (define (register-new-actor name f)
-  (t/acquire *actors-lock*)
-  (reset! *actors* (cons (list name f (t/new-lock) (atom '())) (read *actors*)))
-  (t/release *actors-lock*))
+  (acquire *actors-lock*)
+  (reset! *actors* (cons (list name f (new-lock) (atom '())) (read *actors*)))
+  (release *actors-lock*))
 (define (find-actor name)
   (let ((v (assoc name (read *actors*))))
     (if v
@@ -26,10 +26,10 @@
                              (loop receive state))
                            ;; message to receive
                            (begin
-                             (t/acquire (actor-lock name))
+                             (acquire (actor-lock name))
                              (let ((message (car (read mb))))
                                (reset! mb (cdr (read mb)))
-                               (t/release (actor-lock name))
+                               (release (actor-lock name))
                                (let ((action (receive name state (car message) (cdr message))))
                                  (if (eq? action 'terminate)
                                      (begin
@@ -46,9 +46,9 @@
 (define (send target tag args)
   (let ((lock (actor-lock target))
         (mb (actor-mailbox target)))
-    (t/acquire lock)
+    (acquire lock)
     (reset! mb (append (read mb) (list (cons tag args))))
-    (t/release lock)))
+    (release lock)))
 
 (define (split from to)
   (let ((half (quotient (- to from) 2)))

@@ -1,11 +1,11 @@
-(define *actors* (t/ref '()))
-(define *actors-lock* (t/new-lock))
+(define *actors* (ref '()))
+(define *actors-lock* (new-lock))
 (define (register-new-actor name f)
-  (t/acquire *actors-lock*)
-  (t/ref-set *actors* (cons (list name f (t/new-lock) (t/ref '())) (t/deref *actors*)))
-  (t/release *actors-lock*))
+  (acquire *actors-lock*)
+  (ref-set *actors* (cons (list name f (new-lock) (ref '())) (deref *actors*)))
+  (release *actors-lock*))
 (define (find-actor name)
-  (let ((v (assoc name (t/deref *actors*))))
+  (let ((v (assoc name (deref *actors*))))
     (if v
         v
         (error "no actor found"))))
@@ -19,17 +19,17 @@
     (letrec ((loop (lambda (receive state)
                      (let ((mb (actor-mailbox name))
                            (lock (actor-lock name)))
-                       (if (null? (t/deref mb))
+                       (if (null? (deref mb))
                            ;; nothing to receive, wait
                            (begin
                              ;(sleep 0.1)
                              (loop receive state))
                            ;; message to receive
                            (begin
-                             (t/acquire (actor-lock name))
-                             (let ((message (car (t/deref mb))))
-                               (t/ref-set mb (cdr (t/deref mb)))
-                               (t/release (actor-lock name))
+                             (acquire (actor-lock name))
+                             (let ((message (car (deref mb))))
+                               (ref-set mb (cdr (deref mb)))
+                               (release (actor-lock name))
                                (let ((action (receive name state (car message) (cdr message))))
                                  (if (eq? action 'terminate)
                                      (begin
@@ -46,9 +46,9 @@
 (define (send target tag args)
   (let ((lock (actor-lock target))
         (mb (actor-mailbox target)))
-    (t/acquire lock)
-    (t/ref-set mb (append (t/deref mb) (list (cons tag args))))
-    (t/release lock)))
+    (acquire lock)
+    (ref-set mb (append (deref mb) (list (cons tag args))))
+    (release lock)))
 
 (define (split from to)
   (let ((half (quotient (- to from) 2)))

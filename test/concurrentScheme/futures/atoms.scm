@@ -12,15 +12,15 @@
 
 ;(define (atom v)
 ;  (cons (atom v)
-;        (t/new-lock)))
+;        (new-lock)))
 
 ;(define (atom-deref a)
 ;  (read (car a)))
 
 ;(define (atom-swap! a f)
-;  (t/acquire (cdr a))
+;  (acquire (cdr a))
 ;  (reset! (car a) (f (read (car a))))
-;  (t/release (cdr a)))
+;  (release (cdr a)))
 
 (define (memoize f)
   (let ((mem (atom '())))

@@ -11,16 +11,16 @@
     (foldl-aux base lst)))
 
 (define (atom v)
-  (cons (t/ref v)
-        (t/new-lock)))
+  (cons (ref v)
+        (new-lock)))
 
 (define (atom-deref a)
-  (t/deref (car a)))
+  (deref (car a)))
 
 (define (atom-swap! a f)
-  (t/acquire (cdr a))
-  (t/ref-set (car a) (f (t/deref (car a))))
-  (t/release (cdr a)))
+  (acquire (cdr a))
+  (ref-set (car a) (f (deref (car a))))
+  (release (cdr a)))
 
 (define (memoize f)
   (let ((mem (atom '())))

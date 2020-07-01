@@ -7,23 +7,23 @@
       (- id 1)))
 
 (define (ping n str id lock last-ref)
-  (t/acquire lock)
-  (if (= (t/deref last-ref) (prev-id id))
+  (acquire lock)
+  (if (= (deref last-ref) (prev-id id))
       ;; my turn
       (begin
         (display str) (newline)
-        (t/ref-set last-ref id)
-        (t/release lock)
+        (ref-set last-ref id)
+        (release lock)
         (if (= n Iterations)
             'done
             (ping (+ n 1) str id lock last-ref)))
       ;; not my turn
       (begin
-        (t/release lock)
+        (release lock)
         (ping n str id lock last-ref))))
 
-(define lck (t/new-lock))
-(define last (t/ref 1))
+(define lck (new-lock))
+(define last (ref 1))
 
 (define (do-n n f)
   (letrec ((loop (lambda (i acc)

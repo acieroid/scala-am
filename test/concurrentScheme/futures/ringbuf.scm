@@ -20,21 +20,21 @@
   ;; Number of elements in the buffer
   (define nelems (atom 0))
   ;; Lock protecting the buffer
-  (define lock (t/new-lock))
+  (define lock (new-lock))
   ;; Push a value in the buffer
   (define (push v)
-    (t/acquire lock)
+    (acquire lock)
     (reset! (vector-ref buffer (modulo (read write) size)) v)
     (reset! write (+ (read write) 1))
     (reset! nelems (+ (read nelems) 1))
-    (t/release lock))
+    (release lock))
   ;; Pop a value from the buffer
   (define (pop)
-    (t/acquire lock)
+    (acquire lock)
     (let ((v (read (vector-ref buffer (modulo (read read) size)))))
       (reset! read (+ (read read) 1))
       (reset! nelems (- (read nelems) 1))
-      (t/release lock)
+      (release lock)
       v))
   (list push pop (lambda () (read nelems))))
 

@@ -12,7 +12,7 @@
 
 (define N (expt 2 (random 42)))
 (define input
-  (build-vector N #f (lambda (i) (t/ref i))))
+  (build-vector N #f (lambda (i) (ref i))))
 
 (define (log2 n)
   (inexact->exact (/ (log n) (log 2))))
@@ -41,15 +41,15 @@
 
 (define (display-vector v)
   (for-each (lambda (i)
-              (display (t/deref (vector-ref v i))) (display " "))
+              (display (deref (vector-ref v i))) (display " "))
             (range 0 (vector-length v)))
   (newline))
 
 (define (up-sweep-phase v n)
   (define (computation d k)
-    (let ((v1 (t/deref (vector-ref v (- (+ k (expt 2 d)) 1))))
-          (v2 (t/deref (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)))))
-      (t/ref-set (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)) (+ v1 v2))))
+    (let ((v1 (deref (vector-ref v (- (+ k (expt 2 d)) 1))))
+          (v2 (deref (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)))))
+      (ref-set (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)) (+ v1 v2))))
   (for-each (lambda (d)
               (for-each (lambda (t) (join t))
                         (map (lambda (k)
@@ -59,11 +59,11 @@
 
 (define (down-sweep-phase v n)
   (define (computation d k)
-    (let ((t (t/deref (vector-ref v (- (+ k (expt 2 d)) 1))))
-          (v1 (t/deref (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)))))
-      (t/ref-set (vector-ref v (- (+ k (expt 2 d)) 1)) v1)
-      (t/ref-set (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)) (+ t v1))))
-  (t/ref-set (vector-ref v (- n 1)) 0)
+    (let ((t (deref (vector-ref v (- (+ k (expt 2 d)) 1))))
+          (v1 (deref (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)))))
+      (ref-set (vector-ref v (- (+ k (expt 2 d)) 1)) v1)
+      (ref-set (vector-ref v (- (+ k (expt 2 (+ d 1))) 1)) (+ t v1))))
+  (ref-set (vector-ref v (- n 1)) 0)
   (for-each (lambda (d)
               (for-each (lambda (t) (join t))
                         (map (lambda (k)

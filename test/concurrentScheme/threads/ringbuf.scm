@@ -11,31 +11,31 @@
 
 (define (ring-buf size)
   ;; The buffer
-  (define buffer (build-vector size (t/ref 0) (lambda (i) (t/ref 0))))
+  (define buffer (build-vector size (ref 0) (lambda (i) (ref 0))))
   ;; The read pointer
-  (define read (t/ref 0))
+  (define read (ref 0))
   ;; The write pointer
-  (define write (t/ref 0))
+  (define write (ref 0))
   ;; Number of elements in the buffer
-  (define nelems (t/ref 0))
+  (define nelems (ref 0))
   ;; Lock protecting the buffer
-  (define lock (t/new-lock))
+  (define lock (new-lock))
   ;; Push a value in the buffer
   (define (push v)
-    (t/acquire lock)
-    (t/ref-set (vector-ref buffer (modulo (t/deref write) size)) v)
-    (t/ref-set write (+ (t/deref write) 1))
-    (t/ref-set nelems (+ (t/deref nelems) 1))
-    (t/release lock))
+    (acquire lock)
+    (ref-set (vector-ref buffer (modulo (deref write) size)) v)
+    (ref-set write (+ (deref write) 1))
+    (ref-set nelems (+ (deref nelems) 1))
+    (release lock))
   ;; Pop a value from the buffer
   (define (pop)
-    (t/acquire lock)
-    (let ((v (t/deref (vector-ref buffer (modulo (t/deref read) size)))))
-      (t/ref-set read (+ (t/deref read) 1))
-      (t/ref-set nelems (- (t/deref nelems) 1))
-      (t/release lock)
+    (acquire lock)
+    (let ((v (deref (vector-ref buffer (modulo (deref read) size)))))
+      (ref-set read (+ (deref read) 1))
+      (ref-set nelems (- (deref nelems) 1))
+      (release lock)
       v))
-  (list push pop (lambda () (t/deref nelems))))
+  (list push pop (lambda () (deref nelems))))
 
 (define NWR (random 42))
 (define NRD (random 42))

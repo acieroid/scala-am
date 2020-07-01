@@ -31,7 +31,7 @@
    ;; Current cell content
    (atom (random-bool))
    ;; Lock protecting this cell
-   (t/new-lock)))
+   (new-lock)))
 (define *field*
   (build-vector N (make-vector N (new-cell))
                 (lambda (i)
@@ -57,9 +57,9 @@
   (let ((lock (caddr cell))
         (old (cadr cell))
         (new (car cell)))
-    (t/acquire lock)
+    (acquire lock)
     (reset! old (read new))
-    (t/release lock)))
+    (release lock)))
 
 (define (game-of-life-new-step)
   (for-each (lambda (i)
@@ -91,17 +91,17 @@
   (let* ((cell (field-ref i j))
          (ref (car cell))
          (lock (caddr cell)))
-    (t/acquire lock)
+    (acquire lock)
     (reset! ref #t)
-    (t/release lock)))
+    (release lock)))
 
 (define (cell-die i j)
   (let* ((cell (field-ref i j))
          (ref (car cell))
          (lock (caddr cell)))
-    (t/acquire lock)
+    (acquire lock)
     (reset! ref #f)
-    (t/release lock)))
+    (release lock)))
 
 (define (game-of-life-thrd fromx tox fromy toy)
   (for-each (lambda (i)

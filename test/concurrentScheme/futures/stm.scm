@@ -68,7 +68,7 @@
       #t)
   val)
 
-(define COMMIT_LOCK (t/new-lock))
+(define COMMIT_LOCK (new-lock))
 
 (define (keys m)
   (map car m))
@@ -85,14 +85,14 @@
     (every? (lambda (ref) (= (cdr (read ref))
                              (cdr (assoc ref (read (trn-last-seen-rev tx))))))
             refs))
-  (t/acquire COMMIT_LOCK)
+  (acquire COMMIT_LOCK)
   (let* ((in-tx-values (read (trn-in-tx-values tx)))
          (success (validate (keys in-tx-values))))
     (map (lambda (ref)
            (swap! ref (lambda (v) (cons (cdr (assoc ref in-tx-values))
                                              (trn-id tx)))))
          (read (trn-written-refs tx)))
-    (t/release COMMIT_LOCK)
+    (release COMMIT_LOCK)
     success))
 
 (define (tx-run tx fun)

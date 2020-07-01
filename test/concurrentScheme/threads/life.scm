@@ -29,11 +29,11 @@
 (define (new-cell)
   (list
    ;; New content of the cell
-   (t/ref #f)
+   (ref #f)
    ;; Current cell content
-   (t/ref (random-bool))
+   (ref (random-bool))
    ;; Lock protecting this cell
-   (t/new-lock)))
+   (new-lock)))
 (define *field*
   (build-vector N (make-vector N (new-cell))
                 (lambda (i)
@@ -42,7 +42,7 @@
 (define (display-field)
   (for-each (lambda (i)
               (for-each (lambda (j)
-                          (if (t/deref (cadr (field-ref i j)))
+                          (if (deref (cadr (field-ref i j)))
                               (display "x ")
                               (display "  ")))
                         (range 0 N))
@@ -50,7 +50,7 @@
             (range 0 N))
   (newline))
 
-(define *current-step* (t/ref 0))
+(define *current-step* (ref 0))
 
 (define (field-ref i j)
   (vector-ref (vector-ref *field* i) j))
@@ -59,9 +59,9 @@
   (let ((lock (caddr cell))
         (old (cadr cell))
         (new (car cell)))
-    (t/acquire lock)
-    (t/ref-set old (t/deref new))
-    (t/release lock)))
+    (acquire lock)
+    (ref-set old (deref new))
+    (release lock)))
 
 (define (game-of-life-new-step)
   (for-each (lambda (i)
@@ -73,7 +73,7 @@
 (define (cell-alive? i j)
   (if (and (>= i 0) (>= j 0) (< i N) (< j N))
       (let* ((cell (field-ref i j))
-             (v (t/deref (cadr cell))))
+             (v (deref (cadr cell))))
         v)
       #f))
 
@@ -93,17 +93,17 @@
   (let* ((cell (field-ref i j))
          (ref (car cell))
          (lock (caddr cell)))
-    (t/acquire lock)
-    (t/ref-set ref #t)
-    (t/release lock)))
+    (acquire lock)
+    (ref-set ref #t)
+    (release lock)))
 
 (define (cell-die i j)
   (let* ((cell (field-ref i j))
          (ref (car cell))
          (lock (caddr cell)))
-    (t/acquire lock)
-    (t/ref-set ref #f)
-    (t/release lock)))
+    (acquire lock)
+    (ref-set ref #f)
+    (release lock)))
 
 (define (game-of-life-thread fromx tox fromy toy)
   (for-each (lambda (i)

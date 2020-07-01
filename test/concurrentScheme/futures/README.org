@@ -23,11 +23,11 @@ Benchmarks using locks (to be implemented on top of atoms):
 
     Lock prelude:
 
-    (define (t/new-lock) (atom #f))
-    (define (t/acquire lock)
+    (define (new-lock) (atom #f))
+    (define (acquire lock)
       (let try ()
         (if (compare-and-set! lock #f #t)
             #t
             (try))))
-    (define (t/release lock)
+    (define (release lock)
       (reset! lock #f))

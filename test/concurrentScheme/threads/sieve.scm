@@ -24,18 +24,18 @@
 
 (define (sieve N)
   (let ((sqrtN (inexact->exact (floor (sqrt N))))
-        (list (build-vector N (t/ref 0) (lambda (i) (t/ref 0)))))
+        (list (build-vector N (ref 0) (lambda (i) (ref 0)))))
     (letrec ((loopc (lambda (c)
                       (if (= c sqrtN)
                           #t
-                          (if (= (t/deref (vector-ref list c)) 0)
+                          (if (= (deref (vector-ref list c)) 0)
                               ;; c unmarked
                               (begin
                                 (for-each-parallel
                                  (lambda (m)
                                    (if (= (modulo m c) 0)
                                        ;; m multiple, mark it
-                                       (t/ref-set (vector-ref list m) 1)
+                                       (ref-set (vector-ref list m) 1)
                                        #t))
                                  (range (+ c 1) N))
                                 (loopc (+ c 1)))
@@ -50,7 +50,7 @@
                    (if (= i N)
                        'done
                        (begin
-                         (if (= (t/deref (vector-ref list i)) 0)
+                         (if (= (deref (vector-ref list i)) 0)
                              (begin
                                (display i)
                                (newline))

@@ -221,18 +221,26 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         //Primitives.Append.append(splicev,cdrv)
       case SchemeValue(v, _) =>
         v match {
-          case ValueString(s)     => Value.Str(s)
-          case ValueSymbol(s)     => Value.Symbol(s)
-          case ValueInteger(n)    => Value.Integer(n)
-          case ValueReal(r)       => Value.Real(r)
-          case ValueBoolean(b)    => Value.Bool(b)
-          case ValueCharacter(c)  => Value.Character(c)
-          case ValueNil           => Value.Nil
+          case ValueString(s)      => Value.Str(s)
+          case ValueSymbol(s)      => Value.Symbol(s)
+          case ValueInteger(n)     => Value.Integer(n)
+          case ValueReal(r)        => Value.Real(r)
+          case ValueBoolean(b)     => Value.Bool(b)
+          case ValueCharacter(c)   => Value.Character(c)
+          case ValueNil            => Value.Nil
         }
-      case CSchemeFork(body, _)   => Value.Thread(Future { eval(body, env, timeout) })
-      case CSchemeJoin(tExp, _)   => eval(tExp, env, timeout) match {
-        case Value.Thread(fut)    => Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf))
-        case v                    => throw new Exception(s"Join expected thread, but got $v")
+      case CSchemeFork(body, _)    => Value.Thread(Future { eval(body, env, timeout) })
+      case CSchemeJoin(tExp, _)    => eval(tExp, env, timeout) match {
+        case Value.Thread(fut)     => Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf))
+        case v                     => throw new Exception(s"Join expected thread, but got $v")
+      }
+      case CSchemeAcquire(lock, _) => eval(lock, env, timeout) match {
+        case Value.Lock(l)         => l.lock(); Value.Bool(true)
+        case v                     => throw new Exception(s"Acquire expected lock, but got $v")
+      }
+      case CSchemeRelease(lock, _) => eval(lock, env, timeout) match {
+        case Value.Lock(l)         => l.unlock(); Value.Bool(true)
+        case v                     => throw new Exception(s"Release expected lock, but got $v")
       }
     }
   }
@@ -451,7 +459,8 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       //Cddddr,
       /* Other primitives that are not R5RS */
       Random,
-      Error
+      Error,
+      NewLock,
     )
 
     abstract class SingleArgumentPrim(val name: String) extends SimplePrim {
@@ -1112,6 +1121,13 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         case Value.Real(x) => Value.Real(scala.math.random() * x)
       }
     }
+    object NewLock extends Prim {
+      val name = "new-lock"
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = args match {
+        case Nil => Value.Lock(new java.util.concurrent.locks.ReentrantLock()) // Use reentrantlocks.
+        case _   => throw new Exception(s"new-lock: invalid arguments $args")
+      }
+    }
   }
 }
 
@@ -1157,6 +1173,7 @@ object SchemeInterpreter {
     case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"<#cons $car $cdr>" }
     case class Vector(size: Int, elems: Map[Int,Value], init: Value) extends Value { override def toString: String = s"<#vector[$size]>" }
     case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"<thread>"}
+    case class Lock(l: java.util.concurrent.locks.Lock) extends Value { override def toString: String = "<Lock>"}
   }
 
 

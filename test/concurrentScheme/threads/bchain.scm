@@ -45,17 +45,17 @@
     (block next-index (block-hash previous-block) next-timestamp data next-hash)))
 
 (define *blockchain*
-  (t/ref (list
+  (ref (list
           (block 0 0 1509658251 "genesis block" (calculate-hash 0 0 1598658251 "genesis-block")))))
-(define *blockchain-lock* (t/new-lock))
+(define *blockchain-lock* (new-lock))
 
 (define (show-blockchain)
   (for-each (lambda (b) (display (block-data b)) (display " "))
-            (t/deref *blockchain*))
+            (deref *blockchain*))
   (newline))
 
 (define (get-latest-block)
-  (car (t/deref *blockchain*)))
+  (car (deref *blockchain*)))
 
 (define (is-valid-new-block new-block previous-block)
   (and (= (+ 1 (block-index previous-block)) (block-index new-block))
@@ -63,14 +63,14 @@
        (equal? (calculate-hash-for-block new-block) (block-hash new-block))))
 
 (define (add-block b)
-  (t/acquire *blockchain-lock*)
+  (acquire *blockchain-lock*)
   (if (is-valid-new-block b (get-latest-block))
       (begin
-        (t/ref-set *blockchain* (cons b (t/deref *blockchain*)))
-        (t/release *blockchain-lock*)
+        (ref-set *blockchain* (cons b (deref *blockchain*)))
+        (release *blockchain-lock*)
         #t)
       (begin
-        (t/release *blockchain-lock*)
+        (release *blockchain-lock*)
         #f)))
 
 (define (mine-new-block data)

@@ -80,15 +80,15 @@
 (define (tsp nthrds)
   (define best-tour (atom '()))
   (define best-cost (atom 1000))
-  (define best-lock (t/new-lock))
+  (define best-lock (new-lock))
   (define (set-best-tour tour cost)
-    (t/acquire best-lock)
+    (acquire best-lock)
     (if (< cost (read best-cost))
         (begin
           (reset! best-tour tour)
           (reset! best-cost cost))
         #t)
-    (t/release best-lock))
+    (release best-lock))
   (define (tsp-thrd my-stack)
     (if (null? my-stack)
         'done

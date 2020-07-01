@@ -84,7 +84,7 @@ object Incrementor extends App {
 
 
 object Run extends App {
-  val text = Reader.loadFile("test/concurrentScheme/threads/minimax.scm")
+  val text = Reader.loadFile("test/concurrentScheme/threads/abp.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
   println(res)
