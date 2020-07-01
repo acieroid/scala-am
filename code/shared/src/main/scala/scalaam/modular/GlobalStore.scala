@@ -30,16 +30,16 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
     override def toString(): String = s"$addr"
   }
 
-  private def updateAddr(store: Map[Addr,Value], addr: Addr, value: Value): (Map[Addr,Value],Boolean) = 
+  private def updateAddr(store: Map[Addr,Value], addr: Addr, value: Value): Option[Map[Addr,Value]] = 
     store.get(addr) match {
-      case None if value == lattice.bottom => (store, false)
-      case None => (store + (addr -> value), true)
+      case None if value == lattice.bottom => None
+      case None => Some(store + (addr -> value))
       case Some(oldValue) =>
         val newValue = lattice.join(oldValue, value)
         if (newValue == oldValue) {
-          (store, false)
+          None
         } else {
-          (store + (addr -> newValue), true)
+          Some(store + (addr -> newValue))
         }
     }
 
@@ -62,16 +62,20 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
     }
     // writing addresses of the global store
     protected def writeAddr(addr: Addr, value: Value): Boolean = 
-      updateAddr(intra.store, addr, value) match {
-        case (updated, true) => { intra.store = updated ; true }
-        case _  => false
-      }
+      updateAddr(intra.store, addr, value)
+        .map(updated => {
+          intra.store = updated
+          trigger(ReadWriteDependency(addr))
+        })
+        .isDefined
 
     override def commit(dep: Dependency): Boolean = dep match {
-      case ReadWriteDependency(addr) => updateAddr(inter.store, addr, intra.store(addr)) match {
-        case (updated, true) => { inter.store = updated ; true }
-        case _               => false
-      }
+      case ReadWriteDependency(addr) => 
+        updateAddr(inter.store, addr, intra.store(addr))
+          .map(updated => {
+            inter.store = updated
+          })
+          .isDefined
       case _ => super.commit(dep)
     }
   }
