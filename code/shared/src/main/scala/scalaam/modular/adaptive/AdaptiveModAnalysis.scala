@@ -70,12 +70,12 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData
   def updateDep(update: Component => Component)(dep: Dependency): Dependency = dep
   // the following methods are convenience methods to update standard compound data structures
-  def updateSet[A](update: A => A)(set: Set[A]): Set[A] = set.map(update)
+  def updateSet[V](update: V => V)(set: Set[V]): Set[V] = set.map(update)
   def updateMap[K,V](update: V => V)(map: Map[K,V]): Map[K,V] = map.view.mapValues(update).toMap
   def updateMap[K, V : Monoid](updateK: K => K, updateV: V => V)(map: Map[K,V]): Map[K,V] =
     map.foldLeft(Map[K,V]().withDefaultValue(Monoid[V].zero)) { case (acc,(key,vlu)) =>
       val keyAbs = updateK(key)
       acc + (keyAbs -> Monoid[V].append(acc(keyAbs),updateV(vlu)))
     }
-  def updatePair[A,B](updateA: A => A, updateB: B => B)(p: (A,B)): (A,B) = (updateA(p._1),updateB(p._2))
+  def updatePair[P,Q](updateA: P => P, updateB: Q => Q)(p: (P,Q)): (P,Q) = (updateA(p._1),updateB(p._2))
 }

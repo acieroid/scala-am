@@ -20,7 +20,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] { 
   val lock = new ReentrantLock() // TODO: might be replaced by synchronisation on the intra-process anlaysis (inter).
   val done = lock.newCondition() // TODO: might use the condition variable of inter?
   // Convenience method for holding the lock.
-  def withLock[A](blk: => A) =
+  def withLock[RV](blk: => RV) =
     try {
       lock.lock()
       blk
