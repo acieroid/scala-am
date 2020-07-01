@@ -30,15 +30,15 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
   // an intra-analysis of a component can read ("register") or write ("trigger") dependencies
   // a dependency represents a part of the global analysis state (such as a location in the global analysis' store)
   // in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
-  protected trait Dependency extends SmartHash
+  trait Dependency extends SmartHash
   // here, we track which components depend on which effects
   var deps: Map[Dependency,Set[Component]] = Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
-  protected def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
-  protected def trigger(dep: Dependency) = deps(dep).foreach(addToWorkList)
+  def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
+  def trigger(dep: Dependency) = deps(dep).foreach(addToWorkList)
 
   // parameterized by an 'intra-component analysis'
-  protected def intraAnalysis(component: Component): IntraAnalysis
-  protected abstract class IntraAnalysis(val component: Component) { intra => 
+  def intraAnalysis(component: Component): IntraAnalysis
+  abstract class IntraAnalysis(val component: Component) { intra => 
     // keep track of:
     // - a set R of dependencies read by this intra-analysis
     // - a set W of dependencies written by this intra-analysis
@@ -46,9 +46,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
     protected var R = Set[Dependency]()
     protected var W = Set[Dependency]()
     protected var C = Set[Component]()
-    protected def register(dep: Dependency): Unit = R += dep
-    protected def trigger(dep: Dependency): Unit  = W += dep
-    protected def spawn(cmp: Component): Unit     = C += cmp
+    def register(dep: Dependency): Unit = R += dep
+    def trigger(dep: Dependency): Unit  = W += dep
+    def spawn(cmp: Component): Unit     = C += cmp
     // analyses the given component
     // should only update *local* state and not modify the global analysis state directly
     def analyze(timeout: Timeout.T = Timeout.none): Unit

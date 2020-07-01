@@ -46,10 +46,10 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
     // local copy of the global store
     var store = inter.store
     // allocating an address
-    protected def allocAddr(addr: Address): Addr =
+    def allocAddr(addr: Address): Addr =
       componentAddr(component, addr)
     // reading addresses in the global store
-    protected def readAddr(addr: Addr): Value = {
+    def readAddr(addr: Addr): Value = {
       register(AddrDependency(addr))
       intra.store.get(addr) match {
         case None => 
@@ -60,7 +60,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
       }
     }
     // writing addresses of the global store
-    protected def writeAddr(addr: Addr, value: Value): Boolean = 
+    def writeAddr(addr: Addr, value: Value): Boolean = 
       updateAddr(intra.store, addr, value)
         .map(updated => {
           intra.store = updated
