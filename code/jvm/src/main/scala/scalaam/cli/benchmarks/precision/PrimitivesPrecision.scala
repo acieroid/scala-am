@@ -1,16 +1,16 @@
 package scalaam.cli.benchmarks.precision
 
-import scalaam.modular.scheme.semantics.SimpleSchemeModFAnalysis
 import scalaam.cli.benchmarks._
-import scalaam.lattice._
 import scalaam.language.scheme._
+import scalaam.language.scheme.primitives._
+import scalaam.lattice._
 import scalaam.modular._
 import scalaam.modular.scheme._
-import scalaam.language.scheme.primitives._
-
-import scala.concurrent.duration._
+import scalaam.modular.scheme.semantics.SimpleSchemeModFAnalysis
 import scalaam.util._
 import scalaam.util.benchmarks.Timeout
+
+import scala.concurrent.duration._
 
 
 object PrimitivesBenchmarks {
@@ -40,8 +40,8 @@ object PrimitivesBenchmarks {
     standard ++
     List()
   }
-  import scalaam.language.scheme._
   import scalaam.core._
+  import scalaam.language.scheme._
 
   // Counts the number of distinct primitive usages.
   // This is not exactly the number of primitive calls, because of situations like the following:

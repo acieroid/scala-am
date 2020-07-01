@@ -1,12 +1,12 @@
 package scalaam.cli.benchmarks.precision
 
 import scalaam.cli.benchmarks._
-import scalaam.util._
 import scalaam.language.scheme._
+import scalaam.lattice._
+import scalaam.util._
+import scalaam.util.benchmarks._
 
 import scala.concurrent.duration._
-import scalaam.lattice._
-import scalaam.util.benchmarks._
 
 abstract class AnalysisComparison[
     Num: IntLattice,

@@ -1,16 +1,16 @@
 package scalaam.cli
 
-import scalaam.modular.scheme.semantics._
-import scalaam.util._
-
-import scala.concurrent.duration._
 import scalaam.core.Position._
 import scalaam.language.CScheme._
-import scalaam.modular._
-import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives.SchemePrelude
+import scalaam.modular._
+import scalaam.modular.scheme._
+import scalaam.modular.scheme.semantics._
+import scalaam.util._
 import scalaam.util.benchmarks.Timeout
+
+import scala.concurrent.duration._
 
 object Main {
 

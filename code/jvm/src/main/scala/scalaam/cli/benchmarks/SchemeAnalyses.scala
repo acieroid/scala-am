@@ -1,13 +1,13 @@
 package scalaam.cli.benchmarks
 
-import scalaam.modular.scheme.semantics._
+import scalaam.core.Position._
 import scalaam.language.scheme._
 import scalaam.modular._
-import scalaam.modular.scheme._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
-import scalaam.core.Position._
+import scalaam.modular.scheme._
+import scalaam.modular.scheme.semantics._
 
 object SchemeAnalyses {
 

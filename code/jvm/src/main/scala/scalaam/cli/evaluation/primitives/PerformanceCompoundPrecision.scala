@@ -1,11 +1,11 @@
 package scalaam.cli.evaluation.primitives
 
-import scalaam.modular.scheme.semantics.SimpleSchemeModFAnalysis
-import scalaam.modular._
 import scalaam.cli.benchmarks._
 import scalaam.language.scheme._
+import scalaam.modular._
 import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
 import scalaam.modular.scheme._
+import scalaam.modular.scheme.semantics.SimpleSchemeModFAnalysis
 import scalaam.util.benchmarks.Timeout
 
 import scala.concurrent.duration._

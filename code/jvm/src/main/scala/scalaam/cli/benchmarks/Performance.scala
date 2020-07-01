@@ -1,10 +1,11 @@
 package scalaam.cli.benchmarks
 
-import scalaam.util._
-import scalaam.util.Writer._
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
+import scalaam.util.Writer._
+import scalaam.util._
 import scalaam.util.benchmarks._
+
 import scala.concurrent.duration._
 
 // TODO: rename to PerformanceEvaluation?
