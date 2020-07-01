@@ -4,9 +4,10 @@ import scalaam.modular._
 import scalaam.util.benchmarks.Timeout
 
 // Scala.js-related imports
-import scala.scalajs.js
 import org.scalajs.dom
-import dom.{document}
+import org.scalajs.dom.document
+
+import scala.scalajs.js
 
 object WebVisualisation {
   // some shorthands
