@@ -120,7 +120,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
       case b: Boolean => bool(b)
       case c: Char    => char(c)
       //case p: P       => primitive(p)
-      case s: Symbol  => symbol(s.name) // Remove leading '.
+      case s: Symbol  => symbol(s.name)
       //case a: A       => pointer(a)
       case Nil        => nil
       case v          => throw new Exception(s"Attempting to inject unknown value $v.")

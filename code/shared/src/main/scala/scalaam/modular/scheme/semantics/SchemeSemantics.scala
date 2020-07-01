@@ -18,7 +18,7 @@ trait SchemeSemantics extends ModAnalysis[SchemeExp]
 trait DedicatedSchemeSemantics extends SchemeSemantics
                                   with DedicatedGlobalStore[SchemeExp] {
   // Ensure that the program is translated to use lexical addresses first!
-  override lazy val program = {
+  override lazy val program: SchemeExp = {
     val originalProgram = super.program
     val preludedProgram = SchemePrelude.addPrelude(originalProgram)
     CSchemeUndefiner.undefine(List(preludedProgram))
@@ -32,5 +32,5 @@ trait DedicatedSchemeSemantics extends SchemeSemantics
   primitives.allPrimitives.foreach { p =>
     val addr = sharedAddr(PrmAddr(p.name))
     store += (addr -> lattice.primitive(p))
-  }  
+  }
 }

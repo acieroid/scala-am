@@ -24,12 +24,12 @@ object Identity {
 
   type IDN = Long // Type name is IDN to avoid confusion with identifiers.
 
-  implicit val identityOrdering = new Ordering[Identity] {
-    def compare(x: Identity, y: Identity) = (x,y) match {
+  implicit val identityOrdering: Ordering[Identity] = new Ordering[Identity] {
+    def compare(x: Identity, y: Identity): Int = (x,y) match {
       case (NoCodeIdentity, NoCodeIdentity) => 0
       case (NoCodeIdentity, _) => -1
       case (_, NoCodeIdentity) => 1
-      case (s1: SimpleIdentity, s2: SimpleIdentity) =>  
+      case (s1: SimpleIdentity, s2: SimpleIdentity) =>
         Ordering.by[SimpleIdentity,Long](_.idn).compare(s1,s2)
     }
   }
@@ -50,7 +50,7 @@ object Identity {
     SimpleIdentity(idn)
   }
 
-  def none: Identity = NoCodeIdentity // Todo (maybe): add tag.
+  def none: Identity = NoCodeIdentity
 }
 
 object Position {

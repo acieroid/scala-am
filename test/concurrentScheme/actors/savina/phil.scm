@@ -1,5 +1,5 @@
 ;; Adapted from Savina benchmarks ("Dining Philosophers benchmarks", coming from Wikipedia)
-;; TODO: this is the -seq version
+;; This is the -seq version
 (letrec ((N 3)
          (M 3)
          (rounds M)
