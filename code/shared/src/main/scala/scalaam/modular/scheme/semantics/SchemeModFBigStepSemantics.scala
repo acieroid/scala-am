@@ -12,7 +12,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
     def analyze(timeout: Timeout.T = Timeout.none): Unit = // Timeout is just ignored here.
       writeResult(eval(fnBody, fnEnv)) 
     // simple big-step eval
-    private def eval(exp: SchemeExp, env: Env): Value = exp match {
+    protected def eval(exp: SchemeExp, env: Env): Value = exp match {
       case SchemeValue(value, _)                                  => evalLiteralValue(value)
       case lambda: SchemeLambdaExp                                => newClosure(lambda, env, None)
       case SchemeVar(nam)                                         => lookup(nam, env)

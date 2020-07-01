@@ -184,5 +184,5 @@ abstract class SimpleSchemeModFAnalysis(prg: SchemeExp) extends ModAnalysis[Sche
                                                             with StandardSchemeModFComponents
                                                             with SchemeModFSemantics
                                                             with BigStepModFSemantics {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with DedicatedGlobalStoreIntra
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
 }

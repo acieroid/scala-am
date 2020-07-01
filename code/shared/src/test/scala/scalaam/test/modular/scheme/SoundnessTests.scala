@@ -166,8 +166,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
                                       with SchemeConstantPropagationDomain
                                       with NoSensitivity
                                       with LIFOWorklistAlgorithm[SchemeExp] {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra 
-                                                                        with DedicatedGlobalStoreIntra 
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra
   }
 }
 
@@ -178,7 +177,7 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests {
                                       with NoSensitivity
                                       with ParallelWorklistAlgorithm[SchemeExp] {
       override def workers = 4
-      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with DedicatedGlobalStoreIntra with ParallelIntra
+      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
   }
 }
 

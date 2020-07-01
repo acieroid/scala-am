@@ -55,8 +55,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     this.toProcess = updateSet(update)(toProcess)
   }
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp)
-                                                with BigStepModFIntra
-                                                with DependencyTrackingIntra
-                                                with DedicatedGlobalStoreIntra
+                                                   with BigStepModFIntra
+                                                   with DependencyTrackingIntra
   override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFIntra(cmp)
 }
