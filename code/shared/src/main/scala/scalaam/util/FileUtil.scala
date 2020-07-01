@@ -8,7 +8,7 @@ object Reader {
 
   def loadFile(file: String): String = {
     val fHandle = scala.io.Source.fromFile(file)
-    val content = fHandle.getLines.mkString("\n")
+    val content = fHandle.getLines().mkString("\n")
     fHandle.close()
     content
   }

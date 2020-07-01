@@ -19,8 +19,8 @@ object MathOps {
 
   /** Remainder in Scheme has the same behavior of Scala's modulo. */
   def remainder(n1: Int, n2: Int): Int = n1 % n2
-  def random(n: Int): Int              = scala.math.abs(scala.util.Random.nextInt % n)
-  def random(n: Double): Double        = scala.math.abs(scala.util.Random.nextDouble % n)
+  def random(n: Int): Int              = scala.math.abs(scala.util.Random.nextInt() % n)
+  def random(n: Double): Double        = scala.math.abs(scala.util.Random.nextDouble() % n)
 
   /** Round in Scheme and Scala are different.
       This implements the same behaviour as Scheme's round. */

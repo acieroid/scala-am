@@ -44,7 +44,7 @@ abstract class AnalysisComparison[
         // run the base analysis first
         val baseResult = runAnalysis(baseAnalysis, "base analysis", program, path).get // no timeout set for the base analysis!
         // run the other analyses on the benchmark
-        otherAnalyses.foreach { case (analysis, name) =>
+        otherAnalyses().foreach { case (analysis, name) =>
             val otherResult = runAnalysis(analysis, name, program, path, analysisTimeout())
             val refined = otherResult.map(store => compareOrdered(baseResult,store).size)
             results = results.add(path,name,refined)
