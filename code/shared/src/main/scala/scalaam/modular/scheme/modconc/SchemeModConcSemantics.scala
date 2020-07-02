@@ -69,7 +69,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     abstract class InnerModFAnalysis(intra: SchemeModConcIntra) extends ModAnalysis[SchemeExp](body(intra.component))
                                                                     with BaseSchemeModFSemantics
                                                                     with BigStepModFSemantics
-                                                                    with StandardSchemeModFComponents {
+                                                                    with InnerSchemeModFComponents {
         // SCHEME SEMANTICS SETUP
         type Addr = inter.Addr
         type Value = inter.Value
@@ -124,13 +124,13 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
 }
 
 // convenience constructor
-abstract class SimpleModConcAnalysis(prg: SchemeExp) extends ModAnalysis(prg)
-                                                with SchemeModConcSemantics
-                                                with StandardSchemeModConcComponents
+abstract class SimpleSchemeModConcAnalysis(prg: SchemeExp) extends ModAnalysis(prg)
+                                                              with SchemeModConcSemantics
+                                                              with StandardSchemeModConcComponents
 
 // examples
 // TODO: put different inner ModF instantiations in different traits for ModConc
-class MyModConcAnalysis1(prg: SchemeExp) extends SimpleModConcAnalysis(prg)
+class MyModConcAnalysis1(prg: SchemeExp) extends SimpleSchemeModConcAnalysis(prg)
                                             with SchemeModConcNoSensitivity
                                             with SchemeConstantPropagationDomain
                                             with LIFOWorklistAlgorithm[SchemeExp] {

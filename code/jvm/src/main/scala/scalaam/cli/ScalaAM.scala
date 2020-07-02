@@ -8,6 +8,7 @@ import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
+import scalaam.modular.scheme.modconc._
 import scalaam.modular.scheme.ssmodconc._
 import scalaam.util.Reader
 import scalaam.util.benchmarks.Timeout
@@ -21,12 +22,10 @@ object Main {
   def test(): Unit = {
     val txt = Reader.loadFile("test/R5RS/fact.scm")
     val prg = SchemeParser.parse(txt)
-    val analysis = new SimpleSchemeModFAnalysis(prg)
-                                        with NoSensitivity
+    val analysis = new SimpleSchemeModConcAnalysis(prg)
+                                        with SchemeModConcNoSensitivity
                                         with SchemeConstantPropagationDomain
                                         with LIFOWorklistAlgorithm[SchemeExp] {
-      //override def workers = 4
-      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       var i = 0
       override def step(t: Timeout.T = Timeout.none): Unit = {
         i = i + 1
@@ -34,22 +33,27 @@ object Main {
         println(s"[$i] $cmp")
         super.step(t)
       }
+      def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
+                                                        with NoSensitivity
+                                                        with RandomWorklistAlgorithm[SchemeExp] {
+        var j = 0
+        override def step(t: Timeout.T): Unit = {
+          j = j + 1
+          val cmp = workList.head
+          println(s"[$i.$j] $cmp")
+          super.step(t)
+        } 
+      }
     }
-    analysis.analyze(Timeout.start(Duration(3600,SECONDS)))
+    analysis.analyze(Timeout.start(Duration(3,SECONDS)))
     //debugClosures(analysis)
-    debugResults(analysis, false)
+    debugResults(analysis, true)
   }
 
-  type SchemeModFAnalysis = ModAnalysis[SchemeExp] with SchemeModFSemantics with StandardSchemeModFComponents
-
-  def debugResults(machine: SchemeModFAnalysis, printMore: Boolean = false): Unit =
+  def debugResults(machine: SchemeSemantics, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (ComponentAddr(cmp, ReturnAddr),result) if cmp == machine.initialComponent =>
-        println(s"[$cmp] ${machine.view(cmp)} => $result")
-      case (ComponentAddr(_, _: PrmAddr), _) => 
-        () //don't print primitive addresses
-      case (addr,value) if printMore =>
-        println(s"$addr => $value")
+      case (ComponentAddr(cmp, ReturnAddr), result) if cmp == machine.initialComponent || printMore =>
+        println(s"$cmp => $result")
       case _ => ()
     }
 }

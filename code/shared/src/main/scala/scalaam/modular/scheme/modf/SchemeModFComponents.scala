@@ -1,5 +1,6 @@
 package scalaam.modular.scheme.modf
 
+import scalaam.modular._
 import scalaam.core._
 import scalaam.util._
 import scalaam.language.scheme._
@@ -24,15 +25,22 @@ case class Call[Context,Addr <: Address](clo: (SchemeLambdaExp, Environment[Addr
   override def toString: String = lambdaName
 }
 
-trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {
-  // Components are just Scheme components
-  // TODO: make this an "opaque type" in Scala 3?
-  case class Component(c: SchemeModFComponent[ComponentContext, Addr]) {
-    override def toString = c.toString()
-  }
-  lazy val initialComponent = Component(Main)
-  def newComponent(call: Call[ComponentContext,Addr]) = Component(call)
-  def view(cmp: Component): SchemeModFComponent[ComponentContext, Addr] = cmp.c
+case class StandardSchemeModFComponent[Context](cmp: SchemeModFComponent[Context,A[StandardSchemeModFComponent[Context]]]) {
+  override def toString(): String = cmp.toString()
+}
+
+trait StandardSchemeModFComponents extends SchemeModFSemantics {
+  type Component = StandardSchemeModFComponent[ComponentContext]
+  lazy val initialComponent = StandardSchemeModFComponent(Main)
+  def newComponent(call: Call[ComponentContext,Addr]) = StandardSchemeModFComponent(call)
+  def view(cmp: Component): SchemeModFComponent[ComponentContext, Addr] = cmp.cmp
+}
+
+trait InnerSchemeModFComponents extends BaseSchemeModFSemantics {
+  type Component = SchemeModFComponent[ComponentContext, Addr]
+  lazy val initialComponent = Main
+  def newComponent(call: Call[ComponentContext,Addr]) = call
+  def view(cmp: Component): SchemeModFComponent[ComponentContext, Addr] = cmp
 }
 
 /*package scalaam.scalaam.modular.scheme
