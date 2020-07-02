@@ -14,10 +14,3 @@
 (lat? '((Jack) Sprat could eat no chicken fat))
 (lat? '(Jack (Sprat could) eat no chicken fat))
 (lat? '())
-
-(define member?
-  (lambda (a lat)
-    (cond 
-      ((null? lat) #f)
-      (else (or (eq? (car lat) a)
-                (member? a (cdr lat)))))))
