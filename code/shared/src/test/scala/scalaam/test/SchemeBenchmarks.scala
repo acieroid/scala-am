@@ -342,7 +342,7 @@ object SchemeBenchmarks {
   )
 
   val futures: Set[String] = Set(
-    "test/concurrentScheme/futures/abp.scm",
+    // "test/concurrentScheme/futures/abp.scm", // Unbound reference: display-recorded
     "test/concurrentScheme/futures/actors.scm",
     "test/concurrentScheme/futures/atoms.scm",
     "test/concurrentScheme/futures/bchain.scm",
@@ -363,7 +363,7 @@ object SchemeBenchmarks {
     "test/concurrentScheme/futures/nbody.scm",
     "test/concurrentScheme/futures/pc.scm",
     "test/concurrentScheme/futures/phil.scm",
-    "test/concurrentScheme/futures/phild.scm",
+    // "test/concurrentScheme/futures/phild.scm", // Uses bool-top
     "test/concurrentScheme/futures/pp.scm",
     "test/concurrentScheme/futures/pps.scm",
     "test/concurrentScheme/futures/qsort.scm",
@@ -435,44 +435,44 @@ object SchemeBenchmarks {
   )
 
   val threads: Set[String] = Set(
-    //"test/concurrentScheme/threads/abp.scm",
-    //"test/concurrentScheme/threads/actors.scm",
-    //"test/concurrentScheme/threads/atoms.scm",
-    //"test/concurrentScheme/threads/bchain.scm",
-    //"test/concurrentScheme/threads/count.scm",
-    //"test/concurrentScheme/threads/crypt.scm", // Uses deref?
-    //"test/concurrentScheme/threads/dekker.scm",
+    "test/concurrentScheme/threads/abp.scm",
+    "test/concurrentScheme/threads/actors.scm",
+    "test/concurrentScheme/threads/atoms.scm",
+    "test/concurrentScheme/threads/bchain.scm",
+    "test/concurrentScheme/threads/count.scm",
+    "test/concurrentScheme/threads/crypt.scm",
+    "test/concurrentScheme/threads/dekker.scm",
     "test/concurrentScheme/threads/fact-indep.scm",
-    //"test/concurrentScheme/threads/fact.scm",
+    "test/concurrentScheme/threads/fact.scm",
     "test/concurrentScheme/threads/fact2.scm",
     //"test/concurrentScheme/threads/lastzero2.scm", // Uses let*, but should use something like letrec*?
-    //"test/concurrentScheme/threads/life.scm",
-    //"test/concurrentScheme/threads/matmul.scm", // StackOverflow in concrete.
-    //"test/concurrentScheme/threads/mcarlo.scm", // StackOverFlow in concrete.
+    "test/concurrentScheme/threads/life.scm",
+    "test/concurrentScheme/threads/matmul.scm", // StackOverflow in concrete.
+    "test/concurrentScheme/threads/mcarlo.scm", // StackOverFlow in concrete.
     "test/concurrentScheme/threads/mceval.scm",
     "test/concurrentScheme/threads/minimax.scm",
-    //"test/concurrentScheme/threads/msort.scm", // Out of Memory error.
-    //"test/concurrentScheme/threads/nbody.scm",
-    //"test/concurrentScheme/threads/pc.scm",
+    "test/concurrentScheme/threads/msort.scm", // Out of Memory error.
+    "test/concurrentScheme/threads/nbody.scm",
+    "test/concurrentScheme/threads/pc.scm",
     "test/concurrentScheme/threads/peterson.scm",
-    //"test/concurrentScheme/threads/phil.scm",
-    //"test/concurrentScheme/threads/phild.scm",
-    //"test/concurrentScheme/threads/philosophers2.scm",
-    //"test/concurrentScheme/threads/pp.scm",
-    //"test/concurrentScheme/threads/pps.scm",
-    //"test/concurrentScheme/threads/producer.scm",
-    //"test/concurrentScheme/threads/qsort.scm",
+    "test/concurrentScheme/threads/phil.scm",
+    "test/concurrentScheme/threads/phild.scm",
+    "test/concurrentScheme/threads/philosophers2.scm",
+    "test/concurrentScheme/threads/pp.scm",
+    "test/concurrentScheme/threads/pps.scm",
+    "test/concurrentScheme/threads/producer.scm",
+    "test/concurrentScheme/threads/qsort.scm",
     "test/concurrentScheme/threads/randomness.scm",
     "test/concurrentScheme/threads/randomness2.scm",
     "test/concurrentScheme/threads/readers2.scm",
-    //"test/concurrentScheme/threads/ringbuf.scm",
-    //"test/concurrentScheme/threads/rng.scm",
-    //"test/concurrentScheme/threads/sieve.scm",
+    "test/concurrentScheme/threads/ringbuf.scm",
+    "test/concurrentScheme/threads/rng.scm",
+    "test/concurrentScheme/threads/sieve.scm",
     "test/concurrentScheme/threads/simple.scm",
-    //"test/concurrentScheme/threads/stm.scm",
+    "test/concurrentScheme/threads/stm.scm",
     "test/concurrentScheme/threads/sudoku.scm",
-    //"test/concurrentScheme/threads/trapr.scm",
-    //"test/concurrentScheme/threads/tsp.scm",
+    "test/concurrentScheme/threads/trapr.scm",
+    "test/concurrentScheme/threads/tsp.scm",
   )
 
   val threadsVariations: Set[String] = Set(
