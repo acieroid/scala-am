@@ -5,8 +5,8 @@ import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
 import scalaam.modular.scheme._
-import scalaam.modular.scheme.semantics._
-import scalaam.modular.{LIFOWorklistAlgorithm, ModAnalysis, _}
+import scalaam.modular.scheme.modf._
+import scalaam.modular._
 import scalaam.test.{PrimitiveTest, SchemeR5RSBenchmarks}
 import scalaam.util.benchmarks.Timeout
 

@@ -1,4 +1,4 @@
-package scalaam.modular.scheme.semantics
+package scalaam.modular.scheme.modf
 
 import scalaam.core.Position._
 import scalaam.core._
