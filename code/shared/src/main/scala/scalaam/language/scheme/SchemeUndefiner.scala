@@ -48,15 +48,14 @@ trait BaseSchemeUndefiner {
       case SchemeDefineVariable(name, value, pos) :: rest =>
         tailcall(undefine1(value)).flatMap(v => tailcall(undefine(rest, (name, v) :: defs, idn.orElse(Some(pos)))))
       case _ :: _ =>
-        if (defs.isEmpty) {
-          tailcall(undefineBody(exps)).flatMap({
-            case Nil        => done(SchemeBegin(Nil, Identity.none))
-            case exp :: Nil => done(exp)
-            case exps       => done(SchemeBegin(exps, exps.head.idn))
-          })
-        } else {
-          tailcall(undefineBody(exps))
-            .flatMap(body => done(SchemeLetrec(defs.reverse, body, idn.get)))
+        tailcall(undefineBody(exps)).map { bdy =>
+          if(defs.isEmpty) {
+            SchemeBody(bdy)
+          } else {
+            SchemeLetrec(defs.reverse, 
+                         if (bdy.nonEmpty) bdy else List(SchemeBody(bdy)),
+                         idn.get)
+          }
         }
     }
 
