@@ -43,8 +43,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         case MainThread             => None
         case Thread(_, _, ctx)      => Some(ctx)
     }
-    // TODO: parameterize to allow different sensitivities for threads
-    type ComponentContext = ()
+    // parameterize to allow different sensitivities for threads
+    def allocCtx(exp: SchemeExp, env: Env, caller: Component): ComponentContext
 
     //
     // MODCONC INTRA-ANALYSIS
@@ -103,7 +103,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                 case _                      => super.eval(exp, env)   
             }
             private def evalFork(exp: SchemeExp, env: Env) = {
-                val targetCmp = inter.newComponent(Thread(exp, env, ()))
+                val ctx = inter.allocCtx(exp, env, intra.component)
+                val targetCmp = inter.newComponent(Thread(exp, env, ctx))
                 spawnThread(targetCmp)
                 lattice.thread(targetCmp)
             }
@@ -129,6 +130,7 @@ abstract class SimpleModConcAnalysis(prg: SchemeExp) extends ModAnalysis(prg)
 // examples
 // TODO: put different inner ModF instantiations in different traits for ModConc
 class MyModConcAnalysis1(prg: SchemeExp) extends SimpleModConcAnalysis(prg)
+                                            with SchemeModConcNoSensitivity
                                             with SchemeConstantPropagationDomain
                                             with LIFOWorklistAlgorithm[SchemeExp] {
     def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
