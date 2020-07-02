@@ -339,6 +339,10 @@ class ModularSchemeLattice[
         case Char(c)  => MayFail.success(Char(CharLattice[C].downCase(c)))
         case _        => MayFail.failure(OperatorNotApplicable("char-downcase", List(x)))
       }
+      case IntegerToCharacter => x match {
+        case Int(i)   => MayFail.success(Char(IntLattice[I].toChar(i)))
+        case _        => MayFail.failure(OperatorNotApplicable("integer->char", List(x)))
+      }
   }
     def binaryOp(op: BinaryOperator)(x: Value, y: Value): MayFail[Value, Error] = op match {
       case Plus => (x, y) match {

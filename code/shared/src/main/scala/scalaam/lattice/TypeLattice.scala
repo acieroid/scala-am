@@ -100,6 +100,7 @@ object Type {
       }
       def valuesBetween(n1: T, n2: T): Set[T] = Set(Top)
       def toString[S2: StringLattice](n: T): S2 = n.to[S2]
+      def toChar[C2: CharLattice](n: T): C2 = n.to[C2]
     }
     implicit val typeIsReal: RealLattice[R] = new BaseInstance("Real") with RealLattice[R] {
       def inject(x: Double): T = Top
