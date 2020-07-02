@@ -14,7 +14,7 @@ trait SchemeSemantics extends ModAnalysis[SchemeExp]
   val initialEnv: Env
   implicit val lattice: SchemeLattice[Value, Addr, Prim] 
   // The final result can be found at the ReturnAddr of the initialComponent
-  def finalResult = store(componentAddr(initialComponent, ReturnAddr))
+  def finalResult = store.getOrElse(componentAddr(initialComponent, ReturnAddr), lattice.bottom)
 }
 
 trait DedicatedSchemeSemantics extends SchemeSemantics
