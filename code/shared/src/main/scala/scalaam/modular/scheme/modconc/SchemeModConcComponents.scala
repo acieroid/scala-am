@@ -1,8 +1,8 @@
 package scalaam.modular.scheme.modconc
 
-import scalaam.modular.scheme._
 import scalaam.core._
 import scalaam.util._
+import scalaam.modular._
 import scalaam.language.scheme._
 import scalaam.language.CScheme._
 
@@ -19,13 +19,13 @@ case class Thread[Context,Addr <: Address](exp: SchemeExp,
   override def toString: String = s"thread@${exp.idn}"
 }
 
+case class StandardSchemeModConcComponent[Context](cmp: SchemeModConcComponent[Context, A[StandardSchemeModConcComponent[Context]]]) extends TID {
+    override def toString = cmp.toString()
+}
+
 trait StandardSchemeModConcComponents extends SchemeModConcSemantics {
-    // Components are just Scheme ModConc components
-    // TODO: make this an "opaque type" in Scala 3?
-    case class Component(cmp: SchemeModConcComponent[ComponentContext,Addr]) extends TID {
-        override def toString = cmp.toString()
-    }
-    lazy val initialComponent = Component(MainThread)
-    def newComponent(thread: Thread[ComponentContext,Addr]) = Component(thread)
+    type Component = StandardSchemeModConcComponent[ComponentContext]
+    lazy val initialComponent = StandardSchemeModConcComponent(MainThread)
+    def newComponent(thread: Thread[ComponentContext,Addr]) = StandardSchemeModConcComponent(thread)
     def view(c: Component) = c.cmp
 }
