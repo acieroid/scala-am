@@ -12,8 +12,8 @@
 
 (define NumWorkers (random 42))
 (define Precision (+ 10 (random 42)))
-(define L 0.)
-(define R (* 1. (+ 100 (random 42))))
+(define L 0.0)
+(define R (* 1.0 (+ 100 (random 42))))
 
 (define (exp x)
   (expt 2.718281828459045 x))
