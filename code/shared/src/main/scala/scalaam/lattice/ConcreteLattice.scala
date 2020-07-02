@@ -179,6 +179,8 @@ object Concrete {
       }
       def toString[S2: StringLattice](n: I): S2 =
         n.foldMap(n => StringLattice[S2].inject(n.toString))
+      def toChar[C2: CharLattice](n: I): C2 =
+        n.foldMap(n => CharLattice[C2].inject(n.asInstanceOf[Char]))
     }
 
     implicit val doubleShow: Show[Double] = new Show[Double] {

@@ -93,7 +93,7 @@ object SchemeBenchmarks {
     //"test/R5RS/gambit/puzzle.scm",  // Needs call-with-current-continuation.
     "test/R5RS/gambit/sboyer.scm",
     //"test/R5RS/gambit/scheme.scm", // Error in program.
-    //"test/R5RS/gambit/slatex.scm", // Needs integer->char.
+    "test/R5RS/gambit/slatex.scm",
     //"test/R5RS/gambit/string.scm", // Needs susbtring.
     "test/R5RS/gambit/sum.scm",
     "test/R5RS/gambit/sumloop.scm",

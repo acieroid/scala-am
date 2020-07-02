@@ -10,7 +10,7 @@ object SchemeOps {
     Ceiling, Floor, Round, Random, Sqrt, /* Unary arithmetic operations */
     Sin, ASin, Cos, ACos, Tan, ATan, Log, /* Transcendental functions */
     VectorLength, StringLength, /* Length operations */
-    NumberToString, SymbolToString, StringToSymbol, StringToNumber,  /* Conversions */
+    NumberToString, SymbolToString, StringToSymbol, StringToNumber, IntegerToCharacter,  /* Conversions */
     ExactToInexact, InexactToExact, CharacterToInteger, CharacterToString,
     CharacterDowncase = Value
   }

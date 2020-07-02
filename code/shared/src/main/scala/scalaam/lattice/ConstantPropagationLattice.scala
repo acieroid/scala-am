@@ -196,6 +196,11 @@ object ConstantPropagation {
         case Constant(x) => StringLattice[S2].inject(x.toString)
         case Bottom      => StringLattice[S2].bottom
       }
+      def toChar[C2: CharLattice](n: I): C2 = n match {
+        case Top         => CharLattice[C2].top
+        case Constant(x) => CharLattice[C2].inject(x.asInstanceOf[Char])
+        case Bottom      => CharLattice[C2].bottom
+      }
     }
     implicit val floatCP: RealLattice[R] = new BaseInstance[Double]("Real") with RealLattice[R] {
       def inject(x: Double) = Constant(x)

@@ -131,7 +131,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `inexact->exact`, /* [vv] inexact->exact: Exactness */
       /* [x]  inexact?: Exactness */
       /* [x]  input-port?: Ports */
-      /* [x]  integer->char: Characters */
+      `integer->char`, /* [vv]  integer->char: Characters */
       `integer?`, /* [vv] integer?: Integers */
       /* [x]  interaction-environment: Fly Evaluation */
       /* [x]  lcm: Integer Operations */
@@ -398,6 +398,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOps.UnaryOperator.InexactToExact))
     object `char->integer`  extends NoStore1Operation("char->integer",  unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
     object `char->string`   extends NoStore1Operation("char->string",   unaryOp(SchemeOps.UnaryOperator.CharacterToString))
+    object `integer->char`  extends NoStore1Operation("integer->char",  unaryOp(SchemeOps.UnaryOperator.IntegerToCharacter))
     object `char-downcase`  extends NoStore1Operation("char-downcase",  unaryOp(SchemeOps.UnaryOperator.CharacterDowncase))
     object `null?`          extends NoStore1Operation("null?",          unaryOp(SchemeOps.UnaryOperator.IsNull))
 
