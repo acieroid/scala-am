@@ -221,31 +221,57 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   def name: String
   def analysis(b: SchemeExp): Analysis
   // the timeout for the analysis of a single benchmark program (default: 2min.)
-  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  val to: Duration = Duration(2, MINUTES)
+  def timeout(): Timeout.T = Timeout.start(to)
   // the actual testing code
-  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Option[Value], Map[Identity,Set[Value]]) = {
-    val preluded = SchemePrelude.addPrelude(originalProgram)
-    val program = CSchemeUndefiner.undefine(List(preluded))
+  private def evalC(preludedUndefinedProgram: SchemeExp, benchmark: Benchmark, timeout: Timeout.T): (Set[Value], Map[Identity,Set[Value]]) = {
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
     val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
     try {
-      val endResult = interpreter.run(program, timeout(benchmark))
-      (Some(endResult), idnResults)
+      val endResult = interpreter.run(preludedUndefinedProgram, timeout)
+      (Set(endResult), idnResults)
     } catch {
       case _ : TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
-        (None, idnResults)
+        (Set(), idnResults)
       case e : VirtualMachineError =>
         System.gc()
         alert(s"Concrete evaluation of $benchmark failed with $e")
-        (None, idnResults)
+        (Set(), idnResults)
     }
   }
+
+  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark, timeout: Timeout.T = Timeout.start(Duration(2, MINUTES))): (Set[Value], Map[Identity,Set[Value]]) = {
+    val preluded = SchemePrelude.addPrelude(originalProgram)
+    val program = CSchemeUndefiner.undefine(List(preluded))
+    evalC(program, benchmark, timeout)
+  }
+
+  private def repeatConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity,Set[Value]]) = {
+    val preluded = SchemePrelude.addPrelude(originalProgram)
+    val program = CSchemeUndefiner.undefine(List(preluded))
+    var idnResults: Map[Identity,Set[Value]] = Map().withDefaultValue(Set())
+    var endResults: Set[Value] = Set()
+    var t: Timeout.T = timeout()
+    while (true) {
+      val (cResult, cPosResults) = evalC(program,benchmark, t)
+      val timeRemaining = t.timeLeft
+      cPosResults.foreach({ case (idn, values) => idnResults += (idn -> SmartUnion.sunion(idnResults(idn), values)) })
+      if (cResult.nonEmpty)
+        endResults = endResults + cResult.head
+      else
+        return (endResults, idnResults)
+      if (timeRemaining.getOrElse(1L) <= 0) return (endResults, idnResults)
+      t = Timeout.start(timeRemaining.map(Duration(_, NANOSECONDS)).getOrElse(to))
+    }
+    throw new Exception("repeatConcrete should not reach this point.")
+  }
+
   private def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
     try {
       // analyze the program using a ModF analysis
       val anl = analysis(program)
-      anl.analyze(timeout(benchmark))
+      anl.analyze(timeout())
       assume(anl.finished(), "Analysis timed out")
       anl
     } catch {
@@ -322,13 +348,13 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
       val program = CSchemeParser.parse(content)
-      // run the program using a concrete interpreter
-      val (cResult, cPosResults) = evalConcrete(program,benchmark)
+      // run the program using a concrete interpreter once if it does not contain threads, or multiple times if it does
+      val (cResult, cPosResults) = if (SchemeBenchmarks.threads.contains(benchmark)) repeatConcrete(program, benchmark) else evalConcrete(program,benchmark)
       // analyze the program using a ModF analysis
       val anl = runAnalysis(program,benchmark)
-      // check if the final result of the analysis soundly approximates the final result of concrete evaluation
+      // check if each final result of the analysis soundly approximates the final result of concrete evaluation
       // of course, this can only be done if there was a result.
-      if (cResult.isDefined) { compareResult(anl, cResult.get) }
+      cResult.foreach { compareResult(anl, _) }
       // check if the intermediate results at various program points are soundly approximated by the analysis
       // this can be done, regardless of whether the concrete evaluation terminated successfully or not
       compareIdentities(anl, cPosResults)
@@ -343,7 +369,7 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
     with LIFOWorklistAlgorithm[SchemeExp] {}
 }
 
-class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks 
+class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks
                                                                           with AllBenchmarks {
   override def isSlow(b: Benchmark): Boolean = 
     !SchemeBenchmarks.other.contains(b) || 

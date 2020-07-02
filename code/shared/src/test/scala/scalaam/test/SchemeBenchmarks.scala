@@ -1,5 +1,7 @@
 package scalaam.test
 
+import scalaam.util.SmartUnion
+
 import scala.util.Random
 
 
@@ -9,11 +11,11 @@ trait SimpleBenchmarks extends SchemeBenchmarkTests {
 }
 
 trait RandomBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.selectRandom(40)
+  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.selectRandomSeq(40)
 }
 
 trait AllBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.allBenchmarks
+  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.sequentialBenchmarks
 }
 
 trait CSchemeBenchmarkTests extends SchemeBenchmarkTests
@@ -300,10 +302,10 @@ object SchemeBenchmarks {
     "test/R5RS/work.scm",
   )
 
-  val WeiChenRompf2019: Set[String] = WCR2019 ++ theLittleSchemer ++ toplas98
-  val    allBenchmarks: Set[String] = ad ++ gabriel ++ gambit ++ rosetta ++ scp1 ++ SICP ++ sigscheme ++ WeiChenRompf2019 ++ other
+  lazy val     WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
+  lazy val sequentialBenchmarks: Set[String] = SmartUnion.sunionList(List(ad, gabriel, gambit, rosetta, scp1, SICP, sigscheme, WeiChenRompf2019, other))
 
-  def selectRandom(n: Int): Set[String] = Random.shuffle(allBenchmarks).take(n)
+  def selectRandomSeq(n: Int): Set[String] = Random.shuffle(sequentialBenchmarks).take(n)
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -552,4 +554,6 @@ object SchemeBenchmarks {
     "test/concurrentScheme/threads/variations/race5.scm",
     "test/concurrentScheme/threads/variations/race6.scm",
   )
+
+  lazy val concurrentBenchmarks: Set[String] = SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))
 }
