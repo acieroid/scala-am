@@ -223,8 +223,10 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   def name: String
   def analysis(b: SchemeExp): Analysis
   // the timeout for the analysis of a single benchmark program (default: 2min.)
-  val to: Duration = Duration(2, MINUTES)
-  def timeout(): Timeout.T = Timeout.start(to)
+  val tAbs: Duration = Duration(2, MINUTES)
+  def abstractTimeout(): Timeout.T = Timeout.start(tAbs)
+  val tConc: Duration = Duration(1, MINUTES)
+  def concreteTimeout(): Timeout.T = Timeout.start(tConc)
   // the actual testing code
   private def evalC(preludedUndefinedProgram: SchemeExp, benchmark: Benchmark, timeout: Timeout.T): (Set[Value], Map[Identity,Set[Value]]) = {
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
@@ -243,7 +245,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
     }
   }
 
-  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark, timeout: Timeout.T = Timeout.start(Duration(2, MINUTES))): (Set[Value], Map[Identity,Set[Value]]) = {
+  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark, timeout: Timeout.T = concreteTimeout()): (Set[Value], Map[Identity,Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = CSchemeUndefiner.undefine(List(preluded))
     evalC(program, benchmark, timeout)
@@ -254,7 +256,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
     val program = CSchemeUndefiner.undefine(List(preluded))
     var idnResults: Map[Identity,Set[Value]] = Map().withDefaultValue(Set())
     var endResults: Set[Value] = Set()
-    var t: Timeout.T = timeout()
+    var t: Timeout.T = concreteTimeout()
     while (true) {
       val (cResult, cPosResults) = evalC(program,benchmark, t)
       val timeRemaining = t.timeLeft
@@ -264,7 +266,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
       else
         return (endResults, idnResults)
       if (timeRemaining.getOrElse(1L) <= 0) return (endResults, idnResults)
-      t = Timeout.start(timeRemaining.map(Duration(_, NANOSECONDS)).getOrElse(to))
+      t = Timeout.start(timeRemaining.map(Duration(_, NANOSECONDS)).getOrElse(tConc))
     }
     throw new Exception("repeatConcrete should not reach this point.")
   }
@@ -273,7 +275,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
     try {
       // analyze the program using a ModF analysis
       val anl = analysis(program)
-      anl.analyze(timeout())
+      anl.analyze(abstractTimeout())
       assume(anl.finished(), "Analysis timed out")
       anl
     } catch {
