@@ -144,7 +144,7 @@ object Analyze extends App {
     "test/concurrentScheme/threads/tsp.scm",
   )
 
-  bench.foreach({b =>
+  List("test/concurrentScheme/threads/abp.scm").foreach({b =>
     try {
       print(b + " => ")
       val t0 = System.currentTimeMillis()

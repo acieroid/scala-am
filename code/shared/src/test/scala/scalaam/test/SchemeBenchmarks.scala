@@ -342,7 +342,7 @@ object SchemeBenchmarks {
   )
 
   val futures: Set[String] = Set(
-    // "test/concurrentScheme/futures/abp.scm", // Unbound reference: display-recorded
+    "test/concurrentScheme/futures/abp.scm",
     "test/concurrentScheme/futures/actors.scm",
     "test/concurrentScheme/futures/atoms.scm",
     "test/concurrentScheme/futures/bchain.scm",
@@ -363,7 +363,7 @@ object SchemeBenchmarks {
     "test/concurrentScheme/futures/nbody.scm",
     "test/concurrentScheme/futures/pc.scm",
     "test/concurrentScheme/futures/phil.scm",
-    // "test/concurrentScheme/futures/phild.scm", // Uses bool-top
+    "test/concurrentScheme/futures/phild.scm",
     "test/concurrentScheme/futures/pp.scm",
     "test/concurrentScheme/futures/pps.scm",
     "test/concurrentScheme/futures/qsort.scm",
@@ -456,7 +456,7 @@ object SchemeBenchmarks {
     "test/concurrentScheme/threads/pc.scm",
     "test/concurrentScheme/threads/peterson.scm",
     "test/concurrentScheme/threads/phil.scm",
-    "test/concurrentScheme/threads/phild.scm",
+    // "test/concurrentScheme/threads/phild.scm", // Unbound reference: bool-top
     "test/concurrentScheme/threads/philosophers2.scm",
     "test/concurrentScheme/threads/pp.scm",
     "test/concurrentScheme/threads/pps.scm",
