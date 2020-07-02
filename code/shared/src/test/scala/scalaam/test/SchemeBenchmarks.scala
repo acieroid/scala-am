@@ -12,7 +12,7 @@ trait RandomBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.selectRandomSeq(40))
 }
 
-trait AllBenchmarks extends SchemeBenchmarkTests {
+trait SequentialBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.sequentialBenchmarks)
 }
 
@@ -20,6 +20,14 @@ trait CSchemeBenchmarkTests extends SchemeBenchmarkTests
 
 trait ThreadBenchmarks extends CSchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.threads)
+}
+
+trait ConcurrentBenchmarks extends SchemeBenchmarkTests {
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.concurrentBenchmarks)
+}
+
+trait AllBenchmarks extends SchemeBenchmarkTests {
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.allBenchmarks)
 }
 
 object SchemeBenchmarks {
@@ -554,4 +562,6 @@ object SchemeBenchmarks {
   )
 
   lazy val concurrentBenchmarks: Set[String] = SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))
+
+  lazy val allBenchmarks: Set[String] = SmartUnion.sunion(concurrentBenchmarks, sequentialBenchmarks)
 }

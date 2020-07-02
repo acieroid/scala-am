@@ -19,4 +19,4 @@ trait SExpParserTestsSpec extends SchemeBenchmarkTests {
     }
 }
 
-class SExpParserTests extends SExpParserTestsSpec with AllBenchmarks
+class SExpParserTests extends SExpParserTestsSpec with SequentialBenchmarks

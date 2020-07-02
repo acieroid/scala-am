@@ -199,16 +199,16 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
 
 // concrete test suites to run ...
 
-class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllBenchmarks {
+class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with SequentialBenchmarks {
   override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
 }
-class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModFPrimCSSensitivity with AllBenchmarks {
+class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModFPrimCSSensitivity with SequentialBenchmarks {
   override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
 }
-class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllBenchmarks {
+class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with SequentialBenchmarks {
   override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
 }
-class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with AllBenchmarks {
+class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with SequentialBenchmarks {
   override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
 }
 
@@ -379,7 +379,7 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
 }
 
 class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks
-                                                                          with AllBenchmarks {
+                                                                          with SequentialBenchmarks {
   override def isSlow(b: Benchmark): Boolean =
     (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
     // these tests currently slow down the test suite too much
