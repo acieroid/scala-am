@@ -1,7 +1,6 @@
 package scalaam.modular.scheme.modconc
 
 import scalaam.language.scheme._
-import scalaam.modular.scheme.semantics._
 
 trait SchemeModConcNoSensitivity extends SchemeModConcSemantics {
     type ComponentContext = Unit
