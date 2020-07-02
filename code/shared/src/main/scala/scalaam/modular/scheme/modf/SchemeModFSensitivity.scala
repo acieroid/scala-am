@@ -1,14 +1,11 @@
 package scalaam.modular.scheme.modf
 
-import scalaam.modular.scheme._
 import scalaam.core.Position._
 
 /* Simplest (and most imprecise): no context-sensitivity */
-trait NoSensitivity extends BaseSchemeModFSemantics {
-  case class ComponentContext() {
-    override def toString = ""
-  }
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ComponentContext()
+trait SchemeModFNoSensitivity extends BaseSchemeModFSemantics {
+  type ComponentContext = Unit
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ()
 }
 
 /* Full argument sensitivity for ModF */

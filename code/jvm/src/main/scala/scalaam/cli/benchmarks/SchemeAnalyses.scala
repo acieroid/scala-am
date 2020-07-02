@@ -12,7 +12,7 @@ import scalaam.modular.scheme.modf._
 object SchemeAnalyses {
 
     def contextInsensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
-                                                                          with NoSensitivity
+                                                                          with SchemeModFNoSensitivity
                                                                           with SchemeConstantPropagationDomain
                                                                           with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
@@ -73,7 +73,7 @@ object SchemeAnalyses {
                                                                         with StandardSchemeModFComponents 
                                                                         with BigStepModFSemantics
                                                                         with ParallelWorklistAlgorithm[SchemeExp]
-                                                                        with NoSensitivity
+                                                                        with SchemeModFNoSensitivity
                                                                         with SchemeConstantPropagationDomain {
       
       override def toString() = s"parallel (n = $n)"

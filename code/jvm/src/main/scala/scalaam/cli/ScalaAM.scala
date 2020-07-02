@@ -34,7 +34,7 @@ object Main {
         super.step(t)
       }
       def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
-                                                        with NoSensitivity
+                                                        with SchemeModFNoSensitivity
                                                         with RandomWorklistAlgorithm[SchemeExp] {
         var j = 0
         override def step(t: Timeout.T): Unit = {

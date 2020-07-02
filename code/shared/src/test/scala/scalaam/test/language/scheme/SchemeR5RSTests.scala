@@ -43,7 +43,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
     // Not really clean, we only want a proper ConstantPropagationLattice definition
     new SimpleSchemeModFAnalysis(text)
                           with SchemeConstantPropagationDomain
-                          with NoSensitivity
+                          with SchemeModFNoSensitivity
                           with LIFOWorklistAlgorithm[SchemeExp]
 
   override def testExpr(program: String, answer: Any): Unit = {
@@ -73,13 +73,13 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 class ConcreteBigStepModFSoundnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) = new SimpleSchemeModFAnalysis(text)
                                                         with SchemeConstantPropagationDomain
-                                                        with NoSensitivity
+                                                        with SchemeModFNoSensitivity
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 class TypeBigStepModFSoundnessTests extends SchemeR5RSTests {
   def analysis(text: SchemeExp) = new SimpleSchemeModFAnalysis(text)
                                                         with SchemeTypeDomain
-                                                        with NoSensitivity
+                                                        with SchemeModFNoSensitivity
                                                         with LIFOWorklistAlgorithm[SchemeExp]
 }

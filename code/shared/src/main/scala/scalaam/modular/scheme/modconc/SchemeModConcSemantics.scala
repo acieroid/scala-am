@@ -135,6 +135,6 @@ class MyModConcAnalysis1(prg: SchemeExp) extends SimpleSchemeModConcAnalysis(prg
                                             with SchemeConstantPropagationDomain
                                             with LIFOWorklistAlgorithm[SchemeExp] {
     def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
-                                                    with NoSensitivity
+                                                    with SchemeModFNoSensitivity
                                                     with RandomWorklistAlgorithm[SchemeExp]
 }
