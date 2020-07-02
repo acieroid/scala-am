@@ -4,24 +4,22 @@ import scalaam.util.SmartUnion
 
 import scala.util.Random
 
-
-
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.other
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.other)
 }
 
 trait RandomBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.selectRandomSeq(40)
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.selectRandomSeq(40))
 }
 
 trait AllBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.sequentialBenchmarks
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.sequentialBenchmarks)
 }
 
 trait CSchemeBenchmarkTests extends SchemeBenchmarkTests
 
 trait ThreadBenchmarks extends CSchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = super.benchmarks() ++ SchemeBenchmarks.threads
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarks.threads)
 }
 
 object SchemeBenchmarks {
