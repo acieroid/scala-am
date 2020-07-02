@@ -1121,6 +1121,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         case Value.Real(x) => Value.Real(scala.math.random() * x)
       }
     }
+    // TODO: also use pointers for locks, like in the abstract.
     object NewLock extends Prim {
       val name = "new-lock"
       def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = args match {
