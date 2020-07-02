@@ -372,9 +372,8 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
 class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks
                                                                           with AllBenchmarks {
   override def isSlow(b: Benchmark): Boolean = 
-    !SchemeBenchmarks.other.contains(b) || 
-      // these tests currently slow down the test suite too much
-      Set("test/concurrentScheme/R5RS/mceval.scm",
-          "test/concurrentScheme/threads/minimax.scm",
-          "test/concurrentScheme/threads/mceval.scm")(b)
+    // these tests currently slow down the test suite too much
+    Set("test/concurrentScheme/R5RS/mceval.scm",
+        "test/concurrentScheme/threads/minimax.scm",
+        "test/concurrentScheme/threads/mceval.scm")(b)
 }
