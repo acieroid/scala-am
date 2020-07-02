@@ -1,6 +1,6 @@
 package scalaam.modular.adaptive.scheme
 
-import scalaam.modular.scheme.semantics.{BigStepModFSemantics, SchemeModFSemantics}
+import scalaam.modular.scheme.modf._
 import scalaam.modular.scheme._
 import scalaam.language.scheme._
 import scalaam.modular.adaptive._

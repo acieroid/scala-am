@@ -6,7 +6,8 @@ import scalaam.language.scheme._
 import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.modular._
 import scalaam.modular.scheme._
-import scalaam.modular.scheme.semantics._
+import scalaam.modular.scheme.modf._
+import scalaam.modular.scheme.modconc._
 import scalaam.util._
 import scalaam.util.benchmarks.Timeout
 

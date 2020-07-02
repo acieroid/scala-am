@@ -1,6 +1,5 @@
-package scalaam.modular.scheme
+package scalaam.modular.scheme.modf
 
-import scalaam.modular.scheme.semantics._
 import scalaam.core._
 import scalaam.util._
 import scalaam.language.scheme._

@@ -14,7 +14,9 @@ import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
-import scalaam.modular.scheme.semantics._
+import scalaam.modular.scheme.modf._
+import scalaam.modular.scheme.modconc._
+import scalaam.modular.scheme.ssmodconc._
 import scalaam.test._
 import scalaam.util._
 import scalaam.util.benchmarks.Timeout

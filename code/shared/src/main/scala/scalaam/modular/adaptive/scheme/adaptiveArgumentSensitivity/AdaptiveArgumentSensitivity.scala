@@ -3,6 +3,7 @@ package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
 import scalaam.core._
 import scalaam.modular._
 import scalaam.modular.scheme._
+import scalaam.modular.scheme.modf._
 import scalaam.core.Position._
 import scalaam.language.scheme._
 import scalaam.modular.adaptive.scheme._

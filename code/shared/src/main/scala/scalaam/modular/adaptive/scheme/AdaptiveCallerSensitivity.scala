@@ -1,6 +1,7 @@
 package scalaam.modular.adaptive.scheme
 
 import scalaam.modular.scheme._
+import scalaam.modular.scheme.modf._
 import scalaam.core.Position._
 import scalaam.language.scheme._
 
