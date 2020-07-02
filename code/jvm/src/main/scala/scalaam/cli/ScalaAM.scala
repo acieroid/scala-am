@@ -105,33 +105,8 @@ object Analyze extends App {
   }
 
   val bench: List[String] = List(
-  "test/concurrentScheme/threads/atoms.scm",
-  "test/concurrentScheme/threads/bchain.scm",
-  "test/concurrentScheme/threads/count.scm",
-  "test/concurrentScheme/threads/crypt.scm",
-  "test/concurrentScheme/threads/dekker.scm",
-  "test/concurrentScheme/threads/fact-indep.scm",
-  "test/concurrentScheme/threads/fact2.scm",
   "test/concurrentScheme/threads/msort.scm",
-  "test/concurrentScheme/threads/nbody.scm",
-  "test/concurrentScheme/threads/pc.scm",
-  "test/concurrentScheme/threads/peterson.scm",
-  "test/concurrentScheme/threads/phil.scm",
-  "test/concurrentScheme/threads/philosophers2.scm",
-  "test/concurrentScheme/threads/pp.scm",
-  "test/concurrentScheme/threads/pps.scm",
-  "test/concurrentScheme/threads/producer.scm",
   "test/concurrentScheme/threads/qsort.scm",
-  "test/concurrentScheme/threads/randomness.scm",
-  "test/concurrentScheme/threads/randomness2.scm",
-  "test/concurrentScheme/threads/readers2.scm",
-  "test/concurrentScheme/threads/ringbuf.scm",
-  "test/concurrentScheme/threads/rng.scm",
-  "test/concurrentScheme/threads/sieve.scm",
-  "test/concurrentScheme/threads/simple.scm",
-  "test/concurrentScheme/threads/stm.scm",
-  "test/concurrentScheme/threads/sudoku.scm",
-  "test/concurrentScheme/threads/trapr.scm",
   "test/concurrentScheme/threads/tsp.scm",
   )
 
@@ -145,7 +120,7 @@ object Analyze extends App {
     } catch {
       case t: Throwable => println(s"Raised exception.")
         System.err.println(t.getMessage)
-        t.getStackTrace.take(10).foreach(System.err.println)
+        t.printStackTrace()//t.getStackTrace.take(10).foreach(System.err.println)
         System.err.flush()
     }
   })
