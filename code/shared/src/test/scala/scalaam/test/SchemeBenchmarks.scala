@@ -435,8 +435,8 @@ object SchemeBenchmarks {
   )
 
   val threads: Set[String] = Set(
-    "test/concurrentScheme/threads/abp.scm",
-    "test/concurrentScheme/threads/actors.scm",
+    // "test/concurrentScheme/threads/abp.scm", // Unbound reference: display-recorded.
+    "test/concurrentScheme/threads/actors.scm", // ANALYSIS > 2 MIN (1CFA)
     "test/concurrentScheme/threads/atoms.scm",
     "test/concurrentScheme/threads/bchain.scm",
     "test/concurrentScheme/threads/count.scm",
@@ -446,12 +446,12 @@ object SchemeBenchmarks {
     "test/concurrentScheme/threads/fact.scm",
     "test/concurrentScheme/threads/fact2.scm",
     //"test/concurrentScheme/threads/lastzero2.scm", // Uses let*, but should use something like letrec*?
-    "test/concurrentScheme/threads/life.scm",
-    "test/concurrentScheme/threads/matmul.scm", // StackOverflow in concrete.
-    "test/concurrentScheme/threads/mcarlo.scm", // StackOverFlow in concrete.
-    "test/concurrentScheme/threads/mceval.scm",
-    "test/concurrentScheme/threads/minimax.scm",
-    "test/concurrentScheme/threads/msort.scm", // Out of Memory error.
+    "test/concurrentScheme/threads/life.scm", // ANALYSIS > 2 MIN (1CFA)
+    "test/concurrentScheme/threads/matmul.scm", // ANALYSIS > 2 MIN (1CFA)
+    "test/concurrentScheme/threads/mcarlo.scm", // Analysis +- 50 sec (1CFA)
+    "test/concurrentScheme/threads/mceval.scm", // ANALYSIS > 2 MIN (1CFA), result address in store contains a lot of things.
+    "test/concurrentScheme/threads/minimax.scm", // ANALYSIS > 2 MIN (1CFA)
+    "test/concurrentScheme/threads/msort.scm",
     "test/concurrentScheme/threads/nbody.scm",
     "test/concurrentScheme/threads/pc.scm",
     "test/concurrentScheme/threads/peterson.scm",

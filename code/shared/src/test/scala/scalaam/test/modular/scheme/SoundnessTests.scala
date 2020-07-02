@@ -227,6 +227,8 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   def abstractTimeout(): Timeout.T = Timeout.start(tAbs)
   val tConc: Duration = Duration(1, MINUTES)
   def concreteTimeout(): Timeout.T = Timeout.start(tConc)
+  // The max number of repetitions for the concrete evaluator.
+  val maxRep: Int = 15
   // the actual testing code
   private def evalC(preludedUndefinedProgram: SchemeExp, benchmark: Benchmark, timeout: Timeout.T): (Set[Value], Map[Identity,Set[Value]]) = {
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
@@ -257,15 +259,17 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
     var idnResults: Map[Identity,Set[Value]] = Map().withDefaultValue(Set())
     var endResults: Set[Value] = Set()
     var t: Timeout.T = concreteTimeout()
+    var rep = 0
     while (true) {
       val (cResult, cPosResults) = evalC(program,benchmark, t)
       val timeRemaining = t.timeLeft
+      rep += 1
       cPosResults.foreach({ case (idn, values) => idnResults += (idn -> SmartUnion.sunion(idnResults(idn), values)) })
       if (cResult.nonEmpty)
         endResults = endResults + cResult.head
       else
         return (endResults, idnResults)
-      if (timeRemaining.getOrElse(1L) <= 0) return (endResults, idnResults)
+      if (timeRemaining.getOrElse(1L) <= 0 || rep >= maxRep) return (endResults, idnResults)
       t = Timeout.start(timeRemaining.map(Duration(_, NANOSECONDS)).getOrElse(tConc))
     }
     throw new Exception("repeatConcrete should not reach this point.")
@@ -379,7 +383,12 @@ class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with T
   override def isSlow(b: Benchmark): Boolean =
     (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
     // these tests currently slow down the test suite too much
-    Set("test/concurrentScheme/R5RS/mceval.scm",
+    Set("test/concurrentScheme/threads/actors.scm",
+        "test/concurrentScheme/threads/life.scm",
+        "test/concurrentScheme/threads/matmul.scm",
+        "test/concurrentScheme/R5RS/mceval.scm",
+        "test/concurrentScheme/threads/mceval.scm",
+        "test/concurrentScheme/threads/minimax.scm",
         "test/concurrentScheme/threads/minimax.scm",
         "test/concurrentScheme/threads/mceval.scm")(b)
 }
