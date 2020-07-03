@@ -44,7 +44,7 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
 }
 
 class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadBenchmarks
-                                                                    with OtherBenchmarks
+                                                                    with SimpleBenchmarks
 
 trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   def name = "small-step ModConc"
