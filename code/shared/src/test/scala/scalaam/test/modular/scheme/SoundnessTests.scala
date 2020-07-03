@@ -25,30 +25,31 @@ import scala.concurrent.duration._
 
 trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
-  type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
+  type Analysis = ModAnalysis[SchemeExp] with SchemeSemantics
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
   // the timeout for the analysis of a single benchmark program (default: 2min.)
   def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
   // the actual testing code
-  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Option[Value], Map[Identity,Set[Value]]) = {
+  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark, times: Int = 1): (Set[Value], Map[Identity,Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = SchemeUndefiner.undefine(List(preluded))
+    var endResults = Set[Value]()
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
-    val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
     try {
-      val endResult = interpreter.run(program, timeout(benchmark))
-      (Some(endResult), idnResults)
+      for (i <- 1 to times) {
+        val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
+        endResults += interpreter.run(program, timeout(benchmark))
+      }
     } catch {
       case _ : TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
-        (None, idnResults)
       case e : VirtualMachineError =>
         System.gc()
         alert(s"Concrete evaluation of $benchmark failed with $e")
-        (None, idnResults)
     }
+    (endResults, idnResults)
   }
   private def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
     try {
@@ -81,15 +82,17 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
     }
   }
 
-  private def compareResult(a: Analysis, concRes: Value) = {
+  private def compareResult(a: Analysis, values: Set[Value]) = {
     val aRes = a.finalResult
-    if (!checkSubsumption(a)(concRes, aRes)) {
-      val failureMsg =
+    values.foreach { value => 
+      if (!checkSubsumption(a)(value, aRes)) {
+        val failureMsg =
 s"""Program result is unsound:
-  - concrete value: $concRes
+  - concrete value: $value
   - abstract value: $aRes
 """
-      fail(failureMsg)
+        fail(failureMsg)
+      } 
     }
   }
 
@@ -135,10 +138,8 @@ s"""Intermediate result at $idn is unsound:
       // analyze the program using a ModF analysis
       val anl = runAnalysis(program,benchmark)
       // check if the final result of the analysis soundly approximates the final result of concrete evaluation
-      // of course, this can only be done if there was a result.
-      if (cResult.isDefined) { compareResult(anl, cResult.get) }
+      compareResult(anl, cResult)
       // check if the intermediate results at various program points are soundly approximated by the analysis
-      // this can be done, regardless of whether the concrete evaluation terminated successfully or not
       compareIdentities(anl, cPosResults)
     }
 }
