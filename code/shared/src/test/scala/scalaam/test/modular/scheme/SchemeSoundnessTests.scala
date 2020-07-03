@@ -29,18 +29,22 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
-  // the timeout for the analysis of a single benchmark program (default: 2min.)
-  def timeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  // the timeout and max number of concrete runs for a single benchmark program (default: 2min.)
+  def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  def concreteRuns(b: Benchmark): Int = 1 // for highly non-deterministic programs, a higher value is recommended
   // the actual testing code
-  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark, times: Int = 1): (Set[Value], Map[Identity,Set[Value]]) = {
+  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity,Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = CSchemeUndefiner.undefine(List(preluded))
     var endResults = Set[Value]()
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
+    val timeout = concreteTimeout(benchmark)
+    val times = concreteRuns(benchmark)
     try {
       for (i <- 1 to times) {
         val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
-        endResults += interpreter.run(program, timeout(benchmark))
+        endResults += interpreter.run(program, timeout)
       }
     } catch {
       case _ : TimeoutException =>
@@ -55,7 +59,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     try {
       // analyze the program using a ModF analysis
       val anl = analysis(program)
-      anl.analyze(timeout(benchmark))
+      val timeout = analysisTimeout(benchmark)
+      anl.analyze(timeout)
       assume(anl.finished(), "Analysis timed out")
       anl
     } catch {
