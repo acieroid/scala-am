@@ -395,7 +395,7 @@ class ModularSchemeLattice[
       }
       case Remainder => (x, y) match {
         case (Int(n1), Int(n2)) => MayFail.success(Int(IntLattice[I].remainder(n1, n2)))
-        case _                  => MayFail.failure(OperatorNotApplicable("modulo", List(x, y)))
+        case _                  => MayFail.failure(OperatorNotApplicable("remainder", List(x, y)))
       }
       case Lt => (x, y) match {
         case (Int(n1), Int(n2))   => MayFail.success(Bool(IntLattice[I].lt(n1, n2)))

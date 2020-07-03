@@ -93,7 +93,7 @@ abstract class PrecisionBenchmarks[
         case SchemeInterpreter.Value.Character(c)       => baseLattice.char(c)
         case SchemeInterpreter.Value.Cons(a,d)          => baseLattice.cons(convertConcreteValue(a),convertConcreteValue(d))
         case SchemeInterpreter.Value.Pointer(a)         => baseLattice.pointer(convertConcreteAddr(a))
-        case SchemeInterpreter.Value.Vector(siz,els,_) => 
+        case SchemeInterpreter.Value.Vector(siz,els,_)  =>
             def convertNumber(n: Int): Num = baseLattice.number(n) match {
                 case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
             }
@@ -192,7 +192,7 @@ abstract class PrecisionBenchmarks[
       *  @param interpreter the concrete interpreter from which the results need to be extracted
       *  @return a store in the base domain
       */ 
-    protected def extract(interpreter: SchemeInterpreter): BaseStore = 
+    protected def extract(interpreter: SchemeInterpreter): BaseStore =
         interpreter.store.view
                          .mapValues(convertConcreteValue)
                          .groupBy(p => convertConcreteAddr(p._1)).view

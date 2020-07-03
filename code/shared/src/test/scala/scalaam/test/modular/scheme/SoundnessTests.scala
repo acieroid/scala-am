@@ -228,7 +228,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   val tConc: Duration = Duration(1, MINUTES)
   def concreteTimeout(): Timeout.T = Timeout.start(tConc)
   // The max number of repetitions for the concrete evaluator.
-  val maxRep: Int = 7
+  val maxRep: Int = 5
   // the actual testing code
   private def evalC(preludedUndefinedProgram: SchemeExp, benchmark: Benchmark, timeout: Timeout.T): (Set[Value], Map[Identity,Set[Value]]) = {
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
