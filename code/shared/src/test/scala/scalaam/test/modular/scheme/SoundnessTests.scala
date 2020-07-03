@@ -228,7 +228,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   val tConc: Duration = Duration(1, MINUTES)
   def concreteTimeout(): Timeout.T = Timeout.start(tConc)
   // The max number of repetitions for the concrete evaluator.
-  val maxRep: Int = 5
+  val maxRep: Int = 1
   // the actual testing code
   private def evalC(preludedUndefinedProgram: SchemeExp, benchmark: Benchmark, timeout: Timeout.T): (Set[Value], Map[Identity,Set[Value]]) = {
     var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
@@ -381,12 +381,14 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
 class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks
                                                                           with SequentialBenchmarks {
   override def isSlow(b: Benchmark): Boolean =
-    (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
-    // these tests currently slow down the test suite too much
+    // (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
+    SchemeBenchmarks.sequentialBenchmarks.contains(b) ||
+    // These tests currently slow down the test suite too much:
     Set("test/concurrentScheme/threads/actors.scm",
         "test/concurrentScheme/threads/life.scm",
         "test/concurrentScheme/threads/fact.scm",
         "test/concurrentScheme/threads/matmul.scm",
+        "test/concurrentScheme/threads/mazefun.scm",
         "test/concurrentScheme/threads/mceval.scm",
         "test/concurrentScheme/threads/minimax.scm")(b)
 }
