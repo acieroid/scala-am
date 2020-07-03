@@ -31,6 +31,21 @@ trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
     }
 }
 
+trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
+    def name = "simple ModConc"
+    def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program) 
+                                        with SchemeModConcNoSensitivity
+                                        with SchemeConstantPropagationDomain
+                                        with LIFOWorklistAlgorithm[SchemeExp] {
+        def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
+                                                        with SchemeModFNoSensitivity
+                                                        with RandomWorklistAlgorithm[SchemeExp]                                       
+    }
+}
+
+class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadBenchmarks
+                                                                    with OtherBenchmarks
+
 trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   def name = "small-step ModConc"
   def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
