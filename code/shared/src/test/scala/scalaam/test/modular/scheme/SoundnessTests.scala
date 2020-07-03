@@ -218,7 +218,7 @@ class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with Sequentia
 
 trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support Scheme's ModF Semantics
-  type Analysis = ModAnalysis[SchemeExp] with KAExpressionContext with ModConcConstantPropagationDomain
+  type Analysis = ModAnalysis[SchemeExp] with KAExpressionContext with SchemeConstantPropagationDomain
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
@@ -325,7 +325,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
         case ComponentAddr(_, a.VarAddr(id))  => id.idn
         case ComponentAddr(_, a.PtrAddr(ep))  => ep.idn
         case ComponentAddr(_, ReturnAddr(_))  => Identity.none
-        case GlobalAddr(a.PrmAddr(_))         => Identity.none
+        case GlobalAddr(PrmAddr(_))         => Identity.none
         case a                              => throw new Exception(s"Unsupported address $a")
     }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
@@ -374,7 +374,7 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   def name = "small-step ModConc"
   def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
     with KAExpressionContext
-    with ModConcConstantPropagationDomain
+    with SchemeConstantPropagationDomain
     with LIFOWorklistAlgorithm[SchemeExp] {}
 }
 

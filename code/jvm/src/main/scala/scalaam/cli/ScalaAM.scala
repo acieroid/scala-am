@@ -101,7 +101,7 @@ object Analyze extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new ModAnalysis(text)
       with KAExpressionContext
-      with ModConcConstantPropagationDomain
+      with SchemeConstantPropagationDomain
       with LIFOWorklistAlgorithm[SchemeExp] {}
     a.analyze(timeout())
     val r = a.store(ComponentAddr(a.initialComponent, ReturnAddr(a.expr(a.initialComponent))))

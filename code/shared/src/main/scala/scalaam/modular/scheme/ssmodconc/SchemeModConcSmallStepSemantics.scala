@@ -7,6 +7,7 @@ import scalaam.language.scheme.primitives._
 import scalaam.language.sexp
 import scalaam.lattice._
 import scalaam.modular._
+import scalaam.modular.scheme._
 import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.util.Annotations.mutable
 import scalaam.util.SmartHash
@@ -17,8 +18,7 @@ import scalaam.util.benchmarks.Timeout
  * Additionally supported primitives (upon R5RS): fork, join.
  */
 trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
-                                   with DedicatedGlobalStore[SchemeExp]
-                                   with ReturnValue[SchemeExp]
+                                   with DedicatedSchemeSemantics
                                    with ContextSensitiveComponents[SchemeExp] {
 
   //XXXXXXXXX//
@@ -27,12 +27,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   
   type Exp  = SchemeExp
   type Exps = List[Exp]
-
-  // The analysis expects the program to be undefined.
-  override lazy val program: SchemeExp = {
-    val preludedProgram = SchemePrelude.addPrelude(super.program)
-    CSchemeUndefiner.undefine(List(preludedProgram))
-  }
 
 
   //XXXXXXXXXXX//
@@ -54,25 +48,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   //XXXXXXXXXXXXXXXXX//
   // ABSTRACT VALUES //
   //XXXXXXXXXXXXXXXXX//
-
-
-  // Abstract values come from a Scala-AM Scheme scalaam.lattice (a type scalaam.lattice).
-  type Prim = SchemePrimitive[Value, Addr]
-  type Env = Environment[Addr]
-  implicit val lattice: SchemeLattice[Value, Addr, Prim]
-  lazy val primitives: SchemePrimitives[Value, Addr] = new SchemeLatticePrimitives()
-
-  // The empty environment. Binds all primitives in the store upon initialisation (hence why this is a val and not put in the intra-analysis).
-  val initialEnv: Env = {
-    var data = Map[String, Addr]()
-    // Set up initial environment and install the primitives in the global store.
-    primitives.CSchemePrimitives.foreach { p =>
-      val addr = GlobalAddr(PrmAddr(p.name))
-      store += (addr -> lattice.primitive(p))
-      data = data + (p.name -> addr)
-    }
-    Environment(data)
-  }
 
 
   //XXXXXXXXXXXX//
@@ -546,45 +521,4 @@ trait KAExpressionContext extends SmallStepModConcSemantics {
     }
 
   }
-}
-
-
-trait AbstractModConcDomain extends SmallStepModConcSemantics {
-  // parameterized by different abstract domains for each type
-  type S
-  type B
-  type I
-  type R
-  type C
-  type Sym
-  // which are used to construct a "scalaam.modular" (~ product) scalaam.lattice
-  val valueLattice: ModularSchemeLattice[Addr,S,B,I,R,C,Sym]
-  type Value = valueLattice.L
-  lazy val lattice = valueLattice.schemeLattice
-}
-
-/* A type scalaam.lattice for ModConc. */
-trait ModConcTypeDomain extends AbstractModConcDomain {
-  // use type domains everywhere, except for booleans
-  type S    = Type.S
-  type B    = Concrete.B
-  type I    = Type.I
-  type R    = Type.R
-  type C    = Type.C
-  type Sym  = Concrete.Sym
-  // make the scheme scalaam.lattice
-  lazy val valueLattice = new ModularSchemeLattice
-}
-
-/* A constant propagation scalaam.lattice for ModConc. */
-trait ModConcConstantPropagationDomain extends AbstractModConcDomain {
-  // use constant propagation domains everywhere, except for booleans
-  type S    = ConstantPropagation.S
-  type B    = ConstantPropagation.B
-  type I    = ConstantPropagation.I
-  type R    = ConstantPropagation.R
-  type C    = ConstantPropagation.C
-  type Sym  = Concrete.Sym
-  // make the scheme scalaam.lattice
-  lazy val valueLattice = new ModularSchemeLattice
 }
