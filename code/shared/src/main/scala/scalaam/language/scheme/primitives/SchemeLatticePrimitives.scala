@@ -222,7 +222,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* Other primitives that are not R5RS */
       `random`,
       `error`
-    )
+    ) ++ CSchemePrimitives
   }
 
   /** Primitives for a concurrent Scheme that are not part of R5RS. */
@@ -232,7 +232,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `new-lock`,
       `lock?`,
       `thread?`,
-    ) ++ allPrimitives
+    )
   }
 
   class NoStore1Operation(val name: String, val call: V => MayFail[V, Error]) extends SchemePrimitive[V, A] {

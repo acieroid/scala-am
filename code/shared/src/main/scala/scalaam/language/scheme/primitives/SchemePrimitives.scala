@@ -21,5 +21,4 @@ case class UserError(message: String)                                           
 
 abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A]]) {
   def allPrimitives: List[SchemePrimitive[V, A]]
-  def CSchemePrimitives: List[SchemePrimitive[V, A]]
 }

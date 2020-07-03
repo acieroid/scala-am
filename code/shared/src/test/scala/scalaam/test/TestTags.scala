@@ -12,5 +12,5 @@ object PrimitiveTest    extends Tag("PrimitiveTest")
 object SoundnessTest    extends Tag("SoundnessTest")
 
 // Tags by language.
-object SchemeTest       extends Tag("SchemeTest")
-object CSchemeTest      extends Tag("CSchemeTest")
+object SchemeModFTest       extends Tag("SchemeModFTest")
+object SchemeModConcTest    extends Tag("SchemeModConcTest")
