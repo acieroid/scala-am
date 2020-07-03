@@ -29,9 +29,9 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
-  // the timeout and max number of concrete runs for a single benchmark program (default: 2min.)
-  def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
-  def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  // the timeout and max number of concrete runs for a single benchmark program (default: 1min.)
+  def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
+  def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
   def concreteRuns(b: Benchmark): Int = 1 // for highly non-deterministic programs, a higher value is recommended
   // the actual testing code
   private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity,Set[Value]]) = {
@@ -49,6 +49,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     } catch {
       case _ : TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
+      case ChildThreadDiedException =>
+        alert(s"Concrete evaluation of $benchmark aborted due to a fatal crash in a child thread.")
       case e : VirtualMachineError =>
         System.gc()
         alert(s"Concrete evaluation of $benchmark failed with $e")

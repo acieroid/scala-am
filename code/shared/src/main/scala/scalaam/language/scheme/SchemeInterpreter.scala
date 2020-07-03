@@ -13,6 +13,8 @@ import scala.concurrent._
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
+case object ChildThreadDiedException extends Exception("A child thread has tragically died") 
+
 /**
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
   * This interpreter dictates the concrete semantics of the Scheme language analyzed by Scala-AM.
@@ -38,6 +40,15 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       case ((env: Env, sto: Store), prim: Prim) =>
         val addr = newAddr(AddrInfo.PrmAddr(prim.name))
         (env + (prim.name -> addr), sto + (addr -> Value.Primitive(prim)))
+    }
+  }
+
+  def safeFuture(bdy: => Value): Future[Value] = Future {
+    try {
+      bdy
+    } catch {
+      case e: VirtualMachineError =>
+        throw ChildThreadDiedException
     }
   }
 
@@ -229,7 +240,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case ValueCharacter(c)   => Value.Character(c)
           case ValueNil            => Value.Nil
         }
-      case CSchemeFork(body, _)    => Value.Thread(Future { eval(body, env, timeout) })
+      case CSchemeFork(body, _)    => Value.Thread(safeFuture { eval(body, env, timeout) })
       case CSchemeJoin(tExp, _)    => eval(tExp, env, timeout) match {
         case Value.Thread(fut)     => Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf))
         case v                     => throw new Exception(s"Join expected thread, but got $v")
