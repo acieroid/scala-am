@@ -9,32 +9,39 @@ trait SchemeModFNoSensitivity extends BaseSchemeModFSemantics {
 }
 
 /* Full argument sensitivity for ModF */
-trait FullArgumentSensitivity extends BaseSchemeModFSemantics {
-  case class ComponentContext(args: List[Value]) {
-    override def toString: String = args.mkString(",")
-  }
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ComponentContext(args)
+case class ArgContext(values: List[_]) { //TODO: preserve type information
+  override def toString: String = values.mkString(",")
+}
+trait SchemeModFFullArgumentSensitivity extends BaseSchemeModFSemantics {
+  type ComponentContext = ArgContext
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ArgContext(args)
 }
 
-trait CallSiteSensitivity extends BaseSchemeModFSemantics {
-  case class ComponentContext(fn: Position, call: Position) {
-    override def toString: String = s"$call->$fn"
-  }
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ComponentContext(clo._1.idn.pos, call)
+/* Call-site sensitivity for ModF */
+case class CallSiteContext(fn: Position, call: Position) {
+  override def toString: String = s"$call->$fn"
+}
+trait SchemeModFCallSiteSensitivity extends BaseSchemeModFSemantics {
+  type ComponentContext = CallSiteContext 
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = CallSiteContext(clo._1.idn.pos, call)
 }
 
-trait FullArgumentCallSiteSensitivity extends BaseSchemeModFSemantics {
-  case class ComponentContext(fn: Position, call: Position, args: List[Value]) {
-    override def toString: String = {
-      val argsstr = args.mkString(",")
-      s"$call->$fn $argsstr"
-    }
+/* Call-site x full-argument sensitivity for ModF */
+case class ArgCallSiteContext(fn: Position, call: Position, args: List[_]) { //TODO: type information about Value is lost!
+  override def toString: String = {
+    val argsstr = args.mkString(",")
+    s"$call->$fn $argsstr"
   }
+}
+trait SchemeModFFullArgumentCallSiteSensitivity extends BaseSchemeModFSemantics {
+  type ComponentContext = ArgCallSiteContext
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext =
-    ComponentContext(clo._1.idn.pos, call, args)
+    ArgCallSiteContext(clo._1.idn.pos, call, args)
 }
 
-object CompoundSensitivities {
+// TODO: do not use inner class definition
+// TODO: find a way to reuse previous sensitivities?
+object SchemeModFCompoundSensitivities {
   import scalaam.language.scheme.primitives.SchemePrelude
 
   trait Sensitivity[Value, Component] {

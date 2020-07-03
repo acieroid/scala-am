@@ -155,7 +155,7 @@ trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
   def name = "big-step semantics with call-site sensitivity for primitives"
   def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
       with SchemeConstantPropagationDomain
-      with CompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
+      with SchemeModFCompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
       with LIFOWorklistAlgorithm[SchemeExp]
 }
 

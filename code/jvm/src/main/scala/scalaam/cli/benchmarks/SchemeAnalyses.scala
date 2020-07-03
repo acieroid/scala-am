@@ -18,13 +18,13 @@ object SchemeAnalyses {
         override def toString() = "no-sensitivity"
     }
     def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
-                                                                                with CallSiteSensitivity
+                                                                                with SchemeModFCallSiteSensitivity
                                                                                 with SchemeConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "call-site-sensitivity"
     }
     def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
-                                                                                with FullArgumentSensitivity
+                                                                                with SchemeModFFullArgumentSensitivity
                                                                                 with SchemeConstantPropagationDomain
                                                                                 with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString() = "full-argument-sensitivity"
