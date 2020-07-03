@@ -20,10 +20,10 @@ jobs:
       script: sbt "scalaam/testOnly -- -n PrimitiveTest"
     - stage: test
       name: "ModF Soundness Tests"
-      script: travis_wait 30 sbt "scalaam/testOnly -- -n SoundnessTest -l CSchemeTest -l SlowTest"
+      script: travis_wait 30 sbt "scalaam/testOnly -- -n SoundnessTest -n SchemeModF -l SlowTest"
     - stage: test
       name: "ModConc Soundness Tests"
-      script: travis_wait 30 sbt "scalaam/testOnly -- -n SoundnessTest -l SchemeTest -l SlowTest"
+      script: travis_wait 30 sbt "scalaam/testOnly -- -n SoundnessTest -n SchemeModConc -l SlowTest"
 
 branches:
   only:
