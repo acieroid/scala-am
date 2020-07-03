@@ -2,7 +2,10 @@ package scalaam.modular
 
 import scalaam.core._
 
-case object ReturnAddr extends Address { def printable = true } 
+case class ReturnAddr(val exp: Expression) extends Address { 
+  def printable = true 
+  def idn = exp.idn
+} 
 
 /**
  * Provides facilities for storing and retrieving return values of components (component analyses).
@@ -10,14 +13,16 @@ case object ReturnAddr extends Address { def printable = true }
  */
 trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
 
+  def returnAddr(cmp: Component) = componentAddr(cmp, ReturnAddr(expr(cmp)))
+
   // intra-analysis can now also update and read the result of a component
   trait ReturnResultIntra extends GlobalStoreIntra {
     // updating the result of a component (default: of the current component)
     protected def writeResult(result: Value, cmp: Component = component): Unit =
-      writeAddr(componentAddr(cmp,ReturnAddr),result)
+      writeAddr(returnAddr(cmp), result)
     // reading the result of a component
     protected def readResult(cmp: Component): Value =
-      readAddr(componentAddr(cmp,ReturnAddr))
+      readAddr(returnAddr(cmp))
     // convenience method: "calling" other components registers a dependency and immediately reads their prior analysis result
     protected def call(cmp: Component): Value = {
       spawn(cmp)

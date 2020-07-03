@@ -20,7 +20,7 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/fact.scm")
+    val txt = Reader.loadFile("test/R5RS/mceval.scm")
     val prg = SchemeParser.parse(txt)
     val analysis = new SimpleSchemeModConcAnalysis(prg)
                                         with SchemeModConcNoSensitivity
@@ -52,7 +52,7 @@ object Main {
 
   def debugResults(machine: SchemeSemantics, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (ComponentAddr(cmp, ReturnAddr), result) if cmp == machine.initialComponent || printMore =>
+      case (ComponentAddr(cmp, addr: ReturnAddr), result) if cmp == machine.initialComponent || printMore =>
         println(s"$cmp => $result")
       case _ => ()
     }
@@ -104,7 +104,7 @@ object Analyze extends App {
       with ModConcConstantPropagationDomain
       with LIFOWorklistAlgorithm[SchemeExp] {}
     a.analyze(timeout())
-    val r = a.store(ComponentAddr(a.initialComponent, ReturnAddr))
+    val r = a.store(ComponentAddr(a.initialComponent, ReturnAddr(a.expr(a.initialComponent))))
     println(r)
   }
 

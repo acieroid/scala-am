@@ -89,6 +89,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
   type Component = SchemeComponent
   implicit def view(c: Component): SchemeComponent = c
+  def expr(cmp: Component) = view(cmp).exp
 
   // The main thread of the program.
   case object MainComponent extends SchemeComponent {

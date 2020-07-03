@@ -15,7 +15,6 @@ import scalaam.util._
  */
 // TODO: Most of this can be factored out to SchemeSemantics
 trait BaseSchemeModFSemantics extends SchemeSemantics
-                                 with ReturnValue[SchemeExp] 
                                  with ContextSensitiveComponents[SchemeExp] {
 
   //XXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -27,6 +26,7 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
 
   def view(cmp: Component): SchemeModFComponent[ComponentContext,Addr]
 
+  def expr(cmp: Component): SchemeExp = body(cmp)
   def body(cmp: Component): SchemeExp = body(view(cmp))
   def body(cmp: SchemeModFComponent[ComponentContext,Addr]): SchemeExp = cmp match {
     case Main                           => program 

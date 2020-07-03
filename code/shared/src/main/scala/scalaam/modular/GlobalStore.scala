@@ -2,9 +2,15 @@ package scalaam.modular
 
 import scalaam.core._
 
-sealed trait A[+Component] extends Address
-case class GlobalAddr(addr: Address) extends A[Nothing]                                 { def printable = addr.printable }
-case class ComponentAddr[Component](cmp: Component, addr: Address) extends A[Component] { def printable = addr.printable } 
+sealed trait A[+Component] extends Address { 
+  // has an underlying "local" address
+  def addr: Address 
+  // delegate methods to the underlying address
+  def printable = addr.printable
+  def idn = addr.idn
+}
+case class GlobalAddr(addr: Address) extends A[Nothing]                                
+case class ComponentAddr[Component](cmp: Component, addr: Address) extends A[Component]
 
 /**
  * An analysis with a global store.

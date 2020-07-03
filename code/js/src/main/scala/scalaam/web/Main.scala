@@ -54,12 +54,12 @@ object Main {
       override def step(timeout: Timeout.T) = {
         val component = workList.head
         val name = deref(component)
-        val prevResult = store.getOrElse(ComponentAddr(component, ReturnAddr), lattice.bottom)
+        val prevResult = store.getOrElse(returnAddr(component), lattice.bottom)
         super.step(timeout)
-        val newResult = store.getOrElse(ComponentAddr(component, ReturnAddr), lattice.bottom)
+        val newResult = store.getOrElse(returnAddr(component), lattice.bottom)
         println(s"$name => $newResult (previously: $prevResult)")
       }
-      def key(cmp: Component) = body(cmp).idn
+      def key(cmp: Component) = expr(cmp).idn
     }
     val visualisation = new WebVisualisationAdaptive(analysis)
     // parameters for the visualisation

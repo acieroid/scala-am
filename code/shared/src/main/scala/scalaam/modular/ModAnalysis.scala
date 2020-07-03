@@ -6,9 +6,10 @@ import scalaam.util.benchmarks.Timeout
 
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
 
-  // parameterized by a 'intra-component' representation
+  // parameterized by a component representation
   type Component
   def initialComponent: Component
+  def expr(cmp: Component): Expr
 
   // Retrieve a (possibly modified) version of the program
   def program: Expr = prog

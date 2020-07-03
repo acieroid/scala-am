@@ -82,7 +82,7 @@ trait SchemeModFSoundnessTests extends SchemeBenchmarkTests {
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
-    val aRes = a.store.getOrElse(ComponentAddr(a.initialComponent, ReturnAddr), a.lattice.bottom)
+    val aRes = a.finalResult
     if (!checkSubsumption(a)(concRes, aRes)) {
       val failureMsg =
 s"""Program result is unsound:
@@ -97,7 +97,7 @@ s"""Program result is unsound:
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
         case ComponentAddr(_, VarAddr(id))  => id.idn
         case ComponentAddr(_, PtrAddr(ep))  => ep.idn
-        case ComponentAddr(_, ReturnAddr)   => Identity.none
+        case ComponentAddr(_, ReturnAddr(_)) => Identity.none
         case GlobalAddr(PrmAddr(_))         => Identity.none
         case a                              => throw new Exception(s"Unsupported address $a")
       }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
@@ -309,7 +309,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
   }
 
   private def compareResult(a: Analysis, concRes: Value) = {
-    val aRes = a.store.getOrElse(ComponentAddr(a.initialComponent,ReturnAddr), a.lattice.bottom)
+    val aRes = a.store.getOrElse(a.returnAddr(a.initialComponent), a.lattice.bottom)
     if (!checkSubsumption(a)(concRes, aRes)) {
       val failureMsg =
         s"""Program result is unsound:
@@ -324,7 +324,7 @@ trait SchemeModConcSoundnessTests extends SchemeBenchmarkTests {
     val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
         case ComponentAddr(_, a.VarAddr(id))  => id.idn
         case ComponentAddr(_, a.PtrAddr(ep))  => ep.idn
-        case ComponentAddr(_, ReturnAddr)     => Identity.none
+        case ComponentAddr(_, ReturnAddr(_))  => Identity.none
         case GlobalAddr(a.PrmAddr(_))         => Identity.none
         case a                              => throw new Exception(s"Unsupported address $a")
     }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)

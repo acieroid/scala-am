@@ -50,7 +50,10 @@ abstract class ModularSchemeLatticeGenerator[
         for { n <- Gen.choose(0,max) ; lst <- Gen.listOfN(n,gen) } yield lst
 
     // for the purposes of generating arbitrary Scheme values, we can just represent addresses with integers
-    case class SimpleAddr(addr: Int) extends Address { def printable = true }
+    case class SimpleAddr(addr: Int) extends Address { 
+        def printable = true
+        def idn = Identity.none
+    }
     // we'll use the "real" primitives
     def primitives = new SchemeLatticePrimitives[modularLattice.L, SimpleAddr]
     // the scalaam.modular scalaam.lattice that is used

@@ -22,7 +22,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     def view(cmp: Component): SchemeModConcComponent[ComponentContext,Addr]
     def initialComponent: Component 
     def newComponent(thread: Thread[ComponentContext,Addr]): Component
-
+    
+    def expr(cmp: Component): SchemeExp = body(cmp)
     def body(cmp: Component): SchemeExp = body(view(cmp))
     def body(cmp: SchemeModConcComponent[ComponentContext,Addr]): SchemeExp = cmp match {
         case MainThread         => program
@@ -97,7 +98,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         class InnerModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
             var T: Set[inter.Component] = Set()
             def spawnThread(t: inter.Component) = T += t 
-            def readThreadResult(t: inter.Component) = readAddr(ComponentAddr(t, ReturnAddr))               
+            def readThreadResult(t: inter.Component) = readAddr(ComponentAddr(t, ReturnAddr(inter.expr(t))))               
             override def eval(exp: SchemeExp, env: Env) = exp match {
                 case CSchemeFork(bdy, _)    => evalFork(bdy, env)
                 case CSchemeJoin(thr, _)    => evalJoin(thr, env)

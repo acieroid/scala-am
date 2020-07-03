@@ -8,13 +8,15 @@ import scalaam.modular._
 import scalaam.modular.scheme.PrmAddr
 
 trait SchemeSemantics extends ModAnalysis[SchemeExp]
-                         with GlobalStore[SchemeExp] {
+                         with GlobalStore[SchemeExp]
+                         with ReturnValue[SchemeExp] {
   type Env  = Environment[Addr]
   type Prim = SchemePrimitive[Value,Addr]
   val initialEnv: Env
   implicit val lattice: SchemeLattice[Value, Addr, Prim] 
   // The final result can be found at the ReturnAddr of the initialComponent
-  def finalResult = store.getOrElse(componentAddr(initialComponent, ReturnAddr), lattice.bottom)
+  private lazy val returnAddr = componentAddr(initialComponent, ReturnAddr(expr(initialComponent)))
+  def finalResult = store.getOrElse(returnAddr, lattice.bottom)
 }
 
 trait DedicatedSchemeSemantics extends SchemeSemantics
