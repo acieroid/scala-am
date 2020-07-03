@@ -97,13 +97,9 @@ s"""Program result is unsound:
   }
 
   private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
-    val absID: Map[Identity, a.Value] = a.store.groupBy({_._1 match {
-        case ComponentAddr(_, VarAddr(id))  => id.idn
-        case ComponentAddr(_, PtrAddr(ep))  => ep.idn
-        case ComponentAddr(_, ReturnAddr(_)) => Identity.none
-        case GlobalAddr(PrmAddr(_))         => Identity.none
-        case a                              => throw new Exception(s"Unsupported address $a")
-      }}).view.mapValues(_.values.foldLeft(a.lattice.bottom)((x,y) => a.lattice.join(x,y))).toMap.withDefaultValue(a.lattice.bottom)
+    val absID: Map[Identity, a.Value] = a.store.groupBy(_._1.idn).view
+                                                .mapValues(m => a.lattice.join(m.values)).toMap
+                                                .withDefaultValue(a.lattice.bottom)
     concIdn.foreach { case (idn,values) =>
       values.foreach { value =>
         if (!checkSubsumption(a)(value, absID(idn))) {
@@ -121,11 +117,11 @@ s"""Intermediate result at $idn is unsound:
   // indicate if a benchmark is slow or not
   def isSlow(b: Benchmark) = false
 
-  private def testTags(b: Benchmark): Seq[Tag] =
+  def testTags(b: Benchmark): Seq[Tag] =
     if (isSlow(b)) {
-      Seq(SchemeTest, SoundnessTest, SlowTest)
+      Seq(SoundnessTest, SlowTest)
     } else {
-      Seq(SchemeTest, SoundnessTest)
+      Seq(SoundnessTest)
     }
 
   def onBenchmark(benchmark: Benchmark): Unit =
