@@ -19,9 +19,16 @@ import scalaam.test._
 import scalaam.util._
 import scalaam.util.benchmarks.Timeout
 
-
 trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModConcTest
+  override def concreteRuns(b: Benchmark) =
+    if (SchemeBenchmarks.threads.contains(b)) {
+        // run concurrent benchmarks more than once in the concrete to get
+        5
+    } else {
+        // other (sequential) benchmarks are just ran once
+        1
+    }
 }
 
 trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
