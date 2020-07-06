@@ -50,15 +50,15 @@ object SchemeBenchmarks {
     root.listFiles().filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
   }
 
-  lazy val ad: Set[String] = fromFolderR("test/R5RS/ad",
+  lazy val ad: Set[String] = fromFolder("test/R5RS/ad",
     "bfirst.scm", // Unbound identifier: create-graph
     "btree.scm", // Lacks a body.
     "README"
   )
 
-  lazy val gabriel: Set[String] = fromFolderR("test/R5RS/gabriel", "README")
+  lazy val gabriel: Set[String] = fromFolder("test/R5RS/gabriel", "README")
 
-  lazy val gambit: Set[String] = fromFolderR("test/R5RS/gambit",
+  lazy val gambit: Set[String] = fromFolder("test/R5RS/gambit",
     "README",
     "cat.scm", // Needs open-input-file.
     "compiler.scm", // Parser error (see issue on Github).
@@ -73,14 +73,14 @@ object SchemeBenchmarks {
     "wc.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
   )
 
-  lazy val rosetta: Set[String] = fromFolderR("test/R5RS/rosetta")
+  lazy val rosetta: Set[String] = fromFolder("test/R5RS/rosetta")
 
-  lazy val scp1: Set[String] = fromFolderR("test/R5RS/scp1",
+  lazy val scp1: Set[String] = fromFolder("test/R5RS/scp1",
     "circus.scm", // Vararg append nog supported by concrete interpreter.
     "README"
   )
 
-  lazy val scp1_compressed: Set[String] = fromFolderR("test/R5RS/scp1-compressed",
+  lazy val scp1_compressed: Set[String] = fromFolder("test/R5RS/scp1-compressed",
     "README"
   )
 
@@ -90,9 +90,9 @@ object SchemeBenchmarks {
     "icp_4_qeval.scm", // Needs define-syntax and delay.
   )
 
-  lazy val sigscheme: Set[String] = fromFolderR("test/R5RS/sigscheme", "README")
+  lazy val sigscheme: Set[String] = fromFolder("test/R5RS/sigscheme", "README")
 
-  lazy val theLittleSchemer: Set[String] = fromFolderR("test/R5RS/WeiChenRompf2019/the-little-schemer",
+  lazy val theLittleSchemer: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/the-little-schemer",
     "ch4.scm", // No main code (only definitions).
     "ch5.scm", // No main code (only definitions).
     "ch6.scm", // Commented out half of the file. Now does not parse anymore.
@@ -143,23 +143,23 @@ object SchemeBenchmarks {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  lazy val savina: Set[String] = fromFolderR(    "test/concurrentScheme/actors/savina")
+  lazy val savina: Set[String] = fromFolder(    "test/concurrentScheme/actors/savina")
 
-  lazy val soter: Set[String] = fromFolderR("test/concurrentScheme/actors/soter")
+  lazy val soter: Set[String] = fromFolder("test/concurrentScheme/actors/soter")
 
   lazy val actors: Set[String] = savina ++ soter ++ fromFolder("test/concurrentScheme/actors", "README")
 
-  lazy val futures: Set[String] = fromFolderR("test/concurrentScheme/futures", "README.org")
+  lazy val futures: Set[String] = fromFolder("test/concurrentScheme/futures", "README.org")
 
-  lazy val futuresVariations: Set[String] = fromFolderR(    "test/concurrentScheme/futures/variations")
+  lazy val futuresVariations: Set[String] = fromFolder(    "test/concurrentScheme/futures/variations")
 
-  lazy val threads: Set[String] = fromFolderR("test/concurrentScheme/threads",
+  lazy val threads: Set[String] = fromFolder("test/concurrentScheme/threads",
     "abp.scm", // Unbound reference: display-recorded.
     "lastzero2.scm", // Uses let*, but should use something like letrec*?
     "phild.scm", // Unbound reference: bool-top
   )
 
-  lazy val threadsVariations: Set[String] = fromFolderR("test/concurrentScheme/threads/variations")
+  lazy val threadsVariations: Set[String] = fromFolder("test/concurrentScheme/threads/variations")
 
   lazy val concurrentBenchmarks: Set[String] = SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))
 
