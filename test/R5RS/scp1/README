@@ -1,6 +1,0 @@
-All files in this and underlying folders are taken from http://soft.vub.ac.be/SCPI/ .
-
-Added/adapted tests to some files. Tests should normally evaluate to #t.
-
-Note that by now, new exercises may be present on this website, and some older ones may have been deleted.
-Also, not all exercises have been included in this benchmark suite. TODO Add if necessary.

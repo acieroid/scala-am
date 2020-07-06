@@ -1,4 +1,0 @@
-All files in this and underlying folders are taken from ftp://cw.vub.ac.be/pub/courses/curriculum/AlgoDat1/programmacode/
-
-Added tests to some files. Tests should normally evaluate to #t.
-* prioq.scm should return 'Patrick .
