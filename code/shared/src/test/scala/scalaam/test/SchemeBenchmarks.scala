@@ -41,95 +41,95 @@ object SchemeBenchmarks {
     }
     val root = new File(directory)
     val base = root.getAbsolutePath.length - directory.length
-    recur(root).map(_.getAbsolutePath.substring(base)).toSet -- exclude
+    recur(root).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
   }
 
   def fromFolder(directory: String, exclude: String*): Set[String] = {
     val root = new File(directory)
     val base = root.getAbsolutePath.length - directory.length
-    root.listFiles().filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude
+    root.listFiles().filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
   }
 
   lazy val ad: Set[String] = fromFolderR("test/R5RS/ad",
-    "test/R5RS/ad/bfirst.scm", // Unbound identifier: create-graph
-    "test/R5RS/ad/btree.scm", // Lacks a body.
-    "test/R5RS/ad/README"
+    "bfirst.scm", // Unbound identifier: create-graph
+    "btree.scm", // Lacks a body.
+    "README"
   )
 
-  lazy val gabriel: Set[String] = fromFolderR("test/R5RS/gabriel", "test/R5RS/gabriel/README")
+  lazy val gabriel: Set[String] = fromFolderR("test/R5RS/gabriel", "README")
 
   lazy val gambit: Set[String] = fromFolderR("test/R5RS/gambit",
-    "test/R5RS/gambit/README",
-    "test/R5RS/gambit/cat.scm", // Needs open-input-file.
-    "test/R5RS/gambit/compiler.scm", // Parser error (see issue on Github).
-    "test/R5RS/gambit/ctak.scm", // Needs call-with-current-continuation.
-    "test/R5RS/gambit/fibc.scm", // Needs call-cc.
-    "test/R5RS/gambit/peval.scm", // Error in program.
-    "test/R5RS/gambit/puzzle.scm",  // Needs call-with-current-continuation.
-    "test/R5RS/gambit/scheme.scm", // Error in program.
-    "test/R5RS/gambit/string.scm", // Needs susbtring.
-    "test/R5RS/gambit/tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
-    "test/R5RS/gambit/trav1.scm", // Needs append.
-    "test/R5RS/gambit/wc.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
+    "README",
+    "cat.scm", // Needs open-input-file.
+    "compiler.scm", // Parser error (see issue on Github).
+    "ctak.scm", // Needs call-with-current-continuation.
+    "fibc.scm", // Needs call-cc.
+    "peval.scm", // Error in program.
+    "puzzle.scm",  // Needs call-with-current-continuation.
+    "scheme.scm", // Error in program.
+    "string.scm", // Needs susbtring.
+    "tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
+    "trav1.scm", // Needs append.
+    "wc.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
   )
 
   lazy val rosetta: Set[String] = fromFolderR("test/R5RS/rosetta")
 
   lazy val scp1: Set[String] = fromFolderR("test/R5RS/scp1",
-    "test/R5RS/scp1/circus.scm", // Vararg append nog supported by concrete interpreter.
-    "test/R5RS/scp1/README"
+    "circus.scm", // Vararg append nog supported by concrete interpreter.
+    "README"
   )
 
   lazy val scp1_compressed: Set[String] = fromFolderR("test/R5RS/scp1-compressed",
-    "test/R5RS/scp1-compressed/README"
+    "README"
   )
 
   lazy val scp1_singleFile: Set[String] = Set("test/R5RS/scp1-compressed/all.scm")
 
   lazy val SICP: Set[String] = fromFolder("test/R5RS/icp",
-    "test/R5RS/icp/icp_4_qeval.scm", // Needs define-syntax and delay.
+    "icp_4_qeval.scm", // Needs define-syntax and delay.
   )
 
-  lazy val sigscheme: Set[String] = fromFolderR("test/R5RS/sigscheme", "test/R5RS/sigscheme/README")
+  lazy val sigscheme: Set[String] = fromFolderR("test/R5RS/sigscheme", "README")
 
   lazy val theLittleSchemer: Set[String] = fromFolderR("test/R5RS/WeiChenRompf2019/the-little-schemer",
-    "test/R5RS/WeiChenRompf2019/the-little-schemer/ch4.scm", // No main code (only definitions).
-    "test/R5RS/WeiChenRompf2019/the-little-schemer/ch5.scm", // No main code (only definitions).
-    "test/R5RS/WeiChenRompf2019/the-little-schemer/ch6.scm", // Commented out half of the file. Now does not parse anymore.
-    "test/R5RS/WeiChenRompf2019/the-little-schemer/ch7.scm", // No main code (only definitions).
-    "test/R5RS/WeiChenRompf2019/the-little-schemer/ch9.scm", // Unbound identifier: will-stop?
-    "test/R5RS/WeiChenRompf2019/the-little-schemer/README.md"
+    "ch4.scm", // No main code (only definitions).
+    "ch5.scm", // No main code (only definitions).
+    "ch6.scm", // Commented out half of the file. Now does not parse anymore.
+    "ch7.scm", // No main code (only definitions).
+    "ch9.scm", // Unbound identifier: will-stop?
+    "README.md"
   )
 
-  val toplas98: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/toplas98",
-    "test/R5RS/WeiChenRompf2019/toplas98/boyer.sch", // Uses square brackets.
-    "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm", // Uses call-with-input-file
-    "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm", // Uses open-input-file.
-    "test/R5RS/WeiChenRompf2019/toplas98/handle.scm", // Uses defmacro (not standard r5rs).
-    "test/R5RS/WeiChenRompf2019/toplas98/lattice.scm", // Parser error. Uses undefined (void) function.
-    "test/R5RS/WeiChenRompf2019/toplas98/lattice-processed.scm", // Parser error. Uses undefined (void) function.
-    "test/R5RS/WeiChenRompf2019/toplas98/maze.scm", // Uses open-input-file.
-    "test/R5RS/WeiChenRompf2019/toplas98/nbody.scm", // Parser error.
-    "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm", // Parser error.
-    "test/R5RS/WeiChenRompf2019/toplas98/nucleic.sch", // Uses square brackets.
-    "test/R5RS/WeiChenRompf2019/toplas98/nucleic2.sch", // USES macros (define-syntax).
-    "test/R5RS/WeiChenRompf2019/toplas98/splay.scm", // Uses () instead of '(), but has other issues.
-    "test/R5RS/WeiChenRompf2019/toplas98/README.md"
+  lazy val toplas98: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/toplas98",
+    "boyer.sch", // Uses square brackets.
+    "dynamic.scm", // Uses call-with-input-file
+    "graphs.scm", // Uses open-input-file.
+    "handle.scm", // Uses defmacro (not standard r5rs).
+    "lattice.scm", // Parser error. Uses undefined (void) function.
+    "lattice-processed.scm", // Parser error. Uses undefined (void) function.
+    "maze.scm", // Uses open-input-file.
+    "nbody.scm", // Parser error.
+    "nbody-processed.scm", // Parser error.
+    "nucleic.sch", // Uses square brackets.
+    "nucleic2.sch", // USES macros (define-syntax).
+    "splay.scm", // Uses () instead of '(), but has other issues.
+    "README.md"
   )
 
-  val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019",
-    "test/R5RS/WeiChenRompf2019/church_exp.sch", // Uses non-standard (void) function.
-    "test/R5RS/WeiChenRompf2019/earley.sch", // Uses read.
-    "test/R5RS/WeiChenRompf2019/mbrotZ.sch", // Parser error.
-    "test/R5RS/WeiChenRompf2019/meta-circ.scm", // Uses procedure?
-    "test/R5RS/WeiChenRompf2019/regex-derivative.scm", // Parser error.
-    "test/R5RS/WeiChenRompf2019/scheme2java.scm", // Uses char-alphabetic?
-    "test/R5RS/WeiChenRompf2019/solovay-strassen.scm", // Program seems erroneous.
-    "test/R5RS/WeiChenRompf2019/README.md",
-    "test/R5RS/WeiChenRompf2019/.DS_Store"
+  lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019",
+    "church_exp.sch", // Uses non-standard (void) function.
+    "earley.sch", // Uses read.
+    "mbrotZ.sch", // Parser error.
+    "meta-circ.scm", // Uses procedure?
+    "regex-derivative.scm", // Parser error.
+    "scheme2java.scm", // Uses char-alphabetic?
+    "solovay-strassen.scm", // Program seems erroneous.
+    "README.md",
+    ".DS_Store"
   )
 
-  val other: Set[String] = fromFolder("test/R5RS",
+  lazy val other: Set[String] = fromFolder("test/R5RS",
     "test/R5RS/quasiquoting.scm", // Uses unquote-splicing.
     "test/R5RS/scm2c.scm", // Uses string->list.
     "test/R5RS/scm2java.scm", // Uses list->string.
@@ -147,16 +147,16 @@ object SchemeBenchmarks {
 
   lazy val soter: Set[String] = fromFolderR("test/concurrentScheme/actors/soter")
 
-  val actors: Set[String] = savina ++ soter ++ fromFolder("test/concurrentScheme/actors", "test/concurrentScheme/actors/README")
+  lazy val actors: Set[String] = savina ++ soter ++ fromFolder("test/concurrentScheme/actors", "README")
 
-  lazy val futures: Set[String] = fromFolderR("test/concurrentScheme/futures", "test/concurrentScheme/futures/README.org")
+  lazy val futures: Set[String] = fromFolderR("test/concurrentScheme/futures", "README.org")
 
   lazy val futuresVariations: Set[String] = fromFolderR(    "test/concurrentScheme/futures/variations")
 
   lazy val threads: Set[String] = fromFolderR("test/concurrentScheme/threads",
-    "test/concurrentScheme/threads/abp.scm", // Unbound reference: display-recorded.
-    "test/concurrentScheme/threads/lastzero2.scm", // Uses let*, but should use something like letrec*?
-    "test/concurrentScheme/threads/phild.scm", // Unbound reference: bool-top
+    "abp.scm", // Unbound reference: display-recorded.
+    "lastzero2.scm", // Uses let*, but should use something like letrec*?
+    "phild.scm", // Unbound reference: bool-top
   )
 
   lazy val threadsVariations: Set[String] = fromFolderR("test/concurrentScheme/threads/variations")
