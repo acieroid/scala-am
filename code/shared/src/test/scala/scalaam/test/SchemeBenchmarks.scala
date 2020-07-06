@@ -111,11 +111,11 @@ object SchemeBenchmarks {
     ".DS_Store"
   )
   lazy val other: Set[String] = fromFolder("test/R5RS",
-    "test/R5RS/quasiquoting.scm", // Uses unquote-splicing.
-    "test/R5RS/scm2c.scm", // Uses string->list.
-    "test/R5RS/scm2java.scm", // Uses list->string.
-    "test/R5RS/Streams.scm", // Uses define-macro.
-    "test/R5RS/.DS_Store"
+    "quasiquoting.scm", // Uses unquote-splicing.
+    "scm2c.scm", // Uses string->list.
+    "scm2java.scm", // Uses list->string.
+    "Streams.scm", // Uses define-macro.
+    ".DS_Store"
   )
   lazy val     WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
   lazy val sequentialBenchmarks: Set[String] = SmartUnion.sunionList(List(ad, gabriel, gambit, rosetta, scp1, SICP, sigscheme, WeiChenRompf2019, other))
