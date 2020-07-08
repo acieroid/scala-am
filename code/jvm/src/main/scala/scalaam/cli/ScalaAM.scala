@@ -1,7 +1,5 @@
 package scalaam.cli
 
-import scalaam.cli.benchmarks.SchemeBenchmarks
-import scalaam.core.Position._
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives.SchemePrelude
@@ -12,6 +10,7 @@ import scalaam.modular.scheme.modconc._
 import scalaam.modular.scheme.ssmodconc._
 import scalaam.util.Reader
 import scalaam.util.benchmarks.Timeout
+import scalaam.language.change.CodeVersion._
 
 import scala.concurrent.duration._
 
@@ -92,7 +91,7 @@ object Incrementor extends App {
 object Run extends App {
   val text = Reader.loadFile("test/changes/ring-rotate.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
-  val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none)
+  val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none, New)
   println(res)
 }
 

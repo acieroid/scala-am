@@ -4,6 +4,8 @@ import java.util.concurrent.TimeUnit
 
 import scalaam.core._
 import scalaam.language.CScheme._
+import scalaam.language.change.CodeVersion._
+import scalaam.language.change._
 import scalaam.util._
 import scalaam.language.sexp._
 import scalaam.util.benchmarks.Timeout
@@ -25,9 +27,9 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     * Evaluates `program`.
     * Will check the analysis result by calling `compare` on all encountered values.
     */
-  def run(program: SchemeExp, timeout: Timeout.T): Value = {
+  def run(program: SchemeExp, timeout: Timeout.T, version: Version = New): Value = {
     setStore(initialSto)
-    val res = eval(program, initialEnv, timeout)
+    val res = eval(program, initialEnv, timeout, version)
     val resAddr = newAddr(AddrInfo.RetAddr(program))
     extendStore(resAddr, res)
     res
@@ -101,22 +103,22 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     }
   }
 
-  def eval(e: SchemeExp, env: Env, timeout: Timeout.T): Value = {
+  def eval(e: SchemeExp, env: Env, timeout: Timeout.T, version: Version): Value = {
     if (timeout.reached) throw new TimeoutException()
     e match {
       case lambda: SchemeLambdaExp => Value.Clo(lambda, env)
       case call@SchemeFuncall(f, args, idn) =>
-        eval(f, env, timeout) match {
+        eval(f, env, timeout, version) match {
           case Value.Clo(lambda@SchemeLambda(argsNames, body, pos2), env2) =>
             if (argsNames.length != args.length) {
               throw new Exception(s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected")
             }
             val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
               val addr = newAddr(AddrInfo.VarAddr(arg._1))
-              extendStore(addr, check(arg._1.idn, eval(arg._2, env, timeout)))
+              extendStore(addr, check(arg._1.idn, eval(arg._2, env, timeout, version)))
               (env3 + (arg._1.name -> addr))
             })
-            val res = eval(SchemeBegin(body, pos2), envExt, timeout)
+            val res = eval(SchemeBegin(body, pos2), envExt, timeout, version)
             val resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
             extendStore(resAddr, res)
             res
@@ -127,40 +129,40 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
             }
             val envExt = argsNames.zip(args).foldLeft(env2)((env3, arg) => {
               val addr = newAddr(AddrInfo.VarAddr(arg._1))
-              extendStore(addr, check(arg._1.idn, eval(arg._2, env, timeout)))
+              extendStore(addr, check(arg._1.idn, eval(arg._2, env, timeout, version)))
               (env3 + (arg._1.name -> addr))
             })
-            val varArgVals = args.drop(arity).map(e => (e, eval(e,env,timeout)))
+            val varArgVals = args.drop(arity).map(e => (e, eval(e, env, timeout, version)))
             val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
             extendStore(varArgAddr, makeList(varArgVals))
             val envExt2 = envExt + (vararg.name -> varArgAddr)
-            val res = eval(SchemeBegin(body, pos2), envExt2, timeout)
+            val res = eval(SchemeBegin(body, pos2), envExt2, timeout, version)
             val resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
             extendStore(resAddr, res)
             res
-          case Value.Primitive(p) => p.call(call, args.map(arg => (arg, eval(arg, env, timeout))))
+          case Value.Primitive(p) => p.call(call, args.map(arg => (arg, eval(arg, env, timeout, version))))
           case v =>
             throw new Exception(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive")
         }
       case SchemeIf(cond, cons, alt, _) =>
-        eval(cond, env, timeout) match {
-          case Value.Bool(false) => eval(alt, env, timeout)
-          case _ => eval(cons, env, timeout)
+        eval(cond, env, timeout, version) match {
+          case Value.Bool(false) => eval(alt, env, timeout, version)
+          case _ => eval(cons, env, timeout, version)
         }
       case SchemeLet(bindings, body, pos) =>
         val envExt = bindings.foldLeft(env)((env2, binding) => {
           val addr = newAddr(AddrInfo.VarAddr(binding._1))
-          extendStore(addr, check(binding._1.idn, eval(binding._2, env, timeout)))
+          extendStore(addr, check(binding._1.idn, eval(binding._2, env, timeout, version)))
           (env2 + (binding._1.name -> addr))
         })
-        eval(SchemeBegin(body, pos), envExt, timeout)
+        eval(SchemeBegin(body, pos), envExt, timeout, version)
       case SchemeLetStar(bindings, body, pos) =>
         val envExt = bindings.foldLeft(env)((env2, binding) => {
           val addr = newAddr(AddrInfo.VarAddr(binding._1))
-          extendStore(addr, check(binding._1.idn, eval(binding._2, env2 /* this is the difference with let */ , timeout)))
+          extendStore(addr, check(binding._1.idn, eval(binding._2, env2, timeout, version)))
           (env2 + (binding._1.name -> addr))
         })
-        eval(SchemeBegin(body, pos), envExt, timeout)
+        eval(SchemeBegin(body, pos), envExt, timeout, version)
       case SchemeLetrec(bindings, body, pos) =>
         /* First extend the environment with all bindings set to unbound */
         val envExt = bindings.foldLeft(env)((env2, binding) => {
@@ -171,9 +173,9 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         })
         /* Then evaluate all bindings in the extended environment */
         bindings.foreach(binding => {
-          extendStore(envExt(binding._1.name), check(binding._1.idn, eval(binding._2, envExt, timeout)))
+          extendStore(envExt(binding._1.name), check(binding._1.idn, eval(binding._2, envExt, timeout, version)))
         })
-        eval(SchemeBegin(body, pos), envExt, timeout)
+        eval(SchemeBegin(body, pos), envExt, timeout, version)
       case SchemeNamedLet(name, bindings, body, pos) =>
         val addr = newAddr(AddrInfo.VarAddr(name))
         val env2 = env + (name.name -> addr)
@@ -181,33 +183,33 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         val lambda = SchemeLambda(prs, body, pos)
         val clo =  Value.Clo(lambda, env2)
         extendStore(addr, clo)
-        ags.foreach(argExp => (argExp, eval(argExp, env, timeout)))
-        eval(SchemeFuncall(lambda, ags, pos), env2, timeout)
+        ags.foreach(argExp => (argExp, eval(argExp, env, timeout, version)))
+        eval(SchemeFuncall(lambda, ags, pos), env2, timeout, version)
       case SchemeSet(id, v, pos) =>
         /* TODO: primitives can be reassigned with set! without being redefined */
         val addr = env.get(id.name) match {
           case Some(addr) => addr
           case None => throw new Exception(s"Unbound variable $id accessed at position $pos")
         }
-        extendStore(addr, eval(v, env, timeout))
+        extendStore(addr, eval(v, env, timeout, version))
         Value.Undefined(pos)
       case SchemeBegin(exps, pos) =>
         val init: Value = Value.Undefined(pos)
-        exps.foldLeft(init)((_, e) => eval(e, env, timeout))
+        exps.foldLeft(init)((_, e) => eval(e, env, timeout, version))
       case SchemeAnd(Nil, _) =>
         Value.Bool(true)
       case SchemeAnd(e :: Nil, _) =>
-        eval(e, env, timeout)
+        eval(e, env, timeout, version)
       case SchemeAnd(e :: exps, pos) =>
-        eval(e, env, timeout) match {
+        eval(e, env, timeout, version) match {
           case Value.Bool(false) => Value.Bool(false)
-          case _ => eval(SchemeAnd(exps, pos), env, timeout)
+          case _ => eval(SchemeAnd(exps, pos), env, timeout, version)
         }
       case SchemeOr(Nil, _) =>
         Value.Bool(false)
       case SchemeOr(e :: exps, pos) =>
-        eval(e, env, timeout) match {
-          case Value.Bool(false) => eval(SchemeOr(exps, pos), env, timeout)
+        eval(e, env, timeout, version) match {
+          case Value.Bool(false) => eval(SchemeOr(exps, pos), env, timeout, version)
           case v => v
         }
       case SchemeDefineVariable(_, _, _) => ???
@@ -222,8 +224,8 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case None => throw new Exception(s"Undefined variable $id at position ${id.idn}")
         }
       case SchemePair(car,cdr,_) =>
-        val carv = eval(car,env,timeout)
-        val cdrv = eval(cdr,env,timeout)
+        val carv = eval(car, env, timeout, version)
+        val cdrv = eval(cdr, env, timeout, version)
         allocateCons(e,carv,cdrv)
       case SchemeSplicedPair(_,_,_) =>
         throw new Exception("NYI -- Unquote splicing")
@@ -240,19 +242,20 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case ValueCharacter(c)   => Value.Character(c)
           case ValueNil            => Value.Nil
         }
-      case CSchemeFork(body, _)    => Value.Thread(safeFuture { eval(body, env, timeout) })
-      case CSchemeJoin(tExp, _)    => eval(tExp, env, timeout) match {
+      case CSchemeFork(body, _)    => Value.Thread(safeFuture { eval(body, env, timeout, version) })
+      case CSchemeJoin(tExp, _)    => eval(tExp, env, timeout, version) match {
         case Value.Thread(fut)     => Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf))
         case v                     => throw new Exception(s"Join expected thread, but got $v")
       }
-      case CSchemeAcquire(lock, _) => eval(lock, env, timeout) match {
+      case CSchemeAcquire(lock, _) => eval(lock, env, timeout, version) match {
         case Value.Lock(l)         => l.lock(); Value.Bool(true)
         case v                     => throw new Exception(s"Acquire expected lock, but got $v")
       }
-      case CSchemeRelease(lock, _) => eval(lock, env, timeout) match {
+      case CSchemeRelease(lock, _) => eval(lock, env, timeout, version) match {
         case Value.Lock(l)         => l.unlock(); Value.Bool(true)
         case v                     => throw new Exception(s"Release expected lock, but got $v")
       }
+      case CodeChange(old, nw, _)  => if (version == Old) eval(old, env, timeout, version) else eval(nw, env, timeout, version)
     }
   }
   def allocateCons(exp: SchemeExp, car: Value, cdr: Value): Value = {

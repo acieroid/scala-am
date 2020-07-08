@@ -14,3 +14,8 @@ case class CodeChange(old: SchemeExp, nw: SchemeExp, idn: Identity) extends Chan
   def subexpressions: List[Expression] = List(old, nw)
   override val height: Int = Integer.MIN_VALUE
 }
+
+object CodeVersion extends Enumeration {
+  type Version = Value
+  val Old, New = Value
+}
