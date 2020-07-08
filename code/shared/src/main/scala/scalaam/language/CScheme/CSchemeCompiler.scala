@@ -1,6 +1,7 @@
 package scalaam.language.CScheme
 
 import scalaam.core.Identifier
+import scalaam.language.change.CodeChange
 import scalaam.language.scheme.{BaseSchemeCompiler, SchemeExp}
 import scalaam.language.sexp._
 
@@ -9,7 +10,7 @@ import scala.util.control.TailCalls
 object CSchemeCompiler extends BaseSchemeCompiler {
   import scala.util.control.TailCalls._
 
-  override def reserved: List[String] = List("fork", "join", "acquire", "release") ::: super.reserved
+  override def reserved: List[String] = List("fork", "join", "acquire", "release", "<change>") ::: super.reserved
 
   override def _compile(exp: SExp): TailCalls.TailRec[SchemeExp] = exp match {
     case SExpPair(SExpId(Identifier("fork", _)), SExpPair(expr, SExpValue(ValueNil, _), _), _) =>
@@ -28,6 +29,15 @@ object CSchemeCompiler extends BaseSchemeCompiler {
       tailcall(this._compile(expr)).map(CSchemeRelease(_, exp.idn))
     case SExpPair(SExpId(Identifier("release", _)), _, _) =>
       throw new Exception(s"Invalid CScheme release: $exp (${exp.idn}).")
+
+    case SExpPair(SExpId(Identifier("<change>", _)), SExpPair(old, SExpPair(nw, SExpValue(ValueNil, _), _), _), _) =>
+      for {
+        oldv <- tailcall(this._compile(old))
+        newv <- tailcall(this._compile(nw))
+      } yield CodeChange(oldv, newv, exp.idn)
+    case SExpPair(SExpId(Identifier("<change>", _)), _, _) =>
+      throw new Exception(s"Invalid code change: $exp (${exp.idn}).")
+
     case _ => super._compile(exp)
   }
 }
