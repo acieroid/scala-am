@@ -1,23 +1,14 @@
 package scalaam.test.modular.scheme
 
-import org.scalatest.Tag
 import scalaam.core.Position._
-import scalaam.core._
-import scalaam.language.CScheme._
-import scalaam.language.scheme.SchemeInterpreter._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives.SchemePrelude
 import scalaam.modular._
 import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
-import scalaam.modular.scheme.modconc._
-import scalaam.modular.scheme.ssmodconc._
 import scalaam.test._
-import scalaam.util._
-import scalaam.util.benchmarks.Timeout
 
 trait SchemeModFSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModFTest

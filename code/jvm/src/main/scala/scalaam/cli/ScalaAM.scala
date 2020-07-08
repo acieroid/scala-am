@@ -11,6 +11,7 @@ import scalaam.modular.scheme.ssmodconc._
 import scalaam.util.Reader
 import scalaam.util.benchmarks.Timeout
 import scalaam.language.change.CodeVersion._
+import scalaam.modular.incremental.scheme.IncrementalSimpleSchemeModFAnalysis
 
 import scala.concurrent.duration._
 
@@ -57,37 +58,6 @@ object Main {
     }
 }
 
-/*
-object Incrementor extends App {
-
-  type Analysis = IncrementalModAnalysis[SchemeExp] with SmallStepSemantics with ConstantPropagationDomain with NoSensitivity with IncrementalSchemeModFSemantics
-  var analyzer: Analysis = _
-
-  def analyze(file: String): Unit = analyze(SchemeParser.parse(Reader.loadFile(file)))
-
-  private def analyze(text: SchemeExp): Unit = {
-    analyzer = new IncrementalModAnalysis(text) with SmallStepSemantics
-                                                    with ConstantPropagationDomain
-                                                    with NoSensitivity
-                                                    with IncrementalSchemeModFSemantics {
-    }
-    analyzer.analyze()//Timeout.start(Duration(2, "MINUTES")))
-    println(s"Number of components: ${analyzer.allComponents.size}")
-  }
-
-  def reanalyse(text: SchemeExp): Unit = analyzer.updateAnalysis(text)
-
-  val a = ModuleInferencer.inferModules(SchemeParser.parse(Reader.loadFile("./test/ad/inssort.scm")))
-  val b = ModuleInferencer.inferModules(SchemeParser.parse(Reader.loadFile("./test/ad/inssort2.scm")))
-  println(a)
-  println(b)
-  val mapping = GumtreeModuleDiff.computeMapping(a, b)
-  mapping.map(println)
-
-}
-*/
-
-
 object Run extends App {
   val text = Reader.loadFile("test/changes/ring-rotate.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
@@ -99,7 +69,7 @@ object Analyze extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new ModAnalysis(text)
-      with KAExpressionContext
+      with OneCFAModConc
       with SchemeConstantPropagationDomain
       with LIFOWorklistAlgorithm[SchemeExp] {}
     a.analyze(timeout())
@@ -129,4 +99,3 @@ object Analyze extends App {
   })
 
 }
-

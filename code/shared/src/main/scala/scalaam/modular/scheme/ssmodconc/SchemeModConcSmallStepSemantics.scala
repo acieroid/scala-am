@@ -509,16 +509,25 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   }
 }
 
-trait KAExpressionContext extends SmallStepModConcSemantics {
+trait CFAModConc extends SmallStepModConcSemantics {
 
-  override def intraAnalysis(component: Component) = new AllocIntra(component)
+  val k: Int
 
-  class AllocIntra(cmp: Component) extends IntraAnalysis(cmp) with SmallStepIntra {
+  trait AllocIntra extends IntraAnalysis with SmallStepIntra {
 
     def allocateKAddr(e: Exp, cc: KA): KAddr = cc match {
-      case KEmpty   => KAddr(List(e))
-      case KAddr(l) => KAddr((e :: l).take(1))
+      case KEmpty   => KAddr( List(e).take(k))
+      case KAddr(l) => KAddr((e :: l).take(k))
     }
 
   }
+}
+
+trait OneCFAModConc extends CFAModConc {
+
+  val k = 1
+
+  override def intraAnalysis(component: SchemeComponent): IntraAnalysis = new OneCFAIntra(component)
+
+  class OneCFAIntra(cmp: Component) extends IntraAnalysis(cmp: Component) with AllocIntra {}
 }

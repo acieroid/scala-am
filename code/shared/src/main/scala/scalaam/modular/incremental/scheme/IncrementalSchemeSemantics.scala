@@ -7,7 +7,7 @@ import scalaam.modular.scheme._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
 import scalaam.modular.ModAnalysis
-import scalaam.modular.scheme.ssmodconc.SmallStepModConcSemantics
+import scalaam.modular.scheme.ssmodconc.{CFAModConc, SmallStepModConcSemantics}
 
 trait IncrementalSchemeSemantics {
   var version: Version = Old
@@ -29,7 +29,7 @@ abstract class IncrementalSimpleSchemeModFAnalysis(prg: SchemeExp) extends ModAn
   override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
 }
 
-/*
+
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
   trait IncrementalSmallStepIntra extends SmallStepIntra {
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
@@ -40,11 +40,11 @@ trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemanti
 }
 
 abstract class IncrementalSimpleSchemeModConcAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                                      with SchemeModFSemantics
+                                                                      with CFAModConc
                                                                       with IncrementalSchemeModConcSmallStepSemantics {
-  override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra
+  override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with AllocIntra
 }
-*/
+
 
 /*
 /** Semantics for an incremental Scheme MODF analysis. */
