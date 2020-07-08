@@ -245,13 +245,13 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
     // Computes the successor state(s) of a given state.
     private def step(state: State): Set[State] = state match {
-      case Eval(exp, env, stack) => evaluate(exp, env, stack)
+      case Eval(exp, env, stack) => this.evaluate(exp, env, stack)
       case Kont(_, KEmpty) => throw new Exception("Cannot step a continuation state with an empty stack.")
       case Kont(vl, cc) => lookupKStore(cc).flatMap(k => continue(vl, k.frame, k.cc))
     }
 
     // Evaluates an expression (in the abstract).
-    private def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
+    protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
       // Single-step evaluation.
       case l@SchemeLambda(_, _, _)                 => Set(Kont(lattice.closure((l, env), None), stack))
       case l@SchemeVarArgLambda(_, _, _, _)        => Set(Kont(lattice.closure((l, env), None), stack))
