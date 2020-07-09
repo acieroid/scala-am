@@ -28,28 +28,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   type Exp  = SchemeExp
   type Exps = List[Exp]
 
-
-  //XXXXXXXXXXX//
-  // ADDRESSES //
-  //XXXXXXXXXXX//
-
-
-  // TODO: incorporate another addressing scheme... (add context).
-
-  sealed trait LocalAddr extends Address {
-    def idn(): Identity
-  }
-
-  case class VarAddr(id: Identifier) extends LocalAddr { def printable = true;  def idn(): Identity =  id.idn;       override def toString: String = s"var ($id)"        }
-  case class PtrAddr(exp: SchemeExp) extends LocalAddr { def printable = false; def idn(): Identity =  exp.idn;      override def toString: String = s"ptr (${exp.idn})" }
-  case class PrmAddr(nam: String)    extends LocalAddr { def printable = true;  def idn(): Identity = Identity.none; override def toString: String = s"prm ($nam)"       }
-
-
-  //XXXXXXXXXXXXXXXXX//
-  // ABSTRACT VALUES //
-  //XXXXXXXXXXXXXXXXX//
-
-
   //XXXXXXXXXXXX//
   // COMPONENTS //
   //XXXXXXXXXXXX//
@@ -77,7 +55,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   type ComponentContext = Unit
 
   // A thread created by the program.
-  case class ThreadComponent(exp: Exp, env: Env, ctx: ComponentContext) extends SchemeComponent
+  case class ThreadComponent(exp: Exp, env: Env, ctx: ComponentContext) extends SchemeComponent {
+    override def toString: String = s"ThreadComponent($exp, <env>, $ctx)"
+  }
 
   lazy val initialComponent: SchemeComponent = MainComponent
   def newComponent(body: Exp, env: Env, ctx: ComponentContext): SchemeComponent = ThreadComponent(body, env, ctx)
@@ -509,25 +489,15 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   }
 }
 
-trait CFAModConc extends SmallStepModConcSemantics {
+trait kCFAModConc extends SmallStepModConcSemantics {
 
   val k: Int
 
-  trait AllocIntra extends IntraAnalysis with SmallStepIntra {
+  trait kCFAIntra extends IntraAnalysis with SmallStepIntra {
 
     def allocateKAddr(e: Exp, cc: KA): KAddr = cc match {
       case KEmpty   => KAddr( List(e).take(k))
       case KAddr(l) => KAddr((e :: l).take(k))
     }
-
   }
-}
-
-trait OneCFAModConc extends CFAModConc {
-
-  val k = 1
-
-  override def intraAnalysis(component: SchemeComponent): IntraAnalysis = new OneCFAIntra(component)
-
-  class OneCFAIntra(cmp: Component) extends IntraAnalysis(cmp: Component) with AllocIntra {}
 }

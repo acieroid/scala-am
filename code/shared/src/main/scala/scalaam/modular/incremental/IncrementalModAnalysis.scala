@@ -1,16 +1,37 @@
 package scalaam.modular.incremental
 
-import scalaam.modular.components.MutableIndirectComponents
 import scalaam.core._
+import scalaam.language.change.CodeVersion._
 import scalaam.modular._
-import scalaam.util.Annotations.mutable
 import scalaam.util.benchmarks.Timeout
 
-import scala.concurrent.duration.Duration
+trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] { //} with MutableIndirectComponents[Expr] { // MutableIndirectComponents are no longer needed, as there are no updates to modules (the original program already contains the changes).
 
+  var version: Version = Old
+  private var affected: Set[Component] = Set()
+
+  /** Register a component as being affected by a program change.
+   *  This is needed e.g. for ModConc, where affected components cannot be determined lexically/statically.
+   *  This method should be called when a change expression is analysed.
+   */
+  def registerAffected(cmp: Component): Unit = affected = affected + cmp
+
+  /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
+  def analyzeUpdated(timeout: () => Timeout.T): Unit = {
+    version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
+    affected.foreach(addToWorkList)
+    analyze(timeout())
+  }
+}
+
+/*
 abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extends ModAnalysis(prog)
                                                                              with SequentialWorklistAlgorithm[Expr]
                                                                              with MutableIndirectComponents[Expr] {
+
+  import scalaam.modular.components.MutableIndirectComponents
+  import scalaam.util.Annotations.mutable
+  import scala.concurrent.duration.Duration
 
   type OldIdn = Identity
   type NewIdn = Identity
@@ -186,3 +207,4 @@ abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extend
    */
   def updateIdentities(newIdentities: Map[Identity, Identity]): Unit = {}
 }
+*/

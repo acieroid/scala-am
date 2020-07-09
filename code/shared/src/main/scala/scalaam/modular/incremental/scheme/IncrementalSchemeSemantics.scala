@@ -1,54 +1,25 @@
 package scalaam.modular.incremental.scheme
 
-import scalaam.language.change.CodeChange
-import scalaam.language.change.CodeVersion._
-import scalaam.modular.scheme.modf._
-import scalaam.modular.scheme._
-import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.scheme._
-import scalaam.modular.ModAnalysis
-import scalaam.modular.scheme.ssmodconc.{CFAModConc, SmallStepModConcSemantics}
+import scalaam.modular.incremental.IncrementalModAnalysis
 
-trait IncrementalSchemeSemantics {
-  var version: Version = Old
-}
-
-trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
-  trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra {
-    override protected def eval(exp: SchemeExp, env: Env): Value = exp match {
-      case CodeChange(old, nw, _) => if (version == Old) eval(old, env) else eval(nw, env)
-      case _                      => super.eval(exp, env)
-    }
-  }
-}
-
-abstract class IncrementalSimpleSchemeModFAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                                      with StandardSchemeModFComponents
-                                                                      with SchemeModFSemantics
-                                                                      with IncrementalSchemeModFBigStepSemantics {
-  override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
-}
-
-
-trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
-  trait IncrementalSmallStepIntra extends SmallStepIntra {
-    override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
-      case CodeChange(old, nw, _) =>if (version == Old) Set(Eval(old, env, stack)) else Set(Eval(nw, env, stack))
-      case _                      => super.evaluate(exp, env, stack)
-    }
-  }
-}
-
-abstract class IncrementalSimpleSchemeModConcAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                                      with CFAModConc
-                                                                      with IncrementalSchemeModConcSmallStepSemantics {
-  override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with AllocIntra
-}
+trait IncrementalSchemeSemantics extends IncrementalModAnalysis[SchemeExp]
 
 
 /*
 /** Semantics for an incremental Scheme MODF analysis. */
 trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with SchemeModFSemantics {
+
+  import scalaam.core.Expression
+  import scalaam.language.change.CodeChange
+  import scalaam.language.change.CodeVersion._
+  import scalaam.modular.scheme.modf._
+  import scalaam.modular.components.MutableIndirectComponents
+  import scalaam.modular._
+  import scalaam.modular.incremental.scheme.modconc.IncrementalSchemeModConcSmallStepSemantics
+  import scalaam.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
+  import scalaam.modular.scheme.ssmodconc._
+  import scalaam.util.benchmarks.Timeout
 
   // Every component holds a pointer to the corresponding lexical module.
   type ComponentData = SchemeModFComponent[ComponentContext,Addr]
@@ -107,5 +78,4 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
 
   def updateComponentContext(ctx: ComponentContext): ComponentContext = ???
 }
-
- */
+*/

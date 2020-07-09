@@ -42,7 +42,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     } catch {
       case _ : TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
-      case ChildThreadDiedException =>
+      case ChildThreadDiedException(_) =>
         alert(s"Concrete evaluation of $benchmark aborted due to a fatal crash in a child thread.")
       case e : VirtualMachineError =>
         System.gc()

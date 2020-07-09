@@ -15,7 +15,7 @@ import scala.concurrent._
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-case object ChildThreadDiedException extends Exception("A child thread has tragically died") 
+case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
 
 /**
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
@@ -50,7 +50,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       bdy
     } catch {
       case e: VirtualMachineError =>
-        throw ChildThreadDiedException
+        throw ChildThreadDiedException(e)
     }
   }
 

@@ -38,9 +38,12 @@ class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadB
 trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   def name = "small-step ModConc"
   def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
-    with OneCFAModConc
+    with kCFAModConc
     with SchemeConstantPropagationDomain
-    with LIFOWorklistAlgorithm[SchemeExp] {}
+    with LIFOWorklistAlgorithm[SchemeExp] {
+    val k = 1
+    override def intraAnalysis(component: SchemeComponent): IntraAnalysis = new IntraAnalysis(component) with SmallStepIntra with kCFAIntra
+  }
 }
 
 class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks

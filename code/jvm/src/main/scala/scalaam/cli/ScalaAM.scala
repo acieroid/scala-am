@@ -11,7 +11,7 @@ import scalaam.modular.scheme.ssmodconc._
 import scalaam.util.Reader
 import scalaam.util.benchmarks.Timeout
 import scalaam.language.change.CodeVersion._
-import scalaam.modular.incremental.scheme.IncrementalSimpleSchemeModFAnalysis
+import scalaam.modular.incremental.scheme.modconc.IncrementalSimpleSchemeModConcAnalysis
 
 import scala.concurrent.duration._
 
@@ -69,9 +69,13 @@ object Analyze extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new ModAnalysis(text)
-      with OneCFAModConc
+      with kCFAModConc
       with SchemeConstantPropagationDomain
-      with LIFOWorklistAlgorithm[SchemeExp] {}
+      with LIFOWorklistAlgorithm[SchemeExp] {
+      val k = 1
+
+      override def intraAnalysis(component: SchemeComponent): IntraAnalysis = new IntraAnalysis(component) with kCFAIntra
+    }
     a.analyze(timeout())
     val r = a.store(ComponentAddr(a.initialComponent, ReturnAddr(a.expr(a.initialComponent))))
     println(r)
@@ -87,7 +91,7 @@ object Analyze extends App {
     try {
       print(b + " => ")
       val t0 = System.currentTimeMillis()
-      one(b, () => Timeout.start(2, MINUTES))
+      one(b, () => Timeout.start(Duration(2, MINUTES)))
       val t1 = System.currentTimeMillis()
       println(s"    in ${(t1 - t0)}ms")
     } catch {
@@ -98,4 +102,33 @@ object Analyze extends App {
     }
   })
 
+}
+
+object IncrementalRun extends App {
+  class IncrementalModConcAnalysis(prog: SchemeExp) extends IncrementalSimpleSchemeModConcAnalysis(prog)
+                                                       with LIFOWorklistAlgorithm[SchemeExp]
+                                                       with SchemeTypeDomain {
+    val k = 1
+  }
+  def run(bench: String, timeout: () => Timeout.T): Unit = {
+    println(s"***** $bench *****")
+    val text = CSchemeParser.parse(Reader.loadFile(bench))
+    val a = new IncrementalModConcAnalysis(text)
+    a.analyze(timeout())
+    val store1 = a.store
+    a.analyzeUpdated(timeout)
+    val store2 = a.store
+    store2.keySet.foreach { k =>
+      val v1 = store1.getOrElse(k, a.lattice.bottom)
+      if (store2(k) != v1)
+        println(s"$k: $v1 -> ${store2(k)}")
+
+    }
+  }
+  val benchmarks: List[String] = List("test/changes/ring-rotate.scm", "test/changes/sudoku.scm")
+  val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
+
+  benchmarks.foreach { bench =>
+    run(bench, standardTimeout)
+  }
 }
