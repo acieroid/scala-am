@@ -11,7 +11,7 @@ import scalaam.modular.scheme.ssmodconc._
 import scalaam.util.Reader
 import scalaam.util.benchmarks.Timeout
 import scalaam.language.change.CodeVersion._
-import scalaam.modular.incremental.scheme.modconc.IncrementalSimpleSchemeModConcAnalysis
+import scalaam.modular.incremental.scheme.AnalysisBuilder.{IncrementalModConcAnalysis, IncrementalSchemeModFAnalysis}
 
 import scala.concurrent.duration._
 
@@ -105,12 +105,8 @@ object Analyze extends App {
 }
 
 object IncrementalRun extends App {
-  class IncrementalModConcAnalysis(prog: SchemeExp) extends IncrementalSimpleSchemeModConcAnalysis(prog)
-                                                       with LIFOWorklistAlgorithm[SchemeExp]
-                                                       with SchemeTypeDomain {
-    val k = 1
-  }
-  def run(bench: String, timeout: () => Timeout.T): Unit = {
+
+  def modconcAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new IncrementalModConcAnalysis(text)
@@ -125,10 +121,31 @@ object IncrementalRun extends App {
 
     }
   }
-  val benchmarks: List[String] = List("test/changes/ring-rotate.scm", "test/changes/sudoku.scm")
+
+  def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
+    println(s"***** $bench *****")
+    val text = CSchemeParser.parse(Reader.loadFile(bench))
+    val a = new IncrementalSchemeModFAnalysis(text)
+    a.analyze(timeout())
+    val store1 = a.store
+    a.analyzeUpdated(timeout)
+    val store2 = a.store
+    store2.keySet.foreach { k =>
+      val v1 = store1.getOrElse(k, a.lattice.bottom)
+      if (store2(k) != v1)
+        println(s"$k: $v1 -> ${store2(k)}")
+
+    }
+  }
+
+  val modConcbenchmarks: List[String] = List("test/changes/sudoku.scm")
+  val    modFbenchmarks: List[String] = List("test/changes/ring-rotate.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
-  benchmarks.foreach { bench =>
-    run(bench, standardTimeout)
+  modConcbenchmarks.foreach { bench =>
+    modconcAnalysis(bench, standardTimeout)
+  }
+  modFbenchmarks.foreach { bench =>
+    modfAnalysis(bench, standardTimeout)
   }
 }
