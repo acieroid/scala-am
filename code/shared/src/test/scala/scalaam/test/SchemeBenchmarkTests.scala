@@ -2,7 +2,7 @@ package scalaam.test
 
 import org.scalatest.propspec.AnyPropSpec
 
-trait SchemeBenchmarkTests extends AnyPropSpec {
+trait  SchemeBenchmarkTests extends AnyPropSpec {
   // A benchmark is just a file name.
   type Benchmark = String
   // The benchmarks involved in the tests. Needs to be overridden later.

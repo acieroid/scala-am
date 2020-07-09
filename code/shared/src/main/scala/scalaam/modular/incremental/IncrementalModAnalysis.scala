@@ -17,10 +17,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   def registerAffected(cmp: Component): Unit = affected = affected + cmp
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def analyzeUpdated(timeout: () => Timeout.T): Unit = {
+  def analyzeUpdated(timeout: Timeout.T): Unit = {
     version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     affected.foreach(addToWorkList)
-    analyze(timeout())
+    analyze(timeout)
   }
 }
 

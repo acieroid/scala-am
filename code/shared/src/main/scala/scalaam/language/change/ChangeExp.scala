@@ -1,12 +1,11 @@
 package scalaam.language.change
 
 import scalaam.core._
-import scalaam.language.CScheme.CSchemeExp
 import scalaam.language.scheme.SchemeExp
 
-case object CHA extends Label // Change
+case object CHA extends Label // Code change
 
-trait ChangeExp extends CSchemeExp
+trait ChangeExp extends SchemeExp
 
 case class CodeChange(old: SchemeExp, nw: SchemeExp, idn: Identity) extends ChangeExp {
   def fv: Set[String] = old.fv ++ nw.fv

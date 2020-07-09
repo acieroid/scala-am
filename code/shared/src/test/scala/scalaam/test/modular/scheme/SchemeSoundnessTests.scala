@@ -27,7 +27,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
   def concreteRuns(b: Benchmark): Int = 1 // for highly non-deterministic programs, a higher value is recommended
   // the actual testing code
-  private def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity,Set[Value]]) = {
+  protected def runInterpreter(i: SchemeInterpreter, p: SchemeExp, t: Timeout.T) = i.run(p, t)
+  protected def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity,Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = CSchemeUndefiner.undefine(List(preluded))
     var endResults = Set[Value]()
@@ -37,7 +38,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     try {
       for (i <- 1 to times) {
         val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
-        endResults += interpreter.run(program, timeout)
+        endResults += runInterpreter(interpreter, program, timeout)
       }
     } catch {
       case _ : TimeoutException =>
@@ -50,7 +51,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     }
     (endResults, idnResults)
   }
-  private def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
+  protected def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
     try {
       // analyze the program using a ModF analysis
       val anl = analysis(program)
@@ -63,7 +64,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
         System.gc()
         cancel(s"Analysis of $benchmark encountered an error: $e")
     }
-  private def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value) = {
+  protected def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value) = {
     val lat = analysis.lattice
     v match {
       case Value.Undefined(_)   => true
@@ -84,7 +85,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     }
   }
 
-  private def compareResult(a: Analysis, values: Set[Value]) = {
+  protected def compareResult(a: Analysis, values: Set[Value]) = {
     val aRes = a.finalResult
     values.foreach { value => 
       if (!checkSubsumption(a)(value, aRes)) {
@@ -98,7 +99,7 @@ s"""Program result is unsound:
     }
   }
 
-  private def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
+  protected def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
     val absID: Map[Identity, a.Value] = a.store.groupBy(_._1.idn).view
                                                 .mapValues(m => a.lattice.join(m.values)).toMap
                                                 .withDefaultValue(a.lattice.bottom)

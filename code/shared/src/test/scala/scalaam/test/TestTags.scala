@@ -14,3 +14,6 @@ object SoundnessTest    extends Tag("SoundnessTest")
 // Tags by language.
 object SchemeModFTest       extends Tag("SchemeModFTest")
 object SchemeModConcTest    extends Tag("SchemeModConcTest")
+
+// Tags by analysis variation.
+object IncrementalTest  extends Tag("IncrementalTest")

@@ -3,6 +3,7 @@ package scalaam.test
 import java.io.File
 
 import scalaam.util.SmartUnion
+
 import scala.util.Random
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
@@ -31,10 +32,16 @@ trait AllBenchmarks extends SchemeBenchmarkTests {
 
 object SchemeBenchmarks {
 
+  def files(dir: File): Array[File] = {
+    val lst = dir.listFiles()
+    if (lst == null) Array()
+    else lst
+  }
+
   // Just include an entire folder of programs, except some that are explicitly specified. The directory name should not end with a "/".
   def fromFolderR(directory: String, exclude: String*): Set[String] = {
     def recur(dir: File): Array[File] = {
-      val here = dir.listFiles()
+      val here = files(dir)
       val (dr, noDr) = here.partition(_.isDirectory)
       noDr ++ dr.flatMap(recur)
     }
@@ -46,7 +53,7 @@ object SchemeBenchmarks {
   def fromFolder(directory: String, exclude: String*): Set[String] = {
     val root = new File(directory)
     val base = root.getAbsolutePath.length - directory.length
-    root.listFiles().filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
+    files(root).filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
   }
 
   // SEQUENTIAL ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -142,4 +149,21 @@ object SchemeBenchmarks {
   // ALL ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   lazy val allBenchmarks: Set[String] = SmartUnion.sunion(concurrentBenchmarks, sequentialBenchmarks)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\\
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+trait ConcurrentIncrementalBenchmarks extends SchemeBenchmarkTests {
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), IncrementalBenchmarks.concurrent)
+}
+
+trait SequentialIncrementalBenchmarks extends SchemeBenchmarkTests {
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), IncrementalBenchmarks.sequential)
+}
+
+object IncrementalBenchmarks {
+  lazy val concurrent: Set[String] = SchemeBenchmarks.fromFolder("test/changes/cscheme/threads",
+    "mcarlo.scm")
+  lazy val sequential: Set[String] = SchemeBenchmarks.fromFolder("text/changes/scheme")
 }
