@@ -429,8 +429,20 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
           val ret = dereferencePointerGetAddressReturnStore(lockPtr, StoreAdapter)( {case (addr, lock, store) =>
               isLock(lock) >>= { test =>
                 // We do not explicitly check whether a lock is free, since (using our representation) it might always be free.
-                val t: MayFail[(Value, Store[Addr, Value]), Error] = if (lattice.isTrue(test)) lattice.acquire(lock, component).map(newlock => (lattice.bool(true), store.extend(addr, newlock))) else (lattice.bool(false), store)
-                if (lattice.isFalse(test)) t >>= {case (v, store) => MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable("acquire", List(lock))), lattice.join).map((_, store))} else t
+                val t: MayFail[(Value, Store[Addr, Value]), Error] = 
+                  if (lattice.isTrue(test)) {
+                    lattice.acquire(lock, component).map(newlock => 
+                      (lattice.bool(true), store.extend(addr, newlock))) 
+                  } else { 
+                    (lattice.bool(false), store)
+                  }
+                if (lattice.isFalse(test)) {
+                  t >>= { case (v, store) => 
+                    MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable("acquire", List(lock))), lattice.join).map((_, store))
+                  } 
+                } else {
+                  t
+                }
               }
             }) match { // We don't need the store back...
               case MayFailSuccess((vlu,_))  => vlu
@@ -448,9 +460,19 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
         val ret = dereferencePointerGetAddressReturnStore(lockPtr, StoreAdapter)({ case (addr, lock, store) =>
           isLock(lock) >>= { test =>
             // To release a lock, we just have to see whether it is held by the current thread.
-            val t: MayFail[(Value, Store[Addr, Value]), Error] = if (lattice.isTrue(test)) lattice.release(lock, component).map(newlock => (lattice.bool(true), store.extend(addr, newlock))) else (lattice.bool(false), store)
-            if (lattice.isFalse(test)) t >>= {case (v, store) => MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable("acquire", List(lock))), lattice.join).map((_, store))} else t
-
+            val t: MayFail[(Value, Store[Addr, Value]), Error] = 
+              if (lattice.isTrue(test)) {
+                lattice.release(lock, component).map(newlock => 
+                  (lattice.bool(true), store.extend(addr, newlock)))
+               } else {
+                 (lattice.bool(false), store)
+               }
+            if (lattice.isFalse(test)) {
+              t >>= { case (v, store) => 
+                MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable("acquire", List(lock))), lattice.join).map((_, store))} 
+              } else { 
+                t 
+              }
             }
         }) match { // We don't need the store back...
           case MayFailSuccess((vlu,_))  => vlu
