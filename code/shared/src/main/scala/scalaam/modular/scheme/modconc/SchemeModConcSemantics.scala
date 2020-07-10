@@ -2,6 +2,7 @@ package scalaam.modular.scheme.modconc
 
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.language.scheme.primitives._
 import scalaam.language.CScheme._
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -102,8 +103,6 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
             override def eval(exp: SchemeExp, env: Env) = exp match {
                 case CSchemeFork(bdy, _)    => evalFork(bdy, env)
                 case CSchemeJoin(thr, _)    => evalJoin(thr, env)
-                case CSchemeAcquire(lck, _) => ???
-                case CSchemeRelease(lck, _) => ???
                 case _                      => super.eval(exp, env)   
             }
             private def evalFork(exp: SchemeExp, env: Env) = {
@@ -117,6 +116,10 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                 lattice.getThreads(thrVal).foldLeft(lattice.bottom) { (acc, tid) => lattice.join(acc, //TODO: use foldMap here
                     readThreadResult(tid.asInstanceOf[inter.Component])
                 )}
+            }
+            override val interpreterBridge = new SchemeInterpreterBridge[Addr] {
+                def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
+                def currentThread = intra.component
             }
             override def commit() = {
                 super.commit()

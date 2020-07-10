@@ -208,10 +208,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
                                                                             body: Exps, env: Env)                  extends Frame
     case class  LetStarFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                  extends Frame
     case class   LetRecFrame(id: Identifier, todo: List[(Identifier, Exp)], body: Exps, env: Env)                  extends Frame
-    case object    JoinFrame                                                                                       extends Frame
-    case object AcquireFrame                                                                                       extends Frame
-    case object ReleaseFrame                                                                                       extends Frame
-
+    case object    JoinFrame                                                                                       extends Frame             
 
     //-----------//
     // SEMANTICS //
@@ -256,10 +253,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       // Multithreading.
       case CSchemeFork(body, _)                    => evalFork(body, env, stack)
       case CSchemeJoin(body, _)                    => Set(Eval(body, env, extendKStore(body, JoinFrame, stack)))
-
-      // Locking.
-      case CSchemeAcquire(lock, _)                 => Set(Eval(lock, env, extendKStore(lock, AcquireFrame, stack)))
-      case CSchemeRelease(lock, _)                 => Set(Eval(lock, env, extendKStore(lock, ReleaseFrame, stack)))
 
       // Unexpected cases.
       case e                                       => throw new Exception(s"evaluate: unexpected expression type: ${e.label}.")
@@ -345,8 +338,6 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case LetStarFrame(id, todo, body, env)       => evalLetStar(todo, body, define(id, vl, env), stack)
       case LetRecFrame(id, todo, body, env)        => assign(id, vl, env); continueLetRec(todo, body, env, stack)
       case JoinFrame                               => lattice.getThreads(vl).map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack)) //TODO: parameterize ModularLattice with type of TID to avoid asInstanceOf here
-      case AcquireFrame                            => Acquire.call(vl, stack)
-      case ReleaseFrame                            => Release.call(vl, stack)
     }
 
     private def conditional(value: Value, t: State, f: State): Set[State] = conditional(value, Set(t), Set(f))
@@ -414,74 +405,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
         Set(Kont(lattice.bottom, stack))
     }
 
-    // Expressed as irregular Scheme primitives.
-
-    object Acquire extends PrimitiveBuildingBlocks[Value, Addr] {
-      def call(lockPtr: Value, stack: Stack): Set[State] = {
-          val ret = dereferencePointerGetAddressReturnStore(lockPtr, StoreAdapter)( { case (addr, lock, store) =>
-              isLock(lock) >>= { test =>
-                // We do not explicitly check whether a lock is free, since (using our representation) it might always be free.
-                val t: MayFail[(Value, Store[Addr, Value]), Error] = 
-                  if (lattice.isTrue(test)) {
-                    lattice.acquire(lock, component).map(newlock => 
-                      (lattice.bool(true), store.extend(addr, newlock))) 
-                  } else { 
-                    (lattice.bool(false), store)
-                  }
-                if (lattice.isFalse(test)) {
-                  t >>= { case (v, store) => 
-                    MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable("acquire", List(lock))), lattice.join).map((_, store))
-                  } 
-                } else {
-                  t
-                }
-              }
-            }) match { // We don't need the store back...
-              case MayFailSuccess((vlu,_))  => vlu
-              case MayFailBoth((vlu,_),_)   => vlu
-              case MayFailError(_)          => lattice.bottom
-            }
-          Set(Kont(ret, stack))
-      }
-
-      override val lat: SchemeLattice[Value, A[SchemeComponent], SchemePrimitive[Value, A[SchemeComponent]]] = lattice
-    }
-
-    object Release extends PrimitiveBuildingBlocks[Value, Addr] {
-      def call(lockPtr: Value, stack: Stack): Set[State] = {
-        val ret = dereferencePointerGetAddressReturnStore(lockPtr, StoreAdapter)({ case (addr, lock, store) =>
-          isLock(lock) >>= { test =>
-            // To release a lock, we just have to see whether it is held by the current thread.
-            val t: MayFail[(Value, Store[Addr, Value]), Error] = 
-              if (lattice.isTrue(test)) {
-                lattice.release(lock, component).map(newlock => 
-                  (lattice.bool(true), store.extend(addr, newlock)))
-               } else {
-                 (lattice.bool(false), store)
-               }
-            if (lattice.isFalse(test)) {
-              t >>= { case (v, store) => 
-                MayFail.success(v).join(MayFail.failure[Value, Error](PrimitiveNotApplicable("acquire", List(lock))), lattice.join).map((_, store))} 
-              } else { 
-                t 
-              }
-            }
-        }) match { // We don't need the store back...
-          case MayFailSuccess((vlu,_))  => vlu
-          case MayFailBoth((vlu,_),_)   => vlu
-          case MayFailError(_)          => lattice.bottom
-        }
-        Set(Kont(ret, stack))
-      }
-
-      override val lat: SchemeLattice[Value, A[SchemeComponent], SchemePrimitive[Value, A[SchemeComponent]]] = lattice
-    }
-
-
     //--------------------//
     // ALLOCATION HELPERS //
     //--------------------//
-
 
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
       val addr = allocAddr(PtrAddr(pairExp))

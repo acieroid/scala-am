@@ -247,14 +247,6 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         case Value.Thread(fut)     => Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf))
         case v                     => throw new Exception(s"Join expected thread, but got $v")
       }
-      case CSchemeAcquire(lock, _) => eval(lock, env, timeout, version) match {
-        case Value.Lock(l)         => l.lock(); Value.Bool(true)
-        case v                     => throw new Exception(s"Acquire expected lock, but got $v")
-      }
-      case CSchemeRelease(lock, _) => eval(lock, env, timeout, version) match {
-        case Value.Lock(l)         => l.unlock(); Value.Bool(true)
-        case v                     => throw new Exception(s"Release expected lock, but got $v")
-      }
       case CodeChange(old, nw, _)  => if (version == Old) eval(old, env, timeout, version) else eval(nw, env, timeout, version)
     }
   }
@@ -1135,12 +1127,31 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         case Value.Real(x) => Value.Real(scala.math.random() * x)
       }
     }
+
+    ///////////
+    // Locks //
+    ///////////
+
     // TODO: also use pointers for locks, like in the abstract.
     object NewLock extends Prim {
       val name = "new-lock"
       def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = args match {
         case Nil => Value.Lock(new java.util.concurrent.locks.ReentrantLock()) // Use reentrantlocks.
         case _   => throw new Exception(s"new-lock: invalid arguments $args")
+      }
+    }
+    case object Acquire extends SingleArgumentPrim("acquire") {
+      def fun = {
+        case Value.Lock(lck) => 
+          lck.lock()
+          Value.Void
+      }
+    }
+    case object Release extends SingleArgumentPrim("release") {
+      def fun = {
+        case Value.Lock(lck) =>
+          lck.unlock()
+          Value.Void
       }
     }
   }

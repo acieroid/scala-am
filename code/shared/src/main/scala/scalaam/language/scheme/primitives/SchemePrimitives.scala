@@ -10,6 +10,9 @@ trait SchemeInterpreterBridge[A] {
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {
+  // Every primitive in Scheme has a unique name
+  def name: String
+  // They can be called given the arguments, expressions, store and some interface to the Scheme interpreter
   def call(fexp: SchemeExp,
            args: List[(SchemeExp, V)],
            store: Store[A, V],

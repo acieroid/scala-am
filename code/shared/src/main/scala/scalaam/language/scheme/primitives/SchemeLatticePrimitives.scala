@@ -230,6 +230,8 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     import PrimitiveDefs._
     List(
       `new-lock`,
+      `acquire`,
+      `release`,
       `lock?`,
       `thread?`,
     )
@@ -279,6 +281,17 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
                       alloc: SchemeInterpreterBridge[A]
                      ): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: Nil => call(x._2, store)
+      case _ => MayFail.failure(PrimitiveArityError(name, 1, args.length))
+    }
+  }
+
+  class Scheme1Operation(val name: String, val call: (V, Store[A, V], SchemeInterpreterBridge[A]) => MayFail[(V, Store[A, V]), Error]) extends SchemePrimitive[V, A] {
+    override def call(fpos: SchemeExp,
+                      args: List[(SchemeExp, V)],
+                      store: Store[A, V],
+                      scheme: SchemeInterpreterBridge[A]
+                     ): MayFail[(V, Store[A, V]), Error] = args match {
+      case x :: Nil => call(x._2, store, scheme)
       case _ => MayFail.failure(PrimitiveArityError(name, 1, args.length))
     }
   }
@@ -542,21 +555,13 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `vector-length` extends Store1Operation("vector-length", { (v, store) =>
       dereferencePointer(v, store) { vec =>
-        ifThenElse(isVector(vec)) {
-          vectorLength(vec)
-        } {
-          MayFail.failure(PrimitiveNotApplicable("vector-length", List(v)))
-        }
+        vectorLength(vec)
       }.map((_, store))
     })
 
     object `vector-ref` extends Store2Operation("vector-ref", { (v, index, store) =>
       dereferencePointer(v, store) { vec =>
-        ifThenElse(isVector(vec)) {
-          lat.vectorRef(vec, index)
-        } {
-          MayFail.failure(PrimitiveNotApplicable("vector-ref", List(v, index)))
-        }
+        lat.vectorRef(vec, index)
       }.map((_, store))
     })
 
@@ -635,5 +640,20 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       }
     }
 
+    case object `acquire` extends Scheme1Operation("acquire", { (lockPtr, store, scheme) => 
+      dereferencePointerGetAddressReturnStore(lockPtr, store) { (addr, lock, store) =>
+        for {
+          locked <- lat.acquire(lock, scheme.currentThread)
+        } yield (lat.void, store.update(addr, locked))
+      }
+    })
+
+    case object `release` extends Scheme1Operation("release", { (lockPtr, store, scheme) =>
+      dereferencePointerGetAddressReturnStore(lockPtr, store) { (addr, lock, store) =>
+        for {
+          unlocked <- lat.release(lock, scheme.currentThread)
+        } yield (lat.void, store.update(addr, unlocked))
+      }
+    })
   }
 }
