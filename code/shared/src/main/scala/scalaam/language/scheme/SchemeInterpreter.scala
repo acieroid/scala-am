@@ -192,9 +192,9 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case None => throw new Exception(s"Unbound variable $id accessed at position $pos")
         }
         extendStore(addr, eval(v, env, timeout, version))
-        Value.Undefined(pos)
+        Value.Void
       case SchemeBegin(exps, pos) =>
-        val init: Value = Value.Undefined(pos)
+        val init: Value = Value.Void
         exps.foldLeft(init)((_, e) => eval(e, env, timeout, version))
       case SchemeAnd(Nil, _) =>
         Value.Bool(true)
@@ -1189,6 +1189,7 @@ object SchemeInterpreter {
     case class Vector(size: Int, elems: Map[Int,Value], init: Value) extends Value { override def toString: String = s"<#vector[$size]>" }
     case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"<thread>"}
     case class Lock(l: java.util.concurrent.locks.Lock) extends Value { override def toString: String = "<Lock>"}
+    case object Void extends Value { override def toString: String = "<void>"}
   }
 
 

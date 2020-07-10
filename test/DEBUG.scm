@@ -1,7 +1,7 @@
-(letrec ((fact (lambda (n)
-                 (if (= n 0)
-                   1
-                   (* n (fact (- n 1))))))
-          (t1 (fact 5))
-          (t2  (fact 4)))
-  (= (+ t1 t2) 144))
+(define global-current 0)
+
+(define (arrow-right arrow-right-arrow)
+  (set! global-current (+ 1 global-current)))
+
+(arrow-right (set! global-current 0))
+global-current

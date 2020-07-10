@@ -148,7 +148,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     /** Assigns a variable: updates the store at the corresponding address in environment. */
     private def assign(variable: Identifier, vl: Value, env: Env): Value = {
       if (writeAddr(lookupEnv(variable, env), vl)) storeChanged = true
-      lattice.bottom
+      lattice.void
     }
 
     /** Looks up a variable in the store, given the current environment. */

@@ -113,6 +113,8 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Releases a given lock. */
   def release(lock: L, caller: TID): MayFail[L, Error]
 
+  def void: L
+
   object Injector {
     implicit def inject(c: Closure, name: Option[String]): L = closure(c, name)
     implicit def inject(car: L, cdr: L): L = cons(car, cdr)

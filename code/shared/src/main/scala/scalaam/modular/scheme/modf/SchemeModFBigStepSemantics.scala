@@ -31,11 +31,11 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
       case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
     }
     private def evalSequence(exps: List[SchemeExp], env: Env): Value =
-      exps.foldLeft(lattice.bottom)((_,exp) => this.eval(exp,env))
+      exps.foldLeft(lattice.void)((_,exp) => this.eval(exp,env))
     private def evalSet(id: Identifier, exp: SchemeExp, env: Env): Value = {
       val newValue = this.eval(exp,env)
       assign(id,env,newValue)
-      lattice.bottom
+      lattice.void
     }
     private def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp, env: Env): Value = 
       conditional(this.eval(prd,env), this.eval(csq,env), this.eval(alt,env))

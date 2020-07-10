@@ -208,7 +208,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         evalSequence(exps, env, cnt)
       case SetFrame(id,env) =>
         assign(id,env,vlu)
-        Set(KontState(lattice.bottom,cnt))
+        Set(KontState(lattice.void,cnt))
       case IfFrame(csq, alt, env) =>
         conditional(vlu,
                     Set(EvalState(csq,env,cnt)),
