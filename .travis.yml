@@ -24,6 +24,9 @@ jobs:
     - stage: test
       name: "ModConc Soundness Tests"
       script: travis_wait 30 sbt "scalaam/testOnly -- -n SchemeModConcTest -l SlowTest"
+    - stage: test
+      name: "Incremental Soundness Tests"
+      script: travis_wait 30 sbt "scalaam/testOnly -- -n IncrementalTest -l SlowTest"
 
 branches:
   only:
