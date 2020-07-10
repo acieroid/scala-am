@@ -21,7 +21,8 @@ trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
 }
 
 trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
-    def name = "simple ModConc"
+  override def testTags(b: Benchmark) = super.testTags(b) :+ BigStepTest
+  def name = "simple ModConc"
     def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program) 
                                         with SchemeModConcNoSensitivity
                                         with SchemeConstantPropagationDomain
@@ -36,6 +37,7 @@ class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadB
                                                                     with SimpleBenchmarks
 
 trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
+  override def testTags(b: Benchmark) = super.testTags(b) :+ SmallStepTest
   def name = "small-step ModConc"
   def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
     with kCFAModConc

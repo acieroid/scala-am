@@ -62,11 +62,11 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
   def name = "Incremental ModConc soundness test"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysis(b)
-  override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest
+  override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
 }
 
 class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
   def name = "Incremental ModF soundness test"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysis(b)
-  override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest
+  override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
 }
