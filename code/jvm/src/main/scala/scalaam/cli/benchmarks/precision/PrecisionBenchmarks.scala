@@ -42,7 +42,7 @@ abstract class PrecisionBenchmarks[
     val baseDomain = new ModularSchemeLattice[BaseAddr,Str,Bln,Num,Rea,Chr,Smb]
     val baseLattice = baseDomain.schemeLattice
     case class StubPrimitive(name: String) extends SchemePrimitive[BaseValue, BaseAddr] {
-        def call(fpos: SchemeExp, args: List[(SchemeExp, BaseValue)], store: Store[BaseAddr,BaseValue], alloc: SchemeAllocator[BaseAddr]) =
+        def call(fpos: SchemeExp, args: List[(SchemeExp, BaseValue)], store: Store[BaseAddr,BaseValue], scheme: SchemeInterpreterBridge[BaseAddr]) =
             throw new Exception("Stub primitive: call not supported")
     }
     val emptyEnv = Environment[BaseAddr](Iterable.empty)

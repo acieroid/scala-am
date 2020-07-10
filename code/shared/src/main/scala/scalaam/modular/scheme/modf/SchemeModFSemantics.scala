@@ -134,24 +134,19 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
-    private val allocator: SchemeAllocator[Addr] = new SchemeAllocator[Addr] {
+    protected val interpreterBridge: SchemeInterpreterBridge[Addr] = new SchemeInterpreterBridge[Addr] {
       def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
+      def currentThread = throw new Exception("Concurrency not available in ModF")
     }
     // TODO[minor]: use foldMap instead of foldLeft
     protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)]): Value =
       lattice.getPrimitives(fval).foldLeft(lattice.bottom)((acc,prm) => lattice.join(acc,
-        prm.call(fexp, args, StoreAdapter, allocator) match {
+        prm.call(fexp, args, StoreAdapter, interpreterBridge) match {
           case MayFailSuccess((vlu,_))  => vlu
           case MayFailBoth((vlu,_),_)   => vlu
           case MayFailError(_)          => lattice.bottom
         }
       ))
-    // primitives glue code
-    // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
-    case object StoreAdapter extends Store[Addr,Value] {
-      def lookup(a: Addr): Option[Value] = Some(readAddr(a))
-      def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
-    }
     // evaluation helpers
     protected def evalLiteralValue(literal: sexp.Value): Value = literal match {
       case sexp.ValueInteger(n)   => lattice.number(n)

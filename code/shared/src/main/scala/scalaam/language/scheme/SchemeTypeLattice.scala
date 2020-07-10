@@ -182,7 +182,7 @@ class TypeSchemeLattice[A <: Address] {
       // We decided not to implement some primitives as they can't be properly supported in the framework: reverse, map, for-each, apply
     )
     class SimplePrim(val name: String, ret: L) extends SchemePrimitive[L, A] {
-      def call(fexp: SchemeExp, args: List[(SchemeExp, L)], store: Store[A, L], alloc: SchemeAllocator[A]): MayFail[(L, Store[A, L]), Error] =
+      def call(fexp: SchemeExp, args: List[(SchemeExp, L)], store: Store[A, L], alloc: SchemeInterpreterBridge[A]): MayFail[(L, Store[A, L]), Error] =
         MayFail.success((ret, store))
     }
     object `abs` extends SimplePrim("abs", Inject.num)

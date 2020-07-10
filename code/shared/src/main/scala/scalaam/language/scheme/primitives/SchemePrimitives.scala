@@ -2,16 +2,18 @@ package scalaam.language.scheme.primitives
 
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.language.CScheme._
 
-trait SchemeAllocator[A] {
+trait SchemeInterpreterBridge[A] {
   def pointer(exp: SchemeExp): A
+  def currentThread: TID
 }
 
 trait SchemePrimitive[V, A <: Address] extends Primitive {
   def call(fexp: SchemeExp,
            args: List[(SchemeExp, V)],
            store: Store[A, V],
-           alloc: SchemeAllocator[A]): MayFail[(V, Store[A, V]), Error]
+           scheme: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error]
 }
 
 case class PrimitiveArityError(name: String, expected: Int, got: Int)                extends Error
