@@ -107,7 +107,7 @@ object SchemeBenchmarks {
     "nucleic2.sch", // USES macros (define-syntax).
     "splay.scm", // Uses () instead of '(), but has other issues.
   )
-  lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019",
+  lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019", ".DS_Store",
     "church_exp.sch", // Uses non-standard (void) function.
     "earley.sch", // Uses read.
     "mbrotZ.sch", // Parser error.
@@ -115,14 +115,12 @@ object SchemeBenchmarks {
     "regex-derivative.scm", // Parser error.
     "scheme2java.scm", // Uses char-alphabetic?
     "solovay-strassen.scm", // Program seems erroneous.
-    ".DS_Store"
   )
-  lazy val other: Set[String] = fromFolder("test/R5RS",
+  lazy val other: Set[String] = fromFolder("test/R5RS", ".DS_Store",
     "quasiquoting.scm", // Uses unquote-splicing.
     "scm2c.scm", // Uses string->list.
     "scm2java.scm", // Uses list->string.
     "Streams.scm", // Uses define-macro.
-    ".DS_Store"
   )
   lazy val     WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
   lazy val sequentialBenchmarks: Set[String] = SmartUnion.sunionList(List(ad, gabriel, gambit, rosetta, scp1, SICP, sigscheme, WeiChenRompf2019, other))

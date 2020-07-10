@@ -1,6 +1,6 @@
 package scalaam.util
 
-import java.io.{BufferedWriter, FileWriter}
+import java.io.{BufferedWriter, File, FileWriter}
 import java.text.SimpleDateFormat
 import java.util.Calendar
 

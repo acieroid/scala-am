@@ -27,7 +27,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
   def concreteRuns(b: Benchmark): Int = 1 // for highly non-deterministic programs, a higher value is recommended
   // the actual testing code
-  protected def runInterpreter(i: SchemeInterpreter, p: SchemeExp, t: Timeout.T) = i.run(p, t)
+  protected def runInterpreter(i: SchemeInterpreter, p: SchemeExp, t: Timeout.T): Value = i.run(p, t) // If there are code changes in the file, runs the "new" version by default (ensures compatibility with files containing changes).
   protected def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity,Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = CSchemeUndefiner.undefine(List(preluded))
@@ -36,7 +36,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     try {
-      for (i <- 1 to times) {
+      for (_ <- 1 to times) {
         val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
         endResults += runInterpreter(interpreter, program, timeout)
       }
@@ -64,7 +64,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
         System.gc()
         cancel(s"Analysis of $benchmark encountered an error: $e")
     }
-  protected def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value) = {
+  protected def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean = {
     val lat = analysis.lattice
     v match {
       case Value.Undefined(_)   => true
@@ -85,7 +85,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     }
   }
 
-  protected def compareResult(a: Analysis, values: Set[Value]) = {
+  protected def compareResult(a: Analysis, values: Set[Value]): Unit = {
     val aRes = a.finalResult
     values.foreach { value => 
       if (!checkSubsumption(a)(value, aRes)) {

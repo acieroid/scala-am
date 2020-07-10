@@ -18,7 +18,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
   type IncrementalAnalysis = ModAnalysis[SchemeExp] with SchemeSemantics with IncrementalModAnalysis[SchemeExp]
   override def analysis(b: SchemeExp): IncrementalAnalysis
 
-  var version: Version = Old
+  private var version: Version = Old
 
   override def runInterpreter(i: SchemeInterpreter, p: SchemeExp, t: Timeout.T): SchemeInterpreter.Value = i.run(p, t, version)
 
@@ -43,7 +43,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       compareIdentities(anlNew, cPosResultsNew)
     }
 
-   def updateAnalysis(program: SchemeExp, benchmark: Benchmark): IncrementalAnalysis =
+   private def updateAnalysis(program: SchemeExp, benchmark: Benchmark): IncrementalAnalysis =
     try {
       val anl: IncrementalAnalysis = analysis(program)
       val timeout = analysisTimeout(benchmark)
@@ -59,13 +59,13 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ IncrementalTest
 }
 
-trait IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
+class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
   def name = "Incremental ModConc soundness test"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysis(b)
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest
 }
 
-trait IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
+class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
   def name = "Incremental ModF soundness test"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysis(b)
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest
