@@ -13,11 +13,12 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Register a component as being affected by a program change.
    *  This is needed e.g. for ModConc, where affected components cannot be determined lexically/statically.
    *  This method should be called when a change expression is analysed.
+   *  Synchronisation should be applied when the analysis is run concurrently!
    */
   def registerAffected(cmp: Component): Unit = affected = affected + cmp
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def analyzeUpdated(timeout: Timeout.T): Unit = {
+  def updateAnalysis(timeout: Timeout.T): Unit = {
     version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     affected.foreach(addToWorkList)
     analyze(timeout)

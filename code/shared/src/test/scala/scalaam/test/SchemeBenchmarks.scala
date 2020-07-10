@@ -165,5 +165,5 @@ trait SequentialIncrementalBenchmarks extends SchemeBenchmarkTests {
 object IncrementalBenchmarks {
   lazy val concurrent: Set[String] = SchemeBenchmarks.fromFolder("test/changes/cscheme/threads",
     "mcarlo.scm")
-  lazy val sequential: Set[String] = SchemeBenchmarks.fromFolder("text/changes/scheme")
+  lazy val sequential: Set[String] = SchemeBenchmarks.fromFolder("test/changes/scheme")
 }
