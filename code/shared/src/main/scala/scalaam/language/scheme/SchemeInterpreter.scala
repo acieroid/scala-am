@@ -467,6 +467,8 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       Random,
       Error,
       NewLock,
+      Acquire,
+      Release
     )
 
     abstract class SingleArgumentPrim(val name: String) extends SimplePrim {
