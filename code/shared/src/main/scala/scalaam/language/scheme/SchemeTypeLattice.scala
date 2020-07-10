@@ -136,6 +136,7 @@ class TypeSchemeLattice[A <: Address] {
     def vector(size: L, init: L): MayFail[L, Error] = ???
     def thread(tid: TID): L                   = ???
     def lock(threads: Set[TID])               = ???
+    def void: L                               = ???
     def acquire(lock: L, caller: TID): MayFail[L, Error] = ???
     def release(lock: L, caller: TID): MayFail[L, Error] = ???
 

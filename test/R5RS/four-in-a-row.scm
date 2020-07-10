@@ -88,7 +88,7 @@
             ((eq? msg 'set-key-callback!) (lambda (eh) (set! keyboard-callback eh)))
             ((eq? msg 'set-update-callback!) (lambda (gl) (set! update-callback gl)))
             ((eq? msg 'game-loop) (lambda () (game-loop)))
-            (else (#f msg))))
+            (else (error msg))))
     
     window-dispatch))
 
@@ -127,7 +127,7 @@
             ((eq? msg 'set-y!) (lambda (new-y) (set! y new-y)))
             ((eq? msg 'get-x) (lambda () x))
             ((eq? msg 'get-y) (lambda () y))
-            (else (#f msg))))
+            (else (error msg))))
     bitmap-tile-dispatch))
 
 ;;;;---------------------------------------------------------------------
@@ -235,7 +235,7 @@
         ((eq? msg 'draw-line) (lambda (x-10 x-11 x-12 x-13 x-14) (draw-line x-10 x-11 x-12 x-13 x-14)))
         ((eq? msg 'draw-ellipse) (lambda (x-15 x-16 x-17 x-18 x-19) (draw-ellipse x-15 x-16 x-17 x-18 x-19)))
         ((eq? msg 'draw-text) (lambda (x-20 x-21 x-22 x-23 x-24) (draw-text x-20 x-21 x-22 x-23 x-24)))
-        (else (#f msg))))
+        (else (error msg))))
     tile-dispatch))
 
 ;;;;---------------------------------------------------------------------
@@ -357,7 +357,7 @@
         ((eq? msg 'draw-ellipse) draw-ellipse)
         ((eq? msg 'draw-line) draw-line)
         ((eq? msg 'draw-text) draw-text) 
-        (else (#f msg))))
+        (else (error msg))))
     tile-sequence-dispatch))
 
 ;;;;################################ LAYER #######################################
@@ -401,7 +401,7 @@
       (cond ((eq? msg 'add-drawable)  add-drawable)
             ((eq? msg 'remove-drawable) remove-drawable)
             ((eq? msg 'draw) draw)
-            (else (#f msg))))
+            (else (error msg))))
     layer-dispatch))
 
 
@@ -566,7 +566,7 @@
       (cond ((= rt down-key) (drop-coin))
             ((= rt left-key) (arrow-left pointer))
             ((= rt right-key) (arrow-right pointer))
-            (else (#f rt))))
+            (else (error rt))))
     
     (define (start)
       (define (main-loop main-loop-n)

@@ -106,6 +106,11 @@ class ModularSchemeLattice[
     def ord = 13
     override def toString: String = s"<Lock $threads>"
   }
+  case object Void extends Value {
+    def ord = 14
+
+    override def toString: String = "<void>"
+  }
   /** The injected true value */
   val True = Bool(BoolLattice[B].inject(true))
   /** The injected false value */
@@ -139,6 +144,7 @@ class ModularSchemeLattice[
         vWithEls2Joined
       case (Thread(t1), Thread(t2))   => Thread(sunion(t1, t2))
       case (Lock(l1), Lock(l2))       => Lock(sunion(l1, l2))
+      case (Void, Void)               => Void
       case _ => throw new Exception(s"Illegal join of $x and $y")
     }
 
@@ -456,6 +462,7 @@ class ModularSchemeLattice[
     def pointer(a: A): Value                      = Pointer(Set(a))
     def thread(tid: TID): Value                   = Thread(Set(tid))
     def lock(threads: Set[TID]): Value            = Lock(threads)
+    def void: Value                               = Void
     def getClosures(x: Value): Set[(schemeLattice.Closure,Option[String])] = x match {
       case Clo(closures) => closures
       case _             => Set.empty
@@ -660,7 +667,8 @@ class ModularSchemeLattice[
     def vector(size: L, init: L): MayFail[L, Error] = size.foldMapL(sz => Value.vector(sz, init).map(v => Element(v)))
     def thread(tid: TID): L                   = Element(Value.thread(tid))
     def lock(threads: Set[TID]): L            = Element(Value.lock(threads))
-    def nil: L = Element(Value.nil)
+    def nil: L                                = Element(Value.nil)
+    def void: L                               = Element(Value.void)
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
   }
 
