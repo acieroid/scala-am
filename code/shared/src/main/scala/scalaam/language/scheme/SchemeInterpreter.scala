@@ -1134,26 +1134,33 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     // Locks //
     ///////////
 
-    // TODO: also use pointers for locks, like in the abstract.
     object NewLock extends Prim {
       val name = "new-lock"
       def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = args match {
-        case Nil => Value.Lock(new java.util.concurrent.locks.ReentrantLock()) // Use reentrantlocks.
+        case Nil => 
+          val addr = newAddr(AddrInfo.PtrAddr(fexp))
+          val lock = Value.Lock(new java.util.concurrent.locks.ReentrantLock())
+          extendStore(addr, lock)
+          Value.Pointer(addr)
         case _   => throw new Exception(s"new-lock: invalid arguments $args")
       }
     }
     case object Acquire extends SingleArgumentPrim("acquire") {
       def fun = {
-        case Value.Lock(lck) => 
-          lck.lock()
-          Value.Void
+        case Value.Pointer(ptr) => lookupStore(ptr) match {
+          case Value.Lock(lck) => 
+            lck.lock()
+            Value.Void
+        }
       }
     }
     case object Release extends SingleArgumentPrim("release") {
       def fun = {
-        case Value.Lock(lck) =>
-          lck.unlock()
-          Value.Void
+        case Value.Pointer(ptr) => lookupStore(ptr) match {
+          case Value.Lock(lck) => 
+            lck.unlock()
+            Value.Void
+        }
       }
     }
   }
