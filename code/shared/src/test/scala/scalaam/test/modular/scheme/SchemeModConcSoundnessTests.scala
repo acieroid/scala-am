@@ -34,7 +34,20 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
 }
 
 class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadBenchmarks
-                                                                    with SimpleBenchmarks
+                                                                    with SimpleBenchmarks {
+  override def isSlow(b: Benchmark): Boolean =
+    SchemeBenchmarks.sequentialBenchmarks.contains(b) ||
+      Set("test/concurrentScheme/threads/actors.scm",
+        "test/concurrentScheme/threads/fact.scm",
+        "test/concurrentScheme/threads/life.scm",
+        "test/concurrentScheme/threads/matmul.scm",
+        "test/concurrentScheme/threads/mazefun.scm",
+        "test/concurrentScheme/threads/mceval.scm",
+        "test/concurrentScheme/threads/minimax.scm",
+        "test/concurrentScheme/threads/msort.scm",
+        "test/concurrentScheme/threads/qsort.scm",
+        "test/concurrentScheme/threads/tsp.scm")(b)
+}
 
 trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SmallStepTest
