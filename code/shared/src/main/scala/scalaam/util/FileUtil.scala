@@ -42,8 +42,6 @@ object Writer {
 
   // Avoid output being buffered.
   def write(writer: Writer, data: String): String = {
-    print(data)
-    Console.out.flush()
     writer.write(data)
     writer.flush()
     data
