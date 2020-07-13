@@ -22,7 +22,7 @@ trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
 
 trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ BigStepTest
-  def name = "simple ModConc"
+  def name = "ModConc + big-step ModF"
     def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program) 
                                         with SchemeModConcNoSensitivity
                                         with SchemeConstantPropagationDomain
