@@ -5,7 +5,6 @@ import scalaam.language.CScheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
 import scalaam.language.sexp
-import scalaam.lattice._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.modular.components.ContextSensitiveComponents

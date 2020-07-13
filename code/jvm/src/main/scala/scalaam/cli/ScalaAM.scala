@@ -52,7 +52,7 @@ object Main {
 
   def debugResults(machine: SchemeSemantics, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (ComponentAddr(cmp, addr: ReturnAddr), result) if cmp == machine.initialComponent || printMore =>
+      case (ComponentAddr(cmp, _: ReturnAddr), result) if cmp == machine.initialComponent || printMore =>
         println(s"$cmp => $result")
       case _ => ()
     }

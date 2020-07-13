@@ -24,6 +24,8 @@ trait Store[A <: Address, V] extends SmartHash {
     case None    => MayFail.failure(UnboundAddress(a))
   }
 
+  // Allow strong updates if needed.
+
   /** Update an entry in the store */
   def update(a: A, v: V): Store[A, V] = extend(a, v)
   /** Tries to update an address if it's already mapped into the store. Otherwise, extend the store */

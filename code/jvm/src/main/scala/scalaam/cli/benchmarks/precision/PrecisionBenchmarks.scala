@@ -1,6 +1,7 @@
 package scalaam.cli.benchmarks.precision
 
 import scalaam.core._
+import scalaam.language.scheme.SchemeInterpreter.Addr
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
 import scalaam.lattice._
@@ -36,6 +37,7 @@ abstract class PrecisionBenchmarks[
         case ComponentAddr(_, scalaam.modular.scheme.PtrAddr(e))    => PtrAddr(e.idn)
         case ComponentAddr(_, scalaam.modular.ReturnAddr(e))        => RetAddr(e.idn)
         case GlobalAddr(scalaam.modular.scheme.PrmAddr(n))          => PrmAddr(n)
+        case a                                                      => throw new Exception(s"Cannot convert address: $a")
     }
 
     type BaseValue = baseDomain.L
@@ -70,6 +72,10 @@ abstract class PrecisionBenchmarks[
         case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
         case analysis.valueLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
         case analysis.valueLattice.Vec(s,e)     => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
+        case analysis.valueLattice.Void         => baseDomain.Void
+        case analysis.valueLattice.Lock(tids)   => baseDomain.Lock(tids)
+        case analysis.valueLattice.Thread(tids) => baseDomain.Thread(tids)
+        case v                                  => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
     }
     private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
         case analysis.valueLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
@@ -106,6 +112,7 @@ abstract class PrecisionBenchmarks[
                 acc + (cIdx -> newVlu)
             }
             baseDomain.Element(baseDomain.Vec(cSiz, cEls))
+        case v                                          => throw new Exception(s"Unsupported value for concrete conversion: $v")
     }
  
     type BaseStore = Map[BaseAddr, BaseValue]

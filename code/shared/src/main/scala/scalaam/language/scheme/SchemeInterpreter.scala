@@ -16,6 +16,7 @@ import ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
+case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpreter encountered an unexpected value during its execution: $v.")
 
 /**
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
@@ -193,7 +194,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         }
         extendStore(addr, eval(v, env, timeout, version))
         Value.Void
-      case SchemeBegin(exps, pos) =>
+      case SchemeBegin(exps, _) =>
         val init: Value = Value.Void
         exps.foldLeft(init)((_, e) => eval(e, env, timeout, version))
       case SchemeAnd(Nil, _) =>
@@ -518,10 +519,12 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         case Value.Integer(x) :: rest => Plus.call(rest) match {
           case Value.Integer(y) => Value.Integer(x - y)
           case Value.Real(y) => Value.Real(x - y)
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
         case Value.Real(x) :: rest => Plus.call(rest) match {
           case Value.Integer(y) => Value.Real(x - y)
           case Value.Real(y) => Value.Real(x - y)
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
         case _ => throw new Exception(s"-: invalid arguments $args")
       }
@@ -536,10 +539,12 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         case Value.Integer(x) :: rest => Times.call(rest) match {
           case Value.Integer(y) => if (x % y == 0) { Value.Integer(x / y) } else { Value.Real(x.toDouble / y) }
           case Value.Real(y) => Value.Real(x / y)
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
         case Value.Real(x) :: rest => Times.call(rest) match {
           case Value.Integer(y) => Value.Real(x / y)
           case Value.Real(y) => Value.Real(x / y)
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
         case _ => throw new Exception(s"/: invalid arguments $args")
       }
@@ -678,13 +683,16 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
             case Value.Real(n2) =>
               val r = n1.toDouble
               if (r > n2) { Value.Real(r) } else { maximum }
+            case v => throw new UnexpectedValueTypeException[Value](v)
           }
           case Value.Real(n1) => maximum match {
             case Value.Integer(n2) =>
               val r = n2.toDouble
               if (n1 > r) { Value.Real(n1) } else { maximum }
             case Value.Real(n2) => if (n1 > n2) { Value.Real(n1) } else { Value.Real(n2) }
+            case v => throw new UnexpectedValueTypeException[Value](v)
           }
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }, rest)
       }
       def call(args: List[Value]): Value = args match {
@@ -706,13 +714,16 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
             case Value.Real(n2) =>
               val r = n1.toDouble
               if (r < n2) { Value.Real(r) } else { minimum }
+            case v => throw new UnexpectedValueTypeException[Value](v)
           }
           case Value.Real(n1) => minimum match {
             case Value.Integer(n2) =>
               val r = n2.toDouble
               if (n1 < r) { Value.Real(n1) } else { minimum }
             case Value.Real(n2) => if (n1 < n2) { Value.Real(n1) } else { Value.Real(n2) }
+            case v => throw new UnexpectedValueTypeException[Value](v)
           }
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }, rest)
       }
       def call(args: List[Value]): Value = args match {
@@ -1033,6 +1044,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       def fun = {
         case Value.Pointer(a) => lookupStore(a) match {
           case Value.Vector(siz,_,_) => Value.Integer(siz)
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
       }
     }
@@ -1068,6 +1080,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       def fun = {
         case Value.Pointer(addr) => lookupStore(addr) match {
           case Value.Cons(car,_) => car
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
       }
     }
@@ -1075,6 +1088,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       def fun = {
         case Value.Pointer(addr) => lookupStore(addr) match {
           case Value.Cons(_,cdr) => cdr
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }      
       }
     }
@@ -1093,6 +1107,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case Value.Cons(_,cdr) => 
             extendStore(addr, Value.Cons(v,cdr))
             Value.Undefined(Identity.none)
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
         case _ => throw new Exception(s"set-car!: invalid arguments $args")
       }
@@ -1104,6 +1119,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case Value.Cons(car,_) => 
             extendStore(addr, Value.Cons(car,v))
             Value.Undefined(Identity.none)
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
         case _ => throw new Exception(s"set-cdr!: invalid arguments $args")
       }
@@ -1151,6 +1167,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case Value.Lock(lck) => 
             lck.lock()
             Value.Void
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
       }
     }
@@ -1160,6 +1177,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case Value.Lock(lck) => 
             lck.unlock()
             Value.Void
+          case v => throw new UnexpectedValueTypeException[Value](v)
         }
       }
     }
