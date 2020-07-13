@@ -2,6 +2,7 @@ package scalaam.language.scheme
 
 import java.util.concurrent.TimeUnit
 
+import scalaam.core.Position.Position
 import scalaam.core._
 import scalaam.language.CScheme._
 import scalaam.language.change.CodeVersion._
@@ -474,14 +475,14 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
 
     abstract class SingleArgumentPrim(val name: String) extends SimplePrim {
       def fun: PartialFunction[Value, Value]
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value], position: Position) = args match {
         case x :: Nil =>
           if (fun.isDefinedAt(x)) {
             fun(x)
           } else {
-            throw new Exception(s"$name: invalid argument type $x")
+            throw new Exception(s"$name ($position): invalid argument type $x")
           }
-        case _ => throw new Exception(s"$name: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
 
@@ -491,71 +492,71 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     object Plus extends SimplePrim {
       val name = "+"
       val default: Value = Value.Integer(0)
-      def call(args: List[Value]): Value = args.foldLeft(default)({
+      def call(args: List[Value], position: Position): Value = args.foldLeft(default)({
           case (Value.Integer(n1), Value.Integer(n2)) => Value.Integer(n1 + n2)
           case (Value.Integer(n1), Value.Real(n2)) => Value.Real(n1 + n2)
           case (Value.Real(n1), Value.Integer(n2)) => Value.Real(n1 + n2)
           case (Value.Real(n1), Value.Real(n2)) => Value.Real(n1 + n2)
-          case (x, y) => throw new Exception(s"+: invalid argument types ($x and $y)")
+          case (x, y) => throw new Exception(s"+ ($position): invalid argument types ($x and $y)")
       })
     }
     object Times extends SimplePrim {
       val name = "*"
       val default: Value = Value.Integer(1)
-      def call(args: List[Value]): Value = args.foldLeft(default)({
+      def call(args: List[Value], position: Position): Value = args.foldLeft(default)({
         case (Value.Integer(n1), Value.Integer(n2)) => Value.Integer(n1 * n2)
           case (Value.Integer(n1), Value.Real(n2)) => Value.Real(n1 * n2)
           case (Value.Real(n1), Value.Integer(n2)) => Value.Real(n1 * n2)
           case (Value.Real(n1), Value.Real(n2)) => Value.Real(n1 * n2)
-          case (x, y) => throw new Exception(s"+: invalid argument types ($x and $y)")
+          case (x, y) => throw new Exception(s"* ($position): invalid argument types ($x and $y)")
       })
     }
     object Minus extends SimplePrim {
       val name = "-"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value], position: Position) = args match {
         case Nil => throw new Exception("-: wrong number of arguments")
         case Value.Integer(x) :: Nil => Value.Integer(- x)
         case Value.Real(x) :: Nil => Value.Real(- x)
-        case Value.Integer(x) :: rest => Plus.call(rest) match {
+        case Value.Integer(x) :: rest => Plus.call(rest, position) match {
           case Value.Integer(y) => Value.Integer(x - y)
           case Value.Real(y) => Value.Real(x - y)
           case v => throw new UnexpectedValueTypeException[Value](v)
         }
-        case Value.Real(x) :: rest => Plus.call(rest) match {
+        case Value.Real(x) :: rest => Plus.call(rest, position) match {
           case Value.Integer(y) => Value.Real(x - y)
           case Value.Real(y) => Value.Real(x - y)
           case v => throw new UnexpectedValueTypeException[Value](v)
         }
-        case _ => throw new Exception(s"-: invalid arguments $args")
+        case _ => throw new Exception(s"- ($position): invalid arguments $args")
       }
     }
     object Div extends SimplePrim {
       val name = "/"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value], position: Position) = args match {
         case Nil => throw new Exception("/: wrong number of arguments")
         case Value.Integer(1) :: Nil => Value.Integer(1)
         case Value.Integer(x) :: Nil => Value.Real(1.0 / x)
         case Value.Real(x) :: Nil => Value.Real(1.0 / x)
-        case Value.Integer(x) :: rest => Times.call(rest) match {
+        case Value.Integer(x) :: rest => Times.call(rest, position) match {
           case Value.Integer(y) => if (x % y == 0) { Value.Integer(x / y) } else { Value.Real(x.toDouble / y) }
           case Value.Real(y) => Value.Real(x / y)
           case v => throw new UnexpectedValueTypeException[Value](v)
         }
-        case Value.Real(x) :: rest => Times.call(rest) match {
+        case Value.Real(x) :: rest => Times.call(rest, position) match {
           case Value.Integer(y) => Value.Real(x / y)
           case Value.Real(y) => Value.Real(x / y)
           case v => throw new UnexpectedValueTypeException[Value](v)
         }
-        case _ => throw new Exception(s"/: invalid arguments $args")
+        case _ => throw new Exception(s"/ ($position): invalid arguments $args")
       }
     }
 
     object Modulo extends SimplePrim {
       val name = "modulo"
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil =>
           Value.Integer(scalaam.lattice.MathOps.modulo(x, y))
-        case _ => throw new Exception(s"modulo: invalid arguments $args")
+        case _ => throw new Exception(s"modulo ($position): invalid arguments $args")
       }
     }
 
@@ -597,7 +598,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     object Expt extends SimplePrim {
       val name = "expt"
       // TODO: expt should also preserve exactness if possible
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil =>
           Value.Integer(scala.math.pow(x.toDouble, y.toDouble).toInt)
         case Value.Integer(x) :: Value.Real(y) :: Nil =>
@@ -606,7 +607,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           Value.Real(scala.math.pow(x, y.toDouble))
         case Value.Real(x) :: Value.Real(y) :: Nil =>
           Value.Real(scala.math.pow(x, y))
-        case _ => throw new Exception(s"expt: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
 
@@ -624,16 +625,16 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     }
     object Quotient extends SimplePrim {
       val name = "quotient"
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x / y)
-        case _ => throw new Exception(s"$name: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
     object Remainder extends SimplePrim {
       val name = "remainder"
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x % y)
-        case _ => throw new Exception(s"$name: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
     object Round extends SingleArgumentPrim("round") {
@@ -695,13 +696,13 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case v => throw new UnexpectedValueTypeException[Value](v)
         }, rest)
       }
-      def call(args: List[Value]): Value = args match {
-        case Nil => throw new Exception("max: wrong number of arguments")
+      def call(args: List[Value], position: Position): Value = args match {
+        case Nil => throw new Exception(s"max ($position): wrong number of arguments")
         case Value.Integer(first) :: rest =>
           max(Value.Integer(first), rest)
         case Value.Real(first) :: rest =>
           max(Value.Real(first), rest)
-        case _ => throw new Exception(s"max: invalid arguments $args")
+        case _ => throw new Exception(s"max ($position): invalid arguments $args")
       }
     }
     object Min extends SimplePrim {
@@ -726,65 +727,65 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case v => throw new UnexpectedValueTypeException[Value](v)
         }, rest)
       }
-      def call(args: List[Value]): Value = args match {
-        case Nil => throw new Exception("min: wrong number of arguments")
+      def call(args: List[Value], position: Position): Value = args match {
+        case Nil => throw new Exception(s"min ($position): wrong number of arguments")
         case Value.Integer(first) :: rest =>
           min(Value.Integer(first), rest)
         case Value.Real(first) :: rest =>
           min(Value.Real(first), rest)
-        case _ => throw new Exception(s"min: invalid arguments $args")
+        case _ => throw new Exception(s"min ($position): invalid arguments $args")
       }
     }
     object Gcd extends SimplePrim {
       val name = "gcd"
       def gcd(a: Int, b: Int): Int = if (b == 0) { a } else { gcd(b, a % b) }
-      def call(args: List[Value]): Value.Integer = args match {
+      def call(args: List[Value], position: Position): Value.Integer = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(gcd(x, y))
-        case _ => throw new Exception(s"gcd: invalid arguments $args")
+        case _ => throw new Exception(s"gcd ($position): invalid arguments $args")
       }
     }
 
     object LessThan extends SimplePrim {
       val name = "<"
-      def call(args: List[Value]): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
         case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x < y)
         case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
         case Value.Real(x) :: Value.Real(y) :: Nil => Value.Bool(x < y)
-        case _ => throw new Exception(s"<: invalid arguments $args")
+        case _ => throw new Exception(s"< ($position): invalid arguments $args")
       }
     }
 
     object LessOrEqual extends SimplePrim {
       val name = "<="
-      def call(args: List[Value]): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
         case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x <= y)
         case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
         case Value.Real(x) :: Value.Real(y) :: Nil => Value.Bool(x <= y)
-        case _ => throw new Exception(s"<=: invalid arguments $args")
+        case _ => throw new Exception(s"<= ($position): invalid arguments $args")
       }
     }
 
     object GreaterThan extends SimplePrim {
       val name = ">"
-      def call(args: List[Value]): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
         case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x > y)
         case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
         case Value.Real(x) :: Value.Real(y) :: Nil => Value.Bool(x > y)
-        case _ => throw new Exception(s">: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
 
     object GreaterOrEqual extends SimplePrim {
       val name = ">="
-      def call(args: List[Value]): Value.Bool = args match {
+      def call(args: List[Value], position: Position) = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
         case Value.Integer(x) :: Value.Real(y) :: Nil => Value.Bool(x >= y)
         case Value.Real(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
         case Value.Real(x) :: Value.Real(y) :: Nil => Value.Bool(x >= y)
-        case _ => throw new Exception(s">=: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
 
@@ -808,11 +809,11 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         case (_: Value.Real) :: _ => Value.Bool(false)
         case _ => throw new Exception(s"=: invalid type of arguments $l")
       }
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Nil => Value.Bool(true)
         case Value.Integer(x) :: rest => numEqInt(x, rest)
         case Value.Real(x) :: rest => numEqReal(x, rest)
-        case _ => throw new Exception(s"=: invalid type of arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid type of arguments $args")
       }
     }
 
@@ -880,16 +881,16 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     }
     object Newline extends SimplePrim {
       val name = "newline"
-      def call(args: List[Value]) = args match {
+      def call(args: List[Value], position: Position) = args match {
         case Nil =>
           if (output) Out.prtln("\n")
           Value.Undefined(Identity.none)
-        case _ => throw new Exception(s"newline: wrong number of arguments, 0 expected, got ${args.length}")
+        case _ => throw new Exception(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
     object Error extends SimplePrim {
       val name = "error"
-      def call(args: List[Value]) = throw new Exception(s"user-raised error: $args")
+      def call(args: List[Value], position: Position) = throw new Exception(s"user-raised error: $args")
     }
 
     /////////////////
@@ -969,10 +970,10 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     /////////////
     object StringAppend extends SimplePrim {
       val name = "string-append"
-      def call(args: List[Value]) =
+      def call(args: List[Value], position: Position) =
         Value.Str(args.foldLeft("")((acc, v) => v match {
           case Value.Str(x) => s"$acc$x"
-          case _ => throw new Exception(s"string-append: invalid argument $v")
+          case _ => throw new Exception(s"$name ($position): invalid argument $v")
         }))
     }
     object StringLength extends SingleArgumentPrim("string-length") {
@@ -982,24 +983,24 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     }
     object StringRef extends SimplePrim {
       val name = "string-ref"
-      def call(args: List[Value]): Value.Character = args match {
+      def call(args: List[Value], position: Position): Value.Character = args match {
         case Value.Str(x) :: Value.Integer(n) :: Nil =>
           Value.Character(x(n))
-        case _ => throw new Exception(s"string-ref: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
     object StringLt extends SimplePrim {
       val name = "string<?"
-      def call(args: List[Value]): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Str(x) :: Value.Str(y) :: Nil => Value.Bool(x < y)
-        case _ => throw new Exception(s"string<?: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
     object StringToNumber extends SimplePrim {
       val name = "string->number"
-      def call(args: List[Value]): Value.Integer = args match {
+      def call(args: List[Value], position: Position): Value.Integer = args match {
         case Value.Str(x) :: Nil if x.toIntOption.nonEmpty => Value.Integer(x.toIntOption.get)
-        case _ => throw new Exception(s"string->number: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
 
@@ -1009,9 +1010,9 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
 
     object Eq extends SimplePrim {
       val name = "eq?"
-      def call(args: List[Value]): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match {
         case x :: y :: Nil => Value.Bool(x == y)
-        case _ => throw new Exception(s"eq?: wrong number of arguments ${args.length}")
+        case _ => throw new Exception(s"$name ($position): wrong number of arguments ${args.length}")
       }
     }
     /////////////
@@ -1037,7 +1038,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           Vector.newVector(fexp, size, Map(), Value.Undefined(fexp.idn))
         case Value.Integer(size) :: init :: Nil =>
           Vector.newVector(fexp, size, Map(), init)
-        case _ => throw new Exception(s"make-vector: invalid arguments $args")
+        case _ => throw new Exception(s"$name (${fexp.idn.pos}): invalid arguments $args")
       }
     }
     object VectorLength extends SingleArgumentPrim("vector-length") {
@@ -1050,25 +1051,25 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     }
     object VectorRef extends SimplePrim {
       val name = "vector-ref"
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Value.Pointer(a) :: Value.Integer(idx) :: Nil => lookupStore(a) match {
           case Value.Vector(siz,els,ini) if idx >= 0 && idx < siz => els.getOrElse(idx, ini)
-          case Value.Vector(siz,_,_) => throw new Exception(s"Index $idx out of range (valid range: [0,${siz-1}])")  
+          case Value.Vector(siz,_,_) => throw new Exception(s"$name ($position): index $idx out of range (valid range: [0,${siz-1}])")
         }
-        case _ => throw new Exception(s"vector-ref: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
     object VectorSet extends SimplePrim {
       val name = "vector-set!"
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Value.Pointer(a) :: Value.Integer(idx) :: v :: Nil => lookupStore(a) match {
           case Value.Vector(siz,els,ini) if idx >= 0 && idx < siz =>
             val updatedVct = Value.Vector(siz, els + (idx -> v), ini)
             extendStore(a, updatedVct)
             Value.Undefined(Identity.none)
-          case Value.Vector(siz,_,_) => throw new Exception(s"Index $idx out of range (valid range: [0,${siz-1}])")
+          case Value.Vector(siz,_,_) => throw new Exception(s"$name ($position): index $idx out of range (valid range: [0,${siz-1}])")
         }
-        case _ => throw new Exception(s"vector-set!: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
 
@@ -1102,26 +1103,26 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     }
     object SetCar extends SimplePrim {
       val name = "set-car!"
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Value.Pointer(addr) :: v :: Nil => lookupStore(addr) match {
           case Value.Cons(_,cdr) => 
             extendStore(addr, Value.Cons(v,cdr))
             Value.Undefined(Identity.none)
           case v => throw new UnexpectedValueTypeException[Value](v)
         }
-        case _ => throw new Exception(s"set-car!: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
     object SetCdr extends SimplePrim {
       val name = "set-cdr!"
-      def call(args: List[Value]): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match {
         case Value.Pointer(addr) :: v :: Nil => lookupStore(addr) match {
           case Value.Cons(car,_) => 
             extendStore(addr, Value.Cons(car,v))
             Value.Undefined(Identity.none)
           case v => throw new UnexpectedValueTypeException[Value](v)
         }
-        case _ => throw new Exception(s"set-cdr!: invalid arguments $args")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
 
@@ -1192,8 +1193,8 @@ object SchemeInterpreter {
     def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value
   }
   trait SimplePrim extends Prim {
-    def call(args: List[Value]): Value
-    def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = call(args.map(_._2))
+    def call(args: List[Value], position: Position): Value
+    def call(fexp: SchemeFuncall, args: List[(SchemeExp,Value)]): Value = call(args.map(_._2), fexp.idn.pos)
   }
   type Addr = (Int, AddrInfo)
   type Env = Map[String, Addr]

@@ -101,7 +101,6 @@ class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with T
         test/concurrentScheme/threads/readers2.scm finished in 0ms.
         test/concurrentScheme/threads/ringbuf.scm finished in 53ms.
         test/concurrentScheme/threads/mceval.scm timed out.
-
    */
 
 }

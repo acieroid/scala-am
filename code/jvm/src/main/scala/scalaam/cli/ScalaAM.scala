@@ -62,7 +62,7 @@ object Main {
 }
 
 object Run extends App {
-  val text = Reader.loadFile("test/changes/ring-rotate.scm")
+  val text = Reader.loadFile("test/concurrentScheme/threads/pc.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none, New)
   println(res)
@@ -141,8 +141,8 @@ object IncrementalRun extends App {
     }
   }
 
-  val modConcbenchmarks: List[String] = List("test/changes/sudoku.scm")
-  val    modFbenchmarks: List[String] = List("test/changes/ring-rotate.scm")
+  val modConcbenchmarks: List[String] = List("test/changes/cscheme/threads/sudoku.scm")
+  val    modFbenchmarks: List[String] = List("test/changes/scheme/ring-rotate.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
   modConcbenchmarks.foreach { bench =>
