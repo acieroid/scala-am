@@ -34,9 +34,7 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
 }
 
 class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadBenchmarks
-                                                                    with SimpleBenchmarks {
-  override def benchmarks(): Set[Benchmark] = Set("test/concurrentScheme/threads/pc.scm")
-}
+                                                                    with SimpleBenchmarks
 
 trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SmallStepTest
