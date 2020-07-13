@@ -175,6 +175,21 @@ object SchemePrelude {
     "ref" -> "(define (ref x) (cons x '()))",
     "deref" -> "(define deref car)",
     "ref-set" -> "(define ref-set set-car!)"
+    /*
+    "ref" -> "(define (ref x) (cons x (new-lock))",
+    "deref" ->
+      """(define (deref r)
+        |  (acquire (cdr r))
+        |  (let ((value (car r)))
+        |    (release (cdr r))
+        |    value))""".stripMargin,
+    "ref-set" ->
+      """(define (ref-set r value)
+        |  (acquire (cdr r))
+        |  (set-car! r value)
+        |  (release (cdr r))
+        |  value)""".stripMargin
+     */
   )
 
   val primDefsParsed: Map[String, SchemeExp] = primDefs.map {

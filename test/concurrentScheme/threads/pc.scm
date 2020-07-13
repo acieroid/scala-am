@@ -1,27 +1,35 @@
 ;; Producer-consumer problem
 (define N (+ 10 (random 42)))
 (define NCONS (random 42))
-(define buffer (ref '()))
+(define buffer (ref '())) ; Protected by lock.
 (define done (ref #f))
 (define lock (new-lock))
+(define done-lock (new-lock))
 (define (do-something element)
   (display element) (newline))
 (define (producer n)
   (if (= n 0)
-      (ref-set done #t)
+      (begin
+        (acquire done-lock)
+        (ref-set done #t)
+        (release done-lock))
       (begin
         (acquire lock)
         (ref-set buffer (cons n (deref buffer)))
         (release lock)
         (producer (- n 1)))))
 (define (consumer)
+  (acquire lock)
   (if (null? (deref buffer))
       (begin
-        (if (deref done)
-            'done
-            (consumer)))
+        (release lock)
+        (acquire done-lock)
+        (let ((res (if (deref done)
+                       'done
+                       (consumer))))
+          (release done-lock)
+          res))
       (begin
-        (acquire lock)
         (do-something (car (deref buffer)))
         (ref-set buffer (cdr (deref buffer)))
         (release lock)
