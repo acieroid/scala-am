@@ -1,4 +1,4 @@
-package scalaam.cli.benchmarks
+package scalaam.cli.experiments
 
 object SchemeBenchmarks {
 

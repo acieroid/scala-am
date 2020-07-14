@@ -1,4 +1,4 @@
-package scalaam.cli.benchmarks.precision
+package scalaam.cli.experiments.precision
 
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Addr

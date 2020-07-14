@@ -1,6 +1,6 @@
-package scalaam.cli.evaluation.primitives
+package scalaam.cli.experiments.primitives
 
-import scalaam.cli.benchmarks._
+import scalaam.cli.experiments._
 import scalaam.language.scheme._
 import scalaam.modular._
 import scalaam.modular.scheme.modf.SchemeModFCompoundSensitivities.SeparateLowHighSensitivity._

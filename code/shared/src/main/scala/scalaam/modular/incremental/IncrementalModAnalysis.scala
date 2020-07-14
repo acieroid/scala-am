@@ -38,17 +38,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
 
-    assert(affected == affectedCheck)
-    /*
-    if (! (affected == affectedCheck)) {
-      System.err.println("Expected: ")
-      affectedCheck.foreach(e => System.err.println(s"* $e"))
-      System.err.println("Found: ")
-      affected.foreach(e => System.err.println(s"* $e"))
-      System.err.println("Mapping: ")
-      throw new Exception("Non-matching sets when detecting affected components.")
-    }
-    */
+    assert(affected == affectedCheck) // Check to ensure correctness. TODO no longer compute affectedCheck, remove this from the final implementation.
 
     affected.foreach(addToWorkList) // Affected should be cleared when there are multiple successive incremental analysis steps.
     analyze(timeout)

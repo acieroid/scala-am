@@ -1,4 +1,4 @@
-package scalaam.cli.benchmarks
+package scalaam.cli.experiments
 
 import scalaam.core.Position._
 import scalaam.language.scheme._
