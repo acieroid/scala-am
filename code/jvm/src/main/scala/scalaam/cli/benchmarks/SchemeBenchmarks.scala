@@ -68,12 +68,12 @@ object SchemeBenchmarks {
     )
 
     val gambit = List(
-      //"test/R5RS/gambit/scheme.scm",
-      //"test/R5RS/gambit/sboyer.scm",
-      //"test/R5RS/gambit/nboyer.scm",
+      "test/R5RS/gambit/scheme.scm",
+      "test/R5RS/gambit/sboyer.scm",
+      "test/R5RS/gambit/nboyer.scm",
       "test/R5RS/gambit/matrix.scm",
-      //"test/R5RS/gambit/peval.scm",
-      //"test/R5RS/gambit/earley.scm", // list->vector
+      "test/R5RS/gambit/peval.scm",
+      "test/R5RS/gambit/earley.scm", // list->vector
       "test/R5RS/gambit/graphs.scm",
       "test/R5RS/gambit/lattice.scm",
       "test/R5RS/gambit/mazefun.scm",
@@ -83,7 +83,7 @@ object SchemeBenchmarks {
       // "test/R5RS/gambit/trav1.scm", // append? or dot notation
       "test/R5RS/gambit/perm9.scm",
       // "test/R5RS/gambit/destruc.scm", // part of gabriel
-      // "test/R5RS/gambit/triangl.scm", // list->vector
+      "test/R5RS/gambit/triangl.scm", // list->vector
       "test/R5RS/gambit/nqueens.scm",
       "test/R5RS/gambit/primes.scm",
       "test/R5RS/gambit/sumloop.scm",
