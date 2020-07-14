@@ -6,7 +6,6 @@ import scalaam.core.Position.Position
 import scalaam.core._
 import scalaam.language.CScheme._
 import scalaam.language.change.CodeVersion._
-import scalaam.language.change._
 import scalaam.util._
 import scalaam.language.sexp._
 import scalaam.util.benchmarks.Timeout
@@ -249,7 +248,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
         case Value.Thread(fut)     => Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf))
         case v                     => throw new Exception(s"Join expected thread, but got $v")
       }
-      case CodeChange(old, nw, _)  => if (version == Old) eval(old, env, timeout, version) else eval(nw, env, timeout, version)
+      case SchemeCodeChange(old, nw, _)  => if (version == Old) eval(old, env, timeout, version) else eval(nw, env, timeout, version)
     }
   }
   def allocateCons(exp: SchemeExp, car: Value, cdr: Value): Value = {
