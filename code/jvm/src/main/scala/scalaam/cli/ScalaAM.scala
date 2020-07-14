@@ -174,7 +174,7 @@ object SimpleTimingTest extends App {
     System.out.flush()
     val text = CSchemeParser.parse(Reader.loadFile(benchmark))
     val a = analysis(text)
-    val to = Timeout.start(Duration(3, MINUTES))
+    val to = Timeout.start(Duration(1, MINUTES))
     val time = Timer.timeOnly(a.analyze(to))
     if (to.reached) {
       System.out.println("timed out.")
@@ -189,9 +189,9 @@ object SimpleTimingTest extends App {
   SchemeBenchmarks.other.foreach(run)
 
   // Actual tests.
-  System.err.println("Run")
-  System.err.flush()
-  SchemeBenchmarks.threads.foreach(run)
+ // System.err.println("Run")
+ // System.err.flush()
+ // SchemeBenchmarks.threads.foreach(run)
 
   // Just copy-paste for this
   object SchemeBenchmarks {
@@ -208,11 +208,12 @@ object SimpleTimingTest extends App {
       files(root).filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
     }
 
-    lazy val other: Set[String] = fromFolder("test/R5RS", ".DS_Store",
-      "quasiquoting.scm", // Uses unquote-splicing.
-      "scm2c.scm", // Uses string->list.
-      "scm2java.scm", // Uses list->string.
-      "Streams.scm", // Uses define-macro.
+    lazy val other: Set[String] = Set(
+      "test/R5RS/gambit/peval.scm",
+      "test/R5RS/gambit/earley.scm", // list->vector
+      "test/R5RS/gambit/scheme.scm",
+      "test/R5RS/gambit/sboyer.scm",
+      "test/R5RS/gambit/nboyer.scm",
     )
 
     lazy val threads: Set[String] = fromFolder("test/concurrentScheme/threads",
