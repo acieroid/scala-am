@@ -8,6 +8,7 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
+import scalaam.modular.scheme.modconc._
 
 object SchemeAnalyses {
 
@@ -80,5 +81,12 @@ object SchemeAnalyses {
       override def workers = n
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
-
+    def modConcAnalysis(prg: SchemeExp, n: Int) = new SimpleSchemeModConcAnalysis(prg)
+                                                    with SchemeModConcNoSensitivity
+                                                    with SchemeConstantPropagationDomain
+                                                    with LIFOWorklistAlgorithm[SchemeExp] {
+        override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
+                                                                with SchemeModFNoSensitivity
+                                                                with RandomWorklistAlgorithm[SchemeExp]
+    }
 }

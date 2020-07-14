@@ -122,7 +122,7 @@ object SchemeBenchmarks {
     "test/R5RS/icp/icp_3_leval.scm",
     // "test/R5RS/icp/icp_4_qeval.scm", // define-syntax, apply, eval
     "test/R5RS/icp/icp_5_regsim.scm",
-    // "test/R5RS/icp/icp_6_stopandcopy_scheme", // vectors
+    "test/R5RS/icp/icp_6_stopandcopy_scheme", // vectors
     "test/R5RS/icp/icp_7_eceval.scm", // too slow
     "test/R5RS/icp/icp_8_compiler.scm"
   )
