@@ -81,10 +81,22 @@ object SchemeAnalyses {
       override def workers = n
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
-    def modConcAnalysis(prg: SchemeExp, n: Int) = new SimpleSchemeModConcAnalysis(prg)
+    def modConcAnalysis(prg: SchemeExp) = new SimpleSchemeModConcAnalysis(prg)
+                                            with SchemeModConcNoSensitivity
+                                            with SchemeConstantPropagationDomain
+                                            with LIFOWorklistAlgorithm[SchemeExp] {
+        override def toString = s"base modconc"
+        override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
+                                                                with SchemeModFNoSensitivity
+                                                                with RandomWorklistAlgorithm[SchemeExp]
+    }
+    def parallelModConc(prg: SchemeExp, n: Int) = new SimpleSchemeModConcAnalysis(prg)
                                                     with SchemeModConcNoSensitivity
                                                     with SchemeConstantPropagationDomain
-                                                    with LIFOWorklistAlgorithm[SchemeExp] {
+                                                    with ParallelWorklistAlgorithm[SchemeExp] {
+        override def workers = n
+        override def toString = s"parallel modconc (n = $workers)"                                               
+        override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
         override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                                 with SchemeModFNoSensitivity
                                                                 with RandomWorklistAlgorithm[SchemeExp]

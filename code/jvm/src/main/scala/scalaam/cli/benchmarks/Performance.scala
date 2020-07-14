@@ -105,20 +105,34 @@ abstract class Performance extends App {
   closeDefaultWriter()
 }
 
-object SimplePerformance extends Performance {
-  def benchmarksSet = Set(
-      "test/R5RS/gambit/scheme.scm",
-      "test/R5RS/gambit/sboyer.scm",
-      "test/R5RS/gambit/nboyer.scm"
-    )
+object ParallelModFPerformance extends Performance {
+  def benchmarksSet = SchemeBenchmarks.standard
   override def benchmarks: List[String] = benchmarksSet.toList
   def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.contextInsensitiveAnalysis, "base"),
+    (SchemeAnalyses.contextInsensitiveAnalysis, "base ModF"),
     (SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
     (SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
     (SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
     (SchemeAnalyses.parallelAnalysis(_,6), "parallel (n = 6)"),
     (SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
   )
+}
+
+object ParallelModConcPerformance extends Performance {
+  def benchmarksSet = SchemeBenchmarks.fromFolder("test/concurrentScheme/threads",
+    "abp.scm",        // Unbound reference: display-recorded.
+    "lastzero2.scm",  // Uses let*, but should use something like letrec*?
+    "phild.scm",      // Unbound reference: bool-top
+  )
+  override def benchmarks: List[String] = benchmarksSet.toList
+  def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  def analyses: List[(SchemeExp => Analysis, String)] = List(
+    (SchemeAnalyses.modConcAnalysis, "base ModConc"),
+    (SchemeAnalyses.parallelModConc(_,1), "parallel (n = 1)"),
+    (SchemeAnalyses.parallelModConc(_,2), "parallel (n = 2)"),
+    (SchemeAnalyses.parallelModConc(_,4), "parallel (n = 4)"),
+    (SchemeAnalyses.parallelModConc(_,6), "parallel (n = 6)"),
+    (SchemeAnalyses.parallelModConc(_,8), "parallel (n = 8)")
+  )  
 }
