@@ -1,6 +1,6 @@
-package scalaam.cli.benchmarks.precision
+package scalaam.cli.experiments.precision
 
-import scalaam.cli.benchmarks._
+import scalaam.cli.experiments._
 import scalaam.language.scheme._
 import scalaam.lattice._
 import scalaam.util._

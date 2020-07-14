@@ -18,7 +18,7 @@ jobs:
       - name: Run precision benchmarks
         uses: lokkju/github-action-sbt@v0.2.2
         with:
-          commands: scalaam/runMain scalaam.cli.benchmarks.precision.DailyPrecisionBenchmarks
+          commands: scalaam/runMain scalaam.cli.experiments.precision.DailyPrecisionBenchmarks
       - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
         with:

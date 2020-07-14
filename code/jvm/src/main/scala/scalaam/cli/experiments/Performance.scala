@@ -1,4 +1,4 @@
-package scalaam.cli.benchmarks
+package scalaam.cli.experiments
 
 import scalaam.language.scheme._
 import scalaam.language.CScheme._

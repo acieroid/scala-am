@@ -1,4 +1,4 @@
-package scalaam.cli.benchmarks
+package scalaam.cli.experiments
 
 // TODO: this is duplicated code from the test suite -> centralize all benchmarks listings in a shared package
 

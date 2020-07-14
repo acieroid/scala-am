@@ -32,23 +32,28 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     case e: ChangeExp[Expr] => Set(e.old) // Assumption: change expressions are not nested.
     case e => e.subexpressions.asInstanceOf[List[Expr]].flatMap(findUpdatedExpressions).toSet
   }
+  /*
+  def findUpdatedExpressions(expr: Expr): Set[Expr] = {
+    var work: List[Expr] = List(expr)
+    var resu: List[Expr] = List()
+    while (work.nonEmpty) {
+      val fst :: rest = work
+      work = rest
+      fst match {
+        case e: ChangeExp[Expr] => resu = e.old :: resu
+        case e => work = SmartAppend.sappend(work, e.subexpressions.asInstanceOf[List[Expr]])
+      }
+    }
+    resu.toSet
+  }
+  */
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(timeout: Timeout.T): Unit = {
     version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
 
-    assert(affected == affectedCheck)
-    /*
-    if (! (affected == affectedCheck)) {
-      System.err.println("Expected: ")
-      affectedCheck.foreach(e => System.err.println(s"* $e"))
-      System.err.println("Found: ")
-      affected.foreach(e => System.err.println(s"* $e"))
-      System.err.println("Mapping: ")
-      throw new Exception("Non-matching sets when detecting affected components.")
-    }
-    */
+    assert(affected == affectedCheck) // Check to ensure correctness. TODO no longer compute affectedCheck, remove this from the final implementation.
 
     affected.foreach(addToWorkList) // Affected should be cleared when there are multiple successive incremental analysis steps.
     analyze(timeout)
