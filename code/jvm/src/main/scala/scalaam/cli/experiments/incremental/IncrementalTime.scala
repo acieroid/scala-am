@@ -118,9 +118,9 @@ trait IncrementalTime[E <: Expression] extends App {
     val incr = Statistics.all(timesIncremental)
     val rean = Statistics.all(timesReanalysis)
 
-    results = results.add(file, "init", Some(init.mea.toInt))
-      .add(file, "incr", if (incrementalTimeout) None else Some(incr.mea.toInt))
-      .add(file, "rean", if (reanalysisTimeout) None else Some(rean.mea.toInt))
+    results = results.add(file, "init", Some(Math.round(init.mea).toInt))
+      .add(file, "incr", if (incrementalTimeout) None else Some(Math.round(incr.mea).toInt))
+      .add(file, "rean", if (reanalysisTimeout) None else Some(Math.round(rean.mea).toInt))
 
     println(s"\nInit: ${init.mea} - Incr: ${incr.mea} - Rean: ${rean.mea}\n")
   }
