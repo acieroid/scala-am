@@ -32,6 +32,21 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     case e: ChangeExp[Expr] => Set(e.old) // Assumption: change expressions are not nested.
     case e => e.subexpressions.asInstanceOf[List[Expr]].flatMap(findUpdatedExpressions).toSet
   }
+  /*
+  def findUpdatedExpressions(expr: Expr): Set[Expr] = {
+    var work: List[Expr] = List(expr)
+    var resu: List[Expr] = List()
+    while (work.nonEmpty) {
+      val fst :: rest = work
+      work = rest
+      fst match {
+        case e: ChangeExp[Expr] => resu = e.old :: resu
+        case e => work = SmartAppend.sappend(work, e.subexpressions.asInstanceOf[List[Expr]])
+      }
+    }
+    resu.toSet
+  }
+  */
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(timeout: Timeout.T): Unit = {

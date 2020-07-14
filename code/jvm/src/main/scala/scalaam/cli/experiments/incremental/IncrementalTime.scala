@@ -71,7 +71,7 @@ trait IncrementalTime[E <: Expression] extends App {
     var incrementalTimeout: Boolean = false
     var reanalysisTimeout:  Boolean = false
 
-    print("\n Measuring:")
+    print("\n Measuring: ")
     var to: Timeout.T = Timeout.none
     for (i <- 1 to actual) {
 
