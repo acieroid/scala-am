@@ -130,8 +130,8 @@ trait IncrementalTime[E <: Expression] extends App {
       try {
         benchmark(b)
       } catch {
-        case e: Exception => writeln(s"Running $b resulted in an exception: ${e.getMessage}")
-        case e: VirtualMachineError => writeln(s"Running $b resulted in an error: ${e.getMessage}")
+        case e: Exception => writeErrln(s"Running $b resulted in an exception: ${e.getMessage}")
+        case e: VirtualMachineError => writeErrln(s"Running $b resulted in an error: ${e.getMessage}")
       }
       println()
     }
@@ -158,8 +158,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): List[String] = List(
     "test/changes/cscheme/threads/sudoku.scm",
-    "test/changes/cscheme/threads/pc.scm",
-    "test/changes/cscheme/threads/fact2.scm")
+    "test/changes/cscheme/threads/pc.scm")
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
