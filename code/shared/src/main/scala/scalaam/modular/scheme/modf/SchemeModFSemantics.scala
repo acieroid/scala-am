@@ -59,9 +59,14 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
     protected def fnBody: SchemeExp = body(view(component))
     protected def fnEnv: Env = view(component) match {
       case Main                           => initialEnv
-      case c: Call[ComponentContext,Addr] => c.env.extend(c.lambda.args.map { id =>
-        (id.name, allocAddr(VarAddr(id)))
-      })
+      case c: Call[ComponentContext,Addr] => 
+        val extEnv = c.env.extend(c.lambda.args.map { id =>
+          (id.name, allocAddr(VarAddr(id)))
+        })
+        c.lambda.varArgId match {
+          case None         => extEnv
+          case Some(varArg) => extEnv.extend(varArg.name, allocAddr(VarAddr(varArg))) 
+        }
     }
     // variable lookup: use the global store
     protected def lookup(id: Identifier, env: Env): Value = env.lookup(id.name) match {

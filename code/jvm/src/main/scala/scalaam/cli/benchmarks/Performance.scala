@@ -1,6 +1,7 @@
 package scalaam.cli.benchmarks
 
 import scalaam.language.scheme._
+import scalaam.language.CScheme._
 import scalaam.modular.ModAnalysis
 import scalaam.util.Writer._
 import scalaam.util._
@@ -33,21 +34,20 @@ abstract class Performance extends App {
   // A variable that holds the results
   var results = Table.empty[Option[Int]]
 
-  setDefaultWriter(open("benchOutput/results.txt"))
-
   // Runs a single analysis multiple times and returns the mean timing (in nanoseconds)
   def run(file: String, analysis: SchemeExp => Analysis): Option[Double] = {
-    val program = SchemeParser.parse(Reader.loadFile(file))
+    val program = CSchemeParser.parse(Reader.loadFile(file))
 
     var times: List[Double] = List()
     var timeout: Boolean = false
 
     // Warm-up.
+    val warmupTimeout = analysisTimeout()
     print(s"* Warmup (${warmup}) - ")
     for (i <- 1 to warmup) {
       print(s"$i ")
       System.gc() // It never hurts (hopefully, because it may cause GC errors...)
-      analysis(program).analyze(analysisTimeout())
+      analysis(program).analyze(warmupTimeout)
     }
 
     print(s"\n* Time (${actual}) - ")
@@ -93,6 +93,8 @@ abstract class Performance extends App {
     }
   }
 
+  // TODO: clean up the Writer interface
+  setDefaultWriter(open(s"benchOutput/results-${System.currentTimeMillis()}.csv"))
   measure()
   val table = results.prettyString(format = {
     case None => "T"
@@ -104,13 +106,19 @@ abstract class Performance extends App {
 }
 
 object SimplePerformance extends Performance {
-  override def benchmarks = List("test/mceval.scm")
+  def benchmarksSet = Set(
+      "test/R5RS/gambit/scheme.scm",
+      "test/R5RS/gambit/sboyer.scm",
+      "test/R5RS/gambit/nboyer.scm"
+    )
+  override def benchmarks: List[String] = benchmarksSet.toList
   def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.contextInsensitiveAnalysis, "base"),
     (SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
     (SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
     (SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
+    (SchemeAnalyses.parallelAnalysis(_,6), "parallel (n = 6)"),
     (SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
   )
 }

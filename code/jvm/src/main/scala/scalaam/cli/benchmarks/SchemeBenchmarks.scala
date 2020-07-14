@@ -68,14 +68,14 @@ object SchemeBenchmarks {
     )
 
     val gambit = List(
-      //"test/R5RS/gambit/scheme.scm",
-      //"test/R5RS/gambit/sboyer.scm",
-      //"test/R5RS/gambit/nboyer.scm",
+      "test/R5RS/gambit/scheme.scm",
+      "test/R5RS/gambit/sboyer.scm",
+      "test/R5RS/gambit/nboyer.scm",
       "test/R5RS/gambit/matrix.scm",
-      //"test/R5RS/gambit/peval.scm",
-      //"test/R5RS/gambit/earley.scm", // list->vector
+      "test/R5RS/gambit/peval.scm",
+      "test/R5RS/gambit/earley.scm", // list->vector
       "test/R5RS/gambit/graphs.scm",
-      "test/R5RS/gambit/scalaam.lattice.scm",
+      "test/R5RS/gambit/lattice.scm",
       "test/R5RS/gambit/mazefun.scm",
       // "test/R5RS/gambit/browse.scm", // part of gabriel
       "test/R5RS/gambit/paraffins.scm",
@@ -83,7 +83,7 @@ object SchemeBenchmarks {
       // "test/R5RS/gambit/trav1.scm", // append? or dot notation
       "test/R5RS/gambit/perm9.scm",
       // "test/R5RS/gambit/destruc.scm", // part of gabriel
-      // "test/R5RS/gambit/triangl.scm", // list->vector
+      "test/R5RS/gambit/triangl.scm", // list->vector
       "test/R5RS/gambit/nqueens.scm",
       "test/R5RS/gambit/primes.scm",
       "test/R5RS/gambit/sumloop.scm",
@@ -115,15 +115,15 @@ object SchemeBenchmarks {
 
 
   val icp = List(
-    // "test/R5RS/icp/icp_1c_ontleed.scm", // too slow
+    "test/R5RS/icp/icp_1c_ontleed.scm", // too slow
     // "test/R5RS/icp/icp_1c_multiple-dwelling.scm", // stack overflows the concrete interpreter
-    // "test/R5RS/icp/icp_1c_prime-sum-pair.scm", // too slow
+    "test/R5RS/icp/icp_1c_prime-sum-pair.scm", // too slow
     "test/R5RS/icp/icp_2_aeval.scm",
     "test/R5RS/icp/icp_3_leval.scm",
     // "test/R5RS/icp/icp_4_qeval.scm", // define-syntax, apply, eval
     "test/R5RS/icp/icp_5_regsim.scm",
     // "test/R5RS/icp/icp_6_stopandcopy_scheme", // vectors
-    // "test/R5RS/icp/icp_7_eceval.scm", // too slow
+    "test/R5RS/icp/icp_7_eceval.scm", // too slow
     "test/R5RS/icp/icp_8_compiler.scm"
   )
 
