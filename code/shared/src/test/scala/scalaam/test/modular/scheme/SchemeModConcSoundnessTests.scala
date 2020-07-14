@@ -46,6 +46,11 @@ class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadB
         "test/concurrentScheme/threads/minimax.scm",
         "test/concurrentScheme/threads/msort.scm",
         "test/concurrentScheme/threads/qsort.scm",
+        "test/R5RS/gambit/peval.scm",
+        "test/R5RS/gambit/earley.scm", // list->vector
+        "test/R5RS/gambit/scheme.scm",
+        "test/R5RS/gambit/sboyer.scm",
+        "test/R5RS/gambit/nboyer.scm",
         "test/concurrentScheme/threads/tsp.scm")(b)
 }
 
@@ -76,6 +81,11 @@ class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with T
           "test/concurrentScheme/threads/minimax.scm",
           "test/concurrentScheme/threads/msort.scm",
           "test/concurrentScheme/threads/qsort.scm",
+          "test/R5RS/gambit/peval.scm",
+          "test/R5RS/gambit/earley.scm", // list->vector
+          "test/R5RS/gambit/scheme.scm",
+          "test/R5RS/gambit/sboyer.scm",
+          "test/R5RS/gambit/nboyer.scm",
           "test/concurrentScheme/threads/tsp.scm")(b)
 
     /* On Bertha with a timeout of 3 minutes:
