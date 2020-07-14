@@ -10,8 +10,8 @@ import scalaam.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 
-object PerformanceType extends Performance {
-  def analysisTimeout() = Timeout.start(Duration(20, MINUTES))
+object PerformanceType extends PerformanceBenchmarks {
+  override def analysisTime = Timeout.start(Duration(20, MINUTES))
   import scalaam.language.scheme.primitives._
   abstract class AnalysisWithManualPrimitives(p: SchemeExp) extends SimpleSchemeModFAnalysis(p) with LIFOWorklistAlgorithm[SchemeExp] {
     override lazy val program = {
@@ -49,9 +49,10 @@ object PerformanceType extends Performance {
     type Value = valueLattice.L
     lazy val lattice = valueLattice.schemeLattice
   }
-
+  def benchmarks = SchemeBenchmarks.standard
   def analyses = List(
     (p => new AnalysisWithPreludedPrimitives(p) with S_CSFA_0, "P"),
     (p => new AnalysisWithManualPrimitives(p) with S_CSFA_0, "M")
   )
+  def main(args: Array[String]) = run()
 }

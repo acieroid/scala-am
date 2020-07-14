@@ -24,13 +24,12 @@ object Writer {
   type Writer = BufferedWriter
 
   val  calendar: Calendar         = Calendar.getInstance()
-  val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH'h'mm")
+  val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
 
   var defaultWriter: Writer = _
 
-  def open(path: String): Writer = {
+  def open(path: String): Writer =
     new BufferedWriter(new FileWriter(path))
-  }
 
   def openTimeStamped(dir: String, file: String): Writer =
     open(dir + format.format(calendar.getTime) + "_" + file)
