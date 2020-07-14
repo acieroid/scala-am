@@ -1,6 +1,5 @@
 package scalaam.language.CScheme
 
-import scalaam.language.change.CodeChange
 import scalaam.language.scheme._
 
 object CSchemeLexicalAddresser extends BaseSchemeLexicalAddresser {
@@ -9,7 +8,7 @@ object CSchemeLexicalAddresser extends BaseSchemeLexicalAddresser {
     case    CSchemeFork(exp, idn) =>    CSchemeFork(translate(exp, scope), idn)
     case    CSchemeJoin(exp, idn) =>    CSchemeJoin(translate(exp, scope), idn)
 
-    case CodeChange(old, nw, idn) =>     CodeChange(translate(old, scope), translate(nw, scope), idn)
+    case SchemeCodeChange(old, nw, idn) =>     SchemeCodeChange(translate(old, scope), translate(nw, scope), idn)
 
     case _                        => super.translate(exp, scope)
   }

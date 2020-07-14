@@ -1,8 +1,7 @@
 package scalaam.language.CScheme
 
 import scalaam.core.Identifier
-import scalaam.language.change.CodeChange
-import scalaam.language.scheme.{BaseSchemeCompiler, SchemeExp}
+import scalaam.language.scheme._
 import scalaam.language.sexp._
 
 import scala.util.control.TailCalls
@@ -26,7 +25,7 @@ object CSchemeCompiler extends BaseSchemeCompiler {
       for {
         oldv <- tailcall(this._compile(old))
         newv <- tailcall(this._compile(nw))
-      } yield CodeChange(oldv, newv, exp.idn)
+      } yield SchemeCodeChange(oldv, newv, exp.idn)
     case SExpPair(SExpId(Identifier("<change>", _)), _, _) =>
       throw new Exception(s"Invalid code change: $exp (${exp.idn}).")
 

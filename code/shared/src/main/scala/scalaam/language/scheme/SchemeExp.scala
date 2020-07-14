@@ -1,6 +1,7 @@
 package scalaam.language.scheme
 
 import scalaam.core._
+import scalaam.language.change.ChangeExp
 import scalaam.language.sexp._
 
 /**
@@ -526,3 +527,8 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp {
   def subexpressions: List[Expression] = List()
   override lazy val hash: Int = (label, value).hashCode()
 }
+
+/**
+ * A code change in a Scheme program.
+ */
+case class SchemeCodeChange(old: SchemeExp, nw: SchemeExp, idn: Identity) extends ChangeExp[SchemeExp] with SchemeExp
