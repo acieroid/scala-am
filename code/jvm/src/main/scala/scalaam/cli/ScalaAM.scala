@@ -85,9 +85,7 @@ object Analyze extends App {
   }
 
   val bench: List[String] = List(
-  "test/concurrentScheme/threads/msort.scm",
-  "test/concurrentScheme/threads/qsort.scm",
-  "test/concurrentScheme/threads/tsp.scm",
+  "test/changes/cscheme/threads/mcarlo.scm"
   )
 
   bench.foreach({b =>
@@ -142,9 +140,10 @@ object IncrementalRun extends App {
   }
 
   val modConcbenchmarks: List[String] = List(
-    "test/changes/cscheme/threads/sudoku.scm",
-    "test/changes/cscheme/threads/pc.scm",
-    "test/changes/cscheme/threads/stm.scm"
+    "test/changes/cscheme/threads/mcarlo2.scm"
+    //"test/changes/cscheme/threads/sudoku.scm",
+    //"test/changes/cscheme/threads/pc.scm",
+    //"test/changes/cscheme/threads/stm.scm"
    )
   val    modFbenchmarks: List[String] = List("test/changes/scheme/ring-rotate.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))

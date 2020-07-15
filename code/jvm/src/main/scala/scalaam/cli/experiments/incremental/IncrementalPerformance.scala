@@ -38,7 +38,8 @@ trait IncrementalTime[E <: Expression] extends App {
   sealed trait Result
   case class Finished(mean: Long, stddev: Long) extends Result { override def toString: String = s"$mean±$stddev" }
   case object Timedout extends Result { override def toString: String = "∞" }
-  case object NotRun   extends Result { override def toString: String = "-" }
+  case object NotRun   extends Result { override def toString: String = " " }
+  case object Errored  extends Result { override def toString: String = "E" }
 
   var results: Table[Result] = Table.empty.withDefaultValue(NotRun)
 
@@ -88,7 +89,7 @@ trait IncrementalTime[E <: Expression] extends App {
       val tb = Timer.timeOnly({a.analyze(to)})
       if (to.reached) {
         // The base line analysis timed out. Abort.
-        println("    => Base analysis timed out.")
+        println(" => Base analysis timed out.")
         results = results.add(file, "init", Timedout).add(file, "incr", NotRun).add(file, "rean", NotRun)
         return
       }
@@ -133,12 +134,14 @@ trait IncrementalTime[E <: Expression] extends App {
   }
 
   def measure(): Unit = {
-    benchmarks().foreach { b =>
+    benchmarks().foreach { file =>
       try {
-        benchmark(b)
+        benchmark(file)
       } catch {
-        case e: Exception => writeErrln(s"Running $b resulted in an exception: ${e.getMessage}")
-        case e: VirtualMachineError => writeErrln(s"Running $b resulted in an error: ${e.getMessage}")
+        case e: Exception => writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
+          results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
+        case e: VirtualMachineError => writeErrln(s"Running $file resulted in an error: ${e.getMessage}")
+          results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
       }
       println()
     }
@@ -163,7 +166,11 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): List[String] = List(
     "test/changes/cscheme/threads/sudoku.scm",
     "test/changes/cscheme/threads/pc.scm",
-    "test/changes/cscheme/threads/stm.scm")
+    "test/changes/cscheme/threads/stm.scm",
+    "test/changes/cscheme/threads/actors.scm",
+    //"test/changes/cscheme/threads/mcarlo.scm",
+    //"test/changes/cscheme/threads/mcarlo2.scm"
+  )
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
