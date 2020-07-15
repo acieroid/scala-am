@@ -21,7 +21,7 @@ trait AbstractSchemeDomain extends SchemeSemantics {
 trait SchemeTypeDomain extends AbstractSchemeDomain {
   // use type domains everywhere, except for booleans
   type S    = Type.S
-  type B    = Concrete.B
+  type B    = ConstantPropagation.B
   type I    = Type.I
   type R    = Type.R
   type C    = Type.C

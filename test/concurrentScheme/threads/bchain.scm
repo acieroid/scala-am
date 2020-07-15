@@ -9,10 +9,6 @@
                        (loop (- i 1) (cons i acc))))))
     (loop (- b 1) '())))
 
-
-
-
-
 (define (block-index b)
   (cadr b))
 (define (block-prev-hash b)
