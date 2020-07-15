@@ -553,9 +553,10 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     object Modulo extends SimplePrim {
       val name = "modulo"
       def call(args: List[Value], position: Position): Value = args match {
-        case Value.Integer(x) :: Value.Integer(y) :: Nil =>
+        case Value.Integer(x) :: Value.Integer(y) :: Nil if y != 0 =>
           Value.Integer(scalaam.lattice.MathOps.modulo(x, y))
-        case _ => throw new Exception(s"modulo ($position): invalid arguments $args")
+        case _ :: _ :: Nil => throw new Exception(s"$name ($position): illegal computation: modulo zero")
+        case _ => throw new Exception(s"$name ($position): invalid arguments $args")
       }
     }
 

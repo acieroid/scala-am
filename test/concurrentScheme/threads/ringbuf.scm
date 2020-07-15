@@ -40,7 +40,7 @@
 (define NWR (random 42))
 (define NRD (random 42))
 (define Iterations (random 42))
-(define Size (random 42))
+(define Size (+ 1 (random 42)))
 (define (do-n n f)
   (if (= n 0)
       '()
