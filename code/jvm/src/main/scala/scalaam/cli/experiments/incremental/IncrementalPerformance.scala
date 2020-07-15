@@ -36,7 +36,7 @@ trait IncrementalTime[E <: Expression] extends App {
 
   // The results of the evaluation.
   sealed trait Result
-  case class Finished(mean: Int, stddev: Int) extends Result { override def toString: String = s"$mean±$stddev" }
+  case class Finished(mean: Long, stddev: Long) extends Result { override def toString: String = s"$mean±$stddev" }
   case object Timedout extends Result { override def toString: String = "∞" }
   case object NotRun   extends Result { override def toString: String = "-" }
 
@@ -125,9 +125,9 @@ trait IncrementalTime[E <: Expression] extends App {
     val rean = Statistics.all(timesReanalysis)
 
     results = results
-      .add(file, "init", Finished(Math.round(init.mea).toInt, Math.round(init.std).toInt))
-      .add(file, "incr", if (incrementalTimeout) Timedout else Finished(Math.round(incr.mea).toInt, Math.round(incr.std).toInt))
-      .add(file, "rean", if ( reanalysisTimeout) Timedout else Finished(Math.round(rean.mea).toInt, Math.round(rean.std).toInt))
+      .add(file, "init", Finished(Math.round(init.mea), Math.round(init.std)))
+      .add(file, "incr", if (incrementalTimeout) Timedout else Finished(Math.round(incr.mea), Math.round(incr.std)))
+      .add(file, "rean", if ( reanalysisTimeout) Timedout else Finished(Math.round(rean.mea), Math.round(rean.std)))
 
     println(s"\n    => Init: ${init.mea} - Incr: ${incr.mea} - Rean: ${rean.mea}\n")
   }
@@ -162,7 +162,8 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): List[String] = List(
     "test/changes/cscheme/threads/sudoku.scm",
-    "test/changes/cscheme/threads/pc.scm")
+    "test/changes/cscheme/threads/pc.scm",
+    "test/changes/cscheme/threads/stm.scm")
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
