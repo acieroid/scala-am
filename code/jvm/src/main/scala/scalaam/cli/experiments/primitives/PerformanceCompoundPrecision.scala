@@ -10,11 +10,10 @@ import scalaam.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 
-object PerformanceCompoundPrecision extends Performance {
+object PerformanceCompoundPrecision extends PerformanceBenchmarks {
   abstract class CompoundPrecisionAnalysis(p: SchemeExp) extends SimpleSchemeModFAnalysis(p) with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] with StandardSchemeModFComponents
-
-  def analysisTimeout() = Timeout.start(Duration(2, MINUTES))
-
+  override def analysisTime = Timeout.start(Duration(2, MINUTES))
+  def benchmarks = SchemeBenchmarks.standard
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (p => new CompoundPrecisionAnalysis(p) with S_0_0, "0_0"),
     (p => new CompoundPrecisionAnalysis(p) with S_CS_0, "CS_0"),
@@ -27,4 +26,5 @@ object PerformanceCompoundPrecision extends Performance {
     (p => new CompoundPrecisionAnalysis(p) with S_10FA_0, "10FA_0"),
     (p => new CompoundPrecisionAnalysis(p) with S_CSFA_0, "CSFA_0"),
   )
+  def main(args: Array[String]) = run()
 }

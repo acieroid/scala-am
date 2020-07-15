@@ -1,6 +1,35 @@
 package scalaam.cli.experiments
 
+// TODO: this is duplicated code from the test suite -> centralize all benchmarks listings in a shared package
+
+import java.io.File
+import scala.util.Random
+
 object SchemeBenchmarks {
+
+  def files(dir: File): Array[File] = {
+    val lst = dir.listFiles()
+    if (lst == null) Array()
+    else lst
+  }
+
+  // Just include an entire folder of programs, except some that are explicitly specified. The directory name should not end with a "/".
+  def fromFolderR(directory: String, exclude: String*): Set[String] = {
+    def recur(dir: File): Array[File] = {
+      val here = files(dir)
+      val (dr, noDr) = here.partition(_.isDirectory)
+      noDr ++ dr.flatMap(recur)
+    }
+    val root = new File(directory)
+    val base = root.getAbsolutePath.length - directory.length
+    recur(root).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
+  }
+
+  def fromFolder(directory: String, exclude: String*): Set[String] = {
+    val root = new File(directory)
+    val base = root.getAbsolutePath.length - directory.length
+    files(root).filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
+  }
 
     // A full up-to-date list of benchmarks is present in scalaam.test.SchemeBenchmarks.
 
@@ -122,7 +151,7 @@ object SchemeBenchmarks {
     "test/R5RS/icp/icp_3_leval.scm",
     // "test/R5RS/icp/icp_4_qeval.scm", // define-syntax, apply, eval
     "test/R5RS/icp/icp_5_regsim.scm",
-    // "test/R5RS/icp/icp_6_stopandcopy_scheme", // vectors
+    "test/R5RS/icp/icp_6_stopandcopy_scheme", // vectors
     "test/R5RS/icp/icp_7_eceval.scm", // too slow
     "test/R5RS/icp/icp_8_compiler.scm"
   )

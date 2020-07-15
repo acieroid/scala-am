@@ -2,7 +2,7 @@ package scalaam.modular
 
 import scalaam.core._
 
-case class ReturnAddr(val exp: Expression) extends Address { 
+case class ReturnAddr(exp: Expression) extends Address { 
   def printable = true 
   def idn = exp.idn
 } 

@@ -42,12 +42,14 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         case MainThread             => (program, initialEnv)
         case Thread(bdy, env, _)    => (bdy, env)
     }
+    type ComponentContext = (SchemeModFComponent[_, _], ProcessContext)
     def context(cmp: Component) = view(cmp) match {
-        case MainThread             => None
-        case Thread(_, _, ctx)      => Some(ctx)
+        case MainThread         => None
+        case Thread(_, _, ctx)  => Some(ctx)
     }
     // parameterize to allow different sensitivities for threads
-    def allocCtx(exp: SchemeExp, env: Env, caller: Component): ComponentContext
+    type ProcessContext
+    def allocCtx(exp: SchemeExp, env: Env, caller: Component): ProcessContext
 
     //
     // MODCONC INTRA-ANALYSIS
@@ -106,7 +108,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                 case _                      => super.eval(exp, env)   
             }
             private def evalFork(exp: SchemeExp, env: Env) = {
-                val ctx = inter.allocCtx(exp, env, intra.component)
+                val ctx = (component, inter.allocCtx(exp, env, intra.component))
                 val targetCmp = inter.newComponent(Thread(exp, env, ctx))
                 spawnThread(targetCmp)
                 lattice.thread(targetCmp)
@@ -140,7 +142,8 @@ class MyModConcAnalysis1(prg: SchemeExp) extends SimpleSchemeModConcAnalysis(prg
                                             with SchemeModConcNoSensitivity
                                             with SchemeConstantPropagationDomain
                                             with LIFOWorklistAlgorithm[SchemeExp] {
-    def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
+    override def modFAnalysis(intra: SchemeModConcIntra) = new ModFAnalysis(intra)
+    class ModFAnalysis(intra: SchemeModConcIntra) extends InnerModFAnalysis(intra)
                                                     with SchemeModFNoSensitivity
                                                     with RandomWorklistAlgorithm[SchemeExp]
 }

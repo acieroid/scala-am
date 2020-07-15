@@ -8,14 +8,14 @@ import scalaam.language.CScheme._
 
 // A SchemeModConcComponent represents threads
 sealed trait SchemeModConcComponent[+Context, +Addr <: Address] extends SmartHash
-// The main function call, i.e. the entry point of the program (corresponding to all top-level code)
+// The main thread
 case object MainThread extends SchemeModConcComponent[Nothing,Nothing] {
   override def toString: String = "main-thread"
 }
-// A call to a specific closure
-case class Thread[Context,Addr <: Address](exp: SchemeExp,
-                                           env: Environment[Addr],
-                                           ctx: Context) extends SchemeModConcComponent[Context,Addr] { 
+// A thread that was spawned in some component
+case class Thread[Context, Addr <: Address](exp: SchemeExp,
+                                            env: Environment[Addr],
+                                            ctx: Context) extends SchemeModConcComponent[Context,Addr] { 
   override def toString: String = s"thread@${exp.idn}"
 }
 

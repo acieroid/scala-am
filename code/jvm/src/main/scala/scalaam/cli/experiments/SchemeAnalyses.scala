@@ -8,6 +8,7 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
+import scalaam.modular.scheme.modconc._
 
 object SchemeAnalyses {
 
@@ -80,5 +81,24 @@ object SchemeAnalyses {
       override def workers = n
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
-
+    def modConcAnalysis(prg: SchemeExp) = new SimpleSchemeModConcAnalysis(prg)
+                                            with SchemeModConcNoSensitivity
+                                            with SchemeConstantPropagationDomain
+                                            with LIFOWorklistAlgorithm[SchemeExp] {
+        override def toString = s"base modconc"
+        override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
+                                                                with SchemeModFCallSiteSensitivity
+                                                                with RandomWorklistAlgorithm[SchemeExp]
+    }
+    def parallelModConc(prg: SchemeExp, n: Int) = new SimpleSchemeModConcAnalysis(prg)
+                                                    with SchemeModConcNoSensitivity
+                                                    with SchemeConstantPropagationDomain
+                                                    with ParallelWorklistAlgorithm[SchemeExp] {
+        override def workers = n
+        override def toString = s"parallel modconc (n = $workers)"                                               
+        override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
+        override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
+                                                                with SchemeModFCallSiteSensitivity
+                                                                with RandomWorklistAlgorithm[SchemeExp]
+    }
 }

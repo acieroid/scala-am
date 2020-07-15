@@ -3,7 +3,6 @@ package scalaam.cli.experiments
 import scalaam.language.scheme._
 import scalaam.language.CScheme._
 import scalaam.modular.ModAnalysis
-import scalaam.util.Writer._
 import scalaam.util._
 import scalaam.util.benchmarks._
 
@@ -11,114 +10,136 @@ import scala.concurrent.duration._
 
 // TODO: rename to PerformanceEvaluation?
 // TODO: move to evaluation package?
-abstract class Performance extends App {
-
-  // The number of warmup runs, for which the timing is discarded
-  val warmup = 5
-  // The actual number of runs made after `warmup` runs
-  val actual = 15
-
-  // The list of benchmarks used for the evaluation
-  def benchmarks: List[String] = SchemeBenchmarks.standard.toList.take(1)
+trait PerformanceBenchmarks {
 
   type Analysis = ModAnalysis[SchemeExp]
+
+  // Configuring the warm-up
+  def maxWarmupRuns = 5                                     // maximum number of warm-up runs 
+  def maxWarmupTime = Timeout.start(Duration(1, MINUTES))   // maximum time to spend on warm-up *in total* (i.e., for all runs)
+
+  // Configuring the analysis runs
+  def analysisRuns = 15                                     // number of analysis runs
+  def analysisTime = Timeout.start(Duration(2, MINUTES))    // maximum time to spend *on a single analysis run*
+
+  // The list of benchmarks used for the evaluation
+  type Benchmark = String
+  def benchmarks: Iterable[Benchmark]
 
   // The analyses that are evaluated (and their names)
   def analyses: List[(SchemeExp => Analysis, String)]
 
-  // The timeout for the analyses
-  // Unspecified because it make sense that all performance analyses choose their timeout.
-  // Example: Timeout.start(Duration(2, MINUTES))
-  def analysisTimeout(): Timeout.T
-
   // A variable that holds the results
-  var results = Table.empty[Option[Int]]
+  sealed trait PerformanceResult
+  case class Completed(results: Statistics.M) extends PerformanceResult
+  case object TimedOut extends PerformanceResult
+  case object NoData extends PerformanceResult
 
-  // Runs a single analysis multiple times and returns the mean timing (in nanoseconds)
-  def run(file: String, analysis: SchemeExp => Analysis): Option[Double] = {
+  var results = Table.empty[PerformanceResult].withDefaultValue(NoData)
+
+  def format(res: PerformanceResult): String = res match {
+    case Completed(results) => results.mea.toInt.toString
+    case TimedOut           => "TIMEOUT"
+    case NoData             => "_"
+  }
+
+  // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
+  def measureAnalysis(file: String, analysis: SchemeExp => Analysis): PerformanceResult = {
+    // Parse the program
     val program = CSchemeParser.parse(Reader.loadFile(file))
-
-    var times: List[Double] = List()
-    var timeout: Boolean = false
-
-    // Warm-up.
-    val warmupTimeout = analysisTimeout()
-    print(s"* Warmup (${warmup}) - ")
-    for (i <- 1 to warmup) {
+    // Warm-up
+    print(s"* WARM-UP ($maxWarmupRuns) - ")
+    val warmupTimeout = maxWarmupTime
+    for (i <- 1 to maxWarmupRuns) {
       print(s"$i ")
       System.gc() // It never hurts (hopefully, because it may cause GC errors...)
       analysis(program).analyze(warmupTimeout)
     }
-
-    print(s"\n* Time (${actual}) - ")
-    for (i <- 1 to actual) {
-      if (!timeout) { // Only run if there has been no timeout
-        print(s"$i ")
-        val a = analysis(program)
-        System.gc()
-        val t = Timer.timeOnly({a.analyze(analysisTimeout())})
-        if (a.finished()) {
-          times = (t.toDouble / 1000000) :: times
-        } else {
-          // Analysis timed out
-          timeout = true
-        }
+    print("\n")
+    // Actual timing
+    print(s"* RUNS ($analysisRuns) - ")
+    var times: List[Double] = List()
+    for (i <- 1 to analysisRuns) {
+      print(s"$i ")
+      val a = analysis(program)
+      System.gc()
+      val t = Timer.timeOnly { a.analyze(analysisTime) }
+      if (a.finished()) {
+        times = (t.toDouble / 1000000) :: times
+      } else {
+        return TimedOut  // immediately return
       }
     }
-    print(s"\n")
-    if (timeout) {
-      println(s"TIMED OUT. Times that succeeded: $times")
-      None
-    } else {
-      val m = Statistics.all(times)
-      println(m.toString)
-      Some(m.mea)
-    }
+    print("\n")
+    // Compute, print and return the results
+    val result = Statistics.all(times)
+    println(result)
+    Completed(result)
   }
 
   // Runs the evaluation
-  def measure(): Unit = {
-    benchmarks.foreach { b =>
-      analyses.foreach { case (a, name) =>
-        try {
-          println(s"***** $b / $name *****")
-          val time = run(b, a)
-          // We store the results in ms
-          results = results.add(b, name, time.map(_.toInt))
-        } catch {
-          case e: Exception => writeln(s"Running $b resulted in an exception: ${e.getMessage}")
-          case e: VirtualMachineError => writeln(s"Running $b resulted in an error: ${e.getMessage}")
+  def measureBenchmark(benchmark: Benchmark, timeoutFast: Boolean = true, failFast: Boolean = true): Unit =
+    analyses.foreach { case (analysis, name) =>
+      try {
+        println(s"***** Running $name on $benchmark *****")
+        val result = measureAnalysis(benchmark, analysis)
+        results = results.add(benchmark, name, result)
+        result match {
+          case TimedOut if timeoutFast => return ()
+          case _ => () 
         }
+      } catch {
+        case e: Exception =>
+          println(s"Encountered an exception: ${e.getMessage}")
+          if (failFast) return ()
+        case e: VirtualMachineError => 
+          System.gc()
+          println(s"Running $benchmark resulted in an error: ${e.getMessage}")
+          if (failFast) return ()
       }
     }
-  }
 
-  // TODO: clean up the Writer interface
-  setDefaultWriter(open(s"benchOutput/results-${System.currentTimeMillis()}.csv"))
-  measure()
-  val table = results.prettyString(format = {
-    case None => "T"
-    case Some(v) => v.toString()
-  })
-  println(table)
-  write(table)
-  closeDefaultWriter()
+  def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true) = 
+    benchmarks.foreach(b => measureBenchmark(b, timeoutFast, failFast))
+
+  def printResults() = 
+    println(results.prettyString(format = format))
+  def exportCSV(dir: String, file: String) = {
+    val hdl = Writer.openTimeStamped(dir, file)
+    val csv = results.toCSVString(format = format)
+    Writer.write(hdl, csv)
+    Writer.close(hdl) 
+  } 
+
+  def run(dir: String = "benchOutput/", file: String = "output.csv", timeoutFast: Boolean = true, failFast: Boolean = true) = {
+    measureBenchmarks(timeoutFast, failFast)
+    printResults()
+    exportCSV(dir, file)
+  }
 }
 
-object SimplePerformance extends Performance {
-  def benchmarksSet = Set(
-      "test/R5RS/gambit/scheme.scm",
-      "test/R5RS/gambit/sboyer.scm",
-      "test/R5RS/gambit/nboyer.scm"
-    )
-  override def benchmarks: List[String] = benchmarksSet.toList
-  def analysisTimeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+object ParallelModFPerformance extends PerformanceBenchmarks {
+  def benchmarks = Set("test/R5RS/mceval.scm")
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.contextInsensitiveAnalysis, "base"),
-    (SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
-    (SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
-    (SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
-    (SchemeAnalyses.parallelAnalysis(_,6), "parallel (n = 6)"),
-    (SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
+    (SchemeAnalyses.contextInsensitiveAnalysis, "base ModF")
+    //(SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
+    //(SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
+    //(SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
+    //(SchemeAnalyses.parallelAnalysis(_,6), "parallel (n = 6)"),
+    //(SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
   )
+  def main(args: Array[String]) = run()
+}
+
+object ParallelModConcPerformance extends PerformanceBenchmarks {
+  def benchmarks = SchemeBenchmarks.fromFolder("test/concurrentScheme/threads/variations")
+  def analyses: List[(SchemeExp => Analysis, String)] = List(
+    (SchemeAnalyses.modConcAnalysis, "base ModConc"),
+    (SchemeAnalyses.parallelModConc(_,1), "parallel (n = 1)"),
+    (SchemeAnalyses.parallelModConc(_,2), "parallel (n = 2)"),
+    (SchemeAnalyses.parallelModConc(_,4), "parallel (n = 4)"),
+    (SchemeAnalyses.parallelModConc(_,6), "parallel (n = 6)"),
+    (SchemeAnalyses.parallelModConc(_,8), "parallel (n = 8)")
+  )  
+  def main(args: Array[String]) = run()
 }
