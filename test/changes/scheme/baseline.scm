@@ -1,0 +1,6 @@
+(let ((square (lambda (x) (* x x)))
+      (double (lambda (x) (+ x x))))
+   (let ((a (square 10))
+         (b ((<change> square double) 20))
+         (c (square 30)))
+	  (+ a b c)))

@@ -139,8 +139,10 @@ trait IncrementalTime[E <: Expression] extends App {
         benchmark(file)
       } catch {
         case e: Exception => writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
+          println()
           results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
         case e: VirtualMachineError => writeErrln(s"Running $file resulted in an error: ${e.getMessage}")
+          println()
           results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
       }
       println()
