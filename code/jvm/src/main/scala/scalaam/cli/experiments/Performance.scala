@@ -38,7 +38,7 @@ trait PerformanceBenchmarks {
   var results = Table.empty[PerformanceResult].withDefaultValue(NoData)
 
   def format(res: PerformanceResult): String = res match {
-    case Completed(results) => results.mea.toInt.toString
+    case Completed(results) => Math.round(results.mea).toString
     case TimedOut           => "TIMEOUT"
     case NoData             => "_"
   }
