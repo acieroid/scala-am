@@ -20,7 +20,7 @@ jobs:
       script: sbt "scalaam/testOnly -- -n PrimitiveTest"
     - stage: test
       name: "ModF Soundness Tests"
-      script: travis_wait 30 sbt "scalaam/testOnly -- -n SchemeModFTest -l SlowTest"
+      script: travis_wait 30 sbt "scalaam/testOnly -- -n SchemeModFTest -l IncrementalTest -l SlowTest"
     - stage: test
       name: "SmallStep ModConc Soundness Tests"
       script: travis_wait 30 sbt "scalaam/testOnly -- -n SchemeModConcTest -n SmallStepTest -l IncrementalTest -l BigStepTest -l SlowTest"
