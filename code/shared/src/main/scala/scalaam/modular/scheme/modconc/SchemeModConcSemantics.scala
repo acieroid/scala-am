@@ -53,9 +53,10 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     type ProcessContext
     def allocCtx(exp: SchemeExp, env: Env, caller: Component): ProcessContext
 
-    type AllocationContext = SchemeModFComponent
-    def allocVar(id: Identifier, modFCmp: SchemeModFComponent, cmp: Component) = VarAddr(id,modFCmp)
-    def allocPtr(exp: SchemeExp, modFCmp: SchemeModFComponent, cmp: Component) = PtrAddr(exp,modFCmp)
+    // allocating addresses
+    type AllocationContext
+    def allocVar(id: Identifier, modFCmp: SchemeModFComponent, cmp: Component): VarAddr[AllocationContext]
+    def allocPtr(exp: SchemeExp, modFCmp: SchemeModFComponent, cmp: Component): PtrAddr[AllocationContext]
 
     //
     // MODCONC INTRA-ANALYSIS
@@ -142,6 +143,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
 // convenience constructor
 abstract class SimpleSchemeModConcAnalysis(prg: SchemeExp) extends ModAnalysis(prg)
                                                               with SchemeModConcSemantics
+                                                              with StandardSchemeModConcAllocator
                                                               with StandardSchemeModConcComponents
 
 // examples
