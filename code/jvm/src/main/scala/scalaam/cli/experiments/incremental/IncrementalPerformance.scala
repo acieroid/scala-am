@@ -131,7 +131,7 @@ trait IncrementalTime[E <: Expression] {
       .add(file, "incr", if (incrementalTimeout) Timedout else Finished(Math.round(incr.mea), Math.round(incr.std)))
       .add(file, "rean", if ( reanalysisTimeout) Timedout else Finished(Math.round(rean.mea), Math.round(rean.std)))
 
-    println(s"\n    => Init: ${init.mea} - Incr: ${incr.mea} - Rean: ${rean.mea}\n")
+    println(s"\n    => Init: ${init.mea} - Incr: ${incr.mea} - Rean: ${rean.mea}")
   }
 
   def measure(): Unit = {
@@ -153,7 +153,7 @@ trait IncrementalTime[E <: Expression] {
   def main(args: Array[String]): Unit = {
     setDefaultWriter(open(s"benchOutput/results-incremental-performance-${System.currentTimeMillis()}.csv"))
     measure()
-    val table: String = results.prettyString()
+    val table: String = results.prettyString(columns = List("init", "rean", "incr"))
     println(table)
     write(table)
     closeDefaultWriter()
