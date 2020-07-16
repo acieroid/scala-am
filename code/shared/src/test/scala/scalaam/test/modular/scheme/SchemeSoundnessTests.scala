@@ -17,8 +17,10 @@ import scalaam.util.benchmarks.Timeout
 import scala.concurrent.duration._
 
 trait SchemeSoundnessTests extends SchemeBenchmarkTests {
-  // analysis must support Scheme's ModF Semantics
-  type Analysis = ModAnalysis[SchemeExp] with SchemeSemantics
+  // analysis must support basic Scheme semantics
+  type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
+                                         with ReturnValue[SchemeExp]
+                                         with SchemeDomain
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis

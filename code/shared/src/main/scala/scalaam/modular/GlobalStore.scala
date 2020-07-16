@@ -2,37 +2,22 @@ package scalaam.modular
 
 import scalaam.core._
 
-sealed trait A[+Component] extends Address { 
-  // has an underlying "local" address
-  def addr: Address 
-  // delegate methods to the underlying address
-  def printable = addr.printable
-  def idn = addr.idn
-}
-case class GlobalAddr(addr: Address) extends A[Nothing]                                
-case class ComponentAddr[Component](cmp: Component, addr: Address) extends A[Component]
-
 /**
  * An analysis with a global store.
  * @tparam Expr The type of the expressions under analysis.
  */
-trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
+trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] 
+                                        with AbstractDomain[Expr] { inter =>
 
-  // parameterized by the type of address and abstract values
-  type Addr <: Address
-  type Value
-  implicit val lattice: Lattice[Value]
+  // TODO: should we parameterize this for more type-safety, or do we not care about that for addresses?
+  type Addr = Address
 
   // parameterized by some store that can be accessed and modified
   var store: Map[Addr, Value]
 
-  // parameterized by how addresses are allocated
-  def sharedAddr(addr: Address): Addr
-  def componentAddr(cmp: Component, addr: Address): Addr 
-
   // Dependency that is triggered when an abstract value at address 'addr' is updated
   case class AddrDependency(addr: Addr) extends Dependency {
-    override def toString(): String = s"$addr"
+    override def toString(): String = s"AddrDep($addr)"
   }
 
   private def updateAddr(store: Map[Addr,Value], addr: Addr, value: Value): Option[Map[Addr,Value]] = 
@@ -51,9 +36,6 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
   trait GlobalStoreIntra extends super.IntraAnalysis { intra => 
     // local copy of the global store
     var store = inter.store
-    // allocating an address
-    def allocAddr(addr: Address): Addr =
-      componentAddr(component, addr)
     // reading addresses in the global store
     def readAddr(addr: Addr): Value = {
       register(AddrDependency(addr))
@@ -88,14 +70,4 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
       def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
     }
   }
-}
-
-trait DedicatedGlobalStore[Expr <: Expression] extends GlobalStore[Expr] { inter => 
-  // a store is just a fresh and empty map
-  var store: Map[Addr,Value] = Map.empty
-  // addresses are component addresses
-  type Addr = A[Component]
-  // allocating addresses
-  def componentAddr(cmp: Component, addr: Address) = ComponentAddr(cmp, addr)
-  def sharedAddr(addr: Address) = GlobalAddr(addr)
 }

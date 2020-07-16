@@ -14,40 +14,49 @@ import scalaam.util._
  * Base definitions for a Scheme MODF analysis.
  */
 // TODO: Most of this can be factored out to SchemeSemantics
-trait BaseSchemeModFSemantics extends SchemeSemantics
+trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
+                                 with GlobalStore[SchemeExp]
+                                 with ReturnValue[SchemeExp]
+                                 with SchemeDomain
                                  with ContextSensitiveComponents[SchemeExp] {
 
-  //XXXXXXXXXXXXXXXXXXXXXXXXX//
-  // COMPONENTS AND CONTEXTS //
-  //XXXXXXXXXXXXXXXXXXXXXXXXX//
+  // the environment in which the ModF analysis is executed
+  type Env = Environment[Addr]     
+  def baseEnv: Env
 
   // In ModF, components are function calls in some context.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
 
-  def view(cmp: Component): SchemeModFComponent[ComponentContext,Addr]
+  def view(cmp: Component): SchemeModFComponent
 
   def expr(cmp: Component): SchemeExp = body(cmp)
   def body(cmp: Component): SchemeExp = body(view(cmp))
-  def body(cmp: SchemeModFComponent[ComponentContext,Addr]): SchemeExp = cmp match {
-    case Main                           => program 
-    case c: Call[ComponentContext,Addr] => SchemeBody(c.lambda.body)
+  def body(cmp: SchemeModFComponent): SchemeExp = cmp match {
+    case Main                       => program 
+    case c: Call[ComponentContext]  => SchemeBody(c.lambda.body)
   }
 
   type ComponentContent = Option[lattice.Closure]
   def content(cmp: Component) = view(cmp) match {
-    case Main                           => None
-    case c: Call[ComponentContext,Addr] => Some(c.clo)
+    case Main                       => None
+    case c: Call[ComponentContext]  => Some(c.clo)
   }
   def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
-    case Main                           => None
-    case c: Call[ComponentContext,Addr] => Some(c.ctx)
+    case Main                       => None
+    case c: Call[ComponentContext]  => Some(c.ctx)
   }
 
   /** Creates a new component, given a closure, context and an optional name. */
-  def newComponent(call: Call[ComponentContext,Addr]): Component
+  def newComponent(call: Call[ComponentContext]): Component
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext
+
+  /** Allocation contexts */
+  // TODO: parameterize
+  type AllocationContext = Component
+  def allocVar(id: Identifier, cmp: Component): VarAddr[AllocationContext] = VarAddr(id,cmp)
+  def allocPtr(exp: SchemeExp, cmp: Component): PtrAddr[AllocationContext] = PtrAddr(exp,cmp)
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -58,14 +67,14 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
     // components
     protected def fnBody: SchemeExp = body(view(component))
     protected def fnEnv: Env = view(component) match {
-      case Main                           => initialEnv
-      case c: Call[ComponentContext,Addr] => 
+      case Main                           => baseEnv
+      case c: Call[ComponentContext]      => 
         val extEnv = c.env.extend(c.lambda.args.map { id =>
-          (id.name, allocAddr(VarAddr(id)))
+          (id.name, allocVar(id, component))
         })
         c.lambda.varArgId match {
           case None         => extEnv
-          case Some(varArg) => extEnv.extend(varArg.name, allocAddr(VarAddr(varArg))) 
+          case Some(varArg) => extEnv.extend(varArg.name, allocVar(varArg, component)) 
         }
     }
     // variable lookup: use the global store
@@ -80,7 +89,7 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
     protected def assign(bds: List[(Identifier,Value)], env: Env): Unit = 
       bds.foreach { case (id,vlu) => assign(id,env,vlu) }
     protected def bind(id: Identifier, env: Env, vlu: Value): Env = {
-      val addr = allocAddr(VarAddr(id))
+      val addr = allocVar(id, component)
       val env2 = env.extend(id.name,addr)
       writeAddr(addr,vlu)
       env2
@@ -125,7 +134,7 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val addr = allocAddr(PtrAddr(pairExp))
+      val addr = allocPtr(pairExp, component)
       val pair = lattice.cons(car,cdr)
       writeAddr(addr,pair)
       lattice.pointer(addr)
@@ -135,12 +144,12 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
       throw new Exception("NYI -- append")
     }
     private def bindArg(component: Component, par: Identifier, arg: Value): Unit =
-      writeAddr(componentAddr(component,VarAddr(par)), arg)
+      writeAddr(allocVar(par, component), arg)
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
     protected val interpreterBridge: SchemeInterpreterBridge[Addr] = new SchemeInterpreterBridge[Addr] {
-      def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
+      def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
       def currentThread = throw new Exception("Concurrency not available in ModF")
     }
     // TODO[minor]: use foldMap instead of foldLeft
@@ -177,7 +186,9 @@ trait BaseSchemeModFSemantics extends SchemeSemantics
 }
 
 trait SchemeModFSemantics extends BaseSchemeModFSemantics
-                             with DedicatedSchemeSemantics
+                             with SchemeSetup {
+  lazy val baseEnv = initialEnv
+}
 
 // for convenience, since most Scheme analyses don't need this much parameterization
 abstract class SimpleSchemeModFAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) 

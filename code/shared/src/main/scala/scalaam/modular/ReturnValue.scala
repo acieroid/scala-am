@@ -2,9 +2,8 @@ package scalaam.modular
 
 import scalaam.core._
 
-case class ReturnAddr(exp: Expression) extends Address { 
+case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address { 
   def printable = true 
-  def idn = exp.idn
 } 
 
 /**
@@ -13,7 +12,10 @@ case class ReturnAddr(exp: Expression) extends Address {
  */
 trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
 
-  def returnAddr(cmp: Component) = componentAddr(cmp, ReturnAddr(expr(cmp)))
+  def returnAddr(cmp: Component) = ReturnAddr(cmp, expr(cmp).idn)
+
+  // convenience method: final program result = return-addr of the initial component
+  def finalResult = store.getOrElse(returnAddr(initialComponent), lattice.bottom)
 
   // intra-analysis can now also update and read the result of a component
   trait ReturnResultIntra extends GlobalStoreIntra {

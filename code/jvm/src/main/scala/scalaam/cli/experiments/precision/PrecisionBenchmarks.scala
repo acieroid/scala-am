@@ -22,7 +22,7 @@ abstract class PrecisionBenchmarks[
 
     type Benchmark = String
     type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
-                                           with AbstractSchemeDomain {
+                                           with ModularSchemeDomain {
         val valueLattice: ModularSchemeLattice[Addr,Str,Bln,Num,Rea,Chr,Smb]
     }
 
@@ -33,11 +33,11 @@ abstract class PrecisionBenchmarks[
     case class PtrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<pointer $idn>" }
     
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
-        case ComponentAddr(_, scalaam.modular.scheme.VarAddr(v))    => VarAddr(v)
-        case ComponentAddr(_, scalaam.modular.scheme.PtrAddr(e))    => PtrAddr(e.idn)
-        case ComponentAddr(_, scalaam.modular.ReturnAddr(e))        => RetAddr(e.idn)
-        case GlobalAddr(scalaam.modular.scheme.PrmAddr(n))          => PrmAddr(n)
-        case a                                                      => throw new Exception(s"Cannot convert address: $a")
+        case scalaam.modular.scheme.VarAddr(vrb, _) => VarAddr(vrb)
+        case scalaam.modular.scheme.PtrAddr(exp, _) => PtrAddr(exp.idn)
+        case scalaam.modular.ReturnAddr(_, idn)     => RetAddr(idn)
+        case scalaam.modular.scheme.PrmAddr(nam)    => PrmAddr(nam)
+        case a                                      => throw new Exception(s"Cannot convert address: $a")
     }
 
     type BaseValue = baseDomain.L

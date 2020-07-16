@@ -11,28 +11,30 @@ import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.util.benchmarks.Timeout
 
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
-                                with DedicatedSchemeSemantics
                                 with ReturnValue[SchemeExp]
-                                with ContextSensitiveComponents[SchemeExp] { inter =>
+                                with ContextSensitiveComponents[SchemeExp]
+                                with SchemeSetup { inter =>
+
+    type Env = Environment[Addr]     
 
     //
     // MODCONC COMPONENTS
     //
 
     type Component <: TID
-    def view(cmp: Component): SchemeModConcComponent[ComponentContext,Addr]
+    def view(cmp: Component): SchemeModConcComponent
     def initialComponent: Component 
-    def newComponent(thread: Thread[ComponentContext,Addr]): Component
+    def newComponent(thread: Thread[ComponentContext]): Component
     
     def expr(cmp: Component): SchemeExp = body(cmp)
     def body(cmp: Component): SchemeExp = body(view(cmp))
-    def body(cmp: SchemeModConcComponent[ComponentContext,Addr]): SchemeExp = cmp match {
+    def body(cmp: SchemeModConcComponent): SchemeExp = cmp match {
         case MainThread         => program
         case Thread(bdy, _, _)  => bdy
     }
 
     def env(cmp: Component): Env = env(view(cmp))
-    def env(cmp: SchemeModConcComponent[ComponentContext,Addr]): Env = cmp match {
+    def env(cmp: SchemeModConcComponent): Env = cmp match {
         case MainThread         => initialEnv
         case Thread(_, env, _)  => env
     }
@@ -42,10 +44,10 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         case MainThread             => (program, initialEnv)
         case Thread(bdy, env, _)    => (bdy, env)
     }
-    type ComponentContext = (SchemeModFComponent[_, _], ProcessContext)
+    type ComponentContext = (SchemeModFComponent, ProcessContext)
     def context(cmp: Component) = view(cmp) match {
-        case MainThread         => None
-        case Thread(_, _, ctx)  => Some(ctx)
+        case MainThread                     => None
+        case t: Thread[ComponentContext]    => Some(t.ctx)
     }
     // parameterize to allow different sensitivities for threads
     type ProcessContext
@@ -73,17 +75,15 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     abstract class InnerModFAnalysis(intra: SchemeModConcIntra) extends ModAnalysis[SchemeExp](body(intra.component))
                                                                     with BaseSchemeModFSemantics
                                                                     with BigStepModFSemantics
-                                                                    with InnerSchemeModFComponents {
-        // SCHEME SEMANTICS SETUP
-        type Addr = inter.Addr
+                                                                    with StandardSchemeModFComponents {
+        // SCHEME ENVIRONMENT SETUP
+        lazy val baseEnv = env(intra.component)
+        // SCHEME LATTICE SETUP
         type Value = inter.Value
         lazy val lattice = inter.lattice 
-        lazy val initialEnv: Environment[Addr] = env(intra.component)
         // GLOBAL STORE SETUP 
-        def store = intra.store
-        def store_=(s: Map[Addr,Value]) = intra.store = s            
-        def sharedAddr(addr: Address) = intra.allocAddr(GlobalAddr(addr))
-        def componentAddr(cmp: Component, addr: Address) = intra.allocAddr(ComponentAddr(cmp,addr))
+        override def store = intra.store
+        override def store_=(s: Map[Addr,Value]) = intra.store = s
         // SYNCING DEPENDENCIES
         def lift(dep: Dependency): inter.Dependency = dep match {
             case AddrDependency(addr) => inter.AddrDependency(addr)
@@ -99,9 +99,9 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         // MODF INTRA-ANALYSIS EXTENDED WITH SUPPORT FOR THREADS
         def intraAnalysis(cmp: Component) = new InnerModFIntra(cmp)
         class InnerModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
-            var T: Set[inter.Component] = Set()
+            var T: Set[inter.Component] = Set.empty
             def spawnThread(t: inter.Component) = T += t 
-            def readThreadResult(t: inter.Component) = readAddr(ComponentAddr(t, ReturnAddr(inter.expr(t))))               
+            def readThreadResult(t: inter.Component) = readAddr(inter.returnAddr(t))            
             override def eval(exp: SchemeExp, env: Env) = exp match {
                 case CSchemeFork(bdy, _)    => evalFork(bdy, env)
                 case CSchemeJoin(thr, _)    => evalJoin(thr, env)
@@ -120,7 +120,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                 )}
             }
             override val interpreterBridge = new SchemeInterpreterBridge[Addr] {
-                def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
+                def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
                 def currentThread = intra.component
             }
             override def commit() = {

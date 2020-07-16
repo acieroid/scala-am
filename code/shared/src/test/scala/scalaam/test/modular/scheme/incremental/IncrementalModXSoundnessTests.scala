@@ -4,10 +4,10 @@ import org.scalatest.Tag
 import scalaam.language.CScheme.CSchemeParser
 import scalaam.language.change.CodeVersion._
 import scalaam.language.scheme._
-import scalaam.modular.ModAnalysis
+import scalaam.modular._
 import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.modular.incremental.scheme.AnalysisBuilder._
-import scalaam.modular.scheme.SchemeSemantics
+import scalaam.modular.scheme._
 import scalaam.test._
 import scalaam.test.modular.scheme.SchemeSoundnessTests
 import scalaam.util.Reader
@@ -15,7 +15,11 @@ import scalaam.util.benchmarks.Timeout
 
 trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
-  type IncrementalAnalysis = ModAnalysis[SchemeExp] with SchemeSemantics with IncrementalModAnalysis[SchemeExp]
+  type IncrementalAnalysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
+                                                    with ReturnValue[SchemeExp]
+                                                    with SchemeDomain
+                                                    with IncrementalModAnalysis[SchemeExp]
+                                                    
   override def analysis(b: SchemeExp): IncrementalAnalysis
 
   private var version: Version = Old

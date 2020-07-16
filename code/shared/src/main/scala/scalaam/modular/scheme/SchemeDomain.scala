@@ -1,9 +1,17 @@
 package scalaam.modular.scheme
 
+import scalaam.core._
+import scalaam.modular._
 import scalaam.lattice._
 import scalaam.language.scheme._
+import scalaam.language.scheme.primitives._
 
-trait AbstractSchemeDomain extends SchemeSemantics {
+trait SchemeDomain extends AbstractDomain[SchemeExp] {
+  type Prim = SchemePrimitive[Value, Address]
+  implicit val lattice: SchemeLattice[Value, Address, Prim] 
+}
+
+trait ModularSchemeDomain extends SchemeDomain {
   // parameterized by different abstract domains for each type
   type S
   type B
@@ -12,13 +20,13 @@ trait AbstractSchemeDomain extends SchemeSemantics {
   type C
   type Sym
   // which are used to construct a "modular" (~ product) scalaam.lattice
-  val valueLattice: ModularSchemeLattice[Addr,S,B,I,R,C,Sym]
+  val valueLattice: ModularSchemeLattice[Address,S,B,I,R,C,Sym]
   type Value = valueLattice.L
   lazy val lattice = valueLattice.schemeLattice
 }
 
 /* A type scalaam.lattice for ModF */
-trait SchemeTypeDomain extends AbstractSchemeDomain {
+trait SchemeTypeDomain extends ModularSchemeDomain {
   // use type domains everywhere, except for booleans
   type S    = Type.S
   type B    = ConstantPropagation.B
@@ -31,7 +39,7 @@ trait SchemeTypeDomain extends AbstractSchemeDomain {
 }
 
 /* A constant propagation scalaam.lattice for ModF */
-trait SchemeConstantPropagationDomain extends AbstractSchemeDomain {
+trait SchemeConstantPropagationDomain extends ModularSchemeDomain {
   // use constant propagation domains everywhere, except for booleans
   type S    = ConstantPropagation.S
   type B    = ConstantPropagation.B
@@ -44,7 +52,7 @@ trait SchemeConstantPropagationDomain extends AbstractSchemeDomain {
 }
 
 /* A powerset scalaam.lattice for ModF */
-trait SchemePowersetDomain extends AbstractSchemeDomain {
+trait SchemePowersetDomain extends ModularSchemeDomain {
   // use powerset domains everywhere
   type S    = Concrete.S
   type B    = Concrete.B

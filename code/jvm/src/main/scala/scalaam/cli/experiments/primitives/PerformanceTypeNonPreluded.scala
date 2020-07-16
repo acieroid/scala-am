@@ -20,12 +20,15 @@ object PerformanceType extends PerformanceBenchmarks {
       // We exclude all defined primitives from the preludation
       val preludedProgram = SchemePrelude.addPrelude(originalProgram, primitives.allPrimitives.map(_.name).toSet)
       // Set up initial environment and install the primitives in the global store.
+      ??? //TODO: code below is broken
+      /*
       primitives.allPrimitives.foreach { p =>
         val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
         store += (addr -> lattice.primitive(p))
       }
       val initialBindings = primitives.allPrimitives.map(_.name).toSet
       SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
+      */
     }
     lazy val valueLattice = new TypeSchemeLattice[Addr]
     type Value = valueLattice.L
@@ -39,12 +42,15 @@ object PerformanceType extends PerformanceBenchmarks {
       // We exclude all defined primitives from the preludation
       val preludedProgram = SchemePrelude.addPrelude(originalProgram, primitives.allPrimitives.map(_.name).toSet)
       // Set up initial environment and install the primitives in the global store.
+      ??? // old code below, compiles but does not run properly
+      /*
       primitives.allPrimitives.foreach { p =>
         val addr = ComponentAddr(initialComponent, PrmAddr(p.name))
         store += (addr -> lattice.primitive(p))
       }
       val initialBindings = primitives.allPrimitives.map(_.name).toSet
       SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
+      */
     }
     lazy val valueLattice = new TypeSchemeLattice[Addr]
     type Value = valueLattice.L

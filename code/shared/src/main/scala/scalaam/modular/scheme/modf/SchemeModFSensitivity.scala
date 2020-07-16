@@ -2,8 +2,11 @@ package scalaam.modular.scheme.modf
 
 import scalaam.core.Position._
 
+// TODO: make allocCtx an abstract method of this trait
+trait SchemeModFSensitivity extends BaseSchemeModFSemantics
+
 /* Simplest (and most imprecise): no context-sensitivity */
-trait SchemeModFNoSensitivity extends BaseSchemeModFSemantics {
+trait SchemeModFNoSensitivity extends SchemeModFSensitivity {
   type ComponentContext = Unit
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ()
 }
@@ -12,7 +15,7 @@ trait SchemeModFNoSensitivity extends BaseSchemeModFSemantics {
 case class ArgContext(values: List[_]) { //TODO: preserve type information
   override def toString: String = values.mkString(",")
 }
-trait SchemeModFFullArgumentSensitivity extends BaseSchemeModFSemantics {
+trait SchemeModFFullArgumentSensitivity extends SchemeModFSensitivity {
   type ComponentContext = ArgContext
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ArgContext(args)
 }
@@ -21,7 +24,7 @@ trait SchemeModFFullArgumentSensitivity extends BaseSchemeModFSemantics {
 case class CallSiteContext(fn: Position, call: Position) {
   override def toString: String = s"$call->$fn"
 }
-trait SchemeModFCallSiteSensitivity extends BaseSchemeModFSemantics {
+trait SchemeModFCallSiteSensitivity extends SchemeModFSensitivity {
   type ComponentContext = CallSiteContext 
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = CallSiteContext(clo._1.idn.pos, call)
 }
@@ -33,7 +36,7 @@ case class ArgCallSiteContext(fn: Position, call: Position, args: List[_]) { //T
     s"$call->$fn $argsstr"
   }
 }
-trait SchemeModFFullArgumentCallSiteSensitivity extends BaseSchemeModFSemantics {
+trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity {
   type ComponentContext = ArgCallSiteContext
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext =
     ArgCallSiteContext(clo._1.idn.pos, call, args)
