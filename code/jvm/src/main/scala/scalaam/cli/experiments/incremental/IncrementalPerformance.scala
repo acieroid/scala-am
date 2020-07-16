@@ -1,5 +1,6 @@
 package scalaam.cli.experiments.incremental
 
+import scalaam.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import scalaam.core.Expression
 import scalaam.language.CScheme.CSchemeParser
 import scalaam.modular.incremental.IncrementalModAnalysis
@@ -20,7 +21,7 @@ trait IncrementalTime[E <: Expression] {
   val  measuredRuns = 15
 
   // A list of programs on which the benchmark should be executed.
-  def benchmarks(): List[String]
+  def benchmarks(): Set[String]
 
   // Type of an analysis.
   type Analysis = IncrementalModAnalysis[E]
@@ -160,21 +161,14 @@ trait IncrementalTime[E <: Expression] {
 }
 
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): List[String] = List("test/changes/scheme/ring-rotate.scm")
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 }
 
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): List[String] = List(
-    "test/changes/cscheme/threads/sudoku.scm",
-    "test/changes/cscheme/threads/pc.scm",
-    "test/changes/cscheme/threads/stm.scm",
-    "test/changes/cscheme/threads/actors.scm",
-    //"test/changes/cscheme/threads/mcarlo.scm",
-    //"test/changes/cscheme/threads/mcarlo2.scm"
-  )
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.concurrent
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
