@@ -1,6 +1,6 @@
 package scalaam.test
 
-import scalaam.bench.scheme.SchemeBenchmarkPrograms
+import scalaam.bench.scheme.{IncrementalSchemeBenchmarkPrograms, SchemeBenchmarkPrograms}
 import scalaam.util.SmartUnion
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
@@ -30,15 +30,9 @@ trait AllBenchmarks extends SchemeBenchmarkTests {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 trait ConcurrentIncrementalBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), IncrementalBenchmarks.concurrent)
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), IncrementalSchemeBenchmarkPrograms.threads)
 }
 
 trait SequentialIncrementalBenchmarks extends SchemeBenchmarkTests {
-  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), IncrementalBenchmarks.sequential)
-}
-
-object IncrementalBenchmarks {
-  lazy val concurrent: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/cscheme/threads",
-    "mcarlo.scm")
-  lazy val sequential: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme")
+  override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), IncrementalSchemeBenchmarkPrograms.sequential)
 }
