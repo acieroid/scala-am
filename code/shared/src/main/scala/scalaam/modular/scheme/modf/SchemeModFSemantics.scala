@@ -52,11 +52,10 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext
 
-  /** Allocation contexts */
-  // TODO: parameterize
-  type AllocationContext = Component
-  def allocVar(id: Identifier, cmp: Component): VarAddr[AllocationContext] = VarAddr(id,cmp)
-  def allocPtr(exp: SchemeExp, cmp: Component): PtrAddr[AllocationContext] = PtrAddr(exp,cmp)
+  /** Allocating addresses */
+  type AllocationContext
+  def allocVar(id: Identifier, cmp: Component): VarAddr[AllocationContext]
+  def allocPtr(exp: SchemeExp, cmp: Component): PtrAddr[AllocationContext]
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
   // INTRA-COMPONENT ANALYSIS //
@@ -186,6 +185,7 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
 }
 
 trait SchemeModFSemantics extends BaseSchemeModFSemantics
+                             with StandardSchemeModFAllocator
                              with SchemeSetup {
   lazy val baseEnv = initialEnv
 }

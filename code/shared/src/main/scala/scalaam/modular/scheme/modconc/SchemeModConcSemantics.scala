@@ -53,6 +53,10 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     type ProcessContext
     def allocCtx(exp: SchemeExp, env: Env, caller: Component): ProcessContext
 
+    type AllocationContext = SchemeModFComponent
+    def allocVar(id: Identifier, modFCmp: SchemeModFComponent, cmp: Component) = VarAddr(id,modFCmp)
+    def allocPtr(exp: SchemeExp, modFCmp: SchemeModFComponent, cmp: Component) = PtrAddr(exp,modFCmp)
+
     //
     // MODCONC INTRA-ANALYSIS
     //
@@ -81,6 +85,10 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         // SCHEME LATTICE SETUP
         type Value = inter.Value
         lazy val lattice = inter.lattice 
+        // MODF ADDRESS ALLOCATION
+        type AllocationContext = inter.AllocationContext
+        def allocVar(id: Identifier, cmp: SchemeModFComponent) = inter.allocVar(id, cmp, intra.component)
+        def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = inter.allocPtr(exp, cmp, intra.component)                                                           
         // GLOBAL STORE SETUP 
         override def store = intra.store
         override def store_=(s: Map[Addr,Value]) = intra.store = s

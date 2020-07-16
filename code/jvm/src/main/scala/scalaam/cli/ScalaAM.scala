@@ -23,8 +23,8 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/mceval.scm")
-    val prg = SchemeParser.parse(txt)
+    val txt = Reader.loadFile("test/concurrentScheme/threads/qsort.scm")
+    val prg = CSchemeParser.parse(txt)
     val analysis = new SimpleSchemeModConcAnalysis(prg)
                                         with SchemeModConcNoSensitivity
                                         with SchemeConstantPropagationDomain
@@ -48,7 +48,7 @@ object Main {
         } 
       }
     }
-    analysis.analyze(Timeout.start(Duration(3,SECONDS)))
+    analysis.analyze(Timeout.start(Duration(30,SECONDS)))
     //debugClosures(analysis)
     debugResults(analysis, true)
   }
