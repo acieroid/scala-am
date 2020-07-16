@@ -1,5 +1,6 @@
 package scalaam.cli.experiments.primitives
 
+import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.cli.experiments._
 import scalaam.language.scheme._
 import scalaam.modular._
@@ -49,7 +50,7 @@ object PerformanceType extends PerformanceBenchmarks {
     type Value = valueLattice.L
     lazy val lattice = valueLattice.schemeLattice
   }
-  def benchmarks = SchemeBenchmarks.standard
+  def benchmarks = SchemeBenchmarkPrograms.other
   def analyses = List(
     (p => new AnalysisWithPreludedPrimitives(p) with S_CSFA_0, "P"),
     (p => new AnalysisWithManualPrimitives(p) with S_CSFA_0, "M")

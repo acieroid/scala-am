@@ -1,5 +1,6 @@
 package scalaam.test.modular.scheme
 
+import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.language.scheme._
 import scalaam.modular._
 import scalaam.modular.scheme._
@@ -11,7 +12,7 @@ import scalaam.test._
 trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModConcTest
   override def concreteRuns(b: Benchmark) =
-    if (SchemeBenchmarks.threads.contains(b)) {
+    if (SchemeBenchmarkPrograms.threads.contains(b)) {
         // run concurrent benchmarks more than once in the concrete to get
         5
     } else {
@@ -36,7 +37,7 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
 class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadBenchmarks
                                                                     with SimpleBenchmarks {
   override def isSlow(b: Benchmark): Boolean =
-    SchemeBenchmarks.sequentialBenchmarks.contains(b) ||
+    SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
       Set("test/concurrentScheme/threads/actors.scm",
         "test/concurrentScheme/threads/fact.scm",
         "test/concurrentScheme/threads/life.scm",
@@ -70,7 +71,7 @@ class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with T
                                                                           with SequentialBenchmarks {
   override def isSlow(b: Benchmark): Boolean =
     // (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
-    SchemeBenchmarks.sequentialBenchmarks.contains(b) ||
+    SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
     // These tests currently slow down the test suite too much (time out on Bertha in 3 minutes):
       Set("test/concurrentScheme/threads/actors.scm",
           "test/concurrentScheme/threads/fact.scm",

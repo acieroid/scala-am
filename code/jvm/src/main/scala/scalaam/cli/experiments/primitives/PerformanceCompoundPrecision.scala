@@ -1,5 +1,6 @@
 package scalaam.cli.experiments.primitives
 
+import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.cli.experiments._
 import scalaam.language.scheme._
 import scalaam.modular._
@@ -13,7 +14,7 @@ import scala.concurrent.duration._
 object PerformanceCompoundPrecision extends PerformanceBenchmarks {
   abstract class CompoundPrecisionAnalysis(p: SchemeExp) extends SimpleSchemeModFAnalysis(p) with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] with StandardSchemeModFComponents
   override def analysisTime = Timeout.start(Duration(2, MINUTES))
-  def benchmarks = SchemeBenchmarks.standard
+  def benchmarks = SchemeBenchmarkPrograms.other
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (p => new CompoundPrecisionAnalysis(p) with S_0_0, "0_0"),
     (p => new CompoundPrecisionAnalysis(p) with S_CS_0, "CS_0"),

@@ -1,5 +1,6 @@
 package scalaam.cli.experiments
 
+import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.language.scheme._
 import scalaam.language.CScheme._
 import scalaam.modular.ModAnalysis
@@ -132,7 +133,7 @@ object ParallelModFPerformance extends PerformanceBenchmarks {
 }
 
 object ParallelModConcPerformance extends PerformanceBenchmarks {
-  def benchmarks = SchemeBenchmarks.fromFolder("test/concurrentScheme/threads/variations")
+  def benchmarks = SchemeBenchmarkPrograms.fromFolder("test/concurrentScheme/threads/variations")
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.modConcAnalysis, "base ModConc"),
     (SchemeAnalyses.parallelModConc(_,1), "parallel (n = 1)"),

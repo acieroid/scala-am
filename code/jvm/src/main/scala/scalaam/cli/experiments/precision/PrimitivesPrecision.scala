@@ -1,5 +1,6 @@
 package scalaam.cli.experiments.precision
 
+import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.cli.experiments._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
@@ -34,7 +35,7 @@ object PrimitivesBenchmarks {
 //    SchemeBenchmarks.gambit ++
 //    SchemeBenchmarks.gabriel ++
 //    SchemeBenchmarks.scp1_compressed ++
-    SchemeBenchmarks.icp ++
+    SchemeBenchmarkPrograms.icp1 ++
     // SchemeBenchmarks.ad ++
 //    List("test/ad/all.scm") ++
     standard ++

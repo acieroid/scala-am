@@ -1,5 +1,6 @@
 package scalaam.test.modular.scheme
 
+import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.core.Position._
 import scalaam.language.scheme._
 import scalaam.modular._
@@ -70,14 +71,14 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
 // concrete test suites to run ...
 
 class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with SequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.other.contains(b)
 }
 class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModFPrimCSSensitivity with SequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.other.contains(b)
 }
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with SequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.other.contains(b)
 }
 class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with SequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarks.other.contains(b)
+  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.other.contains(b)
 }

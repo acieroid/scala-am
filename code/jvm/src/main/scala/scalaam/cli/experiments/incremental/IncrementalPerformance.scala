@@ -12,7 +12,7 @@ import scalaam.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalTime[E <: Expression] extends App {
+trait IncrementalTime[E <: Expression] {
 
   // The maximal number of warm-up runs.
   val maxWarmupRuns = 5
@@ -149,12 +149,14 @@ trait IncrementalTime[E <: Expression] extends App {
     }
   }
 
-  setDefaultWriter(open(s"benchOutput/results-incremental-performance-${System.currentTimeMillis()}.csv"))
-  measure()
-  val table: String = results.prettyString()
-  println(table)
-  write(table)
-  closeDefaultWriter()
+  def main(args: Array[String]): Unit = {
+    setDefaultWriter(open(s"benchOutput/results-incremental-performance-${System.currentTimeMillis()}.csv"))
+    measure()
+    val table: String = results.prettyString()
+    println(table)
+    write(table)
+    closeDefaultWriter()
+  }
 }
 
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
@@ -176,4 +178,9 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+}
+
+object IncrementalSchemeModXPerformance extends App {
+  IncrementalSchemeModFPerformance.main(Array())
+  IncrementalSchemeModConcPerformance.main(Array())
 }
