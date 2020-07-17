@@ -11,22 +11,25 @@ trait SchemeDomain extends AbstractDomain[SchemeExp] {
   implicit val lattice: SchemeLattice[Value, Address, Prim] 
 }
 
-trait ModularSchemeDomain extends SchemeDomain {
-  // parameterized by different abstract domains for each type
+trait SchemeLatticeDefinition {
   type S
   type B
   type I
   type R
   type C
   type Sym
-  // which are used to construct a "modular" (~ product) scalaam.lattice
-  val valueLattice: ModularSchemeLattice[Address,S,B,I,R,C,Sym]
-  type Value = valueLattice.L
-  lazy val lattice = valueLattice.schemeLattice
+  val valueLattice: ModularSchemeLattice[Address, S, B, I, R, C, Sym]
 }
 
-/* A type scalaam.lattice for ModF */
-trait SchemeTypeDomain extends ModularSchemeDomain {
+trait ModularSchemeDomain extends SchemeDomain {
+  val ld: SchemeLatticeDefinition
+  // which are used to construct a "modular" (~ product) lattice
+  implicit val valueLattice: ModularSchemeLattice[Address, ld.S, ld.B, ld.I, ld.R, ld.C, ld.Sym] = ld.valueLattice
+  type Value = valueLattice.L
+  lazy val lattice: SchemeLattice[valueLattice.L, Address, Prim] = valueLattice.schemeLattice
+}
+
+object SchemeTypeDomain extends SchemeLatticeDefinition {
   // use type domains everywhere, except for booleans
   type S    = Type.S
   type B    = ConstantPropagation.B
@@ -34,12 +37,17 @@ trait SchemeTypeDomain extends ModularSchemeDomain {
   type R    = Type.R
   type C    = Type.C
   type Sym  = Concrete.Sym
-  // make the scheme scalaam.lattice
+  // make the scheme lattice
   lazy val valueLattice = new ModularSchemeLattice
 }
 
-/* A constant propagation scalaam.lattice for ModF */
-trait SchemeConstantPropagationDomain extends ModularSchemeDomain {
+/* A type scalaam.lattice for ModF */
+trait SchemeTypeDomain extends ModularSchemeDomain {
+  // make the scheme lattice
+  val ld = SchemeTypeDomain
+}
+
+object SchemeConstantPropagationDomain extends SchemeLatticeDefinition {
   // use constant propagation domains everywhere, except for booleans
   type S    = ConstantPropagation.S
   type B    = ConstantPropagation.B
@@ -51,8 +59,12 @@ trait SchemeConstantPropagationDomain extends ModularSchemeDomain {
   lazy val valueLattice = new ModularSchemeLattice
 }
 
-/* A powerset scalaam.lattice for ModF */
-trait SchemePowersetDomain extends ModularSchemeDomain {
+/* A constant propagation scalaam.lattice for ModF */
+trait SchemeConstantPropagationDomain extends ModularSchemeDomain {
+  val ld = SchemeConstantPropagationDomain
+}
+
+object SchemePowersetDomain extends SchemeLatticeDefinition {
   // use powerset domains everywhere
   type S    = Concrete.S
   type B    = Concrete.B
@@ -60,6 +72,10 @@ trait SchemePowersetDomain extends ModularSchemeDomain {
   type R    = Concrete.R
   type C    = Concrete.C
   type Sym  = Concrete.Sym
-  // make the scheme scalaam.lattice
   lazy val valueLattice = new ModularSchemeLattice
+}
+
+/* A powerset scalaam.lattice for ModF */
+trait SchemePowersetDomain extends ModularSchemeDomain {
+  val ld = SchemePowersetDomain
 }

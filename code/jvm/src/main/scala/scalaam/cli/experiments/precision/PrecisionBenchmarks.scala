@@ -11,20 +11,11 @@ import scalaam.modular.scheme.modf._
 import scalaam.util._
 import scalaam.util.benchmarks.Timeout
 
-abstract class PrecisionBenchmarks[
-    Num: IntLattice,
-    Rea: RealLattice,
-    Bln: BoolLattice,
-    Chr: CharLattice,
-    Str: StringLattice, 
-    Smb: SymbolLattice
-] {
+abstract class PrecisionBenchmarks {
 
     type Benchmark = String
     type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
-                                           with ModularSchemeDomain {
-        val valueLattice: ModularSchemeLattice[Addr,Str,Bln,Num,Rea,Chr,Smb]
-    }
+                                           with ModularSchemeDomain
 
     sealed trait BaseAddr extends Address { def printable = true }
     case class VarAddr(vrb: Identifier) extends BaseAddr { def idn = vrb.idn ; override def toString = s"<variable $vrb>" }
@@ -41,7 +32,8 @@ abstract class PrecisionBenchmarks[
     }
 
     type BaseValue = baseDomain.L
-    val baseDomain = new ModularSchemeLattice[BaseAddr,Str,Bln,Num,Rea,Chr,Smb]
+    val ld: SchemeLatticeDefinition
+    val baseDomain = ld.valueLattice
     val baseLattice = baseDomain.schemeLattice
     case class StubPrimitive(name: String) extends SchemePrimitive[BaseValue, BaseAddr] {
         def call(fpos: SchemeExp, args: List[(SchemeExp, BaseValue)], store: Store[BaseAddr,BaseValue], scheme: SchemeInterpreterBridge[BaseAddr]) =
@@ -100,11 +92,11 @@ abstract class PrecisionBenchmarks[
         case SchemeInterpreter.Value.Cons(a,d)          => baseLattice.cons(convertConcreteValue(a),convertConcreteValue(d))
         case SchemeInterpreter.Value.Pointer(a)         => baseLattice.pointer(convertConcreteAddr(a))
         case SchemeInterpreter.Value.Vector(siz,els,_)  =>
-            def convertNumber(n: Int): Num = baseLattice.number(n) match {
+            def convertNumber(n: Int): ld.I = baseLattice.number(n) match {
                 case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
             }
             val cSiz = convertNumber(siz)
-            val cEls = els.foldLeft(Map[Num,BaseValue]()) { case (acc,(idx,vlu)) =>
+            val cEls = els.foldLeft(Map[ld.I,BaseValue]()) { case (acc,(idx,vlu)) =>
                 val cIdx = convertNumber(idx)
                 val cVlu = convertConcreteValue(vlu)
                 val prevVlu = acc.getOrElse(cIdx, baseLattice.bottom)
