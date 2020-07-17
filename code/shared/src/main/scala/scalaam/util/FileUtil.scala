@@ -23,10 +23,11 @@ object Writer {
 
   type Writer = BufferedWriter
 
-  val  calendar: Calendar         = Calendar.getInstance()
-  val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
+  private val  calendar: Calendar         = Calendar.getInstance()
+  private val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
 
-  var defaultWriter: Writer = _
+  private var defaultWriter: Writer = _
+  var report: Boolean = false
 
   def open(path: String): Writer =
     new BufferedWriter(new FileWriter(path))
@@ -39,10 +40,17 @@ object Writer {
   def setDefaultWriter(writer: Writer): Unit = defaultWriter = writer
   def closeDefaultWriter(): Unit = defaultWriter.close()
 
+  def  enableReporting(): Unit = report = true
+  def disableReporting(): Unit = report = false
+
   // Avoid output being buffered.
   def write(writer: Writer, data: String): String = {
     writer.write(data)
     writer.flush()
+    if (report) {
+      System.out.print(data)
+      System.out.flush()
+    }
     data
   }
 

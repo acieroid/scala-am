@@ -3,37 +3,20 @@ package scalaam.cli.experiments.incremental
 import scalaam.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import scalaam.core.Expression
 import scalaam.language.CScheme.CSchemeParser
-import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.language.change.CodeVersion._
 import scalaam.language.scheme.SchemeExp
 import scalaam.modular.incremental.scheme.AnalysisBuilder._
 import scalaam.util.Reader
-import scalaam.util.Writer._
 import scalaam.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalTime[E <: Expression] {
+trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 
   // The maximal number of warm-up runs.
   val maxWarmupRuns = 5
   // The number of actually measured runs.
   val  measuredRuns = 15
-
-  // A list of programs on which the benchmark should be executed.
-  def benchmarks(): Set[String]
-
-  // Type of an analysis.
-  type Analysis = IncrementalModAnalysis[E]
-
-  // Analysis construction.
-  def analysis(e: E): Analysis
-
-  // Parsing.
-  def parse(string: String): E
-
-  // The timeout to be used. The timeout also indicates half of the time maximally spent on warm-up.
-  def timeout(): Timeout.T
 
   // The results of the evaluation.
   sealed trait Result
@@ -45,7 +28,7 @@ trait IncrementalTime[E <: Expression] {
   var results: Table[Result] = Table.empty.withDefaultValue(NotRun)
 
   // A single program run with the analysis.
-  def benchmark(file: String): Unit = {
+  def onBenchmark(file: String): Unit = {
     println(s"Testing $file")
     val program = parse(file)
 
@@ -134,30 +117,9 @@ trait IncrementalTime[E <: Expression] {
     println(s"\n    => Init: ${init.mea} - Incr: ${incr.mea} - Rean: ${rean.mea}")
   }
 
-  def measure(): Unit = {
-    benchmarks().foreach { file =>
-      try {
-        benchmark(file)
-      } catch {
-        case e: Exception => writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
-          println()
-          results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
-        case e: VirtualMachineError => writeErrln(s"Running $file resulted in an error: ${e.getMessage}")
-          println()
-          results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
-      }
-      println()
-    }
-  }
-
-  def main(args: Array[String]): Unit = {
-    setDefaultWriter(open(s"benchOutput/results-incremental-performance-${System.currentTimeMillis()}.csv"))
-    measure()
-    val table: String = results.prettyString(columns = List("init", "rean", "incr"))
-    println(table)
-    write(table)
-    closeDefaultWriter()
-  }
+  def reportError(file: String): Unit = results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
+  val output: String = s"benchOutput/results-incremental-performance-${System.currentTimeMillis()}.txt"
+  def createOutput(): String = results.prettyString(columns = List("init", "rean", "incr"))
 }
 
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
