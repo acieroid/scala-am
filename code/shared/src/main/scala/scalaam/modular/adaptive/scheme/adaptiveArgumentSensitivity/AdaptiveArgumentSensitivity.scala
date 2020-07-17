@@ -17,7 +17,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // to determine how arguments need to be adapted
   private var adaptedArgs = Map[Identifier, Set[Value]]()
   protected def widenArg(fexp: SchemeLambdaExp, par: Identifier, arg: Value) = {
-    val otherCalls = cmpsPerFn(fexp).map { view(_).asInstanceOf[Call[ComponentContext,Addr]] }
+    val otherCalls = cmpsPerFn(fexp).map { view(_).asInstanceOf[Call[ComponentContext]] }
     val otherArgVs = otherCalls.map(_.ctx.args(fexp.args.indexOf(par)))
     val widenedArg = otherArgVs.foldLeft(arg) { (acc, arg) =>
       if(lattice.subsumes(arg,acc)) { arg } else { acc }
@@ -37,8 +37,8 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     ComponentContext(adaptArgs(clo, args))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
-    case Main               => Main
-    case Call(clo,nam,ctx)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
+    case Main                                 => Main
+    case Call(clo,nam,ctx: ComponentContext)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
   }
   // HELPER FUNCTIONS FOR `joinComponents`
   // TODO: Extract and put this somewhere else
@@ -52,13 +52,10 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case valueLattice.Vec(_,els)        => els.flatMap(p => extractComponentRefs(p._2)).toSet
     case _                              => Set.empty
   }
-  private def extractComponentRefs(addr: Addr): Set[Component] = addr match {
-    case ComponentAddr(cmp, _)  => Set(cmp)
-    case _                      => Set()
-  }
+  private def extractComponentRefs(addr: Addr): Set[Component] = ??? //TODO
   private def getClosure(cmp: Component): Option[lattice.Closure] = view(cmp) match {
     case Main       => None
-    case call: Call[ComponentContext,Addr] => Some(call.clo)
+    case call: Call[ComponentContext] => Some(call.clo)
   }
   var toJoin = List[Set[Component]]()
   def joinComponents(cmps: Set[Component]) = {
@@ -66,7 +63,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     while (toJoin.nonEmpty) {
       val next :: rest = this.toJoin
       // look at the next closure + contexts
-      val calls = next.map(view(_).asInstanceOf[Call[ComponentContext,Addr]])
+      val calls = next.map(view(_).asInstanceOf[Call[ComponentContext]])
       this.toJoin = ??? // calls.map(_.clo._2) :: rest
       val (pars, args) = (calls.head.clo._1.args, calls.map(_.ctx.args))
       //println("Joining the following components:")
@@ -87,7 +84,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     //println("DONE")
   }
   var cmpsPerFn = Map[SchemeExp, Set[Component]]()
-  override def onNewComponent(cmp: Component, call: Call[ComponentContext,Addr]) = {
+  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
     // update the function to components mapping
     cmpsPerFn += (call.clo._1 -> (cmpsPerFn.get(call.clo._1).getOrElse(Set()) + cmp))
     // if any of the new arguments subsumes an existing widened argument, update that widened argument

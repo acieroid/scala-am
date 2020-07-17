@@ -17,8 +17,16 @@ import scalaam.util.benchmarks.Timeout
  * Additionally supported primitives (upon R5RS): fork, join.
  */
 trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
-                                   with DedicatedSchemeSemantics
+                                   with GlobalStore[SchemeExp]
+                                   with ReturnValue[SchemeExp]
+                                   with SchemeSetup
                                    with ContextSensitiveComponents[SchemeExp] {
+
+  type Env = Environment[Addr]
+
+  // all allocations are context-insensitive
+  def allocVar(id: Identifier, cmp: Component) = VarAddr(id,()) 
+  def allocPtr(ptr: SchemeExp, cmp: Component) = PtrAddr(ptr,())
 
   //XXXXXXXXX//
   // PROGRAM //
@@ -139,7 +147,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
     /** Defines a new variable: extends the store and environment. */
     private def define(variable: Identifier, vl: Value, env: Env): Env = {
-      val addr = allocAddr(VarAddr(variable))
+      val addr = allocVar(variable, component)
       if (writeAddr(addr, vl)) storeChanged = true
       extendEnv(variable, addr, env)
     }
@@ -409,7 +417,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     //--------------------//
 
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val addr = allocAddr(PtrAddr(pairExp))
+      val addr = allocPtr(pairExp, component)
       val pair = lattice.cons(car,cdr)
       writeAddr(addr,pair)
       lattice.pointer(addr)
@@ -421,7 +429,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     }
 
     protected val interpreterBridge: SchemeInterpreterBridge[Addr] = new SchemeInterpreterBridge[Addr] {
-      def pointer(exp: SchemeExp): Addr = allocAddr(PtrAddr(exp))
+      def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
       def currentThread = component
     }
 

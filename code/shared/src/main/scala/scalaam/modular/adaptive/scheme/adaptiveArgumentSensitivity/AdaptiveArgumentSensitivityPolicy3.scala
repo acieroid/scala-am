@@ -37,11 +37,11 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
       propagate(updatedWorklist)
     }
   // do a simple loop check when you have too many components in a single stracktrace
-  override def onNewComponent(cmp: Component, call: Call[ComponentContext,Addr]) = {
+  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
     super.onNewComponent(cmp,call)
     val callStack = calledBy(cmp)
     val prevCmps: Set[Component] = callStack.collect(c => view(c) match {
-      case cll: Call[ComponentContext,Addr] if cll.clo._1.idn == call.clo._1.idn => c
+      case cll: Call[ComponentContext] if cll.clo._1.idn == call.clo._1.idn => c
     })
     val updatedCmps = prevCmps + cmp
     if (updatedCmps.size > limit) {

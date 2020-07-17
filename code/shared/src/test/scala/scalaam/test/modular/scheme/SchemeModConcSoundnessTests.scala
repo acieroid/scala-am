@@ -14,7 +14,7 @@ trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
   override def concreteRuns(b: Benchmark) =
     if (SchemeBenchmarkPrograms.threads.contains(b)) {
         // run concurrent benchmarks more than once in the concrete to get
-        5
+        3
     } else {
         // other (sequential) benchmarks are just ran once
         1
@@ -34,19 +34,30 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
     }
 }
 
-class SimpleSchemeModConcSoundnessTests extends SimpleSchemeModConc with ThreadBenchmarks
-                                                                    with SimpleBenchmarks {
+class SimpleSchemeModConcSoundnessTests extends SchemeModConcSoundnessTests 
+                                            with SimpleSchemeModConc
+                                            with ThreadBenchmarks
+                                            with SimpleBenchmarks {
   override def isSlow(b: Benchmark): Boolean =
     SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
-      Set("test/concurrentScheme/threads/actors.scm",
-        "test/concurrentScheme/threads/fact.scm",
-        "test/concurrentScheme/threads/life.scm",
-        "test/concurrentScheme/threads/matmul.scm",
-        "test/concurrentScheme/threads/mazefun.scm",
-        "test/concurrentScheme/threads/mceval.scm",
+      Set(
+        // although the analysis terminates quickly for these benchmarks, the concrete interpreter times out too often ...
         "test/concurrentScheme/threads/minimax.scm",
+        "test/concurrentScheme/threads/pps.scm",
         "test/concurrentScheme/threads/msort.scm",
         "test/concurrentScheme/threads/qsort.scm",
+        "test/concurrentScheme/threads/life.scm",
+        "test/concurrentScheme/threads/fact-indep.scm",
+        "test/concurrentScheme/threads/atoms.scm",
+        "test/concurrentScheme/threads/peterson.scm",
+        "test/concurrentScheme/threads/pp.scm",
+        "test/concurrentScheme/threads/pc.scm",
+        "test/concurrentScheme/threads/mcarlo.scm",
+        "test/concurrentScheme/threads/stm.scm",
+        "test/concurrentScheme/threads/sudoku.scm",
+        "test/concurrentScheme/threads/readers2.scm",
+        "test/concurrentScheme/threads/crypt.scm",
+        // TODO: check these
         "test/R5RS/gambit/peval.scm",
         "test/R5RS/gambit/earley.scm", // list->vector
         "test/R5RS/gambit/scheme.scm",

@@ -6,15 +6,15 @@ import scalaam.util._
 import scalaam.language.scheme._
 
 // A SchemeModFComponent represents function calls
-sealed trait SchemeModFComponent[+Context, +Addr <: Address] extends SmartHash
+sealed trait SchemeModFComponent extends SmartHash
 // The main function call, i.e. the entry point of the program (corresponding to all top-level code)
-case object Main extends SchemeModFComponent[Nothing,Nothing] {
+case object Main extends SchemeModFComponent {
   override def toString: String = "main"
 }
 // A call to a specific closure
-case class Call[Context,Addr <: Address](clo: (SchemeLambdaExp, Environment[Addr]), 
-                                         nam: Option[String], 
-                                         ctx: Context) extends SchemeModFComponent[Context,Addr] {
+case class Call[Context](clo: (SchemeLambdaExp, Environment[Address]), 
+                         nam: Option[String], 
+                         ctx: Context) extends SchemeModFComponent {
   // convenience accessors
   lazy val (lambda, env) = clo
   // TODO: move this to SchemeLambdaExp
@@ -25,23 +25,13 @@ case class Call[Context,Addr <: Address](clo: (SchemeLambdaExp, Environment[Addr
   override def toString: String = lambdaName
 }
 
-case class StandardSchemeModFComponent[Context](cmp: SchemeModFComponent[Context,A[StandardSchemeModFComponent[Context]]]) {
-  override def toString(): String = cmp.toString()
-}
-
-trait StandardSchemeModFComponents extends SchemeModFSemantics {
-  type Component = StandardSchemeModFComponent[ComponentContext]
-  lazy val initialComponent = StandardSchemeModFComponent(Main)
-  def newComponent(call: Call[ComponentContext,Addr]) = StandardSchemeModFComponent(call)
-  def view(cmp: Component): SchemeModFComponent[ComponentContext, Addr] = cmp.cmp
-}
-
-trait InnerSchemeModFComponents extends BaseSchemeModFSemantics {
-  type Component = SchemeModFComponent[ComponentContext, Addr]
+trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {
+  type Component = SchemeModFComponent
   lazy val initialComponent = Main
-  def newComponent(call: Call[ComponentContext,Addr]) = call
-  def view(cmp: Component): SchemeModFComponent[ComponentContext, Addr] = cmp
+  def newComponent(call: Call[ComponentContext]) = call
+  def view(cmp: Component): SchemeModFComponent = cmp
 }
+
 
 /*package scalaam.scalaam.modular.scheme
 
