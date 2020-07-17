@@ -23,7 +23,9 @@ abstract class PrecisionBenchmarks[
     type Benchmark = String
     type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
                                            with ModularSchemeDomain {
-        val valueLattice: ModularSchemeLattice[Addr,Str,Bln,Num,Rea,Chr,Smb]
+        val modularLatticeWrapper: ModularSchemeLatticeWrapper {
+            val modularLattice: ModularSchemeLattice[Addr,Str,Bln,Num,Rea,Chr,Smb]
+        }
     }
 
     sealed trait BaseAddr extends Address { def printable = true }
@@ -59,26 +61,26 @@ abstract class PrecisionBenchmarks[
             case _ => false
         }
     }
-    private def convertV(analysis: Analysis)(value: analysis.valueLattice.Value): baseDomain.Value = value match {
-        case analysis.valueLattice.Nil          => baseDomain.Nil
-        case analysis.valueLattice.Bool(b)      => baseDomain.Bool(b)
-        case analysis.valueLattice.Int(i)       => baseDomain.Int(i)
-        case analysis.valueLattice.Real(r)      => baseDomain.Real(r)
-        case analysis.valueLattice.Char(c)      => baseDomain.Char(c)
-        case analysis.valueLattice.Str(s)       => baseDomain.Str(s)
-        case analysis.valueLattice.Symbol(s)    => baseDomain.Symbol(s)
-        case analysis.valueLattice.Prim(ps)     => baseDomain.Prim(ps.map(p => StubPrimitive(p.name)))
-        case analysis.valueLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((LambdaIdnEq(c._1._1),emptyEnv),None)))
-        case analysis.valueLattice.Cons(a,d)    => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
-        case analysis.valueLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
-        case analysis.valueLattice.Vec(s,e)     => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
-        case analysis.valueLattice.Void         => baseDomain.Void
-        case analysis.valueLattice.Lock(tids)   => baseDomain.Lock(tids)
-        case analysis.valueLattice.Thread(tids) => baseDomain.Thread(tids)
+    private def convertV(analysis: Analysis)(value: analysis.modularLatticeWrapper.modularLattice.Value): baseDomain.Value = value match {
+        case analysis.modularLatticeWrapper.modularLattice.Nil => baseDomain.Nil
+        case analysis.modularLatticeWrapper.modularLattice.Bool(b)      => baseDomain.Bool(b)
+        case analysis.modularLatticeWrapper.modularLattice.Int(i)       => baseDomain.Int(i)
+        case analysis.modularLatticeWrapper.modularLattice.Real(r)      => baseDomain.Real(r)
+        case analysis.modularLatticeWrapper.modularLattice.Char(c)      => baseDomain.Char(c)
+        case analysis.modularLatticeWrapper.modularLattice.Str(s)       => baseDomain.Str(s)
+        case analysis.modularLatticeWrapper.modularLattice.Symbol(s)    => baseDomain.Symbol(s)
+        case analysis.modularLatticeWrapper.modularLattice.Prim(ps)     => baseDomain.Prim(ps.map(p => StubPrimitive(p.name)))
+        case analysis.modularLatticeWrapper.modularLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((LambdaIdnEq(c._1._1),emptyEnv),None)))
+        case analysis.modularLatticeWrapper.modularLattice.Cons(a,d)    => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
+        case analysis.modularLatticeWrapper.modularLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
+        case analysis.modularLatticeWrapper.modularLattice.Vec(s,e)     => baseDomain.Vec(s,e.view.mapValues(convertValue(analysis)).toMap)
+        case analysis.modularLatticeWrapper.modularLattice.Void         => baseDomain.Void
+        case analysis.modularLatticeWrapper.modularLattice.Lock(tids)   => baseDomain.Lock(tids)
+        case analysis.modularLatticeWrapper.modularLattice.Thread(tids) => baseDomain.Thread(tids)
         case v                                  => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
     }
     private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
-        case analysis.valueLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
+        case analysis.modularLatticeWrapper.modularLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
     }
     private def convertConcreteAddr(addr: SchemeInterpreter.Addr): BaseAddr = addr._2 match {
         case SchemeInterpreter.AddrInfo.VarAddr(v) => VarAddr(v)

@@ -26,13 +26,13 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   }
   def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext
   def updateValue(update: Component => Component)(value: Value): Value = value match {
-    case valueLattice.Elements(vs)  => valueLattice.Elements(vs.map(updateV(update)))
+    case modularLatticeWrapper.modularLattice.Elements(vs)  => modularLatticeWrapper.modularLattice.Elements(vs.map(updateV(update)))
   }
-  def updateV(update: Component => Component)(value: valueLattice.Value): valueLattice.Value = value match {
-    case valueLattice.Pointer(ps)       => valueLattice.Pointer(ps.map(updateAddr(update)))
-    case valueLattice.Clo(cs)           => valueLattice.Clo(cs.map(clo => (updateClosure(update)(clo._1), clo._2)))
-    case valueLattice.Cons(car,cdr)     => valueLattice.Cons(updateValue(update)(car),updateValue(update)(cdr))
-    case valueLattice.Vec(siz,els)      => valueLattice.Vec(siz,els.view.mapValues(updateValue(update)).toMap)
+  def updateV(update: Component => Component)(value: modularLatticeWrapper.modularLattice.Value): modularLatticeWrapper.modularLattice.Value = value match {
+    case modularLatticeWrapper.modularLattice.Pointer(ps)       => modularLatticeWrapper.modularLattice.Pointer(ps.map(updateAddr(update)))
+    case modularLatticeWrapper.modularLattice.Clo(cs)           => modularLatticeWrapper.modularLattice.Clo(cs.map(clo => (updateClosure(update)(clo._1), clo._2)))
+    case modularLatticeWrapper.modularLattice.Cons(car,cdr)     => modularLatticeWrapper.modularLattice.Cons(updateValue(update)(car),updateValue(update)(cdr))
+    case modularLatticeWrapper.modularLattice.Vec(siz,els)      => modularLatticeWrapper.modularLattice.Vec(siz,els.view.mapValues(updateValue(update)).toMap)
     case _                              => value
   }
 

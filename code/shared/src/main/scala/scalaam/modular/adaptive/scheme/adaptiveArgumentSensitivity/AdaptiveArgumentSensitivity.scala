@@ -43,13 +43,13 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   // HELPER FUNCTIONS FOR `joinComponents`
   // TODO: Extract and put this somewhere else
   private def extractComponentRefs(value: Value): Set[Component] = value match {
-    case valueLattice.Elements(vs)  => vs.flatMap(extractComponentRefs).toSet
+    case modularLatticeWrapper.modularLattice.Elements(vs)  => vs.flatMap(extractComponentRefs).toSet
   }
-  private def extractComponentRefs(v: valueLattice.Value): Set[Component] = v match {
-    case valueLattice.Pointer(ps)       => ps.flatMap(extractComponentRefs)
-    case valueLattice.Clo(cs)           => cs.map(clo => ???)
-    case valueLattice.Cons(car,cdr)     => extractComponentRefs(car) ++ extractComponentRefs(cdr)
-    case valueLattice.Vec(_,els)        => els.flatMap(p => extractComponentRefs(p._2)).toSet
+  private def extractComponentRefs(v: modularLatticeWrapper.modularLattice.Value): Set[Component] = v match {
+    case modularLatticeWrapper.modularLattice.Pointer(ps)       => ps.flatMap(extractComponentRefs)
+    case modularLatticeWrapper.modularLattice.Clo(cs)           => cs.map(clo => ???)
+    case modularLatticeWrapper.modularLattice.Cons(car,cdr)     => extractComponentRefs(car) ++ extractComponentRefs(cdr)
+    case modularLatticeWrapper.modularLattice.Vec(_,els)        => els.flatMap(p => extractComponentRefs(p._2)).toSet
     case _                              => Set.empty
   }
   private def extractComponentRefs(addr: Addr): Set[Component] = ??? //TODO
