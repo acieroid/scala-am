@@ -21,14 +21,14 @@
   (if (< n MAXSIZE)
       (monte-carlo-seq size n)
       (let ((t1 (fork (monte-carlo-conc size (quotient n 2))))
-            (t2 (<change> (fork (monte-carlo-conc size (quotient n 2)))
+            (t2 (<change> (fork (monte-carlo-conc size (quotient n 2))) ; <=============================================
                           (monte-carlo-conc size (quotient n 2)))))
-        (+ (join t1) (<change> (join t2) t2)))))
+        (+ (join t1) (<change> (join t2) t2))))) ; <====================================================================
 
 (define (approximate-pi size iterations)
   (/ (* 4.0 (monte-carlo-conc size iterations)) iterations))
 
-(define radius (<change> 100 'oops))
+(define radius 100)
 (define pi (approximate-pi radius 100))
 (display pi)
 (if (< (abs (- 3.14 pi)) 0.01)

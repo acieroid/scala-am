@@ -27,7 +27,7 @@
 (define (approximate-pi size iterations)
   (/ (* 4.0 (monte-carlo-conc size iterations)) iterations))
 
-(define radius (<change> 100 'oops))
+(define radius (<change> 100 -100)) ; <=================================================================================
 (define pi (approximate-pi radius 100))
 (display pi)
 (if (< (abs (- 3.14 pi)) 0.01)
