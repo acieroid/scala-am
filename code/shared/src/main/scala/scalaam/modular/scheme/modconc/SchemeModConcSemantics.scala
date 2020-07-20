@@ -87,6 +87,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         // SCHEME LATTICE SETUP
         type Value = inter.Value
         lazy val lattice = inter.lattice 
+        lazy val primitives = inter.primitives
         // MODF ADDRESS ALLOCATION
         type AllocationContext = inter.AllocationContext
         def allocVar(id: Identifier, cmp: SchemeModFComponent) = inter.allocVar(id, cmp, intra.component)
@@ -156,7 +157,5 @@ class MyModConcAnalysis1(prg: SchemeExp) extends SimpleSchemeModConcAnalysis(prg
     override def modFAnalysis(intra: SchemeModConcIntra) = new ModFAnalysis(intra)
     class ModFAnalysis(intra: SchemeModConcIntra) extends InnerModFAnalysis(intra)
                                                     with SchemeModFNoSensitivity
-                                                    with RandomWorklistAlgorithm[SchemeExp] {
-        override val primitives: SchemePrimitives[modularLattice.L, Addr] = mc.primitives
-    }
+                                                    with RandomWorklistAlgorithm[SchemeExp]
 }
