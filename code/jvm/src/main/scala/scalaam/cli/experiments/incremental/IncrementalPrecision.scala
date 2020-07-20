@@ -5,14 +5,12 @@ import scalaam.core._
 import scalaam.language.CScheme.CSchemeParser
 import scalaam.language.change.CodeVersion._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives._
 import scalaam.modular.incremental.scheme.AnalysisBuilder._
 import scalaam.modular.scheme._
 import scalaam.util.{Formatter, Reader}
 import scalaam.util.Writer._
 import scalaam.util.benchmarks._
-
-import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.duration._
 
 trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
 
@@ -21,13 +19,6 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
   final val lp: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.
 
   var results: Table[String] = Table.empty
-
-  case class StubPrimitive(name: String) extends SchemePrimitive[Analysis#Value, Analysis#Addr] {
-    def call(fpos: SchemeExp, args: List[(SchemeExp, Analysis#Value)],
-             store: Store[Analysis#Addr,Analysis#Value],
-             scheme: SchemeInterpreterBridge[Analysis#Addr]) =
-      throw new Exception("Stub primitive: call not supported.")
-  }
 
   def onBenchmark(file: String): Unit = {
     println(s"Testing $file")
@@ -43,7 +34,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     var timeOut: Timeout.T = Timeout.none
 
     // Run the initial analysis.
-    write(s"Running analysis on initial program ")
+    write(s"init ")
     timeOut = timeout()
     a1.analyze(timeOut)
     if (timeOut.reached) { // We do not use the test `a1.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
@@ -51,10 +42,9 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
-    writeln(s"finished, components: ${a1.visited.size}.")
 
     // Update the initial analysis.
-    write(s"Updating the analysis ")
+    write(s"-> incr ")
     timeOut = timeout()
     a1.updateAnalysis(timeOut)
     if (timeOut.reached) {
@@ -62,10 +52,9 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
-    writeln(s"finished, components: ${a1.visited.size}.")
 
     // Run a full reanalysis
-    write(s"Reanalysing the program in full ")
+    write(s"-> rean ")
     timeOut = timeout()
     a2.analyze(timeOut)
     if (timeOut.reached) {
@@ -73,7 +62,6 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
-    write(s"finished, components ${a2.visited.size}.")
 
     // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
     val iStore = a1.store.withDefaultValue(a1.lattice.bottom)

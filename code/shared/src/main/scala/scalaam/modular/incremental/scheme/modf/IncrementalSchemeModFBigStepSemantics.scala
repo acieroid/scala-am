@@ -9,11 +9,9 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
   trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra {
     override protected def eval(exp: SchemeExp, env: Env): Value = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
-        registerAffected(component)
         registerComponent(e, component)
         eval(e, env)
       case SchemeCodeChange(_, e, _) if version == New =>
-        registerAffected(component)
         registerComponent(e, component)
         eval(e, env)
       case _                                     =>

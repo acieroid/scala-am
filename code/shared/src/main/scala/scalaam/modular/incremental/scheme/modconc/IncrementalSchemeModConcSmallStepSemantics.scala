@@ -9,14 +9,12 @@ trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemanti
   trait IncrementalSmallStepIntra extends SmallStepIntra {
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
-        registerAffected(component)
         registerComponent(e, component)
         Set(Eval(e, env, stack))
       case SchemeCodeChange(_, e, _) if version == New =>
-        registerAffected(component)
         registerComponent(e, component)
         Set(Eval(e, env, stack))
-      case _                                     =>
+      case _                                           =>
         registerComponent(exp, component)
         super.evaluate(exp, env, stack)
     }
