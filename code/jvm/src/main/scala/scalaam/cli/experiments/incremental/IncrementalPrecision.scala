@@ -4,16 +4,13 @@ import scalaam.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import scalaam.core._
 import scalaam.language.CScheme.CSchemeParser
 import scalaam.language.change.CodeVersion._
-import scalaam.language.scheme.SchemeInterpreter.Addr
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
-import scalaam.modular.GlobalStore
-import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.modular.incremental.scheme.AnalysisBuilder._
 import scalaam.modular.scheme._
-import scalaam.util.Reader
+import scalaam.util.{Formatter, Reader}
 import scalaam.util.Writer._
-import scalaam.util.benchmarks.{Table, Timeout}
+import scalaam.util.benchmarks._
 
 import scala.concurrent.duration.{Duration, MINUTES}
 
@@ -83,22 +80,21 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     val rStore = a2.store.withDefaultValue(a2.lattice.bottom)
 
     val allAddr = iStore.keySet.filter(interestingAddress) ++ rStore.keySet.filter(interestingAddress)
-    var e = 0L
-    var l = 0L
-    var m = 0L
+    var e: Long = 0L
+    var l: Long = 0L
+    var m: Long = 0L
+    val t: Long = allAddr.size
     allAddr.foreach({ a =>
       val incr = iStore(a)
       val rean = rStore(a)
-      if (incr == rean) {
+      if (incr == rean)
         e += 1 // Both results are the same => equally precise.
-      } else if (a1.lattice.subsumes(incr, rean.asInstanceOf[a1.Value])) {
+      else if (a1.lattice.subsumes(incr, rean.asInstanceOf[a1.Value]))
         l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
-      } else {
+      else
         m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
-        println(s"\n$a: $incr < $rean")
-      }
     })
-    results = results.add(file, eq, e.toString).add(file, mp, m.toString).add(file, lp, l.toString)
+    results = results.add(file, eq, Formatter.withPercent(e, t)).add(file, mp, Formatter.withPercent(m, t)).add(file, lp, Formatter.withPercent(l, t))
   }
 
   def interestingAddress[A <: Address](a: A): Boolean

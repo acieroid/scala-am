@@ -73,3 +73,13 @@ object Writer {
   def writeErrln(data: String = "\n"): String = writeErrln(defaultWriter, data)
 
 }
+
+object Formatter {
+
+  //def toPercentString(value: Double, digits: Int = 2): String = f"${value*100}%.${digits}f%%"
+  def toPercentString(num: Long, den: Long, digits: Int = 2): String = {
+    val frac = num.toDouble / den.toDouble
+    s"%.${digits}f".format(frac * 100) + "%"
+  }
+  def withPercent(num: Long, den: Long, digits: Int = 2) = s"$num (${toPercentString(num, den, digits)})"
+}

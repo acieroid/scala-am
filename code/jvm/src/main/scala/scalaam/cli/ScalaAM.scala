@@ -5,19 +5,18 @@ import java.io.File
 import scalaam.core.Address
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrelude, SchemePrimitives}
+import scalaam.language.scheme.primitives._
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
 import scalaam.modular.scheme.modconc._
 import scalaam.modular.scheme.ssmodconc._
-import scalaam.util.{Reader, SmartUnion}
+import scalaam.util._
 import scalaam.util.benchmarks.{Timeout, Timer}
 import scalaam.language.change.CodeVersion._
 import scalaam.modular.incremental.scheme.AnalysisBuilder.{IncrementalModConcAnalysis, IncrementalSchemeModFAnalysis}
 
 import scala.concurrent.duration._
-import scala.util.Random
 
 object Main {
 
