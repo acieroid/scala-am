@@ -9,16 +9,7 @@ import scalaam.util.benchmarks.Timeout
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] { //} with MutableIndirectComponents[Expr] { // MutableIndirectComponents are no longer needed, as there are no updates to modules (the original program already contains the changes).
 
   var version: Version = Old
-  private var affectedCheck: Set[Component] = Set() // Note that actually, this makes no sense as in the initial version of the program, you don't have change information. Can be used to check correctness.
   private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set()) // Keeps track of which components depend on an expression.
-
-  /** Register a component as being affected by a program change.
-   *  This is needed e.g. for ModConc, where affected components cannot be determined lexically/statically.
-   *  This method should be called when a change expression is analysed.
-   *  Synchronisation should be applied when the analysis is run concurrently!
-   */
-  @deprecated("Should only be used for verification (correctness) or be removed completely.")
-  def registerAffected(cmp: Component): Unit = affectedCheck = affectedCheck + cmp
 
   /** Register that a component is depending on a given expression in the program.
    * This is needed e.g. for ModConc, where affected components cannot be determined lexically/statically.
@@ -52,9 +43,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   def updateAnalysis(timeout: Timeout.T): Unit = {
     version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
-
-    assert(affected == affectedCheck) // Check to ensure correctness. TODO no longer compute affectedCheck, remove this from the final implementation.
-
     affected.foreach(addToWorkList) // Affected should be cleared when there are multiple successive incremental analysis steps.
     analyze(timeout)
   }
