@@ -17,7 +17,6 @@ trait SchemeSetup extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
     val preludedProgram = SchemePrelude.addPrelude(originalProgram)
     CSchemeUndefiner.undefine(List(preludedProgram))
   }
-  lazy val primitives: SchemePrimitives[Value,Addr] = new SchemeLatticePrimitives()
   lazy val initialBds: Iterable[(String,Addr,Value)] = primitives.allPrimitives.map {
     p => (p.name, PrmAddr(p.name), lattice.primitive(p)) 
   }

@@ -2,6 +2,7 @@ package scalaam.cli.experiments.primitives
 
 import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.cli.experiments._
+import scalaam.core.Address
 import scalaam.language.scheme._
 import scalaam.modular._
 import scalaam.modular.scheme.modf.SchemeModFCompoundSensitivities.SeparateLowHighSensitivity._
@@ -55,6 +56,8 @@ object PerformanceType extends PerformanceBenchmarks {
     lazy val valueLattice = new TypeSchemeLattice[Addr]
     type Value = valueLattice.L
     lazy val lattice = valueLattice.schemeLattice
+    lazy val primitives: SchemePrimitives[Value,Address] = new SchemeLatticePrimitives()
+
   }
   def benchmarks = SchemeBenchmarkPrograms.other
   def analyses = List(

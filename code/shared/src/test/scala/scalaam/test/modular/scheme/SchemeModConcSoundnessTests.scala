@@ -27,10 +27,12 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
     def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program) 
                                         with SchemeModConcNoSensitivity
                                         with SchemeConstantPropagationDomain
-                                        with LIFOWorklistAlgorithm[SchemeExp] {
+                                        with LIFOWorklistAlgorithm[SchemeExp] { mc =>
         def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                         with SchemeModFNoSensitivity
-                                                        with RandomWorklistAlgorithm[SchemeExp]                                       
+                                                        with RandomWorklistAlgorithm[SchemeExp] {
+          lazy val primitives = mc.primitives
+        }
     }
 }
 

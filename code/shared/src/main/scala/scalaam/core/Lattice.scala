@@ -50,5 +50,6 @@ object Lattice {
     def join(x: Set[A], y: => Set[A]): Set[A]                        = x.union(y)
     def subsumes(x: Set[A], y: => Set[A]): Boolean                   = y.subsetOf(x)
     def eql[B: scalaam.lattice.BoolLattice](x: Set[A], y: Set[A])    = ???
+    def ceq(x: Set[A], y: => Set[A]): Boolean                        = x == y
   }
 }

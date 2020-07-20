@@ -8,6 +8,7 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
 import scalaam.modular.components.ContextSensitiveComponents
+import scalaam.modular.scheme.SchemeConstantPropagationDomain.modularLattice
 import scalaam.util.benchmarks.Timeout
 
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
@@ -151,9 +152,11 @@ abstract class SimpleSchemeModConcAnalysis(prg: SchemeExp) extends ModAnalysis(p
 class MyModConcAnalysis1(prg: SchemeExp) extends SimpleSchemeModConcAnalysis(prg)
                                             with SchemeModConcNoSensitivity
                                             with SchemeConstantPropagationDomain
-                                            with LIFOWorklistAlgorithm[SchemeExp] {
+                                            with LIFOWorklistAlgorithm[SchemeExp] { mc =>
     override def modFAnalysis(intra: SchemeModConcIntra) = new ModFAnalysis(intra)
     class ModFAnalysis(intra: SchemeModConcIntra) extends InnerModFAnalysis(intra)
                                                     with SchemeModFNoSensitivity
-                                                    with RandomWorklistAlgorithm[SchemeExp]
+                                                    with RandomWorklistAlgorithm[SchemeExp] {
+        override val primitives: SchemePrimitives[modularLattice.L, Addr] = mc.primitives
+    }
 }

@@ -8,7 +8,8 @@ import scalaam.language.scheme.primitives._
 
 trait SchemeDomain extends AbstractDomain[SchemeExp] {
   type Prim = SchemePrimitive[Value, Address]
-  implicit val lattice: SchemeLattice[Value, Address, Prim] 
+  implicit val lattice: SchemeLattice[Value, Address, Prim]
+  val primitives: SchemePrimitives[Value, Address]
 }
 
 trait ModularSchemeDomain extends SchemeDomain {
@@ -17,6 +18,7 @@ trait ModularSchemeDomain extends SchemeDomain {
   // extracts value and lattice definition from this wrapper
   type Value = modularLatticeWrapper.modularLattice.L
   lazy val lattice = modularLatticeWrapper.modularLattice.schemeLattice
+  lazy val primitives: SchemePrimitives[Value,Address] = modularLatticeWrapper.primitives
 }
 
 trait ModularSchemeLatticeWrapper {
@@ -29,6 +31,7 @@ trait ModularSchemeLatticeWrapper {
   type Sym
   // holds a modular lattice
   val modularLattice: ModularSchemeLattice[Address,S,B,I,R,C,Sym]
+  val primitives: SchemePrimitives[modularLattice.L,Address]
 }
 
 //
@@ -46,6 +49,7 @@ object SchemeTypeDomain extends ModularSchemeLatticeWrapper {
   type Sym  = Concrete.Sym
   // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
+  lazy val primitives: SchemePrimitives[modularLattice.L,Address] = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
 }
 
 trait SchemeTypeDomain extends ModularSchemeDomain {
@@ -66,6 +70,7 @@ object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper {
   type Sym  = Concrete.Sym
   // make the scheme scalaam.lattice
   lazy val modularLattice = new ModularSchemeLattice
+  lazy val primitives: SchemePrimitives[modularLattice.L,Address] = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
 }
 
 trait SchemeConstantPropagationDomain extends ModularSchemeDomain {
@@ -87,6 +92,7 @@ object SchemePowersetDomain extends ModularSchemeLatticeWrapper {
   type Sym  = Concrete.Sym
   // make the scheme scalaam.lattice
   lazy val modularLattice = new ModularSchemeLattice
+  lazy val primitives: SchemePrimitives[modularLattice.L,Address] = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
 }
 
 trait SchemePowersetDomain extends ModularSchemeDomain {

@@ -4,12 +4,13 @@ import scalaam.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import scalaam.core._
 import scalaam.language.CScheme.CSchemeParser
 import scalaam.language.change.CodeVersion._
-import scalaam.language.scheme.SchemeExp
-import scalaam.modular.{LIFOWorklistAlgorithm, RandomWorklistAlgorithm}
+import scalaam.language.scheme.SchemeInterpreter.Addr
+import scalaam.language.scheme._
+import scalaam.language.scheme.primitives._
+import scalaam.modular.GlobalStore
+import scalaam.modular.incremental.IncrementalModAnalysis
 import scalaam.modular.incremental.scheme.AnalysisBuilder._
 import scalaam.modular.scheme._
-import scalaam.modular.scheme.modconc.{SchemeModConcNoSensitivity, SimpleSchemeModConcAnalysis}
-import scalaam.modular.scheme.modf.SchemeModFNoSensitivity
 import scalaam.util.Reader
 import scalaam.util.Writer._
 import scalaam.util.benchmarks.{Table, Timeout}
@@ -23,6 +24,13 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
   final val lp: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.
 
   var results: Table[String] = Table.empty
+
+  case class StubPrimitive(name: String) extends SchemePrimitive[Analysis#Value, Analysis#Addr] {
+    def call(fpos: SchemeExp, args: List[(SchemeExp, Analysis#Value)],
+             store: Store[Analysis#Addr,Analysis#Value],
+             scheme: SchemeInterpreterBridge[Analysis#Addr]) =
+      throw new Exception("Stub primitive: call not supported.")
+  }
 
   def onBenchmark(file: String): Unit = {
     println(s"Testing $file")

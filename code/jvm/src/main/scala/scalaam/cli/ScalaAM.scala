@@ -2,9 +2,10 @@ package scalaam.cli
 
 import java.io.File
 
+import scalaam.core.Address
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
-import scalaam.language.scheme.primitives.SchemePrelude
+import scalaam.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrelude, SchemePrimitives}
 import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
@@ -28,7 +29,7 @@ object Main {
     val analysis = new SimpleSchemeModConcAnalysis(prg)
                                         with SchemeModConcNoSensitivity
                                         with SchemeConstantPropagationDomain
-                                        with LIFOWorklistAlgorithm[SchemeExp] {
+                                        with LIFOWorklistAlgorithm[SchemeExp] { mc =>
       var i = 0
       override def step(t: Timeout.T = Timeout.none): Unit = {
         i = i + 1
@@ -39,6 +40,7 @@ object Main {
       def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                         with SchemeModFNoSensitivity
                                                         with RandomWorklistAlgorithm[SchemeExp] {
+        lazy val primitives: SchemePrimitives[Value,Address] = mc.primitives
         var j = 0
         override def step(t: Timeout.T): Unit = {
           j = j + 1
