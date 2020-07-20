@@ -82,7 +82,7 @@ object SchemeAnalyses {
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
     def modConcAnalysis(prg: SchemeExp) = new SimpleSchemeModConcAnalysis(prg)
-                                            with SchemeModConcNoSensitivity
+                                            with SchemeModConcStandardSensitivity
                                             with SchemeConstantPropagationDomain
                                             with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString = s"base modconc"
@@ -91,7 +91,7 @@ object SchemeAnalyses {
                                                                 with RandomWorklistAlgorithm[SchemeExp]
     }
     def parallelModConc(prg: SchemeExp, n: Int) = new SimpleSchemeModConcAnalysis(prg)
-                                                    with SchemeModConcNoSensitivity
+                                                    with SchemeModConcStandardSensitivity
                                                     with SchemeConstantPropagationDomain
                                                     with ParallelWorklistAlgorithm[SchemeExp] {
         override def workers = n

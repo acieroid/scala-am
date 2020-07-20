@@ -25,7 +25,7 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ BigStepTest
   def name = "ModConc + big-step ModF"
     def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program) 
-                                        with SchemeModConcNoSensitivity
+                                        with SchemeModConcStandardSensitivity
                                         with SchemeConstantPropagationDomain
                                         with LIFOWorklistAlgorithm[SchemeExp] {
         def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
