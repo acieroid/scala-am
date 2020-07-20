@@ -102,3 +102,9 @@ following publications:
     information. VMIL@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-09.pdf), [doi](http://doi.acm.org/10.1145/2998415.2998418).
   * STRAF: A Scala Framework for Experiments in Trace-Based JIT
     Compilation. GTTSE 2015. [pdf](http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-09.pdf), [doi](https://doi.org/10.1007/978-3-319-60074-1\_10).
+
+# Acknowledgements
+
+![](https://www.ej-technologies.com/images/product_banners/jprofiler_medium.png)
+
+Many thanks to [JProfiler](https://www.ej-technologies.com/products/jprofiler/overview.html) for supporting this open-source project, allowing us to easily identify and resolve performance bottlenecks in our analyses.
