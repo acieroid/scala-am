@@ -39,7 +39,6 @@ object Main {
       def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                         with SchemeModFNoSensitivity
                                                         with RandomWorklistAlgorithm[SchemeExp] {
-        lazy val primitives: SchemePrimitives[Value,Address] = mc.primitives
         var j = 0
         override def step(t: Timeout.T): Unit = {
           j = j + 1
