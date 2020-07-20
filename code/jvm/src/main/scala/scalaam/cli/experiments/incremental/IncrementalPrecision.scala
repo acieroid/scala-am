@@ -5,8 +5,11 @@ import scalaam.core._
 import scalaam.language.CScheme.CSchemeParser
 import scalaam.language.change.CodeVersion._
 import scalaam.language.scheme.SchemeExp
+import scalaam.modular.{LIFOWorklistAlgorithm, RandomWorklistAlgorithm}
 import scalaam.modular.incremental.scheme.AnalysisBuilder._
 import scalaam.modular.scheme._
+import scalaam.modular.scheme.modconc.{SchemeModConcNoSensitivity, SimpleSchemeModConcAnalysis}
+import scalaam.modular.scheme.modf.SchemeModFNoSensitivity
 import scalaam.util.Reader
 import scalaam.util.Writer._
 import scalaam.util.benchmarks.{Table, Timeout}
@@ -43,7 +46,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
-    writeln("finished.")
+    writeln(s"finished, components: ${a1.visited.size}.")
 
     // Update the initial analysis.
     write(s"Updating the analysis ")
@@ -54,7 +57,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
-    writeln("finished.")
+    writeln(s"finished, components: ${a1.visited.size}.")
 
     // Run a full reanalysis
     write(s"Reanalysing the program in full ")
@@ -65,7 +68,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
-    write("finished.")
+    write(s"finished, components ${a2.visited.size}.")
 
     // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
     val iStore = a1.store.withDefaultValue(a1.lattice.bottom)
@@ -84,6 +87,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
         l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
       } else {
         m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
+        println(s"\n$a: $incr < $rean")
       }
     })
     results = results.add(file, eq, e.toString).add(file, mp, m.toString).add(file, lp, l.toString)
@@ -92,7 +96,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
   def interestingAddress[A <: Address](a: A): Boolean
   def reportError(file: String): Unit = results = results.add(file, eq, "E").add(file, mp, "E").add(file, lp, "E")
   val output: String = s"benchOutput/results-incremental-precision-${System.currentTimeMillis()}.txt"
-  def createOutput(): String = results.prettyString(columns = List(eq, mp, lp))
+  def createOutput(): String = results.prettyString(columns = List(eq, lp, mp))
 }
 
 trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {

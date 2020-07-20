@@ -74,7 +74,7 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
     with SchemeConstantPropagationDomain
     with LIFOWorklistAlgorithm[SchemeExp] {
     val k = 1
-    override def intraAnalysis(component: SchemeComponent): IntraAnalysis = new IntraAnalysis(component) with SmallStepIntra with kCFAIntra
+    override def intraAnalysis(component: SmallStepModConcComponent): IntraAnalysis = new IntraAnalysis(component) with SmallStepIntra with kCFAIntra
   }
 }
 

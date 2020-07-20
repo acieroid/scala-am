@@ -13,6 +13,21 @@ import scalaam.util.SmartHash
 import scalaam.util.benchmarks.Timeout
 
 /**
+ * Definition of Scheme components. In ModConc, Scheme components also double as thread identifiers.
+ */
+sealed trait SmallStepModConcComponent extends SmartHash with TID
+
+// The main thread of the program.
+case object MainComponent extends SmallStepModConcComponent {
+  override def toString: String = "Main"
+}
+
+// A thread created by the program.
+case class ThreadComponent[Ctx](exp: SchemeExp, env: Environment[Address], ctx: Ctx) extends SmallStepModConcComponent {
+  override def toString: String = s"ThreadComponent($exp, $env, $ctx)"
+}
+
+/**
  * Provides a small-step ModConc semantics for a concurrent Scheme with threads.
  * Additionally supported primitives (upon R5RS): fork, join.
  */
@@ -39,46 +54,29 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   // COMPONENTS //
   //XXXXXXXXXXXX//
 
-  /**
-   * Definition of Scheme components. In ModConc, Scheme components also double as thread identifiers.
-   */
-  trait SchemeComponent extends SmartHash with TID {
-    def exp: SchemeExp; // The expression to evaluate within the component.
-    def env: Env        // The environment in which the expression should be evaluated.
-  }
-
-  type Component = SchemeComponent
-  implicit def view(c: Component): SchemeComponent = c
-  def expr(cmp: Component) = view(cmp).exp
-
-  // The main thread of the program.
-  case object MainComponent extends SchemeComponent {
-    def exp: Exp = program
-    def env: Env = initialEnv
-    override def toString: String = "Main"
+  type Component = SmallStepModConcComponent
+  implicit def view(c: Component): SmallStepModConcComponent = c
+  def expr(cmp: Component) = view(cmp) match {
+    case MainComponent => program
+    case ThreadComponent(exp, _, _) => exp
   }
 
   // The context of a ThreadComponent. TODO
   type ComponentContext = Unit
 
-  // A thread created by the program.
-  case class ThreadComponent(exp: Exp, env: Env, ctx: ComponentContext) extends SchemeComponent {
-    override def toString: String = s"ThreadComponent($exp, <env>, $ctx)"
-  }
-
-  lazy val initialComponent: SchemeComponent = MainComponent
-  def newComponent(body: Exp, env: Env, ctx: ComponentContext): SchemeComponent = ThreadComponent(body, env, ctx)
+  lazy val initialComponent: SmallStepModConcComponent = MainComponent
+  def newComponent(body: Exp, env: Env, ctx: ComponentContext): SmallStepModConcComponent = ThreadComponent(body, env, ctx)
 
   // Other required definitions.
 
   type ComponentContent = Option[(Exp, Env)]
   def content(cmp: Component): ComponentContent = view(cmp) match {
     case MainComponent => None
-    case p: ThreadComponent => Some((p.exp, p.env))
+    case ThreadComponent(exp, env, _) => Some((exp, env))
   }
   def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
     case MainComponent => None
-    case p: ThreadComponent => Some(p.ctx)
+    case ThreadComponent(_, _, ctx) => Some(ctx)
   }
 
 
@@ -97,7 +95,10 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
 
     def analyze(timeout: Timeout.T = Timeout.none): Unit = {
       // Create an initial state based on the component's expression and environment, together with an empty continuation stack.
-      val initialState = Eval(component.exp, component.env, KEmpty)
+      val initialState = component match {
+        case MainComponent => Eval(program, initialEnv, KEmpty)
+        case ThreadComponent(exp, env, _) => Eval(exp, env, KEmpty)
+      }
 
       @mutable var work: WorkList[State] = LIFOWorkList[State](initialState)
       @mutable var visited = Set[State]()
