@@ -7,6 +7,7 @@ import scalaam.util.benchmarks.Timeout
 
 trait BigStepModFSemantics extends BaseSchemeModFSemantics {
   // defining the intra-analysis
+  override def intraAnalysis(cmp: Component): BigStepModFIntra
   trait BigStepModFIntra extends IntraAnalysis with SchemeModFSemanticsIntra {
     // analysis entry point
     def analyze(timeout: Timeout.T = Timeout.none): Unit = // Timeout is just ignored here.

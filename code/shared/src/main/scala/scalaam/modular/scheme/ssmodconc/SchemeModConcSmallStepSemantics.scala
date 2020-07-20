@@ -84,9 +84,8 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   // INTRA-COMPONENT ANALYSIS //
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
 
-
+  override def intraAnalysis(cmp: Component): SmallStepIntra
   trait SmallStepIntra extends IntraAnalysis with ReturnResultIntra  {
-
 
     //----------//
     // ANALYSIS //
@@ -438,12 +437,12 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   }
 }
 
-trait kCFAModConc extends SmallStepModConcSemantics {
+trait KCFAModConc extends SmallStepModConcSemantics {
 
   val k: Int
 
-  trait kCFAIntra extends IntraAnalysis with SmallStepIntra {
-
+  override def intraAnalysis(cmp: Component): KCFAIntra
+  trait KCFAIntra extends IntraAnalysis with SmallStepIntra {
     def allocateKAddr(e: Exp, cc: KA): KAddr = cc match {
       case KEmpty   => KAddr( List(e).take(k))
       case KAddr(l) => KAddr((e :: l).take(k))

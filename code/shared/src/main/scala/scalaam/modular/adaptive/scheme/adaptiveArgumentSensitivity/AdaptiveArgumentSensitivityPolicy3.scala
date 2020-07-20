@@ -56,7 +56,7 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
   // we instrument the intra-analysis to:
   // - perform the necessary bookkeeping for 'calledBy' whenever a function is called
   // - check if the analysis needs to be adapted on new function calls
-  override def intraAnalysis(cmp: Component) = new AdaptiveArgIntraPolicy3(cmp)
+  override def intraAnalysis(cmp: Component): AdaptiveArgIntraPolicy3 = new AdaptiveArgIntraPolicy3(cmp)
   class AdaptiveArgIntraPolicy3(component: Component) extends AdaptiveSchemeModFIntra(component) {
     override def call(cmp: Component) = {
       registerCall(component,cmp)

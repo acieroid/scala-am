@@ -27,7 +27,7 @@ trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
         super.updateAnalysisData(update)
     }
     // we instrument the intra-analysis to perform the necessary bookkeeping for 'calledBy' whenever a function is called
-    override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFAnalysisIntra(cmp)
+    override def intraAnalysis(cmp: Component): AdaptiveSchemeModFAnalysisIntra = new AdaptiveSchemeModFAnalysisIntra(cmp)
     class AdaptiveSchemeModFAnalysisIntra(component: Component) extends AdaptiveSchemeModFIntra(component) {
         var currentPos: Position = null
         override def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position) = {

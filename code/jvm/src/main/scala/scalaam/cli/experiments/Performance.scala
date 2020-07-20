@@ -120,7 +120,7 @@ trait PerformanceBenchmarks {
 }
 
 object ParallelModFPerformance extends PerformanceBenchmarks {
-  def benchmarks = Set("test/R5RS/mceval.scm")
+  def benchmarks = Set("test/R5RS/gambit/scheme.scm")
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.contextInsensitiveAnalysis, "base ModF")
     //(SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),

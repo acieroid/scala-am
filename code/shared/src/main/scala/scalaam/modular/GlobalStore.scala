@@ -33,7 +33,8 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr]
         }
     }
 
-  trait GlobalStoreIntra extends super.IntraAnalysis { intra => 
+  override def intraAnalysis(cmp: Component): GlobalStoreIntra
+  trait GlobalStoreIntra extends IntraAnalysis { intra => 
     // local copy of the global store
     var store = inter.store
     // reading addresses in the global store

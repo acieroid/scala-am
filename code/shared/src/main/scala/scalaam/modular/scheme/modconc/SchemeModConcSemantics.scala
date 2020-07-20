@@ -64,7 +64,6 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     //
 
     override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp)
-    
     class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp)
                                                 with GlobalStoreIntra
                                                 with ReturnResultIntra {

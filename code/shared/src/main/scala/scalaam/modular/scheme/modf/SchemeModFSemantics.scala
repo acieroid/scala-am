@@ -62,6 +62,7 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//
 
   // Extensions to the intraAnalysis.
+  override def intraAnalysis(cmp: Component): SchemeModFSemanticsIntra
   trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
     // components
     protected def fnBody: SchemeExp = body(view(component))

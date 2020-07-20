@@ -18,6 +18,7 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
   def finalResult = store.getOrElse(returnAddr(initialComponent), lattice.bottom)
 
   // intra-analysis can now also update and read the result of a component
+  override def intraAnalysis(cmp: Component): ReturnResultIntra
   trait ReturnResultIntra extends GlobalStoreIntra {
     // updating the result of a component (default: of the current component)
     protected def writeResult(result: Value, cmp: Component = component): Unit =

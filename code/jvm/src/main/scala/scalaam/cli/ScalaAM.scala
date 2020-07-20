@@ -25,28 +25,11 @@ object Main {
   def test(): Unit = {
     val txt = Reader.loadFile("test/concurrentScheme/threads/qsort.scm")
     val prg = CSchemeParser.parse(txt)
-    val analysis = new SimpleSchemeModConcAnalysis(prg)
-                                        with SchemeModConcNoSensitivity
+    val analysis = new SimpleSchemeModFAnalysis(prg)
+                                        with SchemeModFNoSensitivity
                                         with SchemeConstantPropagationDomain
-                                        with LIFOWorklistAlgorithm[SchemeExp] {
-      var i = 0
-      override def step(t: Timeout.T = Timeout.none): Unit = {
-        i = i + 1
-        val cmp = workList.head
-        println(s"[$i] $cmp")
-        super.step(t)
-      }
-      def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
-                                                        with SchemeModFNoSensitivity
-                                                        with RandomWorklistAlgorithm[SchemeExp] {
-        var j = 0
-        override def step(t: Timeout.T): Unit = {
-          j = j + 1
-          val cmp = workList.head
-          println(s"[$i.$j] $cmp")
-          super.step(t)
-        } 
-      }
+                                        with ParallelWorklistAlgorithm[SchemeExp] {
+      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
     analysis.analyze(Timeout.start(Duration(30,SECONDS)))
     //debugClosures(analysis)
@@ -73,12 +56,12 @@ object Analyze extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new ModAnalysis(text)
-      with kCFAModConc
+      with KCFAModConc
       with SchemeConstantPropagationDomain
       with LIFOWorklistAlgorithm[SchemeExp] {
       val k = 1
 
-      override def intraAnalysis(component: SmallStepModConcComponent): IntraAnalysis = new IntraAnalysis(component) with kCFAIntra
+      override def intraAnalysis(component: SmallStepModConcComponent) = new IntraAnalysis(component) with KCFAIntra
     }
     a.analyze(timeout())
     val r = a.finalResult
@@ -162,11 +145,11 @@ object SimpleTimingTest extends App {
   type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
 
   def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
-    with kCFAModConc
+    with KCFAModConc
     with SchemeConstantPropagationDomain
     with LIFOWorklistAlgorithm[SchemeExp] {
     val k = 1
-    override def intraAnalysis(component: SmallStepModConcComponent): IntraAnalysis = new IntraAnalysis(component) with SmallStepIntra with kCFAIntra
+    override def intraAnalysis(component: SmallStepModConcComponent) = new IntraAnalysis(component) with SmallStepIntra with KCFAIntra
   }
 
   def run(benchmark: String): Unit = {
