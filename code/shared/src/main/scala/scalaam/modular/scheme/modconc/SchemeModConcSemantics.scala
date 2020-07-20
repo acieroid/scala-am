@@ -153,7 +153,7 @@ abstract class SimpleSchemeModConcAnalysis(prg: SchemeExp) extends ModAnalysis(p
 class MyModConcAnalysis1(prg: SchemeExp) extends SimpleSchemeModConcAnalysis(prg)
                                             with SchemeModConcNoSensitivity
                                             with SchemeConstantPropagationDomain
-                                            with LIFOWorklistAlgorithm[SchemeExp] { mc =>
+                                            with LIFOWorklistAlgorithm[SchemeExp] {
     override def modFAnalysis(intra: SchemeModConcIntra) = new ModFAnalysis(intra)
     class ModFAnalysis(intra: SchemeModConcIntra) extends InnerModFAnalysis(intra)
                                                     with SchemeModFNoSensitivity
