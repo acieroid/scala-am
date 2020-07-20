@@ -28,7 +28,7 @@ object Main {
     val analysis = new SimpleSchemeModConcAnalysis(prg)
                                         with SchemeModConcNoSensitivity
                                         with SchemeConstantPropagationDomain
-                                        with LIFOWorklistAlgorithm[SchemeExp] { mc =>
+                                        with LIFOWorklistAlgorithm[SchemeExp] {
       var i = 0
       override def step(t: Timeout.T = Timeout.none): Unit = {
         i = i + 1
