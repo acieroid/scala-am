@@ -87,8 +87,10 @@ object SchemeAnalyses {
                                             with LIFOWorklistAlgorithm[SchemeExp] {
         override def toString = s"base modconc"
         override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
-                                                                with SchemeModFCallSiteSensitivity
-                                                                with RandomWorklistAlgorithm[SchemeExp]
+                                                                with SchemeModFKCallSiteSensitivity
+                                                                with RandomWorklistAlgorithm[SchemeExp] {
+            override val k = 5
+        }
     }
     def parallelModConc(prg: SchemeExp, n: Int) = new SimpleSchemeModConcAnalysis(prg)
                                                     with SchemeModConcStandardSensitivity
@@ -98,7 +100,9 @@ object SchemeAnalyses {
         override def toString = s"parallel modconc (n = $workers)"                                               
         override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
         override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
-                                                                with SchemeModFCallSiteSensitivity
-                                                                with RandomWorklistAlgorithm[SchemeExp]
+                                                                with SchemeModFKCallSiteSensitivity
+                                                                with RandomWorklistAlgorithm[SchemeExp] {
+            override val k = 5
+        }
     }
 }
