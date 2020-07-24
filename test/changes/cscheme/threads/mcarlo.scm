@@ -31,5 +31,5 @@
 (define pi (approximate-pi radius 100))
 (display pi)
 (if (< (abs (- 3.14 pi)) 0.01)
-    (<change> (display "looks like pi") #t)
-    (<change> (display "not really good") #f))
+    (<change> (display "looks like pi") #t) ; <=========================================================================
+    (<change> (display "not really good") #f)) ; <======================================================================

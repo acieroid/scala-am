@@ -21,7 +21,7 @@
                            (lock (actor-lock name)))
                        (if (null? (deref mb))
                            ;; nothing to receive, wait
-                           (<change> (begin (loop receive state)) (loop receive state))
+                           (<change> (begin (loop receive state)) (loop receive state)) ; <=============================
                            ;; message to receive
                            (begin
                              (acquire (actor-lock name))
@@ -30,7 +30,7 @@
                                (release (actor-lock name))
                                (let ((action (receive name state (car message) (cdr message))))
                                  (if (eq? action 'terminate)
-                                     (<change> (begin 'done) 'finished)
+                                     (<change> (begin 'done) 'finished) ; <=============================================
                                      (loop (car action) (cdr action)))))))))))
       (loop f init-state))))
 (define (create act state)

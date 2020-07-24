@@ -35,7 +35,7 @@
         (release lock)
         (consumer))))
 
-(define producer-thread (<change> (fork (producer N)) (lambda (n) (fork (producer n)))))
+(define producer-thread (<change> (fork (producer N)) (lambda (n) (fork (producer n))))) ; <============================
 
 (define (do-n n f)
   (if (= n 0)
@@ -44,5 +44,5 @@
 
 (define consumer-threads (do-n NCONS (lambda () (fork (consumer)))))
 
-(join (<change> producer-thread (producer-thread N)))
+(join (<change> producer-thread (producer-thread N))) ; <===============================================================
 (map (lambda (t) (join t)) consumer-threads)
