@@ -21,12 +21,20 @@ trait SchemeModFFullArgumentSensitivity extends SchemeModFSensitivity {
 }
 
 /* Call-site sensitivity for ModF */
-case class CallSiteContext(fn: Position, call: Position) {
-  override def toString: String = s"$call->$fn"
+case class CallSiteContext(calls: List[Position]) {
+  override def toString: String = calls.mkString("[", "," ,"]")
 }
-trait SchemeModFCallSiteSensitivity extends SchemeModFSensitivity {
-  type ComponentContext = CallSiteContext 
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = CallSiteContext(clo._1.idn.pos, call)
+trait SchemeModFKCallSiteSensitivity extends SchemeModFSensitivity {
+  val k: Int
+  type ComponentContext = CallSiteContext
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = context(caller) match {
+    case None                           => CallSiteContext(List(call))
+    case Some(CallSiteContext(callers)) => CallSiteContext((call :: callers).take(k))
+  }
+}
+// shorthand for 1-CFA
+trait SchemeModFCallSiteSensitivity extends SchemeModFKCallSiteSensitivity {
+  override val k = 1
 }
 
 /* Call-site x full-argument sensitivity for ModF */
