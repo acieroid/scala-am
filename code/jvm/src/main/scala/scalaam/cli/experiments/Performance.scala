@@ -16,12 +16,12 @@ trait PerformanceBenchmarks {
   type Analysis = ModAnalysis[SchemeExp]
 
   // Configuring the warm-up
-  def maxWarmupRuns = 5                                     // maximum number of warm-up runs 
-  def maxWarmupTime = Timeout.start(Duration(1, MINUTES))   // maximum time to spend on warm-up *in total* (i.e., for all runs)
+  def maxWarmupRuns = 3                                     // maximum number of warm-up runs 
+  def maxWarmupTime = Timeout.start(Duration(20, SECONDS))  // maximum time to spend on warm-up *in total* (i.e., for all runs)
 
   // Configuring the analysis runs
-  def analysisRuns = 15                                     // number of analysis runs
-  def analysisTime = Timeout.start(Duration(2, MINUTES))    // maximum time to spend *on a single analysis run*
+  def analysisRuns = 10                                     // number of analysis runs
+  def analysisTime = Timeout.start(Duration(1, MINUTES))    // maximum time to spend *on a single analysis run*
 
   // The list of benchmarks used for the evaluation
   type Benchmark = String
@@ -120,27 +120,29 @@ trait PerformanceBenchmarks {
 }
 
 object ParallelModFPerformance extends PerformanceBenchmarks {
-  def benchmarks = Set("test/R5RS/gambit/scheme.scm")
+  def benchmarks = Set("test/R5RS/gambit/nboyer.scm", 
+                       "test/R5RS/gambit/peval.scm", 
+                       "test/R5RS/icp/icp_1c_ontleed.scm")
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.contextInsensitiveAnalysis, "base ModF")
-    //(SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
-    //(SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
-    //(SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
+    (SchemeAnalyses.contextInsensitiveAnalysis, "base ModF"),
+    (SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
+    (SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
+    (SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
     //(SchemeAnalyses.parallelAnalysis(_,6), "parallel (n = 6)"),
-    //(SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
+    (SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
   )
   def main(args: Array[String]) = run()
 }
 
 object ParallelModConcPerformance extends PerformanceBenchmarks {
-  def benchmarks = SchemeBenchmarkPrograms.fromFolder("test/concurrentScheme/threads/variations")
+  def benchmarks = Set("test/concurrentScheme/threads/crypt.scm")
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.modConcAnalysis, "base ModConc"),
-    (SchemeAnalyses.parallelModConc(_,1), "parallel (n = 1)"),
+    //(SchemeAnalyses.modConcAnalysis, "base ModConc"),
+    //(SchemeAnalyses.parallelModConc(_,1), "parallel (n = 1)"),
     (SchemeAnalyses.parallelModConc(_,2), "parallel (n = 2)"),
-    (SchemeAnalyses.parallelModConc(_,4), "parallel (n = 4)"),
-    (SchemeAnalyses.parallelModConc(_,6), "parallel (n = 6)"),
-    (SchemeAnalyses.parallelModConc(_,8), "parallel (n = 8)")
+    //(SchemeAnalyses.parallelModConc(_,4), "parallel (n = 4)"),
+    //(SchemeAnalyses.parallelModConc(_,6), "parallel (n = 6)"),
+    (SchemeAnalyses.parallelModConc(_, 8), "parallel (n = 8)")
   )  
   def main(args: Array[String]) = run()
 }
