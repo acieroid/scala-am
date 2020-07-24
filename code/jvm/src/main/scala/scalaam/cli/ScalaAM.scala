@@ -124,7 +124,8 @@ object IncrementalRun extends App {
   }
 
   val modConcbenchmarks: List[String] = List(
-    "test/changes/cscheme/threads/mcarlo2.scm"
+   // "test/changes/cscheme/threads/mcarlo2.scm"
+      "test/changes/cscheme/threads/lastzero.scm"
     //"test/changes/cscheme/threads/sudoku.scm",
     //"test/changes/cscheme/threads/pc.scm",
     //"test/changes/cscheme/threads/stm.scm"
