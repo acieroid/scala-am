@@ -21,7 +21,7 @@ trait PerformanceBenchmarks {
 
   // Configuring the analysis runs
   def analysisRuns = 10                                     // number of analysis runs
-  def analysisTime = Timeout.start(Duration(1, MINUTES))    // maximum time to spend *on a single analysis run*
+  def analysisTime = Timeout.start(Duration(2, MINUTES))    // maximum time to spend *on a single analysis run*
 
   // The list of benchmarks used for the evaluation
   type Benchmark = String
@@ -121,15 +121,21 @@ trait PerformanceBenchmarks {
 
 object ParallelModFPerformance extends PerformanceBenchmarks {
   def benchmarks = Set("test/R5RS/gambit/nboyer.scm", 
-                       "test/R5RS/gambit/peval.scm", 
-                       "test/R5RS/icp/icp_1c_ontleed.scm")
+                       "test/R5RS/gambit/sboyer.scm", 
+                       "test/R5RS/gambit/scheme.scm",
+                       "test/R5RS/gambit/peval.scm",
+                       "test/R5RS/icp/icp_1c_ontleed.scm",
+                       "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+                       "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+                       "test/R5RS/icp/icp_3_leval.scm",
+                       "test/R5RS/icp/icp_7_eceval.scm",
+                       "test/R5RS/icp/icp_8_compiler.scm")
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.contextInsensitiveAnalysis, "base ModF"),
-    (SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
-    (SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
-    (SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
-    //(SchemeAnalyses.parallelAnalysis(_,6), "parallel (n = 6)"),
-    (SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
+    (SchemeAnalyses.kCFAAnalysis(_, 1), "base ModF"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 1, 1), "parallel (n = 1)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 2, 1), "parallel (n = 2)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 4, 1), "parallel (n = 4)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 8, 1), "parallel (n = 8)")
   )
   def main(args: Array[String]) = run()
 }

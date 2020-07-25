@@ -23,7 +23,7 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/icp/icp_7_eceval.scm")
+    val txt = Reader.loadFile("test/R5RS/gambit/peval.scm")
     val prg = CSchemeParser.parse(txt)
     val analysis = new SimpleSchemeModFAnalysis(prg)
                                         with SchemeModFNoSensitivity
