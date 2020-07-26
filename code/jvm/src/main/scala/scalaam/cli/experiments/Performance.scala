@@ -1,6 +1,5 @@
 package scalaam.cli.experiments
 
-import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.language.scheme._
 import scalaam.language.CScheme._
 import scalaam.modular.ModAnalysis
@@ -16,12 +15,12 @@ trait PerformanceBenchmarks {
   type Analysis = ModAnalysis[SchemeExp]
 
   // Configuring the warm-up
-  def maxWarmupRuns = 3                                     // maximum number of warm-up runs 
-  def maxWarmupTime = Timeout.start(Duration(20, SECONDS))  // maximum time to spend on warm-up *in total* (i.e., for all runs)
+  def maxWarmupRuns = 5                                     // maximum number of warm-up runs 
+  def maxWarmupTime = Timeout.start(Duration(1, MINUTES))   // maximum time to spend on warm-up *in total* (i.e., for all runs)
 
   // Configuring the analysis runs
-  def analysisRuns = 10                                     // number of analysis runs
-  def analysisTime = Timeout.start(Duration(2, MINUTES))    // maximum time to spend *on a single analysis run*
+  def analysisRuns = 20                                     // number of analysis runs
+  def analysisTime = Timeout.start(Duration(4, MINUTES))    // maximum time to spend *on a single analysis run*
 
   // The list of benchmarks used for the evaluation
   type Benchmark = String
@@ -138,7 +137,10 @@ object ParallelModFPerformance extends PerformanceBenchmarks {
     (SchemeAnalyses.parallelKCFAAnalysis(_, 1, 0), "parallel (n = 1)"),
     (SchemeAnalyses.parallelKCFAAnalysis(_, 2, 0), "parallel (n = 2)"),
     (SchemeAnalyses.parallelKCFAAnalysis(_, 4, 0), "parallel (n = 4)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 8, 0), "parallel (n = 8)")
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 8, 0), "parallel (n = 8)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 16, 0), "parallel (n = 16)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 32, 0), "parallel (n = 32)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 64, 0), "parallel (n = 64)")
   )
   def main(args: Array[String]) = run()
 }
