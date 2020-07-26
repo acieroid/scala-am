@@ -15,13 +15,13 @@ object SchemeAnalyses {
     def contextInsensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
                                                         with SchemeModFNoSensitivity
                                                         with SchemeConstantPropagationDomain
-                                                        with FIFOWorklistAlgorithm[SchemeExp] {
+                                                        with CallDepthFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
     }
     def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModFAnalysis(prg)
                                                     with SchemeModFKCallSiteSensitivity
                                                     with SchemeConstantPropagationDomain
-                                                    with FIFOWorklistAlgorithm[SchemeExp] {
+                                                    with CallDepthFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"kCFA (k = $kcfa)"
         val k = kcfa
     } 

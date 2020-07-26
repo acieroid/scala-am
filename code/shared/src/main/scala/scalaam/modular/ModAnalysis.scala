@@ -22,7 +22,8 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
   // when we discover a component that has not yet been analyzed, we add it to the worklist
   // concretely, we keep track of a set `visited` of all components that have already been visited
   var visited: Set[Component] = Set(initialComponent)
-  def spawn(cmp: Component) =
+  def spawn(cmp: Component, from: Component): Unit = spawn(cmp)
+  def spawn(cmp: Component): Unit =
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
       addToWorkList(cmp)
@@ -55,9 +56,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
     def analyze(timeout: Timeout.T = Timeout.none): Unit
     // pushes the local changes to the global analysis state
     def commit(): Unit = {
-      R.foreach(inter.register(component,_))
+      R.foreach(inter.register(component, _))
       W.foreach(dep => if(commit(dep)) inter.trigger(dep))
-      C.foreach(inter.spawn)
+      C.foreach(inter.spawn(_, component))
     }
     def commit(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit
   }
