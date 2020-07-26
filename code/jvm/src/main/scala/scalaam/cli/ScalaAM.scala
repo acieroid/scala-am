@@ -29,11 +29,11 @@ object Main {
                                         with SchemeModFNoSensitivity
                                         with SchemeConstantPropagationDomain
                                         with ParallelWorklistAlgorithm[SchemeExp] {
-      override def workers = 8
+      override def workers = 1
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
-    analysis.analyze(Timeout.start(Duration(120,SECONDS)))
-    println("DONE")
+    analysis.analyze(Timeout.start(Duration(30,SECONDS)))
+    println(analysis.finished())
     //debugClosures(analysis)
     //debugResults(analysis, true)
   }
