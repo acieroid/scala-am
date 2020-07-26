@@ -2,6 +2,7 @@ package scalaam.modular
 
 import scalaam.core._
 import scalaam.util.benchmarks.Timeout
+import scala.collection.mutable.PriorityQueue
 
 trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
                                                        with GlobalStore[Expr] { inter =>
@@ -14,18 +15,20 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
   // WORKERS
   //
 
+  var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)                                                   
+
+  implicit lazy val ordering: Ordering[Component] = Ordering.by(depth)
+
   object WorkListMonitor
-  var worklist: WorkList[Component] = FIFOWorkList()
+  val worklist: PriorityQueue[Component] = PriorityQueue.empty
   def popWorklist(): Component = WorkListMonitor.synchronized {
     while(worklist.isEmpty) {
       WorkListMonitor.wait()
     }
-    val next = worklist.head
-    worklist = worklist.tail
-    next
+    worklist.dequeue()
   } 
   def pushWorklist(cmp: Component) = WorkListMonitor.synchronized {
-    worklist = worklist.add(cmp)
+    worklist += cmp
     WorkListMonitor.notify()
   }
   class Worker(i: Int) extends Thread(s"worker-thread-$i") {
@@ -55,18 +58,18 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
   // RESULTS
   //
 
-  sealed trait Result
-  case class Completed(intra: ParallelIntra)  extends Result
+  implicit val ordResult: Ordering[Result] = Ordering.by(_.cmp)
+
+  sealed trait Result                                        { def cmp: Component }
+  case class Completed(intra: ParallelIntra)  extends Result { def cmp = intra.component }
   case class TimedOut(cmp: Component)         extends Result
   
   object ResultsMonitor
-  var results = Set.empty[Result]
+  val results: PriorityQueue[Result] = PriorityQueue.empty
 
   def popResult(): Result = ResultsMonitor.synchronized {
     while(results.isEmpty) { ResultsMonitor.wait() }
-    val next = results.head
-    results = results.tail
-    next
+    results.dequeue()
   }
   def pushResult(res: Result) = ResultsMonitor.synchronized {
     results += res
@@ -88,6 +91,14 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
       queued += cmp
       pushWorklist(cmp)
     }
+
+  override def spawn(cmp: Component, from: Component): Unit = {
+    if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
+      visited += cmp
+      depth += cmp -> (depth(from) + 1)
+      addToWorkList(cmp)
+    }
+  }
 
   private def processTimeout(cmp: Component): Unit = {
     todo += cmp
