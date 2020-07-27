@@ -23,23 +23,25 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/concurrentScheme/threads/qsort.scm")
+    val txt = Reader.loadFile("test/R5RS/gambit/peval.scm")
     val prg = CSchemeParser.parse(txt)
     val analysis = new SimpleSchemeModFAnalysis(prg)
                                         with SchemeModFNoSensitivity
                                         with SchemeConstantPropagationDomain
                                         with ParallelWorklistAlgorithm[SchemeExp] {
+      override def workers = 1
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
     analysis.analyze(Timeout.start(Duration(30,SECONDS)))
+    println(analysis.finished())
     //debugClosures(analysis)
-    debugResults(analysis, true)
+    //debugResults(analysis, true)
   }
 
   type SchemeAnalysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
   def debugResults(machine: SchemeAnalysis, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (ReturnAddr(cmp, idn), result) if cmp == machine.initialComponent || printMore =>
+      case (ReturnAddr(cmp, _), result) if cmp == machine.initialComponent || printMore =>
         println(s"$cmp => $result")
       case _ => ()
     }

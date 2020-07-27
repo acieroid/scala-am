@@ -4,6 +4,11 @@ import scalaam.core._
 import scalaam.util.SmartHash
 import scalaam.util.benchmarks.Timeout
 
+// an intra-analysis of a component can read ("register") or write ("trigger") dependencies
+// a dependency represents a part of the global analysis state (such as a location in the global analysis' store)
+// in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
+trait Dependency extends SmartHash
+
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
 
   // parameterized by a component representation
@@ -22,16 +27,13 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
   // when we discover a component that has not yet been analyzed, we add it to the worklist
   // concretely, we keep track of a set `visited` of all components that have already been visited
   var visited: Set[Component] = Set(initialComponent)
-  def spawn(cmp: Component) =
+  def spawn(cmp: Component, from: Component): Unit = spawn(cmp)
+  def spawn(cmp: Component): Unit =
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
       addToWorkList(cmp)
     }
 
-  // an intra-analysis of a component can read ("register") or write ("trigger") dependencies
-  // a dependency represents a part of the global analysis state (such as a location in the global analysis' store)
-  // in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
-  trait Dependency extends SmartHash
   // here, we track which components depend on which effects
   var deps: Map[Dependency,Set[Component]] = Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
   def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
@@ -55,9 +57,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
     def analyze(timeout: Timeout.T = Timeout.none): Unit
     // pushes the local changes to the global analysis state
     def commit(): Unit = {
-      R.foreach(inter.register(component,_))
+      R.foreach(inter.register(component, _))
       W.foreach(dep => if(commit(dep)) inter.trigger(dep))
-      C.foreach(inter.spawn)
+      C.foreach(inter.spawn(_, component))
     }
     def commit(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit
   }

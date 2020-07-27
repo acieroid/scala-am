@@ -16,6 +16,9 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                         /** Dependencies */
                         libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "1.1.2",
                         libraryDependencies += "au.com.bytecode" % "opencsv" % "2.4",
+                        libraryDependencies += "com.typesafe.akka" %% "akka-actor-typed" % "2.6.8",
+                        libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
+                        libraryDependencies += "com.typesafe" % "config" % "1.4.0",
                         /** Compilation options */
                         maxErrors := 5,
                         /** Configuration for running the tests */

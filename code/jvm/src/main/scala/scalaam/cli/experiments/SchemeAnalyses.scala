@@ -13,11 +13,18 @@ import scalaam.modular.scheme.modconc._
 object SchemeAnalyses {
 
     def contextInsensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
-                                                                          with SchemeModFNoSensitivity
-                                                                          with SchemeConstantPropagationDomain
-                                                                          with FIFOWorklistAlgorithm[SchemeExp] {
+                                                        with SchemeModFNoSensitivity
+                                                        with SchemeConstantPropagationDomain
+                                                        with CallDepthFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
     }
+    def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModFAnalysis(prg)
+                                                    with SchemeModFKCallSiteSensitivity
+                                                    with SchemeConstantPropagationDomain
+                                                    with CallDepthFirstWorklistAlgorithm[SchemeExp] {
+        override def toString() = s"kCFA (k = $kcfa)"
+        val k = kcfa
+    } 
     def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
                                                                                 with SchemeModFCallSiteSensitivity
                                                                                 with SchemeConstantPropagationDomain
@@ -70,14 +77,15 @@ object SchemeAnalyses {
         override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
         override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
     }
-    def parallelAnalysis(prg: SchemeExp, n: Int) = new ModAnalysis(prg) with SchemeModFSemantics
-                                                                        with StandardSchemeModFComponents 
-                                                                        with BigStepModFSemantics
-                                                                        with ParallelWorklistAlgorithm[SchemeExp]
-                                                                        with SchemeModFNoSensitivity
-                                                                        with SchemeConstantPropagationDomain {
+    def parallelKCFAAnalysis(prg: SchemeExp, n: Int, kcfa: Int) = new ModAnalysis(prg)  with SchemeModFSemantics
+                                                                                        with StandardSchemeModFComponents 
+                                                                                        with BigStepModFSemantics
+                                                                                        with ParallelWorklistAlgorithm[SchemeExp]
+                                                                                        with SchemeModFKCallSiteSensitivity
+                                                                                        with SchemeConstantPropagationDomain {
       
-      override def toString() = s"parallel (n = $n)"
+      override def toString() = s"parallel k-CFA (n = $n ; k = $kcfa)"
+      val k = kcfa
       override def workers = n
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }

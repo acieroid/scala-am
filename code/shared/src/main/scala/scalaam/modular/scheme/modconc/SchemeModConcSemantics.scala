@@ -94,16 +94,13 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         override def store = intra.store
         override def store_=(s: Map[Addr,Value]) = intra.store = s
         // SYNCING DEPENDENCIES
-        def lift(dep: Dependency): inter.Dependency = dep match {
-            case AddrDependency(addr) => inter.AddrDependency(addr)
-        }
         override def register(target: Component, dep: Dependency) = {
             super.register(target, dep)
-            intra.register(lift(dep))
+            intra.register(dep)
         }
         override def trigger(dep: Dependency) = {
             super.trigger(dep)
-            intra.trigger(lift(dep))
+            intra.trigger(dep)
         }
         // MODF INTRA-ANALYSIS EXTENDED WITH SUPPORT FOR THREADS
         def intraAnalysis(cmp: Component) = new InnerModFIntra(cmp)

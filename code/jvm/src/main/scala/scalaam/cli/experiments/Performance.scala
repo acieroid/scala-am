@@ -1,6 +1,5 @@
 package scalaam.cli.experiments
 
-import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.language.scheme._
 import scalaam.language.CScheme._
 import scalaam.modular.ModAnalysis
@@ -20,8 +19,8 @@ trait PerformanceBenchmarks {
   def maxWarmupTime = Timeout.start(Duration(1, MINUTES))   // maximum time to spend on warm-up *in total* (i.e., for all runs)
 
   // Configuring the analysis runs
-  def analysisRuns = 15                                     // number of analysis runs
-  def analysisTime = Timeout.start(Duration(2, MINUTES))    // maximum time to spend *on a single analysis run*
+  def analysisRuns = 20                                     // number of analysis runs
+  def analysisTime = Timeout.start(Duration(4, MINUTES))    // maximum time to spend *on a single analysis run*
 
   // The list of benchmarks used for the evaluation
   type Benchmark = String
@@ -120,27 +119,41 @@ trait PerformanceBenchmarks {
 }
 
 object ParallelModFPerformance extends PerformanceBenchmarks {
-  def benchmarks = Set("test/R5RS/gambit/scheme.scm")
+  def benchmarks = Set(
+                      //"test/R5RS/mceval.scm"
+                      "test/R5RS/gambit/nboyer.scm", 
+                      "test/R5RS/gambit/sboyer.scm", 
+                      "test/R5RS/gambit/scheme.scm",
+                      "test/R5RS/gambit/peval.scm",
+                      "test/R5RS/icp/icp_1c_ontleed.scm",
+                      "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+                      "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+                      "test/R5RS/icp/icp_3_leval.scm",
+                      "test/R5RS/icp/icp_7_eceval.scm",
+                      "test/R5RS/icp/icp_8_compiler.scm"
+                      )
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.contextInsensitiveAnalysis, "base ModF")
-    //(SchemeAnalyses.parallelAnalysis(_,1), "parallel (n = 1)"),
-    //(SchemeAnalyses.parallelAnalysis(_,2), "parallel (n = 2)"),
-    //(SchemeAnalyses.parallelAnalysis(_,4), "parallel (n = 4)"),
-    //(SchemeAnalyses.parallelAnalysis(_,6), "parallel (n = 6)"),
-    //(SchemeAnalyses.parallelAnalysis(_,8), "parallel (n = 8)")
+    (SchemeAnalyses.kCFAAnalysis(_, 0), "base ModF"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 1, 0), "parallel (n = 1)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 2, 0), "parallel (n = 2)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 4, 0), "parallel (n = 4)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 8, 0), "parallel (n = 8)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 16, 0), "parallel (n = 16)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 32, 0), "parallel (n = 32)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 64, 0), "parallel (n = 64)")
   )
   def main(args: Array[String]) = run()
 }
 
 object ParallelModConcPerformance extends PerformanceBenchmarks {
-  def benchmarks = SchemeBenchmarkPrograms.fromFolder("test/concurrentScheme/threads/variations")
+  def benchmarks = Set("test/concurrentScheme/threads/crypt.scm")
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.modConcAnalysis, "base ModConc"),
-    (SchemeAnalyses.parallelModConc(_,1), "parallel (n = 1)"),
+    //(SchemeAnalyses.modConcAnalysis, "base ModConc"),
+    //(SchemeAnalyses.parallelModConc(_,1), "parallel (n = 1)"),
     (SchemeAnalyses.parallelModConc(_,2), "parallel (n = 2)"),
-    (SchemeAnalyses.parallelModConc(_,4), "parallel (n = 4)"),
-    (SchemeAnalyses.parallelModConc(_,6), "parallel (n = 6)"),
-    (SchemeAnalyses.parallelModConc(_,8), "parallel (n = 8)")
+    //(SchemeAnalyses.parallelModConc(_,4), "parallel (n = 4)"),
+    //(SchemeAnalyses.parallelModConc(_,6), "parallel (n = 6)"),
+    (SchemeAnalyses.parallelModConc(_, 8), "parallel (n = 8)")
   )  
   def main(args: Array[String]) = run()
 }

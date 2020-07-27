@@ -45,12 +45,12 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 }
 
 trait ParallelSchemeModF extends SchemeModFSoundnessTests {
-  def name = "parallel analysis (n = 4)"
+  def name = "parallel analysis (n = 8)"
   def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
                                       with SchemeConstantPropagationDomain
                                       with SchemeModFNoSensitivity
                                       with ParallelWorklistAlgorithm[SchemeExp] {
-      override def workers = 4
+      override def workers = 8
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
   }
 }
