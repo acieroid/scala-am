@@ -4,6 +4,11 @@ import scalaam.core._
 import scalaam.util.SmartHash
 import scalaam.util.benchmarks.Timeout
 
+// an intra-analysis of a component can read ("register") or write ("trigger") dependencies
+// a dependency represents a part of the global analysis state (such as a location in the global analysis' store)
+// in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
+trait Dependency extends SmartHash
+
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
 
   // parameterized by a component representation
@@ -29,10 +34,6 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
       addToWorkList(cmp)
     }
 
-  // an intra-analysis of a component can read ("register") or write ("trigger") dependencies
-  // a dependency represents a part of the global analysis state (such as a location in the global analysis' store)
-  // in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
-  trait Dependency extends SmartHash
   // here, we track which components depend on which effects
   var deps: Map[Dependency,Set[Component]] = Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
   def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))

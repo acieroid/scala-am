@@ -2,6 +2,11 @@ package scalaam.modular
 
 import scalaam.core._
 
+// Dependency that is triggered when an abstract value at address 'addr' is updated
+case class AddrDependency(addr: Address) extends Dependency {
+  override def toString(): String = s"AddrDep($addr)"
+}
+
 /**
  * An analysis with a global store.
  * @tparam Expr The type of the expressions under analysis.
@@ -14,11 +19,6 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr]
 
   // parameterized by some store that can be accessed and modified
   var store: Map[Addr, Value]
-
-  // Dependency that is triggered when an abstract value at address 'addr' is updated
-  case class AddrDependency(addr: Addr) extends Dependency {
-    override def toString(): String = s"AddrDep($addr)"
-  }
 
   private def updateAddr(store: Map[Addr,Value], addr: Addr, value: Value): Option[Map[Addr,Value]] = 
     store.get(addr) match {
