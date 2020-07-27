@@ -22,7 +22,7 @@ case class Call[Context](clo: (SchemeLambdaExp, Environment[Address]),
     case None => s"λ@${lambda.idn}"
     case Some(name) => s"$name"
   }
-  override def toString: String = lambdaName
+  override def toString: String = (lambdaName, ctx).toString()
 }
 
 trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {

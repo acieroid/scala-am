@@ -1,7 +1,7 @@
-(define global-current 0)
-
-(define (arrow-right arrow-right-arrow)
-  (set! global-current (+ 1 global-current)))
-
-(arrow-right (set! global-current 0))
-global-current
+(define (fib n)
+  (if (< n 2)
+    n
+    (let ((fib-n-1 (fib (- n 1)))
+           (fib-n-2 (fib (- n 2))))
+      (+ fib-n-1 fib-n-2))))
+(fib 5)

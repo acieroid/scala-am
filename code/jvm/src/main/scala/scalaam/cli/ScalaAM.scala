@@ -63,13 +63,20 @@ object Analyze extends App {
 
       override def intraAnalysis(component: SmallStepModConcComponent) = new IntraAnalysis(component) with KCFAIntra
     }
-    a.analyze(timeout())
-    val r = a.finalResult
+    val b = new SimpleSchemeModFAnalysis(text)
+      with SchemeConstantPropagationDomain
+      with SchemeModFCallSiteSensitivity
+      with LIFOWorklistAlgorithm[SchemeExp]
+    val c = b
+    c.analyze(timeout())
+    val r = c.finalResult
+    c.visited.foreach(println)
+    c.deps.foreach(println)
     println(r)
   }
 
   val bench: List[String] = List(
-  "test/changes/cscheme/threads/mcarlo.scm"
+  "test/DEBUG.scm"
   )
 
   bench.foreach({b =>
@@ -125,12 +132,12 @@ object IncrementalRun extends App {
 
   val modConcbenchmarks: List[String] = List(
    // "test/changes/cscheme/threads/mcarlo2.scm"
-      "test/changes/cscheme/threads/lastzero.scm"
+    //  "test/changes/cscheme/threads/lastzero.scm"
     //"test/changes/cscheme/threads/sudoku.scm",
     //"test/changes/cscheme/threads/pc.scm",
     //"test/changes/cscheme/threads/stm.scm"
    )
-  val    modFbenchmarks: List[String] = List("test/changes/scheme/ring-rotate.scm")
+  val    modFbenchmarks: List[String] = List("test/DEBUG.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
   modConcbenchmarks.foreach { bench =>
