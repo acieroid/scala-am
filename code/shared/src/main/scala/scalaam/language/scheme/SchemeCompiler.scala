@@ -170,7 +170,7 @@ trait BaseSchemeCompiler {
         argsv <- tailcall(compileBody(args))
       } yield SchemeFuncall(fv, argsv, exp.idn)
     case SExpId(v) =>
-      if (reserved.contains(v.name))  throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $exp", exp.idn)
+      if (reserved.contains(v.name))  throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $exp (${exp.idn.pos})", exp.idn)
       done(SchemeVar(v))
     case SExpValue(value, _)   => done(SchemeValue(value, exp.idn))
   }

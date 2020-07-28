@@ -48,7 +48,7 @@ object Main {
 }
 
 object Run extends App {
-  val text = Reader.loadFile("test/changes/scheme/icp_1c_multiple-dwelling.scm")
+  val text = Reader.loadFile("test/changes/scheme/icp_7eceval_compile_open_coded.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
   val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none, New)
   println(res)
@@ -139,7 +139,7 @@ object IncrementalRun extends App {
     //"test/changes/cscheme/threads/pc.scm",
     //"test/changes/cscheme/threads/stm.scm"
    )
-  val    modFbenchmarks: List[String] = List("test/DEBUG.scm")
+  val    modFbenchmarks: List[String] = List("test/changes/scheme/icp_4_qeval_nodup.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
   modConcbenchmarks.foreach { bench =>
