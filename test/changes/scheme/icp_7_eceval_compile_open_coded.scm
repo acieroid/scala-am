@@ -1,44 +1,44 @@
-(define open-coded?
-  (<change> #f ; <======================================================================================================
-  (lambda (exp)
-  (and (application? exp)
-    (member (operator exp) '(+ - * =))))))
-(define spread-args
-  (<change> #f ; <======================================================================================================
-    (lambda (arg-exps call-code)
-      (let* ((targets  (make-arg-targets 0 (length arg-exps)))
-              (arg-codes (map (lambda (exp target)
-                                (compile exp target 'next))
-                           arg-exps
-                           targets)))
-        (let loop ((arg-codes arg-codes)
-                    (targets targets)
-                    (to-preserve '(env)))
-
-          (if (null? arg-codes)
-            call-code
-            (preserving to-preserve
-              (car arg-codes)
-              (loop (cdr arg-codes)
-                (cdr targets)
-                (cons (car targets)
-                  to-preserve)))))))))
-(define compile-open-coded
-  (<change> #f ; <======================================================================================================
-    (lambda (exp target linkage)
-      (let* ((op (operator exp))
-              (arg-exps (operands exp))
-              (arg-count  (length arg-exps))
-              (targets (make-arg-targets 0 arg-count))
-              (target-regs (map (lambda (target) `(reg ,target))
-                             targets)))
-        (end-with-linkage
-          linkage
-          (spread-args arg-exps
-            (make-instruction-sequence
-              targets
-              (list target)
-                `((assign ,target (op ,op) ,@target-regs)))))))))
+;(define open-coded?
+;  (<change> #f ; <======================================================================================================
+;  (lambda (exp)
+;  (and (application? exp)
+;    (member (operator exp) '(+ - * =))))))
+;(define spread-args
+;  (<change> #f ; <======================================================================================================
+;    (lambda (arg-exps call-code)
+;      (let* ((targets  (make-arg-targets 0 (length arg-exps)))
+;              (arg-codes (map (lambda (exp target)
+;                                (compile exp target 'next))
+;                           arg-exps
+;                           targets)))
+;        (let loop ((arg-codes arg-codes)
+;                    (targets targets)
+;                    (to-preserve '(env)))
+;
+;          (if (null? arg-codes)
+;            call-code
+;            (preserving to-preserve
+;              (car arg-codes)
+;              (loop (cdr arg-codes)
+;                (cdr targets)
+;                (cons (car targets)
+;                  to-preserve)))))))))
+;(define compile-open-coded
+;  (<change> #f ; <======================================================================================================
+;    (lambda (exp target linkage)
+;      (let* ((op (operator exp))
+;              (arg-exps (operands exp))
+;              (arg-count  (length arg-exps))
+;              (targets (make-arg-targets 0 arg-count))
+;              (target-regs (map (lambda (target) `(reg ,target))
+;                             targets)))
+;        (end-with-linkage
+;          linkage
+;          (spread-args arg-exps
+;            (make-instruction-sequence
+;              targets
+;              (list target)
+;                `((assign ,target (op ,op) ,@target-regs)))))))))
 
 (define result '())
 (define output (lambda (i) (set! result (cons i result))))
