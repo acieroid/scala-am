@@ -93,13 +93,6 @@
 
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-(define (apply proc args)
-  (cond
-   ((null? args) (proc))
-   ((null? (cdr args)) (proc (car args)))
-   ((null? (cddr args)) (proc (car args) (cadr args)))
-   (else (error "Unsupported call"))))
-
 (define (macro-expand expr env)
   (apply (lookup-macro (car expr) env) (cdr expr)))
 
