@@ -118,7 +118,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   }
 
   def reportError(file: String): Unit = results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
-  val output: String = s"benchOutput/results-incremental-performance-${System.currentTimeMillis()}.txt"
+  val outputFile: String = s"results-incremental-performance.txt"
   def createOutput(): String = results.prettyString(columns = List("init", "rean", "incr"))
 }
 
@@ -136,7 +136,9 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 }
 
-object IncrementalSchemeModXPerformance extends App {
-  IncrementalSchemeModFPerformance.main(Array())
-  IncrementalSchemeModConcPerformance.main(Array())
+object IncrementalSchemeModXPerformance {
+  def main(args: Array[String]): Unit = {
+    IncrementalSchemeModFPerformance.main(Array())
+    IncrementalSchemeModConcPerformance.main(Array())
+  }
 }

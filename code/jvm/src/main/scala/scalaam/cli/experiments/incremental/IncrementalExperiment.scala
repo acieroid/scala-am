@@ -3,7 +3,7 @@ package scalaam.cli.experiments.incremental
 import scalaam.core.Expression
 import scalaam.modular.GlobalStore
 import scalaam.modular.incremental.IncrementalModAnalysis
-import scalaam.util.Writer.{closeDefaultWriter, disableReporting, enableReporting, open, setDefaultWriter, writeErrln, writeln}
+import scalaam.util.Writer._
 import scalaam.util.benchmarks.Timeout
 
 trait IncrementalExperiment[E <: Expression] {
@@ -29,7 +29,8 @@ trait IncrementalExperiment[E <: Expression] {
   def reportError(file: String): Unit
 
   // Where to write the results.
-  val output: String
+  val outputDir:  String = "benchOutput"
+  val outputFile: String
 
   // Creates a string representation of the final output.
   def createOutput(): String
@@ -49,7 +50,7 @@ trait IncrementalExperiment[E <: Expression] {
   }
 
   def main(args: Array[String]): Unit = {
-    setDefaultWriter(open(output))
+    setDefaultWriter(openTimeStamped(outputDir, outputFile))
     enableReporting()
     measure()
     val out: String = createOutput()
