@@ -15,7 +15,8 @@
 (define (map2 f l1 l2)
   (if (pair? l1)
     (cons (f (car l1) (car l2))
-      (map2 f (cdr l1) (cdr l2)))))
+      (map2 f (cdr l1) (cdr l2)))
+    '()))
 
 (define (get-last-pair l)
   (let ((x (cdr l)))

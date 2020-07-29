@@ -41,7 +41,6 @@ object SchemeBenchmarkPrograms {
     "compiler.scm", // Parser error (see issue on Github).
     "ctak.scm", // Needs call-with-current-continuation.
     "fibc.scm", // Needs call-cc.
-    "peval.scm", // Error in program.
     "puzzle.scm",  // Needs call-with-current-continuation.
     "scheme.scm", // Error in program.
     "string.scm", // Needs susbtring.

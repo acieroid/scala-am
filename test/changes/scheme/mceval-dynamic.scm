@@ -237,7 +237,8 @@
                               (list-of-values (operands exp) env)))
                     (else
                      (error "Unknown expression type -- EVAL" exp))))))))))
-(mceval '((define (f) (lambda (x)(f f (+ x 1)))) ; Added this line (not used in changes).
+(mceval '(begin
+           (define (f) (lambda (x)(f f (+ x 1)))) ; Added this line (not used in changes).
            ((lambda (m) (lambda (x) (f f x))) ; Changed f to m.
              (lambda (g n)
                (if (= n 0)
