@@ -6,7 +6,7 @@ object IncrementalSchemeBenchmarkPrograms {
   )
   lazy val concurrent: Set[String] = threads
   lazy val sequential: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme",
-    "icp_4_qeval_nodup.scm", // define-syntax
-   // "icp_7_eceval_compile_open_coded.scm" // must still fit this into the compiler... :( but already enables since there are 2 small changes still there...
+    "icp_4_qeval_nodup.scm", // define-syntax, force, delay
+    "icp_7_8_open_coded_incorrect.scm" // contains "errors" within the program, and does not even run within the framework
   )
 }
