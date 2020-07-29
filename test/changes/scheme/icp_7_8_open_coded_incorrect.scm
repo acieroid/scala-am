@@ -1543,20 +1543,22 @@
     (list 'compiled-procedure-env compiled-procedure-env))
 )
 
-(define eceval
+(define faculty
   (make-machine
     (<change> '(exp env val proc argl continue unev) ; <================================================================
         '(exp env val proc argl continue unev
            val0 val1 val2 val3 val4 val5 val6 val7 val8 val9
            compapp))
     eceval-operations
-    (caddr (compile
-               '(begin (define (fac n)
-                         (if (= n 0)
-                           1
-                           (* n (fac (- n 1)))))
-                  (fac 5))
-               'val
-               'next))))
+    (cons '(assign env (op get-global-environment))
+      (caddr (compile
+                 '(begin (define (fac n)
+                           (if (= n 0)
+                             1
+                             (* n (fac (- n 1)))))
+                    (fac 5))
+                 'val
+                 'next)))))
 
-(start eceval)
+(start faculty)
+(= (get-register-contents faculty 'val) 120)
