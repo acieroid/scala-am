@@ -35,8 +35,9 @@ trait IncrementalExperiment[E <: Expression] {
   // Creates a string representation of the final output.
   def createOutput(): String
 
-  def measure(): Unit = {
-    benchmarks().foreach { file =>
+  // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
+  def measure(bench: Option[Set[String]] = None): Unit =
+    bench.getOrElse(benchmarks()).foreach { file =>
       try {
         onBenchmark(file)
       } catch {
@@ -47,12 +48,14 @@ trait IncrementalExperiment[E <: Expression] {
       }
       writeln()
     }
-  }
 
   def main(args: Array[String]): Unit = {
     setDefaultWriter(openTimeStamped(outputDir, outputFile))
     enableReporting()
-    measure()
+    if (args.isEmpty)
+      measure()
+    else
+      measure(Some(args.toSet))
     val out: String = createOutput()
     writeln(out)
     closeDefaultWriter()

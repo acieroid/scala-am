@@ -139,7 +139,7 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
 
 object IncrementalSchemeModXPerformance {
   def main(args: Array[String]): Unit = {
-    IncrementalSchemeModFPerformance.main(Array())
-    IncrementalSchemeModConcPerformance.main(Array())
+    IncrementalSchemeModFPerformance.main(args)
+    IncrementalSchemeModConcPerformance.main(args)
   }
 }

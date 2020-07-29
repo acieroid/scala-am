@@ -113,7 +113,7 @@ object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
 
 object IncrementalSchemeModXPrecision {
   def main(args: Array[String]): Unit = {
-    IncrementalSchemeModFPrecision.main(Array())
-    IncrementalSchemeModConcPrecision.main(Array())
+    IncrementalSchemeModFPrecision.main(args)
+    IncrementalSchemeModConcPrecision.main(args)
   }
 }
