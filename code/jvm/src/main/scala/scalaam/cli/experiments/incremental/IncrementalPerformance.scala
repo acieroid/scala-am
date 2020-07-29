@@ -118,7 +118,6 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   }
 
   def reportError(file: String): Unit = results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)
-  val outputFile: String = s"results-incremental-performance.txt"
   def createOutput(): String = results.prettyString(columns = List("init", "rean", "incr"))
 }
 
@@ -127,6 +126,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  val outputFile: String = s"results-incremental-ModF-performance.txt"
 }
 
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
@@ -134,6 +134,7 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  val outputFile: String = s"results-incremental-ModConc-performance.txt"
 }
 
 object IncrementalSchemeModXPerformance {

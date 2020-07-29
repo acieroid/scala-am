@@ -87,7 +87,6 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
 
   def interestingAddress[A <: Address](a: A): Boolean
   def reportError(file: String): Unit = results = results.add(file, eq, "E").add(file, mp, "E").add(file, lp, "E")
-  val outputFile: String = s"results-incremental-precision.txt"
   def createOutput(): String = results.prettyString(columns = List(eq, lp, mp))
 }
 
@@ -103,12 +102,13 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
 object IncrementalSchemeModFPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
-
+  val outputFile: String = s"results-incremental-ModF-precision.txt"
 }
 
 object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.concurrent
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
+  val outputFile: String = s"results-incremental-ModConc-precision.txt"
 }
 
 object IncrementalSchemeModXPrecision {

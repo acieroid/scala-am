@@ -106,7 +106,6 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
 
   def interestingAddress[A <: Address](a: A): Boolean
   def reportError(file: String): Unit = dp.foreach(d => al.foreach(a => results = results.add(file, d + a, "E")))
-  val outputFile: String = s"results-incremental-properties.txt"
   def createOutput(): String = results.prettyString(columns = List(ad + in, ad + up, ad + re, co + in, co + up, co + re, dp + in, dp + up, dp + re, an + in, an + up, an + re))
 }
 
@@ -122,12 +121,14 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
+  val outputFile: String = s"results-incremental-ModF-properties.txt"
 
 }
 
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.concurrent
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
+  val outputFile: String = s"results-incremental-ModConc-properties.txt"
 }
 
 object IncrementalSchemeModXProperties {
