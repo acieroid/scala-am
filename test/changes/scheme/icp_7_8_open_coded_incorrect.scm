@@ -49,7 +49,9 @@
             (make-instruction-sequence
               targets
               (list target)
-                `((assign ,target (op ,op) ,@target-regs)))))))))
+                ;`((assign ,target (op ,op) ,@target-regs))
+                 (list (append (list 'assign target (list 'op op)) target-regs))
+            )))))))
 
 ;;
 ;;toegevoegd
