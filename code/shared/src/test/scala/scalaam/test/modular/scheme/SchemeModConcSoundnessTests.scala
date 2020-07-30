@@ -70,7 +70,7 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SmallStepTest
   def name = "small-step ModConc"
   def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
-    with KCFAModConc
+    with KKallocModConc
     with SchemeConstantPropagationDomain
     with LIFOWorklistAlgorithm[SchemeExp] {
     val k = 1

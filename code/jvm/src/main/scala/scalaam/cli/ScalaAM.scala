@@ -58,7 +58,7 @@ object Analyze extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new ModAnalysis(text)
-      with KCFAModConc
+      with KKallocModConc
       with SchemeConstantPropagationDomain
       with LIFOWorklistAlgorithm[SchemeExp] {
       val k = 1
@@ -155,7 +155,7 @@ object SimpleTimingTest extends App {
   type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
 
   def analysis(program: SchemeExp): Analysis = new ModAnalysis(program)
-    with KCFAModConc
+    with KKallocModConc
     with SchemeConstantPropagationDomain
     with LIFOWorklistAlgorithm[SchemeExp] {
     val k = 1

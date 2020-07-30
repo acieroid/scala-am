@@ -437,7 +437,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
   }
 }
 
-trait KCFAModConc extends SmallStepModConcSemantics {
+trait KKallocModConc extends SmallStepModConcSemantics {
 
   val k: Int
 

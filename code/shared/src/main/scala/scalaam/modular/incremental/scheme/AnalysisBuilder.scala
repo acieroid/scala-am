@@ -11,7 +11,7 @@ import scalaam.modular.scheme.ssmodconc._
 object AnalysisBuilder {
 
   class IncrementalModConcAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                      with KCFAModConc
+                                                      with KKallocModConc
                                                       with IncrementalSchemeModConcSmallStepSemantics
                                                       with LIFOWorklistAlgorithm[SchemeExp]
                                                       with SchemeTypeDomain {
