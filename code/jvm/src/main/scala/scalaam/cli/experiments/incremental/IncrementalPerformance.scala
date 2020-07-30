@@ -122,7 +122,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 }
 
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = Set("test/changes/scheme/icp_1c_multiple-dwelling-coarse.scm", "test/changes/scheme/icp_1c_multiple-dwelling-fine.scm")// IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
