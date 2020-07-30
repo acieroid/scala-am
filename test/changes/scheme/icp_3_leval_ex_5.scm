@@ -626,5 +626,6 @@
          (define (map proc items)
            (if (null? items)
                '()
-               (cons (proc (car items)) (map proc (cdr items))))))
+               (cons (proc (car items)) (map proc (cdr items)))))
+         (display (list-ref (map (lambda (i) (+ (* i i) 1)) (cons 13 (cons 14 (cons 15 '())))) 2)))
       the-global-environment)
