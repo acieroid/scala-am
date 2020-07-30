@@ -32,8 +32,12 @@ object Writer {
   def open(path: String): Writer =
     new BufferedWriter(new FileWriter(path))
 
-  def openTimeStamped(dir: String, file: String): Writer =
-    open(dir + format.format(calendar.getTime) + "_" + file)
+  def openTimeStamped(path: String): Writer = {
+    path.split("\\.") match {
+      case Array(file, ext) => open(file + "_" + format.format(calendar.getTime) + "." + ext)
+      case _                => throw new Exception(s"Illegal path: $path")
+    }
+  }
 
   def close(writer: Writer): Unit = writer.close()
 

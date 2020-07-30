@@ -104,17 +104,17 @@ trait PerformanceBenchmarks {
 
   def printResults() = 
     println(results.prettyString(format = format))
-  def exportCSV(dir: String, file: String) = {
-    val hdl = Writer.openTimeStamped(dir, file)
+  def exportCSV(path: String) = {
+    val hdl = Writer.openTimeStamped(path)
     val csv = results.toCSVString(format = format)
     Writer.write(hdl, csv)
     Writer.close(hdl) 
   } 
 
-  def run(dir: String = "benchOutput/", file: String = "output.csv", timeoutFast: Boolean = true, failFast: Boolean = true) = {
+  def run(path: String = "benchOutput/output.csv", timeoutFast: Boolean = true, failFast: Boolean = true) = {
     measureBenchmarks(timeoutFast, failFast)
     printResults()
-    exportCSV(dir, file)
+    exportCSV(path)
   }
 }
 

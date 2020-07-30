@@ -121,14 +121,14 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
-  val outputFile: String = s"results-incremental-ModF-properties.txt"
+  val output: String = s"benchOutput/results-incremental-ModF-properties.txt"
 
 }
 
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.concurrent
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
-  val outputFile: String = s"results-incremental-ModConc-properties.txt"
+  val output: String = s"benchOutput/results-incremental-ModConc-properties.txt"
 }
 
 object IncrementalSchemeModXProperties {
