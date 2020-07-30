@@ -16,7 +16,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   // The maximal number of warm-up runs.
   val maxWarmupRuns = 5
   // The number of actually measured runs.
-  val  measuredRuns = 15
+  val  measuredRuns = 30
 
   // The results of the evaluation.
   sealed trait Result
@@ -125,7 +125,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
-  override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
   val output: String = s"benchOutput/results-incremental-ModF-performance.txt"
 }
 
@@ -133,7 +133,7 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.concurrent
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
-  override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+  override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
   val output: String = s"benchOutput/results-incremental-ModConc-performance.txt"
 }
 

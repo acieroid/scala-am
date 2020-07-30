@@ -30,7 +30,7 @@
                                (release (actor-lock name))
                                (let ((action (receive name state (car message) (cdr message))))
                                  (if (eq? action 'terminate)
-                                     (<change> (begin 'done) 'finished) ; <=============================================
+                                     (<change> (begin 'done) 'done) ; <=================================================
                                      (loop (car action) (cdr action)))))))))))
       (loop f init-state))))
 (define (create act state)
