@@ -105,7 +105,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
   }
 
   def interestingAddress[A <: Address](a: A): Boolean
-  def reportError(file: String): Unit = dp.foreach(d => al.foreach(a => results = results.add(file, d + a, "E")))
+  def reportError(file: String): Unit = pr.foreach(d => al.foreach(a => results = results.add(file, d + a, "E")))
   def createOutput(): String = results.prettyString(columns = List(ad + in, ad + up, ad + re, co + in, co + up, co + re, dp + in, dp + up, dp + re, an + in, an + up, an + re))
 }
 
