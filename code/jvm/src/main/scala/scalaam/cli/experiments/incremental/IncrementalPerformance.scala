@@ -126,7 +126,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-  val output: String = s"benchOutput/results-incremental-ModF-performance.txt"
+  val outputFile: String = s"ModF-performance.txt"
 }
 
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
@@ -134,7 +134,7 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-  val output: String = s"benchOutput/results-incremental-ModConc-performance.txt"
+  val outputFile: String = s"ModConc-performance.txt"
 }
 
 object IncrementalSchemeModXPerformance {

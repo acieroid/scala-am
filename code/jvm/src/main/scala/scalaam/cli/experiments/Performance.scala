@@ -111,7 +111,7 @@ trait PerformanceBenchmarks {
     Writer.close(hdl) 
   } 
 
-  def run(path: String = "benchOutput/output.csv", timeoutFast: Boolean = true, failFast: Boolean = true) = {
+  def run(path: String = "benchOutput/performance/output.csv", timeoutFast: Boolean = true, failFast: Boolean = true) = {
     measureBenchmarks(timeoutFast, failFast)
     printResults()
     exportCSV(path)

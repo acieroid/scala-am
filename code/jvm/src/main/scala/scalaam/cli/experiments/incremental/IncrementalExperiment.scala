@@ -29,7 +29,8 @@ trait IncrementalExperiment[E <: Expression] {
   def reportError(file: String): Unit
 
   // Where to write the results.
-  val output: String
+  val outputDir:  String = "benchOutput/incremental/"
+  val outputFile: String
 
   // Creates a string representation of the final output.
   def createOutput(): String
@@ -49,7 +50,7 @@ trait IncrementalExperiment[E <: Expression] {
     }
 
   def main(args: Array[String]): Unit = {
-    setDefaultWriter(openTimeStamped(output))
+    setDefaultWriter(openTimeStamped(outputDir + outputFile))
     enableReporting()
     if (args.isEmpty)
       measure()
