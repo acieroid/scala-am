@@ -21,7 +21,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
   var results: Table[String] = Table.empty
 
   def onBenchmark(file: String): Unit = {
-    println(s"Testing $file")
+    writeln(s"Testing $file")
     val program = parse(file)
 
     // Initial analysis: analyse + update.

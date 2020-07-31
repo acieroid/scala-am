@@ -31,7 +31,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
   var results: Table[String] = Table.empty.withDefaultValue(" ")
 
   def onBenchmark(file: String): Unit = {
-    print(s"Testing $file ")
+    write(s"Testing $file ")
     val program = parse(file)
 
     // Initial analysis: analyse + update.
