@@ -111,11 +111,11 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
     val rean = Statistics.all(timesReanalysis)
 
     results = results
-      .add(file, "init", Finished(Math.round(init.mea), Math.round(init.std)))
-      .add(file, "incr", if (incrementalTimeout) Timedout else Finished(Math.round(incr.mea), Math.round(incr.std)))
-      .add(file, "rean", if ( reanalysisTimeout) Timedout else Finished(Math.round(rean.mea), Math.round(rean.std)))
+      .add(file, "init", Finished(scala.math.round(init.mean), scala.math.round(init.stddev)))
+      .add(file, "incr", if (incrementalTimeout) Timedout else Finished(scala.math.round(incr.mean), scala.math.round(incr.stddev)))
+      .add(file, "rean", if ( reanalysisTimeout) Timedout else Finished(scala.math.round(rean.mean), scala.math.round(rean.stddev)))
 
-    writeln(s"\n    => Init: ${init.mea} - Incr: ${incr.mea} - Rean: ${rean.mea}")
+    writeln(s"\n    => Init: ${init.mean} - Incr: ${incr.mean} - Rean: ${rean.mean}")
   }
 
   def reportError(file: String): Unit = results = results.add(file, "init", Errored).add(file, "incr", Errored). add(file, "rean", Errored)

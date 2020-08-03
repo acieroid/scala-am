@@ -4,11 +4,11 @@ package scalaam.util.benchmarks
 object Statistics {
 
   // Bundles multiple statitistical measures in one object
-  case class M(min: Double, max: Double, mea: Double, med: Double, std: Double) {
+  case class Stats(min: Double, max: Double, mean: Double, median: Double, stddev: Double) {
     override def toString: String = {
       s"* Values in [$min,$max]\n" ++
-      s"* Mean: $mea , Median: $med\n" ++
-      s"* Standard deviation: $std"
+      s"* Mean: $mean , Median: $median\n" ++
+      s"* Standard deviation: $stddev"
     }
   }
 
@@ -21,17 +21,16 @@ object Statistics {
   }
 
   def stddev(l: List[Double]): Double = {
-    if (l.length == 1) {
-      0
-    } else {
-      val  mea = mean(l)
-      val sums = l.map(v => (v - mea) * (v - mea))
-      scala.math.sqrt(sums.sum/(l.length-1)).toDouble
+    if (l.length == 1) 0
+    else {
+      val     mea:      Double  = mean(l)
+      val sqDiffs: List[Double] = l.map(v => scala.math.pow(v - mea, 2))
+      scala.math.sqrt(sqDiffs.sum/(l.length-1))
     }
   }
 
   // Constructs an M object from a list of values
-  def all(l: List[Double]): M = M(l.min, l.max, mean(l), median(l), stddev(l))
+  def all(l: List[Double]): Stats = Stats(l.min, l.max, mean(l), median(l), stddev(l))
 
   // Expect a list of tuples (weight, value).
   def weightedAverage(l: List[(Double, Double)]): Double = {

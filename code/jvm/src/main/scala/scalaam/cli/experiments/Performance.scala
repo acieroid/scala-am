@@ -31,14 +31,14 @@ trait PerformanceBenchmarks {
 
   // A variable that holds the results
   sealed trait PerformanceResult
-  case class Completed(results: Statistics.M) extends PerformanceResult
+  case class Completed(results: Statistics.Stats) extends PerformanceResult
   case object TimedOut extends PerformanceResult
   case object NoData extends PerformanceResult
 
   var results = Table.empty[PerformanceResult].withDefaultValue(NoData)
 
   def format(res: PerformanceResult): String = res match {
-    case Completed(results) => Math.round(results.mea).toString
+    case Completed(results) => scala.math.round(results.mean).toString
     case TimedOut           => "TIMEOUT"
     case NoData             => "_"
   }
@@ -85,17 +85,17 @@ trait PerformanceBenchmarks {
         val result = measureAnalysis(benchmark, analysis)
         results = results.add(benchmark, name, result)
         result match {
-          case TimedOut if timeoutFast => return ()
+          case TimedOut if timeoutFast => return
           case _ => () 
         }
       } catch {
         case e: Exception =>
           println(s"Encountered an exception: ${e.getMessage}")
-          if (failFast) return ()
+          if (failFast) return
         case e: VirtualMachineError => 
           System.gc()
           println(s"Running $benchmark resulted in an error: ${e.getMessage}")
-          if (failFast) return ()
+          if (failFast) return
       }
     }
 
