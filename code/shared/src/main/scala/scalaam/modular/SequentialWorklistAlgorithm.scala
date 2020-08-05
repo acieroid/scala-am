@@ -12,13 +12,13 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
   def addToWorkList(cmp: Component) = workList = workList.add(cmp)
   def finished(): Boolean = workList.isEmpty
   // a single step in the worklist algorithm iteration
-  var intraCount: Long = 0L
+  // var intraCount: Long = 0L
   def step(timeout: Timeout.T): Unit = {
     // take the next component
     val current = workList.head
     workList = workList.tail 
     // do the intra-analysis
-    intraCount = intraCount + 1
+    // intraCount = intraCount + 1
     val intra = intraAnalysis(current)
     intra.analyze(timeout)
     if (timeout.reached) {
