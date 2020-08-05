@@ -96,7 +96,8 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
       depth += cmp -> (depth(from) + 1)
-      addToWorkList(cmp)
+      queued += cmp
+      pushWorklist(cmp)
     }
   }
 
