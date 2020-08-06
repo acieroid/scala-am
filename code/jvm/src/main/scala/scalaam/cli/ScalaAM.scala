@@ -17,27 +17,19 @@ import scalaam.language.change.CodeVersion._
 import scalaam.modular.incremental.scheme.AnalysisBuilder.{IncrementalModConcAnalysis, IncrementalSchemeModFAnalysis}
 
 import scala.concurrent.duration._
+import scalaam.cli.experiments.SchemeAnalyses
 
 object Main {
 
   def main(args: Array[String]): Unit = test()
 
+  // minimax, msort, randomness2, sieve, stm, sudoku, tsp
+  // bchain, fact, life, pc, pp,
   def test(): Unit = {
-    val txt = Reader.loadFile("test/concurrentScheme/threads/crypt.scm")
+    val txt = Reader.loadFile("test/concurrentScheme/threads/tsp.scm")
     val prg = CSchemeParser.parse(txt)
-    val analysis = new SimpleSchemeModConcAnalysis(prg)
-                                                    with SchemeModConcStandardSensitivity
-                                                    with SchemeConstantPropagationDomain
-                                                    with ParallelWorklistAlgorithm[SchemeExp] {
-        override def workers = 2
-        override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
-        override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
-                                                                with SchemeModFKCallSiteSensitivity
-                                                                with RandomWorklistAlgorithm[SchemeExp] {
-          override val k = 5
-        }
-    }
-    analysis.analyze(Timeout.start(Duration(30,SECONDS)))
+    val analysis = SchemeAnalyses.parallelModConc(prg,1,1,5)
+    analysis.analyze(Timeout.start(Duration(300,SECONDS)))
     println(analysis.finished())
     //debugClosures(analysis)
     //debugResults(analysis, true)
