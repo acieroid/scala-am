@@ -51,7 +51,8 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
                                                        with GlobalStore[Expr] { inter =>
   
   def workers: Int // <- number of workers for the threadpool
-  val pool: PriorityThreadPool = new PriorityThreadPool(workers)                                                     
+  def makePool() = new PriorityThreadPool(workers) 
+  val pool: PriorityThreadPool = makePool()                                              
   def closePool() = pool.terminate()
 
   var currentTimeout: Timeout.T = _                             // <- we only set the timeout upon calling `analyze`
@@ -60,9 +61,9 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
   // WORKERS
   //
 
-  @volatile var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)                                                   
+  @volatile var cmpR: Map[Component, Int] = Map.empty.withDefaultValue(0)
 
-  def submit(cmp: Component) = pool.submit(depth(cmp)) {
+  def submit(cmp: Component) = pool.submit(- cmpR(cmp)) {
     val intra = intraAnalysis(cmp)
     intra.analyze(currentTimeout)
     if(currentTimeout.reached) {
@@ -110,14 +111,12 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
       submit(cmp)
     }
 
-  override def spawn(cmp: Component, from: Component): Unit = {
+  override def spawn(cmp: Component, from: Component): Unit =
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
-      depth += cmp -> (depth(from) + 1)
       queued += cmp
       submit(cmp)
     }
-  }
 
   private def processTimeout(cmp: Component): Unit = {
     todo += cmp
@@ -125,12 +124,14 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
   }
 
   private def processTerminated(intra: ParallelIntra): Unit = {
+    val cmp = intra.component
     intra.commit()
+    cmpR += cmp -> (cmpR(cmp) + intra.R.size)
     latest = (store, depVersion, deps, visited)
     if(intra.isDone) {
-      queued -= intra.component
+      queued -= cmp
     } else {
-      submit(intra.component)
+      submit(cmp)
     }
   }
 

@@ -97,20 +97,29 @@ object SchemeAnalyses {
         override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                                 with SchemeModFKCallSiteSensitivity
                                                                 with RandomWorklistAlgorithm[SchemeExp] {
-            override val k = 5
+            val k = 5
         }
     }
-    def parallelModConc(prg: SchemeExp, n: Int) = new SimpleSchemeModConcAnalysis(prg)
-                                                    with SchemeModConcStandardSensitivity
-                                                    with SchemeConstantPropagationDomain
-                                                    with ParallelWorklistAlgorithm[SchemeExp] {
+    def parallelModConc(prg: SchemeExp, n: Int, m: Int, kcfa: Int) = new SimpleSchemeModConcAnalysis(prg)
+                                                                        with SchemeModConcStandardSensitivity
+                                                                        with SchemeConstantPropagationDomain
+                                                                        with ParallelWorklistAlgorithm[SchemeExp] { outer =>
         override def workers = n
-        override def toString = s"parallel modconc (n = $workers)"                                               
+        override def toString = s"parallel modconc (n = $workers)"  
+        val modFWorkPool = new PriorityThreadPool(m)                                             
         override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
         override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                                 with SchemeModFKCallSiteSensitivity
-                                                                with RandomWorklistAlgorithm[SchemeExp] {
-            override val k = 5
+                                                                with ParallelWorklistAlgorithm[SchemeExp] {
+            val k = kcfa
+            override def workers = m
+            override def makePool(): PriorityThreadPool = modFWorkPool
+            override def closePool(): Unit = () // don't actually terminate the pool!                                               
+            override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra
+        }
+        override def closePool(): Unit = {
+            super.closePool()
+            modFWorkPool.terminate()
         }
     }
 }

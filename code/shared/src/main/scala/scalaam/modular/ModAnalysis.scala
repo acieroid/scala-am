@@ -46,9 +46,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
     // - a set R of dependencies read by this intra-analysis
     // - a set W of dependencies written by this intra-analysis
     // - a set C of components discovered by this intra-analysis
-    protected var R = Set[Dependency]()
-    protected var W = Set[Dependency]()
-    protected var C = Set[Component]()
+    var R = Set[Dependency]()
+    var W = Set[Dependency]()
+    var C = Set[Component]()
     def register(dep: Dependency): Unit = R += dep
     def trigger(dep: Dependency): Unit  = W += dep
     def spawn(cmp: Component): Unit     = C += cmp

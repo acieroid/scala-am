@@ -121,7 +121,7 @@ trait PerformanceBenchmarks {
 object ParallelModFPerformance extends PerformanceBenchmarks {
   def benchmarks = Set(
                       //"test/R5RS/mceval.scm"
-                      "test/R5RS/gambit/nboyer.scm", 
+                      //"test/R5RS/gambit/nboyer.scm", 
                       //"test/R5RS/gambit/sboyer.scm", 
                       //"test/R5RS/gambit/scheme.scm",
                       //"test/R5RS/gambit/peval.scm",
@@ -129,7 +129,7 @@ object ParallelModFPerformance extends PerformanceBenchmarks {
                       //"test/R5RS/icp/icp_1c_multiple-dwelling.scm",
                       //"test/R5RS/icp/icp_1c_prime-sum-pair.scm",
                       //"test/R5RS/icp/icp_3_leval.scm",
-                      //"test/R5RS/icp/icp_7_eceval.scm",
+                      "test/R5RS/icp/icp_7_eceval.scm",
                       //"test/R5RS/icp/icp_8_compiler.scm"
                     )
   def analyses: List[(SchemeExp => Analysis, String)] = List(
@@ -146,12 +146,16 @@ object ParallelModFPerformance extends PerformanceBenchmarks {
 }
 
 object ParallelModConcPerformance extends PerformanceBenchmarks {
-  def benchmarks = Set("test/concurrentScheme/threads/crypt.scm")
+  def benchmarks = Set("test/concurrentScheme/threads/crypt.scm",
+                       "test/concurrentScheme/threads/actors.scm",
+                       "test/concurrentScheme/threads/matmul.scm"
+                      )
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     //(SchemeAnalyses.modConcAnalysis, "base ModConc"),
-    (SchemeAnalyses.parallelModConc(_,1), "parallel (n = 1)"),
-    (SchemeAnalyses.parallelModConc(_,2), "parallel (n = 2)"),
-    (SchemeAnalyses.parallelModConc(_,4), "parallel (n = 4)"),
+    (SchemeAnalyses.parallelModConc(_,1,1,5), "parallel (n = 1)"),
+    (SchemeAnalyses.parallelModConc(_,2,2,5), "parallel (n = 2)"),
+    (SchemeAnalyses.parallelModConc(_,4,4,5), "parallel (n = 4)"),
+    (SchemeAnalyses.parallelModConc(_,8,8,5), "parallel (n = 8)"),
     //(SchemeAnalyses.parallelModConc(_,6), "parallel (n = 6)"),
     //(SchemeAnalyses.parallelModConc(_, 8), "parallel (n = 8)")
   )  
