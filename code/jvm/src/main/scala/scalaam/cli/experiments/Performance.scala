@@ -19,8 +19,8 @@ trait PerformanceBenchmarks {
   def maxWarmupTime = Timeout.start(Duration(1, MINUTES))   // maximum time to spend on warm-up *in total* (i.e., for all runs)
 
   // Configuring the analysis runs
-  def analysisRuns = 30                                     // number of analysis runs
-  def analysisTime = Timeout.start(Duration(4, MINUTES))    // maximum time to spend *on a single analysis run*
+  def analysisRuns = 20                                     // number of analysis runs
+  def analysisTime = Timeout.start(Duration(5, MINUTES))    // maximum time to spend *on a single analysis run*
 
   // The list of benchmarks used for the evaluation
   type Benchmark = String
