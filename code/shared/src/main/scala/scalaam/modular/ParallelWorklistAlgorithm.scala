@@ -4,94 +4,75 @@ import scalaam.core._
 import scalaam.util.benchmarks.Timeout
 import scala.collection.mutable.PriorityQueue
 
-class PriorityThreadPool(n: Int) {
-
-  private val workerThreads: List[Worker] = List.tabulate(n)(spawnWorker)
-  private lazy val queue: PriorityQueue[Task] = PriorityQueue.empty(Ordering.by(_.priority))
-
-  def submit(priority: Int)(bdy: => Unit) = {
-    val task = Task(() => bdy, priority)
-    queue.synchronized {
-      queue.enqueue(task)
-      queue.notify()
-    }
-  }
-
-  def terminate() = workerThreads.foreach { t =>
-    t.interrupt()
-    t.join()
-  }
-
-  private def pop() = queue.synchronized {
-    while(queue.isEmpty) {
-      queue.wait()
-    }
-    queue.dequeue()
-  }
-
-  private def spawnWorker(i: Int) = {
-    val worker = new Worker(i)
-    worker.start()
-    worker
-  }
-
-  private case class Task(run: () => Unit, priority: Int)
-
-  private class Worker(i: Int) extends Thread(s"worker-thread-$i") {
-    override def run(): Unit = 
-      try {
-        while(true) { pop().run() }
-      } catch {
-        case _: InterruptedException => ()
-      }
-  }
-}
-
 trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
                                                        with GlobalStore[Expr] { inter =>
-  
-  def workers: Int // <- number of workers for the threadpool
-  def makePool() = new PriorityThreadPool(workers) 
-  val pool: PriorityThreadPool = makePool()                                              
-  def closePool() = pool.terminate()
 
+  def workers: Int = Runtime.getRuntime.availableProcessors()   // <- number of workers for the threadpool
+  var workerThreads: List[Worker] = Nil                         // <- we only instantiate this upon calling `analyze`
   var currentTimeout: Timeout.T = _                             // <- we only set the timeout upon calling `analyze`
 
   //
   // WORKERS
   //
 
-  @volatile var cmpR: Map[Component, Int] = Map.empty.withDefaultValue(0)
+  var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)                                                   
 
-  def submit(cmp: Component) = pool.submit(- cmpR(cmp)) {
-    val intra = intraAnalysis(cmp)
-    intra.analyze(currentTimeout)
-    if(currentTimeout.reached) {
-      pushResult(TimedOut(cmp))
-    } else {
-      pushResult(Completed(intra))
+  implicit lazy val ordering: Ordering[Component] = Ordering.by(depth)
+
+  object WorkListMonitor
+  val worklist: PriorityQueue[Component] = PriorityQueue.empty
+  def popWorklist(): Component = WorkListMonitor.synchronized {
+    while(worklist.isEmpty) {
+      WorkListMonitor.wait()
     }
+    worklist.dequeue()
+  } 
+  def pushWorklist(cmp: Component) = WorkListMonitor.synchronized {
+    worklist += cmp
+    WorkListMonitor.notify()
+  }
+  class Worker(i: Int) extends Thread(s"worker-thread-$i") {
+    override def run(): Unit = try {
+      while(true) {
+        val cmp = popWorklist()
+        val intra = intraAnalysis(cmp)
+        intra.analyze(currentTimeout)
+        if(currentTimeout.reached) {
+          pushResult(TimedOut(cmp))
+        } else {
+          pushResult(Completed(intra))
+        }
+      }
+    } catch {
+      case _: InterruptedException => ()
+    }
+  }
+
+  def spawnWorker(i: Int) = {
+    val worker = new Worker(i)
+    worker.start()
+    worker
   }
 
   //
   // RESULTS
   //
 
-  sealed trait Result                                                                                    
-  case class Completed(intra: ParallelIntra)  extends Result
-  case class TimedOut(cmp: Component)         extends Result 
+  implicit val ordResult: Ordering[Result] = Ordering.by(_.cmp)
+
+  sealed trait Result                                        { def cmp: Component }
+  case class Completed(intra: ParallelIntra)  extends Result { def cmp = intra.component }
+  case class TimedOut(cmp: Component)         extends Result
   
   object ResultsMonitor
-  var results: List[Result] = Nil
+  val results: PriorityQueue[Result] = PriorityQueue.empty
 
   def popResult(): Result = ResultsMonitor.synchronized {
     while(results.isEmpty) { ResultsMonitor.wait() }
-    val result = results.head
-    results = results.tail 
-    result
+    results.dequeue()
   }
   def pushResult(res: Result) = ResultsMonitor.synchronized {
-    results = res :: results
+    results += res
     ResultsMonitor.notify()
   }
 
@@ -108,15 +89,17 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
   def addToWorkList(cmp: Component): Unit =
     if (!queued.contains(cmp)) {
       queued += cmp
-      submit(cmp)
+      pushWorklist(cmp)
     }
 
-  override def spawn(cmp: Component, from: Component): Unit =
+  override def spawn(cmp: Component, from: Component): Unit = {
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
+      depth += cmp -> (depth(from) + 1)
       queued += cmp
-      submit(cmp)
+      pushWorklist(cmp)
     }
+  }
 
   private def processTimeout(cmp: Component): Unit = {
     todo += cmp
@@ -124,24 +107,24 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
   }
 
   private def processTerminated(intra: ParallelIntra): Unit = {
-    val cmp = intra.component
     intra.commit()
-    cmpR += cmp -> (cmpR(cmp) + intra.R.size)
     latest = (store, depVersion, deps, visited)
     if(intra.isDone) {
-      queued -= cmp
+      queued -= intra.component
     } else {
-      submit(cmp)
+      pushWorklist(intra.component)
     }
   }
 
   def finished(): Boolean = todo.isEmpty
 
   def analyze(timeout: Timeout.T): Unit = 
-    try {
+    if(!finished()) {
       // initialize timeout and initial analysis state
       currentTimeout = timeout
       latest = (store, depVersion, deps, visited)
+      // spawn the workers 
+      workerThreads = List.tabulate(this.workers)(spawnWorker)
       // fill the worklist with initial items
       todo.foreach(addToWorkList)
       todo = Set.empty
@@ -153,8 +136,11 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
           case TimedOut(cmp) => processTimeout(cmp)
         }
       }
-    } finally {
-      closePool() // wait for all workers to finish
+      // wait for all workers to finish
+      workerThreads.foreach { t =>
+        t.interrupt()
+        t.join()
+      }
     }
 
   //
@@ -172,7 +158,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
 
   // Used for the construction of a new intra-component analysis
   // May only be called when holding the lock, as constructing an analysis entails reading the global analysis state
-  def intraAnalysis(component: Component): ParallelIntra
+  def intraAnalysis(component: Component): ParallelIntra with GlobalStoreIntra
   trait ParallelIntra extends IntraAnalysis with GlobalStoreIntra { intra =>
     val (latestStore, depVersion, deps, visited) = latest
     store = latestStore
