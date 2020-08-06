@@ -23,14 +23,19 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/gambit/peval.scm")
+    val txt = Reader.loadFile("test/concurrentScheme/threads/crypt.scm")
     val prg = CSchemeParser.parse(txt)
-    val analysis = new SimpleSchemeModFAnalysis(prg)
-                                        with SchemeModFNoSensitivity
-                                        with SchemeConstantPropagationDomain
-                                        with ParallelWorklistAlgorithm[SchemeExp] {
-      override def workers = 1
-      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
+    val analysis = new SimpleSchemeModConcAnalysis(prg)
+                                                    with SchemeModConcStandardSensitivity
+                                                    with SchemeConstantPropagationDomain
+                                                    with ParallelWorklistAlgorithm[SchemeExp] {
+        override def workers = 2
+        override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
+        override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
+                                                                with SchemeModFKCallSiteSensitivity
+                                                                with RandomWorklistAlgorithm[SchemeExp] {
+          override val k = 5
+        }
     }
     analysis.analyze(Timeout.start(Duration(30,SECONDS)))
     println(analysis.finished())

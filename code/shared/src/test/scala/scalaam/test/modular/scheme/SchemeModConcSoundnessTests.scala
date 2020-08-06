@@ -23,11 +23,13 @@ trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
 
 trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ BigStepTest
-  def name = "ModConc + big-step ModF"
+  def name = "ModConc + big-step ModF (parallel n = 4)"
     def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program) 
                                         with SchemeModConcStandardSensitivity
                                         with SchemeConstantPropagationDomain
-                                        with LIFOWorklistAlgorithm[SchemeExp] {
+                                        with ParallelWorklistAlgorithm[SchemeExp] {
+        override def workers: Int = 4
+        override def intraAnalysis(cmp: SchemeModConcComponent) = new SchemeModConcIntra(cmp) with ParallelIntra
         def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                         with SchemeModFNoSensitivity
                                                         with RandomWorklistAlgorithm[SchemeExp]
