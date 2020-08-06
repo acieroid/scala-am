@@ -127,6 +127,8 @@ object IncrementalRun extends App {
     val a = new IncrementalSchemeModFAnalysis(text)
     a.analyze(timeout())
     val store1 = a.store
+    a.visited.foreach(println)
+    a.deps.foreach(println)
     /*
     a.updateAnalysis(timeout())
     val store2 = a.store
@@ -145,24 +147,24 @@ object IncrementalRun extends App {
     //"test/changes/cscheme/threads/pc.scm",
     //"test/changes/cscheme/threads/stm.scm"
    )
-  val    modFbenchmarks: List[String] = List("test/changes/scheme/icp_1c_multiple-dwelling-coarse.scm","test/changes/scheme/icp_1c_multiple-dwelling-fine.scm")
+  val    modFbenchmarks: List[String] = List("test/DEBUG.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
   modConcbenchmarks.foreach { bench =>
-    println(bench)
-    for (i <- 1 to 15) {
-      print(Timer.timeOnly({
+   // println(bench)
+    //for (i <- 1 to 15) {
+     // print(Timer.timeOnly({
         modconcAnalysis(bench, standardTimeout)
-      }) + " ")
-    }
+      //}) + " ")
+    //}
   }
   modFbenchmarks.foreach { bench =>
-    println(bench)
-    for (i <- 1 to 15) {
-      print(Timer.timeOnly({
+    //println(bench)
+    //for (i <- 1 to 15) {
+     // print(Timer.timeOnly({
         modfAnalysis(bench, standardTimeout)
-      }) + " ")
-    }
+     // }) + " ")
+    //}
   }
 }
 

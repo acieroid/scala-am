@@ -59,9 +59,11 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     val vis = a1.visited.size
     val ssi = a1.store.keySet.size
     val dep = a1.deps.values.map(_.size).sum
+    //val cnt = a1.intraCount
     results = results
       .add(file, co + in, vis.toString)
       .add(file, an + in, "?")
+      //.add(file, an + in, cnt.toString)
       .add(file, ad + in, ssi.toString)
       .add(file, dp + in, dep.toString)
 
@@ -81,6 +83,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     results = results
       .add(file, co + up, s"${a1.visited.size} (+${a1.visited.size - vis})")
       .add(file, an + up, "?")
+      //.add(file, an + up, s"${a1.intraCount - cnt}")
       .add(file, ad + up, s"${a1.store.keySet.size} (+${a1.store.keySet.size - ssi})")
       .add(file, dp + up, s"${a1.deps.values.map(_.size).sum} (+${a1.deps.values.map(_.size).sum - dep})")
 
@@ -100,6 +103,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     results = results
       .add(file, co + re, a2.visited.size.toString)
       .add(file, an + re, "?")
+      //.add(file, an + re, a2.intraCount.toString)
       .add(file, ad + re, a2.store.keySet.size.toString)
       .add(file, dp + re, a2.deps.values.map(_.size).sum.toString)
   }
