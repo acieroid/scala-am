@@ -15,12 +15,12 @@ trait PerformanceBenchmarks {
   type Analysis = ModAnalysis[SchemeExp]
 
   // Configuring the warm-up
-  def maxWarmupRuns = 3                                     // maximum number of warm-up runs 
+  def maxWarmupRuns = 10                                    // maximum number of warm-up runs 
   def maxWarmupTime = Timeout.start(Duration(1, MINUTES))   // maximum time to spend on warm-up *in total* (i.e., for all runs)
 
   // Configuring the analysis runs
-  def analysisRuns = 10                                     // number of analysis runs
-  def analysisTime = Timeout.start(Duration(2, MINUTES))    // maximum time to spend *on a single analysis run*
+  def analysisRuns = 30                                     // number of analysis runs
+  def analysisTime = Timeout.start(Duration(4, MINUTES))    // maximum time to spend *on a single analysis run*
 
   // The list of benchmarks used for the evaluation
   type Benchmark = String
@@ -73,6 +73,7 @@ trait PerformanceBenchmarks {
     print("\n")
     // Compute, print and return the results
     val result = Statistics.all(times)
+    println(times.mkString("[",",","]"))
     println(result)
     Completed(result)
   }
@@ -118,19 +119,19 @@ trait PerformanceBenchmarks {
   }
 }
 
-object ParallelModFPerformance extends PerformanceBenchmarks {
+object ParallelModFPerformance1 extends PerformanceBenchmarks {
   def benchmarks = Set(
-                      //"test/R5RS/mceval.scm"
+                      "test/R5RS/mceval.scm",
                       "test/R5RS/gambit/nboyer.scm", 
-                      //"test/R5RS/gambit/sboyer.scm", 
-                      //"test/R5RS/gambit/scheme.scm",
-                      //"test/R5RS/gambit/peval.scm",
-                      //"test/R5RS/icp/icp_1c_ontleed.scm",
-                      //"test/R5RS/icp/icp_1c_multiple-dwelling.scm",
-                      //"test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-                      //"test/R5RS/icp/icp_3_leval.scm",
-                      //"test/R5RS/icp/icp_7_eceval.scm",
-                      //"test/R5RS/icp/icp_8_compiler.scm"
+                      "test/R5RS/gambit/sboyer.scm", 
+                      "test/R5RS/gambit/scheme.scm",
+                      "test/R5RS/gambit/peval.scm",
+                      "test/R5RS/icp/icp_1c_ontleed.scm",
+                      "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+                      "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+                      "test/R5RS/icp/icp_3_leval.scm",
+                      "test/R5RS/icp/icp_7_eceval.scm",
+                      "test/R5RS/icp/icp_8_compiler.scm",
                     )
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.kCFAAnalysis(_, 0), "base ModF"),
@@ -138,9 +139,30 @@ object ParallelModFPerformance extends PerformanceBenchmarks {
     (SchemeAnalyses.parallelKCFAAnalysis(_, 2, 0), "parallel (n = 2)"),
     (SchemeAnalyses.parallelKCFAAnalysis(_, 4, 0), "parallel (n = 4)"),
     (SchemeAnalyses.parallelKCFAAnalysis(_, 8, 0), "parallel (n = 8)"),
-    //(SchemeAnalyses.parallelKCFAAnalysis(_, 16, 0), "parallel (n = 16)"),
-    //(SchemeAnalyses.parallelKCFAAnalysis(_, 32, 0), "parallel (n = 32)"),
-    //(SchemeAnalyses.parallelKCFAAnalysis(_, 64, 0), "parallel (n = 64)")
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 16, 0), "parallel (n = 16)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 32, 0), "parallel (n = 32)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 64, 0), "parallel (n = 64)")
+  )
+  def main(args: Array[String]) = run()
+}
+
+object ParallelModFPerformance2 extends PerformanceBenchmarks {
+  def benchmarks = Set(
+                      "test/R5RS/gambit/graphs.scm", 
+                      "test/R5RS/gambit/matrix.scm", 
+                      "test/R5RS/gambit/nboyer.scm",
+                      "test/R5RS/gambit/paraffins.scm",
+                      "test/R5RS/gambit/sboyer.scm",
+                    )
+  def analyses: List[(SchemeExp => Analysis, String)] = List(
+    (SchemeAnalyses.kCFAAnalysis(_, 2), "base ModF (2-CFA)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 1, 2), "parallel (n = 1) (2-CFA)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 2, 2), "parallel (n = 2) (2-CFA)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 4, 2), "parallel (n = 4) (2-CFA)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 8, 2), "parallel (n = 8) (2-CFA)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 16, 2), "parallel (n = 16) (2-CFA)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 32, 2), "parallel (n = 32) (2-CFA)"),
+    (SchemeAnalyses.parallelKCFAAnalysis(_, 64, 2), "parallel (n = 64) (2-CFA)")
   )
   def main(args: Array[String]) = run()
 }
@@ -159,13 +181,18 @@ object ParallelModConcPerformance extends PerformanceBenchmarks {
                       "test/concurrentScheme/threads/tsp.scm",
                     )
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    //(SchemeAnalyses.modConcAnalysis, "base ModConc"),
-    (SchemeAnalyses.parallelModConc(_,1,1,5), "parallel (n = 1)"),
-    (SchemeAnalyses.parallelModConc(_,2,2,5), "parallel (n = 2)"),
-    (SchemeAnalyses.parallelModConc(_,4,4,5), "parallel (n = 4)"),
-    (SchemeAnalyses.parallelModConc(_,8,8,5), "parallel (n = 8)"),
-    //(SchemeAnalyses.parallelModConc(_,6), "parallel (n = 6)"),
-    //(SchemeAnalyses.parallelModConc(_, 8), "parallel (n = 8)")
+    (SchemeAnalyses.modConcAnalysis, "base ModConc"),
+    (SchemeAnalyses.parallelModConc(_,1,1,5), "parallel (n = 1; m = 1)"),
+    (SchemeAnalyses.parallelModConc(_,2,2,5), "parallel (n = 2; m = 2)"),
+    (SchemeAnalyses.parallelModConc(_,4,4,5), "parallel (n = 4; m = 4)"),
+    (SchemeAnalyses.parallelModConc(_,6,6,5), "parallel (n = 6; m = 6)"),
+    (SchemeAnalyses.parallelModConc(_,8,8,5), "parallel (n = 8; m = 8)"),
+    (SchemeAnalyses.parallelModConc(_,1,2,5), "parallel (n = 1; m = 2)"),
+    (SchemeAnalyses.parallelModConc(_,1,4,5), "parallel (n = 1; m = 4)"),
+    (SchemeAnalyses.parallelModConc(_,2,1,5), "parallel (n = 2; m = 1)"),
+    (SchemeAnalyses.parallelModConc(_,2,4,5), "parallel (n = 2; m = 4)"),
+    (SchemeAnalyses.parallelModConc(_,4,1,5), "parallel (n = 4; m = 1)"),
+    (SchemeAnalyses.parallelModConc(_,4,2,5), "parallel (n = 4; m = 2)"),
   )  
   def main(args: Array[String]) = run()
 }

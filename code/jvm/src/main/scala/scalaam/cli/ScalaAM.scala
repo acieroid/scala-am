@@ -23,13 +23,12 @@ object Main {
 
   def main(args: Array[String]): Unit = test()
 
-  // minimax, msort, randomness2, sieve, stm, sudoku, tsp
-  // bchain, fact, life, pc, pp,
+  // 2-CFA: gambit/{graphs, matrix, nboyer, paraffins, sboyer} 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/concurrentScheme/threads/tsp.scm")
+    val txt = Reader.loadFile("test/R5RS/gambit/wc.scm")
     val prg = CSchemeParser.parse(txt)
-    val analysis = SchemeAnalyses.parallelModConc(prg,1,1,5)
-    analysis.analyze(Timeout.start(Duration(300,SECONDS)))
+    val analysis = SchemeAnalyses.kCFAAnalysis(prg, 2)
+    analysis.analyze(Timeout.start(Duration(100,SECONDS)))
     println(analysis.finished())
     //debugClosures(analysis)
     //debugResults(analysis, true)

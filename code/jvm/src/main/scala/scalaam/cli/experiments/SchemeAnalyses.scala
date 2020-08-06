@@ -21,7 +21,7 @@ object SchemeAnalyses {
     def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModFAnalysis(prg)
                                                     with SchemeModFKCallSiteSensitivity
                                                     with SchemeConstantPropagationDomain
-                                                    with CallDepthFirstWorklistAlgorithm[SchemeExp] {
+                                                    with RandomWorklistAlgorithm[SchemeExp] {
         override def toString() = s"kCFA (k = $kcfa)"
         val k = kcfa
     } 
@@ -92,7 +92,7 @@ object SchemeAnalyses {
     def modConcAnalysis(prg: SchemeExp) = new SimpleSchemeModConcAnalysis(prg)
                                             with SchemeModConcStandardSensitivity
                                             with SchemeConstantPropagationDomain
-                                            with LIFOWorklistAlgorithm[SchemeExp] {
+                                            with RandomWorklistAlgorithm[SchemeExp] {
         override def toString = s"base modconc"
         override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                                 with SchemeModFKCallSiteSensitivity
@@ -103,7 +103,7 @@ object SchemeAnalyses {
     def parallelModConc(prg: SchemeExp, n: Int, m: Int, kcfa: Int) = new SimpleSchemeModConcAnalysis(prg)
                                                                         with SchemeModConcStandardSensitivity
                                                                         with SchemeConstantPropagationDomain
-                                                                        with ParallelWorklistAlgorithm[SchemeExp] { outer =>
+                                                                        with ParallelWorklistAlgorithm[SchemeExp] {
         override def workers = n
         override def toString = s"parallel modconc (n = $workers)"  
         override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
