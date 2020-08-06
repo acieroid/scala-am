@@ -21,7 +21,7 @@ object SchemeAnalyses {
     def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModFAnalysis(prg)
                                                     with SchemeModFKCallSiteSensitivity
                                                     with SchemeConstantPropagationDomain
-                                                    with RandomWorklistAlgorithm[SchemeExp] {
+                                                    with CallDepthFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"kCFA (k = $kcfa)"
         val k = kcfa
     } 
@@ -92,11 +92,11 @@ object SchemeAnalyses {
     def modConcAnalysis(prg: SchemeExp) = new SimpleSchemeModConcAnalysis(prg)
                                             with SchemeModConcStandardSensitivity
                                             with SchemeConstantPropagationDomain
-                                            with RandomWorklistAlgorithm[SchemeExp] {
+                                            with CallDepthFirstWorklistAlgorithm[SchemeExp] {
         override def toString = s"base modconc"
         override def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra)
                                                                 with SchemeModFKCallSiteSensitivity
-                                                                with RandomWorklistAlgorithm[SchemeExp] {
+                                                                with CallDepthFirstWorklistAlgorithm[SchemeExp] {
             val k = 5
         }
     }
