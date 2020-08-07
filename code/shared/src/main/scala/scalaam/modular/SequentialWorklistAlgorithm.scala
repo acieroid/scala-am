@@ -100,3 +100,13 @@ trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueW
     }
   }
 }
+
+trait LeastVisitedFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
+  var count: Map[Component, Int] = Map.empty.withDefaultValue(0)
+  lazy val ordering: Ordering[Component] = Ordering.by(count).reverse
+  override def pop(): Component = {
+    val cmp = super.pop()
+    count += cmp -> (count(cmp) + 1)
+    cmp
+  }
+}
