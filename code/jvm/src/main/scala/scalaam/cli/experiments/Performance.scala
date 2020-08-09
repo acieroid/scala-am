@@ -20,7 +20,7 @@ trait PerformanceBenchmarks {
 
   // Configuring the analysis runs
   def analysisRuns = 20                                     // number of analysis runs
-  def analysisTime = Timeout.start(Duration(5, MINUTES))    // maximum time to spend *on a single analysis run*
+  def analysisTime = Timeout.start(Duration(60, MINUTES))   // maximum time to spend *on a single analysis run*
 
   // The list of benchmarks used for the evaluation
   type Benchmark = String
@@ -121,17 +121,13 @@ trait PerformanceBenchmarks {
 
 object ParallelModFPerformance1 extends PerformanceBenchmarks {
   def benchmarks = Set(
-                      "test/R5RS/mceval.scm",
-                      "test/R5RS/gambit/nboyer.scm", 
-                      "test/R5RS/gambit/sboyer.scm", 
                       "test/R5RS/gambit/scheme.scm",
                       "test/R5RS/gambit/peval.scm",
+                      "test/R5RS/gambit/sboyer.scm",
                       "test/R5RS/icp/icp_1c_ontleed.scm",
                       "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
                       "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-                      "test/R5RS/icp/icp_3_leval.scm",
                       "test/R5RS/icp/icp_7_eceval.scm",
-                      "test/R5RS/icp/icp_8_compiler.scm",
                     )
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.kCFAAnalysis(_, 0), "base ModF"),
@@ -151,8 +147,10 @@ object ParallelModFPerformance2 extends PerformanceBenchmarks {
                       "test/R5RS/gambit/graphs.scm", 
                       "test/R5RS/gambit/matrix.scm", 
                       "test/R5RS/gambit/nboyer.scm",
-                      "test/R5RS/gambit/paraffins.scm",
                       "test/R5RS/gambit/sboyer.scm",
+                      "test/R5RS/gambit/browse.scm",
+                      "test/R5RS/icp/icp_8_compiler.scm",
+                      "test/R5RS/icp/icp_3_leval.scm",
                     )
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.kCFAAnalysis(_, 2), "base ModF (2-CFA)"),
@@ -194,5 +192,5 @@ object ParallelModConcPerformance extends PerformanceBenchmarks {
     (SchemeAnalyses.parallelModConc(_,4,1,5), "parallel (n = 4; m = 1)"),
     (SchemeAnalyses.parallelModConc(_,4,2,5), "parallel (n = 4; m = 2)"),
   )  
-  def main(args: Array[String]) = run()
+  def main(args: Array[String]) = benchmarks.foreach(println)
 }
