@@ -185,5 +185,5 @@ object ParallelModConcPerformance extends PerformanceBenchmarks {
         (SchemeAnalyses.parallelModConc(_,n,m,5), s"parallel (n = $n; m = $m)")
       }
     }
-  def main(args: Array[String]) = analyses.foreach(anl => println(anl._2))
+  def main(args: Array[String]) = run()
 }
