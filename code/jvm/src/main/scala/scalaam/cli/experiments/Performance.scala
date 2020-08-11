@@ -178,19 +178,12 @@ object ParallelModConcPerformance extends PerformanceBenchmarks {
                       "test/concurrentScheme/threads/sudoku.scm",
                       "test/concurrentScheme/threads/tsp.scm",
                     )
-  def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.modConcAnalysis, "base ModConc"),
-    (SchemeAnalyses.parallelModConc(_,1,1,5), "parallel (n = 1; m = 1)"),
-    (SchemeAnalyses.parallelModConc(_,2,2,5), "parallel (n = 2; m = 2)"),
-    (SchemeAnalyses.parallelModConc(_,4,4,5), "parallel (n = 4; m = 4)"),
-    (SchemeAnalyses.parallelModConc(_,6,6,5), "parallel (n = 6; m = 6)"),
-    (SchemeAnalyses.parallelModConc(_,8,8,5), "parallel (n = 8; m = 8)"),
-    (SchemeAnalyses.parallelModConc(_,1,2,5), "parallel (n = 1; m = 2)"),
-    (SchemeAnalyses.parallelModConc(_,1,4,5), "parallel (n = 1; m = 4)"),
-    (SchemeAnalyses.parallelModConc(_,2,1,5), "parallel (n = 2; m = 1)"),
-    (SchemeAnalyses.parallelModConc(_,2,4,5), "parallel (n = 2; m = 4)"),
-    (SchemeAnalyses.parallelModConc(_,4,1,5), "parallel (n = 4; m = 1)"),
-    (SchemeAnalyses.parallelModConc(_,4,2,5), "parallel (n = 4; m = 2)"),
-  )  
-  def main(args: Array[String]) = benchmarks.foreach(println)
+  def analyses: List[(SchemeExp => Analysis, String)] =
+    List((SchemeAnalyses.modConcAnalysis(_,5), "base ModConc")) ++
+    List(1,2,4,8).flatMap { n => 
+      List(1,2,4,8).map { m => 
+        (SchemeAnalyses.parallelModConc(_,n,m,5), s"parallel (n = $n; m = $m)")
+      }
+    }
+  def main(args: Array[String]) = analyses.foreach(anl => println(anl._2))
 }
