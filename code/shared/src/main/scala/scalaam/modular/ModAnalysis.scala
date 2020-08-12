@@ -11,6 +11,8 @@ trait Dependency extends SmartHash
 
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
 
+  def report(): (Long,Long,Long) = (0,0,0)
+
   // parameterized by a component representation
   type Component
   def initialComponent: Component

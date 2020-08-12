@@ -118,6 +118,11 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
 
   def finished(): Boolean = todo.isEmpty
 
+  override def report() = (analysisCount, queuedCount / analysisCount, resultsCount / analysisCount)
+
+  var queuedCount: Long = 0
+  var resultsCount: Long = 0
+  var analysisCount: Long = 0
   def analyze(timeout: Timeout.T): Unit = 
     if(!finished()) {
       // initialize timeout and initial analysis state
@@ -130,7 +135,9 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
       todo = Set.empty
       // main workflow: continuously commit analysis results
       while(queued.nonEmpty) {
-        //println(s"QUEUED: ${queued.size} ; RESULTS: ${results.size}")
+        analysisCount += 1
+        queuedCount += queued.size
+        resultsCount += results.size
         popResult() match {
           case Completed(intra) => processTerminated(intra)
           case TimedOut(cmp) => processTimeout(cmp)

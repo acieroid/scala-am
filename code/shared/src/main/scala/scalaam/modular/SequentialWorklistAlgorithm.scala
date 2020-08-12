@@ -50,6 +50,8 @@ trait RandomWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgo
 
 // TODO: use an immutable priority queue, or reuse SequentialWorklistAlgorithm differently here
 trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {
+  override def report() = (analCount,-1,-1)
+  var analCount: Long = 0
   // choose the priority ordering of components
   implicit val ordering: Ordering[Component]
   // worklist is a priority queue
@@ -69,6 +71,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
   def finished(): Boolean = worklist.isEmpty
   // a single step in the worklist algorithm iteration
   def step(timeout: Timeout.T): Unit = {
+    analCount = analCount + 1
     // take the next component
     val current = pop()
     // do the intra-analysis

@@ -43,6 +43,14 @@ trait PerformanceBenchmarks {
     case NoData             => "_"
   }
 
+  def averageCounts(data: List[(Long,Long,Long,Double)]): (Long,Long,Long,Double) = {
+    val data1 = data.map(_._1)
+    val data2 = data.map(_._2)
+    val data3 = data.map(_._3)
+    val data4 = data.map(_._4)
+    (data1.sum / data1.length, data2.sum / data2.length, data3.sum / data3.length, data4.sum / data4.length)
+  }
+
   // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
   def measureAnalysis(file: String, analysis: SchemeExp => Analysis): PerformanceResult = {
     // Parse the program
@@ -59,13 +67,18 @@ trait PerformanceBenchmarks {
     // Actual timing
     print(s"* RUNS ($analysisRuns) - ")
     var times: List[Double] = List()
+    var counts: List[(Long,Long,Long,Double)] = List()
     for (i <- 1 to analysisRuns) {
       print(s"$i ")
       val a = analysis(program)
       System.gc()
       val t = Timer.timeOnly { a.analyze(analysisTime) }
       if (a.finished()) {
-        times = (t.toDouble / 1000000) :: times
+        val ms = (t.toDouble / 1000000)
+        times = ms :: times
+        val (count,par,seq) = a.report()
+        val perSecond = count / ms
+        counts = (count,par,seq,perSecond) :: counts
       } else {
         return TimedOut  // immediately return
       }
@@ -73,8 +86,8 @@ trait PerformanceBenchmarks {
     print("\n")
     // Compute, print and return the results
     val result = Statistics.all(times)
-    println(times.mkString("[",",","]"))
     println(result)
+    println(averageCounts(counts))
     Completed(result)
   }
 
@@ -163,6 +176,13 @@ object ParallelModFPerformance2 extends PerformanceBenchmarks {
     (SchemeAnalyses.parallelKCFAAnalysis(_, 64, 2), "parallel (n = 64) (2-CFA)")
   )
   def main(args: Array[String]) = run()
+}
+
+object ParallelModFPerformanceAll {
+  def main(args: Array[String]) = {
+    ParallelModFPerformance1.run()
+    ParallelModFPerformance2.run()
+  }
 }
 
 object ParallelModConcPerformance extends PerformanceBenchmarks {

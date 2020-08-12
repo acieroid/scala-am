@@ -26,12 +26,11 @@ object Main {
   def test(): Unit = {
     val txt = Reader.loadFile("test/R5RS/gambit/scheme.scm")
     val prg = CSchemeParser.parse(txt)
-    val analysis1 = SchemeAnalyses.kCFAAnalysis(prg, 0)
     val analysis2 = SchemeAnalyses.parallelKCFAAnalysis(prg, 8, 0)
-    analysis1.analyze(Timeout.start(Duration(600,SECONDS)))
     analysis2.analyze(Timeout.start(Duration(600,SECONDS)))
-    println(analysis1.store == analysis2.store)
-    println(analysis1.finished())
+    println(s"INTRA COUNT: ${analysis2.analysisCount}")
+    println(s"QUEUED AVG: ${analysis2.queuedCount / analysis2.analysisCount}")
+    println(s"RESULTS AVG: ${analysis2.resultsCount / analysis2.analysisCount}")
     //debugClosures(analysis)
     //debugResults(analysis, true)
   }
