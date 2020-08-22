@@ -234,7 +234,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.workList.toSet.contains(node.component))
          .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
          .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.workList.toList.headOption == Some(node.component))
-         .style("fill", (node: Node) => colorFor(node.component))
+         //.style("fill", (node: Node) => colorFor(node.component))
     // update the edges
     val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.component,e.target.component))
     edges = edgesUpdate.enter().append("path")
@@ -265,7 +265,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
       val component = analysis.workList.head
       val oldDeps = analysis.dependencies(component)
       analysis.step(Timeout.none)
-      refreshDataAfterStep(component, oldDeps)
+      refreshDataAfterStep(component,oldDeps)
       refreshVisualisation()
     } else {
       println("The analysis has already terminated.")

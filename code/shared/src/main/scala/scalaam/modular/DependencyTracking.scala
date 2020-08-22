@@ -10,6 +10,7 @@ trait DependencyTracking[Expr <: Expression] extends ModAnalysis[Expr] { inter =
   var dependencies  = Map[Component,Set[Component]]().withDefaultValue(Set.empty)
   var newComponents = Set[Component]() 
   // update some rudimentary analysis results
+  //override def intraAnalysis(component: Component): DependencyTrackingIntra
   trait DependencyTrackingIntra extends IntraAnalysis {
     val visited = inter.visited
     override def commit(): Unit = {

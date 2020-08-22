@@ -7,6 +7,7 @@ import scalaam.modular.adaptive._
 import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
+import scalaam.modular.scheme.modf._
 import scalaam.util.benchmarks.Timeout
 
 // Scala.js-related imports
@@ -14,6 +15,7 @@ import org.scalajs.dom
 import org.scalajs.dom.{document, html}
 
 import scala.scalajs.js
+import scalaam.modular.scheme.modf.SimpleSchemeModFAnalysis
 
 // Scala.js helpers
 
@@ -43,25 +45,21 @@ object Main {
 
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
-    val analysis = new AdaptiveModAnalysis(program) with AdaptiveSchemeModFSemantics
-                                                    with AdaptiveArgumentSensitivityPolicy3
-                                                    with SchemeConstantPropagationDomain
-                                                    with FIFOWorklistAlgorithm[SchemeExp]
-                                                    with WebAdaptiveAnalysis[SchemeExp] {
-      val limit = 5
-      override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-      override def updateValue(update: Component => Component)(v: Value) = super.updateValue(update)(v)
-      override def step(timeout: Timeout.T) = {
-        val component = workList.head
-        val name = deref(component)
-        val prevResult = store.getOrElse(returnAddr(component), lattice.bottom)
-        super.step(timeout)
-        val newResult = store.getOrElse(returnAddr(component), lattice.bottom)
-        println(s"$name => $newResult (previously: $prevResult)")
-      }
+    val analysis = new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
+                                                         with SchemeConstantPropagationDomain
+                                                         with DependencyTracking[SchemeExp]
+                                                         with FIFOWorklistAlgorithm[SchemeExp] {
+      //override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       def key(cmp: Component) = expr(cmp).idn
+      override def step(t: Timeout.T) = {
+        val cmp = workList.head
+        println(cmp)
+        super.step(t)
+      }
+      override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra = 
+        new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra 
     }
-    val visualisation = new WebVisualisationAdaptive(analysis)
+    val visualisation = new WebVisualisation(analysis)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
