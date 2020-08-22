@@ -53,7 +53,11 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
     }
     private def evalLetRec(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], env: Env): Value = {
       val extEnv = bindings.foldLeft(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }
-      val bdsVals = bindings.map { case (id, exp) => (id, eval(exp, extEnv)) }
+      val bdsVals = bindings.map { case (id, exp) => (id, exp match {
+        //TODO: maybe there are better ways to preserve lambda names?
+        case lambda: SchemeLambdaExp => newClosure(lambda, extEnv, Some(id.name))
+        case _ => eval(exp, extEnv)
+      })}
       assign(bdsVals, extEnv)
       evalSequence(body, extEnv)
     }
