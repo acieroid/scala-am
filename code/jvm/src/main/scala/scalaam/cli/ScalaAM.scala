@@ -18,6 +18,7 @@ import scalaam.modular.incremental.scheme.AnalysisBuilder.{IncrementalModConcAna
 
 import scala.concurrent.duration._
 import scalaam.cli.experiments.SchemeAnalyses
+import scalaam.language.sexp.SExpParser
 
 object Main {
 
@@ -46,9 +47,10 @@ object Main {
 }
 
 object Run extends App {
-  val text = Reader.loadFile("test/changes/cscheme/threads/mcarlo.scm")
+  val text = Reader.loadFile("test/DEBUG2.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
-  val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none, New)
+  println(CSchemeParser.parseL(text, "test/DEBUG.scm"))
+  val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parseL(text, "test/DEBUG.scm"), Set("newline", "display")))), Timeout.none, New)
   println(res)
 }
 

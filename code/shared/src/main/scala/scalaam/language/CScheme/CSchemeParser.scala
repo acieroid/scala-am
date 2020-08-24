@@ -20,5 +20,8 @@ object CSchemeParser {
    * Parse a string representing a CScheme program.
    */
   def parse(s: String, tag: PTag = noTag): SchemeExp = undefine(List(SchemeBody(SExpParser.parse(s, tag).map(compile))))
+
+  /** Extension to the parser to allow loading definitions from different files. */
+  def parseL(s: String, file: String, tag: PTag = noTag): SchemeExp = SchemeBody(SExpParser.parse(s, tag).flatMap(e => SchemeLoader.load(file, e)).map(compile))
 }
 
