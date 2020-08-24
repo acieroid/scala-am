@@ -1,0 +1,11 @@
+This file lists programs that might be added to the scala-am benchmark suite in the future.
+* https://github.com/darius/miasma
+* https://github.com/ekmett/scheme-monads/blob/master/curry.ss (uses macros)
+* https://github.com/VincentToups/scran (uses macros)
+* https://github.com/schani/unlambdascheme
+* https://github.com/vgeddes/scheme-compiler
+* https://github.com/jeapostrophe/compiler
+* https://github.com/jameswweis/symbolic-inference
+
+More doubtful:
+* https://github.com/Adellica/cocoscheme
