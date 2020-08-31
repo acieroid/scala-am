@@ -12,26 +12,26 @@ More doubtful:
 
 Github scrape:
 ./christoff-buerger/racr
-./sunnysideup/silverstripe-typography
-./TurtleKitty/Vaquero
-./arcfide/chez-srfi
-./cisco/ChezScheme
-./wingo/fibers
-./wingo/guix-nonfree
-./macdavid313/chezure
-./crosswire/xiphos
-./abcdw/rde
-./google/schism
-./Phantas0s/.dotfiles
+./sunnysideup/silverstripe-typography       x   50pct PHP
+./TurtleKitty/Vaquero                       x   Chicken Scheme
+./arcfide/chez-srfi                         x
+./cisco/ChezScheme                          x   See folder named `s`. Square brackets, file handling,...
+./wingo/fibers                              x   Guile Scheme
+./wingo/guix-nonfree                        x
+./macdavid313/chezure                       x
+./crosswire/xiphos                            v Seems to contain some good code (in package `win32/festival`)
+./abcdw/rde                                 x   Uses gnu and guix packages.
+./google/schism                               v With minor changes, code of rnrs.ss and compiler.ss seemto be combinable
+./Phantas0s/.dotfiles                       x
 ./IronScheme/IronScheme
 ./webyrd/Barliman
-./sritchie/sicm
-./n3mo/massmine
-./neo4j-contrib/spatial
-./sudo-give-me-coffee/PhotoGIMP
-./michaelballantyne/faster-miniKanren
+./sritchie/sicm                               v SICP, but for classical mechanics. :-) These are the exercises, so all very small programs, but perhaps we can find the code of the book as well somewhere => https://groups.csail.mit.edu/mac/users/gjs/6946/sicm-html/book.html
+./n3mo/massmine                             x   Chicken Scheme
+./neo4j-contrib/spatial                     x   No Scheme.
+./sudo-give-me-coffee/PhotoGIMP             x
+./michaelballantyne/faster-miniKanren         v
 ./samrocketman/home
-./vyzo/gerbil
+./vyzo/gerbil                               x   defstruct, defclass,...
 ./alphagov/govuk-guix
 ./guenchi/Matplotlib
 ./guenchi/Schemacs
