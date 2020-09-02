@@ -49,7 +49,7 @@ object Main {
 object Run extends App {
   val text = Reader.loadFile("test/R5RS/SETL/setl-benchmarks/arithmetic.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true)
-  val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parseL(text, "test/DEBUG.scm"), Set("newline", "display")))), Timeout.none, New)
+  val res = interpreter.run(CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))), Timeout.none, New)
   println(res)
 }
 

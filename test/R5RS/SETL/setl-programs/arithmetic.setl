@@ -1,0 +1,7 @@
+program arithmetic;
+
+	$$ rekenkundige operatoren aanvaarden mix van reële en gehele operanden
+	x := 2 + 3.0 + 4;
+	print(x);
+
+end program;

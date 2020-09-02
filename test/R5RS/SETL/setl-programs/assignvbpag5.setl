@@ -1,0 +1,23 @@
+program assign;
+
+	a := 3;
+	a +:= 4;
+	b:= a +:= 1;
+
+	print(b);
+	print(a);
+
+	a := 3 + b := 5 + 2;
+	
+	print(b);
+	print(a);
+
+	abc := 'the quick brown fox';
+    cde := abc(5 .. 8);
+	cde := abc(5);
+	edf := abc(5 ..);
+
+	print(cde);
+	print(edf);
+
+end program assign;

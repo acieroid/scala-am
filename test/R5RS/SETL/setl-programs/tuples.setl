@@ -1,0 +1,30 @@
+program tuples;
+	x := [om];
+	print(x);
+	x := [om, 3, 7, 9, om];
+	print(x);
+	
+	y := x(1..3);
+	print(y);
+
+	z := [1,3...10];
+	print(z);
+	k := [10, 7..1];
+	print(k);
+
+	[a, -, c, d] := [1, 2, 3];
+	print(a);
+	print(c);
+	print(d);
+	[l] := [[a,c,[ ]],d];
+	print(l);
+
+	m := [1,2,3,4,5,6];
+	m(2..5) := [7 , 10];
+	print(m);
+	m(3..) := [];
+	print(m);
+	m(1) := 6;
+	print(m);
+
+end program;

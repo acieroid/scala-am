@@ -1,0 +1,14 @@
+program test;
+
+k := {};
+
+x := [1, 2, 3];
+
+y := [4, 5];
+
+if is_tuple y then
+
+print(x + y);
+
+end if;
+end program test;

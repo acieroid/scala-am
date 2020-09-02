@@ -1,0 +1,7 @@
+program testif;
+
+x := 3;
+
+if x = 3 then print('ok'); else print('nok'); end if;
+
+end program;

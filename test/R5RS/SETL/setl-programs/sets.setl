@@ -1,0 +1,16 @@
+program sets;
+
+	x := {1, [2],  8, om, {2 .. 3 + 5 }};
+	y := {1, 2, om, [2] };
+
+	z := x + y;
+	k := x * y;
+	
+	test(z, k);
+	
+	proc test(x, y);
+		print(x);
+		print(y);
+	end proc;
+
+end program sets;

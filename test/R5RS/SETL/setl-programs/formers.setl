@@ -1,0 +1,11 @@
+program formers;
+	x :=[ [n] : n in [100, 90 .. 1] ];
+	print(x);
+
+	y := { [b ** 2, b] : b in {1..5} };
+	print(y);
+
+	z := { a: a in x | a(1) > 60};
+	print(z);
+
+end program formers;

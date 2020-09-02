@@ -1,0 +1,36 @@
+program procedures;
+	$$ er is een x in de globale omgeving en in een lokale omgeving
+	$$ het return statement escaped ook
+
+	x := fac(200);
+	print(x);
+	y := fib(10);
+	print(y);
+
+	$$ operatoren zijn keywords en het misbruik ervan resulteert in een read-error
+	$$ proc max(a,b); return a; end proc max;
+
+	proc fib(n);
+		if n > 1
+			then return fib(n - 1) + fib(n-2);
+			else return 1;
+		end if;
+	end proc fib;
+
+
+	proc fac(x); 
+		if x = 1
+			then return 1;
+ 			else return x * fac(x - 1);
+	 	end if;
+		print('hier komen we nooit');
+	end proc;
+
+	$$ deze herdefinitie van de native procedure print wordt genegeerd
+	proc print(x);
+		x := 'hier komen we niet';
+	end proc;
+
+	
+
+end program procedures;

@@ -1,0 +1,29 @@
+program sample3;
+
+	$ simpele test op iterators, forall, exists en loop constructie
+
+	init s := {1,2,10,20};
+
+	if forall x in s | x > 3
+		then print('All elements met the requirements');
+	else
+		print('The test failed for at least one element: ' + x);
+	end if;
+
+	if notexists x in s | x > 3 $werkt pok met not exists
+		then print('The following element has met the requirements: ' + x);
+	else
+		print('No element met the requirements');
+	end if;
+
+	loop for i in [1 .. 20] do
+		print([1 .. i]);
+	end loop;
+
+	i:=20;
+	loop while i > 0 do
+		print([1 .. i]);
+		i := i-1;
+	end loop;
+
+end program sample3;

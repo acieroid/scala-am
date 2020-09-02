@@ -1,0 +1,19 @@
+program testcase1;
+	a := ((4*5 + 5)) * 100 / 5 ** 2 - 10 *3** 0             +                   8 ;
+
+	print(a);
+	scope1;
+
+	proc scope1;
+	a := 2;
+	print(a);
+	scope2;
+	end proc scope1;
+
+	proc scope2;
+	print(a);
+	a := 3;
+	print(a);
+	end proc;
+
+end program testcase1;

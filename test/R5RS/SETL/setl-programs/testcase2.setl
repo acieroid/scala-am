@@ -1,0 +1,48 @@
+ program sample2;
+
+$ Keerom keert een tuple om, zonder recursief ook elementen te gaan omkeren. Keerom2 gaat ook recursief elementen gaan omkeren. Worden getest: geneste ifs, type checks, tuple functionaliteit/formers, declaratie/assignment van variabelen, parameter binding,
+
+$Om de functies iets eenvoudiger te maken wordt er niet getest op lege tupels .. als je dus als element een leeg tuple ingeeft, dan mag je een crash verwachten.
+
+$ Enkel voor gevorderden: uncomment de goto en labeled statements hieronder om je goto te testen.
+
+init resultaat :=  [];
+
+keerom([[0,1],2,3,4,[5,6]]);
+print(keerom2([[0,1],2,3,4,[5,6]]));
+keerom( [kwadraat(n) : n in {1, 6 ..100}]);
+print('');
+print(keerom2([['!'], ['t', 'k', 'r', 'e', 'w'] ,['t', 'a', 'd'],[['i', 'o', 'o', 'm'], ['i', 'o', 'o', 'm'], ['i', 'o', 'o', 'm']]]));
+
+proc kwadraat(x);
+return x**2;
+end proc kwadraat;
+
+proc keerom(een_tupel);
+	if (#een_tupel = 0) then
+		print(resultaat);
+		resultaat := [];
+	else
+		temp frome een_tupel;
+		resultaat(#resultaat + 1) := temp;
+		keerom(een_tupel);
+	end if;
+end proc keerom;
+
+
+proc keerom2(een_tupel);
+	if (#een_tupel = 1) then
+		if (is_tuple(een_tupel(1))) then return [keerom2(een_tupel(1))];
+											else return een_tupel;
+		end if;
+	else
+	temp frome een_tupel;
+	if is_tuple(temp) then
+		return [keerom2(temp)] + keerom2(een_tupel);
+	else
+		return [temp] + keerom2(een_tupel);
+	end if;
+	end if;
+end proc keerom2;
+
+end program sample2;

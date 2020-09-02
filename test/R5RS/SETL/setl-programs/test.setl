@@ -1,0 +1,13 @@
+program recursie;
+
+test(3);
+
+proc test(x);
+ if x = 1 then
+   print('gedaan');
+ else 
+   test(x - 1);
+end if;
+end proc;
+
+end program recursie;

@@ -1,0 +1,30 @@
+program sequence;
+
+print(testif(test()));
+
+proc testif(x);
+
+	if x = 4 then
+		print('if1');
+		print('if2');
+		return('gedaan');
+		print('niet op scherm');
+	else
+		print('else1');
+		print('else2');
+		return('elsegedaan');
+		print('niet op scherm else');
+	end if;
+	
+	print('niet op scherm 3');
+
+end proc testif;
+
+proc test;
+	print('een');
+	print('twee');
+	print('drie');
+	return 4;
+end proc;
+
+end program sequence;

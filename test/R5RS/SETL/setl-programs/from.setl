@@ -1,0 +1,22 @@
+program fromprog;
+
+a := [11, 26, 37, 17];
+
+$ werkt ook correct met a := [];
+
+b fromb a;
+print(b);
+print(a);
+
+c fromb a;
+print(c);
+print(a);
+
+d fromb a;
+e fromb a;
+f fromb a;
+
+print(f);
+print(a);
+
+end program fromprog;
