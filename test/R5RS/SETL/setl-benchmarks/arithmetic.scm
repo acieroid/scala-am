@@ -3342,23 +3342,26 @@
         (if (not (ag-iterelement-in? first))
           (eval-error (format "unimplemented iterator type: ~a" first))
           (let* ((idf (ag-iterelement-in-lhs first))
+                  (returned #f)
+                  (returnvalue #f)
                   (e (evaluate (ag-iterelement-in-exp first) env))
-                  (fe (cond ((ag-tuple? e) ag-tuple-for-each)
-                        ((ed-set? e) ed-set-for-each)
-                        (else (eval-error
-                                (format "unimplemented iter-element-in type: ~a" e))))))
-            (call-with-current-continuation
-              (lambda (return)
-                (fe (lambda (x)
-                      (set-variable-value! env global idf x err-constant)
-                      (let ((pred (evaluate sch env)))
-                        (type ag-boolean? pred)
-                        (test pred return env)
-                        (set-variable-value! env
-                          global
-                          idf
-                          (make-ag-omega) err-constant)))
-                  e)))))))
+                  (fe (cond ((ag-tuple? e) (lambda (v) (if returned (lambda (e) returnvalue) ag-tuple-for-each)))
+                        ((ed-set? e) (lambda (v) (if returned (lambda (e) returnvalue) ed-set-for-each)))
+                        (else (lambda (v) (if returned (lambda (e) returnvalue)  (eval-error
+                                                                                   (format "unimplemented iter-element-in type: ~a" e))))))))
+            ;(call-with-current-continuation
+            ;(lambda (return)
+            (fe (lambda (x)
+                  (set-variable-value! env global idf x err-constant)
+                  (let ((pred (evaluate sch env)))
+                    (type ag-boolean? pred)
+                    ;(test pred return env)
+                    (test pred (lambda (v)(set! returned #t) (set! returnvalue v)) env)
+                    (set-variable-value! env
+                      global
+                      idf
+                      (make-ag-omega) err-constant)))
+              e)))));))
 
     (define (eval-former iterator-expr-accessor
               iterator-iterator-accessor
@@ -3382,16 +3385,16 @@
                                 (format "unimplemented iter-element-in type: ~a" e)))))
                   (result (empty-constructor)))
             (type ag-identifier? idf)
-            (call-with-current-continuation
-              (lambda (return)
-                (fe (lambda (x)
-                      (set-variable-value! env global idf x err-constant)
-                      (let ((pred (evaluate sch env)))
-                        (type ag-boolean? pred)
-                        (if (ag-boolean-value pred)
-                          (set! result
-                            (update (evaluate expr env) result)))))
-                  e)))
+            ;(call-with-current-continuation
+            ;(lambda (return)
+            (fe (lambda (x)
+                  (set-variable-value! env global idf x err-constant)
+                  (let ((pred (evaluate sch env)))
+                    (type ag-boolean? pred)
+                    (if (ag-boolean-value pred)
+                      (set! result
+                        (update (evaluate expr env) result)))))
+              e);))
             (processing result)))))
 
     (define (eval-set-former exp env)
