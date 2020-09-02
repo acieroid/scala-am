@@ -25,32 +25,33 @@ Github scrape:
 ./Phantas0s/.dotfiles                       x
 ./IronScheme/IronScheme
 ./webyrd/Barliman
-./sritchie/sicm                               v SICP, but for classical mechanics. :-) These are the exercises, so all very small programs, but perhaps we can find the code of the book as well somewhere => https://groups.csail.mit.edu/mac/users/gjs/6946/sicm-html/book.html
+./sritchie/sicm                               v SICP, but for classical mechanics. :-) These are the exercises, so all very small programs, but perhaps we can find the code of the book as well somewhere => https://groups.csail.mit.edu/mac/users/gjs/6946/sicm-html/book.html OR https://tgvaughan.github.io/sicm/
+                                                Look at http://groups.csail.mit.edu/mac/users/gjs/6946/installation.html to download scmutils, recently modified help code for the book (I'm not sure whether this is the actual code of the book).
 ./n3mo/massmine                             x   Chicken Scheme
 ./neo4j-contrib/spatial                     x   No Scheme.
 ./sudo-give-me-coffee/PhotoGIMP             x
 ./michaelballantyne/faster-miniKanren         v
 ./samrocketman/home
 ./vyzo/gerbil                               x   defstruct, defclass,...
-./alphagov/govuk-guix
-./guenchi/Matplotlib
-./guenchi/Schemacs
-./guenchi/Raven
-./guenchi/ChezJS
-./guenchi/Darkart
-./guenchi/Core
-./guenchi/Ballista
-./guenchi/json
-./guenchi/match
-./guenchi/Catapult
-./kahua/Kahua
-./BenShoeman/gimp-photoshop-profile
-./okuoku/yuni
-./soulomoon/SICP
-./yashrk/raylib-scm
-./samrushing/irken-compiler
-./eqela/jkop
-./nlextract/NLExtract
+./alphagov/govuk-guix                       x   Things of the British gouvernment. :-) Though uses imports like gnu, guix,...
+./guenchi/Matplotlib                        x   No Scheme.
+./guenchi/Schemacs                            v
+./guenchi/Raven                             x   File handling, square brackets,...
+./guenchi/ChezJS                            x   Uses `match`.
+./guenchi/Darkart                           x   Nothing really useful.
+./guenchi/Core                              x
+./guenchi/Ballista                           ?  define-syntax
+./guenchi/json                                v But uses macro's.
+./guenchi/match                             x   Uses square brackets and something called syntax-case.
+./guenchi/Catapult                          x   Requires Igropyr
+./kahua/Kahua                               x   Needs a lot of imports etc.
+./BenShoeman/gimp-photoshop-profile         x
+./okuoku/yuni                                ?  Maybe selected snippets of code can be used.
+./soulomoon/SICP                              v Solutions to SICP exercises, but lots of small programs.
+./yashrk/raylib-scm                          ?
+./samrushing/irken-compiler                 x   Not really Scheme.
+./eqela/jkop                                x   No Scheme.
+./nlextract/NLExtract                       x   No Scheme.
 ./alezost/guix-config
 ./alezost/config
 ./tommaisey/convex

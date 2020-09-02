@@ -1,0 +1,17 @@
+program functions;
+
+print(factorial(5));
+
+
+proc factorial(arg);
+   if arg = 1 then
+       return 1;
+   else
+      return arg * factorial(arg-1);
+   end if;
+end proc factorial;
+
+
+
+
+end program;

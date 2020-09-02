@@ -167,6 +167,9 @@ Some programs are not included for other reasons (non-standard primitives, ...).
 * test.scm
 * tfib.scm
 
+### GitHub
+Contains code from projects on GitHub. The files contain information on the exact source of the code, and a copyright notice if applicable.
+
 ### ICP
 
 ### KernighanVanwyk

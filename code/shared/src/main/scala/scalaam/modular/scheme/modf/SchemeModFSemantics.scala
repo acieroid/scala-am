@@ -79,11 +79,11 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     // variable lookup: use the global store
     protected def lookup(id: Identifier, env: Env): Value = env.lookup(id.name) match {
-      case None       => throw new Exception(s"Undefined variable $id") //TODO: better error reporting
+      case None       => throw new Exception(s"Undefined variable $id (${id.idn.pos})") //TODO: better error reporting
       case Some(addr) => readAddr(addr)
     }
     protected def assign(id: Identifier, env: Env, vlu: Value): Unit = env.lookup(id.name) match {
-      case None       => throw new Exception(s"Undefined variable $id") //TODO: better error reporting
+      case None       => throw new Exception(s"Undefined variable $id (${id.idn.pos})") //TODO: better error reporting
       case Some(addr) => writeAddr(addr, vlu)   
     }
     protected def assign(bds: List[(Identifier,Value)], env: Env): Unit = 

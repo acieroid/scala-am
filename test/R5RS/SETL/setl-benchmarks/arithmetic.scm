@@ -1,28 +1,8 @@
-(define (when p body)(if b body))
-(define (unless p body)(if (not p) body))
+;;
+;; Added definitions
+;;
 
-(define (char-downcase c)
-  (let ((i (assoc c '((#\A #\a) (#\B #\b) (#\C #\c) (#\D #\d) (#\E #\e) (#\F #\f) (#\G #\g) (#\H #\h) (#\I #\i) (#\j #\j) (#\K #\k) (#\L #\l) (#\M #\m) (#\N #\n) (#\O #\o) (#\P #\p) (#\Q #\q) (#\R #\r) (#\S #\s) (#\T #\t) (#\U #\u) (#\V #\v) (#\W #\w) (#\X #\x) (#\Y #\y) (#\Z #\z)))))
-    (if i (cadr i) c)))
-(define (char->string c)
-  (let ((i (assoc c '((#\tab "\t")(#\newline "\n")('EOF "") (#\space " ") (#\! "!") (#\" "\"") (#\# "#") (#\$ "$") (#\% "%") (#\& "&") (#\' "'") (#\( "(") (#\) ")") (#\* "*") (#\+ "+") (#\, ",") (#\- "-") (#\. ".") (#\/ "/") (#\0 "0") (#\1 "1") (#\2 "2") (#\3 "3") (#\4 "4") (#\5 "5") (#\6 "6") (#\7 "7") (#\8 "8") (#\9 "9") (#\: ":") (#\; ";") (#\< "<") (#\= "=") (#\> ">") (#\? "?") (#\@ "@") (#\A "A") (#\B "B") (#\C "C") (#\D "D") (#\E "E") (#\F "F") (#\G "G") (#\H "H") (#\I "I") (#\J "J") (#\K "K") (#\L "L") (#\M "M") (#\N "N") (#\O "O") (#\P "P") (#\Q "Q") (#\R "R") (#\S "S") (#\T "T") (#\U "U") (#\V "V") (#\W "W") (#\X "X") (#\Y "Y") (#\Z "Z") (#\[ "[") (#\\ "\\") (#\] "]") (#\^ "^") (#\_ "_") (#\` "`") (#\a "a") (#\b "b") (#\c "c") (#\d "d") (#\e "e") (#\f "f") (#\g "g") (#\h "h") (#\i "i") (#\j "j") (#\k "k") (#\l "l") (#\m "m") (#\n "n") (#\o "o") (#\p "p") (#\q "q") (#\r "r") (#\s "s") (#\t "t") (#\u "u") (#\v "v") (#\w "w") (#\x "x") (#\y "y") (#\z "z") (#\{ "{") (#\| "|") (#\} "}") (#\~ "~")))))
-    (if i (cadr i) (begin (display c)(error "Unknown character.")))))
-
-(define (list->string l)
-  (if (null? l)
-    ""
-    (string-append (char->string (car l))
-      (list->string (cdr l)))))
-
-(define (make-hash-table) (cons 'ht '()))
-(define (hash-table? t)(eq? (car t) 'ht))
-(define (hash-table-get table key err)
-  (let ((r (assoc key (cdr table))))
-    (if r
-      r
-      err)))
-(define (hash-table-put! table key val)
-  (set-cdr! table (cons (cons key val) (cdr table))))
+; Reading
 
 (define ctr 0)
 (define (read-char str)
@@ -38,9 +18,59 @@
 (define (char-ready? str) (< ctr (string-length str)))
 (define (eof-object? x) (equal? 'EOF x))
 
-(define (char->integer c)
-  (let ((i (assoc c '((#\tab 09)(#\newline 10)('EOF 26)(#\space 32) (#\! 33) (#\" 34) (#\# 35) (#\$ 36) (#\% 37) (#\& 38) (#\' 39) (#\( 40) (#\) 41) (#\* 42) (#\+ 43) (#\, 44) (#\- 45) (#\. 46) (#\/ 47) (#\0 48) (#\1 49) (#\2 50) (#\3 51) (#\4 52) (#\5 53) (#\6 54) (#\7 55) (#\8 56) (#\9 57) (#\: 58) (#\; 59) (#\< 60) (#\= 61) (#\> 62) (#\? 63) (#\@ 64) (#\A 65) (#\B 66) (#\C 67) (#\D 68) (#\E 69) (#\F 70) (#\G 71) (#\H 72) (#\I 73) (#\J 74) (#\K 75) (#\L 76) (#\M 77) (#\N 78) (#\O 79) (#\P 80) (#\Q 81) (#\R 82) (#\S 83) (#\T 84) (#\U 85) (#\V 86) (#\W 87) (#\X 88) (#\Y 89) (#\Z 90) (#\[ 91) (#\\ 92) (#\] 93) (#\^ 94) (#\_ 95) (#\` 96) (#\a 97) (#\b 98) (#\c 99) (#\d 100) (#\e 101) (#\f 102) (#\g 103) (#\h 104) (#\i 105) (#\j 106) (#\k 107) (#\l 108) (#\m 109) (#\n 110) (#\o 111) (#\p 112) (#\q 113) (#\r 114) (#\s 115) (#\t 116) (#\u 117) (#\v 118) (#\w 119) (#\x 120) (#\y 121) (#\z 122) (#\{ 123) (#\| 124) (#\} 125) (#\~ 126)))))
+; Hash tables
+
+(define (make-hash-table) (cons 'ht '()))
+(define (hash-table? t)
+  (and (pair? t) (eq? (car t) 'ht)))
+(define (hash-table-get table key . err)
+  (let ((r (assoc key (cdr table))))
+    (if r
+      (car r)
+      ((car err)))))
+(define (hash-table-remove! table key)
+  (set-cdr! table (filter (lambda (x) (not (eq? key (car x)))) (cdr table))))
+(define (hash-table-put! table key val)
+  (set-cdr! table (cons (cons key val) (cdr table))))
+(define (hash-table-for-each table f)
+  (for-each (lambda (t) (f (cdr t) (car t))) table))
+
+; filter
+
+(define (filter f? lst)
+  (cond ((null? lst) '())
+    ((f? (car lst)) (cons (car lst) (filter f? (cdr lst))))
+    (else (filter f? (cdr lst)))))
+
+; list->string
+
+(define (list->string l)
+  (if (null? l)
+    ""
+    (string-append (char->string (car l))
+      (list->string (cdr l)))))
+
+; Characters
+
+(define (char-downcase c)
+  (let ((i (assoc c '((#\A #\a) (#\B #\b) (#\C #\c) (#\D #\d) (#\E #\e) (#\F #\f) (#\G #\g) (#\H #\h) (#\I #\i) (#\j #\j) (#\K #\k) (#\L #\l) (#\M #\m) (#\N #\n) (#\O #\o) (#\P #\p) (#\Q #\q) (#\R #\r) (#\S #\s) (#\T #\t) (#\U #\u) (#\V #\v) (#\W #\w) (#\X #\x) (#\Y #\y) (#\Z #\z)))))
+    (if i (cadr i) c)))
+(define (char->string c)
+  (let ((i (assoc c '((#\tab "\t")(#\newline "\n")('EOF "") (#\space " ") (#\! "!") (#\" "\"") (#\# "#") (#\$ "$") (#\% "%") (#\& "&") (#\' "'") (#\( "(") (#\) ")") (#\* "*") (#\+ "+") (#\, ",") (#\- "-") (#\. ".") (#\/ "/") (#\0 "0") (#\1 "1") (#\2 "2") (#\3 "3") (#\4 "4") (#\5 "5") (#\6 "6") (#\7 "7") (#\8 "8") (#\9 "9") (#\: ":") (#\; ";") (#\< "<") (#\= "=") (#\> ">") (#\? "?") (#\@ "@") (#\A "A") (#\B "B") (#\C "C") (#\D "D") (#\E "E") (#\F "F") (#\G "G") (#\H "H") (#\I "I") (#\J "J") (#\K "K") (#\L "L") (#\M "M") (#\N "N") (#\O "O") (#\P "P") (#\Q "Q") (#\R "R") (#\S "S") (#\T "T") (#\U "U") (#\V "V") (#\W "W") (#\X "X") (#\Y "Y") (#\Z "Z") (#\[ "[") (#\\ "\\") (#\] "]") (#\^ "^") (#\_ "_") (#\` "`") (#\a "a") (#\b "b") (#\c "c") (#\d "d") (#\e "e") (#\f "f") (#\g "g") (#\h "h") (#\i "i") (#\j "j") (#\k "k") (#\l "l") (#\m "m") (#\n "n") (#\o "o") (#\p "p") (#\q "q") (#\r "r") (#\s "s") (#\t "t") (#\u "u") (#\v "v") (#\w "w") (#\x "x") (#\y "y") (#\z "z") (#\{ "{") (#\| "|") (#\} "}") (#\~ "~")))))
     (if i (cadr i) (begin (display c)(error "Unknown character.")))))
+
+; Formatting
+
+(define (format str . ignore-fmt-opts)
+  str) ;; Not correct, but ok for this benchmark
+
+; Others
+
+(define ag-tuple-contents cdr)
+
+;;
+;; Tools.scm
+;;
 
 (define (send-message object message . parameters)
   (let ((method (object message)))
@@ -90,7 +120,6 @@
           '())
       (else (cons (constructor i) (loop (+ i step)))))))
 
-
 (define (duplicate-list lst dup)
   (if (= dup 0)
       '()
@@ -123,6 +152,9 @@
     ch
     (char-downcase ch)))
 
+;;
+;; tokens.scm
+;;
 
 ;; Tokens - used for communication between scanner and parser
 ;; ==========================================================
@@ -273,7 +305,6 @@
 
 (define rop-tokens (list in-keyword notin-keyword subset-keyword eql-symbol
                      dif-symbol lss-symbol els-symbol grt-symbol egr-symbol))
-
 ;; Token structure
 ;(define-struct token (symbol line position data))
 
@@ -290,9 +321,12 @@
     (equal? (token-data x)
       (token-data y))))
 
+;;
+;; scanner3.scm
+;;
+
 ;; Scanner
 ;; =======
-
 
 ;; Scanner
 (define (make-scanner)
@@ -416,7 +450,6 @@
             ill ill ill ill ill ill ill ill ill ill ill ill ill ill ill ill);240
           (char->integer ch))))
 
-
     (define (check . allowed)
       (member (char-type char) allowed))
 
@@ -431,19 +464,16 @@
             (loop (+ number 1)))
           number)))
 
-
     (define (init-scan input-port)
       (set! pos 0)
       (set! line 1)
       (set! port input-port)
       (set! char (read-char port)))
 
-
     (define (skip)
       (define current-char char)
       (next)
       current-char)
-
 
     (define (next)
       (set! pos (+ pos 1))
@@ -628,7 +658,6 @@
       (next)
       (make-token smc-symbol line pos #f))
 
-
     (define (dispatch message)
       (case message
         ((init-scan) init-scan)
@@ -637,22 +666,9 @@
 
     dispatch))
 
-
-;(define scanner (make-scanner))
-;(send-message scanner 'init-scan (open-input-string "3*5+2"))
-;(define (test)
-;  (let ((x (send-message scanner 'scan)))
-;    (display (token-symbol x)) (display " ") (display (token-data x)) (newline)))
-;(test)
-;(test)
-;(test)
-;(test)
-;(test)
-;(test)
-;(test)
-;(test)
-;(test)
-;(test)
+;;
+;; wbtree.scm
+;;
 
 (define (tree data left right)
   (vector data
@@ -683,7 +699,6 @@
       (if (> i (tree-size (tree-left t)))
         (index (tree-right t) (- i (tree-size (tree-left t)) 1))
         (tree-data t)))))
-
 
 (define (empty? t)
   (= 0 (tree-size t)))
@@ -732,8 +747,6 @@
             (rotate-double-right d l r)))
         (else (tree d l r)))))
 
-
-
   (define (element? e t)
     (cond ((empty? t) #f)
       ((less? e (tree-data t))
@@ -770,7 +783,6 @@
           (tree-left l)
           (concat3 (tree-right l) d r)))
       (else (tree d l r))))
-
 
   (define (split< e t)
     (cond ((empty? t) t)
@@ -903,10 +915,11 @@
           (loop (tree-right t) (cons (tree-data t) l))))))
 
   (define (tree-for-each t function)
-    (unless (empty? t)
-      (tree-for-each (tree-left t) function)
-      (function (tree-data t))
-      (tree-for-each (tree-right t) function)))
+    (if (not (empty? t))
+      (begin
+        (tree-for-each (tree-left t) function)
+        (function (tree-data t))
+        (tree-for-each (tree-right t) function))))
 
   (define (tree-map t function)
     (define result (the-empty-tree))
@@ -943,13 +956,15 @@
 
   dispatch)
 
+;;
+;; grammar.scm
+;;
 
 ;; Abstract Grammar
 ;; ================
 ;(define-struct ag-program (name body))
 (define (make-ag-program . args) (cons 'ag-program args))
 (define (ag-program? x)(eq? (car x) 'ag-program))
-(define make-ag-program list)
 (define ag-program-name cadr)
 (define ag-program-body caddr)
 ;(define-struct ag-programbody (declarations statements routines refines))
@@ -968,16 +983,18 @@
 ;(define-struct ag-identifier (name))
 (define (make-ag-identifier . args) (cons 'ag-identifier args))
 (define (ag-identifier? x)(eq? (car x) 'ag-identifier))
+(define ag-identifier-name cadr)
 ;(define-struct ag-declarations (var const init))
 (define (make-ag-declarations . args) (cons 'ag-declarations args))
 (define (ag-declarations? x)(eq? (car x) 'ag-declarations))
-(define ag-declarations-body cadr)
-(define ag-declarations-init caddr)
+(define ag-declarations-var cadr)
+(define ag-declarations-const caddr)
+(define ag-declarations-init cadddr)
 ;(define-struct ag-constdeclaration (var constant))
-(define (make-ag-declaration . args) (cons 'ag-declaration args))
-(define (ag-declaration? x)(eq? (car x) 'ag-declaration))
-(define ag-declaration-var cadr)
-(define ag-declaration-constant caddr)
+(define (make-ag-constdeclaration . args) (cons 'ag-constdeclaration args))
+(define (ag-constdeclaration? x)(eq? (car x) 'ag-constdeclaration))
+(define ag-constdeclaration-var cadr)
+(define ag-constdeclaration-constant caddr)
 ;(define-struct ag-initdeclaration (var init))
 (define (make-ag-initdeclaration . args) (cons 'ag-initdeclaration args))
 (define (ag-initdeclaration? x)(eq? (car x) 'ag-initdeclaration))
@@ -988,7 +1005,7 @@
 (define (ag-integer? x)(eq? (car x) 'ag-integer))
 (define ag-integer-value cadr)
 ;(define-struct ag-real (value))
-(define (make-agreal . args) (cons 'agreal args))
+(define (make-ag-real . args) (cons 'agreal args))
 (define (ag-real? x)(eq? (car x) 'agreal))
 (define ag-real-value cadr)
 ;(define-struct ag-string (value))
@@ -1147,7 +1164,7 @@
 ;(define-struct ag-simple-call-or-selection (var el))
 (define (make-ag-simple-call-or-selection . args) (cons 'ag-simple-call-or-selection args))
 (define (ag-simple-call-or-selection? x)(eq? (car x) 'ag-simple-call-or-selection))
-(define ag-simple-call-or-selection-val cadr)
+(define ag-simple-call-or-selection-var cadr)
 (define ag-simple-call-or-selection-el caddr)
 ;(define-struct ag-stmt-if (condition then elseif else))
 (define (make-ag-stmt-if . args) (cons 'ag-stmt-if args))
@@ -1157,7 +1174,7 @@
 (define ag-stmt-if-elseif caddr)
 (define ag-stmt-if-else caddr)
 ;(define-struct ag-elseif (condition then))
-(define (make-ag-stmt-elseif . args) (cons 'ag-stmt-elseif args))
+(define (make-ag-elseif . args) (cons 'ag-stmt-elseif args))
 (define (ag-stmt-elseif? x)(eq? (car x) 'ag-stmt-elseif))
 (define ag-stmt-elseif-condition cadr)
 (define ag-stmt-elseif-then caddr)
@@ -1192,7 +1209,7 @@
 (define (ag-step? x)(eq? (car x) 'ag-step))
 (define ag-step-stmts cadr)
 ;(define-struct ag-until (condition))
-(define (make-ag-until. args) (cons 'ag-until args))
+(define (make-ag-until . args) (cons 'ag-until args))
 (define (ag-until? x)(eq? (car x) 'ag-until))
 (define ag-until-condition cadr)
 ;(define-struct ag-term (stmts))
@@ -1202,8 +1219,8 @@
 ;(define-struct ag-formal (type var))
 (define (make-ag-formal . args) (cons 'ag-formal args))
 (define (ag-formal? x)(eq? (car x) 'ag-formal))
-(define ag-proc-type cadr)
-(define ag-proc-var caddr)
+(define ag-formal-type cadr)
+(define ag-formal-var caddr)
 ;(define-struct ag-proc (name args body))
 (define (make-ag-proc . args) (cons 'ag-proc args))
 (define (ag-proc? x)(eq? (car x) 'ag-proc))
@@ -1218,7 +1235,6 @@
 
 (define (lhst? x)
   (or (ag-identifier? x) (ag-skip? x)))
-
 
 (define (ag-number? x)
   (or (ag-real? x)
@@ -1295,8 +1311,6 @@
     (hash-table-put! tuple (+ high 1) val)
     (set-ag-tuple-highest! tuple (+ high 1))))
 
-
-
 (define (ag-tuple-val tuple pos)
   (if (< pos 1)
     (make-ag-omega)
@@ -1338,7 +1352,6 @@
       (loop 1)
         '())))
 
-
 (define (ag-tuple-for-each f t)
   (let ((high (ag-tuple-highest t)))
     (define (loop pos)
@@ -1360,10 +1373,10 @@
          (rslt (ag-tuple-empty)))
 
     (define (insert-rest-of-tuple pos pos2)
-      (when (< pos2 end2)
-        (ag-tuple-insert rslt pos (ag-tuple-val t2 pos2))
-        (insert-rest-of-tuple (+ pos 1) (+ pos2 1))))
-
+      (if (< pos2 end2)
+        (begin
+          (ag-tuple-insert rslt pos (ag-tuple-val t2 pos2))
+          (insert-rest-of-tuple (+ pos 1) (+ pos2 1)))))
 
     (define (insert pos1 pos2 pos)
       (cond ((= pos1 end1) (insert-rest-of-tuple pos pos2))
@@ -1386,8 +1399,8 @@
             (ag-tuple-val t1 pos1))
           (insert (+ pos1 1) pos2 (+ pos 1)))))
 
-    (unless (or (> bgn end1 1)
-              (> end end1 1))
+    (if (not (or (> bgn end1 1)
+                 (> end end1 1)))
       (insert 1 1 1))
     rslt))
 
@@ -1431,7 +1444,6 @@
                   (lambda (x y) (ag-tuple-less? x y))
                   (lambda (x y) (ed-set-less? x y))))
   ((vector-ref types typenbr) x y))
-
 
 (define (ag-tuple-less? x y)
   (let ((hx (ag-tuple-highest x))
@@ -1493,6 +1505,10 @@
 (define (ed-set-intersection s1 s2)
   (send-message ed-set-manipulations 'intersection s1 s2))
 
+;;
+;; reader3.scm
+;;
+
 (define (make-reader scanner)
   (let ((setl #f)
          (token #f)
@@ -1502,7 +1518,6 @@
     (define (read-error message token)
       (send-message setl 'read-error message token))
 
-
     (define (read-expected-error . tokens)
       (read-error (format "expected ~a - given ~a"  tokens token) token))
 
@@ -1511,9 +1526,9 @@
 
     (define (get-token)
       (set! token (send-message scanner 'scan))
-      (when (equal? (token-symbol token) err-symbol)
+      (if (equal? (token-symbol token) err-symbol)
         (read-error (token-data token) token))
-      (when record-tokens
+      (if record-tokens
         (set! recorded-tokens (cons token recorded-tokens))))
 
     (define (check-token symbol)
@@ -1557,7 +1572,7 @@
             (get-token)
             (match (cdr recorded)))
           (else #f)))
-      (unless (match recorded)
+      (if (not (match recorded))
         (read-error "non-matching end tokens" token)))
 
     (define (read s)
@@ -1700,7 +1715,7 @@
           (let ((idf (identifier #t)))
             (make-ag-stmt-goto idf)))
         ((check-and-get-token pass-keyword) (make-ag-stmt-pass))
-        ((check-and-get-token stop-keyword) (make-ag-tmt-stop))
+        ((check-and-get-token stop-keyword) (make-ag-stmt-stop))
         ((check-token if-keyword) (if-statement))
         ((check-and-get-token return-keyword) (return-statement))
         ((check-token loop-keyword) (loop-statement))
@@ -1791,7 +1806,6 @@
         (else
           (and assert (read-error "expected a reference token" token)))))
 
-
     (define (after-idf-reference)
       (let ((idf (identifier #t))
              (exp1 #f)
@@ -1822,9 +1836,8 @@
           ((check-and-get-token lbc-symbol)
             (set! exp1 (parse-expression #t))
             (expect rbc-symbol
-              (lambda () (make-ag-mulvalmapref idf exp))))
+              (lambda () (make-ag-mulvalmapref idf exp2)))) ;; Changed this from exp to exp2.
           (else idf))))
-
 
     (define (set-former expect-cst)
       (former parse-without-assert-expression
@@ -1995,14 +2008,12 @@
         (expect rpr-symbol (lambda () exp))))
 
     (define (end-of-statement)
-      (expect smc-symbol 'void))
-
+      (expect smc-symbol (lambda () '())))
 
     (define (elseif)
       (and (check-and-get-token elseif-keyword)
         (make-ag-elseif (parse-expression #t)
           (expect then-keyword statements))))
-
 
     (define (elseif-list)
       (read-list elseif (lambda (x) (and x (check-token elseif-keyword)))
@@ -2016,12 +2027,12 @@
              (rec #f))
 
         (define (parse-elseif)
-          (when (check-token elseif-keyword)
+          (if (check-token elseif-keyword)
             (set! if-elseif (elseif-list)))
           (parse-else))
 
         (define (parse-else)
-          (when (check-and-get-token else-keyword)
+          (if (check-and-get-token else-keyword)
             (set! if-else (statements)))
           (parse-end))
 
@@ -2055,7 +2066,7 @@
         (make-ag-loopiter-for (iterator))
         (make-ag-loopiter
           (if (check-and-get-token init-keyword)
-            (make-ag-init (statements)) #f)
+            (make-ag-initdeclaration (statements)) #f)
           (if (check-and-get-token doing-keyword)
             (make-ag-doing (statements)) #f)
           (if (check-and-get-token while-keyword)
@@ -2070,7 +2081,6 @@
     (define (return-statement)
       (define exp (parse-expression #f))
       (make-ag-stmt-return exp))
-
 
     (define (proclist)
       (read-list proc
@@ -2088,7 +2098,7 @@
                (arglist '())
                (bdy '())
                (rec #f))
-          (when (check-and-get-token lpr-symbol)
+          (if (check-and-get-token lpr-symbol)
             (set! arglist (read-enumeration formal formal rpr-symbol)))
           (set! rec (stop-record))
           (expect smc-symbol (lambda ()
@@ -2178,7 +2188,6 @@
         ((check-and-get-token rea-symbol) (make-signed-real))
         (else (read-expected-error int-symbol rea-symbol))))
 
-
     (define (cst)
       (define tkn token)
       (cond ((check-and-get-token pls-symbol) (signed-number #f))
@@ -2261,9 +2270,12 @@
 
     dispatch))
 
+;;
+;; env.scm
+;;
+
 ;; Environments
 ;; ============
-
 
 ;; Creating
 
@@ -2274,7 +2286,6 @@
   (hash-table-for-each env (lambda (v k)
                              (out v " - " k)
                              (newline))))
-
 
 ;; Predicate to see if a variable is defined in the given environment
 (define (defined-in-env? env idf)
@@ -2310,7 +2321,9 @@
       (onunknown name)
       (hash-table-get found name))))
 
-
+;;
+;; natives.scm
+;;
 
 (define (make-natives type-check-function report-eval-error)
   (let ((operators (make-hash-table))
@@ -2318,7 +2331,6 @@
          (type type-check-function)
          (eval-error report-eval-error)
          (setl #f))
-
 
     ;; Procedures
 
@@ -2379,8 +2391,6 @@
       (add-operator is_real-keyword is_real)
       (add-operator is_string-keyword is_string))
 
-
-
     (define (apply-operator keyword args env)
       (apply (hash-table-get operators
                keyword
@@ -2392,29 +2402,29 @@
     ;; Operator tools
 
     (define (assure-length lst len)
-      (unless (= (length lst) len)
+      (if (not (= (length lst) len))
         (eval-error
           (format "non-matching argument count: ~a ~a" len lst))))
 
     (define (assure-pos-int int)
       (type ag-integer? int)
-      (unless (>= (ag-integer-value int) 0)
+      (if (< (ag-integer-value int) 0)
         (eval-error (format "non-positive integer ~a" int))))
 
     (define (assure-pos-real int)
       (type ag-real? int)
-      (unless (>= (ag-real-value int) 0)
+      (if (< (ag-real-value int) 0)
         (eval-error (format "non-positive real ~a" int))))
 
     (define (assure-non-zero-int int)
       (type ag-integer? int)
-      (when (= (ag-integer-value int) 0)
+      (if (= (ag-integer-value int) 0)
         (eval-error
           (format "integer must be different from zero ~a" int))))
 
     (define (assure-non-zero-real real)
       (type ag-real? real)
-      (when (= (ag-real-value real) 0)
+      (if (= (ag-real-value real) 0)
         (eval-error (format "real must be different from zero ~a" int))))
 
     (define (operator-unary args check constructor accessor function)
@@ -2437,7 +2447,6 @@
         (type check2 second)
         (constructor (function (accessor1 first)
                        (accessor2 second)))))
-
 
     ;; Operator definitions
 
@@ -2501,7 +2510,6 @@
           ((ag-omega? first)
             (make-ag-boolean (ag-omega? second)))
           (else (make-ag-boolean #f)))))
-
 
     (define (less . args)
       (assure-length args 2)
@@ -2582,7 +2590,6 @@
         identity
         (lambda (x) (ag-string? x))))
 
-
     (define (equal-or-less . args)
       (logor (apply equal args)
         (apply less args)))
@@ -2610,13 +2617,12 @@
         (lambda (x) (type ag-number? x))
         (lambda (x)
           (type ag-number? x)
-          (unless (not (= 0 (ag-number-value x)))
+          (if (= 0 (ag-number-value x))
             (eval-error "division by zero")))
         make-ag-number
         ag-number-value
         ag-number-value
         quotient))
-
 
     (define (minus . args)
       (assure-length args 2)
@@ -2641,7 +2647,7 @@
                 (make-ag-number (+ (ag-number-value first)
                                   (ag-number-value second))))
           ((ag-string? first)
-            (when (ag-number? second)
+            (if (ag-number? second)
               (set! second
                 (make-ag-string (number->string (ag-number-value second)))))
             (type ag-string? second)
@@ -2749,7 +2755,6 @@
           (else
             (eval-error (format "wrong argument types for max: ~a" args))))))
 
-
     (define (smin . args)
       (assure-length args 2)
       (let ((first (car args))
@@ -2764,7 +2769,6 @@
                             (ag-real-value second))))
           (else
             (eval-error (format "wrong argument types for min: ~a" args))))))
-
 
     (define (initialize s)
       (set! setl s)
@@ -2781,6 +2785,9 @@
 
     dispatch))
 
+;;
+;; print.scm
+;;
 
 (define (print-tuple t)
   (let ((high (ag-tuple-highest t)))
@@ -2809,7 +2816,6 @@
 (define (print-omega o)
   "om")
 
-
 (define (print-ag ag)
   (cond ((list? ag) (for-each print-ag ag))
     ((ag-integer? ag) (number->string (ag-integer-value ag)))
@@ -2819,6 +2825,10 @@
     ((ed-set? ag) (print-set ag))
     ((ag-omega? ag) (print-omega ag))
     (else (format "<~a>" ag))))
+
+;;
+;; eval2.scm
+;;
 
 ;; Main evaluator
 
@@ -2838,10 +2848,9 @@
          (natives #f)
          (global #f))
 
-
     ;; Auxiliary functions
     (define (type t exp)
-      (unless (t exp)
+      (if (not (t exp))
         (eval-error (format "wrong type of expression: ~a" exp))))
 
     (define (err-duplicate name)
@@ -2852,7 +2861,6 @@
 
     (define (err-unknown name)
       (eval-error (format "unknown variable: ~a" name)))
-
 
     (define (eval-error message)
       (send-message setl 'eval-error message))
@@ -3037,7 +3045,6 @@
         (process-declarations vardec constdec initdec procenv)
         (eval-sequence stmts procenv #t)))
 
-
     ;; The reader is unable to decide about the nature of a(2)
     (define (eval-simple-call-or-selection exp env)
       (let ((val (evaluate (ag-simple-call-or-selection-var exp) env)))
@@ -3125,8 +3132,6 @@
                        (ag-integer-value end)
                        make-ag-integer))))
 
-
-
     (define (eval-stmt-assignment stmt env)
       (let ((lhs (ag-stmt-assignment-lhs stmt))
              (val (evaluate (ag-stmt-assignment-value stmt) env)))
@@ -3176,7 +3181,6 @@
           (ag-tuple-for-each (lambda (x) (type lhst? x)) lhs)
           (sequential-assign lhs val))))
 
-
     ;; a(2) := 4
     (define (eval-assign-selection lhs selection val env)
       (let ((var (evaluate lhs env))
@@ -3200,7 +3204,6 @@
         (make-ag-set
           (alter-svmap (ag-set-contents var) dom val))
         err-constant))
-
 
     (define (assign-selection lhs var pos val env)
       (type ag-integer? pos)
@@ -3260,7 +3263,6 @@
              (bgn (evaluate start env))
              (end (if finish (evaluate finish env) #f)))
         (assign-range lhs var bgn end val env)))
-
 
     (define (eval-loop exp env)
       (let ((loopiter (ag-stmt-loop-loopiter exp))
@@ -3358,10 +3360,6 @@
                           (make-ag-omega) err-constant)))
                   e)))))))
 
-
-
-
-
     (define (eval-former iterator-expr-accessor
               iterator-iterator-accessor
               empty-constructor
@@ -3418,7 +3416,6 @@
         exp
         env))
 
-
     (define (eval-from dest-accessor
               source-accessor
               position-determinant
@@ -3459,9 +3456,9 @@
 
 (define (make-setl p re ee)
   (let* ((scanner (make-scanner))
-          (reader (make-reader scanner))
-          (evaluator (make-evaluator))
-          (parse-tree #f))
+         (reader (make-reader scanner))
+         (evaluator (make-evaluator))
+         (parse-tree #f))
 
     (define (read port)
       (send-message scanner 'init-scan port)
@@ -3480,7 +3477,6 @@
         ((eval-error) ee)
         (else (error 'setl "unknown message ~a" message))))
 
-
     dispatch))
 
 (define setl (make-setl display
@@ -3493,53 +3489,12 @@
                  (error "Evaluation error."))))
 
 ((setl 'read)
-  " program sample2;
+"program arithmetic;
 
-$ Keerom keert een tuple om, zonder recursief ook elementen te gaan omkeren. Keerom2 gaat ook recursief elementen gaan omkeren. Worden getest: geneste ifs, type checks, tuple functionaliteit/formers, declaratie/assignment van variabelen, parameter binding,
+	$$ rekenkundige operatoren aanvaarden mix van reële en gehele operanden
+	x := 2 + 3.0 + 4;
+	print(x);
 
-$Om de functies iets eenvoudiger te maken wordt er niet getest op lege tupels .. als je dus als element een leeg tuple ingeeft, dan mag je een crash verwachten.
-
-$ Enkel voor gevorderden: uncomment de goto en labeled statements hieronder om je goto te testen.
-
-init resultaat :=  [];
-
-keerom([[0,1],2,3,4,[5,6]]);
-print(keerom2([[0,1],2,3,4,[5,6]]));
-keerom( [kwadraat(n) : n in {1, 6 ..100}]);
-print('');
-print(keerom2([['!'], ['t', 'k', 'r', 'e', 'w'] ,['t', 'a', 'd'],[['i', 'o', 'o', 'm'], ['i', 'o', 'o', 'm'], ['i', 'o', 'o', 'm']]]));
-
-proc kwadraat(x);
-return x**2;
-end proc kwadraat;
-
-proc keerom(een_tupel);
-	if (#een_tupel = 0) then
-		print(resultaat);
-		resultaat := [];
-	else
-		temp frome een_tupel;
-		resultaat(#resultaat + 1) := temp;
-		keerom(een_tupel);
-	end if;
-end proc keerom;
-
-
-proc keerom2(een_tupel);
-	if (#een_tupel = 1) then
-		if (is_tuple(een_tupel(1))) then return [keerom2(een_tupel(1))];
-											else return een_tupel;
-		end if;
-	else
-	temp frome een_tupel;
-	if is_tuple(temp) then
-		return [keerom2(temp)] + keerom2(een_tupel);
-	else
-		return [temp] + keerom2(een_tupel);
-	end if;
-	end if;
-end proc keerom2;
-
-end program sample2;")
+end program;")
 ((setl 'eval))
 ((setl 'print))
