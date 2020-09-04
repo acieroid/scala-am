@@ -233,6 +233,10 @@ class ModularSchemeLattice[
         case _: Lock => True
         case _       => False
       })
+      case IsProcedure => MayFail.success(x match {
+        case _: Clo => True
+        case _      => False
+      })
       case Not => MayFail.success(x match {
         case Bool(b) => Bool(BoolLattice[B].not(b))
         case _       => False /* any value is true */

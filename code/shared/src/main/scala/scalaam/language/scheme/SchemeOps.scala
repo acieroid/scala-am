@@ -5,7 +5,7 @@ object SchemeOps {
   /** These are the unary operations that should be supported by Scheme lattices */
   object UnaryOperator extends Enumeration {
     val
-    IsNull, IsBoolean, IsCons, IsPointer, IsChar, IsSymbol, IsString, IsInteger, IsReal, IsVector, IsThread, IsLock, /* Check the type of a value */
+    IsNull, IsBoolean, IsCons, IsPointer, IsChar, IsSymbol, IsString, IsInteger, IsReal, IsVector, IsThread, IsLock, IsProcedure, /* Check the type of a value */
     Not, /* Negate a value */
     Ceiling, Floor, Round, Random, Sqrt, /* Unary arithmetic operations */
     Sin, ASin, Cos, ACos, Tan, ATan, Log, /* Transcendental functions */

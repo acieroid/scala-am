@@ -159,7 +159,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `pair?`, /* [vv] pair?: Pairs */
       /* [x]  peek-char?: Reading */
 //      Positivep, /* [vv] positive?: Comparison */
-      /* [x]  procedure?: Procedure Properties */
+      `procedure?`, /* [x]  procedure?: Procedure Properties */
       `quotient`, /* [vv] quotient: Integer Operations */
       /* [x]  rational?: Reals and Rationals */
       /* [x]  read: Scheme Read */
@@ -455,6 +455,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
         bool(false)
       }.map(v => (v, store))
     })
+    object `procedure?` extends NoStore1Operation("procedure?", unaryOp(SchemeOps.UnaryOperator.IsProcedure))
 
     object `eq?` extends NoStore2Operation("eq?", eqq)
 

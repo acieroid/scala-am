@@ -76,7 +76,7 @@ object SchemeBenchmarkPrograms {
     "nbody.scm", // Parser error.
     "nbody-processed.scm", // Parser error.
     "nucleic.sch", // Uses square brackets.
-    "nucleic2.sch", // USES macros (define-syntax).
+    "nucleic2.sch", // Uses macros (define-syntax).
     "splay.scm", // Uses () instead of '(), but has other issues.
   )
   lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019", ".DS_Store",
@@ -89,6 +89,7 @@ object SchemeBenchmarkPrograms {
     "solovay-strassen.scm", // Program seems erroneous.
   )
   lazy val other: Set[String] = fromFolder("test/R5RS", ".DS_Store",
+    "pico.scm", // Used def-macro, no main body + need to incorporate pico.ini file.
     "quasiquoting.scm", // Uses unquote-splicing.
     "scm2c.scm", // Uses string->list.
     "scm2java.scm", // Uses list->string.
