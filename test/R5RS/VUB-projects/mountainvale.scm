@@ -40,7 +40,6 @@
     (let ((first (car user-inputs)))
       (set! user-inputs (cdr user-inputs))
       first)))
-(define (random x) (- x 1))
 
 ;;
 ;; MOUNTAINVALE
