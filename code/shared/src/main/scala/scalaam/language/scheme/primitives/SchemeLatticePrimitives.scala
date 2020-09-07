@@ -174,7 +174,6 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `symbol->string`, /* [vv] symbol->string: Symbol Primitives */
       `symbol?`, /* [vv] symbol?: Symbol Primitives */
       `tan`, /* [vv] tan: Scientific */
-      /* [x]  truncate: Arithmetic */
       /* [x]  values: Multiple Values */
       `make-vector`, /* [vv] make-vector: Vector Creation */
       `vector`, /* [vv] vector: Vector Creation */
@@ -224,6 +223,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     /* [P]  string=?: String Comparison */ // => Prelude
     /* [P]  string>=?: String Comparison */ // => Prelude
     /* [P]  string>?: String Comparison */ // => Prelude
+    /* [x]  truncate: Arithmetic */
     /* [x]  vector->list: Vector Creation */
     //      `>`, /* [vv]  > */ // => Prelude
 
