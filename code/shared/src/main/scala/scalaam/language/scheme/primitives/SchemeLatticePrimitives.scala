@@ -46,18 +46,18 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   ): MayFail[(V, Store[A, V]), Error] =
     getPointerAddresses(x).foldLeft(MayFail.success[(V, Store[A, V]), Error]((bottom, store)))(
       (acc: MayFail[(V, Store[A, V]), Error], a: A) =>
-        acc >>= ({
+        acc >>= {
           case (accv, updatedStore) =>
             /* We use the old store because the new added information can only negatively influence precision (as it didn't hold at the point of the function call). */
             store.lookupMF(a) >>= (
               v =>
                 /* But we pass the updated store around as it should reflect all updates. */
-                f(a, v, updatedStore) >>= ({
+                f(a, v, updatedStore) >>= {
                   case (res, newStore) =>
                     MayFail.success((join(accv, res), newStore))
-                })
+                }
               )
-        })
+        }
     )
 }
 
