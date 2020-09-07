@@ -288,15 +288,49 @@ object ConstantPropagation {
         case Constant(char) => Constant(char.toLower)
         case _ => c
       }
+      def upCase(c: C): C = c match {
+        case Constant(char) => Constant(char.toUpper)
+        case _ => c
+      }
       def toString[S2: StringLattice](c: C): S2 = c match {
         case Top            => StringLattice[S2].top
         case Constant(char) => StringLattice[S2].inject(char.toString)
         case Bottom         => StringLattice[S2].bottom
       }
-      def toInt[I2: IntLattice](c: C) = c match {
+      def toInt[I2: IntLattice](c: C): I2 = c match {
         case Bottom       => IntLattice[I2].bottom
         case Constant(c)  => IntLattice[I2].inject(c.toInt)
         case Top          => IntLattice[I2].top
+      }
+      def isLower[B2: BoolLattice](c: C): B2 = c match {
+        case Bottom         => BoolLattice[B2].bottom
+        case Constant(char) => BoolLattice[B2].inject(char.isLower)
+        case Top            => BoolLattice[B2].top
+      }
+      def isUpper[B2: BoolLattice](c: C): B2 = c match {
+        case Bottom         => BoolLattice[B2].bottom
+        case Constant(char) => BoolLattice[B2].inject(char.isUpper)
+        case Top            => BoolLattice[B2].top
+      }
+      override def charEq[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match {
+        case (Bottom, _) | (_, Bottom)    => BoolLattice[B2].bottom
+        case (Constant(c1), Constant(c2)) => BoolLattice[B2].inject(c1 == c2)
+        case _                            => BoolLattice[B2].top
+      }
+      override def charLt[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match {
+        case (Bottom, _) | (_, Bottom)    => BoolLattice[B2].bottom
+        case (Constant(c1), Constant(c2)) => BoolLattice[B2].inject(c1 < c2)
+        case _                            => BoolLattice[B2].top
+      }
+      override def charEqCI[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match {
+        case (Bottom, _) | (_, Bottom)    => BoolLattice[B2].bottom
+        case (Constant(c1), Constant(c2)) => BoolLattice[B2].inject(c1.toUpper == c2.toUpper) // TODO implement better (see note in concrete lattice)
+        case _                            => BoolLattice[B2].top
+      }
+      override def charLtCI[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match {
+        case (Bottom, _) | (_, Bottom)    => BoolLattice[B2].bottom
+        case (Constant(c1), Constant(c2)) => BoolLattice[B2].inject(c1.toUpper < c2.toUpper) // TODO implement better (see note in concrete lattice)
+        case _                            => BoolLattice[B2].top
       }
     }
     implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol")

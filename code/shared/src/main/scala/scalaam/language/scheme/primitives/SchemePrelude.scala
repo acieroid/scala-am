@@ -93,6 +93,9 @@ object SchemePrelude {
     "<=" -> "(define (<= x y) (or (< x y) (= x y)))",
     ">" -> "(define (> x y) (not (<= x y)))",
     ">=" -> "(define (>= x y) (or (> x y) (= x y)))",
+    "char>?" -> "(define (char>? c1 c2)(not (char<? c1 c2)))",
+    "char<=?" -> "(define (char<=? c1 c2)(or (char<? c1 c2) (char=? c1 c2)))",
+    "char>=?" -> "(define (char<=? c1 c2)(or (char>? c1 c2) (char=? c1 c2)))",
     "caar" -> "(define (caar x) (car (car x)))",
     "cadr" -> "(define (cadr x) (car (cdr x)))",
     "cdar" -> "(define (cdar x) (cdr (car x)))",
@@ -152,6 +155,29 @@ object SchemePrelude {
                         |        r
                         |        (convert (- n 1)
                         |                 (cons (string-ref string n) r)))))""".stripMargin,
+    "string=?" -> """(define (seq s1 s2)
+                    |  (and (= (string-length s1)(string-length s2))
+                    |       (let loop ((i (- (string-length s1) 1)))
+                    |        (if (< i 0)
+                    |            #t
+                    |            (and (char=? (string-ref s1 i) (string-ref s2 i))
+                    |                 (loop (- i 1)))))))""".stripMargin,
+    "string-ci=?" -> """(define (seq s1 s2)
+                       |  (and (= (string-length s1)(string-length s2))
+                       |       (let loop ((i (- (string-length s1) 1)))
+                       |        (if (< i 0)
+                       |            #t
+                       |            (and (char-ci=? (string-ref s1 i) (string-ref s2 i))
+                       |                 (loop (- i 1)))))))""".stripMargin,
+    "string<=?" -> "(define (string<=? s1 s2)(or (string<? s1 s2) (string=? s1 s2)))",
+    "string>?" -> "(define (string>? s1 s2)(not (string<=? s1 s2)))",
+    "string>=?" -> "(define (string<=? s1 s2)(or (string>? s1 s2) (string=? s1 s2)))",
+    "string-fill!" -> """(define (string-fill! s c)
+                        |  (let loop ((i (- (string-length s) 1)))
+                        |    (if (< i 0)
+                        |        #t
+                        |        (begin (string-set! s i c)
+                        |               (loop (- i 1))))))""".stripMargin,
     //    "foldr" -> """(define (foldr f base lst) (foldr-aux f base lst))""",
     //    "foldr-aux" -> """(define (foldr-aux f base lst)
     //        (if (null? lst)

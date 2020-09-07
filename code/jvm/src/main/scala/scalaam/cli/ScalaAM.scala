@@ -78,7 +78,7 @@ object Analyze extends App {
 
   val bench: List[String] = List(
     //"test/R5RS/SETL/setl-benchmarks/arithmetic.scm"
-    "test/R5RS/VUB-projects/mountainvale.scm"
+    "test/DEBUG.scm"
   )
 
   bench.foreach({b =>

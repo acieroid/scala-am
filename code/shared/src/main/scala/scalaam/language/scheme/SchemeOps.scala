@@ -12,7 +12,7 @@ object SchemeOps {
     VectorLength, StringLength, /* Length operations */
     NumberToString, SymbolToString, StringToSymbol, StringToNumber, IntegerToCharacter,  /* Conversions */
     ExactToInexact, InexactToExact, CharacterToInteger, CharacterToString,
-    CharacterDowncase = Value
+    CharacterDowncase, CharacterUpcase, CharacterIsLower, CharacterIsUpper = Value
   }
   type UnaryOperator = UnaryOperator.Value
 
@@ -24,7 +24,8 @@ object SchemeOps {
     /* Equality checking */
     NumEq, /* number equality */
     Eq, /* physical equality */
-    StringAppend, StringRef, StringLt /* String operations */ = Value
+    StringAppend, StringRef, StringLt, /* String operations */
+    CharacterEq, CharacterLt, CharacterEqCI, CharacterLtCI /* Characters */ = Value
   }
   type BinaryOperator = BinaryOperator.Value
 }

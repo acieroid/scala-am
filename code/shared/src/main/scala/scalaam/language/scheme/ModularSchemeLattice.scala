@@ -349,6 +349,18 @@ class ModularSchemeLattice[
         case Char(c)  => MayFail.success(Char(CharLattice[C].downCase(c)))
         case _        => MayFail.failure(OperatorNotApplicable("char-downcase", List(x)))
       }
+      case CharacterUpcase => x match {
+        case Char(c)  => MayFail.success(Char(CharLattice[C].upCase(c)))
+        case _        => MayFail.failure(OperatorNotApplicable("char-upcase", List(x)))
+      }
+      case CharacterIsLower => x match {
+        case Char(c)  => MayFail.success(Bool(CharLattice[C].isLower(c)))
+        case _        => MayFail.failure(OperatorNotApplicable("char-lower-case?", List(x)))
+      }
+      case CharacterIsUpper => x match {
+        case Char(c)  => MayFail.success(Bool(CharLattice[C].isUpper(c)))
+        case _        => MayFail.failure(OperatorNotApplicable("char-upper-case?", List(x)))
+      }
       case IntegerToCharacter => x match {
         case Int(i)   => MayFail.success(Char(IntLattice[I].toChar(i)))
         case _        => MayFail.failure(OperatorNotApplicable("integer->char", List(x)))
@@ -450,6 +462,22 @@ class ModularSchemeLattice[
       case StringLt => (x, y) match {
         case (Str(s1), Str(s2)) => MayFail.success(Bool(StringLattice[S].lt(s1, s2)))
         case _                  => MayFail.failure(OperatorNotApplicable("string<?", List(x, y)))
+      }
+      case CharacterEq => (x, y) match {
+        case (Char(c1), Char(c2)) => MayFail.success(Bool(CharLattice[C].charEq(c1, c2)))
+        case _                    => MayFail.failure(OperatorNotApplicable("char=?", List(x, y)))
+      }
+      case CharacterLt => (x, y) match {
+        case (Char(c1), Char(c2)) => MayFail.success(Bool(CharLattice[C].charLt(c1, c2)))
+        case _                    => MayFail.failure(OperatorNotApplicable("char<?", List(x, y)))
+      }
+      case CharacterEqCI => (x, y) match {
+        case (Char(c1), Char(c2)) => MayFail.success(Bool(CharLattice[C].charEqCI(c1, c2)))
+        case _                    => MayFail.failure(OperatorNotApplicable("char-ci=?", List(x, y)))
+      }
+      case CharacterLtCI => (x, y) match {
+        case (Char(c1), Char(c2)) => MayFail.success(Bool(CharLattice[C].charLtCI(c1, c2)))
+        case _                    => MayFail.failure(OperatorNotApplicable("char-ci<?", List(x, y)))
       }
     }
 

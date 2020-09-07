@@ -91,22 +91,22 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `char->string`,
       /* [x]  char-alphabetic?: Characters */
       /* [x]  char-ci<=?: Characters */
-      /* [x]  char-ci<?: Characters */
-      /* [x]  char-ci=?: Characters */
+      `char-ci<?`, /* [x]  char-ci<?: Characters */
+      `char-ci=?`, /* [x]  char-ci=?: Characters */
       /* [x]  char-ci>=?: Characters */
       /* [x]  char-ci>?: Characters */
       `char-downcase`, /* [x]  char-downcase: Characters */
-      /* [x]  char-lower-case?: Characters */
+      `char-lower-case?`, /* [x]  char-lower-case?: Characters */
       /* [x]  char-numeric?: Characters */
       /* [x]  char-ready?: Reading */
-      /* [x]  char-upcase: Characters */
-      /* [x]  char-upper-case?: Characters */
+      `char-upcase`, /* [x]  char-upcase: Characters */
+      `char-upper-case?`, /* [x]  char-upper-case?: Characters */
       /* [x]  char-whitespace?: Characters */
-      /* [x]  char<=?: Characters */
-      /* [x]  char<?: Characters */
-      /* [x]  char=?: Characters */
-      /* [x]  char>=?: Characters */
-      /* [x]  char>?: Characters */
+      /* [P]  char<=?: Characters */ // Prelude
+      `char<?`, /* [x]  char<?: Characters */
+      `char=?`, /* [x]  char=?: Characters */
+      /* [P]  char>=?: Characters */ // Prelude
+      /* [P]  char>?: Characters */ // Prelude
       `char?`, /* [vv] char?: Characters */
       /* [x]  close-input-port: Closing */
       /* [x]  close-output-port: Closing */
@@ -125,7 +125,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  exp: Scientific */
       `expt`, /* [vv] expt: Scientific */
       `floor`, /* [vv] floor: Arithmetic */
-      /* [x]  for-each: List Mapping */
+      /* [P]  for-each: List Mapping */ // => Prelude
       /* [x]  force: Delayed Evaluation */
       /* [x]  imag-part: Complex */
       `inexact->exact`, /* [vv] inexact->exact: Exactness */
@@ -179,7 +179,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `string->symbol`, /* [vv] string->symbol: Symbol Primitives */
       `string-append`, /* [vx] string-append: Appending Strings: only two arguments supported */
       /* [x]  string-ci<: String Comparison */
-      /* [x]  string-ci=?: String Comparison */
+      /* [P]  string-ci=?: String Comparison */ // Prelude
       /* [x]  string-ci>=?: String Comparison */
       /* [x]  string-ci>?: String Comparison */
       /* [x]  string-copy: String Selection */
@@ -187,11 +187,11 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `string-length`, /* [vv] string-length: String Selection */
       `string-ref`, /* [x]  string-ref: String Selection */
       /* [x]  string-set!: String Modification */
-      /* [x]  string<=?: String Comparison */
+      /* [P]  string<=?: String Comparison */ // Prelude
       `string<?`, /* [vv]  string<?: String Comparison */
-      /* [x]  string=?: String Comparison */
-      /* [x]  string>=?: String Comparison */
-      /* [x]  string>?: String Comparison */
+      /* [P]  string=?: String Comparison */ // Prelude
+      /* [P]  string>=?: String Comparison */ // Prelude
+      /* [P]  string>?: String Comparison */ // Prelude
       `string?`, /* [vv]  string?: String Predicates */
       /* [x]  substring: String Selection */
       `symbol->string`, /* [vv] symbol->string: Symbol Primitives */
@@ -211,7 +211,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  write-char: Writing */
       `<`, /* [vv]  < */
       `=`, /* [vv]  = */
-//      `>`, /* [vv]  > */
+//      `>`, /* [vv]  > */ // Prelude
       /* [x]  numerator */
       /* [x]  denominator */
       /* [x]  rationalize-string */
@@ -413,6 +413,9 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `char->string`   extends NoStore1Operation("char->string",   unaryOp(SchemeOps.UnaryOperator.CharacterToString))
     object `integer->char`  extends NoStore1Operation("integer->char",  unaryOp(SchemeOps.UnaryOperator.IntegerToCharacter))
     object `char-downcase`  extends NoStore1Operation("char-downcase",  unaryOp(SchemeOps.UnaryOperator.CharacterDowncase))
+    object `char-upcase`    extends NoStore1Operation("char-upcase",    unaryOp(SchemeOps.UnaryOperator.CharacterUpcase))
+    object `char-lower-case?` extends NoStore1Operation("char-lower-case?", unaryOp(SchemeOps.UnaryOperator.CharacterIsLower))
+    object `char-upper-case?` extends NoStore1Operation("char-upper-case?", unaryOp(SchemeOps.UnaryOperator.CharacterIsUpper))
     object `null?`          extends NoStore1Operation("null?",          unaryOp(SchemeOps.UnaryOperator.IsNull))
 
     object `pair?`    extends Store1Operation("pair?", { (x, store) => 
@@ -470,6 +473,10 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     object `string-ref`    extends NoStore2Operation("string-ref",    binaryOp(SchemeOps.BinaryOperator.StringRef))
     object `string<?`      extends NoStore2Operation("string<?",      binaryOp(SchemeOps.BinaryOperator.StringLt))
     object `string-length` extends NoStore1Operation("string-length", unaryOp(SchemeOps.UnaryOperator.StringLength))
+    object `char=?`        extends NoStore2Operation("char=?", binaryOp(SchemeOps.BinaryOperator.CharacterEq))
+    object `char<?`        extends NoStore2Operation("char<?", binaryOp(SchemeOps.BinaryOperator.CharacterLt))
+    object `char-ci=?`     extends NoStore2Operation("char-ci=?", binaryOp(SchemeOps.BinaryOperator.CharacterEqCI))
+    object `char-ci<?`     extends NoStore2Operation("char-ci<?", binaryOp(SchemeOps.BinaryOperator.CharacterLtCI))
 
     object `error` extends NoStore1Operation("error", { x => MayFail.failure(UserError(x.toString))})
 

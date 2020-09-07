@@ -11,7 +11,7 @@
 
 ;; Notice: this file contains a modified version of the original program written by Tom Van Cutsem. This file also is a merger of all files involved in the original program.
 ;; Some, but not all, modifications have been indicated in comments. Significant changes have been made to the file icons.scm, as our implementation does not support icons.
-;; Dummy variables have been introduced to avoid top-level defines being interleaved with program expression.
+;; Dummy variables have been introduced to avoid top-level defines being interleaved with program expressions.
 
 ;; Extra code to avoid user input.
 (define user-inputs '(Tom help necromancer yes

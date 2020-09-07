@@ -221,8 +221,19 @@ object Concrete {
     implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char): C = Values(Set(x))
       def downCase(c: C): C = c.map(_.toLower)
+      def upCase(c: C): C = c.map(_.toUpper)
       def toString[S2: StringLattice](c: C): S2 = c.foldMap(char => StringLattice[S2].inject(char.toString))
       def toInt[I2 : IntLattice](c: C) = c.foldMap(c => IntLattice[I2].inject(c.toInt))
+
+      def isLower[B2: BoolLattice](c: C): B2 = c.foldMap(char => BoolLattice[B2].inject(char.isLower))
+      def isUpper[B2: BoolLattice](c: C): B2 = c.foldMap(char => BoolLattice[B2].inject(char.isUpper))
+
+      def charEq[B2: BoolLattice](c1: C, c2: C): B2 = c2.guardBot { c1.foldMap(char1 => c2.foldMap(char2 => BoolLattice[B2].inject(char1 == char2))) }
+      def charLt[B2: BoolLattice](c1: C, c2: C): B2 = c2.guardBot { c1.foldMap(char1 => c2.foldMap(char2 => BoolLattice[B2].inject(char1 < char2))) }
+
+      // TODO: correct these definitions (see e.g. here: https://stackoverflow.com/questions/10223176/how-to-compare-character-ignoring-case-in-primitive-types)
+      def charEqCI[B2: BoolLattice](c1: C, c2: C): B2 = c2.guardBot { c1.foldMap(char1 => c2.foldMap(char2 => BoolLattice[B2].inject(char1.toUpper == char2.toUpper))) }
+      def charLtCI[B2: BoolLattice](c1: C, c2: C): B2 = c2.guardBot { c1.foldMap(char1 => c2.foldMap(char2 => BoolLattice[B2].inject(char1.toUpper < char2.toUpper))) }
     }
     implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")
     with SymbolLattice[Sym] {

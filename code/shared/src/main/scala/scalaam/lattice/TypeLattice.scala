@@ -131,8 +131,28 @@ object Type {
     implicit val typeIsChar: CharLattice[C] = new BaseInstance("Char") with CharLattice[C] {
       def inject(c: Char): T = Top
       def downCase(c: C): C = c
+      def upCase(c: C): C = c
       def toString[S2: StringLattice](c: C): S2 = c.to[S2]
-      def toInt[I2: IntLattice](c: C) = c.to[I2]
+      def toInt[I2: IntLattice](c: C): I2 = c.to[I2]
+      def isLower[B2: BoolLattice](c: C): B2 = c.to[B2]
+      def isUpper[B2: BoolLattice](c: C): B2 = c.to[B2]
+
+      override def charEq[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match {
+        case (Top, Top) => BoolLattice[B2].top
+        case _          => BoolLattice[B2].bottom
+      }
+      override def charLt[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match {
+        case (Top, Top) => BoolLattice[B2].top
+        case _          => BoolLattice[B2].bottom
+      }
+      def charEqCI[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match {
+        case (Top, Top) => BoolLattice[B2].top
+        case _          => BoolLattice[B2].bottom
+      }
+      def charLtCI[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match {
+        case (Top, Top) => BoolLattice[B2].top
+        case _          => BoolLattice[B2].bottom
+      }
     }
     implicit val typeIsSymbol: SymbolLattice[Sym] = new BaseInstance("Sym")
     with SymbolLattice[Sym] {
