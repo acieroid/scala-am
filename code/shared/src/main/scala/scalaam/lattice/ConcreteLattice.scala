@@ -190,9 +190,9 @@ object Concrete {
     with RealLattice[R] {
       def inject(x: Double): R            = Values(Set(x))
       def toInt[I2: IntLattice](n: R): I2 = n.foldMap(n => IntLattice[I2].inject(n.toInt))
-      def ceiling(n: R): R                = n.map(_.ceil)
-      def floor(n: R): R                  = n.map(_.floor)
-      def round(n: R): R                  = n.map(n => MathOps.round(n))
+      def ceiling[I2: IntLattice](n: R): I2 = n.foldMap(n => IntLattice[I2].inject(n.ceil.toInt))
+      def floor[I2: IntLattice](n: R): I2 = n.foldMap(n => IntLattice[I2].inject(n.floor.toInt))
+      def round[I2: IntLattice](n: R): I2 = n.foldMap(n => IntLattice[I2].inject(MathOps.round(n).toInt))
       def log(n: R): R                    = n.map(n => scala.math.log(n))
       def random(n: R): R                 = if (n == bottom) bottom else Top
       def sin(n: R): R                    = n.map(n => scala.math.sin(n))

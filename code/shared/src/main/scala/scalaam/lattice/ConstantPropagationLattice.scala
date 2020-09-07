@@ -177,7 +177,7 @@ object ConstantPropagation {
         case (Constant(x), Constant(y)) if y != 0 => Constant(MathOps.modulo(x, y))
         case _ => Bottom
       }
-      def remainder(n1: I, n2: I): I = binop(MathOps.remainder _, n1, n2)
+      def remainder(n1: I, n2: I): I = binop(MathOps.remainder, n1, n2)
       def lt[B2: BoolLattice](n1: I, n2: I): B2 = (n1, n2) match {
         case (Top, Top)                 => BoolLattice[B2].top
         case (Top, Constant(_))         => BoolLattice[B2].top
@@ -209,17 +209,20 @@ object ConstantPropagation {
         case Constant(x) => IntLattice[I2].inject(x.toInt)
         case Bottom      => IntLattice[I2].bottom
       }
-      def ceiling(n: R): R = n match {
-        case Constant(x) => Constant(x.ceil)
-        case _           => n
+      def ceiling[I2: IntLattice](n: R): I2 = n match {
+        case Constant(x) => IntLattice[I2].inject(x.ceil.toInt)
+        case Top         => IntLattice[I2].top
+        case Bottom      => IntLattice[I2].bottom
       }
-      def floor(n: R): R = n match {
-        case Constant(x) => Constant(x.floor)
-        case _           => n
+      def floor[I2: IntLattice](n: R): I2 = n match {
+        case Constant(x) => IntLattice[I2].inject(x.floor.toInt)
+        case Top         => IntLattice[I2].top
+        case Bottom      => IntLattice[I2].bottom
       }
-      def round(n: R): R = n match {
-        case Constant(x) => Constant(MathOps.round(x))
-        case _           => n
+      def round[I2: IntLattice](n: R): I2 = n match {
+        case Constant(x) => IntLattice[I2].inject(MathOps.round(x).toInt)
+        case Top         => IntLattice[I2].top
+        case Bottom      => IntLattice[I2].bottom
       }
       def random(n: R): R = n match {
         case Constant(_) => Top

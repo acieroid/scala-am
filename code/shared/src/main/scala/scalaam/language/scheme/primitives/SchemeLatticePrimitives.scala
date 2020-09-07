@@ -76,9 +76,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  angle: Complex */
       /* [x]  apply: Fly Evaluation */
       `asin`, /* [vv] asin: Scientific */
-      /* [x]  assv: Retrieving Alist Entries => Prelude */
       `atan`, /* [vv] atan: Scientific */
-      //`append`, // => SchemePrelude
       `boolean?`, /* [vv] boolean?: Booleans */
       /* [x]  call-with-current-continuation: Continuations */
       /* [x]  call-with-input-file: File Ports */
@@ -90,11 +88,8 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `char->integer`, /* [x]  char->integer: Characters */
       `char->string`,
       /* [x]  char-alphabetic?: Characters */
-      /* [x]  char-ci<=?: Characters */
       `char-ci<?`, /* [x]  char-ci<?: Characters */
       `char-ci=?`, /* [x]  char-ci=?: Characters */
-      /* [x]  char-ci>=?: Characters */
-      /* [x]  char-ci>?: Characters */
       `char-downcase`, /* [x]  char-downcase: Characters */
       `char-lower-case?`, /* [x]  char-lower-case?: Characters */
       /* [x]  char-numeric?: Characters */
@@ -102,11 +97,8 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `char-upcase`, /* [x]  char-upcase: Characters */
       `char-upper-case?`, /* [x]  char-upper-case?: Characters */
       /* [x]  char-whitespace?: Characters */
-      /* [P]  char<=?: Characters */ // Prelude
       `char<?`, /* [x]  char<?: Characters */
       `char=?`, /* [x]  char=?: Characters */
-      /* [P]  char>=?: Characters */ // Prelude
-      /* [P]  char>?: Characters */ // Prelude
       `char?`, /* [vv] char?: Characters */
       /* [x]  close-input-port: Closing */
       /* [x]  close-output-port: Closing */
@@ -118,14 +110,12 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
       `eq?`, /* [vv] eq?: Equality */
-      /* [x]  eqv?: Equality */
       /* [x]  eval: Fly Evaluation */
       `exact->inexact`, /* [vv] exact->inexact: Exactness */
       /* [x]  exact?: Exactness */
       /* [x]  exp: Scientific */
       `expt`, /* [vv] expt: Scientific */
       `floor`, /* [vv] floor: Arithmetic */
-      /* [P]  for-each: List Mapping */ // => Prelude
       /* [x]  force: Delayed Evaluation */
       /* [x]  imag-part: Complex */
       `inexact->exact`, /* [vv] inexact->exact: Exactness */
@@ -134,25 +124,19 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `integer->char`, /* [vv]  integer->char: Characters */
       `integer?`, /* [vv] integer?: Integers */
       /* [x]  interaction-environment: Fly Evaluation */
-      /* [x]  lcm: Integer Operations */
       `list`, /* [vv] list: List Constructors */
       /* [x]  list->string: String Constructors */
-      /* [x]  list->vector: Vector Creation */
-      /* [x]  list-tail: List Selection */
       /* [x]  load: Loading */
       `log`, /* [vv] log: Scientific */
       /* [x]  magnitude: Complex */
       /* [x]  make-polar: Complex */
       /* [x]  make-rectangular: Complex */
       /* [x]  make-string: String Constructors */
-      /* [x]  map: List Mapping */
       `max`,
-      /* [x]  memv: List Searching */
       `min`,
       `null?`, /* [vv] null?: List Predicates */
       `number->string`, /* [vx] number->string: Conversion: does not support two arguments */
       `number?`, /* [vv] number?: Numerical Tower */
-//      Oddp, /* [vv] odd?: Integer Operations */
       /* [x]  open-input-file: File Ports */
       /* [x]  open-output-file: File Ports */
       /* [x]  output-port?: Ports */
@@ -167,31 +151,24 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  real-part: Complex */
       `real?`, /* [vv] real?: Reals and Rationals */
       `remainder`, /* [vv] remainder: Integer Operations */
-      /* [x]  reverse: Append/Reverse */
       `round`, /* [vv] round: Arithmetic */
       `set-car!`, /* [vv] set-car!: Pairs */
       `set-cdr!`, /* [vv] set-cdr!: Pairs */
       `sin`, /* [vv] sin: Scientific */
       `sqrt`, /* [vv] sqrt: Scientific */
       /* [x]  string: String Constructors */
-      /* [x]  string->list: List/String Conversion */
       `string->number`, /* [x]  string->number: Conversion */
       `string->symbol`, /* [vv] string->symbol: Symbol Primitives */
       `string-append`, /* [vx] string-append: Appending Strings: only two arguments supported */
       /* [x]  string-ci<: String Comparison */
-      /* [P]  string-ci=?: String Comparison */ // Prelude
       /* [x]  string-ci>=?: String Comparison */
       /* [x]  string-ci>?: String Comparison */
       /* [x]  string-copy: String Selection */
-      /* [x]  string-fill!: String Modification */
+      /* [P]  string-fill!: String Modification */ // => Prelude but requires string-set!
       `string-length`, /* [vv] string-length: String Selection */
       `string-ref`, /* [x]  string-ref: String Selection */
       /* [x]  string-set!: String Modification */
-      /* [P]  string<=?: String Comparison */ // Prelude
       `string<?`, /* [vv]  string<?: String Comparison */
-      /* [P]  string=?: String Comparison */ // Prelude
-      /* [P]  string>=?: String Comparison */ // Prelude
-      /* [P]  string>?: String Comparison */ // Prelude
       `string?`, /* [vv]  string?: String Predicates */
       /* [x]  substring: String Selection */
       `symbol->string`, /* [vv] symbol->string: Symbol Primitives */
@@ -201,7 +178,6 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  values: Multiple Values */
       `make-vector`, /* [vv] make-vector: Vector Creation */
       `vector`, /* [vv] vector: Vector Creation */
-      /* [x]  vector->list: Vector Creation */
       `vector-length`, /* [vv] vector-length: Vector Accessors */
       `vector-ref`, /* [vv] vector-ref: Vector Accessors */
       `vector-set!`, /* [vv] vector-set!: Vector Accessors */
@@ -211,7 +187,6 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       /* [x]  write-char: Writing */
       `<`, /* [vv]  < */
       `=`, /* [vv]  = */
-//      `>`, /* [vv]  > */ // Prelude
       /* [x]  numerator */
       /* [x]  denominator */
       /* [x]  rationalize-string */
@@ -223,6 +198,35 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `random`,
       `error`
     ) ++ CSchemePrimitives
+
+    // Preluded primitives:
+
+    /* [x]  assv: Retrieving Alist Entries => Prelude */
+    //`append`, // => Prelude
+    /* [P]  char<=?: Characters */ // => Prelude
+    /* [P]  char>=?: Characters */ // => Prelude
+    /* [P]  char>?: Characters */ // => Prelude
+    /* [x]  char-ci<=?: Characters */
+    /* [x]  char-ci>=?: Characters */
+    /* [x]  char-ci>?: Characters */
+    /* [P]  eqv?: Equality */ // => Prelude
+    /* [P]  for-each: List Mapping */ // => Prelude
+    /* [P]  lcm: Integer Operations */ // => Prelude
+    /* [x]  list->vector: Vector Creation */
+    /* [x]  list-tail: List Selection */
+    /* [x]  map: List Mapping */
+    /* [x]  memv: List Searching */
+    //      Oddp, /* [vv] odd?: Integer Operations */
+    /* [x]  reverse: Append/Reverse */
+    /* [P]  string->list: List/String Conversion */ // => Prelude
+    /* [P]  string-ci=?: String Comparison */ // => Prelude
+    /* [P]  string<=?: String Comparison */ // => Prelude
+    /* [P]  string=?: String Comparison */ // => Prelude
+    /* [P]  string>=?: String Comparison */ // => Prelude
+    /* [P]  string>?: String Comparison */ // => Prelude
+    /* [x]  vector->list: Vector Creation */
+    //      `>`, /* [vv]  > */ // => Prelude
+
   }
 
   /** Primitives for a concurrent Scheme that are not part of R5RS. */
