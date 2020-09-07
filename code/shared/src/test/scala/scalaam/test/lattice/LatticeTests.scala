@@ -322,12 +322,12 @@ abstract class RealLatticeTest[R : RealLattice, B : BoolLattice, I : IntLattice,
       /** Ceiling is monotone */
       p.property("∀ a, b: a ⊑ b ⇒ ceiling(a) ⊑ ceiling(b)") = forAll { (b: R) =>
         forAll(gen.le(b)) { (a: R) =>
-          conditional(subsumes(b, a), IntLattice[I].subsumes(ceiling(b), ceiling(a)))
+          conditional(subsumes(b, a), subsumes(ceiling(b), ceiling(a)))
         }
       }
       /** Ceiling is sound */
       p.property("∀ a: inject(a.ceil) ⊑ ceiling(inject(a))") =
-        forAll((a: Double) => IntLattice[I].subsumes(ceiling(inject(a)), IntLattice[I].inject(MathOps.ceil(a).toInt)))
+        forAll((a: Double) => subsumes(ceiling(inject(a)), inject(MathOps.ceil(a))))
 
       /** Log preserves bottom */
       p.property("log(⊥) = ⊥") = log(bottom) == bottom

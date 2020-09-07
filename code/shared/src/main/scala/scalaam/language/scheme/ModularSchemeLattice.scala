@@ -243,17 +243,17 @@ class ModularSchemeLattice[
       })
       case Ceiling => x match {
         case Int(n)  => MayFail.success(Int(n))
-        case Real(n) => MayFail.success(Int(RealLattice[R].ceiling(n)))
+        case Real(n) => MayFail.success(Real(RealLattice[R].ceiling(n)))
         case _       => MayFail.failure(OperatorNotApplicable("ceiling", List(x)))
       }
       case Floor => x match {
         case Int(n)  => MayFail.success(Int(n))
-        case Real(n) => MayFail.success(Int(RealLattice[R].floor(n)))
+        case Real(n) => MayFail.success(Real(RealLattice[R].floor(n)))
         case _       => MayFail.failure(OperatorNotApplicable("floor", List(x)))
       }
       case Round => x match {
         case Int(n)  => MayFail.success(Int(n))
-        case Real(n) => MayFail.success(Int(RealLattice[R].round(n)))
+        case Real(n) => MayFail.success(Real(RealLattice[R].round(n)))
         case _       => MayFail.failure(OperatorNotApplicable("round", List(x)))
       }
       case Log => x match {

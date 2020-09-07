@@ -105,9 +105,9 @@ object Type {
     implicit val typeIsReal: RealLattice[R] = new BaseInstance("Real") with RealLattice[R] {
       def inject(x: Double): T = Top
       def toInt[I2: IntLattice](n: T): I2 = n.to[I2]
-      def ceiling[I2: IntLattice](n: T): I2 = n.to[I2]
-      def floor[I2: IntLattice](n: T): I2 = n.to[I2]
-      def round[I2: IntLattice](n: T): I2 = n.to[I2]
+      def ceiling(n: T): T       = n
+      def floor(n: T): T         = n
+      def round(n: T): T         = n
       def log(n: T): T           = n
       def random(n: T): T        = n
       def sin(n: T): T           = n

@@ -209,20 +209,17 @@ object ConstantPropagation {
         case Constant(x) => IntLattice[I2].inject(x.toInt)
         case Bottom      => IntLattice[I2].bottom
       }
-      def ceiling[I2: IntLattice](n: R): I2 = n match {
-        case Constant(x) => IntLattice[I2].inject(x.ceil.toInt)
-        case Top         => IntLattice[I2].top
-        case Bottom      => IntLattice[I2].bottom
+      def ceiling(n: R): R = n match {
+        case Constant(x) => Constant(x.ceil)
+        case _           => n
       }
-      def floor[I2: IntLattice](n: R): I2 = n match {
-        case Constant(x) => IntLattice[I2].inject(x.floor.toInt)
-        case Top         => IntLattice[I2].top
-        case Bottom      => IntLattice[I2].bottom
+      def floor(n: R): R = n match {
+        case Constant(x) => Constant(x.floor)
+        case _           => n
       }
-      def round[I2: IntLattice](n: R): I2 = n match {
-        case Constant(x) => IntLattice[I2].inject(MathOps.round(x).toInt)
-        case Top         => IntLattice[I2].top
-        case Bottom      => IntLattice[I2].bottom
+      def round(n: R): R = n match {
+        case Constant(x) => Constant(MathOps.round(x))
+        case _           => n
       }
       def random(n: R): R = n match {
         case Constant(_) => Top

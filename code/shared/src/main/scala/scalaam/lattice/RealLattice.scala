@@ -6,9 +6,9 @@ import scalaam.core.Lattice
 trait RealLattice[R] extends Lattice[R] { self =>
   def inject(n: Double): R
   def toInt[I: IntLattice](n: R): I
-  def ceiling[I: IntLattice](n: R): I
-  def floor[I: IntLattice](n: R): I
-  def round[I: IntLattice](n: R): I
+  def ceiling(n: R): R
+  def floor(n: R): R
+  def round(n: R): R
   def log(n: R): R
   def random(n: R): R
   def sin(n: R): R
