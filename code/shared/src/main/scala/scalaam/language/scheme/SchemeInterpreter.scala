@@ -372,7 +372,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       Pairp, /* [vv] pair?: Pairs */
       /* [x]  peek-char?: Reading */
       Positivep, /* [vv] positive?: Comparison */
-      /* [x]  procedure?: Procedure Properties */
+      Procp, /* [x]  procedure?: Procedure Properties */
       Quotient, /* [vv] quotient: Integer Operations */
       /* [x]  rational?: Reals and Rationals */
       /* [x]  read: Scheme Read */
@@ -890,7 +890,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     }
     object Error extends SimplePrim {
       val name = "error"
-      def call(args: List[Value], position: Position) = throw new Exception(s"user-raised error: $args")
+      def call(args: List[Value], position: Position) = throw new Exception(s"user-raised error ($position): $args")
     }
 
     /////////////////
@@ -962,6 +962,12 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case _ => Value.Bool(false)
         }
         case _ => Value.Bool(false)
+      }
+    }
+    object Procp extends SingleArgumentPrim("procedure?") {
+      def fun = {
+        case Value.Clo(_, _) => Value.Bool(true)
+        case _               => Value.Bool(false)
       }
     }
 

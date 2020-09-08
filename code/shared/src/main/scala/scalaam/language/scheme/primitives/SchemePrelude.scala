@@ -196,12 +196,14 @@ object SchemePrelude {
     // TODO: implement apply internally
     "apply" -> """(define (apply proc args)
                  |  (cond
-                 |    ((null? args) (proc))
-                 |    ((null? (cdr args)) (proc (car args)))
-                 |    ((null? (cddr args)) (proc (car args) (cadr args)))
-                 |    ((null? (cdddr args)) (proc (car args) (cadr args) (caddr args)))
-                 |    ((null? (cddddr args)) (proc (car args) (cadr args) (caddr args) (cadddr args)))
-                 |    ((null? (cdr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args))))
+                 |    ((null?                args)   (proc))
+                 |    ((null?        (   cdr args))  (proc (car args)))
+                 |    ((null?        (  cddr args))  (proc (car args) (cadr args)))
+                 |    ((null?        ( cdddr args))  (proc (car args) (cadr args) (caddr args)))
+                 |    ((null?        (cddddr args))  (proc (car args) (cadr args) (caddr args) (cadddr args)))
+                 |    ((null? (  cdr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args))))
+                 |    ((null? ( cddr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args)) (cadr (cddddr args))))
+                 |    ((null? (cdddr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args)) (cadr (cddddr args)) (caddr (cddddr args))))
                  |    (else (error "Unsupported call."))))""".stripMargin,
     "ref" -> "(define (ref x) (cons x '()))",
     "deref" -> "(define deref car)",

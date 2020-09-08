@@ -27,6 +27,17 @@
   (set! milliseconds (+ milliseconds (random 1000000)))
   milliseconds)
 
+(define pi 3.14159265359)
+(define (degrees->radians x) (/ (* x pi) 180))
+(define (vector-member e v)
+  (let ((len (vector-length v)))
+    (let loop ((i 0))
+      (if (= i len)
+          #f
+          (if (equal? (vector-ref v i) e)
+              i
+            (loop (+ i 1)))))))
+
 (define (make-queue) (cons 'queue '()))
 (define (enqueue! q e) (set-cdr! q (cons e (cdr q))))
 (define (dequeue! q)
@@ -78,6 +89,10 @@
       (for-each display t) (newline)
       (update-callback))
 
+    (define (draw-line . args)
+      (for-each display args) (newline)
+      (update-callback))
+
     (define (draw . args)
       (display "Drawing tile!") (newline))
 
@@ -97,6 +112,7 @@
         ((eq? msg 'set-scale!) set-scale!)
         ((eq? msg 'clear) (clear))
         ((eq? msg 'draw-text) draw-text)
+        ((eq? msg 'draw-line) draw-line)
         (else (display "wrong message in tile") (display msg) (newline))))
     dispatch))
 
@@ -145,21 +161,7 @@
       (newline))
 
     (define (start)
-      (define commands (list 'left 'left 'left 'left 'left
-                           'right 'right 'right 'right 'right 'right
-                           'up 'up 'up 'up 'up
-                           'home 'home
-                           'end
-                         #\newline #\newline ; Orignally #\return
-                         #\space #\space))
-      (define (random-command)
-        (list-ref commands (random (length commands))))
-      (let loop ((i 0))
-        (if (< i 100)
-          (begin
-            (keyboard-callback (random-command))
-            (update-callback (random 150))
-            (loop (+ i 1))))))
+      (display 'nothing-to-do)(newline))
 
     (define (dispatch msg)
       (cond ((eq? msg 'make-layer) (add-layer))
@@ -1602,15 +1604,15 @@
     ; Kijk of er al coördinaten op een bepaalde index van een bepaalde sectie bestaan. Vervang indien ze bestaan, voeg toe indien ze niet bestaan.
     (define (change-coordinates vect section-id idx coords)
       (let* ((c (vector-ref vect (- section-id first-railway-id)))
-              (res (massoc idx c)))
+              (res (assoc idx c)))
         (if res
-          (set-mcdr! res coords)
-          (vector-set! vect (- section-id first-railway-id) (mcons (mcons idx coords) c)))))
+          (set-cdr! res coords)
+          (vector-set! vect (- section-id first-railway-id) (cons (cons idx coords) c)))))
 
     (define (get-coordinates vect section-id idx)
-      (let ((result (massoc idx (vector-ref vect (- section-id first-railway-id)))))
+      (let ((result (assoc idx (vector-ref vect (- section-id first-railway-id)))))
         (if result
-          (mcdr result)
+          (cdr result)
           #f)))
 
     (define (container-interface message)
@@ -1987,7 +1989,7 @@
                 (set-add! done (car next-to-do))
                 (calculate (car next-to-do)                 ; obj
                   (cadr next-to-do)                ; prev-obj
-                  (modulo (caddr next-to-do) 360)  ; angle
+                  (modulo (inexact->exact (caddr next-to-do)) 360) ; angle
                   todo)))                          ; queue
             (do-all))))
       (init-zero todo)
