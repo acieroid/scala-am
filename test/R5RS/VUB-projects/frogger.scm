@@ -1288,7 +1288,7 @@
                                      (make-tile-for-insect 180 180 "Insect3.jpg" "Insect3-mask.png" (pass-message road 'lane-height)))
                                    ((= 4 insect-type)
                                      (make-tile-for-insect 85 105 "Insect4.jpg" "Insect4-mask.png" (pass-message road 'lane-height)))
-                                   (else (assertion-violation "draw-insect" "Unknown insect type" insect-type insect-ref)))))
+                                   (else (error "draw-insect" "Unknown insect type" insect-type insect-ref)))))
               (pass-message insects 'setinsect-tile insect-ref insect-tile)
               (pass-message insect-tile 'set-x! (pass-message insects 'left-x insect-ref))
               (pass-message insect-tile 'set-y! (pass-message road 'lane-upper-y
