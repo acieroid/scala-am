@@ -1,11 +1,12 @@
-package scalaam.language.scheme
+package scalaam.language.scheme.lattices
 
 import scalaam.core._
+import scalaam.language.CScheme.TID
+import scalaam.language.scheme.lattices.SchemeOps._
+import scalaam.language.scheme.primitives._
+import scalaam.language.scheme._
 import scalaam.lattice._
 import scalaam.util._
-import SchemeOps._
-import scalaam.language.CScheme.TID
-import scalaam.language.scheme.primitives._
 
 class TypeSchemeLattice[A <: Address] {
   type P = SchemePrimitive[L, A]

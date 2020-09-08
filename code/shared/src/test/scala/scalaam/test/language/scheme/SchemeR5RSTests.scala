@@ -3,6 +3,7 @@ package scalaam.test.language.scheme
 import org.scalatest.propspec.AnyPropSpec
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.language.scheme.lattices.SchemeLattice
 import scalaam.language.scheme.primitives._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._

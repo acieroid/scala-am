@@ -2,6 +2,7 @@ package scalaam.language.scheme.primitives
 
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.language.scheme.lattices.{SchemeLattice, SchemeOps}
 import scalaam.util.Monoid
 
 /** Help code for manually implementing Scheme primitives. */

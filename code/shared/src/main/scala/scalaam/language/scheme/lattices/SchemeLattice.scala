@@ -1,7 +1,8 @@
-package scalaam.language.scheme
+package scalaam.language.scheme.lattices
 
-import scalaam.language.CScheme.TID
 import scalaam.core._
+import scalaam.language.CScheme.TID
+import scalaam.language.scheme.SchemeLambdaExp
 
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {

@@ -3,6 +3,7 @@ package scalaam.test.language.scheme
 import org.scalacheck.Prop.{forAll, propBoolean}
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.language.scheme.lattices.{SchemeLattice, SchemeOps}
 import scalaam.test.lattice._
 
 // inherits the standard scalaam.lattice tests from `LatticeTest`

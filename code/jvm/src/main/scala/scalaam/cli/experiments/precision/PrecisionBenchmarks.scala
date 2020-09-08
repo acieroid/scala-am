@@ -3,6 +3,7 @@ package scalaam.cli.experiments.precision
 import scalaam.core._
 import scalaam.language.scheme.SchemeInterpreter.Addr
 import scalaam.language.scheme._
+import scalaam.language.scheme.lattices.ModularSchemeLattice
 import scalaam.language.scheme.primitives._
 import scalaam.lattice._
 import scalaam.modular._

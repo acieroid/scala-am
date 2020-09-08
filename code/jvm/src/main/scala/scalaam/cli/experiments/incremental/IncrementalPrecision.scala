@@ -71,7 +71,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     var e: Long = 0L
     var l: Long = 0L
     var m: Long = 0L
-    val t: Long = allAddr.size
+    val t: Long = allAddr.size.toLong
     allAddr.foreach({ a =>
       val incr = iStore(a)
       val rean = rStore(a)

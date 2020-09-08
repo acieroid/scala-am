@@ -1,7 +1,6 @@
 package scalaam.modular.scheme.modconc
 
 import scalaam.core._
-import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
 import scalaam.language.scheme._

@@ -4,6 +4,7 @@ import scalaam.core._
 import scalaam.modular._
 import scalaam.lattice._
 import scalaam.language.scheme._
+import scalaam.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
 import scalaam.language.scheme.primitives._
 
 trait SchemeDomain extends AbstractDomain[SchemeExp] {

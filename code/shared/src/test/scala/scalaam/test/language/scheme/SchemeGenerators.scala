@@ -3,6 +3,7 @@ package scalaam.test.language.scheme
 import org.scalacheck._
 import scalaam.core._
 import scalaam.language.scheme._
+import scalaam.language.scheme.lattices.{ModularSchemeLattice, SchemeOps}
 import scalaam.language.scheme.primitives._
 import scalaam.language.sexp._
 import scalaam.lattice._

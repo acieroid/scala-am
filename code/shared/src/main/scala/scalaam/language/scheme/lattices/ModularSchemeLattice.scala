@@ -1,14 +1,14 @@
-package scalaam.language.scheme
+package scalaam.language.scheme.lattices
 
 import scalaam.core._
-import scalaam.lattice._
-import scalaam.util._
-import SchemeOps._
-import UnaryOperator._
-import BinaryOperator._
 import scalaam.language.CScheme.TID
+import SchemeOps.BinaryOperator.{CharacterEq, CharacterEqCI, CharacterLt, CharacterLtCI, Div, Eq, Expt, Lt, Minus, Modulo, NumEq, Plus, Quotient, Remainder, StringAppend, StringLt, StringRef, Times}
+import SchemeOps.UnaryOperator.{ACos, ASin, ATan, Ceiling, CharacterDowncase, CharacterIsLower, CharacterIsUpper, CharacterToInteger, CharacterToString, CharacterUpcase, Cos, ExactToInexact, Floor, InexactToExact, IntegerToCharacter, IsBoolean, IsChar, IsCons, IsInteger, IsLock, IsNull, IsPointer, IsProcedure, IsReal, IsString, IsSymbol, IsThread, IsVector, Log, Not, NumberToString, Random, Round, Sin, Sqrt, StringLength, StringToNumber, StringToSymbol, SymbolToString, Tan, VectorLength}
+import SchemeOps._
 import scalaam.language.scheme.primitives.SchemePrimitive
+import scalaam.lattice._
 import scalaam.util.SmartUnion._
+import scalaam.util._
 
 /** Defines a Scheme lattice based on other lattices.
   * Example usage:
@@ -633,7 +633,7 @@ class ModularSchemeLattice[
     def apply(v: Value): L = Elements(List(v))
   }
 
-  import MonoidInstances.{boolOrMonoid, boolAndMonoid, setMonoid}
+  import MonoidInstances._
   implicit val lMonoid: Monoid[L] = new Monoid[L] {
     private def insert(vs: List[Value], v: Value): List[Value] = vs match {
       case scala.Nil                        => List(v)

@@ -1461,7 +1461,7 @@
     (cond
 
       ((eq? message 'influence-trains) influence-trains)
-      ((eq? message else (error 'rail-control-interface "message error: unknown message sent to rail-control: ~a." message)))))
+      (else (error 'rail-control-interface "message error: unknown message sent to rail-control: ~a." message))))
 
     rail-control-interface)
 

@@ -4,6 +4,7 @@ import scalaam.bench.scheme.SchemeBenchmarkPrograms
 import scalaam.cli.experiments._
 import scalaam.core.Address
 import scalaam.language.scheme._
+import scalaam.language.scheme.lattices.TypeSchemeLattice
 import scalaam.modular._
 import scalaam.modular.scheme.modf.SchemeModFCompoundSensitivities.SeparateLowHighSensitivity._
 import scalaam.modular.scheme._

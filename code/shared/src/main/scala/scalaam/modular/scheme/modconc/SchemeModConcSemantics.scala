@@ -8,7 +8,6 @@ import scalaam.modular._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
 import scalaam.modular.components.ContextSensitiveComponents
-import scalaam.modular.scheme.SchemeConstantPropagationDomain.modularLattice
 import scalaam.util.benchmarks.Timeout
 
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]

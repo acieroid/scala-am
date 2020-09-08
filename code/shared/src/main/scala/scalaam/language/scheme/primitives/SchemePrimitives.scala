@@ -3,6 +3,7 @@ package scalaam.language.scheme.primitives
 import scalaam.core._
 import scalaam.language.scheme._
 import scalaam.language.CScheme._
+import scalaam.language.scheme.lattices.SchemeLattice
 
 trait SchemeInterpreterBridge[A] {
   def pointer(exp: SchemeExp): A
