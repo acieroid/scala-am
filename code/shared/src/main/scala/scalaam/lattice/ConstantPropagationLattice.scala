@@ -79,7 +79,6 @@ object ConstantPropagation {
   type Sym = L[String]
 
   object L {
-    import scalaam.lattice._
 
     implicit val boolCP: BoolLattice[B] = new BaseInstance[Boolean]("Bool") with BoolLattice[B] {
       def inject(b: Boolean): B = Constant(b)
@@ -103,12 +102,12 @@ object ConstantPropagation {
     implicit val stringCP: StringLattice[S] = new BaseInstance[String]("Str")
     with StringLattice[S] {
       def inject(x: String): S = Constant(x)
-      def length[I2: IntLattice](s: S) = s match {
+      def length[I2: IntLattice](s: S): I2 = s match {
         case Top         => IntLattice[I2].top
-        case Constant(s) => IntLattice[I2].inject(s.size)
+        case Constant(s) => IntLattice[I2].inject(s.length)
         case Bottom      => IntLattice[I2].bottom
       }
-      def append(s1: S, s2: S) = (s1, s2) match {
+      def append(s1: S, s2: S): S = (s1, s2) match {
         case (Bottom, _) | (_, Bottom)  => Bottom
         case (Top, _) | (_, Top)        => Top
         case (Constant(x), Constant(y)) => Constant(x ++ y)
@@ -117,7 +116,7 @@ object ConstantPropagation {
         case Bottom => CharLattice[C2].bottom
         case Top    => CharLattice[C2].top
         case Constant(x) =>
-          (0.to(x.size))
+           0.to(x.length)
             .collect({
               case i2
                   if BoolLattice[Concrete.B]
@@ -126,12 +125,12 @@ object ConstantPropagation {
             })
             .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
       }
-      def lt[B2: BoolLattice](s1: S, s2: S) = (s1, s2) match {
+      def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match {
         case (Bottom, _) | (_, Bottom)  => BoolLattice[B2].bottom
         case (Top, _) | (_, Top)        => BoolLattice[B2].top
         case (Constant(x), Constant(y)) => BoolLattice[B2].inject(x < y)
       }
-      def toSymbol[Sym2: SymbolLattice](s: S) = s match {
+      def toSymbol[Sym2: SymbolLattice](s: S): Sym2 = s match {
         case Bottom      => SymbolLattice[Sym2].bottom
         case Top         => SymbolLattice[Sym2].top
         case Constant(x) => SymbolLattice[Sym2].inject(x)
@@ -284,7 +283,7 @@ object ConstantPropagation {
     }
     implicit val charCP: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char) = Constant(x)
-      def downCase(c: C) = c match {
+      def downCase(c: C): C = c match {
         case Constant(char) => Constant(char.toLower)
         case _ => c
       }

@@ -17,12 +17,12 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
   implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
   /* Simpler names for frequently used lattice operations. */
-  def isInteger      = unaryOp(SchemeOps.UnaryOperator.IsInteger) _
-  def isVector       = unaryOp(SchemeOps.UnaryOperator.IsVector) _
-  def isLock         = unaryOp(SchemeOps.UnaryOperator.IsLock) _
-  def vectorLength   = unaryOp(SchemeOps.UnaryOperator.VectorLength) _
-  def inexactToExact = unaryOp(SchemeOps.UnaryOperator.InexactToExact) _
-  def eqq            = binaryOp(SchemeOps.BinaryOperator.Eq) _
+  def isInteger:      V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.IsInteger)
+  def isVector:       V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.IsVector)
+  def isLock:         V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.IsLock)
+  def vectorLength:   V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.VectorLength)
+  def inexactToExact: V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.InexactToExact)
+  def eqq:            (V, V) => MayFail[V, Error] = binaryOp(SchemeOps.BinaryOperator.Eq)
 
   def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] = {
     cond >>= { condv =>
@@ -63,7 +63,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
 }
 
 class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A]]) extends SchemePrimitives[V, A] with PrimitiveBuildingBlocks[V,A] {
-  val lat = schemeLattice
+  val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
@@ -421,7 +421,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
             bool(false)
           }
       }
-      override def call(args: List[V]) = args match {
+      override def call(args: List[V]): MayFail[V, Error] = args match {
         case Nil       => bool(true)
         case x :: rest => eq(x, rest)
       }
@@ -490,7 +490,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `cons` extends SchemePrimitive[V,A] {
       val name = "cons"
-      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]) = args match {
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
         case (_, car) :: (_, cdr) :: Nil =>
           val addr = alloc.pointer(fpos)
           val consVal = lat.cons(car, cdr)
@@ -525,7 +525,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `make-vector` extends SchemePrimitive[V,A] {
       val name = "make-vector"
-      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]) = {
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = {
         def createVec(size: V, init: V): MayFail[(V, Store[A, V]), Error] = {
           isInteger(size) >>= (
               isint =>
@@ -547,7 +547,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `vector` extends SchemePrimitive[V,A] {
       val name = "vector"
-      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]) = {
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = {
         val veca = alloc.pointer(fpos)
         lat.vector(number(args.size), bottom) >>= (
             emptyvec =>
@@ -603,18 +603,18 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
                 } else {
                   MayFail.success(bottom)
                 }
-              t >>= ({
+              t >>= {
                 case (tv, None) => f.join(MayFail.success(tv), join).map(v => (v, store))
                 case (tv, Some((a, va))) =>
                   f.join(MayFail.success(tv), join).map(v => (v, store.update(a, va)))
-              })
+              }
             })
         }
       }
       override def call(fpos: SchemeExp,
            args: List[(SchemeExp, V)],
            store: Store[A, V],
-           alloc: SchemeInterpreterBridge[A]) = args match {
+           alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
         case v :: index :: newval :: Nil => vectorSet(v._2, index._2, newval._2, store)
         case _                           => MayFail.failure(PrimitiveArityError(name, 3, args.size))
       }
@@ -625,7 +625,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       override def call(fpos: SchemeExp,
         args: List[(SchemeExp, V)],
         store: Store[A, V],
-        alloc: SchemeInterpreterBridge[A]) = args match {
+        alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
         case Nil => (nil, store)
         case (argpos, v) :: rest =>
           for {

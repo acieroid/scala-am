@@ -8,7 +8,7 @@ sealed trait MayFail[A, E] {
     case MayFailError(errs2)   => MayFailError(errs2 ++ errs)
   }
   /* We want to deconstruct in for loops, so we need filter (see https://issues.scala-lang.org/browse/SI-1336) */
-  def withFilter(f: A => Boolean) = this
+  def withFilter(f: A => Boolean): MayFail[A, E] = this
   def join(that: MayFail[A, E], joinA: (A, => A) => A): MayFail[A, E] = (this, that) match {
     case (MayFailSuccess(a1), MayFailSuccess(a2))     => MayFailSuccess(joinA(a1, a2))
     case (MayFailSuccess(a1), MayFailBoth(a2, errs2)) => MayFailBoth(joinA(a1, a2), errs2)

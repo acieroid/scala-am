@@ -63,7 +63,7 @@ class ModularSchemeLattice[
   }
   case class Prim(prim: Set[P]) extends Value {
     def ord = 6
-    override def toString = prim.map(_.name).mkString("{primitives ",",","}")
+    override def toString: String = prim.map(_.name).mkString("{primitives ",",","}")
   }
   // TODO: define `type Closure = (SchemeLambdaExp, Env, Option[String])` (maybe using a case class)
   case class Clo(closures: Set[(schemeLattice.Closure, Option[String])]) extends Value {
@@ -112,9 +112,9 @@ class ModularSchemeLattice[
     override def toString: String = "<void>"
   }
   /** The injected true value */
-  val True = Bool(BoolLattice[B].inject(true))
+  val True: Bool = Bool(BoolLattice[B].inject(true))
   /** The injected false value */
-  val False = Bool(BoolLattice[B].inject(false))
+  val False: Bool = Bool(BoolLattice[B].inject(false))
 
   object Value {
 
@@ -624,7 +624,7 @@ class ModularSchemeLattice[
       } else if (vs.tail.isEmpty) {
         vs.head.toString
       } else {
-        vs.map(_.toString).toList.sorted.mkString("{",",","}")
+        vs.map(_.toString).sorted.mkString("{",",","}")
       }
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X =
       vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))

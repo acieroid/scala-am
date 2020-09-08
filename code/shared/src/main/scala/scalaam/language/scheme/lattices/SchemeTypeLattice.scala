@@ -35,7 +35,7 @@ class TypeSchemeLattice[A <: Address] {
     def show(x: L): String = s"$x"
     def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
     def isFalse(x: L): Boolean = x.bool
-    def unaryOp(op: UnaryOperator)(x: L) = {
+    def unaryOp(op: UnaryOperator)(x: L): MayFail[L, Error] = {
       import UnaryOperator._
       if (x.isBottom) { MayFail.success(x) } else { op match {
       case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger
@@ -100,7 +100,7 @@ class TypeSchemeLattice[A <: Address] {
         consCells = (join(x.consCells._1,y.consCells._1),
                      join(x.consCells._2,y.consCells._2)))
     def subsumes(x: L, y: => L): Boolean =
-      ((if (x.str) y.str else true) &&
+        (if (x.str) y.str else true) &&
         (if (x.bool) y.bool else true) &&
         (if (x.num) y.num else true) &&
         (if (x.char) y.char else true) &&
@@ -109,7 +109,7 @@ class TypeSchemeLattice[A <: Address] {
         y.prims.subsetOf(x.prims) &&
         y.clos.subsetOf(y.clos) &&
         subsumes(x.consCells._1, y.consCells._1) &&
-        subsumes(x.consCells._1, y.consCells._2))
+        subsumes(x.consCells._1, y.consCells._2)
     def top: L = ???
     def vectorRef(v: L, idx: L): MayFail[L, Error] = ???
     def vectorSet(v: L, idx: L, newval: L): MayFail[L, Error] = ???
@@ -133,7 +133,7 @@ class TypeSchemeLattice[A <: Address] {
     def nil: L                                = Inject.nil
     def cons(car: L, cdr: L): L               = Inject.cons(car, cdr)
     def pointer(a: A): L                      = Inject.pointer(a)
-    def eql[B : BoolLattice](x: L, y: L) = BoolLattice[B].top /* could be refined in some cases */
+    def eql[B : BoolLattice](x: L, y: L): B   = BoolLattice[B].top /* could be refined in some cases */
     def vector(size: L, init: L): MayFail[L, Error] = ???
     def thread(tid: TID): L                   = ???
     def lock(threads: Set[TID])               = ???
