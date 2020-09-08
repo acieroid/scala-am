@@ -317,19 +317,69 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     import schemeLattice._
 
+    object `<`                extends NoStore2Operation("<",                binaryOp(SchemeOps.BinaryOperator.Lt)) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
+    object `acos`             extends NoStore1Operation("acos",             unaryOp(SchemeOps.UnaryOperator.ACos))
+    object `asin`             extends NoStore1Operation("asin",             unaryOp(SchemeOps.UnaryOperator.ASin))
+    object `atan`             extends NoStore1Operation("atan",             unaryOp(SchemeOps.UnaryOperator.ATan))
+    object `boolean?`         extends NoStore1Operation("boolean?",         unaryOp(SchemeOps.UnaryOperator.IsBoolean))
+    object `ceiling`          extends NoStore1Operation("ceiling",          unaryOp(SchemeOps.UnaryOperator.Ceiling))
+    object `char->integer`    extends NoStore1Operation("char->integer",    unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
+    object `char->string`     extends NoStore1Operation("char->string",     unaryOp(SchemeOps.UnaryOperator.CharacterToString))
+    object `char-ci<?`        extends NoStore2Operation("char-ci<?",        binaryOp(SchemeOps.BinaryOperator.CharacterLtCI))
+    object `char-ci=?`        extends NoStore2Operation("char-ci=?",        binaryOp(SchemeOps.BinaryOperator.CharacterEqCI))
+    object `char-downcase`    extends NoStore1Operation("char-downcase",    unaryOp(SchemeOps.UnaryOperator.CharacterDowncase))
+    object `char-lower-case?` extends NoStore1Operation("char-lower-case?", unaryOp(SchemeOps.UnaryOperator.CharacterIsLower))
+    object `char-upcase`      extends NoStore1Operation("char-upcase",      unaryOp(SchemeOps.UnaryOperator.CharacterUpcase))
+    object `char-upper-case?` extends NoStore1Operation("char-upper-case?", unaryOp(SchemeOps.UnaryOperator.CharacterIsUpper))
+    object `char<?`           extends NoStore2Operation("char<?",           binaryOp(SchemeOps.BinaryOperator.CharacterLt))
+    object `char=?`           extends NoStore2Operation("char=?",           binaryOp(SchemeOps.BinaryOperator.CharacterEq))
+    object `char?`            extends NoStore1Operation("char?",            unaryOp(SchemeOps.UnaryOperator.IsChar))
+    object `cos`              extends NoStore1Operation("cos",              unaryOp(SchemeOps.UnaryOperator.Cos))
+    object `eq?`              extends NoStore2Operation("eq?",              eqq)
+    object `error`            extends NoStore1Operation("error",                    { x => MayFail.failure(UserError(x.toString))})
+    object `exact->inexact`   extends NoStore1Operation("exact->inexact",   unaryOp(SchemeOps.UnaryOperator.ExactToInexact))
+    object `expt`             extends NoStore2Operation("expt",             binaryOp(SchemeOps.BinaryOperator.Expt))
+    object `floor`            extends NoStore1Operation("floor",            unaryOp(SchemeOps.UnaryOperator.Floor))
+    object `inexact->exact`   extends NoStore1Operation("inexact->exact",   unaryOp(SchemeOps.UnaryOperator.InexactToExact))
+    object `integer->char`    extends NoStore1Operation("integer->char",    unaryOp(SchemeOps.UnaryOperator.IntegerToCharacter))
+    object `integer?`         extends NoStore1Operation("integer?",         unaryOp(SchemeOps.UnaryOperator.IsInteger))
+    object `log`              extends NoStore1Operation("log",              unaryOp(SchemeOps.UnaryOperator.Log))
+    object `modulo`           extends NoStore2Operation("modulo",           binaryOp(SchemeOps.BinaryOperator.Modulo))
+    object `null?`            extends NoStore1Operation("null?",            unaryOp(SchemeOps.UnaryOperator.IsNull))
+    object `number->string`   extends NoStore1Operation("number->string",   unaryOp(SchemeOps.UnaryOperator.NumberToString))
+    object `number?`          extends NoStore1Operation("number?",          `real?`.call(_)) /* No support for complex number, so number? is equivalent as real? */
+    object `procedure?`       extends NoStore1Operation("procedure?",       unaryOp(SchemeOps.UnaryOperator.IsProcedure))
+    object `quotient`         extends NoStore2Operation("quotient",         binaryOp(SchemeOps.BinaryOperator.Quotient))
+    object `random`           extends NoStore1Operation("random",           unaryOp(SchemeOps.UnaryOperator.Random))
+    object `remainder`        extends NoStore2Operation("remainder",        binaryOp(SchemeOps.BinaryOperator.Remainder))
+    object `round`            extends NoStore1Operation("round",            unaryOp(SchemeOps.UnaryOperator.Round))
+    object `sin`              extends NoStore1Operation("sin",              unaryOp(SchemeOps.UnaryOperator.Sin))
+    object `string->number`   extends NoStore1Operation("string->number",   unaryOp(SchemeOps.UnaryOperator.StringToNumber))
+    object `string->symbol`   extends NoStore1Operation("string->symbol",   unaryOp(SchemeOps.UnaryOperator.StringToSymbol))
+    object `string-length`    extends NoStore1Operation("string-length",    unaryOp(SchemeOps.UnaryOperator.StringLength))
+    object `string-ref`       extends NoStore2Operation("string-ref",       binaryOp(SchemeOps.BinaryOperator.StringRef))
+    object `string<?`         extends NoStore2Operation("string<?",         binaryOp(SchemeOps.BinaryOperator.StringLt))
+    object `string?`          extends NoStore1Operation("string?",          unaryOp(SchemeOps.UnaryOperator.IsString))
+    object `symbol->string`   extends NoStore1Operation("symbol->string",   unaryOp(SchemeOps.UnaryOperator.SymbolToString))
+    object `symbol?`          extends NoStore1Operation("symbol?",          unaryOp(SchemeOps.UnaryOperator.IsSymbol))
+    object `tan`              extends NoStore1Operation("tan",              unaryOp(SchemeOps.UnaryOperator.Tan))
+
     object `+` extends NoStoreLOpRec("+", {
         case (Nil, _)          => number(0)
         case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Plus)(x, _))
     })
+
     object `-` extends NoStoreLOp("-", {
         case Nil       => MayFail.failure(PrimitiveVariadicArityError("-", 1, 0))
         case x :: Nil  => binaryOp(SchemeOps.BinaryOperator.Minus)(number(0), x)
         case x :: rest => `+`.call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Minus)(x, _))
     })
+
     object `*` extends NoStoreLOpRec("*", {
         case (Nil, _)          => number(1)
         case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Times)(x, _))
     })
+
     object `/` extends NoStoreLOp("/", {
       case Nil => MayFail.failure(PrimitiveVariadicArityError("/", 1, 0))
       case x :: rest =>
@@ -353,15 +403,12 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       case (x :: Nil, _)     => x
       case (x :: rest, call) => call(rest) >>= { y => ifThenElse(`<`.call(x, y)) { y } { x } }
     })
+
     object `min` extends NoStoreLOpRec("min", {
       case (Nil, _)          => MayFail.failure(PrimitiveVariadicArityError("min", 1, 0))
       case (x :: Nil, _)     => x
       case (x :: rest, call) => call(rest) >>= { y => ifThenElse(`<`.call(x, y)) { x } { y } }
     })
-
-    object `expt`     extends NoStore2Operation("expt", binaryOp(SchemeOps.BinaryOperator.Expt))
-    object `quotient` extends NoStore2Operation("quotient", binaryOp(SchemeOps.BinaryOperator.Quotient))
-    object `<`        extends NoStore2Operation("<", binaryOp(SchemeOps.BinaryOperator.Lt)) // xTODO[easy]: < should accept any number of arguments (same for <= etc.)
 
     object `=` extends NoStoreLOperation("=") {
       def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
@@ -379,19 +426,6 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       }
     }
 
-    object `modulo`    extends NoStore2Operation("modulo",    binaryOp(SchemeOps.BinaryOperator.Modulo))
-    object `remainder` extends NoStore2Operation("remainder", binaryOp(SchemeOps.BinaryOperator.Remainder))
-    object `random`    extends NoStore1Operation("random",    unaryOp(SchemeOps.UnaryOperator.Random))
-    object `ceiling`   extends NoStore1Operation("ceiling",   unaryOp(SchemeOps.UnaryOperator.Ceiling))
-    object `floor`     extends NoStore1Operation("floor",     unaryOp(SchemeOps.UnaryOperator.Floor))
-    object `round`     extends NoStore1Operation("round",     unaryOp(SchemeOps.UnaryOperator.Round))
-    object `log`       extends NoStore1Operation("log",       unaryOp(SchemeOps.UnaryOperator.Log))
-    object `sin`       extends NoStore1Operation("sin",       unaryOp(SchemeOps.UnaryOperator.Sin))
-    object `asin`      extends NoStore1Operation("asin",      unaryOp(SchemeOps.UnaryOperator.ASin))
-    object `cos`       extends NoStore1Operation("cos",       unaryOp(SchemeOps.UnaryOperator.Cos))
-    object `acos`      extends NoStore1Operation("acos",      unaryOp(SchemeOps.UnaryOperator.ACos))
-    object `tan`       extends NoStore1Operation("tan",       unaryOp(SchemeOps.UnaryOperator.Tan))
-    object `atan`      extends NoStore1Operation("atan",      unaryOp(SchemeOps.UnaryOperator.ATan))
     object `sqrt`      extends NoStore1Operation("sqrt", { x =>
       ifThenElse(`<`.call(x, number(0))) {
         /* n < 0 */
@@ -411,16 +445,6 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
         }
       }
     })
-    object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOps.UnaryOperator.ExactToInexact))
-    object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOps.UnaryOperator.InexactToExact))
-    object `char->integer`  extends NoStore1Operation("char->integer",  unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
-    object `char->string`   extends NoStore1Operation("char->string",   unaryOp(SchemeOps.UnaryOperator.CharacterToString))
-    object `integer->char`  extends NoStore1Operation("integer->char",  unaryOp(SchemeOps.UnaryOperator.IntegerToCharacter))
-    object `char-downcase`  extends NoStore1Operation("char-downcase",  unaryOp(SchemeOps.UnaryOperator.CharacterDowncase))
-    object `char-upcase`    extends NoStore1Operation("char-upcase",    unaryOp(SchemeOps.UnaryOperator.CharacterUpcase))
-    object `char-lower-case?` extends NoStore1Operation("char-lower-case?", unaryOp(SchemeOps.UnaryOperator.CharacterIsLower))
-    object `char-upper-case?` extends NoStore1Operation("char-upper-case?", unaryOp(SchemeOps.UnaryOperator.CharacterIsUpper))
-    object `null?`          extends NoStore1Operation("null?",          unaryOp(SchemeOps.UnaryOperator.IsNull))
 
     object `pair?`    extends Store1Operation("pair?", { (x, store) => 
       ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)) {
@@ -432,18 +456,13 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       }.map(v => (v, store))
     })
 
-    object `char?`    extends NoStore1Operation("char?",    unaryOp(SchemeOps.UnaryOperator.IsChar))
-    object `symbol?`  extends NoStore1Operation("symbol?",  unaryOp(SchemeOps.UnaryOperator.IsSymbol))
-    object `string?`  extends NoStore1Operation("string?",  unaryOp(SchemeOps.UnaryOperator.IsString))
-    object `integer?` extends NoStore1Operation("integer?", unaryOp(SchemeOps.UnaryOperator.IsInteger))
     object `real?`    extends NoStore1Operation("real?", { x =>
           for {
             isint  <- isInteger(x)
             isreal <- unaryOp(SchemeOps.UnaryOperator.IsReal)(x)
           } yield or(isint, isreal)
-      })
-    object `number?`  extends NoStore1Operation("number?", `real?`.call(_)) /* No support for complex number, so number? is equivalent as real? */
-    object `boolean?` extends NoStore1Operation("boolean?", unaryOp(SchemeOps.UnaryOperator.IsBoolean))
+    })
+
     object `vector?`  extends Store1Operation("vector?", { (x, store) =>
         for {
           ispointer <- unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)
@@ -462,27 +481,11 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
         bool(false)
       }.map(v => (v, store))
     })
-    object `procedure?` extends NoStore1Operation("procedure?", unaryOp(SchemeOps.UnaryOperator.IsProcedure))
 
-    object `eq?` extends NoStore2Operation("eq?", eqq)
-
-    object `number->string` extends NoStore1Operation("number->string", unaryOp(SchemeOps.UnaryOperator.NumberToString))
-    object `symbol->string` extends NoStore1Operation("symbol->string", unaryOp(SchemeOps.UnaryOperator.SymbolToString))
-    object `string->symbol` extends NoStore1Operation("string->symbol", unaryOp(SchemeOps.UnaryOperator.StringToSymbol))
-    object `string->number` extends NoStore1Operation("string->number", unaryOp(SchemeOps.UnaryOperator.StringToNumber))
     object `string-append`  extends NoStoreLOpRec("string-append", {
         case (Nil, _)          => string("")
         case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.StringAppend)(x, _))
     })
-    object `string-ref`    extends NoStore2Operation("string-ref",    binaryOp(SchemeOps.BinaryOperator.StringRef))
-    object `string<?`      extends NoStore2Operation("string<?",      binaryOp(SchemeOps.BinaryOperator.StringLt))
-    object `string-length` extends NoStore1Operation("string-length", unaryOp(SchemeOps.UnaryOperator.StringLength))
-    object `char=?`        extends NoStore2Operation("char=?", binaryOp(SchemeOps.BinaryOperator.CharacterEq))
-    object `char<?`        extends NoStore2Operation("char<?", binaryOp(SchemeOps.BinaryOperator.CharacterLt))
-    object `char-ci=?`     extends NoStore2Operation("char-ci=?", binaryOp(SchemeOps.BinaryOperator.CharacterEqCI))
-    object `char-ci<?`     extends NoStore2Operation("char-ci<?", binaryOp(SchemeOps.BinaryOperator.CharacterLtCI))
-
-    object `error` extends NoStore1Operation("error", { x => MayFail.failure(UserError(x.toString))})
 
     object `cons` extends SchemePrimitive[V,A] {
       val name = "cons"
@@ -496,12 +499,8 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       }
     }
 
-    object `car` extends Store1Operation("car", { (x, store) =>
-      dereferencePointer(x, store) { cons => lat.car(cons) }.map(v => (v,store))
-    })
-    object `cdr` extends Store1Operation("cdr", { (x, store) => 
-      dereferencePointer(x, store) { cons => lat.cdr(cons) }.map(v => (v,store))
-    })
+    object `car` extends Store1Operation("car", { (x, store) => dereferencePointer(x, store) { cons => lat.car(cons) }.map(v => (v,store)) })
+    object `cdr` extends Store1Operation("cdr", { (x, store) => dereferencePointer(x, store) { cons => lat.cdr(cons) }.map(v => (v,store)) })
 
     object `set-car!` extends Store2Operation("set-car!", { (cell, value, store) =>
       dereferencePointerGetAddressReturnStore(cell, store) { (addr,cons,store) => 
