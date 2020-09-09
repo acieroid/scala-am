@@ -72,7 +72,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       case Value.Undefined(_)   => true
       case Value.Unbound(_)     => true
       case Value.Void           => lat.subsumes(abs, lat.void)
-      case Value.Clo(lam, _)    => lat.getClosures(abs).exists(_._1._1.idn == lam.idn)
+      case Value.Clo(lam, _, _) => lat.getClosures(abs).exists(_._1._1.idn == lam.idn)
       case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_.name == p.name)
       case Value.Str(s)         => lat.subsumes(abs, lat.string(s))
       case Value.Symbol(s)      => lat.subsumes(abs, lat.symbol(s))
