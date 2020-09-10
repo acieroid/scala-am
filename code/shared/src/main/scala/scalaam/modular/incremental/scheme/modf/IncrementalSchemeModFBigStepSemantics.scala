@@ -8,16 +8,16 @@ import scalaam.modular.scheme.modf.EvalM._
 
 trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
   trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra {
-    override protected def eval(exp: SchemeExp, env: Env): EvalM[Value] = exp match {
+    override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)
-        eval(e, env)
+        eval(e)
       case SchemeCodeChange(_, e, _) if version == New =>
         registerComponent(e, component)
-        eval(e, env)
+        eval(e)
       case _                                     =>
         registerComponent(exp, component)
-        super.eval(exp, env)
+        super.eval(exp)
     }
   }
 }
