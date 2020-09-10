@@ -22,16 +22,24 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/gambit/scheme.scm")
+    val txt = Reader.loadFile("test/R5RS/fib.scm")
     val prg = CSchemeParser.parse(txt)
-    val analysis1 = SchemeAnalyses.kCFAAnalysis(prg, 0)
-    val analysis2 = SchemeAnalyses.parallelKCFAAnalysis(prg, 8, 0)
-    analysis1.analyze(Timeout.start(Duration(600,SECONDS)))
-    analysis2.analyze(Timeout.start(Duration(600,SECONDS)))
-    println(analysis1.store == analysis2.store)
-    println(analysis1.finished())
+    val analysis = new ModAnalysis(prg) with SchemeModFSemantics
+                                        with BigStepModFSemantics
+                                        with StandardSchemeModFComponents
+                                        with SchemeConstantPropagationDomain
+                                        with SchemeModFNoSensitivity
+                                        with LIFOWorklistAlgorithm[SchemeExp] {
+      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+      override def step(t: Timeout.T) = {
+        val cmp = workList.head
+        println(cmp)
+        super.step(t)
+      }
+    }
+    analysis.analyze()
     //debugClosures(analysis)
-    //debugResults(analysis, true)
+    debugResults(analysis, true)
   }
 
   type SchemeAnalysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
