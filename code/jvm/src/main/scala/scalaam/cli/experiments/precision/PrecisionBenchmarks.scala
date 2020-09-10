@@ -92,7 +92,7 @@ abstract class PrecisionBenchmarks[
     private def convertConcreteValue(value: SchemeInterpreter.Value): BaseValue = value match {
         case SchemeInterpreter.Value.Nil                => baseLattice.nil
         case SchemeInterpreter.Value.Undefined(_)       => baseLattice.bottom
-        case SchemeInterpreter.Value.Clo(l, _)          => baseLattice.closure((LambdaIdnEq(l),emptyEnv),None)
+        case SchemeInterpreter.Value.Clo(l, _, nam)     => baseLattice.closure((LambdaIdnEq(l),emptyEnv),nam)
         case SchemeInterpreter.Value.Primitive(p)       => baseLattice.primitive(StubPrimitive(p.name))
         case SchemeInterpreter.Value.Str(s)             => baseLattice.string(s)
         case SchemeInterpreter.Value.Symbol(s)          => baseLattice.symbol(s)
