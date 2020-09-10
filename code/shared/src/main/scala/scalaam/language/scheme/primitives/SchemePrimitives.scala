@@ -25,6 +25,6 @@ case class PrimitiveVariadicArityError(name: String, expectedAtLeast: Int, got: 
 case class PrimitiveNotApplicable[V](name: String, args: List[V])                    extends Error
 case class UserError(message: String)                                                extends Error
 
-abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A]]) {
+abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) {
   def allPrimitives: List[SchemePrimitive[V, A]]
 }

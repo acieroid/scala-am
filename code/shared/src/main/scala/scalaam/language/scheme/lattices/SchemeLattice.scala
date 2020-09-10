@@ -5,7 +5,7 @@ import scalaam.language.CScheme.TID
 import scalaam.language.scheme.SchemeLambdaExp
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
+trait SchemeLattice[L, A <: Address, P <: Primitive, K] extends Lattice[L] {
 
   /** Can this value be considered true for conditionals? */
   def isTrue(x: L): Boolean
@@ -44,6 +44,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
 
   /** Extract primitives contained in this value */
   def getPrimitives(x: L): Set[P]
+
+  /** Extract continuations contained in this value */
+  def getContinuations(x: L): Set[K]
 
   /** Extract pointers contained in this value */
   def getPointerAddresses(x: L): Set[A]
@@ -92,6 +95,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
 
   /** Injection of a pointer (to a cons cell, vector, etc.) */
   def pointer(a: A): L
+
+  /** Injection of a continuation */
+  def cont(k: K): L
 
   /** Constructs a new vector */
   def vector(size: L, init: L): MayFail[L, Error]
@@ -200,7 +206,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
 }
 
 object SchemeLattice {
-  def apply[L, A <: Address, P <: Primitive, Env](
-      implicit lat: SchemeLattice[L, A, P]
-  ): SchemeLattice[L, A, P] = lat
+  def apply[L, A <: Address, P <: Primitive, K](
+      implicit lat: SchemeLattice[L, A, P, K]
+  ): SchemeLattice[L, A, P, K] = lat
 }

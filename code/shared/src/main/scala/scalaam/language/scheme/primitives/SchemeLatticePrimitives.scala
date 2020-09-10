@@ -8,7 +8,7 @@ import scalaam.util.Monoid
 /** Help code for manually implementing Scheme primitives. */
 trait PrimitiveBuildingBlocks[V, A <: Address] {
 
-  val lat: SchemeLattice[V, A, SchemePrimitive[V,A]]
+  val lat: SchemeLattice[V, A, SchemePrimitive[V,A], _]
   lazy val latMon: Monoid[V] = scalaam.util.MonoidInstances.latticeMonoid[V](lat)
   lazy val mfMon: Monoid[MayFail[V, Error]] = scalaam.util.MonoidInstances.mayFail[V](latMon)
 
@@ -62,8 +62,8 @@ trait PrimitiveBuildingBlocks[V, A <: Address] {
     )
 }
 
-class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A]]) extends SchemePrimitives[V, A] with PrimitiveBuildingBlocks[V,A] {
-  val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
+class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V,A], _]) extends SchemePrimitives[V, A] with PrimitiveBuildingBlocks[V,A] {
+  val lat: SchemeLattice[V, A, SchemePrimitive[V,A], _] = schemeLattice
   /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
   def allPrimitives: List[SchemePrimitive[V,A]] = {
     import PrimitiveDefs._
@@ -314,7 +314,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
   object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
 
-    val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
+    val lat: SchemeLattice[V, A, SchemePrimitive[V, A], _] = schemeLattice
 
     import schemeLattice._
 

@@ -7,7 +7,7 @@ import scalaam.language.scheme.lattices.{SchemeLattice, SchemeOps}
 import scalaam.test.lattice._
 
 // inherits the standard scalaam.lattice tests from `LatticeTest`
-class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeLattice: SchemeLattice[L,_,_]) extends LatticeTest(gen) {
+class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeLattice: SchemeLattice[L,_,_,_]) extends LatticeTest(gen) {
     // because of higher entropy in Scheme scalaam.lattice values, verify each property with more examples!
     implicit override val generatorDrivenConfig: PropertyCheckConfiguration = 
         PropertyCheckConfiguration(minSuccessful = 1000)

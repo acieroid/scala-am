@@ -7,7 +7,6 @@ import scalaam.language.scheme._
 import scalaam.language.scheme.lattices.TypeSchemeLattice
 import scalaam.modular._
 import scalaam.modular.scheme.modf.SchemeModFCompoundSensitivities.SeparateLowHighSensitivity._
-import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
 import scalaam.util.benchmarks.Timeout
 
@@ -32,7 +31,7 @@ object PerformanceType extends PerformanceBenchmarks {
       SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
       */
     }
-    lazy val valueLattice = new TypeSchemeLattice[Addr]
+    lazy val valueLattice = new TypeSchemeLattice[Addr,SchemeModFComponent]
     type Value = valueLattice.L
     lazy val lattice = valueLattice.schemeLattice
     override lazy val primitives: SchemePrimitives[Value, Addr] = valueLattice.Primitives
@@ -54,7 +53,7 @@ object PerformanceType extends PerformanceBenchmarks {
       SchemeLexicalAddresser.translateProgram(preludedProgram, initialBindings)
       */
     }
-    lazy val valueLattice = new TypeSchemeLattice[Addr]
+    lazy val valueLattice = new TypeSchemeLattice[Addr,SchemeModFComponent]
     type Value = valueLattice.L
     lazy val lattice = valueLattice.schemeLattice
     lazy val primitives: SchemePrimitives[Value,Address] = new SchemeLatticePrimitives()

@@ -8,7 +8,7 @@ import scalaam.language.scheme._
 import scalaam.lattice._
 import scalaam.util._
 
-class TypeSchemeLattice[A <: Address] {
+class TypeSchemeLattice[A <: Address, K] {
   type P = SchemePrimitive[L, A]
 
   case class L(str: Boolean = false, bool: Boolean = false, num: Boolean = false, char: Boolean = false, sym: Boolean = false, nil: Boolean = false, prims: Set[P] = Set.empty, clos: Set[((SchemeLambdaExp, schemeLattice.Env), Option[String])] = Set.empty, ptrs: Set[A] = Set.empty, consCells: (L,L) = (L(),L())) extends SmartHash {
@@ -31,7 +31,7 @@ class TypeSchemeLattice[A <: Address] {
   def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
     if (b) { MayFail.success(v) } else { MayFail.failure(OperatorNotApplicable(name, args)) }
 
-  val schemeLattice: SchemeLattice[L, A, P] = new SchemeLattice[L, A, P] {
+  val schemeLattice: SchemeLattice[L, A, P, K] = new SchemeLattice[L, A, P, K] {
     def show(x: L): String = s"$x"
     def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
     def isFalse(x: L): Boolean = x.bool
@@ -119,7 +119,7 @@ class TypeSchemeLattice[A <: Address] {
     def getPrimitives(x: L): Set[P] = x.prims
     def getPointerAddresses(x: L): Set[A] = Set()
     def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
-
+    def getContinuations(x: L): Set[K] = ???
     def bottom: L = Inject.bottom
     def number(x: scala.Int): L = Inject.num
     def numTop: L = Inject.num
@@ -136,6 +136,7 @@ class TypeSchemeLattice[A <: Address] {
     def eql[B : BoolLattice](x: L, y: L): B   = BoolLattice[B].top /* could be refined in some cases */
     def vector(size: L, init: L): MayFail[L, Error] = ???
     def thread(tid: TID): L                   = ???
+    def cont(k: K): L                         = ???
     def lock(threads: Set[TID])               = ???
     def void: L                               = ???
     def acquire(lock: L, caller: TID): MayFail[L, Error] = ???
@@ -143,7 +144,7 @@ class TypeSchemeLattice[A <: Address] {
 
   }
   object L {
-    implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A, P, K] = schemeLattice
   }
 
   object Primitives extends SchemeLatticePrimitives[L, A] with PrimitiveBuildingBlocks[L,A] {

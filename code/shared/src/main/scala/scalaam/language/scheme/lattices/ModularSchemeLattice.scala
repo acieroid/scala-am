@@ -19,6 +19,7 @@ import scalaam.util._
 /** TODO[medium]: use Show and ShowStore here */
 class ModularSchemeLattice[
     A <: Address,
+    K,
     S: StringLattice,
     B: BoolLattice,
     I: IntLattice,
@@ -95,20 +96,23 @@ class ModularSchemeLattice[
       s"Vec(size: $size, elems: {$els})"
     }
   }
-  case class Thread(threads: Set[TID]) extends Value {
+  case class Kont(k: Set[K]) extends Value {
     def ord = 12
+    override def toString: String = "<continuation>"
+  }
+  case class Thread(threads: Set[TID]) extends Value {
+    def ord = 13
     override def toString: String = s"🧵$threads"
   }
   // Could also store (a) Thread(s) here, but this seems to be simpler.
   // An empty set indicates the lock is not held, but a non-empty set may also indicate this... (due to the monotonicity of the analysis, threads will only increase in size).
   // This should correspond to the formalisation of ModConc and \lambda_\tau.
   case class Lock(threads: Set[TID]) extends Value {
-    def ord = 13
-    override def toString: String = s"<Lock $threads>"
+    def ord = 14
+    override def toString: String = s"<lock $threads>"
   }
   case object Void extends Value {
-    def ord = 14
-
+    def ord = 15
     override def toString: String = "<void>"
   }
   /** The injected true value */
@@ -142,6 +146,7 @@ class ModularSchemeLattice[
           case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
         }})
         vWithEls2Joined
+      case (Kont(k1), Kont(k2))       => Kont(sunion(k1, k2))
       case (Thread(t1), Thread(t2))   => Thread(sunion(t1, t2))
       case (Lock(l1), Lock(l2))       => Lock(sunion(l1, l2))
       case (Void, Void)               => Void
@@ -162,6 +167,7 @@ class ModularSchemeLattice[
           case (Clo(c1), Clo(c2))         => c2.subsetOf(c1)
           case (Prim(p1), Prim(p2))       => p2.subsetOf(p1)
           case (Pointer(a1), Pointer(a2)) => a2.subsetOf(a1)
+          case (Kont(k1), Kont(k2))       => k2.subsetOf(k1)
           case (Cons(a1,d1), Cons(a2,d2)) => schemeLattice.subsumes(a1,a2) && schemeLattice.subsumes(d1,d2)
           case (Vec(siz1,els1), Vec(siz2,els2)) =>
             IntLattice[I].subsumes(siz1, siz2) &&
@@ -488,6 +494,7 @@ class ModularSchemeLattice[
     def char(x: scala.Char): Value                = Char(CharLattice[C].inject(x))
     def primitive(x: P): Value                    = Prim(Set(x))
     def closure(x: schemeLattice.Closure, name: Option[String]): Value  = Clo(Set((x,name)))
+    def cont(k: K): Value                         = Kont(Set(k))
     def symbol(x: String): Value                  = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value                                = Nil
     def cons(car: L, cdr: L): Value               = Cons(car, cdr)
@@ -502,6 +509,10 @@ class ModularSchemeLattice[
     def getPrimitives(x: Value): Set[P] = x match {
       case Prim(prms) => prms
       case _          => Set.empty
+    }
+    def getContinuations(x: Value): Set[K] = x match {
+      case Kont(k)  => k
+      case _        => Set.empty 
     }
     def getPointerAddresses(x: Value): Set[A] = x match {
       case Pointer(ptrs)  => ptrs
@@ -648,7 +659,7 @@ class ModularSchemeLattice[
   }
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
-  val schemeLattice: SchemeLattice[L, A, P] = new SchemeLattice[L, A, P] {
+  val schemeLattice: SchemeLattice[L, A, P, K] = new SchemeLattice[L, A, P, K] {
     def    show(x: L):  String = x.toString /* TODO[easy]: implement better */
     def  isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
@@ -671,11 +682,10 @@ class ModularSchemeLattice[
       vector.foldMapL(vec => index.foldMapL(i => Value.vectorSet(vec, i, newval)))
 
     def getClosures(x: L): Set[(Closure,Option[String])] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
-    def getPrimitives(x: L): Set[P] =
-      x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
+    def getContinuations(x: L): Set[K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
+    def getPrimitives(x: L): Set[P] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
     def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
-
     def acquire(lock: L, tid: TID): MayFail[L, Error] =
       lock.foldMapL(l => Value.acquire(l, tid))
     def release(lock: L, tid: TID): MayFail[L, Error] =
@@ -689,8 +699,8 @@ class ModularSchemeLattice[
     def char(x: scala.Char): L                = Element(Value.char(x))
     def bool(x: Boolean): L                   = Element(Value.bool(x))
     def primitive(x: P): L                    = Element(Value.primitive(x))
-    def closure(x: Closure,
-                name: Option[String]): L      = Element(Value.closure(x,name))
+    def closure(x: Closure, name: Option[String]): L = Element(Value.closure(x,name))
+    def cont(x: K): L                         = Element(Value.cont(x))
     def symbol(x: String): L                  = Element(Value.symbol(x))
     def cons(car: L, cdr: L): L               = Element(Value.cons(car, cdr))
     def car(x: L): MayFail[L, Error]          = x.foldMapL(v => Value.car(v))
@@ -705,6 +715,6 @@ class ModularSchemeLattice[
   }
 
   object L {
-    implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A, P, K] = schemeLattice
   }
 }

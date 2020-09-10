@@ -17,7 +17,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
 
   type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
   type V
-  type L = SchemeLattice[V, _ <: Address, _ <: Primitive]
+  type L = SchemeLattice[V, _, _ <: Address, _ <: Primitive]
 
   def analysis(text: SchemeExp): Analysis
 

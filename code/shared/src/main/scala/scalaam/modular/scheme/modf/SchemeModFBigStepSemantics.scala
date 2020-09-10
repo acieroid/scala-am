@@ -13,6 +13,7 @@ object EvalM {
   def unit[X](x: X): EvalM[X] = EvalM(_ => Some(x))
   def mzero[X]: EvalM[X]      = EvalM(_ => None)
   def guard(cnd: Boolean): EvalM[Unit] = if(cnd) EvalM(_ => Some(())) else mzero
+  // TODO: Scala probably already has something for this?
   implicit class MonadicOps[X](xs: Iterable[X]) {
     def foldLeftM[Y](y: Y)(f: (Y,X) => EvalM[Y]): EvalM[Y] = xs match {
       case Nil      => unit(y)
@@ -50,6 +51,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
 
   import EvalM._
 
+  // helper
   private def cond(prd: Value, csq: => EvalM[Value], alt: => EvalM[Value]): EvalM[Value] = {
     val csqValue = guard(lattice.isTrue(prd)).flatMap(_ => csq)
     val altValue = guard(lattice.isFalse(prd)).flatMap(_ => alt)
