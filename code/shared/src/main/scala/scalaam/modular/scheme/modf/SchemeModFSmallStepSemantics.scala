@@ -41,7 +41,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
                             env: Env)                     extends Frame
     case class LetrecFrame(id: Identifier,
                            bds: List[(Identifier, SchemeExp)],
-                           done: List[(Identifier, Value)],
                            bdy: List[SchemeExp],
                            env: Env)                      extends Frame
     case class ArgsFrame(fexp: SchemeFuncall,
@@ -84,7 +83,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
             val successors = step(state)
             work = work.addAll(successors)
             visited += state
-          case _ => ()
+          case _ => () // already visited this state 
         }
       }
       writeResult(result)
@@ -93,6 +92,8 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
     private def step(state: State): Set[State] = state match {
       case EvalState(exp, env, cnt) =>
         eval(exp, env, cnt)
+      case KontState(vlu, _) if vlu == lattice.bottom =>
+        Set.empty
       case KontState(vlu, cnt) =>
         val frm = cnt.head
         continue(frm, vlu, cnt.tail)
@@ -127,7 +128,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         val extEnv = bindings.foldLeft(env) { 
           case (env2, (id, _)) => bind(id, env2, lattice.bottom) 
         }
-        evalLetrec(bindings, Nil, body, extEnv, cnt)
+        evalLetrec(bindings, body, extEnv, cnt)
       case SchemeNamedLet(id,bindings,body,pos) =>
         val (prs,ags) = bindings.unzip
         val lambda = SchemeLambda(prs,body,pos)
@@ -175,12 +176,10 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         val frm = LetStarFrame(id,rest,body,env)
         Set(EvalState(vexp, env, frm :: cnt))
     }
-    private def evalLetrec(bindings: List[(Identifier,SchemeExp)], done: List[(Identifier,Value)], body: List[SchemeExp], env: Env, cnt: Kont): Set[State] = bindings match {
-      case Nil => 
-        assign(done, env)
-        evalSequence(body, env, cnt)
+    private def evalLetrec(bindings: List[(Identifier,SchemeExp)], body: List[SchemeExp], env: Env, cnt: Kont): Set[State] = bindings match {
+      case Nil => evalSequence(body, env, cnt)
       case (id,vexp) :: rest =>
-        val frm = LetrecFrame(id,rest,done,body,env)
+        val frm = LetrecFrame(id,rest,body,env)
         Set(EvalState(vexp, env, frm :: cnt))
     }
     private def evalArgs(fexp: SchemeFuncall, fval: Value, toEval: List[SchemeExp], ags: List[(SchemeExp,Value)], env: Env, cnt: Kont): Set[State] = toEval match {
@@ -218,8 +217,9 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         evalLet(rest, (id,vlu) :: done, body, env, cnt)
       case LetStarFrame(id,rest,body,env) => 
         evalLetStar(rest, body, bind(id,env,vlu), cnt)
-      case LetrecFrame(id, rest, done, body, env) => 
-        evalLetrec(rest, (id,vlu) :: done, body, env, cnt)
+      case LetrecFrame(id, rest, body, env) => 
+        assign(id, env, vlu)
+        evalLetrec(rest, body, env, cnt)
       case FunFrame(fexp, args, env) =>
         evalArgs(fexp, vlu, args, Nil, env, cnt)
       case ArgsFrame(fexp,fval,curExp,toEval,args,env) =>
