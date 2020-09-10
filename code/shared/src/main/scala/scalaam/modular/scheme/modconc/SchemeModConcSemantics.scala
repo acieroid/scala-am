@@ -10,6 +10,8 @@ import scalaam.modular.scheme.modf._
 import scalaam.modular.components.ContextSensitiveComponents
 import scalaam.util.benchmarks.Timeout
 
+import scalaam.modular.scheme.modf.EvalM._
+
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                                 with ReturnValue[SchemeExp]
                                 with ContextSensitiveComponents[SchemeExp]
@@ -107,23 +109,24 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
             var T: Set[inter.Component] = Set.empty
             def spawnThread(t: inter.Component) = T += t 
             def readThreadResult(t: inter.Component) = readAddr(inter.returnAddr(t))            
-            override def eval(exp: SchemeExp, env: Env) = exp match {
+            override def eval(exp: SchemeExp, env: Env): EvalM[Value] = exp match {
                 case CSchemeFork(bdy, _)    => evalFork(bdy, env)
                 case CSchemeJoin(thr, _)    => evalJoin(thr, env)
                 case _                      => super.eval(exp, env)   
             }
-            private def evalFork(exp: SchemeExp, env: Env) = {
+            private def evalFork(exp: SchemeExp, env: Env): EvalM[Value] = {
                 val ctx = inter.allocCtx(exp, env, component, intra.component)
                 val targetCmp = inter.newComponent(Thread(exp, env, ctx))
                 spawnThread(targetCmp)
-                lattice.thread(targetCmp)
+                unit(lattice.thread(targetCmp))
             }
-            private def evalJoin(thrExp: SchemeExp, env: Env) = {
-                val thrVal = eval(thrExp, env)
-                lattice.getThreads(thrVal).foldLeft(lattice.bottom) { (acc, tid) => lattice.join(acc, //TODO: use foldMap here
-                    readThreadResult(tid.asInstanceOf[inter.Component])
-                )}
-            }
+            private def evalJoin(thrExp: SchemeExp, env: Env): EvalM[Value] =
+                for {
+                    thrVal <- eval(thrExp, env)
+                    threads = lattice.getThreads(thrVal)
+                    values = threads.map(tid => inject(readThreadResult(tid.asInstanceOf[inter.Component]))(lattice))
+                    res <- merge(values)(lattice)
+                } yield res
             override val interpreterBridge = new SchemeInterpreterBridge[Addr] {
                 def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
                 def currentThread = intra.component
