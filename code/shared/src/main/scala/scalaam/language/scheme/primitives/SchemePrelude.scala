@@ -30,6 +30,7 @@ object SchemePrelude {
          (if (eqv? (caar l) k)
            (car l)
            (assq k (cdr l)))))""",
+    "call-with-current-continuation" -> "(define call-with-current-continuation call/cc)",
     "display" -> "(define (display x) x)", // undefined behavior in R5RS
     "equal?" -> """(define (equal? a b)
           (or (eq? a b)

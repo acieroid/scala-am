@@ -94,6 +94,7 @@ object SchemeBenchmarkPrograms {
     "scm2c.scm", // Uses string->list.
     "scm2java.scm", // Uses list->string.
     "Streams.scm", // Uses define-macro.
+    "callcc.scm", // call/cc not yet support in concrete interpreter
   )
   lazy val     WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
   lazy val sequentialBenchmarks: Set[String] = SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, other))

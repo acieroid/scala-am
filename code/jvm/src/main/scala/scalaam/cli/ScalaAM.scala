@@ -22,12 +22,12 @@ object Main {
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/fib.scm")
+    val txt = Reader.loadFile("test/R5RS/callcc.scm")
     val prg = CSchemeParser.parse(txt)
     val analysis = new ModAnalysis(prg) with SchemeModFSemantics
                                         with BigStepModFSemantics
                                         with StandardSchemeModFComponents
-                                        with SchemeConstantPropagationDomain
+                                        with SchemePowersetDomain
                                         with SchemeModFNoSensitivity
                                         with LIFOWorklistAlgorithm[SchemeExp] {
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra

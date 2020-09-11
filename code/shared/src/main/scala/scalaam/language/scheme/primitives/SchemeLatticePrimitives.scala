@@ -79,7 +79,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       `asin`, /* [vv] asin: Scientific */
       `atan`, /* [vv] atan: Scientific */
       `boolean?`, /* [vv] boolean?: Booleans */
-      /* [x]  call-with-current-continuation: Continuations */
+      `call/cc`, /* [vv]  call-with-current-continuation: Continuations */
       /* [x]  call-with-input-file: File Ports */
       /* [x]  call-with-output-file: File Ports */
       /* [x]  call-with-values: Multiple Values */
@@ -246,7 +246,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     override def call(fpos: SchemeExp,
                       args: List[(SchemeExp, V)],
                       store: Store[A, V],
-                      alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
+                      alloc: SchemeInterpreterBridge[V, A]): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: Nil => call(x._2).map(v => (v, store))
       case _ => MayFail.failure(PrimitiveArityError(name, 1, args.length))
     }
@@ -256,7 +256,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     override def call(fpos: SchemeExp,
                       args: List[(SchemeExp, V)],
                       store: Store[A, V],
-                      alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
+                      alloc: SchemeInterpreterBridge[V, A]): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: y :: Nil => call(x._2, y._2).map(v => (v, store))
       case _ => MayFail.failure(PrimitiveArityError(name, 1, args.length))
     }
@@ -267,7 +267,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     override def call(fpos: SchemeExp,
       args: List[(SchemeExp, V)],
       store: Store[A, V],
-      alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] =
+      alloc: SchemeInterpreterBridge[V, A]): MayFail[(V, Store[A, V]), Error] =
       call(args.map(_._2)).map(v => (v, store))
   }
 
@@ -283,18 +283,18 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     override def call(fpos: SchemeExp,
                       args: List[(SchemeExp, V)],
                       store: Store[A, V],
-                      alloc: SchemeInterpreterBridge[A]
+                      alloc: SchemeInterpreterBridge[V, A]
                      ): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: Nil => call(x._2, store)
       case _ => MayFail.failure(PrimitiveArityError(name, 1, args.length))
     }
   }
 
-  class Scheme1Operation(val name: String, val call: (V, Store[A, V], SchemeInterpreterBridge[A]) => MayFail[(V, Store[A, V]), Error]) extends SchemePrimitive[V, A] {
+  class Scheme1Operation(val name: String, val call: (V, Store[A, V], SchemeInterpreterBridge[V, A]) => MayFail[(V, Store[A, V]), Error]) extends SchemePrimitive[V, A] {
     override def call(fpos: SchemeExp,
                       args: List[(SchemeExp, V)],
                       store: Store[A, V],
-                      scheme: SchemeInterpreterBridge[A]
+                      scheme: SchemeInterpreterBridge[V, A]
                      ): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: Nil => call(x._2, store, scheme)
       case _ => MayFail.failure(PrimitiveArityError(name, 1, args.length))
@@ -305,7 +305,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
     override def call(fpos: SchemeExp,
                       args: List[(SchemeExp, V)],
                       store: Store[A, V],
-                      alloc: SchemeInterpreterBridge[A]
+                      alloc: SchemeInterpreterBridge[V, A]
                      ): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: y :: Nil => call(x._2, y._2, store)
       case _             => MayFail.failure(PrimitiveArityError(name, 2, args.length))
@@ -490,7 +490,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `cons` extends SchemePrimitive[V,A] {
       val name = "cons"
-      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[V, A]): MayFail[(V, Store[A, V]), Error] = args match {
         case (_, car) :: (_, cdr) :: Nil =>
           val addr = alloc.pointer(fpos)
           val consVal = lat.cons(car, cdr)
@@ -525,7 +525,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `make-vector` extends SchemePrimitive[V,A] {
       val name = "make-vector"
-      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = {
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[V, A]): MayFail[(V, Store[A, V]), Error] = {
         def createVec(size: V, init: V): MayFail[(V, Store[A, V]), Error] = {
           isInteger(size) >>= (
               isint =>
@@ -547,7 +547,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `vector` extends SchemePrimitive[V,A] {
       val name = "vector"
-      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = {
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[V, A]): MayFail[(V, Store[A, V]), Error] = {
         val veca = alloc.pointer(fpos)
         lat.vector(number(args.size), bottom) >>= (
             emptyvec =>
@@ -614,7 +614,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       override def call(fpos: SchemeExp,
            args: List[(SchemeExp, V)],
            store: Store[A, V],
-           alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
+           alloc: SchemeInterpreterBridge[V, A]): MayFail[(V, Store[A, V]), Error] = args match {
         case v :: index :: newval :: Nil => vectorSet(v._2, index._2, newval._2, store)
         case _                           => MayFail.failure(PrimitiveArityError(name, 3, args.size))
       }
@@ -625,7 +625,7 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
       override def call(fpos: SchemeExp,
         args: List[(SchemeExp, V)],
         store: Store[A, V],
-        alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
+        alloc: SchemeInterpreterBridge[V,A]): MayFail[(V, Store[A, V]), Error] = args match {
         case Nil => (nil, store)
         case (argpos, v) :: rest =>
           for {
@@ -642,14 +642,28 @@ class  SchemeLatticePrimitives[V, A <: Address](override implicit val schemeLatt
 
     object `new-lock` extends SchemePrimitive[V, A] {
       val name = "new-lock"
-      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error] = args match {
+      override def call(fpos: SchemeExp, args: List[(SchemeExp, V)], store: Store[A, V], alloc: SchemeInterpreterBridge[V,A]): MayFail[(V, Store[A, V]), Error] = args match {
         case Nil =>
           val addr = alloc.pointer(fpos)
-          val lock = lat.lock(Set()) // An initial lock does not contain any thread since it is not held.
+          val lock = lat.lock(Set.empty) // An initial lock does not contain any thread since it is not held.
           val ptr  = lat.pointer(addr)
           (ptr, store.extend(addr, lock))
         case l => MayFail.failure(PrimitiveArityError(name, 0, l.size))
       }
+    }
+
+    case object `call/cc` extends SchemePrimitive[V, A] { 
+      val name = "call/cc"
+      override def call(fpos: SchemeExp, args: List[(SchemeExp,V)], store: Store[A, V], scheme: SchemeInterpreterBridge[V,A]): MayFail[(V, Store[A, V]), Error] = args match {
+        case (_, fun) :: Nil =>
+          val closures = lat.getClosures(fun)
+          val results = closures.collect {
+            case (clo@(SchemeLambda(_ :: Nil,_,_), _), nam) => scheme.callcc(clo,nam,fpos.idn.pos)
+          }
+          (lat.join(results), store)
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+
     }
 
     case object `acquire` extends Scheme1Operation("acquire", { (lockPtr, store, scheme) => 

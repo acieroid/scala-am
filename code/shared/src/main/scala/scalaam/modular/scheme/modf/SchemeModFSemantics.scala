@@ -62,7 +62,7 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
 
   // Extensions to the intraAnalysis.
   override def intraAnalysis(cmp: Component): SchemeModFSemanticsIntra
-  trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
+  trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra { modf =>
     // components
     protected def fnBody: SchemeExp = body(view(component))
     protected def fnEnv: Env = view(component) match {
@@ -153,8 +153,9 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
     private def bindArgs(component: Component, pars: List[Identifier], args: List[Value]): Unit =
       pars.zip(args).foreach { case (par,arg) => bindArg(component,par,arg) }
 
-    protected val interpreterBridge: SchemeInterpreterBridge[Addr] = new SchemeInterpreterBridge[Addr] {
+    protected val interpreterBridge: SchemeInterpreterBridge[Value, Addr] = new SchemeInterpreterBridge[Value, Addr] {
       def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
+      def callcc(clo: lattice.Closure, nam: Option[String], fpos: Position): Value = modf.callcc(clo,nam,fpos)
       def currentThread = throw new Exception("Concurrency not available in ModF")
     }
     // TODO[minor]: use foldMap instead of foldLeft
@@ -180,6 +181,16 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
     // The current component serves as the lexical environment of the closure.
     protected def newClosure(lambda: SchemeLambdaExp, env: Env, name: Option[String]): Value =
       lattice.closure((lambda, env.restrictTo(lambda.fv)), name)
+
+    protected def callcc(closure: lattice.Closure, nam: Option[String], fpos: Position): Value = {
+      val ctx = allocCtx(nam, closure, Nil, fpos, component)
+      val cll = Call(closure, nam, ctx)    
+      val cmp = newComponent(cll)
+      val cnt = lattice.cont(cmp)
+      val par = closure._1.args.head
+      bindArg(cmp, par, cnt)
+      call(cmp)
+    }
 
     // other helpers
     protected def conditional[M : Monoid](prd: Value, csq: => M, alt: => M): M = {

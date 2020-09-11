@@ -1,6 +1,7 @@
 package scalaam.modular.scheme.modconc
 
 import scalaam.core._
+import scalaam.core.Position._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
 import scalaam.language.CScheme._
@@ -105,7 +106,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         }
         // MODF INTRA-ANALYSIS EXTENDED WITH SUPPORT FOR THREADS
         def intraAnalysis(cmp: Component) = new InnerModFIntra(cmp)
-        class InnerModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
+        class InnerModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra { modf =>
             var T: Set[inter.Component] = Set.empty
             def spawnThread(t: inter.Component) = T += t 
             def readThreadResult(t: inter.Component) = readAddr(inter.returnAddr(t))            
@@ -128,8 +129,9 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                     values = threads.map(tid => inject(readThreadResult(tid.asInstanceOf[inter.Component]))(lattice))
                     res <- merge(values)(lattice)
                 } yield res
-            override val interpreterBridge = new SchemeInterpreterBridge[Addr] {
+            override val interpreterBridge = new SchemeInterpreterBridge[Value, Addr] {
                 def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
+                def callcc(clo: Closure, nam: Option[String], pos: Position): Value = modf.callcc(clo,nam,pos)
                 def currentThread = intra.component
             }
             override def commit() = {

@@ -1,6 +1,7 @@
 package scalaam.modular.scheme.ssmodconc
 
 import scalaam.core._
+import scalaam.core.Position._
 import scalaam.language.CScheme._
 import scalaam.language.scheme._
 import scalaam.language.scheme.primitives._
@@ -428,8 +429,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case (exp,vlu) :: rest  => allocateCons(exp)(vlu,allocateList(rest))
     }
 
-    protected val interpreterBridge: SchemeInterpreterBridge[Addr] = new SchemeInterpreterBridge[Addr] {
+    protected val interpreterBridge: SchemeInterpreterBridge[Value, Addr] = new SchemeInterpreterBridge[Value, Addr] {
       def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
+      def callcc(clo: Closure, nam: Option[String], pos: Position): Value = throw new Exception("call/cc not supported here")
       def currentThread = component
     }
 

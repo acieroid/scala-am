@@ -1,12 +1,15 @@
 package scalaam.language.scheme.primitives
 
 import scalaam.core._
+import scalaam.core.Position._
 import scalaam.language.scheme._
 import scalaam.language.CScheme._
 import scalaam.language.scheme.lattices.SchemeLattice
 
-trait SchemeInterpreterBridge[A] {
+trait SchemeInterpreterBridge[V, A <: Address] {
+  type Closure = (SchemeLambdaExp, Environment[A])
   def pointer(exp: SchemeExp): A
+  def callcc(clo: Closure, nam: Option[String], pos: Position): V
   def currentThread: TID
 }
 
@@ -17,7 +20,7 @@ trait SchemePrimitive[V, A <: Address] extends Primitive {
   def call(fexp: SchemeExp,
            args: List[(SchemeExp, V)],
            store: Store[A, V],
-           scheme: SchemeInterpreterBridge[A]): MayFail[(V, Store[A, V]), Error]
+           scheme: SchemeInterpreterBridge[V, A]): MayFail[(V, Store[A, V]), Error]
 }
 
 case class PrimitiveArityError(name: String, expected: Int, got: Int)                extends Error
