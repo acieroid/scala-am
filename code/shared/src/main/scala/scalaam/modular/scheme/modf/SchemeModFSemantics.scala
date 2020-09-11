@@ -96,14 +96,11 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
     }
     protected def bind(bds: List[(Identifier,Value)], env: Env): Env =
       bds.foldLeft(env)((env2, bnd) => bind(bnd._1, env2, bnd._2))
-    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position): Value =
-      if(args.forall(_._2 != lattice.bottom)) {
-        val fromClosures = applyClosures(fval,args,cll)
-        val fromPrimitives = applyPrimitives(fexp,fval,args)
-        lattice.join(fromClosures,fromPrimitives)
-      } else {
-        lattice.bottom
-      }
+    protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position): Value = {
+      val fromClosures = applyClosures(fval,args,cll)
+      val fromPrimitives = applyPrimitives(fexp,fval,args)
+      lattice.join(fromClosures,fromPrimitives)
+    }
     // TODO[minor]: use foldMap instead of foldLeft
     protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position): Value = {
       val arity = args.length
