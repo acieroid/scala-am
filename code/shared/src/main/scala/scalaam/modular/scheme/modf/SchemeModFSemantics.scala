@@ -26,7 +26,6 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
 
   // In ModF, components are function calls in some context.
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
-
   def view(cmp: Component): SchemeModFComponent
 
   def expr(cmp: Component): SchemeExp = body(cmp)
@@ -99,8 +98,17 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
     protected def applyFun(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp,Value)], cll: Position): Value = {
       val fromClosures = applyClosures(fval,args,cll)
       val fromPrimitives = applyPrimitives(fexp,fval,args)
+      applyContinuations(fval, args)
       lattice.join(fromClosures,fromPrimitives)
     }
+    private def applyContinuations(k: Value, args: List[(SchemeExp, Value)]) =
+      args match {
+        case (_, vlu) :: Nil => 
+          val cnts = lattice.getContinuations(k)
+          cnts.foreach { cnt => writeResult(vlu, cnt.asInstanceOf[Component]) } // TODO: type safety!
+        case _ => ()  // continuations are only called with a single argument
+                      // => ignore continuation calls with more than 1 argument
+      }
     // TODO[minor]: use foldMap instead of foldLeft
     protected def applyClosures(fun: Value, args: List[(SchemeExp,Value)], cll: Position): Value = {
       val arity = args.length
