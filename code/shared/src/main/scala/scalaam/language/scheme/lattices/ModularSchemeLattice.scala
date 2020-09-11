@@ -5,6 +5,7 @@ import scalaam.language.CScheme.TID
 import SchemeOps.BinaryOperator.{CharacterEq, CharacterEqCI, CharacterLt, CharacterLtCI, Div, Eq, Expt, Lt, Minus, Modulo, NumEq, Plus, Quotient, Remainder, StringAppend, StringLt, StringRef, Times}
 import SchemeOps.UnaryOperator.{ACos, ASin, ATan, Ceiling, CharacterDowncase, CharacterIsLower, CharacterIsUpper, CharacterToInteger, CharacterToString, CharacterUpcase, Cos, ExactToInexact, Floor, InexactToExact, IntegerToCharacter, IsBoolean, IsChar, IsCons, IsInteger, IsLock, IsNull, IsPointer, IsProcedure, IsReal, IsString, IsSymbol, IsThread, IsVector, Log, Not, NumberToString, Random, Round, Sin, Sqrt, StringLength, StringToNumber, StringToSymbol, SymbolToString, Tan, VectorLength}
 import SchemeOps._
+import scalaam.language.scheme._
 import scalaam.language.scheme.primitives.SchemePrimitive
 import scalaam.lattice._
 import scalaam.util.SmartUnion._
@@ -19,7 +20,6 @@ import scalaam.util._
 /** TODO[medium]: use Show and ShowStore here */
 class ModularSchemeLattice[
     A <: Address,
-    K,
     S: StringLattice,
     B: BoolLattice,
     I: IntLattice,
@@ -27,6 +27,9 @@ class ModularSchemeLattice[
     C: CharLattice,
     Sym: SymbolLattice
 ] {
+
+  // TODO: make this a type parameter for type safety!
+  type K = Any
 
   type P = SchemePrimitive[L,A]
 
@@ -659,7 +662,7 @@ class ModularSchemeLattice[
   }
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
-  val schemeLattice: SchemeLattice[L, A, P, K] = new SchemeLattice[L, A, P, K] {
+  val schemeLattice: SchemeLattice[L, A, P] = new SchemeLattice[L, A, P] {
     def    show(x: L):  String = x.toString /* TODO[easy]: implement better */
     def  isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
@@ -715,6 +718,6 @@ class ModularSchemeLattice[
   }
 
   object L {
-    implicit val lattice: SchemeLattice[L, A, P, K] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
   }
 }

@@ -31,7 +31,7 @@ class TypeSchemeLattice[A <: Address, K] {
   def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
     if (b) { MayFail.success(v) } else { MayFail.failure(OperatorNotApplicable(name, args)) }
 
-  val schemeLattice: SchemeLattice[L, A, P, K] = new SchemeLattice[L, A, P, K] {
+  val schemeLattice: SchemeLattice[L, A, P] = new SchemeLattice[L, A, P] {
     def show(x: L): String = s"$x"
     def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
     def isFalse(x: L): Boolean = x.bool
@@ -144,7 +144,7 @@ class TypeSchemeLattice[A <: Address, K] {
 
   }
   object L {
-    implicit val lattice: SchemeLattice[L, A, P, K] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
   }
 
   object Primitives extends SchemeLatticePrimitives[L, A] with PrimitiveBuildingBlocks[L,A] {

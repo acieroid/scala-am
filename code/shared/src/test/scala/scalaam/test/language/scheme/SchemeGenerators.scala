@@ -58,7 +58,7 @@ abstract class ModularSchemeLatticeGenerator[
     // we'll use the "real" primitives
     def primitives = new SchemeLatticePrimitives[modularLattice.L, SimpleAddr]
     // the scalaam.modular scalaam.lattice that is used
-    lazy val modularLattice: ModularSchemeLattice[SimpleAddr,Nothing,S,B,I,R,C,Sym] = new ModularSchemeLattice
+    lazy val modularLattice: ModularSchemeLattice[SimpleAddr,S,B,I,R,C,Sym] = new ModularSchemeLattice
     
     type L = modularLattice.L
     type V = modularLattice.Value

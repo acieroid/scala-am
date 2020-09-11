@@ -2,10 +2,13 @@ package scalaam.language.scheme.lattices
 
 import scalaam.core._
 import scalaam.language.CScheme.TID
-import scalaam.language.scheme.SchemeLambdaExp
+import scalaam.language.scheme._
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L, A <: Address, P <: Primitive, K] extends Lattice[L] {
+trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
+
+  // TODO: make this a type parameter for type safety!
+  type K = Any
 
   /** Can this value be considered true for conditionals? */
   def isTrue(x: L): Boolean
@@ -206,7 +209,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive, K] extends Lattice[L] {
 }
 
 object SchemeLattice {
-  def apply[L, A <: Address, P <: Primitive, K](
-      implicit lat: SchemeLattice[L, A, P, K]
-  ): SchemeLattice[L, A, P, K] = lat
+  def apply[L, A <: Address, P <: Primitive](
+      implicit lat: SchemeLattice[L, A, P]
+  ): SchemeLattice[L, A, P] = lat
 }

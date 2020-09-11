@@ -25,7 +25,7 @@ abstract class PrecisionBenchmarks[
     type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
                                            with ModularSchemeDomain {
         val modularLatticeWrapper: ModularSchemeLatticeWrapper {
-            val modularLattice: ModularSchemeLattice[Addr,SchemeModFComponent,Str,Bln,Num,Rea,Chr,Smb]
+            val modularLattice: ModularSchemeLattice[Addr,Str,Bln,Num,Rea,Chr,Smb]
         }
     }
 
@@ -44,7 +44,7 @@ abstract class PrecisionBenchmarks[
     }
 
     type BaseValue = baseDomain.L
-    val baseDomain = new ModularSchemeLattice[BaseAddr,SchemeModFComponent,Str,Bln,Num,Rea,Chr,Smb]
+    val baseDomain = new ModularSchemeLattice[BaseAddr,Str,Bln,Num,Rea,Chr,Smb]
     val baseLattice = baseDomain.schemeLattice
     case class StubPrimitive(name: String) extends SchemePrimitive[BaseValue, BaseAddr] {
         def call(fpos: SchemeExp, args: List[(SchemeExp, BaseValue)], store: Store[BaseAddr,BaseValue], scheme: SchemeInterpreterBridge[BaseAddr]) =

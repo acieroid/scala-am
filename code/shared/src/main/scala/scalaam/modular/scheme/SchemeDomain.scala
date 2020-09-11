@@ -3,7 +3,6 @@ package scalaam.modular.scheme
 import scalaam.core._
 import scalaam.modular._
 import scalaam.lattice._
-import scalaam.modular.scheme.modf._
 import scalaam.language.scheme._
 import scalaam.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
 import scalaam.language.scheme.primitives._
@@ -11,7 +10,7 @@ import scalaam.language.scheme.primitives._
 trait SchemeDomain extends AbstractDomain[SchemeExp] {
   type Prim = SchemePrimitive[Value, Address]
   val primitives: SchemePrimitives[Value, Address]
-  implicit val lattice: SchemeLattice[Value, Address, Prim, SchemeModFComponent]
+  implicit val lattice: SchemeLattice[Value, Address, Prim]
 }
 
 trait ModularSchemeDomain extends SchemeDomain {
@@ -32,7 +31,7 @@ trait ModularSchemeLatticeWrapper {
   type C
   type Sym
   // holds a modular lattice
-  val modularLattice: ModularSchemeLattice[Address,SchemeModFComponent,S,B,I,R,C,Sym]
+  val modularLattice: ModularSchemeLattice[Address,S,B,I,R,C,Sym]
   val primitives: SchemePrimitives[modularLattice.L,Address]
 }
 
