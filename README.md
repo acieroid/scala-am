@@ -1,5 +1,12 @@
 Scala-AM: A Framework for Static Analysis of Dynamic Languages
 
+**Note:**
+
+We have shifted the focus of our research to studying modular static analyses.
+As a result, Scala-AM has been thorougly overhauled to support this kind of analyses, and the framework resurrected as MAF, the [Modular Analysis Framework](https://github.com/softwarelanguageslab/maf).
+Like Scala-AM, MAF is a modular framework for static analysis of dynamic languages, but it is geared towards (experimenting with) modular analysis techniques.
+MAF is available [here](https://github.com/softwarelanguageslab/maf).
+
 # Goal
 The goal of this artefact is to experiment with abstract machines and language
 semantics. Currently, the artefact's implementation is focused towards experiments with modular analyses.
